@@ -1,0 +1,48 @@
+type Trainer @table {
+  firstName: String!
+  lastName: String!
+  email: String!
+  createdAt: Timestamp!
+  phoneNumber: String
+  bio: String
+}
+
+type Client @table {
+  firstName: String!
+  lastName: String!
+  email: String!
+  createdAt: Timestamp!
+  trainer: Trainer
+  phoneNumber: String
+  dateOfBirth: Date
+  goals: String
+}
+
+type Session @table {
+  sessionDate: Date!
+  durationMinutes: Int!
+  type: String!
+  createdAt: Timestamp!
+  trainer: Trainer
+  client: Client
+  notes: String
+  location: String
+}
+
+type ProgressMetric @table {
+  metricName: String!
+  value: Float!
+  unit: String!
+  recordedAt: Timestamp!
+  client: Client
+  notes: String
+}
+
+type WorkoutPlan @table {
+  name: String!
+  startDate: Date!
+  createdAt: Timestamp!
+  client: Client
+  description: String
+  endDate: Date
+}
