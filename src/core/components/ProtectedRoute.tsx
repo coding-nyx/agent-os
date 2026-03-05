@@ -28,8 +28,8 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
       return;
     }
 
-    // Only redirect to onboarding if we are sure the profile is loaded and onboarding is NOT complete
-    if (isAuthenticated && !isGuest && requireOnboarding && profile && !profile.onboardingComplete) {
+    // Redirect authenticated users into orchestrator until their core profile is initialized and complete
+    if (isAuthenticated && !isGuest && requireOnboarding && (!profile || !profile.onboardingComplete)) {
       if (location.pathname !== '/orchestrator') {
         navigate('/orchestrator', { replace: true });
       }

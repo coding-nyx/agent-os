@@ -1,8 +1,17 @@
-import { Routine } from '@/lib/types';
+import { Routine, Weekday } from '@/lib/types';
 import { TrainerProfile } from '@/lib/types';
 
 export function stripActionTags(content: string): string {
-  return content.replace(/<action type=".*?">[\s\S]*?<\/action>/gi, '').trim();
+  return content
+    .replace(/<action type=".*?">[\s\S]*?<\/action>/gi, '')
+    .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/gi, '')
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
+    .trim();
+}
+
+export function getTodayWeekday(): Weekday {
+  const days: Weekday[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  return days[new Date().getDay()];
 }
 
 export function getTodayIso(): string {
@@ -17,14 +26,13 @@ function createId() {
 }
 
 export function normalizeRoutines(routines: Routine[]): Routine[] {
-  const today = getTodayIso();
   return (routines || []).map((routine) => ({
     id: routine.id || createId(),
     name: routine.name || 'Personalized Routine',
     timeframe: routine.timeframe || 'daily',
     status: routine.status || 'active',
     rationale: routine.rationale || 'Generated routine.',
-    date: routine.date || today,
+    weekday: routine.weekday?.toLowerCase() as Weekday,
     exercises: routine.exercises || []
   }));
 }
@@ -44,4 +52,3 @@ export function mergeTrainerProfile(base: TrainerProfile, patch: Partial<Trainer
 
   return merged;
 }
-

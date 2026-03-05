@@ -9,6 +9,7 @@ export interface GlobalSoulContextType {
   isLoading: boolean;
   refreshGlobalSoul: () => Promise<void>;
   updateCrossFunctionalState: (updates: Partial<GlobalProjection['crossFunctionalState']>) => Promise<void>;
+  updateTherapeuticBaseline: (baseline: GlobalProjection['therapeuticBaseline']) => Promise<void>;
   enhanceContext: (context: ConversationContext) => ConversationContext;
 }
 
@@ -63,6 +64,16 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     }
   }, [profile, authLoading, refreshGlobalSoul]);
 
+  const updateTherapeuticBaseline = useCallback(async (baseline: GlobalProjection['therapeuticBaseline']) => {
+    if (!user) return;
+    try {
+      await GlobalProjectionService.updateTherapeuticBaseline(user.uid, baseline);
+      await refreshGlobalSoul();
+    } catch (e) {
+      console.error("Failed to update Therapeutic Baseline:", e);
+    }
+  }, [user, refreshGlobalSoul]);
+
   const enhanceContext = useCallback((context: ConversationContext): ConversationContext => {
     if (!globalSoul) return context;
     const state = globalSoul.crossFunctionalState;
@@ -85,7 +96,7 @@ ${globalSoul.compactedInsights.map(i => `- ${i}`).join('\n')}
 
   return (
     <GlobalSoulContext.Provider value={{
-      globalSoul, isLoading: isLoading || authLoading, refreshGlobalSoul, updateCrossFunctionalState, enhanceContext
+      globalSoul, isLoading: isLoading || authLoading, refreshGlobalSoul, updateCrossFunctionalState, updateTherapeuticBaseline, enhanceContext
     }}>
       {children}
     </GlobalSoulContext.Provider>

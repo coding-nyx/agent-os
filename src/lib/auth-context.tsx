@@ -76,17 +76,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       if (currentUser) {
         setIsGuest(false);
-        // Load profile before releasing the loading lock
+        // SESSION LOCK: Only update state if this is still the active user session
         try {
+            // SECURITY: Ensure Firebase Auth token is fully propagated before querying Firestore
+            const { ensureAuthReady } = await import('@/lib/firebase');
+            await ensureAuthReady();
+
             const p = await CoreProfileService.getProfile(currentUser.uid);
-            if (p) {
-                setProfile(p);
-                await GlobalProjectionService.syncFromProfile(p);
-            } else {
-                setProfile(null);
+            // Re-verify UID after async fetch to prevent cross-session hydration
+            if (authService.getCurrentUser()?.uid === currentUser.uid) {
+                if (p) {
+                    setProfile(p);
+                    await GlobalProjectionService.syncFromProfile(p);
+                } else {
+                    setProfile(null);
+                }
             }
         } catch (e) {
-            console.error("Auth boot sequence encountered a data-sync delay.");
+            console.error("Auth boot sequence encountered a data-sync delay:", e);
         }
       } else {
         setProfile(null);

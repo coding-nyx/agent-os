@@ -1,211 +1,391 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChatInterface } from '@/core/components/ChatInterface';
-import { useAI } from '@/llm-engine/ai-context';
-import { Message } from '@/llm-engine/types';
+import React, { useEffect, useMemo } from 'react';
+import { Shield, Sparkles } from 'lucide-react';
+import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
+import { GuidedChatSpec } from '@/core/intake/types';
+import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
+import { extractActionPayloads, hasActionSignal } from '@/core/intake/action-parser';
+import { NexusChat } from '@/core/components/NexusChat';
+import { cn } from '@/lib/utils';
 import { TrainerProfile, TrainerPrivacyLevel } from '@/lib/types';
 import { buildTrainerOnboardingPrompt } from '../prompts/trainer-onboarding-prompt';
-import { mergeTrainerProfile, normalizeRoutines, stripActionTags } from '../utils';
-import { sanitizeJsonPayload } from '@/llm-engine/sanitize';
-import { Shield, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { mergeTrainerProfile, normalizeRoutines } from '../utils';
+import { saveGuestTrainerProfile } from '../services/trainer-profile-service';
+import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
+import {
+  RequiredSectionKey,
+  TrainerIntakeAccumulator,
+  appendFromUserMessage,
+  appendProfilePatch,
+  backfillFromHistory,
+  createAccumulatorFromProfile,
+  getMissingSectionsFromAccumulator,
+  normalizeTrainerProfilePatch,
+  toProfilePatchFromAccumulator
+} from './intake-accumulator';
 
 interface TrainerOnboardingProps {
   onComplete: (profile: TrainerProfile) => void;
+  onGlobalBaseContextFinalize?: (context: GlobalBaseIntakeContext) => Promise<void> | void;
+  initialBaseContext?: GlobalBaseIntakeContext;
   initialProfile?: TrainerProfile | null;
 }
 
-const createEmptyProfile = (privacyLevel: TrainerPrivacyLevel): TrainerProfile => ({
-  onboardingComplete: false,
-  privacyLevel,
-  trackingLevel: privacyLevel === 'complete' ? 'indepth' : 'standard',
-  nutrition: { supplements: [] },
-  activity: {},
-  history: {},
-  summary: '',
-  routines: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString()
-});
+type TrainerIntakeState = {
+  privacyLevel: TrainerPrivacyLevel | null;
+  profile: TrainerProfile | null;
+  accumulator: TrainerIntakeAccumulator;
+  baseContext: GlobalBaseIntakeContext;
+  stepProgress: number;
+  protocolViolationCount: number;
+};
 
-export function TrainerOnboarding({ onComplete, initialProfile }: TrainerOnboardingProps) {
-  const { streamMessage } = useAI();
-  const [privacyLevel, setPrivacyLevel] = useState<TrainerPrivacyLevel | null>(
-    initialProfile?.privacyLevel ?? null
-  );
-  const [profile, setProfile] = useState<TrainerProfile | null>(initialProfile ?? null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [streamingText, setStreamingText] = useState('');
+const TRAINER_STEPS = [
+  {
+    key: 'nutrition',
+    label: 'Nutrition Intake',
+    helperText: 'Capture supplements, meal structure, and macro baseline.'
+  },
+  {
+    key: 'activity',
+    label: 'Physical Data',
+    helperText: 'Capture training frequency, workload, sleep, and recovery.'
+  },
+  {
+    key: 'history',
+    label: 'History & Goals',
+    helperText: 'Capture injuries, past training, and measurable targets.'
+  },
+  {
+    key: 'sync',
+    label: 'Routine Sync',
+    helperText: 'Finalize the profile and lock routine-ready state.'
+  }
+] as const;
 
-  const systemPrompt = useMemo(() => {
-    if (!privacyLevel) return '';
-    return buildTrainerOnboardingPrompt(privacyLevel);
-  }, [privacyLevel]);
-
-  useEffect(() => {
-    if (!privacyLevel) return;
-    if (!profile) {
-      setProfile(initialProfile ?? createEmptyProfile(privacyLevel));
-    }
-    if (messages.length === 0) {
-      const intro = privacyLevel === 'complete'
-        ? "Onboarding initialized. We'll go deep to build a complete performance profile. Let's start with nutrition: what do you typically eat and which supplements do you take?"
-        : "Onboarding initialized. We'll keep this focused on non-intrusive data. Let's start with nutrition: what do you typically eat and which supplements do you take?";
-      setMessages([{ role: 'assistant', content: intro }]);
-    }
-  }, [privacyLevel, profile, messages.length, initialProfile]);
-
-  const handleSendMessage = async (content: string) => {
-    if (!privacyLevel || !profile) return;
-    const userMsg: Message = { role: 'user', content };
-    setMessages(prev => [...prev, userMsg]);
-    setIsProcessing(true);
-    setError(null);
-    setStreamingText('');
-
-    try {
-      const { updatedHistory, response } = await streamMessage(
-        content,
-        {
-          systemPrompt,
-          insights: [],
-          summary: 'Trainer onboarding intake.',
-          history: messages
-        },
-        (chunk) => {
-          setStreamingText(prev => prev + chunk);
-        }
-      );
-
-      let nextProfile = { ...profile };
-      const updateMatches = response.match(/<action type="update_trainer_profile">([\s\S]*?)<\/action>/gi);
-      if (updateMatches) {
-        for (const match of updateMatches) {
-          const jsonStr = sanitizeJsonPayload(match
-            .replace(/<action type="update_trainer_profile">/i, '')
-            .replace(/<\/action>/i, ''));
-          try {
-            const parsed = JSON.parse(jsonStr) as Partial<TrainerProfile>;
-            nextProfile = mergeTrainerProfile(nextProfile, parsed);
-          } catch (e) {
-            console.error('Failed to parse trainer profile update:', e);
-          }
-        }
-      }
-
-      const routineMatches = response.match(/<action type="update_routine">([\s\S]*?)<\/action>/gi);
-      if (routineMatches) {
-        for (const match of routineMatches) {
-          const jsonStr = sanitizeJsonPayload(match
-            .replace(/<action type="update_routine">/i, '')
-            .replace(/<\/action>/i, ''));
-          try {
-            const parsed = JSON.parse(jsonStr) as { routines?: any[] };
-            if (parsed.routines) {
-              nextProfile.routines = normalizeRoutines(parsed.routines as any);
-            }
-          } catch (e) {
-            console.error('Failed to parse routine update:', e);
-          }
-        }
-      }
-
-      nextProfile.updatedAt = new Date().toISOString();
-      setProfile(nextProfile);
-
-      const completeMatch = response.match(/<action type="complete_trainer_onboarding">/i);
-
-      const displayHistory = updatedHistory.map(m => ({
-        ...m,
-        content: stripActionTags(m.content)
-      }));
-
-      setMessages(displayHistory);
-      setStreamingText('');
-
-      if (completeMatch) {
-        const completed = { ...nextProfile, onboardingComplete: true };
-        setProfile(completed);
-        onComplete(completed);
-      }
-    } catch (e: any) {
-      console.error('Trainer onboarding failed:', e);
-      setError('Onboarding neural link interrupted.');
-    } finally {
-      setIsProcessing(false);
-    }
+function createEmptyProfile(privacyLevel: TrainerPrivacyLevel): TrainerProfile {
+  return {
+    onboardingComplete: false,
+    privacyLevel,
+    trackingLevel: privacyLevel === 'complete' ? 'indepth' : 'standard',
+    nutrition: { supplements: [] },
+    activity: {},
+    history: {},
+    summary: '',
+    routines: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
+}
 
-  return (
-    <div className="h-full w-full flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-4xl h-[80vh] flex flex-col bg-black/40 backdrop-blur-xl rounded-[24px] border border-white/10 overflow-hidden shadow-2xl">
-        <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-black italic uppercase tracking-widest text-orange-400">Trainer Intake</h2>
-            <p className="text-xs text-white/50 tracking-tight">Initializing performance profile...</p>
-          </div>
-          {privacyLevel && (
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">
-              {privacyLevel === 'complete' ? 'COMPLETE DATA' : 'BASIC DATA'}
-            </span>
-          )}
-        </div>
-
-        {!privacyLevel && (
-          <div className="p-6 border-b border-white/5 bg-black/30">
-            <p className="text-[10px] text-white/50 uppercase font-black tracking-[0.2em] mb-4">
-              Select Data Sharing Level
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                onClick={() => setPrivacyLevel('basic')}
-                className={cn(
-                  'p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left',
-                  'group'
-                )}
-              >
-                <Shield className="w-6 h-6 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
-                <h3 className="text-sm font-black uppercase tracking-wider mb-2">Basic Data</h3>
-                <p className="text-xs text-white/50 leading-relaxed">
-                  Non-intrusive intake. Skips intimate and gender-dependent questions.
-                </p>
-              </button>
-
-              <button
-                onClick={() => setPrivacyLevel('complete')}
-                className={cn(
-                  'p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left',
-                  'group'
-                )}
-              >
-                <Sparkles className="w-6 h-6 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
-                <h3 className="text-sm font-black uppercase tracking-wider mb-2">Complete Data</h3>
-                <p className="text-xs text-white/50 leading-relaxed">
-                  Full intake including biological and intimate factors for maximum optimization.
-                </p>
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="flex-1 overflow-hidden">
-          <ChatInterface
-            messages={streamingText ? [...messages, { role: 'assistant', content: stripActionTags(streamingText) }] : messages}
-            onSendMessage={handleSendMessage}
-            isLoading={isProcessing && !streamingText}
-            themeColor="orange"
-            agentName="Titan Intake"
-            placeholder={privacyLevel ? 'Share your response...' : 'Select a data level to begin'}
-            error={error}
-            onRetry={() => {
-              const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-              if (lastUserMsg) handleSendMessage(lastUserMsg.content);
-            }}
-          />
-        </div>
-      </div>
-    </div>
+function hasCompletionClaim(response: string): boolean {
+  return /\b(onboarding (?:is )?complete|intake (?:is )?complete|all (?:the )?information (?:i )?(?:need|needed)|profile (?:is )?(?:ready|synced|synchronized)|we(?:'re| are) done)\b/i.test(
+    response
   );
 }
 
+function formatMissingSections(missing: RequiredSectionKey[]): string {
+  return missing
+    .map((key) => {
+      if (key === 'nutrition') return 'nutrition baseline';
+      if (key === 'activity') return 'activity baseline';
+      return 'training history and goals';
+    })
+    .join(', ');
+}
+
+function deriveStepFromMissingSections(missing: RequiredSectionKey[]): number {
+  if (missing.includes('nutrition')) return 0;
+  if (missing.includes('activity')) return 1;
+  if (missing.includes('history')) return 2;
+  return TRAINER_STEPS.length - 1;
+}
+
+function sectionSnapshot(value: unknown): string {
+  try {
+    const serialized = JSON.stringify(value);
+    if (!serialized || serialized === '{}' || serialized === '[]') return 'Missing';
+    return serialized.length <= 360 ? serialized : `${serialized.slice(0, 360)}...`;
+  } catch {
+    return 'Missing';
+  }
+}
+
+function nextMissingQuestion(firstMissing: RequiredSectionKey | undefined): string {
+  if (firstMissing === 'nutrition') {
+    return 'Before finalizing, share your typical nutrition baseline: meals, supplements, and any known macro/calorie targets.';
+  }
+  if (firstMissing === 'activity') {
+    return 'Before finalizing, share your activity baseline: workouts per week, daily activity level, and average sleep hours.';
+  }
+  return 'Before finalizing, share your training history and goals, including any injuries and your primary objective.';
+}
+
+export function TrainerOnboarding({
+  onComplete,
+  onGlobalBaseContextFinalize,
+  initialBaseContext,
+  initialProfile
+}: TrainerOnboardingProps) {
+  const hasBaseContext = (context: GlobalBaseIntakeContext) =>
+    Boolean(context.name || context.pronouns || context.occupation || typeof context.typicalSleepHours === 'number');
+
+  const buildBaseContextPrompt = (context: GlobalBaseIntakeContext) => {
+    const chunks = [
+      context.name ? `name as ${context.name}` : null,
+      context.pronouns ? `pronouns as ${context.pronouns}` : null,
+      context.occupation ? `occupation as ${context.occupation}` : null,
+      typeof context.typicalSleepHours === 'number' ? `typical sleep around ${context.typicalSleepHours} hours/night` : null
+    ].filter(Boolean);
+
+    if (chunks.length === 0) {
+      return "Onboarding initialized. Let's start with nutrition: what do you typically eat and which supplements do you take?";
+    }
+
+    return `Nyx handoff received. I have your ${chunks.join(', ')}. Is that correct before we continue your training intake?`;
+  };
+
+  const initialContext = useMemo(() => initialBaseContext ?? {}, [initialBaseContext]);
+  const initialAccumulator = useMemo(() => createAccumulatorFromProfile(initialProfile), [initialProfile]);
+
+  const spec = useMemo<GuidedChatSpec<TrainerIntakeState>>(
+    () => ({
+      initialState: {
+        privacyLevel: initialProfile?.privacyLevel ?? null,
+        profile: initialProfile ?? null,
+        accumulator: initialAccumulator,
+        baseContext: initialContext,
+        stepProgress: 0,
+        protocolViolationCount: 0
+      },
+      initialMessages: [],
+      initialStep: 0,
+      steps: [...TRAINER_STEPS],
+      summary: 'Trainer onboarding intake.',
+      placeholder: 'Select data level to begin',
+      canSend: (state) => Boolean(state.privacyLevel && state.profile),
+      buildContext: (state, history) => {
+        const missing = getMissingSectionsFromAccumulator(state.accumulator);
+
+        return {
+          systemPrompt: `${buildTrainerOnboardingPrompt(state.privacyLevel || 'basic', state.baseContext)}
+
+[CURRENT_CAPTURED_TRAINER_DATA]
+- Nutrition: ${sectionSnapshot(state.accumulator.nutrition)}
+- Activity: ${sectionSnapshot(state.accumulator.activity)}
+- History/Goals: ${sectionSnapshot(state.accumulator.history)}
+
+[MISSING_REQUIRED_SECTIONS]
+- ${missing.length > 0 ? formatMissingSections(missing) : 'none'}
+
+[PROTOCOL]
+- Append new data to existing context; do not discard previously captured data.
+- Do not re-ask already captured data.
+- Ask one concise follow-up question for only the next missing section.
+- Completion requires: nutrition + activity + training history/goals.
+- Emit complete action only when all required sections are captured.
+`,
+          insights: [],
+          summary: 'Trainer onboarding intake.',
+          history
+        };
+      },
+      onResponse: (response, state, meta) => {
+        if (!state.profile) {
+          return {};
+        }
+
+        let nextProfile = { ...state.profile };
+        let nextAccumulator = { ...state.accumulator };
+        let nextBaseContext = { ...state.baseContext };
+        let assistantMessage: string | undefined;
+
+        const profileUpdates = extractActionPayloads<Partial<TrainerProfile>>(response, 'update_trainer_profile');
+        if (profileUpdates.length > 0) {
+          for (const parsed of profileUpdates) {
+            const normalizedPatch = normalizeTrainerProfilePatch(parsed);
+            nextProfile = mergeTrainerProfile(nextProfile, normalizedPatch);
+            nextAccumulator = appendProfilePatch(nextAccumulator, normalizedPatch);
+          }
+        }
+
+        const routineUpdates = extractActionPayloads<{ routines?: any[] }>(response, 'update_routine');
+        if (routineUpdates.length > 0) {
+          for (const parsed of routineUpdates) {
+            if (parsed.routines) {
+              nextProfile.routines = normalizeRoutines(parsed.routines as any);
+              nextAccumulator.routines = nextProfile.routines as any[];
+            }
+          }
+        }
+
+        const baseContextUpdates = extractActionPayloads<Partial<GlobalBaseIntakeContext>>(response, 'update_global_base_context');
+        if (baseContextUpdates.length > 0) {
+          for (const parsed of baseContextUpdates) {
+            if (typeof parsed.name === 'string' && parsed.name.trim()) nextBaseContext.name = parsed.name.trim();
+            if (typeof parsed.pronouns === 'string' && parsed.pronouns.trim()) nextBaseContext.pronouns = parsed.pronouns.trim();
+            if (typeof parsed.occupation === 'string' && parsed.occupation.trim()) nextBaseContext.occupation = parsed.occupation.trim();
+            if (
+              typeof parsed.typicalSleepHours === 'number' &&
+              Number.isFinite(parsed.typicalSleepHours) &&
+              parsed.typicalSleepHours > 0 &&
+              parsed.typicalSleepHours <= 24
+            ) {
+              nextBaseContext.typicalSleepHours = parsed.typicalSleepHours;
+            }
+          }
+        }
+
+        nextAccumulator = appendFromUserMessage(nextAccumulator, meta?.latestUserMessage);
+        if (meta?.history?.length) {
+          nextAccumulator = backfillFromHistory(nextAccumulator, meta.history);
+        }
+
+        const projectedPatch = toProfilePatchFromAccumulator(nextAccumulator);
+        nextProfile = mergeTrainerProfile(nextProfile, projectedPatch);
+
+        const missingSections = getMissingSectionsFromAccumulator(nextAccumulator);
+        const hasRequiredData = missingSections.length === 0;
+        let nextStep = deriveStepFromMissingSections(missingSections);
+
+        const hasCompletionAction = hasActionSignal(response, 'complete_trainer_onboarding');
+        const completionClaim = hasCompletionClaim(response);
+        const completionActionWithoutRequiredData = hasCompletionAction && !hasRequiredData;
+        const nearCompleteImplicitFinalize = completionClaim && !hasCompletionAction && hasRequiredData;
+        const completionClaimWithoutRequiredData = completionClaim && !hasRequiredData;
+
+        let nextViolationCount = state.protocolViolationCount;
+        if (completionActionWithoutRequiredData || completionClaimWithoutRequiredData) {
+          nextViolationCount += 1;
+        } else {
+          nextViolationCount = 0;
+        }
+
+        const completed = (hasCompletionAction && hasRequiredData) || nearCompleteImplicitFinalize;
+        if (completed) {
+          nextProfile.onboardingComplete = true;
+          nextStep = TRAINER_STEPS.length - 1;
+          assistantMessage = 'Trainer onboarding complete. Profile synchronized and ready for routine generation.';
+        } else if (completionClaimWithoutRequiredData || completionActionWithoutRequiredData) {
+          assistantMessage = nextMissingQuestion(missingSections[0]);
+        }
+
+        nextProfile.updatedAt = new Date().toISOString();
+
+        return {
+          nextState: {
+            ...state,
+            profile: nextProfile,
+            accumulator: nextAccumulator,
+            baseContext: nextBaseContext,
+            stepProgress: nextStep,
+            protocolViolationCount: nextViolationCount
+          },
+          nextStep,
+          completed,
+          assistantMessage
+        };
+      }
+    }),
+    [initialAccumulator, initialContext, initialProfile]
+  );
+
+  const intake = useGuidedChatIntake({
+    spec,
+    onComplete: async (state) => {
+      if (state.profile) {
+        if (onGlobalBaseContextFinalize) {
+          try {
+            await onGlobalBaseContextFinalize(state.baseContext);
+          } catch (e) {
+            console.error('Trainer onboarding global base context sync failed:', e);
+          }
+        }
+        onComplete({ ...state.profile, onboardingComplete: true });
+      }
+    }
+  });
+
+  const { state, setState, stepIndex, messages, setMessages, isProcessing, error, streamingText, handleSendMessage } = intake;
+
+  useEffect(() => {
+    if (state.profile && !state.profile.onboardingComplete) {
+      saveGuestTrainerProfile(state.profile);
+    }
+  }, [state.profile]);
+
+  useEffect(() => {
+    if (!state.privacyLevel || messages.length > 0) {
+      return;
+    }
+
+    const profile = state.profile ?? initialProfile ?? createEmptyProfile(state.privacyLevel);
+    const introPrefix =
+      state.privacyLevel === 'complete'
+        ? "Onboarding initialized. We'll go deep to build a complete performance profile."
+        : "Onboarding initialized. We'll keep this focused on non-intrusive data.";
+    const intro = hasBaseContext(state.baseContext)
+      ? `${introPrefix} ${buildBaseContextPrompt(state.baseContext)}`
+      : `${introPrefix} Let's start with nutrition: what do you typically eat and which supplements do you take?`;
+
+    if (!state.profile) {
+      setState((prev) => ({
+        ...prev,
+        profile,
+        accumulator: createAccumulatorFromProfile(profile)
+      }));
+    }
+    setMessages([{ role: 'assistant', content: intro }]);
+  }, [initialProfile, messages.length, setMessages, setState, state.baseContext, state.privacyLevel, state.profile]);
+
+  return (
+    <GuidedIntakeFrame
+      title="Titan Guided Intake"
+      subtitle="Calibrating a performance profile for safe routine generation."
+      statusLabel={state.privacyLevel ? (state.privacyLevel === 'complete' ? 'COMPLETE_DATA' : 'BASIC_DATA') : 'SELECT_PRIVACY'}
+      steps={[...TRAINER_STEPS]}
+      currentStep={stepIndex}
+      themeColor="orange"
+      prelude={
+        !state.privacyLevel && (
+          <div className="p-6">
+            <p className="text-[10px] text-white/50 uppercase font-black tracking-[0.2em] mb-4">Select Data Sharing Level</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={() => setState((prev) => ({ ...prev, privacyLevel: 'basic' }))}
+                className={cn('p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left group')}
+              >
+                <Shield className="w-6 h-6 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
+                <h3 className="text-sm font-black uppercase tracking-wider mb-2">Basic Data</h3>
+                <p className="text-xs text-white/50 leading-relaxed">Non-intrusive intake. Skips intimate and gender-dependent questions.</p>
+              </button>
+
+              <button
+                onClick={() => setState((prev) => ({ ...prev, privacyLevel: 'complete' }))}
+                className={cn('p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left group')}
+              >
+                <Sparkles className="w-6 h-6 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
+                <h3 className="text-sm font-black uppercase tracking-wider mb-2">Complete Data</h3>
+                <p className="text-xs text-white/50 leading-relaxed">Full intake including biological and intimate factors for maximum optimization.</p>
+              </button>
+            </div>
+          </div>
+        )
+      }
+    >
+      <NexusChat
+        ai={{
+          messages,
+          isProcessing,
+          streamingText,
+          error,
+          quota: null,
+          handleSendMessage
+        }}
+        agentName="Titan Intake"
+        themeColor="orange"
+        placeholder={state.privacyLevel ? 'Share your response...' : spec.placeholder}
+        showInternalSignals={false}
+      />
+    </GuidedIntakeFrame>
+  );
+}

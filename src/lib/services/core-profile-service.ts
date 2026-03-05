@@ -5,7 +5,7 @@ import { CoreUserProfile, AgentPersonalityProvision } from '../types';
 const COLLECTION = 'users';
 
 const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
-  orchestratorAlias: 'Agnes',
+  orchestratorAlias: 'Nyx',
   moduleAliases: {
     therapy: 'Agnes',
     trainer: 'Titan',

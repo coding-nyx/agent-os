@@ -1,40 +1,92 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
-import { ChatInterface } from '@/core/components/ChatInterface';
 import { useGlobalSoul } from '@/lib/global-soul-context';
-import { AGNES_PERSONA } from './personas';
-import { useVault } from '@/lib/vault-context';
 import { useAuth } from '@/lib/auth-context';
-import { ShieldAlert, Sparkles, LogOut, CheckSquare, Lock, Settings2 } from 'lucide-react';
-import { NeuralButton } from '@/core/components/NeuralButton';
-import { UnifiedAuthModal } from '@/core/components/UnifiedAuthModal';
-import { NeuralModal } from '@/core/components/NeuralModal';
-import { ModuleMemoryService } from '@/lib/services/module-memory-service';
+import { useVault } from '@/lib/vault-context';
+import { TherapyOnboarding } from './onboarding/TherapyOnboarding';
+import { AGNES_PERSONA } from './personas';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { TherapyIntake } from './onboarding/TherapyIntake';
+import { UnifiedAuthModal } from '@/core/components/UnifiedAuthModal';
+import { Sparkles, ShieldAlert, Lock, CheckSquare, LogOut } from 'lucide-react';
+import { NeuralModal } from '@/core/components/NeuralModal';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { motion, AnimatePresence } from 'framer-motion';
+import { NexusChat } from '@/core/components/NexusChat';
+import { BaseContext } from './types';
+import { buildTherapySessionPrompt } from './prompts/therapy-session-prompt';
+import { createEmptyTherapyProfile, loadTherapyProfile, saveTherapyProfile, TherapyIntakeProfile } from './services/therapy-profile-service';
+import { ModuleMemoryService } from '@/lib/services/module-memory-service';
+import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
+import { CoreProfileService } from '@/lib/services/core-profile-service';
 
 type TherapyState = 'selecting' | 'intake' | 'session';
 
 export default function TherapyPage() {
-  const { globalSoul } = useGlobalSoul();
-  const { checkModuleVault, isUnlocked } = useVault();
-  const { user, isGuest } = useAuth();
-  
-  const [hasTherapyVault, setHasTherapyVault] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
+  const { globalSoul, refreshGlobalSoul, updateTherapeuticBaseline } = useGlobalSoul();
+  const { user, isGuest, profile, refreshProfile } = useAuth();
+  const { isUnlocked, getModuleKey } = useVault();
   const [currentState, setCurrentState] = useState<TherapyState>('selecting');
   const [sessionType, setSessionType] = useState<'impromptu' | 'new' | null>(null);
-  const [isDeepIntakeDone, setIsDeepIntakeComplete] = useState(false);
-  
+  const [showAuth, setShowAuth] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isClosingSession, setIsClosingSession] = useState(false);
+  const [sessionSummary, setSessionSummary] = useState<string | null>(null);
+  const [therapyProfile, setTherapyProfile] = useState<TherapyIntakeProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
+
   const agentAlias = globalSoul?.displayNames?.therapy || 'Agnes';
-  const basePersona = sessionType === 'impromptu'
-    ? "You are an emergency supportive in-house therapist. Provide immediate, warm support."
-    : AGNES_PERSONA;
+  const onboardingBaseContext = useMemo(
+    () =>
+      IntakeBaseContextService.buildForTherapy({
+        coreProfile: profile,
+        therapyContext: therapyProfile?.baseContext
+      }),
+    [profile, therapyProfile?.baseContext]
+  );
+
+  const isDeepIntakeDone = Boolean(globalSoul?.therapeuticBaseline?.isInitialized || therapyProfile?.onboardingComplete);
+  const systemPrompt = useMemo(
+    () => buildTherapySessionPrompt(AGNES_PERSONA, therapyProfile?.baseContext),
+    [therapyProfile?.baseContext]
+  );
+
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      if (!user) {
+        if (!mounted) return;
+        setTherapyProfile(null);
+        setEncryptionKey(null);
+        setIsProfileLoading(false);
+        return;
+      }
+
+      setIsProfileLoading(true);
+      const key = isUnlocked ? await getModuleKey('therapy') : null;
+      if (!mounted) return;
+      setEncryptionKey(key);
+
+      const loaded = await loadTherapyProfile({ userId: user.uid, encryptionKey: key });
+      if (!mounted) return;
+
+      setTherapyProfile(loaded);
+      setIsProfileLoading(false);
+    };
+
+    load();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.uid, isUnlocked, getModuleKey]);
 
   const {
     messages,
     setMessages,
     isProcessing,
+    isHydrating,
     streamingText,
     error,
     quota,
@@ -43,32 +95,67 @@ export default function TherapyPage() {
     summarizeSession
   } = useModuleAI({
     moduleId: 'therapy',
-    systemPrompt: basePersona
+    systemPrompt
   });
 
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [sessionSummary, setSessionSummary] = useState<string | null>(null);
+  const hasActiveSession = !isGuest && messages.length > 0;
 
-  useEffect(() => {
-    checkModuleVault('therapist_profiles').then(setHasTherapyVault);
-    
-    if (user) {
-        ModuleMemoryService.getEnvelope(user.uid, 'therapy').then(envelope => {
-            if (envelope?.metadata?.deepIntakeComplete) {
-                setIsDeepIntakeComplete(true);
-            }
+  const handleIntakeComplete = async (context: Partial<BaseContext>) => {
+      if (user && !isGuest && !encryptionKey) {
+        setShowAuth(true);
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const completedProfile: TherapyIntakeProfile = {
+        ...(therapyProfile ?? createEmptyTherapyProfile()),
+        onboardingComplete: true,
+        baseContext: context,
+        updatedAt: now
+      };
+
+      if (user && !isGuest && encryptionKey) {
+        await saveTherapyProfile(completedProfile, { userId: user.uid, encryptionKey });
+      } else if (isGuest) {
+        await saveTherapyProfile(completedProfile, {});
+      }
+
+      setTherapyProfile(completedProfile);
+      if (user && !isGuest) {
+        const globalPatch = IntakeBaseContextService.toCoreProfilePatch({
+          ...onboardingBaseContext,
+          occupation: context.occupation ?? onboardingBaseContext.occupation,
+          typicalSleepHours: context.typicalSleepHours ?? onboardingBaseContext.typicalSleepHours,
+          name:
+            (typeof context.identity === 'object' && context.identity?.name) ||
+            (typeof context.identity === 'string' ? context.identity : undefined) ||
+            onboardingBaseContext.name,
+          pronouns:
+            (typeof context.identity === 'object' && context.identity?.pronouns) ||
+            onboardingBaseContext.pronouns
         });
-    }
-  }, [checkModuleVault, user]);
-
-  useEffect(() => {
-    if (messages.length > 0 && currentState === 'selecting') {
+        if (Object.keys(globalPatch).length > 0) {
+          await CoreProfileService.updateProfile(user.uid, globalPatch);
+        }
+      }
+      await updateTherapeuticBaseline({ isInitialized: true, initializedAt: new Date().toISOString() });
       setCurrentState('session');
       setSessionType('new');
-    }
-  }, [messages, currentState]);
+      setMessages([{ role: 'assistant', content: "Breakthrough achieved. Your neural baseline is now synchronized. How should we begin our first deep session?" }]);
+      await refreshProfile();
+      await refreshGlobalSoul();
+  };
 
-  const startSession = async (type: 'impromptu' | 'new') => {
+  const startSession = async (type: 'impromptu' | 'new' | 'continue') => {
+      if (type === 'continue') {
+          const inferred = messages.some((msg) => msg.role === 'assistant' && msg.content.includes('Emergency protocol engaged'))
+            ? 'impromptu'
+            : 'new';
+          setSessionType(inferred);
+          setCurrentState('session');
+          return;
+      }
+
       if (type === 'new' && !isDeepIntakeDone && !isGuest) {
           setCurrentState('intake');
           return;
@@ -86,72 +173,93 @@ export default function TherapyPage() {
       setMessages([{ role: 'assistant', content: initialMsg }]);
   };
 
-  const handleIntakeComplete = async (intakeData: any) => {
-      if (user) {
-          await ModuleMemoryService.initializeEnvelope(user.uid, 'therapy');
-          await ModuleMemoryService.commitSession(user.uid, 'therapy', {
-              id: 'intake',
-              timestamp: new Date().toISOString(),
-              summary: 'Deep therapeutic intake completed.',
-              keyInsights: ['Baseline established'],
-              sentiment: 5,
-              tokenUsage: 0
-          }, JSON.stringify(intakeData));
-          
-          // Update metadata
-          const { db } = await import('@/lib/firebase').then(m => m.getFirebase());
-          if (db) {
-              const { doc, updateDoc } = await import('firebase/firestore');
-              await updateDoc(doc(db, 'module_memory', `${user.uid}_therapy`), {
-                  'metadata.deepIntakeComplete': true
-              });
-          }
-      }
-      setIsDeepIntakeComplete(true);
-      startSession('new');
-  };
-
   const endSession = async () => {
-      if (messages.length < 3) {
-          finalizeEnd(false);
-          return;
-      }
-
       setIsSummarizing(true);
-      const summary = await summarizeSession();
-      setSessionSummary(summary);
-      setIsSummarizing(false);
+      try {
+          const summary = await summarizeSession();
+          setSessionSummary(summary);
+      } catch (e) {
+          console.error("Summary failed:", e);
+      } finally {
+          setIsSummarizing(false);
+      }
   };
 
-  const finalizeEnd = async (remember: boolean) => {
-      if (remember && user && !isGuest) {
-          await ModuleMemoryService.commitSession(user.uid, 'therapy', {
-              id: Date.now().toString(),
-              timestamp: new Date().toISOString(),
-              summary: sessionSummary || '',
-              keyInsights: [],
-              sentiment: 5,
-              tokenUsage: 0
-          }, JSON.stringify({ messages }));
+  const finalizeClose = async () => {
+    await clearSession();
+    setCurrentState('selecting');
+    setSessionType(null);
+    setSessionSummary(null);
+  };
+
+  const handleMergeAndClose = async () => {
+    setIsClosingSession(true);
+    try {
+      if (user && !isGuest && messages.length > 0) {
+        const snapshot = JSON.stringify({
+          moduleId: 'therapy',
+          endedAt: new Date().toISOString(),
+          history: messages
+        });
+
+        const existing = await ModuleMemoryService.getEnvelope(user.uid, 'therapy');
+        if (!existing) {
+          await ModuleMemoryService.initializeEnvelope(user.uid, 'therapy');
+        }
+
+        await ModuleMemoryService.commitSession(
+          user.uid,
+          'therapy',
+          {
+            id: `therapy_${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            summary: sessionSummary || 'Therapy session completed.',
+            keyInsights: [],
+            sentiment: 0,
+            tokenUsage: 0
+          },
+          snapshot
+        );
       }
 
-      await clearSession();
-      setCurrentState('selecting');
-      setSessionType(null);
-      setSessionSummary(null);
+      await finalizeClose();
+    } catch (e) {
+      console.error('Failed to merge therapy session:', e);
+    } finally {
+      setIsClosingSession(false);
+    }
+  };
+
+  const handleDiscardAndClose = async () => {
+    setIsClosingSession(true);
+    try {
+      await finalizeClose();
+    } finally {
+      setIsClosingSession(false);
+    }
   };
 
   if (currentState === 'intake') {
       return (
           <ModuleLayout title="Therapy Intake" themeColor="indigo">
-              <TherapyIntake onComplete={handleIntakeComplete} />
+              <TherapyOnboarding initialBaseContext={onboardingBaseContext} onComplete={handleIntakeComplete} />
           </ModuleLayout>
       );
   }
 
   if (currentState === 'selecting') {
+      if ((user && isUnlocked && isProfileLoading) || (!isGuest && isHydrating)) {
+        return (
+          <ModuleLayout title="Agnes" themeColor="indigo">
+            <div className="h-full flex items-center justify-center text-white/40 text-sm">
+              Initializing therapy session...
+            </div>
+          </ModuleLayout>
+        );
+      }
+
       return (
-          <ModuleLayout title="Agnes Therapy" themeColor="indigo">
+          <ModuleLayout title="Agnes" themeColor="indigo">
               <div className="flex flex-col items-center justify-center h-full p-8 max-w-3xl mx-auto">
                   <div className="text-center space-y-4 mb-12">
                       <h2 className="text-4xl font-black italic tracking-widest text-indigo-400 uppercase">Initialize Connection</h2>
@@ -166,7 +274,15 @@ export default function TherapyPage() {
                       </button>
 
                       {(!isGuest) && (
-                          isUnlocked ? (
+                          hasActiveSession ? (
+                              <button onClick={() => startSession('continue')} className="p-8 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all text-left group">
+                                  <Sparkles className="w-10 h-10 text-emerald-400 mb-6 group-hover:scale-110 transition-transform" />
+                                  <h3 className="text-xl font-black tracking-wider uppercase mb-3">Continue Session</h3>
+                                  <p className="text-sm text-emerald-200/60 leading-relaxed font-medium">
+                                      Resume your active encrypted therapy session.
+                                  </p>
+                              </button>
+                          ) : isUnlocked ? (
                               <button onClick={() => startSession('new')} className="p-8 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left group">
                                   <Sparkles className="w-10 h-10 text-indigo-400 mb-6 group-hover:scale-110 transition-transform" />
                                   <h3 className="text-xl font-black tracking-wider uppercase mb-3">{isDeepIntakeDone ? 'New Session' : 'Begin Intake'}</h3>
@@ -190,43 +306,34 @@ export default function TherapyPage() {
   }
 
   return (
-    <ModuleLayout title="Agnes Therapy" themeColor="indigo">
-      <div className="flex-1 h-full relative">
-        <ChatInterface
-            messages={streamingText ? [...messages, { role: 'assistant', content: streamingText }] : messages}
-            onSendMessage={handleSendMessage}
-            isLoading={isProcessing && !streamingText}
-            themeColor="indigo"
+    <ModuleLayout title="Agnes" themeColor="indigo">
+        <NexusChat
+            ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
             agentName={sessionType === 'impromptu' ? 'Emergency Agent' : agentAlias}
+            themeColor="indigo"
             placeholder="Share your thoughts..."
-            error={error}
-            isGuestTrial={isGuest}
-            quota={quota}
-            onQuotaExhausted={() => setShowAuth(true)}
-            onRetry={() => {
-                const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-                if (lastUserMsg) handleSendMessage(lastUserMsg.content);
-            }}
-        />
-        {messages.length > 2 && (
-            <div className="absolute top-4 right-8 z-50">
+            authMode="therapy"
+            headerActions={messages.length > 2 && (
                 <NeuralButton size="sm" variant="secondary" onClick={endSession} loading={isSummarizing} className="flex items-center gap-2">
                     <LogOut className="w-3 h-3" /> End Session
                 </NeuralButton>
-            </div>
-        )}
-
-        <NeuralModal isOpen={!!sessionSummary} onClose={() => setSessionSummary(null)} title="Session Reflection" icon={CheckSquare}>
-            <div className="space-y-6">
-                <p className="text-sm text-indigo-100 italic">"{sessionSummary}"</p>
-                <div className="flex gap-4">
-                    <NeuralButton variant="ghost" className="flex-1" onClick={() => finalizeEnd(false)}>Discard</NeuralButton>
-                    <NeuralButton className="flex-1" onClick={() => finalizeEnd(true)}>Merge & Close</NeuralButton>
+            )}
+        />
+        <AnimatePresence>
+            <NeuralModal isOpen={!!sessionSummary} onClose={() => setSessionSummary(null)} title="Session Reflection" icon={CheckSquare}>
+                <div className="space-y-6">
+                    <p className="text-sm text-indigo-100 italic">"{sessionSummary}"</p>
+                    <div className="flex gap-4">
+                        <NeuralButton size="xl" variant="secondary" className="w-full" loading={isClosingSession} onClick={handleDiscardAndClose}>
+                          Discard & Close
+                        </NeuralButton>
+                        <NeuralButton size="xl" className="w-full" loading={isClosingSession} onClick={handleMergeAndClose}>
+                          Merge & Close
+                        </NeuralButton>
+                    </div>
                 </div>
-            </div>
-        </NeuralModal>
-        <UnifiedAuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} mode="therapy" />
-      </div>
+            </NeuralModal>
+        </AnimatePresence>
     </ModuleLayout>
   );
 }

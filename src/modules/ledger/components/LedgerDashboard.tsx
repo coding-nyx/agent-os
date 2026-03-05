@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { AlertCircle, Zap, ShieldAlert, Activity, Moon, Brain } from 'lucide-react';
 import { GlobalProjection } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { VitalsGrid } from '@/core/components/VitalsGrid';
 
 interface NeuralGap {
     id: string;
@@ -58,6 +59,11 @@ export function LedgerDashboard({ soul }: { soul: GlobalProjection | null }) {
       });
   }
 
+  const primaryMetrics = [
+    { label: 'CNS Fatigue', value: state.cnsFatigue, max: 10, icon: Activity, colorClass: state.cnsFatigue > 7 ? 'text-red-500' : 'text-orange-400' },
+    { label: 'Emotional Resilience', value: state.emotionalResilience, max: 10, icon: Brain, colorClass: state.emotionalResilience < 4 ? 'text-red-500' : 'text-indigo-400' }
+  ];
+
   return (
     <div className="p-8 space-y-10">
       <header className="space-y-1">
@@ -66,40 +72,7 @@ export function LedgerDashboard({ soul }: { soul: GlobalProjection | null }) {
       </header>
 
       {/* Primary Metrics Grid */}
-      <div className="grid grid-cols-1 gap-4">
-        <div className="bg-white/[0.03] border border-white/5 p-6 rounded-[32px] space-y-4">
-            <div className="flex justify-between items-end">
-                <div className="space-y-1">
-                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest flex items-center gap-2 italic">
-                        <Activity className="w-3 h-3 text-orange-400" /> CNS Fatigue
-                    </span>
-                    <p className="text-3xl font-black italic text-white leading-none">{state.cnsFatigue}/10</p>
-                </div>
-                <div className="w-32 h-1 bg-white/5 rounded-full overflow-hidden">
-                    <motion.div 
-                        initial={{ width: 0 }} 
-                        animate={{ width: `${state.cnsFatigue * 10}%` }}
-                        className={cn("h-full", state.cnsFatigue > 7 ? "bg-red-500" : "bg-orange-500")} 
-                    />
-                </div>
-            </div>
-            <div className="flex justify-between items-end">
-                <div className="space-y-1">
-                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest flex items-center gap-2 italic">
-                        <Brain className="w-3 h-3 text-indigo-400" /> Emotional Resilience
-                    </span>
-                    <p className="text-3xl font-black italic text-white leading-none">{state.emotionalResilience}/10</p>
-                </div>
-                <div className="w-32 h-1 bg-white/5 rounded-full overflow-hidden">
-                    <motion.div 
-                        initial={{ width: 0 }} 
-                        animate={{ width: `${state.emotionalResilience * 10}%` }}
-                        className={cn("h-full", state.emotionalResilience < 4 ? "bg-red-500" : "bg-indigo-500")} 
-                    />
-                </div>
-            </div>
-        </div>
-      </div>
+      <VitalsGrid metrics={primaryMetrics} columns={1} />
 
       {/* Neural Gaps Section */}
       <div className="space-y-6">

@@ -66,4 +66,9 @@ export class FirebaseAuthService implements IAuthService {
     }
     return null;
   }
+
+  getCurrentUser(): AuthUser | null {
+    const { auth } = getFirebase();
+    return this.mapUser(auth?.currentUser || null);
+  }
 }

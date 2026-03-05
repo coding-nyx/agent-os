@@ -20,6 +20,7 @@ interface ChatInterfaceProps {
   isGuestTrial?: boolean;
   quota?: GuestQuota;
   onQuotaExhausted?: () => void;
+  showInternalSignals?: boolean;
 }
 
 function ActionBadge({ label, icon: Icon, color }: { label: string, icon: any, color: string }) {
@@ -35,7 +36,34 @@ function ActionBadge({ label, icon: Icon, color }: { label: string, icon: any, c
     );
 }
 
-function AIMessage({ content, theme, agentName, isLast, isLoading }: { content: string, theme: any, agentName: string, isLast?: boolean, isLoading?: boolean }) {
+const THEMES = {
+  indigo: {
+    bubble: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-100 rounded-3xl rounded-tl-none',
+    userBubble: 'bg-white/5 border-white/10 text-white rounded-3xl rounded-tr-none',
+    accent: 'text-indigo-400',
+    glow: 'shadow-[0_0_20px_rgba(99,102,241,0.15)]',
+    bgGlow: 'bg-indigo-500/50',
+    btn: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'
+  },
+  orange: {
+    bubble: 'bg-orange-500/10 border-orange-500/20 text-orange-100 rounded-none border-l-2',
+    userBubble: 'bg-white/5 border-white/10 text-white rounded-none border-r-2',
+    accent: 'text-orange-400',
+    glow: 'shadow-[0_0_20px_rgba(251,146,60,0.15)]',
+    bgGlow: 'bg-orange-500/50',
+    btn: 'bg-orange-600 hover:bg-orange-500 shadow-orange-500/20'
+  },
+  cyan: {
+    bubble: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-100 rounded-2xl rounded-tl-none',
+    userBubble: 'bg-white/5 border-white/10 text-white rounded-2xl rounded-tr-none',
+    accent: 'text-cyan-400',
+    glow: 'shadow-[0_0_20px_rgba(34,211,238,0.15)]',
+    bgGlow: 'bg-cyan-500/50',
+    btn: 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-500/20'
+  }
+};
+
+const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading }: { content: string, theme: any, agentName: string, isLast?: boolean, isLoading?: boolean }) {
     const { publicText, internalText, isThinking } = stripInternalTags(content);
     const [showInternal, setShowInternal] = useState(false);
     const hasPublicContent = publicText.length > 0;
@@ -91,7 +119,7 @@ function AIMessage({ content, theme, agentName, isLast, isLoading }: { content: 
             )}
         </div>
     );
-}
+});
 
 export function ChatInterface({ 
   messages, 
@@ -104,7 +132,8 @@ export function ChatInterface({
   onRetry,
   isGuestTrial,
   quota,
-  onQuotaExhausted
+  onQuotaExhausted,
+  showInternalSignals = true
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -122,32 +151,7 @@ export function ChatInterface({
     setInput('');
   };
 
-  const theme = {
-    indigo: {
-      bubble: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-100 rounded-3xl rounded-tl-none',
-      userBubble: 'bg-white/5 border-white/10 text-white rounded-3xl rounded-tr-none',
-      accent: 'text-indigo-400',
-      glow: 'shadow-[0_0_20px_rgba(99,102,241,0.15)]',
-      bgGlow: 'bg-indigo-500/50',
-      btn: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'
-    },
-    orange: {
-      bubble: 'bg-orange-500/10 border-orange-500/20 text-orange-100 rounded-none border-l-2',
-      userBubble: 'bg-white/5 border-white/10 text-white rounded-none border-r-2',
-      accent: 'text-orange-400',
-      glow: 'shadow-[0_0_20px_rgba(251,146,60,0.15)]',
-      bgGlow: 'bg-orange-500/50',
-      btn: 'bg-orange-600 hover:bg-orange-500 shadow-orange-500/20'
-    },
-    cyan: {
-      bubble: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-100 rounded-2xl rounded-tl-none',
-      userBubble: 'bg-white/5 border-white/10 text-white rounded-2xl rounded-tr-none',
-      accent: 'text-cyan-400',
-      glow: 'shadow-[0_0_20px_rgba(34,211,238,0.15)]',
-      bgGlow: 'bg-cyan-500/50',
-      btn: 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-500/20'
-    }
-  }[themeColor];
+  const theme = THEMES[themeColor];
 
   const getBadges = (content: string) => {
       const badges = [];
@@ -175,7 +179,13 @@ export function ChatInterface({
                 )}
                 {isAI ? (
                     <div className="flex flex-col w-full max-w-[85%]">
-                        <AIMessage content={msg.content} theme={theme} agentName={agentName} isLast={isLast} isLoading={isLoading} />
+                        <AIMessage
+                          content={showInternalSignals ? msg.content : stripInternalTags(msg.content).publicText}
+                          theme={theme}
+                          agentName={agentName}
+                          isLast={isLast}
+                          isLoading={isLoading}
+                        />
                         <div className="flex flex-wrap gap-2">
                             {actionBadges.map((b, idx) => <ActionBadge key={idx} {...b} />)}
                         </div>
@@ -200,7 +210,7 @@ export function ChatInterface({
           })}
         </AnimatePresence>
 
-        {isLoading && messages[messages.length-1]?.role !== 'assistant' && (
+        {isLoading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4 justify-start">
             <div className={cn("w-10 h-10 rounded-xl border border-white/10 flex items-center justify-center bg-black/40 shrink-0", theme.accent)}>
               <Loader2 className="w-5 h-5 animate-spin" />

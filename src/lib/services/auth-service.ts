@@ -12,4 +12,5 @@ export interface IAuthService {
   onAuthStateChanged: (callback: (user: AuthUser | null) => void) => () => void;
   sendVerificationEmail: () => Promise<void>;
   reloadUser: () => Promise<AuthUser | null>;
+  getCurrentUser: () => AuthUser | null;
 }

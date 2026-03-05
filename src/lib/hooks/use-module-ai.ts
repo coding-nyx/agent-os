@@ -1,18 +1,44 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
 import { useGlobalSoul } from '../global-soul-context';
 import { useAuth } from '../auth-context';
-import { Message, GuestQuota } from '../types';
+import { Message, GuestQuota, GlobalProjection } from '../types';
 import { GuestQuotaService } from '../services/guest-quota-service';
 import { ModuleMemoryService } from '../services/module-memory-service';
 import { PersonaFactory } from '@/llm-engine/persona-factory';
-import { sanitizeJsonPayload } from '@/llm-engine/sanitize';
+import { sanitizeJsonPayload, stripInternalTags, stripProviderControlTokens } from '@/llm-engine/sanitize';
 import { MODULE_ACTION_REGISTRY } from '../constants';
 import { GlobalProjectionService } from '../services/global-projection-service';
 
 interface UseModuleAIOptions {
   moduleId: string;
   systemPrompt: string;
+}
+
+type ParsedAction = {
+  type: string;
+  payload: any;
+};
+
+function parseToolCallPayload(rawJson: string): ParsedAction | null {
+  try {
+    const parsed = JSON.parse(sanitizeJsonPayload(rawJson)) as { name?: string; arguments?: any };
+    if (!parsed?.name || typeof parsed.name !== 'string') return null;
+
+    let payload = parsed.arguments ?? {};
+    if (typeof payload === 'string') {
+      payload = JSON.parse(sanitizeJsonPayload(payload));
+    }
+    if (!payload || typeof payload !== 'object') payload = {};
+
+    return {
+      type: parsed.name,
+      payload
+    };
+  } catch (e) {
+    console.error('Failed to parse <tool_call> payload:', e);
+    return null;
+  }
 }
 
 export function useModuleAI({ moduleId, systemPrompt: baseRole }: UseModuleAIOptions) {
@@ -22,9 +48,11 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole }: UseModuleAIOpt
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isHydrating, setIsHydrating] = useState(true);
   const [streamingText, setStreamingText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [quota, setQuota] = useState<GuestQuota>(GuestQuotaService.getQuota());
+  const sessionStartRef = useRef<string>(new Date().toISOString());
 
   // Hydrate active session on mount
   useEffect(() => {
@@ -32,12 +60,30 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole }: UseModuleAIOpt
     if (user && !isGuest) {
       ModuleMemoryService.getActiveSession(user.uid, moduleId).then(session => {
         if (mounted && session && session.history.length > 0) {
-          setMessages(session.history);
+          // CONCURRENCY GUARD: Only hydrate if user hasn't already started a local session
+          setMessages(prev => prev.length === 0 ? session.history : prev);
+          sessionStartRef.current = session.startTime || new Date().toISOString();
         }
+        if (mounted) setIsHydrating(false);
       });
+    } else {
+      setIsHydrating(false);
     }
     return () => { mounted = false; };
   }, [user, isGuest, moduleId]);
+
+  useEffect(() => {
+    if (isHydrating || !user || isGuest || messages.length === 0) return;
+    ModuleMemoryService.saveActiveSession(user.uid, {
+      sessionId: 'current',
+      moduleId,
+      startTime: sessionStartRef.current,
+      lastMessageAt: new Date().toISOString(),
+      history: messages,
+      tokenCount: 0,
+      isGuestTrial: false
+    }).catch(e => console.error('Failed to save active session:', e));
+  }, [isHydrating, isGuest, messages, moduleId, user]);
 
   const handleSendMessage = useCallback(async (
     content: string, 
@@ -76,58 +122,68 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole }: UseModuleAIOpt
         }
       );
 
-      // SchemaGuard & Dynamic Vitals Parsing
+      // SchemaGuard & Atomic Vitals Batching
+      const parsedActions: ParsedAction[] = [];
+
       const actionRegex = /<action type="([^"]+)">([\s\S]*?)<\/action>/gi;
-      let match;
-      const allowedActions = (MODULE_ACTION_REGISTRY as any)[moduleId] || [];
-
-      while ((match = actionRegex.exec(response)) !== null) {
-        const type = match[1];
-        const payloadStr = match[2];
-
-        // 1. Schema Guard: Only allow registered actions for this module
-        if (!allowedActions.includes(type)) {
-          console.warn(`[SchemaGuard] Blocked unauthorized action "${type}" for module "${moduleId}"`);
-          continue;
-        }
-
+      let actionMatch;
+      while ((actionMatch = actionRegex.exec(response)) !== null) {
+        const type = actionMatch[1];
+        const payloadStr = actionMatch[2];
         try {
           const payload = JSON.parse(sanitizeJsonPayload(payloadStr));
-          
-          // 2. Dynamic Vitals: Automatic Global Soul Synchronization
-          if (user && !isGuest) {
-            if (type === 'update_soul_resilience' && typeof payload.score === 'number') {
-              await GlobalProjectionService.updateCrossFunctionalState(user.uid, { emotionalResilience: payload.score });
-              await refreshGlobalSoul();
-            } else if (type === 'update_cns_fatigue' && typeof payload.score === 'number') {
-              await GlobalProjectionService.updateCrossFunctionalState(user.uid, { cnsFatigue: payload.score });
-              await refreshGlobalSoul();
-            } else if (type === 'update_sleep_quality' && typeof payload.score === 'number') {
-              await GlobalProjectionService.updateCrossFunctionalState(user.uid, { sleepQuality: payload.score });
-              await refreshGlobalSoul();
-            }
-          }
-
-          if (onActionParsed) onActionParsed(type, payload);
+          parsedActions.push({ type, payload });
         } catch (e) {
           console.error(`Failed to parse action payload for ${type}:`, e);
         }
       }
 
-      setMessages(updatedHistory);
-      setStreamingText('');
+      const toolCallRegex = /<tool_call>([\s\S]*?)<\/tool_call>/gi;
+      let toolCallMatch;
+      while ((toolCallMatch = toolCallRegex.exec(response)) !== null) {
+        const parsed = parseToolCallPayload(toolCallMatch[1]);
+        if (parsed) parsedActions.push(parsed);
+      }
 
-      if (user && !isGuest) {
-        await ModuleMemoryService.saveActiveSession(user.uid, {
-          sessionId: 'current',
-          moduleId,
-          startTime: new Date().toISOString(),
-          lastMessageAt: new Date().toISOString(),
-          history: updatedHistory,
-          tokenCount: 0,
-          isGuestTrial: false
+      const allowedActions = (MODULE_ACTION_REGISTRY as any)[moduleId] || [];
+      const soulUpdates: Partial<GlobalProjection['crossFunctionalState']> = {};
+
+      for (const parsedAction of parsedActions) {
+        const { type, payload } = parsedAction;
+
+        if (!allowedActions.includes(type)) {
+          console.warn(`[SchemaGuard] Blocked unauthorized action "${type}" for module "${moduleId}"`);
+          continue;
+        }
+
+        // Accumulate vitals for an ATOMIC update
+        if (type === 'update_soul_resilience' && typeof payload.score === 'number') {
+          soulUpdates.emotionalResilience = payload.score;
+        } else if (type === 'update_cns_fatigue' && typeof payload.score === 'number') {
+          soulUpdates.cnsFatigue = payload.score;
+        } else if (type === 'update_sleep_quality' && typeof payload.score === 'number') {
+          soulUpdates.sleepQuality = payload.score;
+        }
+
+        if (onActionParsed) onActionParsed(type, payload);
+      }
+
+      // Execute Atomic Soul Synchronization
+      if (user && !isGuest && Object.keys(soulUpdates).length > 0) {
+        await GlobalProjectionService.updateCrossFunctionalState(user.uid, soulUpdates);
+        await refreshGlobalSoul();
+      }
+
+      const normalizedResponse = stripProviderControlTokens(response);
+      const visibleAssistantText = stripInternalTags(normalizedResponse).publicText.trim();
+      if (visibleAssistantText) {
+        setMessages(prev => {
+          const nextHistory = [...prev, { role: 'assistant', content: visibleAssistantText } as Message];
+          return nextHistory;
         });
       }
+
+      setStreamingText('');
       
     } catch (e: any) {
       console.error(`Module ${moduleId} AI link failure:`, e);
@@ -139,6 +195,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole }: UseModuleAIOpt
 
   const clearSession = useCallback(async () => {
     setMessages([]);
+    sessionStartRef.current = new Date().toISOString();
     if (user && !isGuest) {
       await ModuleMemoryService.clearActiveSession(user.uid, moduleId);
     }
@@ -166,6 +223,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole }: UseModuleAIOpt
     messages,
     setMessages,
     isProcessing,
+    isHydrating,
     streamingText,
     error,
     quota,

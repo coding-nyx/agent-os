@@ -1,7 +1,10 @@
 
+// v1.0.1 - Nexus Engine Core
 import { Message } from '../types';
 import { ModelMetadata, ModelTier, EngineConfig, OrchestratorState } from './types';
 import { ModelRegistry } from './ModelRegistry';
+import { sanitizeJsonPayload as nexusCleaner } from '../sanitize';
+import { isProviderControlOnly, stripProviderControlTokens } from '../sanitize';
 
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
 
@@ -71,25 +74,23 @@ export class Orchestrator {
 
     let currentMessages = [...messages];
     let toolCallCount = 0;
-    const MAX_TOOL_CALLS = 2;
+    const MAX_TOOL_CALLS = 5;
+    let fullResponse = '';
+    let interruptionControlSeen = false;
 
     try {
-      while (toolCallCount < MAX_TOOL_CALLS) {
-        // ONE SINGLE CALL
-        const rawResponse = await this.executeRawRequest(currentMessages, onChunk);
+      while (toolCallCount <= MAX_TOOL_CALLS) {
+        const isLastAttempt = toolCallCount === MAX_TOOL_CALLS;
+        const rawResponse = await this.executeRawRequest(currentMessages, onChunk, isLastAttempt);
         
-        // Handle Fallback / Failure Check
-        this.state.failureCount = 0;
-
-        // If it was a stream, we already have the text via onChunk
-        if (onChunk && !rawResponse.choices?.[0]?.message?.tool_calls) {
-            return rawResponse.choices[0].message.content;
-        }
-
         const message = rawResponse.choices?.[0]?.message;
-        if (!message) return "No response received.";
+        if (!message) break;
 
-        if (message.tool_calls && message.tool_calls.length > 0) {
+        const content = message.content || '';
+        fullResponse += content;
+        interruptionControlSeen = interruptionControlSeen || Boolean(rawResponse.__streamInterrupted);
+
+        if (message.tool_calls && message.tool_calls.length > 0 && !isLastAttempt) {
             toolCallCount++;
             currentMessages.push(message);
             
@@ -101,21 +102,36 @@ export class Orchestrator {
                     content: JSON.stringify(result)
                 });
             }
-            // Loop again for final response
+            // If we have content AND tool calls, we should continue to get the rest
             continue;
         }
 
-        return message.content || '';
+        // If we reached here, we have a final response (or reached max tool calls)
+        break;
       }
-      return "Max link cycles reached.";
+
+      // Final sanity check: if the model returned nothing but tool calls were handled, 
+      // the loop should have continued to get content. 
+      if (!fullResponse.trim()) {
+          // Provider interruption control packets should not trigger synthetic fallback replies.
+          if (interruptionControlSeen) {
+            return '';
+          }
+          // If we have no content, try one absolute final "no-tool" call to force a summary/response
+          // We add a system hint to guide the model
+          const summaryPrompt = [...currentMessages, { role: 'system', content: "SYSTEM: The previous tool calls were successful. Now, provide a concise final response to the user based on the data retrieved." } as Message];
+          const finalRaw = await this.executeRawRequest(summaryPrompt, onChunk, true);
+          fullResponse = finalRaw.choices?.[0]?.message?.content || "Neural link established. System status: Optimal.";
+      }
+
+      return fullResponse;
     } catch (e) {
       console.error("Orchestrator Error:", e);
-      this.state.failureCount++;
-      return "Link interrupted.";
+      return fullResponse + "\n\n[Link interrupted. Please check your network connection.]";
     }
   }
 
-  private async executeRawRequest(messages: Message[], onChunk?: (chunk: string) => void): Promise<any> {
+  private async executeRawRequest(messages: Message[], onChunk?: (chunk: string) => void, forceNoTools?: boolean): Promise<any> {
     const url = 'https://openrouter.ai/api/v1/chat/completions';
     const response = await fetch(url, {
       method: 'POST',
@@ -128,8 +144,8 @@ export class Orchestrator {
       body: JSON.stringify({
         model: this.state.activeModelId,
         messages: messages,
-        tools: GLOBAL_TOOLS,
-        tool_choice: 'auto',
+        tools: forceNoTools ? undefined : GLOBAL_TOOLS,
+        tool_choice: forceNoTools ? undefined : 'auto',
         stream: !!onChunk,
       })
     });
@@ -137,8 +153,17 @@ export class Orchestrator {
     if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
     if (onChunk) {
-        const fullText = await this.readStream(response, onChunk);
-        return { choices: [{ message: { content: fullText, role: 'assistant' } }] };
+        const { fullText, toolCalls, streamInterrupted } = await this.readStream(response, onChunk);
+        return { 
+            choices: [{ 
+                message: { 
+                    content: fullText, 
+                    role: 'assistant',
+                    tool_calls: toolCalls.length > 0 ? toolCalls : undefined
+                } 
+            }],
+            __streamInterrupted: streamInterrupted
+        };
     } else {
         return await response.json();
     }
@@ -146,17 +171,24 @@ export class Orchestrator {
 
   private async handleToolCall(toolCall: any): Promise<any> {
       const { name, arguments: argsString } = toolCall.function;
-      const args = JSON.parse(argsString);
-      if (this.onToolCall) return await this.onToolCall(name, args);
-      return { status: 'logged' };
+      try {
+        const sanitizedArgs = nexusCleaner(argsString);
+        const args = JSON.parse(sanitizedArgs);
+        if (this.onToolCall) return await this.onToolCall(name, args);
+      } catch (e) {
+        console.error(`Failed to parse tool arguments for ${name}:`, e);
+      }
+      return { status: 'error', message: 'Invalid tool arguments' };
   }
 
-  private async readStream(response: Response, onChunk: (chunk: string) => void): Promise<string> {
+  private async readStream(response: Response, onChunk: (chunk: string) => void): Promise<{ fullText: string, toolCalls: any[], streamInterrupted: boolean }> {
     const reader = response.body?.getReader();
-    if (!reader) return "";
+    if (!reader) return { fullText: "", toolCalls: [], streamInterrupted: false };
     const decoder = new TextDecoder();
     let fullText = '';
     let buffer = '';
+    let toolCalls: any[] = [];
+    let streamInterrupted = false;
     
     try {
       while (true) {
@@ -172,10 +204,32 @@ export class Orchestrator {
           if (trimmed.startsWith('data: ')) {
             try {
               const data = JSON.parse(trimmed.slice(6));
-              const content = data.choices?.[0]?.delta?.content || '';
+              const choice = data.choices?.[0];
+              const content = choice?.delta?.content || '';
+              const deltaToolCalls = choice?.delta?.tool_calls;
+
               if (content) {
-                fullText += content;
-                onChunk(content);
+                const normalized = stripProviderControlTokens(content);
+                if (normalized.trim().length > 0) {
+                  fullText += normalized;
+                  onChunk(normalized);
+                } else if (isProviderControlOnly(content)) {
+                  streamInterrupted = true;
+                }
+              }
+
+              if (deltaToolCalls) {
+                for (const tc of deltaToolCalls) {
+                  const index = tc.index;
+                  if (index !== undefined) {
+                    if (!toolCalls[index]) {
+                      toolCalls[index] = { id: tc.id, type: 'function', function: { name: '', arguments: '' } };
+                    }
+                    if (tc.id) toolCalls[index].id = tc.id;
+                    if (tc.function?.name) toolCalls[index].function.name += tc.function.name;
+                    if (tc.function?.arguments) toolCalls[index].function.arguments += tc.function.arguments;
+                  }
+                }
               }
             } catch (e) {}
           }
@@ -184,7 +238,7 @@ export class Orchestrator {
     } finally {
       reader.releaseLock();
     }
-    return fullText;
+    return { fullText, toolCalls: toolCalls.filter(Boolean), streamInterrupted };
   }
 
   getState(): OrchestratorState {

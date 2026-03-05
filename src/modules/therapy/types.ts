@@ -44,6 +44,8 @@ export interface BaseContext {
   communicationStyle?: 'direct' | 'gentle' | 'analytical';
   sessionCount?: number;
   lastSessionSummary?: string; // Recap of where we left off
+  occupation?: string;
+  typicalSleepHours?: number;
   
   // Legacy/Compatibility (Optional)
   childhood?: string;

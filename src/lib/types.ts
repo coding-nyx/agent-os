@@ -33,6 +33,8 @@ export interface CoreUserProfile {
   age?: number;
   assignedSexAtBirth?: 'female' | 'male';
   genderIdentity?: string;
+  occupation?: string;
+  typicalSleepHours?: number;
   onboardingComplete: boolean;
   agentPersonalityProvision: AgentPersonalityProvision;
   schemaVersion: number;
@@ -73,6 +75,10 @@ export interface GlobalProjection {
     traumaMarkers?: string[];
   };
   compactedInsights: string[];
+  therapeuticBaseline?: {
+    isInitialized: boolean;
+    initializedAt?: string;
+  };
 }
 
 // --- Active Chat & Engine Types ---
@@ -117,12 +123,14 @@ export interface TrainerProfile {
   soul?: any;
 }
 
+export type Weekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
 export interface Routine {
   id: string;
   name: string;
   exercises: Exercise[];
   rationale: string;
-  date?: string;
+  weekday?: Weekday;
   timeframe?: string;
   status?: string;
 }

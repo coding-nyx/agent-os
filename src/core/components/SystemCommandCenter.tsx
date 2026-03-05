@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, LogOut, Shield, ChevronDown, Activity, Bell, Lock, Unlock, Clock, Trash2, AlertTriangle, Zap, Check } from 'lucide-react';
+import { User, Settings, LogOut, Shield, ChevronDown, Activity, Bell, Lock, Unlock, Clock, Trash2, AlertTriangle, Zap, Check, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
-import { useVault, VaultPersistenceMode } from '@/lib/vault-context';
+import { useVault } from '@/lib/vault-context';
+import { useGlobalSoul } from '@/lib/global-soul-context';
+import { SoulTerminationService } from '@/lib/services/soul-termination-service';
 import { GlassCard } from './GlassCard';
 import { NeuralButton } from './NeuralButton';
-import { deleteDoc, doc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
 
 export function SystemCommandCenter() {
-  const { user, isGuest, logout } = useAuth();
+  const { user, isGuest, logout, refreshProfile } = useAuth();
+  const { refreshGlobalSoul } = useGlobalSoul();
   const { isUnlocked, lockVault, persistenceMode, setPersistenceMode } = useVault();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [purgeStep, setPurgeStep] = useState<'IDLE' | 'CONFIRM' | 'FINAL_WARNING' | 'DELETING'>('IDLE');
@@ -21,30 +24,26 @@ export function SystemCommandCenter() {
       setPersistenceMode(persistenceMode === 'STRICT' ? 'SESSION' : 'STRICT');
   };
 
+  // Reset state when menu closes
+  React.useEffect(() => {
+    if (!isOpen) {
+        setShowSettings(false);
+        setPurgeStep('IDLE');
+    }
+  }, [isOpen]);
+
   const handlePurgeSoul = async () => {
     if (!user) return;
     setPurgeStep('DELETING');
     try {
-        const { db } = getFirebase();
-        if (db) {
-            // Atomic Purge Logic (Wait for all deletions)
-            const collections = ['users', 'global_souls', 'module_memory', 'vaults'];
-            const modules = ['therapy', 'trainer', 'ledger'];
-            
-            const deletions = [
-                deleteDoc(doc(db, 'users', user.uid)),
-                deleteDoc(doc(db, 'global_souls', user.uid)),
-                deleteDoc(doc(db, 'vaults', user.uid))
-            ];
-
-            modules.forEach(m => {
-                deletions.push(deleteDoc(doc(db, 'module_memory', `${user.uid}_${m}`)));
-                deletions.push(deleteDoc(doc(db, 'active_sessions', `${user.uid}_${m}`)));
-            });
-
-            await Promise.all(deletions);
-        }
-        await logout();
+        lockVault();
+        await SoulTerminationService.terminateSoul(user.uid);
+        await refreshProfile();
+        await refreshGlobalSoul();
+        setPurgeStep('IDLE');
+        setShowSettings(false);
+        setIsOpen(false);
+        navigate('/orchestrator', { replace: true });
     } catch (e) {
         console.error("Purge Protocol Failed:", e);
         setPurgeStep('IDLE');

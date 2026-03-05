@@ -150,17 +150,24 @@ export default function HubPage() {
   const canEnter = isUnlocked || isGuest;
 
   const modules = [
-    { id: 'therapy', title: 'Agnes Therapy', icon: BrainCircuit, color: '#6366f1', model: EveModel, description: 'Neural Synchronization' },
-    { id: 'ledger', title: 'The Ledger', icon: Database, color: '#22d3ee', model: LedgerModel, description: 'Biometric Synthesis' },
-    { id: 'trainer', title: 'Titan Trainer', icon: Activity, color: '#fb923c', model: WallEModel, description: 'Performance Strategy' },
+    { id: 'therapy', title: 'Agnes', icon: BrainCircuit, color: '#6366f1', description: 'Neural Synchronization' },
+    { id: 'ledger', title: 'The Ledger', icon: Database, color: '#22d3ee', description: 'Biometric Synthesis' },
+    { id: 'trainer', title: 'Titan Trainer', icon: Activity, color: '#fb923c', description: 'Performance Strategy' },
   ];
 
   return (
     <div className="fixed inset-0 bg-[#020205] text-white overflow-hidden font-sans">
       
       {/* 3D Background */}
-      <div className={cn("absolute inset-0 z-0 transition-opacity duration-1000", viewMode === '3D' ? 'opacity-100' : 'opacity-20 pointer-events-none')}>
-        <Canvas camera={{ position: [0, 0, 10], fov: 45 }}>
+      <div 
+        className={cn("absolute inset-0 z-0 transition-opacity duration-1000", viewMode === '3D' ? 'opacity-100' : 'opacity-20 pointer-events-none')}
+        style={{ touchAction: 'none' }}
+      >
+        <Canvas 
+          camera={{ position: [0, 0, 10], fov: 45 }} 
+          gl={{ antialias: true, alpha: true }}
+          style={{ touchAction: 'none' }}
+        >
           <color attach="background" args={['#020205']} />
           <fog attach="fog" args={['#020205', 5, 18]} />
           <Suspense fallback={null}>
@@ -169,7 +176,8 @@ export default function HubPage() {
             <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} />
             <PresentationControls global snap={true}>
               <group position={[0, 0, 0]}>
-                <FloatingPod position={[-3.5, 0.5, 0]} color="#6366f1" title={globalSoul?.displayNames?.therapy || "Agnes Therapy"} icon={BrainCircuit} model={EveModel} soul={globalSoul} isLocked={!canEnter} onClick={() => canEnter ? navigate('/therapy') : setIsAuthOpen(true)} />
+                <FloatingPod position={[-3.5, 0.5, 0]} color="#6366f1" title={globalSoul?.displayNames?.therapy || "Agnes"} icon={BrainCircuit} model={EveModel} soul={globalSoul} isLocked={!canEnter} onClick={() => canEnter ? navigate('/therapy') : setIsAuthOpen(true)} />
+
                 <FloatingPod position={[0, -1, 0]} color="#22d3ee" title={globalSoul?.displayNames?.ledger || "The Ledger"} icon={Database} model={LedgerModel} soul={globalSoul} isLocked={!canEnter} onClick={() => canEnter ? navigate('/ledger') : setIsAuthOpen(true)} />
                 <FloatingPod position={[3.5, 0.5, 0]} color="#fb923c" title={globalSoul?.displayNames?.trainer || "Titan Trainer"} icon={Activity} model={WallEModel} soul={globalSoul} isLocked={!canEnter} onClick={() => canEnter ? navigate('/trainer') : setIsAuthOpen(true)} />
               </group>

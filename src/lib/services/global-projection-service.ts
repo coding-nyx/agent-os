@@ -29,7 +29,7 @@ export const GlobalProjectionService = {
 
     // Robustness: Handle partially initialized profiles
     const provision = profile.agentPersonalityProvision || {
-      orchestratorAlias: 'Agnes',
+      orchestratorAlias: 'Nyx',
       moduleAliases: { therapy: 'Agnes', trainer: 'Titan', ledger: 'Ledger' },
       moduleGenderProfiles: { orchestrator: 'female', therapy: 'female', trainer: 'female', ledger: 'female' }
     };
@@ -56,11 +56,27 @@ export const GlobalProjectionService = {
         emotionalResilience: 5,
         sleepQuality: 5
       },
-      compactedInsights: existing?.compactedInsights || []
+      compactedInsights: existing?.compactedInsights || [],
+      ...(existing?.therapeuticBaseline ? { therapeuticBaseline: existing.therapeuticBaseline } : {})
     };
 
     await setDoc(doc(db, COLLECTION, profile.uid), newProjection);
     return newProjection;
+  },
+
+  async updateTherapeuticBaseline(uid: string, baseline: GlobalProjection['therapeuticBaseline']): Promise<void> {
+    if (!uid) return;
+    const { db } = getFirebase();
+    if (!db) return;
+
+    const docRef = doc(db, COLLECTION, uid);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return;
+
+    await updateDoc(docRef, {
+      therapeuticBaseline: baseline,
+      lastSync: new Date().toISOString()
+    });
   },
 
   async updateCrossFunctionalState(uid: string, updates: Partial<GlobalProjection['crossFunctionalState']>): Promise<void> {

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Zap, Lock, Mail, Key, Sparkles, BrainCircuit, Activity, ArrowRight, Loader2, X, UserPlus, Fingerprint, ShieldCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
+import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useVault } from '@/lib/vault-context';
 import { NeuralButton } from './NeuralButton';
 import { NeuralInput } from './NeuralInput';
-import { doc, deleteDoc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { SoulTerminationService } from '@/lib/services/soul-termination-service';
 import { cn } from '@/lib/utils';
 
 export type AuthMode = 'therapy' | 'trainer' | 'global';
@@ -20,8 +21,10 @@ interface UnifiedAuthModalProps {
 type ModalState = 'IDENTITY_CHOICE' | 'LOGIN' | 'REGISTER' | 'VERIFY' | 'VAULT_HANDSHAKE';
 
 export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProps) {
-  const { login, register, enterGuestMode, user, reloadUser, sendVerification, logout, isGuest } = useAuth();
-  const { unlockVault, isUnlocked, hasVault } = useVault();
+  const { login, register, enterGuestMode, user, reloadUser, sendVerification, logout, isGuest, refreshProfile } = useAuth();
+  const { refreshGlobalSoul } = useGlobalSoul();
+  const { unlockVault, isUnlocked, hasVault, lockVault } = useVault();
+  const navigate = useNavigate();
   
   const [view, setView] = useState<ModalState>('IDENTITY_CHOICE');
   const [email, setEmail] = useState('');
@@ -211,17 +214,21 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                                 type="button" 
                                 onClick={async () => {
                                     if (confirm("WARNING: Resetting your Master Password will permanently PURGE all encrypted data in your vault. This cannot be undone. Proceed?")) {
-                                        const { db } = getFirebase();
-                                        if (db && user) {
-                                            setLoading(true);
-                                            await Promise.all([
-                                                deleteDoc(doc(db, 'users', user.uid)),
-                                                deleteDoc(doc(db, 'therapist_profiles', user.uid)),
-                                                deleteDoc(doc(db, 'ai_trainers', user.uid)),
-                                                deleteDoc(doc(db, 'global_souls', user.uid))
-                                            ]);
-                                            alert("Neural Vault purged. Please re-initialize.");
-                                            window.location.reload();
+                                        if (!user) return;
+                                        setLoading(true);
+                                        setError('');
+                                        try {
+                                            lockVault();
+                                            await SoulTerminationService.terminateSoul(user.uid);
+                                            await refreshProfile();
+                                            await refreshGlobalSoul();
+                                            reset();
+                                            onClose();
+                                            navigate('/orchestrator', { replace: true });
+                                        } catch (e: any) {
+                                            setError(e?.message || 'Purge failed');
+                                        } finally {
+                                            setLoading(false);
                                         }
                                     }
                                 }}

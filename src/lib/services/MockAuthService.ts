@@ -52,4 +52,8 @@ export class MockAuthService implements IAuthService {
   async reloadUser(): Promise<AuthUser | null> {
     return this.user;
   }
+
+  getCurrentUser(): AuthUser | null {
+    return this.user;
+  }
 }

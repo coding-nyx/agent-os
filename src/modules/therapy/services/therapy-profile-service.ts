@@ -1,0 +1,104 @@
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirebase } from '@/lib/firebase';
+import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
+import { BaseContext } from '../types';
+
+const GUEST_PROFILE_KEY = 'agnes_therapy_profile_guest';
+const VAULT_SALT_MARKER = 'vault_salt_used';
+
+export interface TherapyIntakeProfile {
+  onboardingComplete: boolean;
+  baseContext: Partial<BaseContext>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+type LoadContext = {
+  userId?: string | null;
+  encryptionKey?: CryptoKey | null;
+};
+
+export function createEmptyTherapyProfile(): TherapyIntakeProfile {
+  const now = new Date().toISOString();
+  return {
+    onboardingComplete: false,
+    baseContext: {},
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+export async function loadTherapyProfile({ userId, encryptionKey }: LoadContext): Promise<TherapyIntakeProfile | null> {
+  if (userId) {
+    if (!encryptionKey) {
+      return null;
+    }
+
+    const { db } = getFirebase();
+    if (!db) return null;
+
+    const snap = await getDoc(doc(db, 'therapist_profiles', userId));
+    if (!snap.exists()) return null;
+
+    const data = snap.data();
+    if (!data?.encryptedData || !data?.iv) return null;
+
+    try {
+      const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
+      return JSON.parse(decrypted) as TherapyIntakeProfile;
+    } catch (e) {
+      console.error('Failed to decrypt therapy profile:', e);
+      return null;
+    }
+  }
+
+  return loadGuestTherapyProfile();
+}
+
+export async function saveTherapyProfile(
+  profile: TherapyIntakeProfile,
+  { userId, encryptionKey }: LoadContext
+): Promise<void> {
+  if (userId && encryptionKey) {
+    const { db } = getFirebase();
+    if (!db) return;
+
+    const encrypted = await encryptWithKey(JSON.stringify(profile), encryptionKey);
+    await setDoc(
+      doc(db, 'therapist_profiles', userId),
+      {
+        encryptedData: encrypted.ciphertext,
+        iv: encrypted.iv,
+        salt: VAULT_SALT_MARKER,
+        metadata: {
+          onboardingComplete: profile.onboardingComplete,
+          lastActive: new Date().toISOString()
+        }
+      },
+      { merge: true }
+    );
+    return;
+  }
+
+  saveGuestTherapyProfile(profile);
+}
+
+export function loadGuestTherapyProfile(): TherapyIntakeProfile | null {
+  const raw = localStorage.getItem(GUEST_PROFILE_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as TherapyIntakeProfile;
+  } catch (e) {
+    console.error('Failed to parse guest therapy profile:', e);
+    return null;
+  }
+}
+
+export function saveGuestTherapyProfile(profile: TherapyIntakeProfile) {
+  localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile));
+}
+
+export function clearGuestTherapyProfile() {
+  localStorage.removeItem(GUEST_PROFILE_KEY);
+}

@@ -4,7 +4,7 @@ import { TrainerProfile } from '@/lib/types';
 function formatRoutines(routines: Routine[]): string {
   if (!routines.length) return 'None';
   return routines
-    .map(r => `${r.date} (${r.timeframe}) - ${r.exercises.length} exercises`)
+    .map(r => `${r.weekday || 'unknown'} (${r.timeframe || 'daily'}) - ${r.exercises?.length || 0} exercises`)
     .join('\n');
 }
 
@@ -44,14 +44,14 @@ ${routinesText}
 ACTION TAGS:
 - Update profile: <action type="update_trainer_profile">{...partialProfile}</action>
 - Update routine: <action type="update_routine">{"routines":[...]}</action>
+- Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
 
 ROUTINE INSTRUCTIONS:
-- If the user wants a new weekly routine, propose a 7-day plan as daily entries.
-- If the user provides an existing routine, convert it into daily entries.
-- Each routine entry must include: date (YYYY-MM-DD), timeframe "daily", status "active", rationale, exercises[].
+- If the user wants a new weekly routine, propose a 7-day plan as daily entries for each weekday.
+- Each routine entry MUST include: weekday (e.g., "monday", "tuesday"), timeframe "daily", status "active", rationale, exercises[].
+- Exercises must have: name, sets, reps, notes.
 
 TONE:
 Clinical, direct, and data-driven. Ask concise follow-ups.
 `.trim();
 }
-
