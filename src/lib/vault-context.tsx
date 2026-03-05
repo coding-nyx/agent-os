@@ -1,9 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './auth-context';
 import { deriveKey, encryptWithKey, decryptWithKey, base64ToUint8Array } from './encryption';
-import { IVaultStorageService } from './services/vault-storage-service';
-import { FirebaseVaultStorageService } from './services/firebase-vault-storage-service';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getFirebase } from './firebase';
 
 export type VaultPersistenceMode = 'STRICT' | 'SESSION' | 'GRACE';
@@ -11,6 +9,7 @@ export type VaultPersistenceMode = 'STRICT' | 'SESSION' | 'GRACE';
 interface VaultContextType {
   isUnlocked: boolean;
   isLoading: boolean;
+  isHandshaking: boolean;
   hasVault: boolean;
   persistenceMode: VaultPersistenceMode;
   setPersistenceMode: (mode: VaultPersistenceMode) => void;
@@ -26,17 +25,16 @@ interface VaultContextType {
 const VaultContext = createContext<VaultContextType | null>(null);
 const PERSISTENCE_KEY = 'agnes_vault_mode';
 const SESSION_PWD_KEY = 'agnes_vault_session';
+const VAULT_COLLECTION = 'vaults';
 
 export function VaultProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  
-  const storageService: IVaultStorageService = useMemo(() => new FirebaseVaultStorageService(), []);
-  
+  const { user, loading: authLoading } = useAuth();
   const masterKeyRef = useRef<CryptoKey | null>(null);
   
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [hasVault, setHasVault] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isHandshaking, setIsHandshaking] = useState(false);
   const [persistenceMode, _setPersistenceMode] = useState<VaultPersistenceMode>(
       (localStorage.getItem(PERSISTENCE_KEY) as VaultPersistenceMode) || 'SESSION'
   );
@@ -77,143 +75,97 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const refreshVaultStatus = useCallback(async () => {
-    if (!user) {
-      setHasVault(false);
-      setIsLoading(false);
+    if (!user || authLoading) {
+      if (!user) {
+          setHasVault(false);
+          setIsLoading(false);
+      }
       return;
     }
 
     setIsLoading(true);
     try {
-      const { auth } = getFirebase();
-      
-      // Wait for auth to be ready if possible
-      if (auth?.currentUser) {
-          try { await auth.currentUser.getIdToken(); } catch (e) {}
-      }
-
-      const exists = await storageService.hasVault(user.uid);
-      setHasVault(exists);
+      const { db } = getFirebase();
+      if (!db) return;
+      const snap = await getDoc(doc(db, VAULT_COLLECTION, user.uid));
+      setHasVault(snap.exists());
     } catch (e: any) {
       console.error("Error refreshing vault status:", e);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid, storageService]);
-
-  /**
-   * Helper to verify a derived key against existing encrypted module data.
-   * This is used during migration (salt exists, but canary doesn't).
-   */
-  const verifyMasterKeyAgainstModules = async (uid: string, key: CryptoKey): Promise<boolean> => {
-      const { db } = getFirebase();
-      if (!db) return true; // Can't verify, assume OK or handle later
-
-      try {
-          // Check therapy profile
-          const therapyRef = doc(db, 'therapist_profiles', uid);
-          const tSnap = await getDoc(therapyRef);
-          if (tSnap.exists() && tSnap.data().encryptedData) {
-              const data = tSnap.data();
-              await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, key);
-              return true; // Success!
-          }
-
-          // Check trainer profile
-          const trainerRef = doc(db, 'ai_trainers', uid);
-          const trSnap = await getDoc(trainerRef);
-          if (trSnap.exists() && trSnap.data().encryptedData) {
-              const data = trSnap.data();
-              await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, key);
-              return true; // Success!
-          }
-
-          // No module data to verify against
-          return true;
-      } catch (e) {
-          console.warn("Key verification against modules failed:", e);
-          return false;
-      }
-  };
+  }, [user, authLoading]);
 
   const unlockVault = async (password: string) => {
     if (!user) throw new Error("User must be logged in");
+    const { db } = getFirebase();
+    if (!db) throw new Error("Firebase failure");
 
-    let salt: Uint8Array;
-    const existingSaltBase64 = await storageService.getSalt(user.uid);
+    setIsHandshaking(true);
+    try {
+        const vaultRef = doc(db, VAULT_COLLECTION, user.uid);
+        const snap = await getDoc(vaultRef);
+        
+        let salt: Uint8Array;
+        let canary: any = null;
 
-    if (existingSaltBase64) {
-      salt = base64ToUint8Array(existingSaltBase64);
-    } else {
-      // Security: Double check if vault actually exists to prevent overwriting salt
-      const vaultExists = await storageService.hasVault(user.uid);
-      if (vaultExists) {
-          throw new Error("Vault configuration sync error. Please refresh and try again.");
-      }
-      salt = window.crypto.getRandomValues(new Uint8Array(16));
-      const newSaltBase64 = window.btoa(String.fromCharCode(...salt));
-      await storageService.saveSalt(user.uid, newSaltBase64);
-    }
-
-    // Derive master key
-    const key = await deriveKey(password, salt);
-
-    // Verify password with canary if it exists
-    const existingCanary = await storageService.getCanary(user.uid);
-    if (existingCanary) {
-        try {
-            const decrypted = await decryptWithKey(existingCanary, key);
-            if (decrypted !== 'AGNES') throw new Error("Invalid Vault Password.");
-        } catch (e) {
-            console.error("Vault verification failed:", e);
-            throw new Error("Invalid Vault Password.");
+        if (snap.exists()) {
+            const data = snap.data();
+            salt = base64ToUint8Array(data.salt);
+            canary = data.canary;
+        } else {
+            salt = window.crypto.getRandomValues(new Uint8Array(16));
+            const saltBase64 = window.btoa(String.fromCharCode(...salt));
+            await setDoc(vaultRef, { salt: saltBase64 }, { merge: !0 });
         }
-    } else {
-        // Migration mode OR truly new vault
-        const vaultExists = await storageService.hasVault(user.uid);
-        if (vaultExists) {
-            // Migration: Salt exists, but no canary.
-            // Verify key against module data before "poisoning" the canary.
-            const isValid = await verifyMasterKeyAgainstModules(user.uid, key);
-            if (!isValid) {
+
+        const key = await deriveKey(password, salt);
+
+        if (canary) {
+            try {
+                const decrypted = await decryptWithKey(canary, key);
+                if (decrypted !== 'AGNES') throw new Error("Invalid Vault Password.");
+            } catch (e) {
                 throw new Error("Invalid Vault Password.");
             }
+        } else {
+            const newCanary = await encryptWithKey('AGNES', key);
+            await setDoc(vaultRef, { canary: newCanary }, { merge: !0 });
         }
-        
-        // Either truly new OR verified migration: Safe to save canary
-        const newCanary = await encryptWithKey('AGNES', key);
-        await storageService.saveCanary(user.uid, newCanary);
-    }
 
-    masterKeyRef.current = key;
-    setIsUnlocked(true);
-    setSessionPassword(password);
-    await refreshVaultStatus();
+        masterKeyRef.current = key;
+        setIsUnlocked(true);
+        setSessionPassword(password);
+        await refreshVaultStatus();
+    } finally {
+        setIsHandshaking(false);
+    }
   };
 
   useEffect(() => {
       const tryAutoUnlock = async () => {
           const pwd = getSessionPassword();
-          if (pwd && user && !isUnlocked && persistenceMode !== 'STRICT') {
+          // We only auto-unlock if we have a password AND a user, AND we aren't already handshaking
+          if (pwd && user && !isUnlocked && !isHandshaking && persistenceMode !== 'STRICT') {
               try { await unlockVault(pwd); } catch(e) {}
           }
       };
-      if (!isLoading) tryAutoUnlock();
-  }, [user, isLoading, persistenceMode]);
+      if (!isLoading && !authLoading) tryAutoUnlock();
+  }, [user, isLoading, authLoading, persistenceMode, isUnlocked, isHandshaking]);
 
   const getModuleKey = async (moduleName: string): Promise<CryptoKey | null> => {
     return masterKeyRef.current;
   };
 
   useEffect(() => {
-    if (!user) lockVault();
-    void refreshVaultStatus();
-  }, [user?.uid, lockVault, refreshVaultStatus]);
+    if (!user && !authLoading) lockVault();
+    if (!authLoading) void refreshVaultStatus();
+  }, [user?.uid, authLoading, lockVault, refreshVaultStatus]);
 
   return (
     <VaultContext.Provider
       value={{
-        isUnlocked, isLoading, hasVault,
+        isUnlocked, isLoading: isLoading || authLoading || isHandshaking, isHandshaking, hasVault,
         persistenceMode, setPersistenceMode,
         refreshVaultStatus, unlockVault, lockVault, getModuleKey, checkModuleVault,
         setSessionPassword, getSessionPassword

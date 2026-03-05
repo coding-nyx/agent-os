@@ -1,5 +1,5 @@
 import { Routine } from '@/lib/types';
-import { TrainerProfile } from './types';
+import { TrainerProfile } from '@/lib/types';
 
 export function stripActionTags(content: string): string {
   return content.replace(/<action type=".*?">[\s\S]*?<\/action>/gi, '').trim();
@@ -20,6 +20,7 @@ export function normalizeRoutines(routines: Routine[]): Routine[] {
   const today = getTodayIso();
   return (routines || []).map((routine) => ({
     id: routine.id || createId(),
+    name: routine.name || 'Personalized Routine',
     timeframe: routine.timeframe || 'daily',
     status: routine.status || 'active',
     rationale: routine.rationale || 'Generated routine.',

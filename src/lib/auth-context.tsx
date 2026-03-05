@@ -3,11 +3,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { AuthUser, IAuthService } from './services/auth-service';
 import { FirebaseAuthService } from './services/firebase-auth-service';
-import { MockAuthService } from './services/MockAuthService';
-import { getFirebase } from './firebase';
+import { CoreProfileService } from './services/core-profile-service';
+import { GlobalProjectionService } from './services/global-projection-service';
+import { CoreUserProfile } from './types';
 
 interface AuthContextType {
   user: AuthUser | null;
+  profile: CoreUserProfile | null;
   loading: boolean;
   isAuthenticated: boolean;
   isGuest: boolean;
@@ -17,6 +19,8 @@ interface AuthContextType {
   enterGuestMode: () => void;
   reloadUser: () => Promise<void>;
   sendVerification: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  initializeNewUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -26,43 +30,91 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authService: IAuthService = useMemo(() => new FirebaseAuthService(), []);
   
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [profile, setProfile] = useState<CoreUserProfile | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+
+    try {
+      const p = await CoreProfileService.getProfile(user.uid);
+      if (p) {
+        setProfile(p);
+        await GlobalProjectionService.syncFromProfile(p);
+      } else {
+        // We set profile to null, but keep loading false. 
+        // ProtectedRoute will see isAuthenticated=true but profile=null and know we need initialization.
+        setProfile(null);
+      }
+    } catch (e) {
+      console.error("Profile sync suspended due to network integrity.");
+      // We don't set loading false here to prevent the route from jumping to a broken state
+    }
+  }, [user]);
+
+  const initializeNewUser = async () => {
+      if (!user || !user.email) return;
+      setLoading(true);
+      try {
+          const newP = await CoreProfileService.initializeProfile(user.uid, user.email);
+          setProfile(newP);
+          await GlobalProjectionService.syncFromProfile(newP);
+      } finally {
+          setLoading(false);
+      }
+  };
 
   useEffect(() => {
     const hasGuestSession = sessionStorage.getItem(GUEST_SESSION_KEY) === 'true';
     if (hasGuestSession) setIsGuest(true);
 
-    const unsubscribe = authService.onAuthStateChanged((currentUser) => {
+    const unsubscribe = authService.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
-      if (currentUser) setIsGuest(false);
+      if (currentUser) {
+        setIsGuest(false);
+        // Load profile before releasing the loading lock
+        try {
+            const p = await CoreProfileService.getProfile(currentUser.uid);
+            if (p) {
+                setProfile(p);
+                await GlobalProjectionService.syncFromProfile(p);
+            } else {
+                setProfile(null);
+            }
+        } catch (e) {
+            console.error("Auth boot sequence encountered a data-sync delay.");
+        }
+      } else {
+        setProfile(null);
+      }
       setLoading(false);
     });
 
-    const timer = setTimeout(() => setLoading(false), 2000);
-
-    return () => {
-        unsubscribe();
-        clearTimeout(timer);
-    };
+    return () => unsubscribe();
   }, [authService]);
 
   const login = async (email: string, password: string) => {
+    setLoading(true);
     try {
       await authService.login(email, password);
       return true;
     } catch (error: any) {
-      console.error("Login failed", error);
+      setLoading(false);
       throw error;
     }
   };
 
   const register = async (email: string, password: string): Promise<boolean> => {
+      setLoading(true);
       try {
           await authService.register(email, password);
           return true;
       } catch (error: any) {
-          console.error("Registration failed:", error.message);
+          setLoading(false);
           throw error;
       }
   };
@@ -75,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await authService.logout();
     setUser(null);
+    setProfile(null);
     setIsGuest(false);
     sessionStorage.removeItem(GUEST_SESSION_KEY);
     sessionStorage.removeItem('agnes_vault_session');
@@ -100,12 +153,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user || isGuest, 
         isGuest,
         user, 
+        profile,
         login, 
         register,
         logout, 
         enterGuestMode,
         reloadUser,
         sendVerification,
+        refreshProfile,
+        initializeNewUser,
         loading
     }}>
       {children}

@@ -1,4 +1,3 @@
-
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './core/components/ThemeProvider';
@@ -7,6 +6,7 @@ import { VaultProvider } from './lib/vault-context';
 import { GlobalSoulProvider, useGlobalSoul } from './lib/global-soul-context';
 import { AIProvider, useAI } from './llm-engine/ai-context';
 import { BootLoader } from './core/components/BootLoader';
+import { ProtectedRoute } from './core/components/ProtectedRoute';
 
 // Module Pages
 import LandingPage from './modules/landing/LandingPage';
@@ -14,9 +14,10 @@ import HubPage from './modules/hub/HubPage';
 import TherapyPage from './modules/therapy/TherapyPage';
 import TrainerPage from './modules/trainer/TrainerPage';
 import LedgerPage from './modules/ledger/LedgerPage';
+import OrchestratorPage from './modules/orchestrator/OrchestratorPage';
 
 function AIWrapper({ children }: { children: React.ReactNode }) {
-  const { handleToolCall } = useGlobalSoul();
+  const { handleToolCall } = useGlobalSoul() as any; // Temporary cast as handleToolCall is being refactored
   return <AIProvider onToolCall={handleToolCall}>{children}</AIProvider>;
 }
 
@@ -32,10 +33,37 @@ function AppContent() {
     <Suspense fallback={<BootLoader />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/hub" element={<HubPage />} />
-        <Route path="/therapy" element={<TherapyPage />} />
-        <Route path="/trainer" element={<TrainerPage />} />
-        <Route path="/ledger" element={<LedgerPage />} />
+        
+        <Route path="/orchestrator" element={
+          <ProtectedRoute requireOnboarding={false}>
+            <OrchestratorPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/hub" element={
+          <ProtectedRoute>
+            <HubPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/therapy" element={
+          <ProtectedRoute>
+            <TherapyPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/trainer" element={
+          <ProtectedRoute>
+            <TrainerPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/ledger" element={
+          <ProtectedRoute>
+            <LedgerPage />
+          </ProtectedRoute>
+        } />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

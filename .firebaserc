@@ -7,6 +7,9 @@
   "etags": {
     "agent-agnes-ai": {
       "extensionInstances": {}
+    },
+    "personal-trainer-mock": {
+      "extensionInstances": {}
     }
   }
 }

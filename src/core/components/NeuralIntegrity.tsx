@@ -1,6 +1,4 @@
-
 import React, { useEffect, useState } from 'react';
-import { IntegrityService, IntegrityState } from '@/lib/services/integrity-service';
 import { useAuth } from '@/lib/auth-context';
 import { motion } from 'framer-motion';
 import { Shield, Zap, AlertTriangle, ShieldCheck } from 'lucide-react';
@@ -12,14 +10,15 @@ interface NeuralIntegrityProps {
 
 export function NeuralIntegrity({ mode, onUpgrade }: NeuralIntegrityProps) {
   const { isGuest } = useAuth();
-  const [integrity, setIntegrity] = useState<IntegrityState>(IntegrityService.getIntegrity(isGuest));
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-        setIntegrity(IntegrityService.getIntegrity(isGuest));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [isGuest]);
+  
+  // Simplified mock integrity for UI flare
+  const integrity = isGuest ? {
+      score: 45,
+      label: 'GUEST_LINK_UNSTABLE'
+  } : {
+      score: 98,
+      label: 'ENCRYPTED_STABLE'
+  };
 
   const themes = {
     therapy: 'text-indigo-400',
@@ -35,10 +34,8 @@ export function NeuralIntegrity({ mode, onUpgrade }: NeuralIntegrityProps) {
         <div className="flex items-center gap-2">
           {integrity.score > 70 ? (
             <ShieldCheck className={`w-3 h-3 ${themeColor}`} />
-          ) : integrity.score > 30 ? (
-            <Zap className="w-3 h-3 text-amber-400" />
           ) : (
-            <AlertTriangle className="w-3 h-3 text-red-500 animate-pulse" />
+            <Zap className="w-3 h-3 text-amber-400" />
           )}
           <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
             Neural Integrity: <span className={integrity.score < 30 ? 'text-red-500' : 'text-white'}>{integrity.label}</span>

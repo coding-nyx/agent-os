@@ -8,7 +8,7 @@ interface TrainerRoutinePanelProps {
 
 export function TrainerRoutinePanel({ routines }: TrainerRoutinePanelProps) {
   const today = getTodayIso();
-  const sorted = [...(routines || [])].sort((a, b) => a.date.localeCompare(b.date));
+  const sorted = [...(routines || [])].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   const todayRoutine = sorted.find(r => r.date === today);
 
   return (

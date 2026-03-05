@@ -1,19 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { ChatInterface } from '@/core/components/ChatInterface';
 import { TitanDashboard } from './components/TitanDashboard';
 import { TrainerRoutinePanel } from './components/TrainerRoutinePanel';
 import { TrainerOnboarding } from './onboarding/TrainerOnboarding';
-import { useAI } from '@/llm-engine/ai-context';
 import { useGlobalSoul } from '@/lib/global-soul-context';
-import { Message } from '@/llm-engine/types';
-import { SessionPersistenceService } from '@/lib/services/session-persistence-service';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
-import { TrainerProfile } from './types';
+import { TrainerProfile } from '@/lib/types';
 import { buildTrainerSessionPrompt } from './prompts/trainer-session-prompt';
 import { mergeTrainerProfile, normalizeRoutines, stripActionTags } from './utils';
 import { loadTrainerProfile, saveTrainerProfile, syncGuestTrainerProfileToUser } from './services/trainer-profile-service';
+import { useModuleAI } from '@/lib/hooks/use-module-ai';
+import { UnifiedAuthModal } from '@/core/components/UnifiedAuthModal';
 
 const TITAN_PROMPT = `You are TITAN, an elite AI Physical Performance Strategist. 
 Your tone is direct, clinical, and data-driven. 
@@ -21,20 +20,35 @@ You prioritize biological optimization and injury prevention.
 Reference the user's CNS fatigue and biometric data when giving advice.`;
 
 export default function TrainerPage() {
-  const { streamMessage } = useAI();
-  const { globalSoul, enhanceContext } = useGlobalSoul();
-  const { user } = useAuth();
+  const { globalSoul } = useGlobalSoul();
+  const { user, isGuest } = useAuth();
   const { isUnlocked, getModuleKey } = useVault();
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [streamingText, setStreamingText] = useState('');
   const [profile, setProfile] = useState<TrainerProfile | null>(null);
   const [isOnboarding, setIsOnboarding] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
   const [hasSyncedGuest, setHasSyncedGuest] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+
+  const agentAlias = globalSoul?.displayNames?.trainer || 'Titan';
+  const systemPrompt = useMemo(() => {
+    if (!profile) return TITAN_PROMPT;
+    return buildTrainerSessionPrompt(profile);
+  }, [profile]);
+
+  const {
+    messages,
+    setMessages,
+    isProcessing,
+    streamingText,
+    error,
+    quota,
+    handleSendMessage
+  } = useModuleAI({
+    moduleId: 'trainer',
+    systemPrompt
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -49,11 +63,8 @@ export default function TrainerPage() {
       setProfile(loadedProfile);
       setIsOnboarding(!loadedProfile || !loadedProfile.onboardingComplete);
 
-      if (loadedProfile?.onboardingComplete) {
-        const saved = SessionPersistenceService.getHistory('trainer');
-        if (saved && saved.length > 0) {
-          setMessages(saved);
-        } else {
+      // Hydrate initial greeting if no messages
+      if (loadedProfile?.onboardingComplete && messages.length === 0 && !isProcessing && !streamingText) {
           const hasRoutine = loadedProfile.routines && loadedProfile.routines.length > 0;
           setMessages([
             {
@@ -63,7 +74,6 @@ export default function TrainerPage() {
                 : "You're synchronized. Do you want me to generate a weekly routine, or do you already have one?"
             }
           ]);
-        }
       }
 
       setIsProfileLoading(false);
@@ -86,91 +96,31 @@ export default function TrainerPage() {
     })();
   }, [user, isUnlocked, hasSyncedGuest, getModuleKey]);
 
-  useEffect(() => {
-    if (!isOnboarding && messages.length > 0) {
-      SessionPersistenceService.saveHistory('trainer', messages);
+  const handleActionParsed = useCallback((type: string, payload: any) => {
+    if (!profile) return;
+    let nextProfile = { ...profile };
+    let hasChanges = false;
+
+    if (type === 'update_trainer_profile') {
+      nextProfile = mergeTrainerProfile(nextProfile, payload as Partial<TrainerProfile>);
+      hasChanges = true;
+    } else if (type === 'update_routine') {
+      if (payload.routines) {
+        nextProfile.routines = normalizeRoutines(payload.routines as any);
+        hasChanges = true;
+      }
     }
-  }, [messages, isOnboarding]);
 
-  const systemPrompt = useMemo(() => {
-    if (!profile) return TITAN_PROMPT;
-    return buildTrainerSessionPrompt(profile);
-  }, [profile]);
-
-  const handleSendMessage = async (content: string) => {
-    if (isOnboarding || !profile) return;
-    const userMsg: Message = { role: 'user', content };
-    setMessages(prev => [...prev, userMsg]);
-    setIsProcessing(true);
-    setError(null);
-    setStreamingText('');
-
-    try {
-      const { updatedHistory } = await streamMessage(
-        content,
-        enhanceContext({
-          systemPrompt,
-          insights: [],
-          summary: "A training calibration session with Titan.",
-          history: messages
-        }),
-        (chunk) => {
-          setStreamingText(prev => prev + chunk);
-        }
-      );
-
-      let nextProfile = { ...profile };
-      const response = updatedHistory[updatedHistory.length - 1]?.content || '';
-
-      const updateMatches = response.match(/<action type="update_trainer_profile">([\s\S]*?)<\/action>/gi);
-      if (updateMatches) {
-        for (const match of updateMatches) {
-          const jsonStr = match
-            .replace(/<action type="update_trainer_profile">/i, '')
-            .replace(/<\/action>/i, '');
-          try {
-            const parsed = JSON.parse(jsonStr) as Partial<TrainerProfile>;
-            nextProfile = mergeTrainerProfile(nextProfile, parsed);
-          } catch (e) {
-            console.error('Failed to parse trainer profile update:', e);
-          }
-        }
-      }
-
-      const routineMatches = response.match(/<action type="update_routine">([\s\S]*?)<\/action>/gi);
-      if (routineMatches) {
-        for (const match of routineMatches) {
-          const jsonStr = match
-            .replace(/<action type="update_routine">/i, '')
-            .replace(/<\/action>/i, '');
-          try {
-            const parsed = JSON.parse(jsonStr) as { routines?: any[] };
-            if (parsed.routines) {
-              nextProfile.routines = normalizeRoutines(parsed.routines as any);
-            }
-          } catch (e) {
-            console.error('Failed to parse routine update:', e);
-          }
-        }
-      }
-
+    if (hasChanges) {
       nextProfile.updatedAt = new Date().toISOString();
       setProfile(nextProfile);
-      await saveTrainerProfile(nextProfile, { userId: user?.uid, encryptionKey });
-
-      const displayHistory = updatedHistory.map(m => ({
-        ...m,
-        content: stripActionTags(m.content)
-      }));
-
-      setMessages(displayHistory);
-      setStreamingText('');
-    } catch (e: any) {
-      console.error("Telemetry link lost:", e);
-      setError("Biometric telemetry stream interrupted.");
-    } finally {
-      setIsProcessing(false);
+      saveTrainerProfile(nextProfile, { userId: user?.uid, encryptionKey });
     }
+  }, [profile, user, encryptionKey]);
+
+  const onSendMessage = async (content: string) => {
+    if (isOnboarding || !profile) return;
+    await handleSendMessage(content, handleActionParsed);
   };
 
   if (isProfileLoading) {
@@ -191,7 +141,6 @@ export default function TrainerPage() {
           onComplete={async (completed) => {
             setProfile(completed);
             setIsOnboarding(false);
-            SessionPersistenceService.clearHistory('trainer');
             setMessages([
               {
                 role: 'assistant',
@@ -207,26 +156,38 @@ export default function TrainerPage() {
     );
   }
 
+  // Strip action tags for display
+  const displayMessages = messages.map(m => ({
+    ...m,
+    content: stripActionTags(m.content)
+  }));
+  
+  const displayStreamingText = stripActionTags(streamingText);
+
   return (
     <ModuleLayout title="Titan Performance" themeColor="orange">
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col relative">
         <TrainerRoutinePanel routines={profile?.routines || []} />
-        <TitanDashboard soul={globalSoul} />
+        <TitanDashboard soul={globalSoul as any} />
         <div className="flex-1 overflow-hidden">
           <ChatInterface 
-            messages={streamingText ? [...messages, { role: 'assistant', content: stripActionTags(streamingText) }] : messages}
-            onSendMessage={handleSendMessage}
+            messages={displayStreamingText ? [...displayMessages, { role: 'assistant', content: displayStreamingText }] : displayMessages}
+            onSendMessage={onSendMessage}
             isLoading={isProcessing && !streamingText}
             themeColor="orange"
-            agentName="Titan"
+            agentName={agentAlias}
             placeholder="Input training data or queries..."
             error={error}
+            isGuestTrial={isGuest}
+            quota={quota}
+            onQuotaExhausted={() => setShowAuth(true)}
             onRetry={() => {
-              const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-              if (lastUserMsg) handleSendMessage(lastUserMsg.content);
+              const lastUserMsg = [...displayMessages].reverse().find(m => m.role === 'user');
+              if (lastUserMsg) onSendMessage(lastUserMsg.content);
             }}
           />
         </div>
+        <UnifiedAuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} mode="trainer" />
       </div>
     </ModuleLayout>
   );

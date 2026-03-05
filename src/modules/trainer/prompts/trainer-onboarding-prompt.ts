@@ -1,4 +1,4 @@
-import { TrainerPrivacyLevel } from '../types';
+import { TrainerPrivacyLevel } from '@/lib/types';
 
 export function buildTrainerOnboardingPrompt(privacyLevel: TrainerPrivacyLevel): string {
   const isComplete = privacyLevel === 'complete';

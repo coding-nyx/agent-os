@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { TrainerProfile } from '../types';
+import { TrainerProfile } from '@/lib/types';
 
 const GUEST_PROFILE_KEY = 'agnes_trainer_profile_guest';
 const VAULT_SALT_MARKER = 'vault_salt_used';

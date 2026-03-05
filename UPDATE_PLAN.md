@@ -182,24 +182,8 @@ export type AgentResponse<TOutput> = {
 2. Conflict report before final merge.
 3. Rollback path retained until restore verification passes.
 
-## Security and Access Model
-1. Extend Firestore rules for new collections:
-- `planner_profiles`
-- `forge_sessions`
-- `news_profiles`
-- `search_sessions`
-- `backup_manifests`
-2. Owner-only access by default.
-3. Backup service can read module envelopes only via privileged service path.
-4. Sensitive content encrypted at rest.
-
-## Safeguards and Reliability
-1. Reuse existing hallucination guard middleware.
-2. Reuse context optimization and token-tier assembly policy.
-3. Reuse memory commit markers and checkpoint strategy.
-4. Backup restore simulation tests required before release.
-
 ## Implementation Phases
+0. Phase U0: **[DEFERRED] Cloud Functions Baseline.** (Moved to deferred scope) Set up the Firebase Functions environment, `onScheduleBackup` skeleton, and `onGlobalSoulSync` (Neural Synthesis) logic to support advanced health dashboards and automated backups.
 1. Phase U1: registry + types + firestore schema/rules for new agents.
 2. Phase U2: Atlas full vertical (onboarding, planner dashboard, memory).
 3. Phase U3: Forge full vertical (chat + task board + session persistence).
@@ -219,3 +203,8 @@ export type AgentResponse<TOutput> = {
 1. Auto-trading or financial execution features.
 2. Autonomous write access from news/search agents into health modules.
 3. Non-consensual cross-agent data sharing policy changes.
+4. **Cloud Functions & Server-Side Orchestration (The "Neural Spine"):**
+    - Automated Backup & Recovery (Vaultkeeper Core)
+    - Context Compaction Engine (Token Optimization)
+    - Neural Nexus Synthesis (Advanced Health Logic)
+    - Nexus Hygiene (Guest Cleanup)

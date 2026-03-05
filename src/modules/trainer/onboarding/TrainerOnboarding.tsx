@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ChatInterface } from '@/core/components/ChatInterface';
 import { useAI } from '@/llm-engine/ai-context';
 import { Message } from '@/llm-engine/types';
-import { TrainerProfile, TrainerPrivacyLevel } from '../types';
+import { TrainerProfile, TrainerPrivacyLevel } from '@/lib/types';
 import { buildTrainerOnboardingPrompt } from '../prompts/trainer-onboarding-prompt';
 import { mergeTrainerProfile, normalizeRoutines, stripActionTags } from '../utils';
+import { sanitizeJsonPayload } from '@/llm-engine/sanitize';
 import { Shield, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -81,9 +82,9 @@ export function TrainerOnboarding({ onComplete, initialProfile }: TrainerOnboard
       const updateMatches = response.match(/<action type="update_trainer_profile">([\s\S]*?)<\/action>/gi);
       if (updateMatches) {
         for (const match of updateMatches) {
-          const jsonStr = match
+          const jsonStr = sanitizeJsonPayload(match
             .replace(/<action type="update_trainer_profile">/i, '')
-            .replace(/<\/action>/i, '');
+            .replace(/<\/action>/i, ''));
           try {
             const parsed = JSON.parse(jsonStr) as Partial<TrainerProfile>;
             nextProfile = mergeTrainerProfile(nextProfile, parsed);
@@ -96,9 +97,9 @@ export function TrainerOnboarding({ onComplete, initialProfile }: TrainerOnboard
       const routineMatches = response.match(/<action type="update_routine">([\s\S]*?)<\/action>/gi);
       if (routineMatches) {
         for (const match of routineMatches) {
-          const jsonStr = match
+          const jsonStr = sanitizeJsonPayload(match
             .replace(/<action type="update_routine">/i, '')
-            .replace(/<\/action>/i, '');
+            .replace(/<\/action>/i, ''));
           try {
             const parsed = JSON.parse(jsonStr) as { routines?: any[] };
             if (parsed.routines) {
