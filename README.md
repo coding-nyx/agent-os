@@ -1,15 +1,13 @@
-# Titan Fitness - Next.js Trainer Portfolio
+# Agnes - AI Wellness Platform
 
-A high-performance, energetic portfolio web application for personal trainers and gyms.
+A futuristic, highly versatile AI wellness platform featuring specialized AI agents (Therapy, Trainer, and more) with Wall-E and Eve-inspired 3D avatars.
 
 ## Features
 
-*   **Modern Design:** Built with Next.js, Tailwind CSS, and Shadcn UI.
-*   **Dynamic Content:** Manage classes, profile, and certifications via an Admin Panel.
-*   **Dual Data Modes:**
-    *   **Mock Mode:** Zero-setup development using local storage.
-    *   **Firebase Mode:** Production-ready real-time database with auto-seeding.
-*   **Admin Panel:** Secure (mock) login to manage content.
+*   **Futuristic Design:** Built with React, Vite, Tailwind CSS, and Shadcn UI.
+*   **Modular Architecture:** Separate products (AI Therapy, AI Trainer, etc.) running as isolated sub-modules.
+*   **Decoupled AI Engine:** A standalone `llm-engine` designed for future extraction to a dedicated Node.js backend.
+*   **Dual Data Modes:** Local mock storage or Firebase real-time database.
 
 ## Quick Start
 

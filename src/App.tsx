@@ -1,116 +1,61 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { BootLoader } from './components/ui/boot-loader'
-import { AnimatePresence } from 'framer-motion'
-import HomePage from './pages/HomePage'
-import TrainerPage from './pages/TrainerPage'
-import AdminPage from './pages/AdminPage'
-import LoginPage from './pages/admin/LoginPage'
-import DashboardPage from './pages/admin/DashboardPage'
-import MockPaymentPage from './pages/MockPaymentPage'
-import NotFoundPage from './pages/NotFoundPage'
-import React, { Suspense } from 'react'
-import { AITrainerProvider } from './components/ai-trainer/AITrainerContext'
-import { AIProvider } from './lib/ai/ai-context'
 
-const TherapistPage = React.lazy(() => import('./pages/TherapistPage'))
-const TherapyLandingPage = React.lazy(() => import('./pages/TherapyLandingPage'))
-const AITrainerPage = React.lazy(() => import('./pages/AITrainerPage'))
-const TherapyAuth = React.lazy(() => import('./pages/TherapyAuth'))
-const AnonymousChat = React.lazy(() => import('./components/therapist/AnonymousChat'))
-const ProfilePage = React.lazy(() => import('./pages/profile/ProfilePage'))
-const VaultPage = React.lazy(() => import('./pages/VaultPage'))
+import React, { Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './core/components/ThemeProvider';
+import { AuthProvider, useAuth } from './lib/auth-context';
+import { VaultProvider } from './lib/vault-context';
+import { GlobalSoulProvider, useGlobalSoul } from './lib/global-soul-context';
+import { AIProvider, useAI } from './llm-engine/ai-context';
+import { BootLoader } from './core/components/BootLoader';
 
-function ScrollToTop() {
-  const { pathname, search } = useLocation()
+// Module Pages
+import LandingPage from './modules/landing/LandingPage';
+import HubPage from './modules/hub/HubPage';
+import TherapyPage from './modules/therapy/TherapyPage';
+import TrainerPage from './modules/trainer/TrainerPage';
+import LedgerPage from './modules/ledger/LedgerPage';
 
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [pathname, search])
+function AIWrapper({ children }: { children: React.ReactNode }) {
+  const { handleToolCall } = useGlobalSoul();
+  return <AIProvider onToolCall={handleToolCall}>{children}</AIProvider>;
+}
 
-  return null
+function AppContent() {
+  const { loading: authLoading } = useAuth();
+  const { isInitialized: aiReady } = useAI();
+
+  if (authLoading || !aiReady) {
+    return <BootLoader />;
+  }
+
+  return (
+    <Suspense fallback={<BootLoader />}>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/hub" element={<HubPage />} />
+        <Route path="/therapy" element={<TherapyPage />} />
+        <Route path="/trainer" element={<TrainerPage />} />
+        <Route path="/ledger" element={<LedgerPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
 }
 
 function App() {
-  const [booting, setBooting] = useState(true)
-  useEffect(() => {
-    // Simulate enterprise-level boot sequence
-    const timer = setTimeout(() => {
-      setBooting(false)
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [])
-
   return (
-    <>
-      <AnimatePresence>
-        {booting && <BootLoader />}
-      </AnimatePresence>
-      {!booting && (
-        <>
-          <ScrollToTop />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/t/:slug" element={<TrainerPage />} />
-            <Route path="/trainer" element={<TrainerPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/admin/login" element={<LoginPage />} />
-            <Route path="/admin/dashboard" element={<DashboardPage />} />
-            <Route path="/payment" element={<MockPaymentPage />} />
-            <Route path="/vault" element={
-              <Suspense fallback={<BootLoader />}>
-                <VaultPage />
-              </Suspense>
-            } />
-            
-            {/* AI Trainer Route */}
-            <Route path="/ai-trainer" element={
-              <Suspense fallback={<BootLoader />}>
-                <AIProvider>
-                  <AITrainerProvider>
-                    <AITrainerPage />
-                  </AITrainerProvider>
-                </AIProvider>
-              </Suspense>
-            } />
-
-            {/* Therapy Routes */}
-            <Route path="/therapy" element={
-              <Suspense fallback={<BootLoader />}>
-                <TherapyLandingPage />
-              </Suspense>
-            } />
-            <Route path="/therapy/auth" element={
-              <Suspense fallback={<BootLoader />}>
-                <TherapyAuth />
-              </Suspense>
-            } />
-             <Route path="/therapy/chat" element={
-              <Suspense fallback={<BootLoader />}>
-                <AnonymousChat />
-              </Suspense>
-            } />
-            <Route path="/therapy/session" element={
-              <Suspense fallback={<BootLoader />}>
-                <TherapistPage />
-              </Suspense>
-            } />
-            
-            {/* Legacy Redirect or Alias */}
-            <Route path="/therapist" element={<TherapistPage />} />
-            
-            <Route path="/profile" element={
-              <Suspense fallback={<BootLoader />}>
-                <ProfilePage />
-              </Suspense>
-            } />
-            
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </>
-      )}
-    </>
-  )
+    <ThemeProvider>
+      <AuthProvider>
+        <VaultProvider>
+          <GlobalSoulProvider>
+            <AIWrapper>
+              <AppContent />
+            </AIWrapper>
+          </GlobalSoulProvider>
+        </VaultProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
 }
 
-export default App
+export default App;

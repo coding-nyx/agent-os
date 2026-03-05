@@ -1,10 +1,10 @@
 import { BrandIdentity } from './types';
 
 export const DEFAULT_BRAND_IDENTITY: BrandIdentity = {
-  brandName: 'Hulk Fitness',
+  brandName: 'AGNES',
   logoUrl: '',
-  primaryColor: '#000000',
-  secondaryColor: '#ffffff',
+  primaryColor: '#6366f1', // Indigo
+  secondaryColor: '#f43f5e', // Rose
 };
 
 export const DEFAULT_BRAND_NAME = DEFAULT_BRAND_IDENTITY.brandName;

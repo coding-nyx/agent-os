@@ -1,227 +1,120 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { AuthUser, IAuthService } from './services/auth-service';
+import { FirebaseAuthService } from './services/firebase-auth-service';
+import { MockAuthService } from './services/MockAuthService';
 import { getFirebase } from './firebase';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { BootLoader } from '@/components/ui/boot-loader';
-import { AnimatePresence } from 'framer-motion';
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (emailOrPassword: string, password?: string) => Promise<boolean>;
-  registerWithEmail: (email: string, password: string) => Promise<boolean>;
-  sendVerification: () => Promise<boolean>;
-  checkVerificationStatus: () => Promise<boolean>;
-  resetPassword: (email: string) => Promise<boolean>;
-  finishLogin: (email: string, href: string) => Promise<void>;
+  isGuest: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  trainerSlug: string | null;
-  isSuperAdmin: boolean;
+  enterGuestMode: () => void;
+  reloadUser: () => Promise<void>;
+  sendVerification: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+const GUEST_SESSION_KEY = 'agnes_guest_active';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const authService: IAuthService = useMemo(() => new FirebaseAuthService(), []);
+  
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [trainerSlug, setTrainerSlug] = useState<string | null>(null);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
-    // Check for hardcoded super admin session first
-    const isSuper = sessionStorage.getItem('is_super_admin') === 'true';
-    if (isSuper) {
-        setIsAuthenticated(true);
-        setIsSuperAdmin(true);
-        setTrainerSlug('platform');
-        // Synthesize a fake user for the context
-        setUser({ uid: 'super-admin-uid', email: 'admin@admin.com' } as User);
-        setLoading(false);
-        return;
-    }
+    const hasGuestSession = sessionStorage.getItem(GUEST_SESSION_KEY) === 'true';
+    if (hasGuestSession) setIsGuest(true);
 
-    const { auth } = getFirebase();
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = authService.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
-      setIsAuthenticated(!!currentUser);
-      setIsSuperAdmin(false);
-
-      if (currentUser) {
-          // Resolve slug via DataProvider logic (duplicated here to avoid circular dep or complex injection)
-          // We need to query the 'trainers' collection for ownerUid == currentUser.uid
-          try {
-             const { db } = getFirebase();
-             if (db) {
-                 const docRef = doc(db, 'trainers', currentUser.uid);
-                 const docSnap = await getDoc(docRef);
-                 if (docSnap.exists()) {
-                     setTrainerSlug(docSnap.id);
-                 } else {
-                     // No profile yet. It will be created on first save/access in dashboard.
-                     setTrainerSlug(null);
-                 }
-             }
-          } catch (e) {
-              console.error("Failed to fetch trainer slug", e);
-          }
-      } else {
-          setTrainerSlug(null);
-      }
+      if (currentUser) setIsGuest(false);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    const timer = setTimeout(() => setLoading(false), 2000);
+
+    return () => {
+        unsubscribe();
+        clearTimeout(timer);
+    };
+  }, [authService]);
+
+  const login = async (email: string, password: string) => {
+    try {
+      await authService.login(email, password);
+      return true;
+    } catch (error: any) {
+      console.error("Login failed", error);
+      throw error;
+    }
+  };
+
+  const register = async (email: string, password: string): Promise<boolean> => {
+      try {
+          await authService.register(email, password);
+          return true;
+      } catch (error: any) {
+          console.error("Registration failed:", error.message);
+          throw error;
+      }
+  };
+
+  const enterGuestMode = useCallback(() => {
+      setIsGuest(true);
+      sessionStorage.setItem(GUEST_SESSION_KEY, 'true');
   }, []);
 
-  const login = async (email: string, password?: string) => {
-    // Super Admin Bypass
-    if (email === 'admin@admin.com' && password === 'admin123') {
-        setIsAuthenticated(true);
-        setIsSuperAdmin(true);
-        setTrainerSlug('platform');
-        setUser({ uid: 'super-admin-uid', email: 'admin@admin.com', emailVerified: true } as User);
-        sessionStorage.setItem('is_super_admin', 'true');
-        return true;
-    }
-
-    // Firebase Auth flow
-    const { auth } = getFirebase();
-    if (!auth) {
-      console.error("Firebase Auth not initialized");
-      return false;
-    }
-
-    try {
-        if (password) {
-            await signInWithEmailAndPassword(auth, email, password);
-        } else {
-            // Assume email link flow if only email provided (though standard login form asks for pass)
-            // But for this task, we mainly care about the admin login form which has email/password
-            throw new Error("Password required");
-        }
-      return true;
-    } catch (error) {
-      console.error("Login failed", error);
-      return false;
-    }
-  };
-
-  const registerWithEmail = async (email: string, password: string): Promise<boolean> => {
-      const { auth } = getFirebase();
-      if (!auth) return false;
-      try {
-          const { createUserWithEmailAndPassword, sendEmailVerification } = await import('firebase/auth');
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          await sendEmailVerification(userCredential.user);
-          return true;
-      } catch (error) {
-          console.error("Registration failed", error);
-          return false;
-      }
-  };
-
-  const sendVerification = async (): Promise<boolean> => {
-      const { auth } = getFirebase();
-      if (!auth || !auth.currentUser) return false;
-      try {
-          const { sendEmailVerification } = await import('firebase/auth');
-          await sendEmailVerification(auth.currentUser);
-          return true;
-      } catch (error) {
-           console.error("Verification email failed", error);
-           return false;
-      }
-  };
-
-  const checkVerificationStatus = async (): Promise<boolean> => {
-      const { auth } = getFirebase();
-      if (!auth || !auth.currentUser) return false;
-      try {
-          await auth.currentUser.reload();
-          // Update local state if needed, though onAuthStateChanged usually handles it
-          // Force a re-render of user state might be tricky without triggering a full auth state change
-          // But setUser will trigger it.
-          setUser({ ...auth.currentUser }); 
-          return auth.currentUser.emailVerified;
-      } catch (error) {
-          console.error("Reload failed", error);
-          return false;
-      }
-  };
-
-  const resetPassword = async (email: string): Promise<boolean> => {
-       const { auth } = getFirebase();
-       if (!auth) return false;
-       try {
-           const { sendPasswordResetEmail } = await import('firebase/auth');
-           await sendPasswordResetEmail(auth, email);
-           return true;
-       } catch (error) {
-           console.error("Reset password failed", error);
-           return false;
-       }
-  };
-
-  const finishLogin = async (email: string, href: string) => {
-    const { auth } = getFirebase();
-    if (!auth) throw new Error("Firebase Auth not initialized");
-
-    if (isSignInWithEmailLink(auth, href)) {
-      await signInWithEmailLink(auth, email, href);
-      window.localStorage.removeItem('emailForSignIn');
-    } else {
-        throw new Error("Invalid sign-in link");
-    }
-  };
-
   const logout = async () => {
-    const { auth } = getFirebase();
-    if (auth) {
-      await signOut(auth);
-    }
-    setIsAuthenticated(false);
+    await authService.logout();
     setUser(null);
-    setTrainerSlug(null);
-    setIsSuperAdmin(false);
-    sessionStorage.removeItem('is_super_admin');
+    setIsGuest(false);
+    sessionStorage.removeItem(GUEST_SESSION_KEY);
+    sessionStorage.removeItem('agnes_vault_session');
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('agnes_') || key.includes('integrity')) {
+            localStorage.removeItem(key);
+        }
+    });
+    window.location.href = '/';
+  };
+
+  const reloadUser = async () => {
+      const updatedUser = await authService.reloadUser();
+      setUser(updatedUser);
+  };
+
+  const sendVerification = async () => {
+      await authService.sendVerificationEmail();
   };
 
   return (
     <AuthContext.Provider value={{ 
-        isAuthenticated, 
+        isAuthenticated: !!user || isGuest, 
+        isGuest,
         user, 
         login, 
-        registerWithEmail,
-        sendVerification,
-        checkVerificationStatus,
-        resetPassword,
-        finishLogin, 
+        register,
         logout, 
-        loading, 
-        trainerSlug, 
-        isSuperAdmin 
+        enterGuestMode,
+        reloadUser,
+        sendVerification,
+        loading
     }}>
-      <AnimatePresence>
-        {loading && <BootLoader />}
-      </AnimatePresence>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within a AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within a AuthProvider');
   return context;
 }

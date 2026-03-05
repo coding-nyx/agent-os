@@ -180,6 +180,32 @@ export interface PhysicalSoul {
   lastCompactionDate?: string;
 }
 
+// --- Global Soul & Integration Types ---
+
+export interface GlobalInsight {
+  id: string;
+  sourceModule: string;
+  targetModule: string;
+  type: string;
+  content: string;
+  intensity: number; // 1-10
+  timestamp: string;
+  isResolved: boolean;
+}
+
+export interface GlobalSoul {
+  lastSync: string;
+  overallWellnessScore: number;
+  activeInsights: GlobalInsight[];
+  crossFunctionalState: {
+    cnsFatigue: number; // 1-10 (from Trainer)
+    emotionalResilience: number; // 1-10 (from Therapy)
+    sleepQuality: number; // 1-10 (average)
+    hormonalContext?: string; // e.g. "Luteal Phase - Low Intensity"
+    traumaMarkers?: string[]; // sanitized for general context
+  };
+}
+
 export interface AITrainerProfile {
   name: string;
   gender: 'female' | 'male' | 'non-binary' | string;

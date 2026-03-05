@@ -1,10 +1,11 @@
 {
   "projects": {
-    "default": "personal-trainer-mock"
+    "default": "agent-agnes-ai",
+    "agnes": "agent-agnes-ai"
   },
   "targets": {},
   "etags": {
-    "personal-trainer-mock": {
+    "agent-agnes-ai": {
       "extensionInstances": {}
     }
   }

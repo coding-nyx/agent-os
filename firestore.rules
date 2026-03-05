@@ -2,18 +2,68 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
+    function isAdmin() {
+      // For now, super-admin-uid or any other admin logic
+      return isAuthenticated() && request.auth.uid == 'super-admin-uid';
+    }
+
+    // Vault and Core User Data
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Therapy Module
+    match /therapist_profiles/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // AI Trainer Module
+    match /ai_trainers/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Global Soul (Integration)
+    match /global_souls/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Guest Shadows (for transient state)
+    match /guest_shadows/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Titan Fitness / Trainer Portfolio Module
+    match /trainers/{userId} {
+      // Anyone can read trainer profiles (they are public portfolios)
+      allow read: if true; 
+      // Only the trainer themselves can write to their root doc
+      allow write: if isOwner(userId);
+
+      // Subcollections under a trainer
+      match /{subcollection}/{docId} {
+        allow read: if true;
+        allow write: if isOwner(userId);
+      }
+    }
+    
+    // Platform Settings (Landing pages, global testimonials)
+    match /platform_settings/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Default deny
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 1, 27);
+      allow read, write: if false;
     }
   }
 }

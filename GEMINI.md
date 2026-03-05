@@ -8,6 +8,11 @@
 *   **Get Approval:** Do not execute any changes to the codebase without explicit user approval of the selected plan.
 *   **UI/UX Focus:** Always strive to make the UI more beautiful and easily accessible. Prioritize user experience and visual appeal in all changes.
 
+# Engineering Standards
+
+*   **Code Separability & Modular Concern:** Maintain strict separation of concerns. If a task involves a specific module (e.g., `src/modules/therapy`), all related logic and state changes should be confined to that directory. Do not modify global state or unrelated modules unless absolutely critical for the requested functionality.
+*   **LLM Engine as External Entity:** Treat the `src/llm-engine/` as an external API or separate entity. Interaction should primarily happen via established interfaces. Avoid structural modifications to the engine unless it's necessary for critical optimization or required by a specific architectural directive. Refrain from deep engine changes in favor of interface consumption whenever possible.
+
 # Project Overview
 
 This is a **React Single Page Application (SPA)** built with **Vite** and **TypeScript**, designed as a portfolio and management platform for personal trainers and gyms ("Titan Fitness").

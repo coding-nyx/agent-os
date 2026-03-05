@@ -20,6 +20,7 @@ let storage: FirebaseStorage | undefined;
 export function getFirebase() {
   if (!app) {
     try {
+      console.log("[FIREBASE_INIT] Keys present:", !!firebaseConfig.apiKey, "Project:", firebaseConfig.projectId);
       // Check if config is valid
       if (!firebaseConfig.apiKey) {
         console.warn("Firebase API Key is missing. Firebase features will be disabled.");
@@ -36,4 +37,34 @@ export function getFirebase() {
     }
   }
   return { app, db, auth, storage };
+}
+
+/**
+ * Ensures that the Firebase Auth token is fully propagated before proceeding.
+ * This prevents "Missing or insufficient permissions" errors when querying Firestore immediately after login.
+ */
+export async function ensureAuthReady(): Promise<void> {
+  const { auth } = getFirebase();
+  if (!auth) return;
+
+  if (auth.currentUser) {
+    try {
+      await auth.currentUser.getIdToken();
+    } catch (e) {
+      console.warn("Failed to get ID token", e);
+    }
+    return;
+  }
+
+  return new Promise((resolve) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      unsubscribe();
+      if (user) {
+        try {
+          await user.getIdToken();
+        } catch (e) {}
+      }
+      resolve();
+    });
+  });
 }
