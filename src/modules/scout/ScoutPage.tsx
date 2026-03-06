@@ -3,17 +3,14 @@ import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
-import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SCOUT_PERSONA } from './personas';
-import { ScoutOnboarding } from './onboarding/ScoutOnboarding';
 import { ScoutDashboard } from './components/ScoutDashboard';
 import {
   ScoutProfile,
   loadScoutProfile,
-  saveScoutProfile,
   subscribeScoutProfile,
   syncGuestScoutProfileToUser
 } from './services/scout-knowledge-service';
@@ -35,27 +32,9 @@ export default function ScoutPage() {
       workspaceType="command"
       profileOptions={{
         loadProfile: loadScoutProfile,
-        saveProfile: saveScoutProfile,
         subscribeProfile: subscribeScoutProfile,
         syncGuestProfile: syncGuestScoutProfileToUser
       }}
-      renderOnboarding={({ profile, onComplete }) => (
-        <ScoutOnboarding
-          initialProfile={profile}
-          initialBaseContext={baseContext}
-          onGlobalBaseContextFinalize={async (context) => {
-            if (!user || isGuest) return;
-            const patch = IntakeBaseContextService.toCoreProfilePatch(context);
-            if (Object.keys(patch).length > 0) {
-              await CoreProfileService.updateProfile(user.uid, patch);
-              await refreshProfile();
-            }
-          }}
-          onComplete={async (completed) => {
-            onComplete(completed);
-          }}
-        />
-      )}
       renderDashboard={({ profile }) => (
         <ScoutDashboard soul={globalSoul} profile={profile} isLocked={isLocked} />
       )}

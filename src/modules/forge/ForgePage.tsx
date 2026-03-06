@@ -1,15 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
-import { CoreProfileService } from '@/lib/services/core-profile-service';
-import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { cn } from '@/lib/utils';
 import { FORGE_PERSONA } from './personas';
-import { ForgeOnboarding } from './onboarding/ForgeOnboarding';
 import { ForgeDashboard } from './components/ForgeDashboard';
 import {
   ForgeExecutionRecord,
@@ -46,10 +43,9 @@ function formatExecutionOutput(payload: { logs?: string[]; result?: string; erro
 
 export default function ForgePage() {
   const { globalSoul } = useGlobalSoul();
-  const { user, isGuest, profile: coreProfile, refreshProfile } = useAuth();
+  const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('forge');
-  const baseContext = useMemo(() => IntakeBaseContextService.buildForForge({ coreProfile }), [coreProfile]);
 
   return (
     <UnifiedModulePage<ForgeProfile>
@@ -59,39 +55,6 @@ export default function ForgePage() {
         loadProfile: (params) => loadForgeProfile({ userId: params.userId }),
         subscribeProfile: (params, onUpdate) => subscribeForgeProfile({ userId: params.userId }, onUpdate),
         syncGuestProfile: (params) => syncGuestForgeProfileToUser({ userId: params.userId })
-      }}
-      renderOnboarding={({ profile, onComplete }) => {
-        if (user && !isGuest && !coreProfile?.onboardingComplete) {
-          return (
-              <div className="h-full flex items-center justify-center p-8">
-                <div className="max-w-xl w-full p-10 rounded-[36px] border border-rose-500/20 bg-rose-500/5 text-center space-y-6">
-                  <h3 className="text-2xl font-black italic uppercase tracking-tight text-rose-400">Identity Sync Required</h3>
-                  <p className="text-sm text-rose-100/60 leading-relaxed">
-                    Forge requires an initialized identity context before execution routing.
-                  </p>
-                </div>
-              </div>
-          );
-        }
-
-        return (
-          <ForgeOnboarding
-            initialProfile={profile}
-            initialBaseContext={baseContext}
-            onGlobalBaseContextFinalize={async (context) => {
-              if (!user || isGuest) return;
-              const patch = IntakeBaseContextService.toCoreProfilePatch(context);
-              if (Object.keys(patch).length > 0) {
-                await CoreProfileService.updateProfile(user.uid, patch);
-                await refreshProfile();
-              }
-            }}
-            onComplete={async (completed) => {
-              onComplete(completed);
-              await saveForgeProfile(completed, { userId: user?.uid });
-            }}
-          />
-        );
       }}
       renderContent={({ profile, encryptionKey }) => {
         const agentAlias = globalSoul?.displayNames?.forge || 'Forge';

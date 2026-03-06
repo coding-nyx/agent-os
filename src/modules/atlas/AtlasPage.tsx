@@ -2,13 +2,11 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
-import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { ATLAS_PERSONA } from './personas';
-import { AtlasOnboarding } from './onboarding/AtlasOnboarding';
 import { AtlasDashboard } from './components/AtlasDashboard';
 import {
   AtlasProfile,
@@ -48,27 +46,9 @@ export default function AtlasPage() {
       moduleId="atlas"
       profileOptions={{
         loadProfile: loadAtlasProfile,
-        saveProfile: saveAtlasProfile,
         subscribeProfile: subscribeAtlasProfile,
         syncGuestProfile: syncGuestAtlasProfileToUser
       }}
-      renderOnboarding={({ profile, onComplete }) => (
-        <AtlasOnboarding
-          initialProfile={profile}
-          initialBaseContext={baseContext}
-          onGlobalBaseContextFinalize={async (context) => {
-            if (!user || isGuest) return;
-            const patch = IntakeBaseContextService.toCoreProfilePatch(context);
-            if (Object.keys(patch).length > 0) {
-              await CoreProfileService.updateProfile(user.uid, patch);
-              await refreshProfile();
-            }
-          }}
-          onComplete={async (completed) => {
-            onComplete(completed);
-          }}
-        />
-      )}
       renderContent={({ profile, encryptionKey }) => {
         const agentAlias = globalSoul?.displayNames?.atlas || 'Atlas';
 
