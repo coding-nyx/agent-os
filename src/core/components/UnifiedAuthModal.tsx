@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Zap, Lock, Mail, Key, Sparkles, BrainCircuit, Activity, ArrowRight, Loader2, X, UserPlus, Fingerprint, ShieldCheck } from 'lucide-react';
+import { Shield, Zap, Lock, Mail, Key, ArrowRight, Loader2, X, UserPlus, Fingerprint, ShieldCheck } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
@@ -8,7 +8,6 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useVault } from '@/lib/vault-context';
 import { NeuralButton } from './NeuralButton';
 import { NeuralInput } from './NeuralInput';
-import { SoulTerminationService } from '@/lib/services/soul-termination-service';
 import { cn } from '@/lib/utils';
 import { MODULE_MANIFEST, ModuleId, ModuleTheme } from '@/lib/module-manifest';
 
@@ -114,36 +113,6 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                               {view === 'VAULT_HANDSHAKE' ? (hasVault ? 'SECURE HANDSHAKE' : 'INITIALIZE VAULT') : view.replace('_', ' ')}
                           </p>
                         </div>
-                        {view === 'VAULT_HANDSHAKE' && hasVault && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm("WARNING: Resetting your Master Password will permanently PURGE all encrypted data in your vault. This cannot be undone. Proceed?")) {
-                                if (!user) return;
-                                setLoading(true);
-                                setError('');
-                                lockVault();
-                                SoulTerminationService.terminateSoul(user.uid)
-                                  .then(async () => {
-                                    await refreshProfile();
-                                    await refreshGlobalSoul();
-                                    reset();
-                                    onClose();
-                                    navigate('/orchestrator', { replace: true });
-                                  })
-                                  .catch((e: unknown) => {
-                                    setError(e instanceof Error ? e.message : 'Purge failed');
-                                  })
-                                  .finally(() => {
-                                    setLoading(false);
-                                  });
-                              }
-                            }}
-                            className="text-[9px] font-black uppercase tracking-widest text-amber-500/50 hover:text-amber-400 transition-colors italic"
-                          >
-                            Reset Master
-                          </button>
-                        )}
                       </div>
                     </div>
 
