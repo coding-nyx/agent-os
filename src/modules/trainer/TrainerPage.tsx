@@ -150,25 +150,25 @@ function TrainerContent({ profile, encryptionKey }: { profile: TrainerProfile | 
 
   return (
     <div className="h-full flex overflow-hidden relative">
-      <div className="flex-1 h-full overflow-y-auto no-scrollbar flex flex-col relative">
-        {isChatCollapsed && (
-          <motion.button
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            onClick={() => setIsChatCollapsed(false)}
-            className={cn(
-              'z-[70] flex items-center gap-3 bg-orange-600/20 border border-orange-500/20 rounded-full text-orange-400 font-black text-[9px] uppercase tracking-widest italic backdrop-blur-xl',
-              isMobile
-                ? 'fixed bottom-6 right-6 px-5 py-3 text-[11px]'
-                : 'absolute top-6 right-6 px-4 py-2'
-            )}
-          >
-            <MessageSquare className={isMobile ? 'w-4 h-4' : 'w-3 h-3'} />
-            Open Titan Link
-          </motion.button>
-        )}
+      {isChatCollapsed && (
+        <motion.button
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={() => setIsChatCollapsed(false)}
+          className={cn(
+            'z-[70] flex items-center gap-2 bg-orange-600/20 border border-orange-500/20 rounded-full text-orange-400 font-black text-[9px] uppercase tracking-widest italic backdrop-blur-xl',
+            isMobile
+              ? 'fixed bottom-6 right-6 px-5 py-3 text-[11px]'
+              : 'absolute top-3 right-3 px-4 py-2'
+          )}
+        >
+          <MessageSquare className={isMobile ? 'w-4 h-4' : 'w-3 h-3'} />
+          Open Titan Link
+        </motion.button>
+      )}
+      <div className="flex-1 min-w-0 h-full overflow-y-auto no-scrollbar flex flex-col relative">
         <TrainerRoutinePanel routines={profile?.routines || []} />
-        <div className="flex-1">
+        <div>
           <TitanDashboard soul={globalSoul} isLocked={isLocked} onCalibrate={handleCalibrate} />
         </div>
       </div>
@@ -214,15 +214,17 @@ function TrainerContent({ profile, encryptionKey }: { profile: TrainerProfile | 
             opacity: isChatCollapsed ? 0 : 1
           }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="h-full border-l border-white/5 bg-black/20 overflow-hidden flex flex-col relative"
+          className="h-full border-l border-white/5 bg-black/20 flex flex-col relative"
         >
-          <NexusChat
-            ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
-            agentName={agentAlias}
-            themeColor="orange"
-            placeholder="Input training data or queries..."
-            authMode="trainer"
-          />
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <NexusChat
+              ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
+              agentName={agentAlias}
+              themeColor="orange"
+              placeholder="Input training data or queries..."
+              authMode="trainer"
+            />
+          </div>
           {!isChatCollapsed && (
             <button
               onClick={() => setIsChatCollapsed(true)}

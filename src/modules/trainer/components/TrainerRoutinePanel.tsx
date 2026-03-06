@@ -23,7 +23,7 @@ export function TrainerRoutinePanel({ routines }: TrainerRoutinePanelProps) {
   const todayRoutine = sorted.find(r => r.weekday === today);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-6 bg-black/40 border-b border-white/5 backdrop-blur-xl">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-6 pt-4 pb-6 bg-black/40 border-b border-white/5 backdrop-blur-xl">
       <SurfaceCard className="p-5 space-y-4">
         <div className="flex items-center justify-between">
           <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">Weekly Plan</span>

@@ -35,8 +35,8 @@ Notes: ${profile.activity?.dayToDayNotes || 'None'}
 
 HISTORY & GOALS:
 Years Training: ${profile.history?.yearsTraining || 'Unknown'}
-Injuries: ${profile.history?.injuries?.join(', ') || 'None'}
-Goals: ${profile.history?.goals?.join(', ') || profile.history?.bodyGoals || 'Unknown'}
+Injuries: ${Array.isArray(profile.history?.injuries) ? profile.history.injuries.join(', ') : (profile.history?.injuries || 'None')}
+Goals: ${Array.isArray(profile.history?.goals) ? profile.history.goals.join(', ') : (profile.history?.goals || profile.history?.bodyGoals || 'Unknown')}
 
 CURRENT ROUTINES:
 ${routinesText}

@@ -70,7 +70,7 @@ export function LedgerDashboard({
         accentClassName="text-cyan-400"
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <StatCard
           label="Monthly Income"
           value={monthlyIncome}
@@ -105,7 +105,7 @@ export function LedgerDashboard({
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <SurfaceCard className="p-5 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">Spending</span>
@@ -142,7 +142,19 @@ export function LedgerDashboard({
           </div>
           {profile?.activePlanId ? (
             <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 space-y-2">
-              <p className="text-xs text-cyan-200/80">Active plan ID: {profile.activePlanId}</p>
+              {(() => {
+                const activePlan = profile.plans?.find((p) => p.id === profile.activePlanId);
+                return activePlan ? (
+                  <>
+                    <p className="text-xs text-cyan-200/80 font-medium">{activePlan.title}</p>
+                    {activePlan.summary && (
+                      <p className="text-[10px] text-white/40 leading-relaxed">{activePlan.summary}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-cyan-200/80 truncate">Plan: {profile.activePlanId.slice(0, 8)}…</p>
+                );
+              })()}
               <p className="text-[10px] text-white/50">Planner state: {profile.plannerBotState.toUpperCase()}</p>
             </div>
           ) : (

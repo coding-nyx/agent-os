@@ -16,9 +16,9 @@ interface UnifiedModulePageProps<TProfile extends { onboardingComplete?: boolean
   moduleId: ModuleId;
   profileOptions: Omit<UseModuleProfileOptions<TProfile>, 'moduleId'>;
   workspaceType?: WorkspaceType;
-  renderOnboarding?: (props: { profile: TProfile | null; onComplete: (profile: TProfile) => void }) => React.ReactNode;
-  renderContent: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
-  renderDashboard?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
+  renderOnboarding?: React.ComponentType<{ profile: TProfile | null; onComplete: (profile: TProfile) => void }>;
+  renderContent: React.ComponentType<{ profile: TProfile | null; encryptionKey: CryptoKey | null }>;
+  renderDashboard?: React.ComponentType<{ profile: TProfile | null; encryptionKey: CryptoKey | null }>;
   requireVault?: boolean;
   sessionActive?: boolean;
 }
@@ -47,6 +47,9 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   const manifest = MODULE_MANIFEST[moduleId];
   const themeColor = manifest.themeColor;
   const title = manifest.title;
+  const RenderOnboarding = renderOnboarding;
+  const RenderContent = renderContent;
+  const RenderDashboard = renderDashboard;
 
   if (isLoading) {
     return (
@@ -82,17 +85,17 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   }
 
    // Onboarding Screen
-  if (isOnboarding && renderOnboarding) {
+  if (isOnboarding && RenderOnboarding) {
     return (
       <ModuleLayout title={`${title} Intake`} themeColor={themeColor} moduleId={moduleId}>
-        {renderOnboarding({
-          profile,
-          onComplete: async (completedProfile) => {
+        <RenderOnboarding
+          profile={profile}
+          onComplete={async (completedProfile) => {
             await persistProfile(completedProfile);
             setProfile(completedProfile);
             setIsOnboarding(false);
-          }
-        })}
+          }}
+        />
       </ModuleLayout>
     );
   }
@@ -125,14 +128,14 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         )}
 
         {workspaceType === 'command' && (
-            <div className="flex-1 flex flex-col lg:flex-row h-full">
-                {renderDashboard && (
-                    <div className="w-full lg:w-[400px] xl:w-[450px] border-b lg:border-b-0 lg:border-r border-white/5 overflow-y-auto no-scrollbar scrollbar-ghost bg-black/20 backdrop-blur-md">
-                        {renderDashboard({ profile, encryptionKey })}
+            <div className="flex-1 flex flex-col lg:flex-row h-full min-w-0">
+                {RenderDashboard && (
+                    <div className="w-full lg:w-[400px] xl:w-[450px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 overflow-y-auto no-scrollbar scrollbar-ghost bg-black/20 backdrop-blur-md">
+                        <RenderDashboard profile={profile} encryptionKey={encryptionKey} />
                     </div>
                 )}
-                <div className="flex-1 flex flex-col h-[600px] lg:h-auto min-h-0">
-                    {renderContent({ profile, encryptionKey })}
+                <div className="flex-1 flex flex-col h-[600px] lg:h-auto min-h-0 min-w-0">
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} />
                 </div>
             </div>
         )}
@@ -140,8 +143,8 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         {workspaceType === 'lab' && (
             <div className="flex-1 flex flex-col lg:flex-row h-full">
                 <div className="flex-1 border-b lg:border-b-0 lg:border-r border-white/5 overflow-y-auto no-scrollbar scrollbar-ghost p-8 bg-black/10 backdrop-blur-sm">
-                    {renderDashboard ? (
-                      renderDashboard({ profile, encryptionKey })
+                    {RenderDashboard ? (
+                      <RenderDashboard profile={profile} encryptionKey={encryptionKey} />
                     ) : (
                       <EmptyState
                         title="Diagnostic Stage Pending"
@@ -151,7 +154,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     )}
                 </div>
                 <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col h-[600px] lg:h-auto min-h-0 bg-black/20 backdrop-blur-md">
-                    {renderContent({ profile, encryptionKey })}
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} />
                 </div>
             </div>
         )}
@@ -159,17 +162,17 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         {workspaceType === 'focus' && (
             <div className="flex-1 flex flex-col min-h-0 py-6 relative">
                 <div className="flex-1 flex flex-col min-h-0 bg-black/10 backdrop-blur-[1px] rounded-[40px] border border-white/5 shadow-2xl overflow-hidden">
-                    {renderContent({ profile, encryptionKey })}
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} />
                 </div>
                 <AnimatePresence>
-                    {renderDashboard && !sessionActive && (
+                    {RenderDashboard && !sessionActive && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 0.6, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
                             className="mt-12 hover:opacity-100 transition-opacity"
                         >
-                            {renderDashboard({ profile, encryptionKey })}
+                            <RenderDashboard profile={profile} encryptionKey={encryptionKey} />
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -179,10 +182,10 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         {workspaceType === 'terminal' && (
             <div className="flex-1 flex flex-col h-full bg-black/40 backdrop-blur-xl">
                 <div className="flex-1 border-b border-white/5 p-4 font-mono text-xs overflow-y-auto no-scrollbar scrollbar-ghost">
-                    {renderDashboard ? renderDashboard({ profile, encryptionKey }) : "FILE_SYSTEM_IDLE"}
+                    {RenderDashboard ? <RenderDashboard profile={profile} encryptionKey={encryptionKey} /> : "FILE_SYSTEM_IDLE"}
                 </div>
                 <div className="h-[40%] flex flex-col min-h-0">
-                    {renderContent({ profile, encryptionKey })}
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} />
                 </div>
             </div>
         )}

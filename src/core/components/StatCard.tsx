@@ -32,8 +32,8 @@ export function StatCard({
 
   return (
     <SurfaceCard className={cn('p-4 md:p-5 space-y-3', className)}>
-      <div className="flex items-center justify-between">
-        <span className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black italic">
+      <div className="flex items-center justify-between min-w-0">
+        <span className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black italic truncate">
           {isLocked ? 'SECURED' : label}
         </span>
         {!isLocked && delta && <span className={cn('text-[10px] font-semibold', accentClassName)}>{delta}</span>}
@@ -48,16 +48,16 @@ export function StatCard({
           <Skeleton className="h-2 w-16 rounded-full opacity-60" />
         </div>
       ) : (
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 min-w-0">
           <span
             className={cn(
-              'text-2xl font-black tracking-tight text-white tabular-nums',
+              'text-2xl font-black tracking-tight text-white tabular-nums truncate',
               isDerived ? 'text-white/50 blur-[0.3px]' : ''
             )}
           >
             {value}
           </span>
-          {suffix && <span className="text-[11px] text-white/40 mb-1">{suffix}</span>}
+          {suffix && <span className="text-[11px] text-white/40 mb-1 shrink-0">{suffix}</span>}
         </div>
       )}
     </SurfaceCard>

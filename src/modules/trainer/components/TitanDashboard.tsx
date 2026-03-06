@@ -1,14 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Zap, Heart, Wind, Thermometer, Info, Watch, Lock } from 'lucide-react';
+import { Activity, Zap, Heart, Wind, Thermometer, Info, Lock } from 'lucide-react';
 import { GlobalProjection } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { VitalsGrid } from '@/core/components/VitalsGrid';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
-import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
-import { ProgressRow } from '@/core/components/ProgressRow';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
 
 interface TitanDashboardProps {
@@ -91,59 +89,20 @@ export function TitanDashboard({ soul, isLocked = false, onCalibrate }: TitanDas
 
       <VitalsGrid metrics={metrics} isLocked={isLocked} onCalibrate={onCalibrate} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-4">
-        <SurfaceCard className="p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">Progress</span>
-            <span className="text-[9px] text-white/50 uppercase tracking-widest">Last 30 Days</span>
-          </div>
-          <div className="space-y-3">
-            <ProgressRow label="Strength Gain" value={null} isEmpty={!hasSoul} accentClassName="bg-orange-500" />
-            <ProgressRow label="Volume Capacity" value={null} isEmpty={!hasSoul} accentClassName="bg-amber-400" />
-            <ProgressRow label="Recovery Speed" value={null} isEmpty={!hasSoul} accentClassName="bg-emerald-500" />
-          </div>
-        </SurfaceCard>
+      {/* Progress and Biometric Devices are hidden until data is populated via action tags */}
 
-        <SurfaceCard className="p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">Biometric Devices</span>
-            <span className="text-[9px] text-white/50 uppercase tracking-widest">Sync</span>
-          </div>
-          <div className="space-y-2">
-            <EmptyState
-              size="sm"
-              title="No devices connected"
-              description="Connect a wearable to unlock real-time readiness."
-              icon={Watch}
-              className="bg-transparent border-white/10"
-            />
-          </div>
-        </SurfaceCard>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard
-          label="This Month"
-          value={null}
-          suffix="Workouts"
-          isEmpty={!hasSoul}
-          accentClassName="text-emerald-400"
-        />
-        <StatCard
-          label="Total Volume"
-          value={null}
-          suffix="kg"
-          isEmpty={!hasSoul}
-          accentClassName="text-orange-400"
-        />
-        <StatCard
-          label="Avg CNS Load"
-          value={null}
-          suffix="%"
-          isEmpty={!hasSoul}
-          accentClassName="text-cyan-400"
-        />
-      </div>
+      {/* Stat cards only render when cross-functional state has real values */}
+      {hasSoul && typeof soul?.crossFunctionalState.cnsFatigue === 'number' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StatCard
+            label="Avg CNS Load"
+            value={soul.crossFunctionalState.cnsFatigue * 10}
+            suffix="%"
+            isEmpty={false}
+            accentClassName="text-cyan-400"
+          />
+        </div>
+      )}
 
       <AnimatePresence>
         {isFemale && (
