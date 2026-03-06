@@ -69,9 +69,9 @@ export function buildCalibrationPrompt(moduleId: ModuleId): string {
 export function getMetricValue(nsv: NeuralStateVector | null | undefined, path: NSVMetricPath): unknown {
   if (!nsv) return undefined;
   const [root, leaf] = path.split('.') as [keyof NeuralStateVector, string];
-  const rootVal = (nsv as any)[root];
+  const rootVal = (nsv as unknown as Record<string, unknown>)[root];
   if (!rootVal || typeof rootVal !== 'object') return undefined;
-  return (rootVal as any)[leaf];
+  return (rootVal as Record<string, unknown>)[leaf];
 }
 
 export function getUncalibratedOwnedMetrics(nsv: NeuralStateVector | null | undefined, moduleId: ModuleId): NSVMetricPath[] {

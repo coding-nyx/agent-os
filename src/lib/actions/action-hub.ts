@@ -1,4 +1,4 @@
-import { GlobalProjection, NeuralStateVectorPatch, Message } from '../types';
+import { GlobalProjection, NeuralStateVectorPatch, SpineEventType, Message } from '../types';
 import { ConversationContext } from '@/llm-engine/types';
 import { StructuredResponse } from '@/llm-engine/engine/types';
 
@@ -6,13 +6,13 @@ export interface ActionContext {
   userId: string | undefined;
   isGuest: boolean;
   moduleId: string;
-  payload: any;
+  payload: Record<string, unknown>;
   encryptionKey?: CryptoKey | null;
   navigateTo?: (path: string) => void;
-  getLatestNSV?: () => any;
+  getLatestNSV?: () => Record<string, unknown>;
   pushAssistantMessage?: (content: string) => void;
   sendMessage?: (content: string, context: ConversationContext) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
-  emitSpineEvent: (type: string, payload: any) => void;
+  emitSpineEvent: (type: SpineEventType, payload: Record<string, unknown>) => void;
   updateGlobalSoul: (patch: NeuralStateVectorPatch) => Promise<void>;
   delegateToModule: (target: string, reason: string, content: string) => void;
 }

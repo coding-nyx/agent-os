@@ -24,7 +24,7 @@ ${profile.summary || 'No summary yet.'}
 
 NUTRITION:
 ${profile.nutrition?.dietNotes || 'Unknown'}
-Supplements: ${profile.nutrition?.supplements?.map((s: any) => s.name).join(', ') || 'None'}
+Supplements: ${profile.nutrition?.supplements?.map(s => s.name).join(', ') || 'None'}
 Macro Estimate: ${profile.nutrition?.macroEstimate ? `${profile.nutrition.macroEstimate.calories || 'n/a'} kcal, P:${profile.nutrition.macroEstimate.protein || 'n/a'} C:${profile.nutrition.macroEstimate.carbs || 'n/a'} F:${profile.nutrition.macroEstimate.fat || 'n/a'} (${profile.nutrition.macroEstimate.source})` : 'Unknown'}
 
 ACTIVITY:

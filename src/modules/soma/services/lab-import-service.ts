@@ -18,7 +18,10 @@ async function parsePdf(buffer: ArrayBuffer): Promise<string> {
     const page = await pdf.getPage(pageNum);
     const content = await page.getTextContent();
     const lines = content.items
-      .map((item: any) => (typeof item?.str === 'string' ? item.str : ''))
+      .map((item: unknown) => {
+        const entry = item as Record<string, unknown>;
+        return typeof entry?.str === 'string' ? entry.str : '';
+      })
       .filter((line: string) => line.trim().length > 0);
     chunks.push(lines.join(' '));
   }

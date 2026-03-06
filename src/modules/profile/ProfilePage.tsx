@@ -119,9 +119,10 @@ export default function ProfilePage() {
           if (!snap.exists()) {
             setModuleStates((prev) => ({ ...prev, [moduleId]: 'pending' }));
           } else {
-            const data = snap.data() as any;
+            const data = snap.data() as Record<string, unknown>;
+            const metadata = data?.metadata as Record<string, unknown> | undefined;
             const completed =
-              data?.metadata?.onboardingComplete === true ||
+              metadata?.onboardingComplete === true ||
               data?.onboardingComplete === true;
             setModuleStates((prev) => ({ ...prev, [moduleId]: completed ? 'complete' : 'pending' }));
           }

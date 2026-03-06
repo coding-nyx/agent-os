@@ -1,10 +1,11 @@
 import { ActionHub } from './action-hub';
 import { Spine } from '../spine/spine-event-bus';
-import { SpineEventType } from '../types';
+import { SpineEventType, NeuralStateVectorPatch } from '../types';
 import { CoreProfileService } from '../services/core-profile-service';
 import { NexusRoutingService } from '../services/nexus-routing-service';
 import { EpisodicMemoryService } from '../services/episodic-memory-service';
 import { SemanticMemoryService } from '../services/semantic-memory-service';
+import type { ModuleId } from '../module-manifest';
 
 function safeNumber(value: unknown): number | undefined {
   if (typeof value !== 'number' || Number.isNaN(value)) return undefined;
@@ -52,7 +53,7 @@ export function registerCoreActions() {
         const reason = typeof payload?.reason === 'string' ? payload.reason : 'delegation';
         delegateToModule(payload.moduleId, reason, content);
         if (navigateTo) {
-          const route = NexusRoutingService.getRoute(payload.moduleId as any);
+          const route = NexusRoutingService.getRoute(payload.moduleId as ModuleId);
           if (route) navigateTo(route);
         }
       }
@@ -75,10 +76,10 @@ export function registerCoreActions() {
       Spine.emit({
         type: eventType,
         source: moduleId,
-        domain: payload.domain || 'system',
-        data: payload.data || payload,
+        domain: (payload.domain as 'B' | 'E' | 'C' | 'R' | 'system') || 'system',
+        data: (payload.data as Record<string, unknown>) || payload,
         cascadeDepth: 0,
-        priority: payload.priority || 'info'
+        priority: (payload.priority as 'info' | 'alert' | 'critical') || 'info'
       });
     },
     
@@ -130,12 +131,12 @@ export function registerCoreActions() {
   ActionHub.registerMultiple('orchestrator', {
     update_global_identity: async ({ userId, payload }) => {
       if (!userId || !payload || typeof payload !== 'object') return;
-      const patch: Record<string, any> = {};
+      const patch: Record<string, unknown> = {};
       if (typeof payload.preferredName === 'string') patch.preferredName = payload.preferredName.trim();
       if (typeof payload.pronouns === 'string') patch.pronouns = payload.pronouns.trim();
       if (typeof payload.genderIdentity === 'string') patch.genderIdentity = payload.genderIdentity.trim();
       if (typeof payload.occupation === 'string') patch.occupation = payload.occupation.trim();
-      if (typeof payload.age === 'number' && Number.isFinite(payload.age)) patch.age = Math.round(payload.age);
+      if (typeof payload.age === 'number' && Number.isFinite(payload.age)) patch.age = Math.round(payload.age as number);
       if (payload.assignedSexAtBirth === 'female' || payload.assignedSexAtBirth === 'male') {
         patch.assignedSexAtBirth = payload.assignedSexAtBirth;
       }
@@ -148,7 +149,7 @@ export function registerCoreActions() {
 
     sync_personality_provision: async ({ userId, payload }) => {
       if (!userId || !payload || typeof payload !== 'object') return;
-      const patch: Record<string, any> = {};
+      const patch: Record<string, unknown> = {};
       if (typeof payload.orchestratorAlias === 'string') patch.orchestratorAlias = payload.orchestratorAlias.trim();
       if (payload.moduleAliases && typeof payload.moduleAliases === 'object') patch.moduleAliases = payload.moduleAliases;
       if (payload.moduleGenderProfiles && typeof payload.moduleGenderProfiles === 'object') {
@@ -229,21 +230,21 @@ export function registerCoreActions() {
   ActionHub.register('therapy', 'update_stress_load', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.stressLoad);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ emotional: { stressLoad: score } as any });
+      await updateGlobalSoul({ emotional: { stressLoad: score } });
     }
   });
 
   ActionHub.register('therapy', 'update_mood_trend', async ({ payload, updateGlobalSoul }) => {
     const trend = safeString(payload.trend ?? payload.moodTrend);
     if (trend !== undefined) {
-      await updateGlobalSoul({ emotional: { moodTrend: trend } as any });
+      await updateGlobalSoul({ emotional: { moodTrend: trend } });
     }
   });
 
   ActionHub.register('therapy', 'update_trauma_markers', async ({ payload, updateGlobalSoul }) => {
     const markers = safeStringArray(payload.markers ?? payload.traumaMarkers);
     if (markers !== undefined) {
-      await updateGlobalSoul({ emotional: { traumaMarkers: markers } as any, traumaMarkers: markers });
+      await updateGlobalSoul({ emotional: { traumaMarkers: markers }, traumaMarkers: markers });
     }
   });
 
@@ -252,7 +253,7 @@ export function registerCoreActions() {
     if (typeof score === 'number') {
       await updateGlobalSoul({
         cnsFatigue: score,
-        biological: { cnsFatigue: score } as any
+        biological: { cnsFatigue: score }
       });
     }
   });
@@ -262,7 +263,7 @@ export function registerCoreActions() {
     if (typeof score === 'number') {
       await updateGlobalSoul({
         sleepQuality: score,
-        biological: { sleepQuality: score } as any
+        biological: { sleepQuality: score }
       });
     }
   });
@@ -275,19 +276,23 @@ export function registerCoreActions() {
 
   ActionHub.register('soma', 'update_biological_state', async ({ payload, updateGlobalSoul }) => {
     if (payload && typeof payload === 'object') {
-      const patch: any = { biological: {} };
-      if (safeNumber(payload.cnsFatigue) !== undefined) {
-        patch.biological.cnsFatigue = payload.cnsFatigue;
-        patch.cnsFatigue = payload.cnsFatigue;
+      const patch: NeuralStateVectorPatch = { biological: {} };
+      const cnsFatigue = safeNumber(payload.cnsFatigue);
+      if (cnsFatigue !== undefined) {
+        patch.biological!.cnsFatigue = cnsFatigue;
+        patch.cnsFatigue = cnsFatigue;
       }
-      if (safeNumber(payload.sleepQuality) !== undefined) {
-        patch.biological.sleepQuality = payload.sleepQuality;
-        patch.sleepQuality = payload.sleepQuality;
+      const sleepQuality = safeNumber(payload.sleepQuality);
+      if (sleepQuality !== undefined) {
+        patch.biological!.sleepQuality = sleepQuality;
+        patch.sleepQuality = sleepQuality;
       }
-      if (safeNumber(payload.recoveryScore) !== undefined) patch.biological.recoveryScore = payload.recoveryScore;
-      if (safeString(payload.hormonalContext) !== undefined) {
-        patch.biological.hormonalContext = payload.hormonalContext;
-        patch.hormonalContext = payload.hormonalContext;
+      const recoveryScore = safeNumber(payload.recoveryScore);
+      if (recoveryScore !== undefined) patch.biological!.recoveryScore = recoveryScore;
+      const hormonalContext = safeString(payload.hormonalContext);
+      if (hormonalContext !== undefined) {
+        patch.biological!.hormonalContext = hormonalContext;
+        patch.hormonalContext = hormonalContext;
       }
       await updateGlobalSoul(patch);
     }
@@ -296,7 +301,7 @@ export function registerCoreActions() {
   ActionHub.register('soma', 'update_recovery_score', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.recoveryScore);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ biological: { recoveryScore: score } as any });
+      await updateGlobalSoul({ biological: { recoveryScore: score } });
     }
   });
 
@@ -305,7 +310,7 @@ export function registerCoreActions() {
     if (context !== undefined) {
       await updateGlobalSoul({
         hormonalContext: context,
-        biological: { hormonalContext: context } as any
+        biological: { hormonalContext: context }
       });
     }
   });
@@ -347,16 +352,19 @@ export function registerCoreActions() {
 
   ActionHub.register('therapy', 'update_emotional_state', async ({ payload, updateGlobalSoul }) => {
     if (!payload || typeof payload !== 'object') return;
-    const patch: any = { emotional: {} };
-    if (safeNumber(payload.emotionalResilience) !== undefined) {
-      patch.emotional.emotionalResilience = payload.emotionalResilience;
-      patch.emotionalResilience = payload.emotionalResilience;
+    const patch: NeuralStateVectorPatch = { emotional: {} };
+    const resilience = safeNumber(payload.emotionalResilience);
+    if (resilience !== undefined) {
+      patch.emotional!.emotionalResilience = resilience;
+      patch.emotionalResilience = resilience;
     }
-    if (safeNumber(payload.stressLoad) !== undefined) patch.emotional.stressLoad = payload.stressLoad;
-    if (safeString(payload.moodTrend) !== undefined) patch.emotional.moodTrend = payload.moodTrend;
+    const stressLoad = safeNumber(payload.stressLoad);
+    if (stressLoad !== undefined) patch.emotional!.stressLoad = stressLoad;
+    const moodTrend = safeString(payload.moodTrend);
+    if (moodTrend !== undefined) patch.emotional!.moodTrend = moodTrend;
     const traumaMarkers = safeStringArray(payload.traumaMarkers);
     if (traumaMarkers !== undefined) {
-      patch.emotional.traumaMarkers = traumaMarkers;
+      patch.emotional!.traumaMarkers = traumaMarkers;
       patch.traumaMarkers = traumaMarkers;
     }
     await updateGlobalSoul(patch);
@@ -399,43 +407,47 @@ export function registerCoreActions() {
 
   ActionHub.register('orchestrator', 'sync_vitals', async ({ payload, updateGlobalSoul }) => {
     if (!payload || typeof payload !== 'object') return;
-    const patch: any = { biological: {}, emotional: {}, cognitive: {}, resource: {} };
-    const setIfDefined = (key: string, value: any) => {
-      if (value === undefined) return;
-      if (key.startsWith('biological.')) patch.biological[key.split('.')[1]] = value;
-      if (key.startsWith('emotional.')) patch.emotional[key.split('.')[1]] = value;
-      if (key.startsWith('cognitive.')) patch.cognitive[key.split('.')[1]] = value;
-      if (key.startsWith('resource.')) patch.resource[key.split('.')[1]] = value;
+    const bio = payload.biological as Record<string, unknown> | undefined;
+    const emo = payload.emotional as Record<string, unknown> | undefined;
+    const cog = payload.cognitive as Record<string, unknown> | undefined;
+    const res = payload.resource as Record<string, unknown> | undefined;
+
+    const biological: Record<string, unknown> = {};
+    const emotional: Record<string, unknown> = {};
+    const cognitive: Record<string, unknown> = {};
+    const resource: Record<string, unknown> = {};
+
+    const setIfDefined = (target: Record<string, unknown>, field: string, value: unknown) => {
+      if (value !== undefined) target[field] = value;
     };
 
-    setIfDefined('biological.cnsFatigue', payload.biological?.cnsFatigue ?? payload.cnsFatigue);
-    setIfDefined('biological.sleepQuality', payload.biological?.sleepQuality ?? payload.sleepQuality);
-    setIfDefined('biological.recoveryScore', payload.biological?.recoveryScore);
-    setIfDefined('biological.hormonalContext', payload.biological?.hormonalContext ?? payload.hormonalContext);
+    setIfDefined(biological, 'cnsFatigue', bio?.cnsFatigue ?? payload.cnsFatigue);
+    setIfDefined(biological, 'sleepQuality', bio?.sleepQuality ?? payload.sleepQuality);
+    setIfDefined(biological, 'recoveryScore', bio?.recoveryScore);
+    setIfDefined(biological, 'hormonalContext', bio?.hormonalContext ?? payload.hormonalContext);
 
-    setIfDefined('emotional.emotionalResilience', payload.emotional?.emotionalResilience ?? payload.emotionalResilience);
-    setIfDefined('emotional.stressLoad', payload.emotional?.stressLoad);
-    setIfDefined('emotional.moodTrend', payload.emotional?.moodTrend);
-    const traumaMarkers = safeStringArray(payload.emotional?.traumaMarkers ?? payload.traumaMarkers);
+    setIfDefined(emotional, 'emotionalResilience', emo?.emotionalResilience ?? payload.emotionalResilience);
+    setIfDefined(emotional, 'stressLoad', emo?.stressLoad);
+    setIfDefined(emotional, 'moodTrend', emo?.moodTrend);
+    const traumaMarkers = safeStringArray(emo?.traumaMarkers ?? payload.traumaMarkers);
     if (traumaMarkers !== undefined) {
-      patch.emotional.traumaMarkers = traumaMarkers;
-      patch.traumaMarkers = traumaMarkers;
+      emotional.traumaMarkers = traumaMarkers;
     }
 
-    setIfDefined('cognitive.energyBudget', payload.cognitive?.energyBudget);
-    setIfDefined('cognitive.focusScore', payload.cognitive?.focusScore);
-    setIfDefined('cognitive.activeLoad', payload.cognitive?.activeLoad);
-    setIfDefined('cognitive.researchLoad', payload.cognitive?.researchLoad);
+    setIfDefined(cognitive, 'energyBudget', cog?.energyBudget);
+    setIfDefined(cognitive, 'focusScore', cog?.focusScore);
+    setIfDefined(cognitive, 'activeLoad', cog?.activeLoad);
+    setIfDefined(cognitive, 'researchLoad', cog?.researchLoad);
 
-    setIfDefined('resource.financialFriction', payload.resource?.financialFriction);
-    setIfDefined('resource.resonanceROI', payload.resource?.resonanceROI);
+    setIfDefined(resource, 'financialFriction', res?.financialFriction);
+    setIfDefined(resource, 'resonanceROI', res?.resonanceROI);
 
-    const compactedPatch = {
-      ...patch,
-      biological: Object.keys(patch.biological).length ? patch.biological : undefined,
-      emotional: Object.keys(patch.emotional).length ? patch.emotional : undefined,
-      cognitive: Object.keys(patch.cognitive).length ? patch.cognitive : undefined,
-      resource: Object.keys(patch.resource).length ? patch.resource : undefined
+    const compactedPatch: NeuralStateVectorPatch = {
+      ...(Object.keys(biological).length ? { biological: biological as NeuralStateVectorPatch['biological'] } : {}),
+      ...(Object.keys(emotional).length ? { emotional: emotional as NeuralStateVectorPatch['emotional'] } : {}),
+      ...(Object.keys(cognitive).length ? { cognitive: cognitive as NeuralStateVectorPatch['cognitive'] } : {}),
+      ...(Object.keys(resource).length ? { resource: resource as NeuralStateVectorPatch['resource'] } : {}),
+      ...(traumaMarkers !== undefined ? { traumaMarkers } : {})
     };
 
     await updateGlobalSoul(compactedPatch);

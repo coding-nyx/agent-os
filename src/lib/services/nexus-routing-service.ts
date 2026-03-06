@@ -1,8 +1,9 @@
 import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
 import { sanitizeJsonPayload } from '@/llm-engine/sanitize';
 import { StructuredResponse } from '@/llm-engine/engine/types';
+import type { Message } from '@/llm-engine/types';
 
-type SendMessageFn = (content: string, context: { systemPrompt: string; insights: any[]; summary: string; history: any[] }) => Promise<{ response: StructuredResponse }>;
+type SendMessageFn = (content: string, context: { systemPrompt: string; insights: string[]; summary: string; history: Message[] }) => Promise<{ response: StructuredResponse }>;
 
 const KEYWORD_ROUTES: Array<{ moduleId: ModuleId; keywords: string[] }> = [
   { moduleId: 'therapy', keywords: ['therapy', 'anxiety', 'trauma', 'emotion', 'feeling', 'relationship'] },

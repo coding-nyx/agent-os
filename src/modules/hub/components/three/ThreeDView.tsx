@@ -1,5 +1,6 @@
 import React, { useRef, useMemo, useEffect, useCallback, useState, Suspense } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import type { ThreeEvent } from '@react-three/fiber';
 import { useGLTF, Float, Environment, ContactShadows, OrbitControls, Html, useProgress } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -150,19 +151,19 @@ export const FloatingPod = React.memo(function FloatingPod({
     ? (isLocked ? 0.01 : 0.02) * opacityMult
     : (isLocked ? 0.02 : 0.04) * opacityMult;
 
-  const onPointerOver = useCallback((e: any) => {
+  const onPointerOver = useCallback((e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     setHovered(true);
     document.body.style.cursor = 'pointer';
   }, []);
 
-  const onPointerOut = useCallback((e: any) => {
+  const onPointerOut = useCallback((e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     setHovered(false);
     document.body.style.cursor = 'default';
   }, []);
 
-  const onClickHandler = useCallback((e: any) => {
+  const onClickHandler = useCallback((e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     setClicked(true);
     setTimeout(() => onClick(), 400);

@@ -98,7 +98,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       if (!db) return;
       const snap = await readDocOnce(doc(db, VAULT_COLLECTION, user.uid));
       setHasVault(snap.exists());
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error refreshing vault status:", e);
     } finally {
       setIsLoading(false);
@@ -119,7 +119,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         const snap = await readDocOnce(vaultRef);
         
         let salt: Uint8Array;
-        let canary: any = null;
+        let canary: { ciphertext: string; iv: string } | null = null;
 
         if (snap.exists()) {
             const data = snap.data();

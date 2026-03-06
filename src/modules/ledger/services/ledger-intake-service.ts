@@ -71,7 +71,7 @@ function parseNumber(value: unknown, fallback = 0): number {
   return fallback;
 }
 
-function parseArray<T>(value: unknown, mapper: (entry: any, index: number) => T): T[] {
+function parseArray<T>(value: unknown, mapper: (entry: Record<string, unknown>, index: number) => T): T[] {
   if (!Array.isArray(value)) return [];
   return value.map(mapper);
 }
@@ -81,7 +81,7 @@ function normalizeLedgerProfile(raw: unknown): LedgerIntakeProfile {
   const base = createEmptyLedgerProfile();
   if (!raw || typeof raw !== 'object') return base;
 
-  const candidate = raw as Record<string, any>;
+  const candidate = raw as Record<string, unknown>;
 
   const plans = parseArray(candidate.plans, (plan, index) => ({
     id: typeof plan?.id === 'string' ? plan.id : `plan_${index}_${Date.now()}`,
@@ -89,12 +89,12 @@ function normalizeLedgerProfile(raw: unknown): LedgerIntakeProfile {
     summary: typeof plan?.summary === 'string' ? plan.summary : '',
     monthlyTarget: parseNumber(plan?.monthlyTarget),
     allocation: {
-      essentials: parseNumber(plan?.allocation?.essentials),
-      growth: parseNumber(plan?.allocation?.growth),
-      buffer: parseNumber(plan?.allocation?.buffer)
+      essentials: parseNumber((plan?.allocation as Record<string, unknown>)?.essentials),
+      growth: parseNumber((plan?.allocation as Record<string, unknown>)?.growth),
+      buffer: parseNumber((plan?.allocation as Record<string, unknown>)?.buffer)
     },
-    tasks: Array.isArray(plan?.tasks) ? plan.tasks.filter((t: unknown) => typeof t === 'string') : [],
-    status: plan?.status === 'active' || plan?.status === 'archived' ? plan.status : 'draft',
+    tasks: Array.isArray(plan?.tasks) ? plan.tasks.filter((t: Record<string, unknown>) => typeof t === 'string') : [],
+    status: plan?.status === 'active' || plan?.status === 'archived' ? plan.status as 'active' | 'archived' : 'draft' as const,
     createdAt: typeof plan?.createdAt === 'string' ? plan.createdAt : now,
     updatedAt: typeof plan?.updatedAt === 'string' ? plan.updatedAt : now
   }));

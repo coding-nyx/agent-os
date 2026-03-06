@@ -12,6 +12,7 @@ import {
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
+import type { NeuralStateVectorPatch } from '@/lib/types';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 
@@ -210,8 +211,8 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
 
         const vitalsPatch = response.actions
           .filter((action) => action.type === 'sync_vitals')
-          .map((action) => action.payload as Partial<any>)
-          .reduce((acc, payload) => mergeNSVPatch(acc, payload), {} as any);
+          .map((action) => action.payload as Partial<NeuralStateVectorPatch>)
+          .reduce((acc, payload) => mergeNSVPatch(acc, payload), {} as NeuralStateVectorPatch);
 
         if (user?.uid && Object.keys(vitalsPatch).length > 0) {
           await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch((e) => {

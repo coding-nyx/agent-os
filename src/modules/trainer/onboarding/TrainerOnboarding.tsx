@@ -14,6 +14,7 @@ import { saveGuestTrainerProfile } from '../services/trainer-profile-service';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
+import type { NeuralStateVectorPatch, Routine } from '@/lib/types';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 import {
@@ -150,14 +151,14 @@ export function TrainerOnboarding({
       onboardingComplete: true,
       privacyLevel,
       trackingLevel: privacyLevel === 'complete' ? 'indepth' : 'standard',
-      nutrition: { supplements },
+      nutrition: { supplements: supplements.map(name => ({ name })) },
       activity: {
         ...(Number.isFinite(trainingDays) && trainingDays! > 0 ? { workoutsPerWeek: trainingDays } : {})
       },
       history: {
-        goals: fastGoal,
+        goals: [fastGoal],
         pastTraining: fastExperience,
-        ...(fastInjuries.trim() ? { injuries: fastInjuries.trim() } : {})
+        ...(fastInjuries.trim() ? { injuries: [fastInjuries.trim()] } : {})
       },
       summary: `Express onboarding: ${fastExperience} level, goal: ${fastGoal}.`,
       routines: [],
@@ -254,13 +255,13 @@ export function TrainerOnboarding({
 
         const routineUpdates = response.actions
           .filter(a => a.type === 'update_routine')
-          .map(a => a.payload as { routines?: any[] });
+          .map(a => a.payload as { routines?: Routine[] });
 
         if (routineUpdates.length > 0) {
           for (const parsed of routineUpdates) {
             if (parsed.routines) {
-              nextProfile.routines = normalizeRoutines(parsed.routines as any);
-              nextAccumulator.routines = nextProfile.routines as any[];
+              nextProfile.routines = normalizeRoutines(parsed.routines as Routine[]);
+              nextAccumulator.routines = nextProfile.routines;
             }
           }
         }
@@ -349,8 +350,8 @@ export function TrainerOnboarding({
 
         const vitalsPatch = response.actions
           .filter((action) => action.type === 'sync_vitals')
-          .map((action) => action.payload as Partial<any>)
-          .reduce((acc, payload) => mergeNSVPatch(acc, payload), {} as any);
+          .map((action) => action.payload as Partial<NeuralStateVectorPatch>)
+          .reduce((acc, payload) => mergeNSVPatch(acc, payload), {} as NeuralStateVectorPatch);
 
         if (user?.uid && Object.keys(vitalsPatch).length > 0) {
           await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch((e) => {

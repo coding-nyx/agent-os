@@ -15,6 +15,7 @@ import { GlobalProjectionService } from '@/lib/services/global-projection-servic
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
+import type { NeuralStateVectorPatch } from '@/lib/types';
 
 interface SomaOnboardingProps {
   initialProfile?: SomaProfile | null;
@@ -246,23 +247,24 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
 
         const rawVitalsPayload = response.actions
           .filter((action) => action.type === 'sync_vitals')
-          .map((action) => action.payload as any);
+          .map((action) => action.payload as Partial<NeuralStateVectorPatch>);
 
-        let vitalsPatch: Record<string, any> = {};
+        let vitalsPatch: NeuralStateVectorPatch = {};
         if (rawVitalsPayload.length > 0) {
            const payload = rawVitalsPayload[rawVitalsPayload.length - 1]; // Take the latest sync
            if (payload && payload.biological) {
               // Sanitize the payload to only include explicit keys, removing null/undefined that crash deep merge
-              vitalsPatch = { biological: {} };
-              if (typeof payload.biological.cnsFatigue === 'number') vitalsPatch.biological.cnsFatigue = payload.biological.cnsFatigue;
-              if (typeof payload.biological.sleepQuality === 'number') vitalsPatch.biological.sleepQuality = payload.biological.sleepQuality;
-              if (typeof payload.biological.recoveryScore === 'number') vitalsPatch.biological.recoveryScore = payload.biological.recoveryScore;
-              if (typeof payload.biological.hormonalContext === 'string') vitalsPatch.biological.hormonalContext = payload.biological.hormonalContext;
+              const bio: NonNullable<NeuralStateVectorPatch['biological']> = {};
+              if (typeof payload.biological.cnsFatigue === 'number') bio.cnsFatigue = payload.biological.cnsFatigue;
+              if (typeof payload.biological.sleepQuality === 'number') bio.sleepQuality = payload.biological.sleepQuality;
+              if (typeof payload.biological.recoveryScore === 'number') bio.recoveryScore = payload.biological.recoveryScore;
+              if (typeof payload.biological.hormonalContext === 'string') bio.hormonalContext = payload.biological.hormonalContext;
+              vitalsPatch = { biological: bio };
            }
         }
 
         if (user?.uid && Object.keys(vitalsPatch).length > 0 && Object.keys(vitalsPatch.biological || {}).length > 0) {
-          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch as any).catch((e) => {
+          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch((e) => {
             console.error('Soma onboarding sync_vitals failed:', e);
           });
         }

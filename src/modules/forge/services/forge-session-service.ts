@@ -33,7 +33,7 @@ function normalizeForgeProfile(raw: unknown): ForgeProfile {
   const now = new Date().toISOString();
   const base = createEmptyForgeProfile();
   if (!raw || typeof raw !== 'object') return base;
-  const candidate = raw as Record<string, any>;
+  const candidate = raw as Record<string, unknown>;
 
   return {
     ...base,
@@ -47,7 +47,7 @@ function normalizeForgeProfile(raw: unknown): ForgeProfile {
       ? candidate.commandQueue.filter((entry): entry is string => typeof entry === 'string')
       : [],
     sessions: Array.isArray(candidate.sessions)
-      ? candidate.sessions.map((entry: any, index: number) => ({
+      ? candidate.sessions.map((entry: Record<string, unknown>, index: number) => ({
           id: typeof entry?.id === 'string' ? entry.id : `forge_${index}`,
           command: typeof entry?.command === 'string' ? entry.command : 'command',
           result:

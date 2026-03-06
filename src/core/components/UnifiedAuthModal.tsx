@@ -131,8 +131,8 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                                     onClose();
                                     navigate('/orchestrator', { replace: true });
                                   })
-                                  .catch((e: any) => {
-                                    setError(e?.message || 'Purge failed');
+                                  .catch((e: unknown) => {
+                                    setError(e instanceof Error ? e.message : 'Purge failed');
                                   })
                                   .finally(() => {
                                     setLoading(false);
@@ -179,7 +179,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                         )}
 
                         {view === 'LOGIN' && (
-                          <motion.form key="login" onSubmit={async (e) => { e.preventDefault(); setLoading(true); setError(''); try { if (await login(email, password)) { /* Effect handles next */ } else { setError('Auth Failed'); } } catch (e: any) { setError(e.message || 'Auth Failed'); } setLoading(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                          <motion.form key="login" onSubmit={async (e) => { e.preventDefault(); setLoading(true); setError(''); try { if (await login(email, password)) { /* Effect handles next */ } else { setError('Auth Failed'); } } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Auth Failed'); } setLoading(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                             <NeuralInput icon={<Mail className="w-4 h-4" />} type="email" placeholder="Identity Email" value={email} onChange={(e) => setEmail(e.target.value)} />
                             <NeuralInput icon={<Lock className="w-4 h-4" />} type="password" placeholder="Account Password" value={password} onChange={(e) => setPassword(e.target.value)} />
                             {error && <p className="text-red-400 text-[10px] text-center font-bold uppercase">{error}</p>}
@@ -189,7 +189,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                         )}
 
                         {view === 'REGISTER' && (
-                          <motion.form key="register" onSubmit={async (e) => { e.preventDefault(); setLoading(true); setError(''); try { if (await register(email, password)) { setView('VERIFY'); } } catch (e: any) { if (e.message?.toLowerCase().includes('configuration-not-found')) { setError('Firebase Auth not enabled. Enable Email/Password in Console.'); } else { setError(e.message || 'Initialization Failed'); } } setLoading(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                          <motion.form key="register" onSubmit={async (e) => { e.preventDefault(); setLoading(true); setError(''); try { if (await register(email, password)) { setView('VERIFY'); } } catch (e: unknown) { if (e instanceof Error && e.message?.toLowerCase().includes('configuration-not-found')) { setError('Firebase Auth not enabled. Enable Email/Password in Console.'); } else { setError(e instanceof Error ? e.message : 'Initialization Failed'); } } setLoading(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                             <NeuralInput icon={<Mail className="w-4 h-4" />} type="email" placeholder="New Identity Email" value={email} onChange={(e) => setEmail(e.target.value)} />
                             <NeuralInput icon={<Lock className="w-4 h-4" />} type="password" placeholder="Account Password" value={password} onChange={(e) => setPassword(e.target.value)} />
                             {error && <p className="text-red-400 text-[10px] text-center font-bold uppercase">{error}</p>}

@@ -117,7 +117,9 @@ const THEMES = {
   }
 };
 
-const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading }: { content: string, theme: any, agentName: string, isLast?: boolean, isLoading?: boolean }) {
+type ThemeConfig = typeof THEMES[keyof typeof THEMES];
+
+const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean }) {
     const { publicText, internalText, isThinking } = stripInternalTags(content);
     const [showInternal, setShowInternal] = useState(false);
     const hasPublicContent = publicText.length > 0;

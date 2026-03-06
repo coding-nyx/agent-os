@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await authService.login(email, password);
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoading(false);
       throw error;
     }
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
           await authService.register(email, password);
           return true;
-      } catch (error: any) {
+      } catch (error: unknown) {
           setLoading(false);
           throw error;
       }

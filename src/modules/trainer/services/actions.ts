@@ -1,5 +1,5 @@
 import { ActionHub } from '@/lib/actions/action-hub';
-import { TrainerProfile } from '@/lib/types';
+import { TrainerProfile, Routine } from '@/lib/types';
 import { mergeTrainerProfile, normalizeRoutines } from '../utils';
 import { normalizeTrainerProfilePatch } from '../onboarding/intake-accumulator';
 import { loadTrainerProfile, saveTrainerProfile } from './trainer-profile-service';
@@ -36,7 +36,7 @@ export function registerTrainerActions() {
       if (!payload?.routines) return;
       const nextProfile: TrainerProfile = {
         ...current,
-        routines: normalizeRoutines(payload.routines as any),
+        routines: normalizeRoutines(payload.routines as Routine[]),
         updatedAt: new Date().toISOString()
       };
       await persistProfile(nextProfile, userId ?? null, encryptionKey ?? null);

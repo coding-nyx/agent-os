@@ -42,24 +42,24 @@ function normalizeGraph(raw: unknown): BeliefGraph {
   };
 
   if (!raw || typeof raw !== 'object') return base;
-  const candidate = raw as Record<string, any>;
+  const candidate = raw as Record<string, unknown>;
 
   return {
     ...base,
     nodes: Array.isArray(candidate.nodes)
-      ? candidate.nodes.map((node: any, index: number) => ({
+      ? candidate.nodes.map((_raw: Record<string, unknown>, index: number) => { const node = _raw as Record<string, unknown> | null; return ({
           id: typeof node?.id === 'string' ? node.id : `belief_${index}`,
           label: typeof node?.label === 'string' ? node.label : 'Belief',
-          valence: node?.valence === 'positive' || node?.valence === 'negative' ? node.valence : 'neutral',
-          intensity: typeof node?.intensity === 'number' ? Math.max(0, Math.min(10, node.intensity)) : 5
-        }))
+          valence: node?.valence === 'positive' || node?.valence === 'negative' ? node.valence as 'positive' | 'negative' : 'neutral',
+          intensity: typeof node?.intensity === 'number' ? Math.max(0, Math.min(10, node.intensity as number)) : 5
+        }); })
       : [],
     edges: Array.isArray(candidate.edges)
-      ? candidate.edges.map((edge: any, index: number) => ({
+      ? candidate.edges.map((_raw: Record<string, unknown>, index: number) => { const edge = _raw as Record<string, unknown> | null; return ({
           from: typeof edge?.from === 'string' ? edge.from : `belief_${index}`,
           to: typeof edge?.to === 'string' ? edge.to : `belief_${index}`,
-          relation: typeof edge?.relation === 'string' ? edge.relation : 'related'
-        }))
+          relation: typeof edge?.relation === 'string' ? edge.relation as string : 'related'
+        }); })
       : [],
     summary: typeof candidate.summary === 'string' ? candidate.summary : '',
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,

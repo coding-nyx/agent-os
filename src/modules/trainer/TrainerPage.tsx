@@ -21,6 +21,7 @@ import { useVault } from '@/lib/vault-context';
 import { useNavigate } from 'react-router-dom';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
+import type { ModuleId } from '@/lib/module-manifest';
 import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
 
 const TITAN_PROMPT = `You are TITAN, an elite AI Physical Performance Strategist. 
@@ -141,7 +142,7 @@ function TrainerContent({ profile, encryptionKey }: { profile: TrainerProfile | 
         sourceModuleId: 'trainer',
         createdAt: new Date().toISOString()
       });
-      const route = NexusRoutingService.getRoute(owner as any);
+      const route = NexusRoutingService.getRoute(owner as ModuleId);
       if (route) navigate(route);
     },
     [navigate]
@@ -168,7 +169,7 @@ function TrainerContent({ profile, encryptionKey }: { profile: TrainerProfile | 
         )}
         <TrainerRoutinePanel routines={profile?.routines || []} />
         <div className="flex-1">
-          <TitanDashboard soul={globalSoul as any} isLocked={isLocked} onCalibrate={handleCalibrate} />
+          <TitanDashboard soul={globalSoul} isLocked={isLocked} onCalibrate={handleCalibrate} />
         </div>
       </div>
 

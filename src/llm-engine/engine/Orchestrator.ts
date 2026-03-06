@@ -1,6 +1,6 @@
 
 // v1.0.1 - Nexus Engine Core
-import { Message } from '../types';
+import { Message, ToolCall } from '../types';
 import { ModelMetadata, ModelTier, EngineConfig, OrchestratorState, StructuredResponse, ParsedAction } from './types';
 import { sanitizeJsonPayload as nexusCleaner, stripInternalTags } from '../sanitize';
 import { isProviderControlOnly, stripProviderControlTokens } from '../sanitize';
@@ -10,7 +10,8 @@ export interface ToolDefinition {
   function: {
     name: string;
     description: string;
-    parameters: any;
+    // JSON Schema object — structure is inherently dynamic
+    parameters: Record<string, unknown>;
   };
 }
 
@@ -107,7 +108,7 @@ export class Orchestrator {
             for (const toolCall of message.tool_calls) {
                 const result = await this.handleToolCall(toolCall);
                 currentMessages.push({
-                    role: 'tool' as any,
+                    role: 'tool',
                     tool_call_id: toolCall.id,
                     content: JSON.stringify(result)
                 });
@@ -261,7 +262,7 @@ export class Orchestrator {
     }
   }
 
-  private async handleToolCall(toolCall: any): Promise<any> {
+  private async handleToolCall(toolCall: ToolCall): Promise<unknown> {
       const { name, arguments: argsString } = toolCall.function;
       try {
         const sanitizedArgs = nexusCleaner(argsString);
@@ -273,14 +274,14 @@ export class Orchestrator {
       return { status: 'error', message: 'Invalid tool arguments' };
   }
 
-  private async readStream(response: Response, onChunk: (chunk: string) => void): Promise<{ fullText: string, toolCalls: any[], streamInterrupted: boolean }> {
+  private async readStream(response: Response, onChunk: (chunk: string) => void): Promise<{ fullText: string, toolCalls: ToolCall[], streamInterrupted: boolean }> {
     const reader = response.body?.getReader();
     if (!reader) return { fullText: "", toolCalls: [], streamInterrupted: false };
     const decoder = new TextDecoder();
     let fullText = '';
     let publicTextAccumulated = '';
     let buffer = '';
-    let toolCalls: any[] = [];
+    let toolCalls: ToolCall[] = [];
     let streamInterrupted = false;
     
     try {
@@ -334,8 +335,8 @@ export class Orchestrator {
           }
         }
       }
-    } catch (e: any) {
-      if (e?.name === 'AbortError') {
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
         return { fullText: '', toolCalls: [], streamInterrupted: false };
       }
       // Non-abort errors: let finally run, then re-throw

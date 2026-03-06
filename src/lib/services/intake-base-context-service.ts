@@ -67,9 +67,8 @@ function fromTrainerProfile(profile: TrainerProfile | null | undefined): GlobalB
   if (!profile) return {};
   return compact({
     occupation:
-      normalizeOptionalString((profile.history as any)?.occupation) ||
-      normalizeOptionalString((profile.activity as any)?.occupation),
-    typicalSleepHours: normalizeOptionalNumber((profile.activity as any)?.sleepHours)
+      normalizeOptionalString(profile.activity?.occupation),
+    typicalSleepHours: normalizeOptionalNumber(profile.activity?.sleepHours)
   });
 }
 

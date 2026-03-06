@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
 interface TherapyIntakeProps {
-    onComplete: (data: any) => void;
+    onComplete: (data: Record<string, unknown>) => void;
 }
 
 type IntakeStep = 'GOALS' | 'TRIGGERS' | 'HISTORY' | 'SYNC';

@@ -26,6 +26,7 @@ import { useVault } from '@/lib/vault-context';
 import { useNavigate } from 'react-router-dom';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
+import type { ModuleId } from '@/lib/module-manifest';
 import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
 
 registerSomaActions();
@@ -86,7 +87,7 @@ export default function SomaPage() {
             sourceModuleId: 'soma',
             createdAt: new Date().toISOString()
           });
-          const route = NexusRoutingService.getRoute(owner as any);
+          const route = NexusRoutingService.getRoute(owner as ModuleId);
           if (route) navigate(route);
         };
         // We define handleLabImport here to pass it to the dashboard, but its actual implementation needs to use module AI.
@@ -152,7 +153,7 @@ export default function SomaPage() {
             const summariesRaw = Array.isArray(payload.labSummaries) ? payload.labSummaries : [];
 
             const biomarkers: BiomarkerRecord[] = biomarkersRaw
-              .map((entry: any, index: number) => ({
+              .map((entry: Record<string, unknown>, index: number) => ({
                 id: typeof entry?.id === 'string' ? entry.id : crypto.randomUUID(),
                 name: typeof entry?.name === 'string' ? entry.name : `biomarker_${index + 1}`,
                 value: parseNumericValue(entry?.value),
@@ -163,11 +164,11 @@ export default function SomaPage() {
               .slice(0, 200);
 
             const labSummaries = summariesRaw
-              .map((entry: any, index: number) => ({
+              .map((entry: Record<string, unknown>, index: number) => ({
                 id: typeof entry?.id === 'string' ? entry.id : crypto.randomUUID(),
                 panel: typeof entry?.panel === 'string' ? entry.panel : `Lab Panel ${index + 1}`,
-                findings: Array.isArray(entry?.findings) ? entry.findings.filter((item: unknown) => typeof item === 'string') : [],
-                flags: Array.isArray(entry?.flags) ? entry.flags.filter((item: unknown) => typeof item === 'string') : [],
+                findings: Array.isArray(entry?.findings) ? entry.findings.filter((item: Record<string, unknown>) => typeof item === 'string') : [],
+                flags: Array.isArray(entry?.flags) ? entry.flags.filter((item: Record<string, unknown>) => typeof item === 'string') : [],
                 recordedAt: typeof entry?.recordedAt === 'string' ? entry.recordedAt : new Date().toISOString()
               }))
               .slice(0, 50);

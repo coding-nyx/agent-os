@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
 import { useGlobalSoul } from '../global-soul-context';
 import { useAuth } from '../auth-context';
-import { Message, GuestQuota, NeuralStateVectorPatch } from '../types';
+import { Message, GuestQuota, NeuralStateVectorPatch, SpineEventType } from '../types';
 import { GuestQuotaService } from '../services/guest-quota-service';
 import { ModuleMemoryService } from '../services/module-memory-service';
 import { PersonaFactory } from '@/llm-engine/persona-factory';
@@ -11,6 +11,7 @@ import { Spine } from '../spine/spine-event-bus';
 import { NexusHandoffService } from '../services/nexus-handoff-service';
 import { ActionHub } from '../actions/action-hub';
 import { getUncalibratedOwnedMetrics } from '../services/nsv-ownership';
+import type { ModuleId } from '../module-manifest';
 import { useMemoryIntegration } from './useMemoryIntegration';
 import { useConsolidation } from './useConsolidation';
 import { useHandoffProcessor } from './useHandoffProcessor';
@@ -188,7 +189,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
   }, [flushActiveSession]);
 
   const handleSendMessage = useCallback(
-    async (content: string, onActionParsed?: (actionType: string, payload: any) => void) => {
+    async (content: string, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void) => {
       if (isProcessingRef.current) return;
       if (isGuest && quota.isHardLocked) return;
 
@@ -239,7 +240,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
         const { recalledSessionsSummary, recalledFactsSummary } = await retrieveMemoryContext(memoryQuery);
 
         const uncalibrated = globalSoul
-          ? getUncalibratedOwnedMetrics(globalSoul.crossFunctionalState, moduleId as any)
+          ? getUncalibratedOwnedMetrics(globalSoul.crossFunctionalState, moduleId as ModuleId)
           : [];
 
         const calibrationDirective = uncalibrated.length
@@ -294,12 +295,13 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
         const allowedActions = ActionHub.getAllowedActions(moduleId);
         const soulUpdates: NeuralStateVectorPatch = {};
 
-        const updateGlobalSoul = async (patch: any) => {
+        const updateGlobalSoul = async (patch: NeuralStateVectorPatch) => {
             for (const key of Object.keys(patch)) {
-                if (typeof patch[key] === 'object' && patch[key] !== null) {
-                    (soulUpdates as any)[key] = { ...((soulUpdates as any)[key] || {}), ...patch[key] };
+                const patchKey = key as keyof NeuralStateVectorPatch;
+                if (typeof patch[patchKey] === 'object' && patch[patchKey] !== null) {
+                    (soulUpdates as Record<string, unknown>)[key] = { ...((soulUpdates as Record<string, unknown>)[key] as Record<string, unknown> || {}), ...(patch[patchKey] as Record<string, unknown>) };
                 } else {
-                    (soulUpdates as any)[key] = patch[key];
+                    (soulUpdates as Record<string, unknown>)[key] = patch[patchKey];
                 }
             }
         };
@@ -348,8 +350,8 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
               setMessages((prev) => [...prev, { role: 'assistant', content } as Message].slice(-MAX_MESSAGES));
             },
             sendMessage,
-            emitSpineEvent: (type: string, data: any) => Spine.emit({
-              type: type as any,
+            emitSpineEvent: (type: SpineEventType, data: Record<string, unknown>) => Spine.emit({
+              type,
               source: moduleId,
               domain: 'system',
               data,
@@ -444,8 +446,8 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
             }).catch((e) => console.error('Failed to save trimmed session:', e));
           }
         }
-      } catch (e: any) {
-        if (e?.name === 'AbortError') return; // stream was aborted on unmount — silent
+      } catch (e: unknown) {
+        if (e instanceof DOMException && e.name === 'AbortError') return; // stream was aborted on unmount — silent
         console.error(`Module ${moduleId} AI link failure:`, e);
         if (mountedRef.current) {
           setError('The neural tunnel encountered an interference packet.');

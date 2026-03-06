@@ -16,13 +16,17 @@ export const generateAITrainerPrompt = (profile: TrainerProfile, latestLog?: Hea
       }
   }
 
-  const identityInfo = soul?.identity || {
+  const identityInfo = soul?.identity ?? {
       genderIdentity: profile.gender || 'unknown',
-      assignedAtBirth: profile.history?.bodyGoals || 'unknown', // Fallback or placeholder
+      assignedAtBirth: profile.history?.bodyGoals || 'unknown',
       preferredCoachingStyle: 'clinical'
   };
 
-  const soulInsights = soul?.insights?.map((i: any) => `[${i.date} - ${i.type}]: ${i.content}`).join('\n') || 'No physical landmarks yet.';
+  const insights = Array.isArray(soul?.insights) ? soul.insights : [];
+  const soulInsights = insights.map((i: unknown) => {
+    const entry = i as Record<string, unknown>;
+    return `[${entry?.date ?? ''} - ${entry?.type ?? ''}]: ${entry?.content ?? ''}`;
+  }).join('\n') || 'No physical landmarks yet.';
 
   const goals = profile.history?.goals || [];
   const traits = profile.traits || ["professional", "expert"];
@@ -68,7 +72,7 @@ ${soulInsights}
 
 BIOMETRICS:
 Weight: ${profile.activity?.baselineWeight || 'unknown'} kg | Height: ${profile.activity?.baselineHeight || 'unknown'} cm
-Supplements: ${supplements.length > 0 ? supplements.map((s: any) => s.name).join(', ') : 'None'}
+Supplements: ${supplements.length > 0 ? supplements.map(s => s.name).join(', ') : 'None'}
 
 TITAN ENGINE PROTOCOLS:
 1. INTERNAL MONOLOGUE: ALWAYS use <thought> blocks.

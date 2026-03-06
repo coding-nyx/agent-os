@@ -71,15 +71,16 @@ export function registerLedgerActions() {
       if (!profile) return;
 
       const now = new Date().toISOString();
+      const alloc = payload?.allocation as Record<string, unknown> | undefined;
       const plan: FinancialPlan = {
         id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
         title: typeof payload?.title === 'string' ? payload.title : 'Financial Plan',
         summary: typeof payload?.summary === 'string' ? payload.summary : '',
         monthlyTarget: parseNumber(payload?.monthlyTarget),
         allocation: {
-          essentials: parseNumber(payload?.allocation?.essentials, 60),
-          growth: parseNumber(payload?.allocation?.growth, 25),
-          buffer: parseNumber(payload?.allocation?.buffer, 15)
+          essentials: parseNumber(alloc?.essentials, 60),
+          growth: parseNumber(alloc?.growth, 25),
+          buffer: parseNumber(alloc?.buffer, 15)
         },
         tasks: Array.isArray(payload?.tasks) ? payload.tasks.filter((item: unknown) => typeof item === 'string') : [],
         status: 'active',

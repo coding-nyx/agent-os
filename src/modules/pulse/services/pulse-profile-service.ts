@@ -43,13 +43,13 @@ function normalizePulseProfile(raw: unknown): PulseProfile {
   const now = new Date().toISOString();
   const base = createEmptyPulseProfile();
   if (!raw || typeof raw !== 'object') return base;
-  const candidate = raw as Record<string, any>;
+  const candidate = raw as Record<string, unknown>;
 
   return {
     ...base,
     onboardingComplete: candidate.onboardingComplete === true,
     interests: Array.isArray(candidate.interests)
-      ? candidate.interests.map((entry: any, index: number) => ({
+      ? candidate.interests.map((entry: Record<string, unknown>, index: number) => ({
           id: typeof entry?.id === 'string' ? entry.id : `interest_${index}`,
           topic: typeof entry?.topic === 'string' ? entry.topic : `Topic ${index + 1}`,
           score: clampScore(entry?.score),
@@ -65,7 +65,7 @@ function normalizePulseProfile(raw: unknown): PulseProfile {
       : [],
     newsBriefs: Array.isArray(candidate.newsBriefs)
       ? candidate.newsBriefs
-          .map((entry: any) => ({
+          .map((entry: Record<string, unknown>) => ({
             topic: typeof entry?.topic === 'string' ? entry.topic : 'Topic',
             summary: typeof entry?.summary === 'string' ? entry.summary : '',
             source: typeof entry?.source === 'string' ? entry.source : undefined,

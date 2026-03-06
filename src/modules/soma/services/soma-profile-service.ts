@@ -56,7 +56,7 @@ function normalizeProfile(raw: unknown): SomaProfile {
   const now = new Date().toISOString();
   const base = createEmptySomaProfile();
   if (!raw || typeof raw !== 'object') return base;
-  const data = raw as Record<string, any>;
+  const data = raw as Record<string, unknown>;
 
   return {
     ...base,
@@ -65,26 +65,26 @@ function normalizeProfile(raw: unknown): SomaProfile {
     medications: toStringArray(data.medications),
     allergies: toStringArray(data.allergies),
     biomarkers: Array.isArray(data.biomarkers)
-      ? data.biomarkers.map((entry: any, index: number) => ({
+      ? data.biomarkers.map((_raw: Record<string, unknown>, index: number) => { const entry = _raw as Record<string, unknown> | null; return ({
           id: typeof entry?.id === 'string' ? entry.id : `bio_${index}`,
           name: typeof entry?.name === 'string' ? entry.name : 'biomarker',
           value: typeof entry?.value === 'number' || typeof entry?.value === 'string' ? entry.value : '',
           unit: typeof entry?.unit === 'string' ? entry.unit : undefined,
           source: typeof entry?.source === 'string' ? entry.source : undefined,
-          recordedAt: typeof entry?.recordedAt === 'string' ? entry.recordedAt : now
-        }))
+          recordedAt: typeof entry?.recordedAt === 'string' ? entry.recordedAt as string : now
+        }); })
       : [],
     labSummaries: Array.isArray(data.labSummaries)
-      ? data.labSummaries.map((entry: any, index: number) => ({
+      ? data.labSummaries.map((_raw: Record<string, unknown>, index: number) => { const entry = _raw as Record<string, unknown> | null; return ({
           id: typeof entry?.id === 'string' ? entry.id : `lab_${index}`,
           panel: typeof entry?.panel === 'string' ? entry.panel : 'lab panel',
           findings: toStringArray(entry?.findings),
           flags: toStringArray(entry?.flags),
-          recordedAt: typeof entry?.recordedAt === 'string' ? entry.recordedAt : now
-        }))
+          recordedAt: typeof entry?.recordedAt === 'string' ? entry.recordedAt as string : now
+        }); })
       : [],
     clearances: Array.isArray(data.clearances)
-      ? data.clearances.map((entry: any, index: number) => ({
+      ? data.clearances.map((_raw: Record<string, unknown>, index: number) => { const entry = _raw as Record<string, unknown> | null; return ({
           id: typeof entry?.id === 'string' ? entry.id : `clr_${index}`,
           activity: typeof entry?.activity === 'string' ? entry.activity : 'activity',
           status:
@@ -92,8 +92,8 @@ function normalizeProfile(raw: unknown): SomaProfile {
               ? entry.status
               : 'conditional',
           reason: typeof entry?.reason === 'string' ? entry.reason : 'No reason provided.',
-          issuedAt: typeof entry?.issuedAt === 'string' ? entry.issuedAt : now
-        }))
+          issuedAt: typeof entry?.issuedAt === 'string' ? entry.issuedAt as string : now
+        }); })
       : [],
     summary: typeof data.summary === 'string' ? data.summary : '',
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : now,

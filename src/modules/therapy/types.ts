@@ -65,7 +65,7 @@ export interface BaseContext {
   childhood?: string;
   trauma?: string;
   history?: string;
-  intakeTranscript?: any[];
+  intakeTranscript?: Message[];
 }
 
 // 2. Short-Term Memory (The "Moment" - Active Conversation)

@@ -53,7 +53,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       }
 
       setIsLoading(true);
-      const key = isUnlocked ? await getModuleKey(moduleId as any) : null;
+      const key = isUnlocked ? await getModuleKey(moduleId) : null;
       if (!mounted) return;
       setEncryptionKey(key);
 
@@ -91,7 +91,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
   useEffect(() => {
     if (!user || !isUnlocked || hasSyncedGuest || !syncGuestProfileRef.current) return;
     (async () => {
-      const key = await getModuleKey(moduleId as any);
+      const key = await getModuleKey(moduleId);
       if (!key) return;
       if (!syncGuestProfileRef.current) return;
       const synced = await syncGuestProfileRef.current({ userId: user.uid, encryptionKey: key });

@@ -213,15 +213,15 @@ export function registerScoutActions() {
       const next: ScoutProfile = {
         ...profile,
         researchFocus: Array.isArray(payload?.focus)
-          ? payload.focus.filter((item: unknown) => typeof item === 'string')
+          ? payload.focus.filter((item: Record<string, unknown>) => typeof item === 'string')
           : profile.researchFocus,
         summary: typeof payload?.summary === 'string' ? payload.summary : profile.summary,
         verificationQueue: Array.isArray(payload?.queue)
           ? payload.queue
-              .map((entry: any, index: number) => ({
+              .map((entry: Record<string, unknown>, index: number) => ({
                 id: typeof entry?.id === 'string' ? entry.id : `queue_${Date.now()}_${index}`,
                 claim: typeof entry?.claim === 'string' ? entry.claim : '',
-                status: entry?.status === 'verified' || entry?.status === 'contested' ? entry.status : 'pending',
+                status: entry?.status === 'verified' || entry?.status === 'contested' ? entry.status as 'verified' | 'contested' : 'pending' as const,
                 reason: typeof entry?.reason === 'string' ? entry.reason : undefined
               }))
               .slice(0, 200)

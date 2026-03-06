@@ -53,14 +53,14 @@ function normalizeScoutProfile(raw: unknown): ScoutProfile {
   const now = new Date().toISOString();
   const base = createEmptyScoutProfile();
   if (!raw || typeof raw !== 'object') return base;
-  const candidate = raw as Record<string, any>;
+  const candidate = raw as Record<string, unknown>;
 
   return {
     ...base,
     onboardingComplete: candidate.onboardingComplete === true,
     researchFocus: normalizeStringArray(candidate.researchFocus),
     knowledgeNodes: Array.isArray(candidate.knowledgeNodes)
-      ? candidate.knowledgeNodes.map((entry: any, index: number) => ({
+      ? candidate.knowledgeNodes.map((entry: Record<string, unknown>, index: number) => ({
           id: typeof entry?.id === 'string' ? entry.id : `node_${index}`,
           title: typeof entry?.title === 'string' ? entry.title : `Node ${index + 1}`,
           claim: typeof entry?.claim === 'string' ? entry.claim : '',
@@ -76,7 +76,7 @@ function normalizeScoutProfile(raw: unknown): ScoutProfile {
         }))
       : [],
     verificationQueue: Array.isArray(candidate.verificationQueue)
-      ? candidate.verificationQueue.map((entry: any, index: number) => ({
+      ? candidate.verificationQueue.map((entry: Record<string, unknown>, index: number) => ({
           id: typeof entry?.id === 'string' ? entry.id : `verify_${index}`,
           claim: typeof entry?.claim === 'string' ? entry.claim : '',
           status:

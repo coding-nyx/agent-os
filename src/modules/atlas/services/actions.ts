@@ -34,7 +34,7 @@ export function registerAtlasActions() {
       if (!profile) return;
 
       const wave: EnergyWavePoint[] = Array.isArray(payload?.wave)
-        ? payload.wave.map((point: any, index: number) => ({
+        ? payload.wave.map((point: Record<string, unknown>, index: number) => ({
             id: typeof point?.id === 'string' ? point.id : `wave_${Date.now()}_${index}`,
             slot: typeof point?.slot === 'string' ? point.slot : `Slot ${index + 1}`,
             energy: parseBoundedScore(point?.energy),
@@ -108,13 +108,13 @@ export function registerAtlasActions() {
       if (!profile) return;
 
       const tasks: AtlasTaskNode[] = Array.isArray(payload?.tasks)
-        ? payload.tasks.map((task: any, index: number) => ({
+        ? payload.tasks.map((task: Record<string, unknown>, index: number) => ({
             id: typeof task?.id === 'string' ? task.id : `task_${Date.now()}_${index}`,
             title: typeof task?.title === 'string' ? task.title : `Task ${index + 1}`,
             energyCost: parseBoundedScore(task?.energyCost, 4),
             status: task?.status === 'active' || task?.status === 'done' ? task.status : 'queued',
             dependencies: Array.isArray(task?.dependencies)
-              ? task.dependencies.filter((dep: unknown) => typeof dep === 'string')
+              ? task.dependencies.filter((dep: Record<string, unknown>) => typeof dep === 'string')
               : undefined
           }))
         : [];

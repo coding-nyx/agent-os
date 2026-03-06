@@ -186,7 +186,7 @@ export function SomaDashboard({
         accentClassName="text-emerald-400"
       />
 
-      <VitalsGrid metrics={metrics as any} columns={2} isLocked={isLocked} onCalibrate={onCalibrate} />
+      <VitalsGrid metrics={metrics} columns={2} isLocked={isLocked} onCalibrate={onCalibrate} />
 
       <section className="space-y-3">
         <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Clinical Flags</h4>

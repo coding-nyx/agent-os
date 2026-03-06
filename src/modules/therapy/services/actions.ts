@@ -7,23 +7,29 @@ import {
 
 let registered = false;
 
-function normalizeGraph(payload: any): BeliefGraph {
+function normalizeGraph(payload: Record<string, unknown>): BeliefGraph {
   const now = new Date().toISOString();
   const nodes = Array.isArray(payload?.nodes)
-    ? payload.nodes.map((node: any, index: number) => ({
-        id: typeof node?.id === 'string' ? node.id : `belief_${Date.now()}_${index}`,
-        label: typeof node?.label === 'string' ? node.label : `Belief ${index + 1}`,
-        valence: node?.valence === 'positive' || node?.valence === 'negative' ? node.valence : 'neutral',
-        intensity: typeof node?.intensity === 'number' ? Math.max(0, Math.min(10, node.intensity)) : 5
-      }))
+    ? (payload.nodes as unknown[]).map((_raw, index) => {
+        const node = _raw as Record<string, unknown> | null;
+        return {
+          id: typeof node?.id === 'string' ? node.id as string : `belief_${Date.now()}_${index}`,
+          label: typeof node?.label === 'string' ? node.label as string : `Belief ${index + 1}`,
+          valence: node?.valence === 'positive' || node?.valence === 'negative' ? node.valence as 'positive' | 'negative' : 'neutral' as const,
+          intensity: typeof node?.intensity === 'number' ? Math.max(0, Math.min(10, node.intensity as number)) : 5
+        };
+      })
     : [];
 
   const edges = Array.isArray(payload?.edges)
-    ? payload.edges.map((edge: any, index: number) => ({
-        from: typeof edge?.from === 'string' ? edge.from : `belief_${index}`,
-        to: typeof edge?.to === 'string' ? edge.to : `belief_${index}`,
-        relation: typeof edge?.relation === 'string' ? edge.relation : 'related'
-      }))
+    ? (payload.edges as unknown[]).map((_raw, index) => {
+        const edge = _raw as Record<string, unknown> | null;
+        return {
+          from: typeof edge?.from === 'string' ? edge.from as string : `belief_${index}`,
+          to: typeof edge?.to === 'string' ? edge.to as string : `belief_${index}`,
+          relation: typeof edge?.relation === 'string' ? edge.relation as string : 'related'
+        };
+      })
     : [];
 
   return {

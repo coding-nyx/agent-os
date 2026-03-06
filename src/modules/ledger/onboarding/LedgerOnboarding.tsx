@@ -13,6 +13,7 @@ import { GlobalProjectionService } from '@/lib/services/global-projection-servic
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
+import type { NeuralStateVectorPatch } from '@/lib/types';
 
 interface LedgerOnboardingProps {
   initialProfile?: LedgerIntakeProfile | null;
@@ -252,20 +253,21 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
 
         const rawVitalsPayload = response.actions
           .filter((action) => action.type === 'sync_vitals')
-          .map((action) => action.payload as any);
+          .map((action) => action.payload as Partial<NeuralStateVectorPatch>);
 
-        let vitalsPatch: Record<string, any> = {};
+        let vitalsPatch: NeuralStateVectorPatch = {};
         if (rawVitalsPayload.length > 0) {
            const payload = rawVitalsPayload[rawVitalsPayload.length - 1]; // Take the latest sync
            if (payload && payload.resource) {
-              vitalsPatch = { resource: {} };
-              if (typeof payload.resource.financialFriction === 'number') vitalsPatch.resource.financialFriction = payload.resource.financialFriction;
-              if (typeof payload.resource.resonanceROI === 'number') vitalsPatch.resource.resonanceROI = payload.resource.resonanceROI;
+              const res: NonNullable<NeuralStateVectorPatch['resource']> = {};
+              if (typeof payload.resource.financialFriction === 'number') res.financialFriction = payload.resource.financialFriction;
+              if (typeof payload.resource.resonanceROI === 'number') res.resonanceROI = payload.resource.resonanceROI;
+              vitalsPatch = { resource: res };
            }
         }
 
         if (user?.uid && Object.keys(vitalsPatch).length > 0 && Object.keys(vitalsPatch.resource || {}).length > 0) {
-          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch as any).catch((e) => {
+          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch((e) => {
             console.error('Ledger onboarding sync_vitals failed:', e);
           });
         }

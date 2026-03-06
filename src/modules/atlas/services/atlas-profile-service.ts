@@ -58,13 +58,13 @@ function normalizeAtlasProfile(raw: unknown): AtlasProfile {
   const base = createEmptyAtlasProfile();
   if (!raw || typeof raw !== 'object') return base;
 
-  const candidate = raw as Record<string, any>;
+  const candidate = raw as Record<string, unknown>;
 
   return {
     ...base,
     onboardingComplete: candidate.onboardingComplete === true,
     energyWave: Array.isArray(candidate.energyWave)
-      ? candidate.energyWave.map((entry: any, index: number) => ({
+      ? candidate.energyWave.map((entry: Record<string, unknown>, index: number) => ({
           id: typeof entry?.id === 'string' ? entry.id : `wave_${index}`,
           slot: typeof entry?.slot === 'string' ? entry.slot : `Slot ${index + 1}`,
           energy: Math.max(0, Math.min(10, parseNumber(entry?.energy, 5))),
@@ -73,7 +73,7 @@ function normalizeAtlasProfile(raw: unknown): AtlasProfile {
         }))
       : [],
     recoveryWindows: Array.isArray(candidate.recoveryWindows)
-      ? candidate.recoveryWindows.map((entry: any, index: number) => ({
+      ? candidate.recoveryWindows.map((entry: Record<string, unknown>, index: number) => ({
           id: typeof entry?.id === 'string' ? entry.id : `recovery_${index}`,
           title: typeof entry?.title === 'string' ? entry.title : 'Recovery Window',
           start: typeof entry?.start === 'string' ? entry.start : now,
@@ -86,13 +86,13 @@ function normalizeAtlasProfile(raw: unknown): AtlasProfile {
         }))
       : [],
     taskGraph: Array.isArray(candidate.taskGraph)
-      ? candidate.taskGraph.map((entry: any, index: number) => ({
+      ? candidate.taskGraph.map((entry: Record<string, unknown>, index: number) => ({
           id: typeof entry?.id === 'string' ? entry.id : `task_${index}`,
           title: typeof entry?.title === 'string' ? entry.title : 'Task',
           energyCost: Math.max(0, Math.min(10, parseNumber(entry?.energyCost, 4))),
           status: entry?.status === 'active' || entry?.status === 'done' ? entry.status : 'queued',
           dependencies: Array.isArray(entry?.dependencies)
-            ? entry.dependencies.filter((dep: unknown) => typeof dep === 'string')
+            ? entry.dependencies.filter((dep: Record<string, unknown>) => typeof dep === 'string')
             : undefined
         }))
       : [],

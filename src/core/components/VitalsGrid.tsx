@@ -7,7 +7,7 @@ interface Metric {
     label: string;
     value?: number | string | null;
     max?: number;
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     colorClass: string;
     metricKey?: string;
     lastUpdated?: string;

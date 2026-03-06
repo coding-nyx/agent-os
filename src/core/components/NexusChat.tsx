@@ -3,20 +3,21 @@ import { ChatInterface } from './ChatInterface';
 import { useAuth } from '@/lib/auth-context';
 import { UnifiedAuthModal, AuthMode } from './UnifiedAuthModal';
 import { stripInternalTags } from '@/llm-engine/sanitize';
+import type { Message, GuestQuota } from '@/lib/types';
 
 interface NexusChatProps {
     ai: {
-        messages: any[];
+        messages: Message[];
         isProcessing: boolean;
         streamingText: string;
         error: string | null;
-        quota: any;
-        handleSendMessage: (content: string, onActionParsed?: any) => Promise<void>;
+        quota: GuestQuota | null;
+        handleSendMessage: (content: string, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
     };
     agentName: string;
     themeColor: 'indigo' | 'orange' | 'cyan';
     placeholder?: string;
-    onActionParsed?: (type: string, payload: any) => void;
+    onActionParsed?: (type: string, payload: Record<string, unknown>) => void;
     headerActions?: ReactNode;
     authMode?: AuthMode;
     showInternalSignals?: boolean;
@@ -46,7 +47,7 @@ export function NexusChat({
 
     const transientStreamMessage = (() => {
         if (!hasVisibleStream) return null;
-        return { role: 'assistant', content: visibleStreamingText };
+        return { role: 'assistant' as const, content: visibleStreamingText };
     })();
 
     const renderedMessages = transientStreamMessage
@@ -65,7 +66,7 @@ export function NexusChat({
                 placeholder={placeholder}
                 error={error}
                 isGuestTrial={isGuest}
-                quota={quota}
+                quota={quota ?? undefined}
                 onQuotaExhausted={() => setShowAuth(true)}
                 showInternalSignals={showInternalSignals}
                 renderCustomActions={renderCustomActions}

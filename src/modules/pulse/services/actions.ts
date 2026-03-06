@@ -35,7 +35,7 @@ export function registerPulseActions() {
       const next: PulseProfile = { ...profile };
 
       if (Array.isArray(payload?.interests)) {
-        const mapped: InterestNode[] = payload.interests.map((entry: any, index: number) => ({
+        const mapped: InterestNode[] = payload.interests.map((entry: Record<string, unknown>, index: number) => ({
           id: typeof entry?.id === 'string' ? entry.id : `interest_${Date.now()}_${index}`,
           topic: typeof entry?.topic === 'string' ? entry.topic : `Topic ${index + 1}`,
           score: parseScore(entry?.score),
@@ -79,7 +79,7 @@ export function registerPulseActions() {
       if (Array.isArray(payload?.briefs)) {
         const next: PulseProfile = {
           ...profile,
-          trendBriefs: payload.briefs.filter((entry: unknown) => typeof entry === 'string').slice(0, 20)
+          trendBriefs: payload.briefs.filter((entry: Record<string, unknown>) => typeof entry === 'string').slice(0, 20)
         };
         await persistProfile(next, userId ?? null);
         return;

@@ -1,4 +1,4 @@
-import { Message, TrainerProfile } from '@/lib/types';
+import { Message, TrainerProfile, Routine } from '@/lib/types';
 
 export type RequiredSectionKey = 'nutrition' | 'activity' | 'history';
 
@@ -26,7 +26,7 @@ export type TrainerIntakeAccumulator = {
     bodyGoals?: string;
   };
   summary?: string;
-  routines: any[];
+  routines: Routine[];
   lastUpdatedAt: string;
 };
 
@@ -69,7 +69,7 @@ function coerceStringList(value: unknown): string[] {
     return value
       .map((entry) => {
         if (typeof entry === 'string') return entry;
-        if (entry && typeof entry === 'object' && typeof (entry as any).name === 'string') return (entry as any).name;
+        if (entry && typeof entry === 'object' && 'name' in entry && typeof (entry as Record<string, unknown>).name === 'string') return (entry as Record<string, unknown>).name as string;
         return '';
       })
       .map((entry) => entry.trim())
@@ -179,7 +179,7 @@ export function normalizeTrainerProfilePatch(input: Partial<TrainerProfile> | Re
   if (hasAnyKeys(activityPatch)) patch.activity = activityPatch;
   if (hasAnyKeys(historyPatch)) patch.history = historyPatch;
   if (typeof source.summary === 'string' && source.summary.trim()) patch.summary = source.summary.trim();
-  if (Array.isArray(source.routines)) patch.routines = source.routines as any;
+  if (Array.isArray(source.routines)) patch.routines = source.routines as Routine[];
 
   if (typeof source.onboardingComplete === 'boolean') patch.onboardingComplete = source.onboardingComplete;
   if (source.privacyLevel === 'basic' || source.privacyLevel === 'complete') patch.privacyLevel = source.privacyLevel;
@@ -197,7 +197,7 @@ export function createAccumulatorFromProfile(profile?: TrainerProfile | null): T
   const supplements = rawSupplements
     .map((entry) => {
       if (typeof entry === 'string') return entry;
-      if (entry && typeof entry === 'object' && typeof (entry as any).name === 'string') return (entry as any).name;
+      if (entry && typeof entry === 'object' && 'name' in entry && typeof (entry as Record<string, unknown>).name === 'string') return (entry as Record<string, unknown>).name as string;
       return '';
     })
     .map((value) => value.trim())
@@ -207,10 +207,10 @@ export function createAccumulatorFromProfile(profile?: TrainerProfile | null): T
     nutrition: {
       dietNotes: typeof nutrition.dietNotes === 'string' ? nutrition.dietNotes : undefined,
       supplements,
-      calories: pickPositiveNumber((nutrition as any)?.macroEstimate?.calories),
-      proteinGrams: pickPositiveNumber((nutrition as any)?.macroEstimate?.protein),
-      carbGrams: pickPositiveNumber((nutrition as any)?.macroEstimate?.carbs),
-      fatGrams: pickPositiveNumber((nutrition as any)?.macroEstimate?.fat),
+      calories: pickPositiveNumber((nutrition.macroEstimate as Record<string, unknown> | undefined)?.calories),
+      proteinGrams: pickPositiveNumber((nutrition.macroEstimate as Record<string, unknown> | undefined)?.protein),
+      carbGrams: pickPositiveNumber((nutrition.macroEstimate as Record<string, unknown> | undefined)?.carbs),
+      fatGrams: pickPositiveNumber((nutrition.macroEstimate as Record<string, unknown> | undefined)?.fat),
       mealsPerDay: pickPositiveNumber(nutrition.mealsPerDay)
     },
     activity: {
@@ -251,7 +251,7 @@ export function appendProfilePatch(
       const parsed = rawSupplements
         .map((entry) => {
           if (typeof entry === 'string') return entry;
-          if (entry && typeof entry === 'object' && typeof (entry as any).name === 'string') return (entry as any).name;
+          if (entry && typeof entry === 'object' && 'name' in entry && typeof (entry as Record<string, unknown>).name === 'string') return (entry as Record<string, unknown>).name as string;
           return '';
         })
         .filter(Boolean);
@@ -489,6 +489,6 @@ export function toProfilePatchFromAccumulator(acc: TrainerIntakeAccumulator): Pa
       ...(acc.history.bodyGoals ? { bodyGoals: acc.history.bodyGoals } : {})
     },
     ...(acc.summary ? { summary: acc.summary } : {}),
-    ...(acc.routines.length > 0 ? { routines: acc.routines as any } : {})
+    ...(acc.routines.length > 0 ? { routines: acc.routines } : {})
   };
 }
