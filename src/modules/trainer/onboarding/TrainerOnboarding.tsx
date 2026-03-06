@@ -14,7 +14,7 @@ import { saveGuestTrainerProfile } from '../services/trainer-profile-service';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
-import { NyxHandoffService } from '@/lib/services/nyx-handoff-service';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 import {
   RequiredSectionKey,
@@ -147,7 +147,7 @@ export function TrainerOnboarding({
       return "Onboarding initialized. Let's start with nutrition: what do you typically eat and which supplements do you take?";
     }
 
-    return `Nyx handoff received. I have your ${chunks.join(', ')}. Is that correct before we continue your training intake?`;
+    return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we continue your training intake?`;
   };
 
   const initialContext = useMemo(() => initialBaseContext ?? {}, [initialBaseContext]);
@@ -271,10 +271,12 @@ export function TrainerOnboarding({
         const missingSections = getMissingSectionsFromAccumulator(nextAccumulator);
         const hasRequiredData = missingSections.length === 0;
         
-        // Map to sync UI with conversational focus, otherwise progress forward based on data
-        let nextStep = explicitFocus !== undefined 
-          ? explicitFocus 
-          : Math.max(state.stepProgress, deriveStepFromMissingSections(missingSections));
+        // Step must never regress: take the max of the previous step, data-derived step,
+        // and the LLM's explicit focus so progress only moves forward.
+        const dataStep = deriveStepFromMissingSections(missingSections);
+        let nextStep = explicitFocus !== undefined
+          ? Math.max(state.stepProgress, dataStep, explicitFocus)
+          : Math.max(state.stepProgress, dataStep);
 
         const hasCompletionAction = response.actions.some((a) => a.type === 'complete_trainer_onboarding');
         const completionClaim = hasCompletionClaim(response.publicText);
@@ -298,6 +300,16 @@ export function TrainerOnboarding({
           assistantMessage = nextMissingQuestion(missingSections[0]);
         }
 
+        // Fallback: LLM responded with only action tags and no visible text
+        if (!assistantMessage && !response.publicText.trim()) {
+          const firstMissing = missingSections[0];
+          if (firstMissing) {
+            assistantMessage = nextMissingQuestion(firstMissing);
+          } else {
+            assistantMessage = 'Data captured. Preparing to finalize your profile.';
+          }
+        }
+
         nextProfile.updatedAt = new Date().toISOString();
 
         const vitalsPatch = response.actions
@@ -311,7 +323,7 @@ export function TrainerOnboarding({
           });
         }
         if (completed && Object.keys(vitalsPatch).length === 0) {
-          NyxHandoffService.store({
+          NexusHandoffService.store({
             moduleId: 'trainer',
             type: 'delegate',
             content: buildCalibrationPrompt('trainer'),

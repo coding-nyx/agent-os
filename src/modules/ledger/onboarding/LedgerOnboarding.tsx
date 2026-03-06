@@ -9,7 +9,7 @@ import { LedgerIntakeProfile, createEmptyLedgerProfile } from '../services/ledge
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
-import { NyxHandoffService } from '@/lib/services/nyx-handoff-service';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 
 interface LedgerOnboardingProps {
@@ -32,7 +32,7 @@ You collect a concise financial baseline before planning mode begins.
 
 OBJECTIVE:
 Collect in sequence:
-1. Confirm Nyx handoff context (name/pronouns/occupation/sleep) if present.
+1. Confirm Nexus handoff context (name/pronouns/occupation/sleep) if present.
 2. Monthly income and preferred currency.
 3. Fixed and variable expense categories.
 4. Debt obligations and savings goals.
@@ -96,7 +96,7 @@ function buildBasePrompt(context: GlobalBaseIntakeContext): string {
     return 'Ledger intake initialized. What is your monthly income and preferred currency?';
   }
 
-  return `Nyx handoff received. I have your ${chunks.join(', ')}. Is that correct before we start financial intake?`;
+  return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we start financial intake?`;
 }
 
 export function LedgerOnboarding({
@@ -134,7 +134,7 @@ export function LedgerOnboarding({
 - Typical Sleep Hours: ${
           typeof state.baseContext.typicalSleepHours === 'number' ? state.baseContext.typicalSleepHours : 'Unknown'
         }
-${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context briefly first.' : ''}
+${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or pronouns again if they are already known in this context. Move directly to the next missing piece of information.' : ''}
 `,
         memoryContext: [],
         summary: 'Ledger finance onboarding intake.',
@@ -204,18 +204,27 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
           nextStep = LEDGER_STEPS.length - 1;
         }
 
-        const vitalsPatch = response.actions
+        const rawVitalsPayload = response.actions
           .filter((action) => action.type === 'sync_vitals')
-          .map((action) => action.payload as Partial<any>)
-          .reduce((acc, payload) => mergeNSVPatch(acc, payload), {} as any);
+          .map((action) => action.payload as any);
 
-        if (user?.uid && Object.keys(vitalsPatch).length > 0) {
-          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch((e) => {
+        let vitalsPatch: Record<string, any> = {};
+        if (rawVitalsPayload.length > 0) {
+           const payload = rawVitalsPayload[rawVitalsPayload.length - 1]; // Take the latest sync
+           if (payload && payload.resource) {
+              vitalsPatch = { resource: {} };
+              if (typeof payload.resource.financialFriction === 'number') vitalsPatch.resource.financialFriction = payload.resource.financialFriction;
+              if (typeof payload.resource.resonanceROI === 'number') vitalsPatch.resource.resonanceROI = payload.resource.resonanceROI;
+           }
+        }
+
+        if (user?.uid && Object.keys(vitalsPatch).length > 0 && Object.keys(vitalsPatch.resource || {}).length > 0) {
+          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch as any).catch((e) => {
             console.error('Ledger onboarding sync_vitals failed:', e);
           });
         }
         if (completed && Object.keys(vitalsPatch).length === 0) {
-          NyxHandoffService.store({
+          NexusHandoffService.store({
             moduleId: 'ledger',
             type: 'delegate',
             content: buildCalibrationPrompt('ledger'),

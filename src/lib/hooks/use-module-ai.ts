@@ -11,8 +11,8 @@ import { GlobalProjectionService } from '../services/global-projection-service';
 import { EpisodicMemoryService } from '../services/episodic-memory-service';
 import { SemanticMemoryService } from '../services/semantic-memory-service';
 import { Spine } from '../spine/spine-event-bus';
-import { NyxRoutingService } from '../services/nyx-routing-service';
-import { NyxHandoffService } from '../services/nyx-handoff-service';
+import { NexusRoutingService } from '../services/nexus-routing-service';
+import { NexusHandoffService } from '../services/nexus-handoff-service';
 import { ActionHub } from '../actions/action-hub';
 import { getUncalibratedOwnedMetrics } from '../services/nsv-ownership';
 
@@ -88,6 +88,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
   const pendingQueryRef = useRef<{ origin: string; issuedAt: string } | null>(null);
   const skipRoutingRef = useRef(false);
   const isProcessingRef = useRef(false);
+  const currentAssistantMessageBodyRef = useRef('');
 
   useEffect(() => {
     Spine.setUser(user?.uid ?? null);
@@ -144,6 +145,17 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
         setIsHydrating(false);
       });
     } else {
+      // Guest/impromptu: try restoring from sessionStorage
+      try {
+        const cached = sessionStorage.getItem(`agnes_session_${moduleId}`);
+        if (cached && mounted) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.history?.length > 0) {
+            setMessages(parsed.history);
+            sessionStartRef.current = parsed.startTime || new Date().toISOString();
+          }
+        }
+      } catch { /* ignore parse errors */ }
       setIsHydrating(false);
     }
 
@@ -154,24 +166,64 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
   }, [user, isGuest, moduleId]);
 
 
-  useEffect(() => {
-    if (isHydrating || !user || isGuest || messages.length === 0) return;
-    const timer = setTimeout(() => {
+  // Save active session to Firestore with debounce; guest sessions to sessionStorage
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
+  const flushActiveSession = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    let currentMessages = [...messagesRef.current];
+    
+    // If we are currently processing a stream, include the partial content
+    // so it's not lost on page reload/unmount.
+    if (isProcessingRef.current && currentAssistantMessageBodyRef.current.trim()) {
+        currentMessages = [...currentMessages, { role: 'assistant', content: currentAssistantMessageBodyRef.current } as Message];
+    }
+
+    if (currentMessages.length === 0) return;
+
+    if (user && !isGuest) {
       const lastMessageAt = new Date().toISOString();
-      // Pre-set signature so subscription ignores its own echo
-      lastRemoteSignatureRef.current = `${lastMessageAt}:${messages.length}`;
+      lastRemoteSignatureRef.current = `${lastMessageAt}:${currentMessages.length}`;
       ModuleMemoryService.saveActiveSession(user.uid, {
         sessionId: 'current',
         moduleId,
         startTime: sessionStartRef.current,
         lastMessageAt,
-        history: messages,
+        history: currentMessages,
         tokenCount: 0,
         isGuestTrial: false
       }).catch((e) => console.error('Failed to save active session:', e));
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [isHydrating, isGuest, messages, moduleId, user]);
+    }
+
+    // Always persist to sessionStorage as a lightweight fallback
+    try {
+      sessionStorage.setItem(`agnes_session_${moduleId}`, JSON.stringify({
+        history: currentMessages,
+        startTime: sessionStartRef.current,
+        savedAt: new Date().toISOString()
+      }));
+    } catch { /* sessionStorage full or unavailable */ }
+  }, [user, isGuest, moduleId]);
+
+  useEffect(() => {
+    if (isHydrating || messages.length === 0) return;
+    saveTimerRef.current = setTimeout(flushActiveSession, 1500);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [isHydrating, messages, flushActiveSession]);
+
+  // Flush pending saves on tab close
+  useEffect(() => {
+    const handleBeforeUnload = () => flushActiveSession();
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [flushActiveSession]);
 
   useEffect(() => {
     return () => {
@@ -187,6 +239,14 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     async (content: string, onActionParsed?: (actionType: string, payload: any) => void) => {
       if (isProcessingRef.current) return;
       if (isGuest && quota.isHardLocked) return;
+
+      // Show user message and processing state IMMEDIATELY
+      const userMsg: Message = { role: 'user', content };
+      setMessages((prev) => [...prev, userMsg].slice(-MAX_MESSAGES));
+      setIsProcessing(true);
+      isProcessingRef.current = true;
+      setError(null);
+      setStreamingText('');
 
       if (moduleId !== 'orchestrator' && !skipRoutingRef.current) {
         try {
@@ -207,7 +267,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
             (routeHint.confidence || 0) >= 0.62;
 
           if (shouldDelegate) {
-            NyxHandoffService.store({
+            NexusHandoffService.store({
               moduleId: routeHint.target,
               type: 'delegate',
               content,
@@ -232,16 +292,17 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
 
             setMessages((prev) => [
               ...prev,
-              { role: 'user', content },
               {
                 role: 'assistant',
                 content: `Routing this request to ${routeHint.target}. Open the module to continue.`
               }
             ]);
+            isProcessingRef.current = false;
+            setIsProcessing(false);
             return;
           }
         } catch (e) {
-          console.warn('Nyx routing gate failed, continuing in current module.', e);
+          console.warn('Nexus routing gate failed, continuing in current module.', e);
         }
       }
       if (skipRoutingRef.current) {
@@ -258,13 +319,6 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
           priority: 'info'
         });
       }
-
-      const userMsg: Message = { role: 'user', content };
-      setMessages((prev) => [...prev, userMsg].slice(-MAX_MESSAGES));
-      setIsProcessing(true);
-      isProcessingRef.current = true;
-      setError(null);
-      setStreamingText('');
 
       if (isGuest) {
         setQuota(GuestQuotaService.incrementTurn());
@@ -333,7 +387,11 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
             history: messages
           }),
           (chunk) => {
-            setStreamingText((prev) => prev + chunk);
+            setStreamingText((prev) => {
+              const next = prev + chunk;
+              currentAssistantMessageBodyRef.current = next;
+              return next;
+            });
           }
         );
 
@@ -351,7 +409,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
         };
 
         const delegateToModule = (target: string, reason: string, delegationContent: string) => {
-             NyxHandoffService.store({
+             NexusHandoffService.store({
                 moduleId: target,
                 type: 'delegate',
                 content: delegationContent,
@@ -385,10 +443,16 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
             payload,
             encryptionKey,
             navigateTo,
+            getLatestNSV: () => {
+              // Merge current global soul with any local soulUpdates from this turn
+              const baseNSV = globalSoul?.crossFunctionalState || {};
+              return { ...baseNSV, ...soulUpdates };
+            },
             pushAssistantMessage: (content: string) => {
               if (!content.trim()) return;
               setMessages((prev) => [...prev, { role: 'assistant', content } as Message].slice(-MAX_MESSAGES));
             },
+            sendMessage,
             emitSpineEvent: (type: string, data: any) => Spine.emit({ 
               type: type as any, 
               source: moduleId, 
@@ -422,18 +486,52 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
         let nextHistory: Message[] | null = null;
         if (visibleAssistantText) {
           setMessages((prev) => {
-            nextHistory = [...prev, { role: 'assistant', content: response.publicText } as Message].slice(-MAX_MESSAGES);
-            return nextHistory;
+            const updated = [...prev, { role: 'assistant', content: response.publicText } as Message].slice(-MAX_MESSAGES);
+            // Update ref immediately so beforeunload/flush captures this
+            messagesRef.current = updated;
+            nextHistory = updated;
+            return updated;
           });
         }
 
         setStreamingText('');
+        currentAssistantMessageBodyRef.current = '';
+
+        // Flush immediately after completion so the assistant message is persisted
+        // even if the user reloads before the 1500ms debounce fires
+        const historyToSave = nextHistory as Message[] | null;
+        if (historyToSave && historyToSave.length > 0) {
+          if (saveTimerRef.current) {
+            clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = null;
+          }
+          if (user && !isGuest) {
+            const lastMessageAt = new Date().toISOString();
+            lastRemoteSignatureRef.current = `${lastMessageAt}:${historyToSave.length}`;
+            ModuleMemoryService.saveActiveSession(user.uid, {
+              sessionId: 'current',
+              moduleId,
+              startTime: sessionStartRef.current,
+              lastMessageAt,
+              history: historyToSave,
+              tokenCount: 0,
+              isGuestTrial: false
+            }).catch((e) => console.error('Failed to save completed message:', e));
+          }
+          try {
+            sessionStorage.setItem(`agnes_session_${moduleId}`, JSON.stringify({
+              history: historyToSave,
+              startTime: sessionStartRef.current,
+              savedAt: new Date().toISOString()
+            }));
+          } catch { /* sessionStorage full or unavailable */ }
+        }
 
         if (visibleAssistantText && pendingQueryRef.current) {
           const queryContext = pendingQueryRef.current;
           pendingQueryRef.current = null;
           const origin = queryContext.origin || 'orchestrator';
-          NyxHandoffService.store({
+          NexusHandoffService.store({
             moduleId: origin,
             type: 'query_result',
             content: trimToCharLimit(visibleAssistantText, 1200),
@@ -497,7 +595,23 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
                 })
               );
 
-              setMessages((prev) => prev.slice(-CONSOLIDATION_KEEP_COUNT));
+              // Trim only after snapshot is confirmed saved
+              setMessages((prev) => {
+                const trimmed = prev.slice(-CONSOLIDATION_KEEP_COUNT);
+                // Immediately persist trimmed state to prevent stale active session
+                const lastMessageAt = new Date().toISOString();
+                lastRemoteSignatureRef.current = `${lastMessageAt}:${trimmed.length}`;
+                ModuleMemoryService.saveActiveSession(user.uid, {
+                  sessionId: 'current',
+                  moduleId,
+                  startTime: sessionStartRef.current,
+                  lastMessageAt,
+                  history: trimmed,
+                  tokenCount: 0,
+                  isGuestTrial: false
+                }).catch((e) => console.error('Failed to save trimmed session:', e));
+                return trimmed;
+              });
             } catch (e) {
               console.error('Failed to consolidate session:', e);
             } finally {
@@ -533,7 +647,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     if (handoffProcessedRef.current) return;
     if (isHydrating || messages.length > 0) return;
 
-    const handoff = NyxHandoffService.consume(moduleId);
+    const handoff = NexusHandoffService.consume(moduleId);
     if (!handoff) {
       handoffProcessedRef.current = true;
       return;
@@ -541,8 +655,8 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
 
     handoffProcessedRef.current = true;
     const handoffNote = handoff.content
-      ? `Nyx handoff: ${handoff.content}`
-      : 'Nyx handoff received.';
+      ? `Nexus handoff: ${handoff.content}`
+      : 'Nexus handoff received.';
 
     if (handoff.type === 'delegate') {
       setMessages((prev) => (prev.length === 0 ? [{ role: 'assistant', content: handoffNote }] : prev));
@@ -569,7 +683,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
 
     if (handoff.type === 'query_result' && handoff.content) {
       const sourceLabel = handoff.sourceModuleId ? ` from ${handoff.sourceModuleId}` : '';
-      const note = `Nyx query result${sourceLabel}: ${handoff.content}`;
+      const note = `Nexus query result${sourceLabel}: ${handoff.content}`;
       setMessages((prev) => (prev.length === 0 ? [{ role: 'assistant', content: note }] : [...prev, { role: 'assistant', content: note }]));
     }
   }, [isHydrating, messages.length, moduleId, handleSendMessage]);
@@ -577,6 +691,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
   const clearSession = useCallback(async () => {
     setMessages([]);
     sessionStartRef.current = new Date().toISOString();
+    try { sessionStorage.removeItem(`agnes_session_${moduleId}`); } catch { /* ignore */ }
     if (user && !isGuest) {
       await ModuleMemoryService.clearActiveSession(user.uid, moduleId);
       Spine.emit({

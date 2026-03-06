@@ -10,7 +10,7 @@ import { THERAPY_ONBOARDING_PERSONA } from '../personas';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
-import { NyxHandoffService } from '@/lib/services/nyx-handoff-service';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 
 interface TherapyOnboardingProps {
@@ -215,6 +215,8 @@ export function TherapyOnboarding({ initialBaseContext, onComplete }: TherapyOnb
 [PREFILLED_LIFESTYLE]
 - Occupation: ${initialContextState.occupation || 'Unknown'}
 - Typical Sleep Hours: ${initialContextState.typicalSleepHours || 'Unknown'}
+
+${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initialContextState.identity).pronouns) ? '- IMPORTANT: Do NOT ask for name or pronouns again if they are already known in this context. Move directly to the next missing piece of information.' : ''}
 `
   });
 
@@ -239,7 +241,7 @@ export function TherapyOnboarding({ initialBaseContext, onComplete }: TherapyOnb
 
             // Handle calibration request on completion
             if (result.completed && Object.keys(vitalsPatch).length === 0) {
-                NyxHandoffService.store({
+                NexusHandoffService.store({
                     moduleId: 'therapy',
                     type: 'delegate',
                     content: buildCalibrationPrompt('therapy'),

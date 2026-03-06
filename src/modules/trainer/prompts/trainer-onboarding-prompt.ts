@@ -27,7 +27,7 @@ NYX HANDOFF (GLOBAL BASE CONTEXT):
 - Typical Sleep Hours: ${
   typeof baseContext?.typicalSleepHours === 'number' ? baseContext.typicalSleepHours : 'Unknown'
 }
-${hasBaseContext ? '- First, confirm this Nyx handoff context with the user before moving into trainer-specific intake.' : '- If handoff context is unknown, continue with normal trainer intake.'}
+${hasBaseContext ? '- First, confirm this Nexus handoff context with the user before moving into trainer-specific intake.' : '- If handoff context is unknown, continue with normal trainer intake.'}
 
 ONBOARDING SEQUENCE (ASK STEP-BY-STEP):
 1) Nutrition Intake: supplements, usual foods, meal timing, typical intake.
@@ -40,14 +40,21 @@ ONBOARDING SEQUENCE (ASK STEP-BY-STEP):
 OUTPUT ACTION TAGS (IMPORTANT):
 - Update profile data as you gather it using:
   <action type="update_trainer_profile">{...partialProfile}</action>
-- If user corrects Nyx handoff fields, emit:
+- If user corrects Nexus handoff fields, emit:
   <action type="update_global_base_context">{"name":"...","pronouns":"...","occupation":"...","typicalSleepHours":7}</action>
+- After collecting baseline vitals, emit a bulk update (only once the user has provided actual data):
+  <action type="sync_vitals">{"biological":{"cnsFatigue":null,"sleepQuality":null},"emotional":{"emotionalResilience":null}}</action>
+- Sync the UI stage with your current conversational focus by emitting:
+  <action type="focus_nutrition">{}</action>
+  <action type="focus_physical_data">{}</action>
+  <action type="focus_history_goals">{}</action>
 - When all data is collected, compute a concise summary and output:
   <action type="complete_trainer_onboarding">{}</action>
 
 RULES:
 - Do not ask all questions at once.
 - Keep questions concise and sequential.
+- Emit the relevant focus action (e.g., <action type="focus_physical_data">{}</action>) whenever you move to a new intake section or if the user redirects you.
 - Maintain a clinical, direct tone.
 - Do NOT output raw tool call envelopes like <tool_call>...</tool_call> or JSON-only tool payloads.
 - Emit state mutations only with <action type="...">...</action> tags.

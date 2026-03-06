@@ -1,5 +1,5 @@
-import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import React, { lazy, Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './core/components/ThemeProvider';
 import { AuthProvider, useAuth } from './lib/auth-context';
 import { VaultProvider } from './lib/vault-context';
@@ -8,44 +8,45 @@ import { AIProvider, useAI } from './llm-engine/ai-context';
 import { BootLoader } from './core/components/BootLoader';
 import { AppErrorBoundary } from './core/components/AppErrorBoundary';
 import { ProtectedRoute } from './core/components/ProtectedRoute';
-import { Sparkles } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { NexusOverlay } from './core/components/NexusOverlay';
+import { NeuralDraftPanel } from './core/components/NeuralDraftPanel';
+import { SpineOverlay } from './core/components/SpineOverlay';
+import { NexusRouteBanner } from './core/components/NexusRouteBanner';
+import { Spine } from './lib/spine/spine-event-bus';
+import { CORE_CASCADE_RULES } from './lib/spine/cascade-rules';
+import { useEffect } from 'react';
 
-// Module Pages
-import LandingPage from './modules/landing/LandingPage';
-import HubPage from './modules/hub/HubPage';
-import TherapyPage from './modules/therapy/TherapyPage';
-import TrainerPage from './modules/trainer/TrainerPage';
-import LedgerPage from './modules/ledger/LedgerPage';
-import OrchestratorPage from './modules/orchestrator/OrchestratorPage';
+// Route-level lazy loading for chunk splitting.
+const LandingPage = lazy(() => import('./modules/landing/LandingPage'));
+const HubPage = lazy(() => import('./modules/hub/HubPage'));
+const TherapyPage = lazy(() => import('./modules/therapy/TherapyPage'));
+const TrainerPage = lazy(() => import('./modules/trainer/TrainerPage'));
+const LedgerPage = lazy(() => import('./modules/ledger/LedgerPage'));
+const OrchestratorPage = lazy(() => import('./modules/orchestrator/OrchestratorPage'));
+const SomaPage = lazy(() => import('./modules/soma/SomaPage'));
+const AtlasPage = lazy(() => import('./modules/atlas/AtlasPage'));
+const ScoutPage = lazy(() => import('./modules/scout/ScoutPage'));
+const ForgePage = lazy(() => import('./modules/forge/ForgePage'));
+const PulsePage = lazy(() => import('./modules/pulse/PulsePage'));
+const ProfilePage = lazy(() => import('./modules/profile/ProfilePage'));
 
 function AIWrapper({ children }: { children: React.ReactNode }) {
-  return <AIProvider>{children}</AIProvider>;
+  const { isGuest } = useAuth();
+  return <AIProvider guestMode={isGuest}>{children}</AIProvider>;
 }
 
-function GlobalNyxTrigger() {
-  const { profile, user } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
+function SpineRuntimeBootstrap() {
+  const { user } = useAuth();
 
-  if (!user || !profile?.onboardingComplete || location.pathname === '/orchestrator') {
-    return null;
-  }
+  useEffect(() => {
+    Spine.registerCascadeRules(CORE_CASCADE_RULES);
+  }, []);
 
-  return (
-    <motion.button
-      initial={{ opacity: 0, scale: 0.8, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      whileHover={{ scale: 1.1, y: -5 }}
-      whileTap={{ scale: 0.9 }}
-      onClick={() => navigate('/orchestrator')}
-      className="fixed bottom-8 right-8 z-[100] flex items-center gap-3 px-6 py-4 bg-indigo-600/90 backdrop-blur-xl border border-indigo-400/30 rounded-full shadow-[0_0_30px_rgba(99,102,241,0.4)] group overflow-hidden"
-    >
-      <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      <Sparkles className="w-5 h-5 text-white" />
-      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white italic">Consult Nyx</span>
-    </motion.button>
-  );
+  useEffect(() => {
+    Spine.setUser(user?.uid ?? null);
+  }, [user?.uid]);
+
+  return null;
 }
 
 function AIRuntimeGate({ children }: { children: React.ReactNode }) {
@@ -62,7 +63,11 @@ function AIRuntimeGate({ children }: { children: React.ReactNode }) {
 function AppContent() {
   return (
     <Suspense fallback={<BootLoader />}>
-      <GlobalNyxTrigger />
+      <SpineRuntimeBootstrap />
+      <NexusOverlay />
+      <SpineOverlay />
+      <NeuralDraftPanel />
+      <NexusRouteBanner />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         
@@ -93,6 +98,42 @@ function AppContent() {
         <Route path="/ledger" element={
           <ProtectedRoute>
             <LedgerPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/soma" element={
+          <ProtectedRoute>
+            <SomaPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/atlas" element={
+          <ProtectedRoute>
+            <AtlasPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/scout" element={
+          <ProtectedRoute>
+            <ScoutPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/forge" element={
+          <ProtectedRoute>
+            <ForgePage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/pulse" element={
+          <ProtectedRoute>
+            <PulsePage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         } />
 

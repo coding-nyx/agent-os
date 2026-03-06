@@ -24,8 +24,8 @@ import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { registerSomaActions } from './services/actions';
 import { useVault } from '@/lib/vault-context';
 import { useNavigate } from 'react-router-dom';
-import { NyxHandoffService } from '@/lib/services/nyx-handoff-service';
-import { NyxRoutingService } from '@/lib/services/nyx-routing-service';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
 
 registerSomaActions();
@@ -78,7 +78,7 @@ export default function SomaPage() {
           const key = metricKey as NSVMetricPath;
           const owner = getMetricOwner(key);
           const prompt = NSV_CALIBRATION_PROMPTS[key] || 'Share the missing metric value.';
-          NyxHandoffService.store({
+          NexusHandoffService.store({
             moduleId: owner,
             type: 'delegate',
             content: prompt,
@@ -86,7 +86,7 @@ export default function SomaPage() {
             sourceModuleId: 'soma',
             createdAt: new Date().toISOString()
           });
-          const route = NyxRoutingService.getRoute(owner as any);
+          const route = NexusRoutingService.getRoute(owner as any);
           if (route) navigate(route);
         };
         // We define handleLabImport here to pass it to the dashboard, but its actual implementation needs to use module AI.

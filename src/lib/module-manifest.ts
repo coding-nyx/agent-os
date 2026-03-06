@@ -1,0 +1,216 @@
+import {
+  Activity,
+  Bell,
+  Brain,
+  ClipboardList,
+  Code,
+  Database,
+  HeartPulse,
+  Radio,
+  Search,
+  Sparkles,
+  Zap
+} from 'lucide-react';
+
+export const MODULE_IDS = [
+  'orchestrator',
+  'therapy',
+  'trainer',
+  'soma',
+  'ledger',
+  'atlas',
+  'scout',
+  'forge',
+  'pulse',
+  'bridge'
+] as const;
+
+export type ModuleId = (typeof MODULE_IDS)[number];
+
+export type ModuleTheme =
+  | 'indigo'
+  | 'orange'
+  | 'cyan'
+  | 'emerald'
+  | 'sky'
+  | 'lime'
+  | 'rose'
+  | 'fuchsia'
+  | 'slate'
+  | 'violet';
+
+export interface ModuleManifestEntry {
+  id: ModuleId;
+  route: string;
+  title: string;
+  alias: string;
+  description: string;
+  colorHex: string;
+  themeColor: ModuleTheme;
+  icon: typeof Sparkles;
+  chatTheme?: 'indigo' | 'orange' | 'cyan';
+  isCore: boolean;
+  hasPage: boolean;
+  securityPolicy: ModuleSecurityPolicy;
+}
+
+export interface ModuleSecurityPolicy {
+  defaultLocked: boolean;
+  mandatory: boolean;
+}
+
+export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
+  orchestrator: {
+    id: 'orchestrator',
+    route: '/orchestrator',
+    title: 'Nexus',
+    alias: 'Nexus',
+    description: 'System Orchestrator',
+    colorHex: '#8B5CF6',
+    themeColor: 'violet',
+    icon: Sparkles,
+    chatTheme: 'indigo',
+    isCore: true,
+    hasPage: true,
+    securityPolicy: { defaultLocked: false, mandatory: false }
+  },
+  therapy: {
+    id: 'therapy',
+    route: '/therapy',
+    title: 'Agnes',
+    alias: 'Agnes',
+    description: 'Emotional Domain',
+    colorHex: '#6366F1',
+    themeColor: 'indigo',
+    chatTheme: 'indigo',
+    icon: Brain,
+    isCore: true,
+    hasPage: true,
+    securityPolicy: { defaultLocked: true, mandatory: true }
+  },
+  trainer: {
+    id: 'trainer',
+    route: '/trainer',
+    title: 'Titan',
+    alias: 'Titan',
+    description: 'Performance Domain',
+    colorHex: '#F59E0B',
+    themeColor: 'orange',
+    chatTheme: 'orange',
+    icon: Activity,
+    isCore: true,
+    hasPage: true,
+    securityPolicy: { defaultLocked: false, mandatory: false }
+  },
+  soma: {
+    id: 'soma',
+    route: '/soma',
+    title: 'Soma',
+    alias: 'Soma',
+    description: 'Biological Source of Truth',
+    colorHex: '#10B981',
+    themeColor: 'emerald',
+    icon: HeartPulse,
+    isCore: false,
+    hasPage: true,
+    securityPolicy: { defaultLocked: true, mandatory: false }
+  },
+  ledger: {
+    id: 'ledger',
+    route: '/ledger',
+    title: 'Ledger',
+    alias: 'Ledger',
+    description: 'Financial Planning Domain',
+    colorHex: '#06B6D4',
+    themeColor: 'cyan',
+    chatTheme: 'cyan',
+    icon: ClipboardList,
+    isCore: true,
+    hasPage: true,
+    securityPolicy: { defaultLocked: true, mandatory: false }
+  },
+  atlas: {
+    id: 'atlas',
+    route: '/atlas',
+    title: 'Atlas',
+    alias: 'Atlas',
+    description: 'Cognitive Domain',
+    colorHex: '#0EA5E9',
+    themeColor: 'sky',
+    icon: Zap,
+    isCore: false,
+    hasPage: true,
+    securityPolicy: { defaultLocked: false, mandatory: false }
+  },
+  scout: {
+    id: 'scout',
+    route: '/scout',
+    title: 'Scout',
+    alias: 'Scout',
+    description: 'Research Extension',
+    colorHex: '#84CC16',
+    themeColor: 'lime',
+    icon: Search,
+    isCore: false,
+    hasPage: true,
+    securityPolicy: { defaultLocked: false, mandatory: false }
+  },
+  forge: {
+    id: 'forge',
+    route: '/forge',
+    title: 'Forge',
+    alias: 'Forge',
+    description: 'Technical Extension',
+    colorHex: '#F43F5E',
+    themeColor: 'rose',
+    icon: Code,
+    isCore: false,
+    hasPage: true,
+    securityPolicy: { defaultLocked: false, mandatory: false }
+  },
+  pulse: {
+    id: 'pulse',
+    route: '/pulse',
+    title: 'Pulse',
+    alias: 'Pulse',
+    description: 'Interest Extension',
+    colorHex: '#D946EF',
+    themeColor: 'fuchsia',
+    icon: Radio,
+    isCore: false,
+    hasPage: true,
+    securityPolicy: { defaultLocked: false, mandatory: false }
+  },
+  bridge: {
+    id: 'bridge',
+    route: '',
+    title: 'Bridge',
+    alias: 'Bridge',
+    description: 'Alert Daemon',
+    colorHex: '#64748B',
+    themeColor: 'slate',
+    icon: Bell,
+    isCore: false,
+    hasPage: false,
+    securityPolicy: { defaultLocked: false, mandatory: false }
+  }
+};
+
+export const HUB_MODULE_ORDER: ModuleId[] = [
+  'therapy',
+  'trainer',
+  'soma',
+  'ledger',
+  'atlas',
+  'scout',
+  'forge',
+  'pulse'
+];
+
+export function buildDefaultVaultLocks(): Record<string, boolean> {
+  return Object.values(MODULE_MANIFEST).reduce<Record<string, boolean>>((acc, module) => {
+    if (!module.hasPage || module.id === 'bridge') return acc;
+    acc[module.id] = module.securityPolicy.mandatory || module.securityPolicy.defaultLocked;
+    return acc;
+  }, {});
+}

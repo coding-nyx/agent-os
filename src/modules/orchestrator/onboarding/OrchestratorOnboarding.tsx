@@ -1,32 +1,16 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
-import { GuidedChatSpec } from '@/core/intake/types';
+import { GuidedIntakeStep, IntakeModuleConfig } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
-import { extractActionPayloads, hasActionSignal } from '@/core/intake/action-parser';
+import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
 import { NexusChat } from '@/core/components/NexusChat';
-import { AgentPersonalityProvision, CoreUserProfile, GenderPersonality } from '@/lib/types';
+import { Zap } from 'lucide-react';
+import { AgentPersonalityProvision, CoreUserProfile } from '@/lib/types';
 import { ORCHESTRATOR_ONBOARDING_PERSONA } from '../personas';
-
-type OnboardingStepKey = 'identity' | 'bio' | 'persona' | 'review';
 
 type OrchestratorIntakeState = {
   profileUpdates: Partial<CoreUserProfile>;
-  orchestratorAlias: string;
-  orchestratorGender: GenderPersonality;
   stepProgress: number;
-};
-
-type OrchestratorIntakePayload = {
-  preferredName?: string;
-  pronouns?: string;
-  age?: number;
-  assignedSexAtBirth?: 'female' | 'male';
-  genderIdentity?: string;
-  occupation?: string;
-  typicalSleepHours?: number;
-  orchestratorAlias?: string;
-  orchestratorGender?: GenderPersonality;
-  step?: OnboardingStepKey;
 };
 
 interface OrchestratorOnboardingProps {
@@ -35,55 +19,55 @@ interface OrchestratorOnboardingProps {
   onComplete: (updates: Partial<CoreUserProfile>) => Promise<void>;
 }
 
-const ORCHESTRATOR_STEPS = [
+const ORCHESTRATOR_STEPS: GuidedIntakeStep[] = [
   {
     key: 'identity',
     label: 'Identity Baseline',
-    helperText: 'Capture preferred name and pronouns for Nyx session continuity.'
+    helperText: 'Capture preferred name and pronouns for Nexus session continuity.',
+    inferredKeywords: ['preferred name', 'pronouns', 'what should i call you'],
+    focusActions: ['focus_identity']
   },
   {
     key: 'bio',
     label: 'Bio Context (Optional)',
-    helperText: 'Capture optional biological and lifestyle context for smarter cross-module recommendations.'
-  },
-  {
-    key: 'persona',
-    label: 'Nyx Persona',
-    helperText: 'Personalize Nyx alias and gender personality only.'
+    helperText: 'Capture optional biological and lifestyle context for smarter cross-module recommendations.',
+    inferredKeywords: ['age', 'assigned sex', 'sex at birth', 'gender identity', 'bio context', 'biological', 'occupation', 'sleep'],
+    focusActions: ['focus_bio']
   },
   {
     key: 'review',
     label: 'Protocol Commit',
-    helperText: 'Review and commit Nyx onboarding to unlock orchestrator chat.'
+    helperText: 'Review and commit Nexus onboarding to unlock orchestrator chat.',
+    inferredKeywords: ['review', 'confirm', 'finaliz', 'commit', 'complete'],
+    focusActions: ['focus_review']
   }
-] as const;
-
-const STEP_INDEX: Record<OnboardingStepKey, number> = {
-  identity: 0,
-  bio: 1,
-  persona: 2,
-  review: 3
-};
+];
 
 const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
-  orchestratorAlias: 'Nyx',
+  orchestratorAlias: 'Nexus',
   moduleAliases: {
     therapy: 'Agnes',
     trainer: 'Titan',
-    ledger: 'Ledger'
+    soma: 'Soma',
+    ledger: 'Ledger',
+    atlas: 'Atlas',
+    scout: 'Scout',
+    forge: 'Forge',
+    pulse: 'Pulse'
   },
   moduleGenderProfiles: {
     orchestrator: 'female',
     therapy: 'female',
     trainer: 'female',
-    ledger: 'female'
+    soma: 'female',
+    ledger: 'female',
+    atlas: 'female',
+    scout: 'female',
+    forge: 'female',
+    pulse: 'female'
   },
   personaOverlays: {}
 };
-
-function isValidGender(value: unknown): value is GenderPersonality {
-  return value === 'female' || value === 'male' || value === 'non-binary' || value === 'gender-fluid';
-}
 
 function normalizeOptionalString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
@@ -93,60 +77,14 @@ function normalizeOptionalString(value: unknown): string | undefined {
 
 function compactProfileUpdates(updates: Partial<CoreUserProfile>): Partial<CoreUserProfile> {
   return Object.fromEntries(
-    Object.entries(updates).filter(([, value]) => value !== undefined)
+    Object.entries(updates).filter(([, value]) => value !== undefined && value !== null)
   ) as Partial<CoreUserProfile>;
-}
-
-function hasImplicitCompletionSignal(response: string): boolean {
-  return /\b(onboarding (?:is )?complete|intake (?:is )?complete|all the information i need|let'?s finalize|we(?:'re| are) done)\b/i.test(
-    response
-  );
-}
-
-function inferStepFromAssistantResponse(response: string): number | null {
-  if (/\b(review|confirm|finaliz|commit|complete)\b/i.test(response)) return STEP_INDEX.review;
-  if (/\b(alias|persona|gender personality)\b/i.test(response)) return STEP_INDEX.persona;
-  if (/\b(age|assigned sex|sex at birth|gender identity|bio context|biological|occupation|sleep)\b/i.test(response)) return STEP_INDEX.bio;
-  if (/\b(preferred name|pronouns|what should i call you)\b/i.test(response)) return STEP_INDEX.identity;
-  return null;
-}
-
-function inferIdentityFromUserMessage(message?: string): Partial<CoreUserProfile> {
-  if (!message) return {};
-  const updates: Partial<CoreUserProfile> = {};
-
-  const pronounsMatch = message.match(/\b(she\/her|he\/him|they\/them|she her|he him|they them)\b/i);
-  if (pronounsMatch) {
-    updates.pronouns = pronounsMatch[1].replace(/\s+/g, '/').toLowerCase();
-  }
-
-  const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|occupation is|my job is)\s+([a-z][a-z0-9'\/&,\- ]{1,50})/i);
-  if (occupationMatch) {
-    updates.occupation = occupationMatch[1].trim();
-  }
-
-  const sleepMatch = message.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:hours?|hrs?)\b/i);
-  if (sleepMatch) {
-    const parsed = Number.parseFloat(sleepMatch[1]);
-    if (Number.isFinite(parsed) && parsed > 0 && parsed <= 24) {
-      updates.typicalSleepHours = parsed;
-    }
-  }
-
-  const nameMatch = message.match(/\b(?:my name is|call me|i'm)\s+([a-z][a-z' -]{0,30})/i);
-  if (nameMatch) {
-    const raw = nameMatch[1].trim().split(/\s+/)[0];
-    updates.preferredName = raw.charAt(0).toUpperCase() + raw.slice(1);
-  }
-
-  return updates;
 }
 
 export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: OrchestratorOnboardingProps) {
   const existingProvision = profile?.agentPersonalityProvision ?? DEFAULT_PERSONALITY;
-  const initialAlias = existingProvision.orchestratorAlias || 'Nyx';
-  const initialGender = existingProvision.moduleGenderProfiles.orchestrator || 'female';
-  const initialProfileUpdates = compactProfileUpdates({
+
+  const initialProfileUpdates = useMemo(() => compactProfileUpdates({
     preferredName: profile?.preferredName,
     pronouns: profile?.pronouns,
     age: profile?.age,
@@ -154,135 +92,101 @@ export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: Or
     genderIdentity: profile?.genderIdentity,
     occupation: profile?.occupation,
     typicalSleepHours: profile?.typicalSleepHours
-  });
+  }), [profile]);
 
-  const spec = useMemo<GuidedChatSpec<OrchestratorIntakeState>>(() => ({
+  const [fastName, setFastName] = useState('');
+  const [fastPronouns, setFastPronouns] = useState('');
+
+  const handleFastTrack = async () => {
+    if (!fastName.trim() || !fastPronouns.trim()) return;
+    const provision: AgentPersonalityProvision = {
+        ...DEFAULT_PERSONALITY,
+        ...existingProvision,
+        moduleAliases: {
+          ...DEFAULT_PERSONALITY.moduleAliases,
+          ...(existingProvision.moduleAliases || {})
+        },
+        moduleGenderProfiles: {
+          ...DEFAULT_PERSONALITY.moduleGenderProfiles,
+          ...(existingProvision.moduleGenderProfiles || {})
+        },
+        personaOverlays: existingProvision.personaOverlays || {}
+    };
+
+    provision.orchestratorAlias = existingProvision.orchestratorAlias || 'Nexus';
+
+    await onComplete({
+      preferredName: fastName.trim(),
+      pronouns: fastPronouns.trim(),
+      onboardingComplete: true,
+      schemaVersion: 2,
+      agentPersonalityProvision: provision
+    });
+  };
+
+  const config: IntakeModuleConfig<OrchestratorIntakeState, Partial<CoreUserProfile>> = {
+    moduleId: 'orchestrator',
+    steps: ORCHESTRATOR_STEPS,
+    updateActionType: 'update_orchestrator_intake',
+    completeActionType: 'complete_orchestrator_onboarding',
+    applyPatch: (state, patch) => ({
+      ...state,
+      profileUpdates: { ...state.profileUpdates, ...patch }
+    }),
+    extractFromUser: (message) => {
+        const updates: Partial<CoreUserProfile> = {};
+
+        const pronounsMatch = message.match(/\b(she\/her|he\/him|they\/them|she her|he him|they them)\b/i);
+        if (pronounsMatch) {
+            updates.pronouns = pronounsMatch[1].replace(/\s+/g, '/').toLowerCase();
+        }
+
+        const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|occupation is|my job is)\s+([a-z][a-z0-9'\/&,\- ]{1,50})/i);
+        if (occupationMatch) {
+            updates.occupation = occupationMatch[1].trim();
+        }
+
+        const sleepMatch = message.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:hours?|hrs?)\b/i);
+        if (sleepMatch) {
+            const parsed = Number.parseFloat(sleepMatch[1]);
+            if (Number.isFinite(parsed) && parsed > 0 && parsed <= 24) {
+                updates.typicalSleepHours = parsed;
+            }
+        }
+
+        const nameMatch = message.match(/\b(?:my name is|call me|i'm)\s+([a-z][a-z' -]{0,30})/i);
+        if (nameMatch) {
+            const raw = nameMatch[1].trim().split(/\s+/)[0];
+            updates.preferredName = raw.charAt(0).toUpperCase() + raw.slice(1);
+        }
+
+        return updates;
+    },
+    validateCompletion: (state) => {
+        if (!state.profileUpdates.preferredName || !state.profileUpdates.pronouns) {
+            return { valid: false, error: 'Before we finalize, share your preferred name and pronouns so Nexus can address you correctly.' };
+        }
+        return { valid: true };
+    }
+  };
+
+  const spec = useIntakeOrchestrator({
+    ...config,
     initialState: {
       profileUpdates: initialProfileUpdates,
-      orchestratorAlias: initialAlias,
-      orchestratorGender: initialGender,
       stepProgress: 0
     },
     initialMessages: [
       {
         role: 'assistant',
-        content: `Welcome to Nyx guided onboarding. I only need your core identity and Nyx preferences. What should I call you, and what pronouns should I use?`
+        content: `Welcome to Nexus guided onboarding. I only need your core identity and Nexus preferences. What should I call you, and what pronouns should I use?`
       }
     ],
-    initialStep: 0,
-    steps: [...ORCHESTRATOR_STEPS],
-    summary: 'Orchestrator onboarding intake.',
-    placeholder: 'Respond to Nyx...',
-    canSend: () => !isSubmitting,
-    buildContext: (state, history) => ({
-      systemPrompt: ORCHESTRATOR_ONBOARDING_PERSONA,
-      insights: [],
-      summary: `Orchestrator onboarding intake. Current step index: ${state.stepProgress}.`,
-      history
-    }),
-    onResponse: (response, state, meta) => {
-      let nextUpdates: Partial<CoreUserProfile> = { ...state.profileUpdates };
-      let nextAlias = state.orchestratorAlias;
-      let nextGender = state.orchestratorGender;
-      let nextStep = state.stepProgress;
-      let sawPersonaUpdate = false;
-
-      const updatePayloads = extractActionPayloads<OrchestratorIntakePayload>(response, 'update_orchestrator_intake');
-      if (updatePayloads.length > 0) {
-        for (const parsed of updatePayloads) {
-          const preferredName = normalizeOptionalString(parsed.preferredName);
-          const pronouns = normalizeOptionalString(parsed.pronouns);
-          const genderIdentity = normalizeOptionalString(parsed.genderIdentity);
-          const occupation = normalizeOptionalString(parsed.occupation);
-          const orchestratorAlias = normalizeOptionalString(parsed.orchestratorAlias);
-
-          if (preferredName) nextUpdates.preferredName = preferredName;
-          if (pronouns) nextUpdates.pronouns = pronouns;
-          if (genderIdentity) nextUpdates.genderIdentity = genderIdentity;
-          if (occupation) nextUpdates.occupation = occupation;
-
-          if (typeof parsed.age === 'number' && Number.isFinite(parsed.age) && parsed.age > 0) {
-            nextUpdates.age = Math.round(parsed.age);
-          }
-          if (
-            typeof parsed.typicalSleepHours === 'number' &&
-            Number.isFinite(parsed.typicalSleepHours) &&
-            parsed.typicalSleepHours > 0 &&
-            parsed.typicalSleepHours <= 24
-          ) {
-            nextUpdates.typicalSleepHours = parsed.typicalSleepHours;
-          }
-          if (parsed.assignedSexAtBirth === 'female' || parsed.assignedSexAtBirth === 'male') {
-            nextUpdates.assignedSexAtBirth = parsed.assignedSexAtBirth;
-          }
-
-          if (orchestratorAlias) nextAlias = orchestratorAlias;
-          if (orchestratorAlias) sawPersonaUpdate = true;
-          if (isValidGender(parsed.orchestratorGender)) {
-            nextGender = parsed.orchestratorGender;
-            sawPersonaUpdate = true;
-          }
-
-          if (parsed.step && STEP_INDEX[parsed.step] !== undefined) {
-            nextStep = Math.max(nextStep, STEP_INDEX[parsed.step]);
-          }
-        }
-      }
-
-      const inferredIdentity = inferIdentityFromUserMessage(meta?.latestUserMessage);
-      if (!nextUpdates.preferredName && inferredIdentity.preferredName) {
-        nextUpdates.preferredName = inferredIdentity.preferredName;
-      }
-      if (!nextUpdates.pronouns && inferredIdentity.pronouns) {
-        nextUpdates.pronouns = inferredIdentity.pronouns;
-      }
-
-      if (nextUpdates.preferredName && nextUpdates.pronouns) {
-        nextStep = Math.max(nextStep, 1);
-      }
-      if (sawPersonaUpdate) {
-        nextStep = Math.max(nextStep, 2);
-      }
-
-      const inferredStep = inferStepFromAssistantResponse(response);
-      if (typeof inferredStep === 'number') {
-        nextStep = Math.max(nextStep, inferredStep);
-      }
-
-      const explicitCompletion = hasActionSignal(response, 'complete_orchestrator_onboarding');
-      const hasRequiredIdentity = Boolean(nextUpdates.preferredName && nextUpdates.pronouns);
-      const implicitCompletion = hasRequiredIdentity && hasImplicitCompletionSignal(response);
-      let completed = explicitCompletion || implicitCompletion;
-      let assistantMessage: string | undefined;
-
-      if (completed && !hasRequiredIdentity) {
-        completed = false;
-        assistantMessage = 'Before we finalize, share your preferred name and pronouns so Nyx can address you correctly.';
-      }
-
-      if (completed) {
-        nextStep = ORCHESTRATOR_STEPS.length - 1;
-        assistantMessage = 'Intake complete. Committing Nyx profile configuration now.';
-      }
-
-      return {
-        nextState: {
-          profileUpdates: nextUpdates,
-          orchestratorAlias: nextAlias,
-          orchestratorGender: nextGender,
-          stepProgress: nextStep
-        },
-        nextStep,
-        completed,
-        assistantMessage
-      };
-    }
-  }), [
-    initialProfileUpdates,
-    initialAlias,
-    initialGender,
-    isSubmitting,
-  ]);
+    summary: 'Nexus onboarding intake.',
+    placeholder: 'Respond to Nexus...',
+    systemPrompt: ORCHESTRATOR_ONBOARDING_PERSONA,
+    canSend: () => !isSubmitting
+  });
 
   const intake = useGuidedChatIntake({
     spec,
@@ -296,13 +200,12 @@ export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: Or
         },
         moduleGenderProfiles: {
           ...DEFAULT_PERSONALITY.moduleGenderProfiles,
-          ...(existingProvision.moduleGenderProfiles || {}),
-          orchestrator: state.orchestratorGender
+          ...(existingProvision.moduleGenderProfiles || {})
         },
         personaOverlays: existingProvision.personaOverlays || {}
       };
 
-      provision.orchestratorAlias = state.orchestratorAlias || existingProvision.orchestratorAlias || 'Nyx';
+      provision.orchestratorAlias = existingProvision.orchestratorAlias || 'Nexus';
 
       const safeUpdates = compactProfileUpdates(state.profileUpdates);
       await onComplete({
@@ -316,12 +219,45 @@ export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: Or
 
   return (
     <GuidedIntakeFrame
-      title="Nyx Interactive Intake"
-      subtitle="Configure your core identity and Nyx only. Other bots onboard independently."
-      statusLabel="ORCHESTRATOR_ONBOARDING"
-      steps={[...ORCHESTRATOR_STEPS]}
+      title="Nexus Interactive Intake"
+      subtitle="Configure your core identity and Nexus only. Other bots onboard independently."
+      statusLabel="NYX_ONBOARDING"
+      steps={ORCHESTRATOR_STEPS}
       currentStep={intake.stepIndex}
       themeColor="indigo"
+      prelude={
+        <div className="p-4 md:p-6 flex flex-col sm:flex-row items-center gap-4 border-b border-indigo-500/20 bg-indigo-500/5">
+          <div className="flex-1 w-full space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
+              <Zap className="w-3 h-3" /> Fast Track Initialization
+            </p>
+            <div className="flex gap-2">
+              <input
+                placeholder="Preferred Name"
+                value={fastName}
+                onChange={e => setFastName(e.target.value)}
+                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50"
+              />
+              <input
+                placeholder="Pronouns (e.g., they/them)"
+                value={fastPronouns}
+                onChange={e => setFastPronouns(e.target.value)}
+                className="flex-[1.5] bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50"
+              />
+              <button
+                onClick={handleFastTrack}
+                disabled={!fastName.trim() || !fastPronouns.trim() || isSubmitting}
+                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+              >
+                Execute
+              </button>
+            </div>
+            <p className="text-[9px] text-white/40 uppercase tracking-tight">
+              Bypass conversational proxy. Requires name and pronouns.
+            </p>
+          </div>
+        </div>
+      }
     >
       <NexusChat
         ai={{
@@ -332,7 +268,7 @@ export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: Or
           quota: null,
           handleSendMessage: intake.handleSendMessage
         }}
-        agentName="Nyx Intake"
+        agentName="Nexus Intake"
         themeColor="indigo"
         placeholder={spec.placeholder}
         showInternalSignals={false}

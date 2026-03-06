@@ -185,8 +185,8 @@ export default function LedgerPage() {
                   priority: 'info'
                 });
             });
-            import('@/lib/services/nyx-handoff-service').then(({ NyxHandoffService }) => {
-                NyxHandoffService.store({
+            import('@/lib/services/nexus-handoff-service').then(({ NexusHandoffService }) => {
+                NexusHandoffService.store({
                   moduleId: 'soma',
                   type: 'delegate',
                   content,

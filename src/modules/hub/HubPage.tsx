@@ -872,7 +872,7 @@ export default function HubPage() {
                         <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center mb-4">
                             <Sparkles className="w-6 h-6 text-violet-400/80" />
                         </div>
-                        <span className="text-[11px] uppercase tracking-[0.5em] text-white/90 font-black italic ml-[0.5em]">Nyx</span>
+                        <span className="text-[11px] uppercase tracking-[0.5em] text-white/90 font-black italic ml-[0.5em]">Nexus</span>
                         <span className="text-[7px] uppercase tracking-[0.3em] text-white/20 font-bold mt-3">Link_Active</span>
                     </div>
                   </div>

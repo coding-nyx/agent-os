@@ -12,7 +12,7 @@ import {
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
-import { NyxHandoffService } from '@/lib/services/nyx-handoff-service';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 
 interface SomaOnboardingProps {
@@ -34,7 +34,7 @@ You are Soma Intake Agent.
 Collect a concise biological baseline before active physician chat begins.
 
 OBJECTIVE:
-1. Confirm Nyx handoff context.
+1. Confirm Nexus handoff context.
 2. Capture known conditions and current medications.
 3. Capture allergies/contraindications.
 4. Capture most relevant recent biomarkers or lab findings.
@@ -106,7 +106,7 @@ function buildBasePrompt(context: GlobalBaseIntakeContext): string {
     return 'Soma intake initialized. What known conditions or active medications should I account for first?';
   }
 
-  return `Nyx handoff received. I have your ${chunks.join(', ')}. Is that correct before we start biological intake?`;
+  return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we start biological intake?`;
 }
 
 export function SomaOnboarding({
@@ -142,7 +142,7 @@ export function SomaOnboarding({
 - Pronouns: ${state.baseContext.pronouns || 'Unknown'}
 - Age: ${typeof state.baseContext.age === 'number' ? state.baseContext.age : 'Unknown'}
 - Assigned Sex At Birth: ${state.baseContext.assignedSexAtBirth || 'Unknown'}
-${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context briefly first.' : ''}
+${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or pronouns again if they are already known in this context. Move directly to the next missing piece of information.' : ''}
 `,
         memoryContext: [],
         summary: 'Soma onboarding intake.',
@@ -204,18 +204,30 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
           nextStep = SOMA_STEPS.length - 1;
         }
 
-        const vitalsPatch = response.actions
+        const rawVitalsPayload = response.actions
           .filter((action) => action.type === 'sync_vitals')
-          .map((action) => action.payload as Partial<any>)
-          .reduce((acc, payload) => mergeNSVPatch(acc, payload), {} as any);
+          .map((action) => action.payload as any);
 
-        if (user?.uid && Object.keys(vitalsPatch).length > 0) {
-          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch((e) => {
+        let vitalsPatch: Record<string, any> = {};
+        if (rawVitalsPayload.length > 0) {
+           const payload = rawVitalsPayload[rawVitalsPayload.length - 1]; // Take the latest sync
+           if (payload && payload.biological) {
+              // Sanitize the payload to only include explicit keys, removing null/undefined that crash deep merge
+              vitalsPatch = { biological: {} };
+              if (typeof payload.biological.cnsFatigue === 'number') vitalsPatch.biological.cnsFatigue = payload.biological.cnsFatigue;
+              if (typeof payload.biological.sleepQuality === 'number') vitalsPatch.biological.sleepQuality = payload.biological.sleepQuality;
+              if (typeof payload.biological.recoveryScore === 'number') vitalsPatch.biological.recoveryScore = payload.biological.recoveryScore;
+              if (typeof payload.biological.hormonalContext === 'string') vitalsPatch.biological.hormonalContext = payload.biological.hormonalContext;
+           }
+        }
+
+        if (user?.uid && Object.keys(vitalsPatch).length > 0 && Object.keys(vitalsPatch.biological || {}).length > 0) {
+          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch as any).catch((e) => {
             console.error('Soma onboarding sync_vitals failed:', e);
           });
         }
         if (completed && Object.keys(vitalsPatch).length === 0) {
-          NyxHandoffService.store({
+          NexusHandoffService.store({
             moduleId: 'soma',
             type: 'delegate',
             content: buildCalibrationPrompt('soma'),

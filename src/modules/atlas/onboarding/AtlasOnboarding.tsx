@@ -12,7 +12,7 @@ import {
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
-import { NyxHandoffService } from '@/lib/services/nyx-handoff-service';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 
 interface AtlasOnboardingProps {
@@ -34,7 +34,7 @@ You are Atlas Intake Agent.
 Collect a concise cognitive scheduling baseline before Atlas active mode.
 
 OBJECTIVE:
-1. Confirm Nyx handoff context.
+1. Confirm Nexus handoff context.
 2. Capture daily energy peaks and crash windows.
 3. Capture current task load and overload triggers.
 4. Capture recovery strategies and scheduling constraints.
@@ -103,7 +103,7 @@ function buildBasePrompt(context: GlobalBaseIntakeContext): string {
     return 'Atlas intake initialized. When during your day is your focus naturally strongest?';
   }
 
-  return `Nyx handoff received. I have your ${chunks.join(', ')}. Is that correct before we map your energy wave?`;
+  return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we map your energy wave?`;
 }
 
 export function AtlasOnboarding({
@@ -219,7 +219,7 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
           });
         }
         if (completed && Object.keys(vitalsPatch).length === 0) {
-          NyxHandoffService.store({
+          NexusHandoffService.store({
             moduleId: 'atlas',
             type: 'delegate',
             content: buildCalibrationPrompt('atlas'),

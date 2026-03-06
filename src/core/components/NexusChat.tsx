@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import { ChatInterface } from './ChatInterface';
 import { useAuth } from '@/lib/auth-context';
-import { UnifiedAuthModal } from './UnifiedAuthModal';
+import { UnifiedAuthModal, AuthMode } from './UnifiedAuthModal';
 import { stripInternalTags } from '@/llm-engine/sanitize';
 
 interface NexusChatProps {
@@ -18,8 +18,10 @@ interface NexusChatProps {
     placeholder?: string;
     onActionParsed?: (type: string, payload: any) => void;
     headerActions?: ReactNode;
-    authMode?: 'global' | 'therapy' | 'trainer';
+    authMode?: AuthMode;
     showInternalSignals?: boolean;
+    renderCustomActions?: () => ReactNode;
+    moduleId?: string;
 }
 
 export function NexusChat({ 
@@ -30,25 +32,21 @@ export function NexusChat({
     onActionParsed, 
     headerActions,
     authMode = 'global',
-    showInternalSignals = true
+    showInternalSignals = true,
+    renderCustomActions,
+    moduleId
 }: NexusChatProps) {
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
     const { messages, isProcessing, streamingText, error, quota, handleSendMessage } = ai;
-    const streamAnalysis = stripInternalTags(streamingText || '');
-    const visibleStreamingText = streamAnalysis.publicText.trim();
+    
+    // streamingText is now already cleaned by the Orchestrator delta logic
+    const visibleStreamingText = streamingText.trim();
     const hasVisibleStream = visibleStreamingText.length > 0;
-    const hasRawStream = (streamingText || '').trim().length > 0;
 
     const transientStreamMessage = (() => {
-        if (!hasRawStream) return null;
-        if (showInternalSignals) {
-            return { role: 'assistant', content: streamingText };
-        }
-        if (hasVisibleStream) {
-            return { role: 'assistant', content: visibleStreamingText };
-        }
-        return null;
+        if (!hasVisibleStream) return null;
+        return { role: 'assistant', content: visibleStreamingText };
     })();
 
     const renderedMessages = transientStreamMessage
@@ -56,11 +54,12 @@ export function NexusChat({
         : messages;
 
     return (
-        <div className="flex-1 h-full relative overflow-hidden">
+        <div className="flex-1 flex flex-col h-full min-h-0 relative">
             <ChatInterface 
                 messages={renderedMessages}
                 onSendMessage={(content) => handleSendMessage(content, onActionParsed)}
-                isLoading={isProcessing}
+                isLoading={isProcessing && !hasVisibleStream}
+                isProcessing={isProcessing}
                 themeColor={themeColor}
                 agentName={agentName}
                 placeholder={placeholder}
@@ -69,17 +68,14 @@ export function NexusChat({
                 quota={quota}
                 onQuotaExhausted={() => setShowAuth(true)}
                 showInternalSignals={showInternalSignals}
+                renderCustomActions={renderCustomActions}
+                moduleId={moduleId}
+                headerActions={headerActions}
                 onRetry={() => {
                     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
                     if (lastUserMsg) handleSendMessage(lastUserMsg.content, onActionParsed);
                 }}
             />
-            
-            {headerActions && (
-                <div className="absolute top-4 right-8 z-50 flex gap-3">
-                    {headerActions}
-                </div>
-            )}
 
             <UnifiedAuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} mode={authMode} />
         </div>
