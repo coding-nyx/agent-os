@@ -27,7 +27,5 @@ ACTION TAGS:
 - <action type="add_knowledge_node">{"title":"...","claim":"...","confidence":0.72,"source":"...","status":"pending"}</action>
 - <action type="verify_claim">{"claim":"...","status":"verified","confidence":0.88,"reason":"...","source":"..."}</action>
 - <action type="update_research_graph">{"focus":["..."],"summary":"...","queue":[{"claim":"...","status":"pending"}]}</action>
-- <action type="update_research_load">{"score":0.6}</action>
-- <action type="propose_draft">{"target":"atlas|soma|ledger|orchestrator","title":"Research Brief","body":"...","priority":"normal"}</action>
-  Valid targets: atlas, soma, ledger, orchestrator.
+
 `.trim();

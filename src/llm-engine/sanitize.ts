@@ -40,8 +40,8 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   const thoughtMatch = normalized.match(/<thought>([\s\S]*?)<\/thought>/);
   const thoughtText = thoughtMatch ? thoughtMatch[1].trim() : '';
   
-  // 2. Extract action content
-  const actionMatches = [...normalized.matchAll(/<action type="([^"]+)">([\s\S]*?)<\/action>/gi)];
+  // 2. Extract action content — \s+ tolerates extra whitespace between tag name and attribute
+  const actionMatches = [...normalized.matchAll(/<action\s+type="([^"]+)">([\s\S]*?)<\/action>/gi)];
   const actionText = actionMatches.map(m => `[ACTION: ${m[1]}] ${m[2].trim()}`).join('\n');
 
   // 3. Extract tool call content (Special tags mentioned by user)
@@ -103,7 +103,13 @@ export function sanitizeJsonPayload(content: string): string {
   // 3. Trim whitespace
   sanitized = sanitized.trim();
 
-  // 4. Attempt to fix common JSON errors (trailing commas)
+  // 4. Extract just the JSON object/array if there's trailing prose
+  const jsonMatch = sanitized.match(/^(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (jsonMatch) {
+    sanitized = jsonMatch[1];
+  }
+
+  // 5. Attempt to fix common JSON errors (trailing commas)
   // Only apply structural repairs if the JSON is already invalid
   try {
     JSON.parse(sanitized);

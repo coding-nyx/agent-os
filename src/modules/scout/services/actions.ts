@@ -53,7 +53,8 @@ async function triggerWebSearch(
   entryId: string,
   baseProfile: ScoutProfile,
   userId?: string | null,
-  encryptionKey?: CryptoKey | null
+  encryptionKey?: CryptoKey | null,
+  pushAssistantMessage?: (content: string) => void
 ) {
   try {
     const response = await ScoutWebSearchService.search(query, { maxResults: 6 });
@@ -76,7 +77,10 @@ async function triggerWebSearch(
       updatedAt: new Date().toISOString()
     }));
 
-    const updatedKnowledge = baseProfile.knowledgeNodes.map((node) =>
+    // Re-load fresh profile after network call to avoid clobbering concurrent writes
+    const freshProfile = await loadProfile(userId, encryptionKey) ?? baseProfile;
+
+    const updatedKnowledge = freshProfile.knowledgeNodes.map((node) =>
       node.claim === query
         ? {
             ...node,
@@ -91,7 +95,7 @@ async function triggerWebSearch(
         : node
     );
 
-    const nextQueue: ScoutProfile['verificationQueue'] = baseProfile.verificationQueue.map((entry) =>
+    const nextQueue: ScoutProfile['verificationQueue'] = freshProfile.verificationQueue.map((entry) =>
       entry.id === entryId
         ? {
             ...entry,
@@ -102,13 +106,25 @@ async function triggerWebSearch(
     );
 
     const next: ScoutProfile = {
-      ...baseProfile,
+      ...freshProfile,
       knowledgeNodes: [...resultNodes, ...updatedKnowledge].slice(0, 250),
       verificationQueue: nextQueue,
       updatedAt: new Date().toISOString()
     };
 
     await persistProfile(next, userId, encryptionKey);
+
+    if (pushAssistantMessage) {
+      if (results.length === 0) {
+        pushAssistantMessage(`Search completed for "${query}" but returned no results.`);
+      } else {
+        const topResults = results.slice(0, 3);
+        const summary = topResults
+          .map((r, i) => `${i + 1}. **${r.title || 'Result'}** — ${r.url}`)
+          .join('\n');
+        pushAssistantMessage(`Search found ${results.length} result${results.length === 1 ? '' : 's'} for "${query}":\n\n${summary}`);
+      }
+    }
   } catch (error) {
     console.error('[Scout] Web search failed:', error);
 
@@ -125,6 +141,13 @@ async function triggerWebSearch(
     };
 
     await persistProfile(fallback, userId, encryptionKey);
+
+    if (pushAssistantMessage) {
+      const message = error instanceof Error && error.message.includes('No Scout search backend configured')
+        ? 'Search backend is not configured. Please check your environment settings.'
+        : `Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      pushAssistantMessage(`⚠️ ${message}`);
+    }
   }
 }
 
@@ -196,9 +219,12 @@ export function registerScoutActions() {
       }
     },
 
-    search_web: async ({ userId, encryptionKey, payload }) => {
+    search_web: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
-      if (!profile) return;
+      if (!profile) {
+        pushAssistantMessage?.('⚠️ Unable to load research profile. Please try again.');
+        return;
+      }
 
       const claim: string =
         typeof payload?.query === 'string'
@@ -206,7 +232,10 @@ export function registerScoutActions() {
           : typeof payload?.claim === 'string'
           ? payload.claim
           : '';
-      if (!claim) return;
+      if (!claim) {
+        console.warn('[Scout] search_web received empty query payload:', payload);
+        return;
+      }
 
       const entry: ScoutProfile['verificationQueue'][number] = {
         id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
@@ -222,7 +251,7 @@ export function registerScoutActions() {
       };
 
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
-      await triggerWebSearch(claim, entry.id, next, userId ?? null, encryptionKey ?? null);
+      await triggerWebSearch(claim, entry.id, next, userId ?? null, encryptionKey ?? null, pushAssistantMessage);
     },
 
     update_research_graph: async ({ userId, encryptionKey, payload }) => {

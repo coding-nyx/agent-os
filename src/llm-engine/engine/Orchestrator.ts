@@ -159,22 +159,30 @@ export class Orchestrator {
     
     const actions: ParsedAction[] = [];
     
-    // Extract <action> tags
-    const actionRegex = /<action type="([^"]+)">([\s\S]*?)<\/action>/gi;
+    // Normalize curly/smart quotes that some LLMs emit before parsing
+    const normalized = fullText.replace(/[\u201C\u201D\u2018\u2019]/g, '"');
+
+    // Extract <action> tags — \s+ tolerates extra whitespace/newlines between tag name and attribute
+    const actionRegex = /<action\s+type="([^"]+)">([\s\S]*?)<\/action>/gi;
     let match;
-    while ((match = actionRegex.exec(fullText)) !== null) {
+    while ((match = actionRegex.exec(normalized)) !== null) {
       try {
         actions.push({
           type: match[1],
           payload: JSON.parse(nexusCleaner(match[2])),
           raw: match[0]
         });
-      } catch (e) { /* JSON parse failed - not a valid action tag, continue */ }
+      } catch (e) {
+        console.warn(
+          `[Orchestrator] Failed to parse action payload — type: "${match[1]}", raw: ${match[2].slice(0, 200)}`,
+          e
+        );
+      }
     }
 
     // Extract <tool_call> tags
     const toolCallRegex = /<tool_call>([\s\S]*?)<\/tool_call>/gi;
-    while ((match = toolCallRegex.exec(fullText)) !== null) {
+    while ((match = toolCallRegex.exec(normalized)) !== null) {
       try {
         const parsed = JSON.parse(nexusCleaner(match[1]));
         actions.push({
@@ -182,7 +190,12 @@ export class Orchestrator {
           payload: parsed.arguments,
           raw: match[0]
         });
-      } catch (e) { /* JSON parse failed - not a valid tool_call, continue */ }
+      } catch (e) {
+        console.warn(
+          `[Orchestrator] Failed to parse tool_call payload — raw: ${match[1].slice(0, 200)}`,
+          e
+        );
+      }
     }
 
     return {
