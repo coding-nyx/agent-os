@@ -4,15 +4,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield, Terminal } from 'lucide-react';
 import { NeuralIntegrity } from '@/core/components/NeuralIntegrity';
-import { useAuth } from '@/lib/auth-context';
 import { SyncTransition } from '@/core/components/SyncTransition';
+import { SystemCommandCenter } from '@/core/components/SystemCommandCenter';
+import { useVault } from '@/lib/vault-context';
+import { ModuleId } from '@/lib/module-manifest';
+import { UnifiedAuthModal } from '@/core/components/UnifiedAuthModal';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { cn } from '@/lib/utils';
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
 interface ModuleLayoutProps {
   children: React.ReactNode;
   title: string;
-  themeColor: 'indigo' | 'orange' | 'cyan';
+  themeColor: 'indigo' | 'orange' | 'cyan' | 'emerald' | 'sky' | 'lime' | 'rose' | 'fuchsia' | 'slate' | 'violet';
   onExit?: () => void;
+  hideBack?: boolean;
+  moduleId?: ModuleId;
 }
+
+// ... TelemetryTicker component
 
 function TelemetryTicker() {
     const [log, setLog] = useState('SYSTEM_IDLE');
@@ -30,8 +40,8 @@ function TelemetryTicker() {
     }, []);
 
     return (
-        <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-lg">
-            <Terminal className="w-2.5 h-2.5 text-white/20" />
+        <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-lg hidden sm:flex">
+            <Terminal className="w-2.5 h-2.5 text-white/40" />
             <motion.span 
                 key={log}
                 initial={{ opacity: 0, x: 5 }}
@@ -44,9 +54,12 @@ function TelemetryTicker() {
     );
 }
 
-export function ModuleLayout({ children, title, themeColor, onExit }: ModuleLayoutProps) {
+export function ModuleLayout({ children, title, themeColor, onExit, hideBack = false, moduleId }: ModuleLayoutProps) {
   const navigate = useNavigate();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const { isModuleAccessible } = useVault();
+  const reducedMotion = useReducedMotion();
 
   const handleExit = () => {
     setIsSyncing(true);
@@ -60,79 +73,120 @@ export function ModuleLayout({ children, title, themeColor, onExit }: ModuleLayo
   const colors = {
     indigo: { accent: 'text-indigo-400', glow: 'bg-indigo-500/10' },
     orange: { accent: 'text-orange-400', glow: 'bg-orange-500/10' },
-    cyan: { accent: 'text-cyan-400', glow: 'bg-cyan-500/10' }
+    cyan: { accent: 'text-cyan-400', glow: 'bg-cyan-500/10' },
+    emerald: { accent: 'text-emerald-400', glow: 'bg-emerald-500/10' },
+    sky: { accent: 'text-sky-400', glow: 'bg-sky-500/10' },
+    lime: { accent: 'text-lime-400', glow: 'bg-lime-500/10' },
+    rose: { accent: 'text-rose-400', glow: 'bg-rose-500/10' },
+    fuchsia: { accent: 'text-fuchsia-400', glow: 'bg-fuchsia-500/10' },
+    slate: { accent: 'text-slate-400', glow: 'bg-slate-500/10' },
+    violet: { accent: 'text-violet-400', glow: 'bg-violet-500/10' }
   };
 
   const theme = colors[themeColor];
+  const isAccessible = moduleId ? isModuleAccessible(moduleId) : true;
+  const isLocked = Boolean(moduleId && !isAccessible);
+
+  const openSecurityProtocol = () => {
+    window.dispatchEvent(new CustomEvent('agnes:open-security-protocol'));
+  };
 
   return (
-    <div className="fixed inset-0 bg-[#020205] text-white overflow-hidden flex flex-col font-sans">
+    <div className="h-screen bg-[#010103] text-white flex flex-col font-sans relative selection:bg-white/10 overflow-hidden">
       <SyncTransition 
         isActive={isSyncing} 
         onComplete={finalizeExit} 
         moduleName={title} 
       />
 
-      <div className="absolute inset-0 z-0 text-white">
-        <div className={`absolute top-0 right-0 w-[600px] h-[600px] ${theme.glow} rounded-full blur-[120px] animate-pulse`} />
-        <div className={`absolute bottom-0 left-0 w-[400px] h-[400px] ${theme.glow} rounded-full blur-[100px] opacity-50`} />
-        <div className="absolute inset-0 opacity-[0.02] pointer-events-none" 
-             style={{ backgroundImage: 'radial-gradient(#fff 0.5px, transparent 0.5px)', backgroundSize: '32px 32px' }} />
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_45%)] opacity-40" />
+        <div className="absolute inset-0 surface-grid opacity-[0.015]" />
+        <div className={`absolute top-0 right-0 w-[820px] h-[820px] ${theme.glow} rounded-full blur-[170px] animate-pulse opacity-45`} />
+        <div className={`absolute bottom-0 left-0 w-[600px] h-[600px] ${theme.glow} rounded-full blur-[150px] opacity-25`} />
       </div>
 
-      <header className="relative z-20 border-b border-white/5 bg-black/20 backdrop-blur-md px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-6 text-white">
-          <button 
-            onClick={handleExit}
-            className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all group"
-          >
-            <ArrowLeft className="w-5 h-5 text-white/40 group-hover:text-white" />
-          </button>
-          <div>
-            <h1 className={`text-xl font-black italic tracking-[0.3em] uppercase ${theme.accent}`}>{title}</h1>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
+      <header className="sticky top-0 z-[60] border-b border-white/5 bg-black/50 backdrop-blur-2xl px-4 md:px-8 py-3 md:py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3 md:gap-6">
+          {!hideBack && (
+            <button 
+              onClick={handleExit}
+              aria-label="Back to Hub"
+              className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all group shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5 text-white/40 group-hover:text-white" />
+            </button>
+          )}
+          <div className="flex flex-col hidden sm:flex">
+            <h1 className={`text-lg md:text-xl font-black italic tracking-[0.3em] uppercase ${theme.accent} truncate max-w-[150px] md:max-w-xs`}>{title}</h1>
+            <div className="flex items-center gap-2">
                 <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest italic leading-none">Optimal</span>
-              </div>
-              <TelemetryTicker />
+                <span className="text-[7px] font-bold text-white/40 uppercase tracking-[0.2em] italic truncate">Link Stable // Secure Tunnel</span>
             </div>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-8">
-          <div className="flex flex-col items-end">
-            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1 italic leading-none">Security Protocol</span>
+        <div className="flex items-center gap-4 md:gap-8">
+          <TelemetryTicker />
+          <button
+            type="button"
+            onClick={openSecurityProtocol}
+            className="hidden lg:flex flex-col items-end text-left focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg px-2 py-1 hover:bg-white/5 transition-colors"
+          >
+            <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1 italic leading-none">Security Protocol</span>
             <div className="flex items-center gap-2">
               <Shield className={`w-3 h-3 ${theme.accent}`} />
               <span className="text-[10px] font-bold text-white/60 tracking-tight leading-none uppercase">E2EE_Active</span>
             </div>
-          </div>
-          <div className="w-px h-8 bg-white/5" />
-          <div className="w-48">
-            <NeuralIntegrity mode={themeColor === 'indigo' ? 'therapy' : themeColor === 'orange' ? 'trainer' : 'global'} />
+          </button>
+          <div className="w-px h-8 bg-white/5 hidden md:block" />
+          <div className="flex items-center gap-2">
+            <SystemCommandCenter />
           </div>
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 overflow-hidden">
+      <main className="relative z-10 flex-1 flex flex-col w-full max-w-[100vw] overflow-x-hidden min-h-0">
         <AnimatePresence mode="wait">
           {!isSyncing && (
             <motion.div
               key={title}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="h-full w-full"
+              initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+              animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
+              transition={reducedMotion ? { duration: 0 } : undefined}
+              className="flex-1 w-full flex flex-col min-h-0"
             >
-              {children}
+              {isLocked ? (
+                <div className="flex-1 flex items-center justify-center p-8">
+                  <div className="max-w-xl w-full p-12 rounded-[48px] border border-white/10 bg-white/[0.02] backdrop-blur-3xl text-center space-y-8 shadow-2xl">
+                    <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
+                      <div className={cn("w-3 h-3 rounded-full animate-ping", `bg-${themeColor}-500`)} />
+                    </div>
+                    <div className="space-y-3">
+                      <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white">Vault Sync Required</h3>
+                      <p className="text-sm text-white/40 leading-relaxed font-medium px-8">
+                        This domain is end-to-end encrypted. Initialize a local handshake to decrypt your profile synchronization.
+                      </p>
+                    </div>
+                    <NeuralButton size="xl" className="w-full" onClick={() => setShowAuth(true)}>
+                      Unlock {title} Vault
+                    </NeuralButton>
+                  </div>
+                  {moduleId && (
+                    <UnifiedAuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} mode={moduleId} />
+                  )}
+                </div>
+              ) : (
+                children
+              )}
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      <footer className="relative z-20 h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent flex items-center justify-center">
-        <div className={`w-32 h-full ${theme.accent.replace('text-', 'bg-')} blur-md opacity-50`} />
+      <footer className="h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent relative z-20 overflow-hidden">
+        <div className={`w-32 h-full mx-auto ${theme.accent.replace('text-', 'bg-')} blur-md opacity-30`} />
       </footer>
     </div>
   );

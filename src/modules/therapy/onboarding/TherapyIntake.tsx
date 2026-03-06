@@ -4,6 +4,7 @@ import { Shield, Sparkles, ArrowRight, Check, Heart, Target, AlertCircle } from 
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { cn } from '@/lib/utils';
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
 interface TherapyIntakeProps {
     onComplete: (data: any) => void;
@@ -17,6 +18,7 @@ export function TherapyIntake({ onComplete }: TherapyIntakeProps) {
     const [triggers, setTriggers] = useState('');
     const [history, setHistory] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const reducedMotion = useReducedMotion();
 
     const handleSync = async () => {
         setIsSubmitting(true);
@@ -29,7 +31,7 @@ export function TherapyIntake({ onComplete }: TherapyIntakeProps) {
         <div className="h-full flex flex-col items-center justify-center p-6 max-w-2xl mx-auto w-full">
             <AnimatePresence mode="wait">
                 {step === 'GOALS' && (
-                    <motion.div key="goals" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8 w-full">
+                    <motion.div key="goals" initial={reducedMotion ? false : { opacity: 0, y: 20 }} animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }} exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -20 }} transition={reducedMotion ? { duration: 0 } : undefined} className="space-y-8 w-full">
                         <div className="text-center space-y-3">
                             <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto mb-4">
                                 <Target className="w-8 h-8 text-indigo-400" />
@@ -42,7 +44,7 @@ export function TherapyIntake({ onComplete }: TherapyIntakeProps) {
                                 value={goals} 
                                 onChange={(e) => setGoals(e.target.value)}
                                 placeholder="Describe what you'd like to work on..."
-                                className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/10 focus:border-indigo-500/50 outline-none transition-colors no-scrollbar resize-none"
+                                className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/40 focus:border-indigo-500/50 outline-none transition-colors no-scrollbar resize-none"
                             />
                             <NeuralButton size="xl" className="w-full" disabled={!goals} onClick={() => setStep('TRIGGERS')}>
                                 Next Protocol <ArrowRight className="w-4 h-4 ml-2" />
@@ -52,7 +54,7 @@ export function TherapyIntake({ onComplete }: TherapyIntakeProps) {
                 )}
 
                 {step === 'TRIGGERS' && (
-                    <motion.div key="triggers" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8 w-full">
+                    <motion.div key="triggers" initial={reducedMotion ? false : { opacity: 0, y: 20 }} animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }} exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -20 }} transition={reducedMotion ? { duration: 0 } : undefined} className="space-y-8 w-full">
                         <div className="text-center space-y-3">
                             <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-4">
                                 <AlertCircle className="w-8 h-8 text-orange-400" />
@@ -65,7 +67,7 @@ export function TherapyIntake({ onComplete }: TherapyIntakeProps) {
                                 value={triggers} 
                                 onChange={(e) => setTriggers(e.target.value)}
                                 placeholder="This helps me maintain your emotional safety..."
-                                className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/10 focus:border-orange-500/50 outline-none transition-colors no-scrollbar resize-none"
+                                className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/40 focus:border-orange-500/50 outline-none transition-colors no-scrollbar resize-none"
                             />
                             <div className="flex gap-4">
                                 <NeuralButton variant="secondary" size="xl" className="flex-1" onClick={() => setStep('GOALS')}>Back</NeuralButton>
@@ -76,7 +78,7 @@ export function TherapyIntake({ onComplete }: TherapyIntakeProps) {
                 )}
 
                 {step === 'HISTORY' && (
-                    <motion.div key="history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8 w-full">
+                    <motion.div key="history" initial={reducedMotion ? false : { opacity: 0, y: 20 }} animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }} exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -20 }} transition={reducedMotion ? { duration: 0 } : undefined} className="space-y-8 w-full">
                         <div className="text-center space-y-3">
                             <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto mb-4">
                                 <Heart className="w-8 h-8 text-cyan-400" />
@@ -89,7 +91,7 @@ export function TherapyIntake({ onComplete }: TherapyIntakeProps) {
                                 value={history} 
                                 onChange={(e) => setHistory(e.target.value)}
                                 placeholder="Share any past experiences that are relevant..."
-                                className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/10 focus:border-cyan-500/50 outline-none transition-colors no-scrollbar resize-none"
+                                className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/40 focus:border-cyan-500/50 outline-none transition-colors no-scrollbar resize-none"
                             />
                             <div className="flex gap-4">
                                 <NeuralButton variant="secondary" size="xl" className="flex-1" onClick={() => setStep('TRIGGERS')}>Back</NeuralButton>
@@ -100,7 +102,7 @@ export function TherapyIntake({ onComplete }: TherapyIntakeProps) {
                 )}
 
                 {step === 'SYNC' && (
-                    <motion.div key="sync" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8 w-full text-center">
+                    <motion.div key="sync" initial={reducedMotion ? false : { opacity: 0, scale: 0.9 }} animate={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }} transition={reducedMotion ? { duration: 0 } : undefined} className="space-y-8 w-full text-center">
                         <div className="w-24 h-24 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center mx-auto mb-8 shadow-[0_0_50px_rgba(99,102,241,0.3)] animate-pulse">
                             <Shield className="w-12 h-12 text-indigo-400" />
                         </div>
@@ -112,7 +114,7 @@ export function TherapyIntake({ onComplete }: TherapyIntakeProps) {
                             <NeuralButton size="xl" className="w-full" loading={isSubmitting} onClick={handleSync}>
                                 <Sparkles className="w-4 h-4 mr-2" /> Encrypt & Initialize Session
                             </NeuralButton>
-                            <button onClick={() => setStep('GOALS')} disabled={isSubmitting} className="w-full mt-6 text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-white transition-colors italic">Re-adjust Protocol</button>
+                            <button onClick={() => setStep('GOALS')} disabled={isSubmitting} className="w-full mt-6 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors italic">Re-adjust Protocol</button>
                         </div>
                     </motion.div>
                 )}

@@ -1,7 +1,9 @@
 import React, { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, LucideIcon } from 'lucide-react';
+import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
 interface NeuralModalProps {
   isOpen: boolean;
@@ -41,61 +43,78 @@ export function NeuralModal({
   maxWidth = 'md'
 }: NeuralModalProps) {
   const theme = themes[themeColor];
+  const reducedMotion = useReducedMotion();
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md"
-            onClick={onClose}
-          />
-          
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className={cn(
-              "relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,0.5)]",
-              widths[maxWidth]
-            )}
-          >
-            <button
-              onClick={onClose}
-              className="absolute top-6 right-6 text-white/20 hover:text-white transition-colors z-20"
-            >
-              <X className="w-5 h-5" />
-            </button>
+    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Portal forceMount>
+        <AnimatePresence>
+          {isOpen && (
+            <>
+              <Dialog.Overlay asChild forceMount>
+                <motion.div
+                  initial={reducedMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={reducedMotion ? { duration: 0 } : undefined}
+                  className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md"
+                />
+              </Dialog.Overlay>
 
-            <div className={cn("p-8 border-b border-white/5", theme.bg)}>
-              <div className="flex items-center gap-4">
-                {Icon && (
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 bg-black/40 shadow-xl">
-                    <Icon className={cn("w-6 h-6", theme.color)} />
-                  </div>
-                )}
-                <div>
-                  <h2 className="text-xl font-black italic tracking-wider text-white uppercase leading-tight">
-                    {title}
-                  </h2>
-                  {subtitle && (
-                    <p className="text-white/30 text-[9px] uppercase font-black tracking-[0.3em] mt-1">
-                      {subtitle}
-                    </p>
+              <Dialog.Content asChild forceMount aria-describedby={undefined}>
+                <motion.div
+                  initial={reducedMotion ? false : { opacity: 0, scale: 0.95, y: 20 }}
+                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 }}
+                  transition={reducedMotion ? { duration: 0 } : undefined}
+                  className={cn(
+                    "fixed inset-0 z-[101] m-auto flex items-center justify-center p-4 pointer-events-none"
                   )}
-                </div>
-              </div>
-            </div>
+                >
+                  <div
+                    className={cn(
+                      "relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,0.5)] pointer-events-auto",
+                      widths[maxWidth]
+                    )}
+                  >
+                    <Dialog.Close asChild>
+                      <button
+                        className="absolute top-6 right-6 text-white/20 hover:text-white transition-colors z-20"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </Dialog.Close>
 
-            <div className="p-8">
-              {children}
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+                    <div className={cn("p-8 border-b border-white/5", theme.bg)}>
+                      <div className="flex items-center gap-4">
+                        {Icon && (
+                          <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 bg-black/40 shadow-xl">
+                            <Icon className={cn("w-6 h-6", theme.color)} />
+                          </div>
+                        )}
+                        <div>
+                          <Dialog.Title className="text-xl font-black italic tracking-wider text-white uppercase leading-tight">
+                            {title}
+                          </Dialog.Title>
+                          {subtitle && (
+                            <p className="text-white/30 text-[9px] uppercase font-black tracking-[0.3em] mt-1">
+                              {subtitle}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-8">
+                      {children}
+                    </div>
+                  </div>
+                </motion.div>
+              </Dialog.Content>
+            </>
+          )}
+        </AnimatePresence>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
