@@ -2,11 +2,8 @@
 // v1.0.1 - Nexus Engine Core
 import { Message } from '../types';
 import { ModelMetadata, ModelTier, EngineConfig, OrchestratorState, StructuredResponse, ParsedAction } from './types';
-import { ModelRegistry } from './ModelRegistry';
 import { sanitizeJsonPayload as nexusCleaner, stripInternalTags } from '../sanitize';
 import { isProviderControlOnly, stripProviderControlTokens } from '../sanitize';
-
-const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
 
 export interface ToolDefinition {
   type: 'function';
@@ -50,6 +47,8 @@ const GLOBAL_TOOLS: ToolDefinition[] = [
   }
 ];
 
+const GUEST_MODEL = 'x-ai/grok-3-mini-beta';
+
 export class Orchestrator {
   private config: EngineConfig;
   private state: OrchestratorState;
@@ -59,12 +58,17 @@ export class Orchestrator {
     this.config = config;
     this.onToolCall = onToolCall;
     this.state = {
-      activeModelId: config.preferredModelId || 'deepseek/deepseek-chat',
+      activeModelId: config.freeModelsOnly ? GUEST_MODEL : (config.preferredModelId || 'deepseek/deepseek-chat'),
       currentTier: ModelTier.S_REASONING,
       failureCount: 0,
       provider: 'openrouter',
       isAutoScaling: true
     };
+  }
+
+  setFreeModelsOnly(enabled: boolean): void {
+    this.config.freeModelsOnly = enabled;
+    this.state.activeModelId = enabled ? GUEST_MODEL : (this.config.preferredModelId || 'deepseek/deepseek-chat');
   }
 
   async sendMessage(messages: Message[], onChunk?: (chunk: string) => void): Promise<StructuredResponse> {
@@ -191,24 +195,27 @@ export class Orchestrator {
 
   private async executeRawRequest(messages: Message[], onChunk?: (chunk: string) => void, forceNoTools?: boolean): Promise<any> {
     const url = 'https://openrouter.ai/api/v1/chat/completions';
+    const skipTools = forceNoTools || this.config.freeModelsOnly;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.config.openrouterKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': window.location.origin,
-        'X-Title': 'AGNES Neural Engine',
+        'X-Title': 'Nexus Neural Engine',
       },
       body: JSON.stringify({
         model: this.state.activeModelId,
         messages: messages,
-        tools: forceNoTools ? undefined : GLOBAL_TOOLS,
-        tool_choice: forceNoTools ? undefined : 'auto',
+        tools: skipTools ? undefined : GLOBAL_TOOLS,
+        tool_choice: skipTools ? undefined : 'auto',
         stream: !!onChunk,
       })
     });
 
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
 
     if (onChunk) {
         const { fullText, toolCalls, streamInterrupted } = await this.readStream(response, onChunk);
@@ -274,7 +281,7 @@ export class Orchestrator {
                   fullText += content;
                   
                   // Delta emission logic: only emit NEW public text
-                  const { publicText: nextPublicTotal } = stripInternalTags(fullText);
+                  const { publicText: nextPublicTotal } = stripInternalTags(fullText, { retainSpacings: true });
                   const delta = nextPublicTotal.slice(publicTextAccumulated.length);
                   if (delta.length > 0) {
                     onChunk(delta);
@@ -311,7 +318,7 @@ export class Orchestrator {
             const content = choice?.delta?.content || '';
             if (content && !isProviderControlOnly(content)) {
               fullText += content;
-              const { publicText: nextPublicTotal } = stripInternalTags(fullText);
+              const { publicText: nextPublicTotal } = stripInternalTags(fullText, { retainSpacings: true });
               const delta = nextPublicTotal.slice(publicTextAccumulated.length);
               if (delta.length > 0) {
                 onChunk(delta);

@@ -9,8 +9,9 @@ import { NeuralButton } from './NeuralButton';
 import { NeuralInput } from './NeuralInput';
 import { SoulTerminationService } from '@/lib/services/soul-termination-service';
 import { cn } from '@/lib/utils';
+import { MODULE_MANIFEST, ModuleId, ModuleTheme } from '@/lib/module-manifest';
 
-export type AuthMode = 'therapy' | 'trainer' | 'global';
+export type AuthMode = 'global' | ModuleId;
 
 interface UnifiedAuthModalProps {
   isOpen: boolean;
@@ -35,13 +36,31 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
   const [error, setError] = useState('');
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  const themes = {
-    therapy: { color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', icon: BrainCircuit, title: 'Neural Therapy Link' },
-    trainer: { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', icon: Activity, title: 'Titan Performance Link' },
-    global: { color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', icon: Shield, title: 'AGNES Master Portal' }
+  const themeClasses: Record<ModuleTheme, { color: string; bg: string; border: string }> = {
+    indigo: { color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
+    orange: { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+    cyan: { color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
+    emerald: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+    sky: { color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
+    lime: { color: 'text-lime-400', bg: 'bg-lime-500/10', border: 'border-lime-500/20' },
+    rose: { color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+    fuchsia: { color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10', border: 'border-fuchsia-500/20' },
+    slate: { color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/20' },
+    violet: { color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' }
   };
 
-  const activeTheme = themes[mode];
+  const globalTheme = { color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', icon: Shield, title: 'Nexus Master Portal' };
+  const moduleTheme = mode !== 'global' ? MODULE_MANIFEST[mode] : null;
+  const moduleClasses = moduleTheme ? themeClasses[moduleTheme.themeColor] : null;
+  const activeTheme = mode === 'global'
+    ? globalTheme
+    : {
+        color: moduleClasses?.color || globalTheme.color,
+        bg: moduleClasses?.bg || globalTheme.bg,
+        border: moduleClasses?.border || globalTheme.border,
+        icon: moduleTheme?.icon || Shield,
+        title: moduleTheme ? `${moduleTheme.title} Secure Link` : globalTheme.title
+      };
 
   // Auto-transition from identity to vault if logged in but locked
   useEffect(() => {
@@ -72,24 +91,55 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} />
       
-      <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="relative w-full max-w-md overflow-hidden rounded-[40px] border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,1)]">
-        <button onClick={onClose} className="absolute top-8 right-8 text-white/20 hover:text-white transition-colors z-20"><X className="w-5 h-5" /></button>
+      <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="relative w-full max-w-md max-h-[90vh] overflow-hidden rounded-[40px] border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,1)] flex flex-col">
+        <button onClick={onClose} className="absolute top-6 right-6 text-white/20 hover:text-white transition-colors z-20"><X className="w-5 h-5" /></button>
 
-        <div className={`p-10 border-b border-white/5 ${activeTheme.bg}`}>
-          <div className="flex items-center gap-5">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border border-white/10 bg-black/40 shadow-2xl`}>
+        <div className={`p-8 sm:p-10 border-b border-white/5 ${activeTheme.bg} shrink-0`}>
+          <div className="flex items-start gap-5">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border border-white/10 bg-black/40 shadow-2xl shrink-0`}>
               <activeTheme.icon className={`w-7 h-7 ${activeTheme.color}`} />
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="text-2xl font-black italic tracking-wider text-white uppercase leading-tight">{activeTheme.title}</h2>
               <p className="text-white/30 text-[9px] uppercase font-black tracking-[0.3em] mt-1">
                   {view === 'VAULT_HANDSHAKE' ? (hasVault ? 'SECURE HANDSHAKE' : 'INITIALIZE VAULT') : view.replace('_', ' ')}
               </p>
             </div>
+            {view === 'VAULT_HANDSHAKE' && hasVault && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm("WARNING: Resetting your Master Password will permanently PURGE all encrypted data in your vault. This cannot be undone. Proceed?")) {
+                    if (!user) return;
+                    setLoading(true);
+                    setError('');
+                    lockVault();
+                    SoulTerminationService.terminateSoul(user.uid)
+                      .then(async () => {
+                        await refreshProfile();
+                        await refreshGlobalSoul();
+                        reset();
+                        onClose();
+                        navigate('/orchestrator', { replace: true });
+                      })
+                      .catch((e: any) => {
+                        setError(e?.message || 'Purge failed');
+                      })
+                      .finally(() => {
+                        setLoading(false);
+                      });
+                  }
+                }}
+                className="text-[9px] font-black uppercase tracking-widest text-amber-500/50 hover:text-amber-400 transition-colors italic"
+              >
+                Reset Master
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="p-10">
+        <div className="flex-1 overflow-y-auto no-scrollbar">
+          <div className="p-8 sm:p-10">
           <AnimatePresence mode="wait">
             {view === 'IDENTITY_CHOICE' && (
               <motion.div key="choice" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
@@ -170,6 +220,12 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                         try { 
                             await unlockVault(masterPassword); 
                             onClose(); 
+                            if (mode !== 'global') {
+                                const target = MODULE_MANIFEST[mode];
+                                if (target?.route) {
+                                    navigate(target.route);
+                                }
+                            }
                         } catch(e:any) { 
                             setError(e.message); 
                         } 
@@ -187,7 +243,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                             <p className="text-[10px] text-white/40 leading-relaxed italic">
                                 {hasVault 
                                     ? 'Identify verified. Provide your Master Password to decrypt your soul.' 
-                                    : 'Define your Master Password to generate your permanent E2EE keys. AGNES cannot reset this.'}
+                                    : 'Define your Master Password to generate your permanent E2EE keys. Nexus cannot reset this.'}
                             </p>
                         </div>
                     </div>
@@ -209,40 +265,12 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                     <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
                         <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[9px] font-black text-white/20 hover:text-white uppercase tracking-widest transition-colors">Back to Identity Portal</button>
                         
-                        {hasVault && (
-                            <button 
-                                type="button" 
-                                onClick={async () => {
-                                    if (confirm("WARNING: Resetting your Master Password will permanently PURGE all encrypted data in your vault. This cannot be undone. Proceed?")) {
-                                        if (!user) return;
-                                        setLoading(true);
-                                        setError('');
-                                        try {
-                                            lockVault();
-                                            await SoulTerminationService.terminateSoul(user.uid);
-                                            await refreshProfile();
-                                            await refreshGlobalSoul();
-                                            reset();
-                                            onClose();
-                                            navigate('/orchestrator', { replace: true });
-                                        } catch (e: any) {
-                                            setError(e?.message || 'Purge failed');
-                                        } finally {
-                                            setLoading(false);
-                                        }
-                                    }
-                                }}
-                                className="w-full text-[9px] font-black text-amber-500/40 hover:text-amber-500 uppercase tracking-widest transition-colors italic"
-                            >
-                                Reset Master Password (PURGE DATA)
-                            </button>
-                        )}
-                        
                         <button type="button" onClick={() => { logout(); reset(); }} className="w-full text-[9px] font-black text-red-400/40 hover:text-red-400 uppercase tracking-widest transition-colors italic">Terminate Identity Session</button>
                     </div>
                 </motion.form>
             )}
           </AnimatePresence>
+          </div>
         </div>
       </motion.div>
     </div>

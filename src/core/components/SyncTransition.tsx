@@ -14,17 +14,15 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
   const [progress, setProgress] = useState(0);
 
   const technicalLogs = [
-    `INITIALIZING_SESSION_COMPACTION...`,
-    `EXTRACTING_NEURAL_BREAKTHROUGHS...`,
-    `ENCRYPTING_METADATA_PACKETS...`,
-    `CALIBRATING_GLOBAL_SOUL_SYNTH...`,
-    `BIO_METRIC_HASH_GENERATED: 0x${Math.random().toString(16).slice(2, 8)}`,
+    `COMPACTING_SESSION_DATA...`,
+    `ENCRYPTING_PACKETS...`,
+    `SYNCING_GLOBAL_SOUL...`,
     `PUSHING_TO_E2EE_VAULT...`,
-    `SYNCHRONIZATION_STABLE.`,
-    `TERMINATING_ACTIVE_NODE...`
+    `SYNCHRONIZATION_STABLE.`
   ];
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
     if (isActive) {
       let currentLog = 0;
       const interval = setInterval(() => {
@@ -34,10 +32,13 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
           currentLog++;
         } else {
           clearInterval(interval);
-          setTimeout(onComplete, 800);
+          timeoutId = setTimeout(onComplete, 300);
         }
-      }, 400);
-      return () => clearInterval(interval);
+      }, 250);
+      return () => {
+        clearInterval(interval);
+        if (timeoutId) clearTimeout(timeoutId);
+      };
     } else {
       setLogs([]);
       setProgress(0);
@@ -119,7 +120,7 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
 
           <div className="absolute bottom-12 left-12 right-12 flex justify-between opacity-10">
             <span className="text-[8px] font-black uppercase tracking-[0.5em]">E2EE_ENCRYPTION_ACTIVE</span>
-            <span className="text-[8px] font-black uppercase tracking-[0.5em]">AGNES_OS_v3.4.0</span>
+            <span className="text-[8px] font-black uppercase tracking-[0.5em]">NEXUS_OS_v3.4.0</span>
           </div>
         </motion.div>
       )}

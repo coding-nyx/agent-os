@@ -58,7 +58,7 @@ export function BootLoader({ message = "ESTABLISHING NEURAL LINK..." }: BootLoad
       <div className="absolute bottom-8 left-8 right-8 flex justify-between opacity-20">
         <span className="text-[8px] font-mono text-indigo-400">SECURE_TUNNEL: ACTIVE</span>
         <span className="text-[8px] font-mono text-indigo-400">E2EE_HANDSHAKE: IN_PROGRESS</span>
-        <span className="text-[8px] font-mono text-indigo-400">AGNES_CORE: v3.0.0</span>
+        <span className="text-[8px] font-mono text-indigo-400">NEXUS_CORE: v3.0.0</span>
       </div>
     </div>
   );

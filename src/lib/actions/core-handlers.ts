@@ -93,7 +93,7 @@ export function registerCoreActions() {
       }
 
       try {
-        const consultPrompt = `You are ${moduleName}, a specialist agent in the AGNES system. ` +
+        const consultPrompt = `You are ${moduleName}, a specialist agent in the Nexus system. ` +
           `Your domain is: ${moduleEntry?.description || targetModule}. ` +
           `Answer the following consultation query concisely and precisely from your domain expertise. ` +
           `Do not use action tags. Respond in 2-4 sentences.`;

@@ -21,7 +21,7 @@ export function NexusSubModulePanel({ moduleId, initialContent, onBack, onNaviga
   const chatTheme = manifest?.chatTheme || 'indigo';
   const colorHex = manifest?.colorHex || '#8B5CF6';
 
-  const systemPrompt = persona || `You are ${moduleName}, a specialist agent in the AGNES system. Domain: ${manifest?.description || moduleId}. Provide concise domain-expert responses.`;
+  const systemPrompt = persona || `You are ${moduleName}, a specialist agent in the Nexus system. Domain: ${manifest?.description || moduleId}. Provide concise domain-expert responses.`;
 
   const ai = useModuleAI({
     moduleId: `nexus-sub-${moduleId}`,

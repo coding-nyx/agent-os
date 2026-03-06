@@ -1,143 +1,163 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { NeuralButton } from '@/core/components/NeuralButton';
-import { GlassCard } from '@/core/components/GlassCard';
 import { UnifiedAuthModal } from '@/core/components/UnifiedAuthModal';
-import { Shield, BrainCircuit, Activity, ChevronDown, Sparkles, Lock } from 'lucide-react';
+import { ArrowRight, Brain, ClipboardList, Dumbbell, HeartPulse, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
 
+const FEATURE_CARDS = [
+  {
+    id: 'therapy',
+    title: 'Agnes',
+    subtitle: 'Psychotherapy module',
+    description: 'Attachment-aware therapy with continuity across sessions.',
+    color: 'text-indigo-300',
+    icon: Brain,
+    route: '/therapy'
+  },
+  {
+    id: 'soma',
+    title: 'Soma',
+    subtitle: 'Biological data',
+    description: 'Source-of-truth for biomarkers, labs, and readiness signals.',
+    color: 'text-emerald-300',
+    icon: HeartPulse,
+    route: '/soma'
+  },
+  {
+    id: 'ledger',
+    title: 'Ledger',
+    subtitle: 'Financial planning',
+    description: 'Plan-first budgeting and cashflow optimization with friction tracking.',
+    color: 'text-cyan-300',
+    icon: ClipboardList,
+    route: '/ledger'
+  },
+  {
+    id: 'trainer',
+    title: 'Titan',
+    subtitle: 'Performance module',
+    description: 'CNS-aware coaching with recovery-aware load adjustments.',
+    color: 'text-amber-300',
+    icon: Dumbbell,
+    route: '/trainer'
+  }
+];
+
 export default function LandingPage() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'global' | 'therapy' | 'trainer'>('global');
-  const { isAuthenticated, isGuest } = useAuth();
+  const { isAuthenticated, enterGuestMode } = useAuth();
   const navigate = useNavigate();
 
-  const handleEnter = () => {
-    if (isAuthenticated || isGuest) {
-      navigate('/hub');
-    } else {
-      setAuthMode('global');
-      setIsAuthOpen(true);
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/hub', { replace: true });
     }
+  }, [isAuthenticated, navigate]);
+
+  const goHub = () => {
+    if (isAuthenticated) {
+      navigate('/hub');
+      return;
+    }
+    setIsAuthOpen(true);
+  };
+
+  const tryGuest = (route: string) => {
+    enterGuestMode();
+    navigate(route);
   };
 
   return (
-    <div className="bg-[#020205] text-white selection:bg-indigo-500/30">
-      {/* Hero Section */}
-      <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden px-4">
-        {/* Ambient Background */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-indigo-600/10 rounded-full blur-[120px] animate-pulse" />
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent" />
+    <div className="min-h-screen bg-[#020205] text-white selection:bg-violet-500/30 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute top-[-20%] left-[50%] -translate-x-1/2 w-[900px] h-[900px] rounded-full bg-violet-600/12 blur-[140px]" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[700px] h-[700px] rounded-full bg-cyan-500/10 blur-[140px]" />
+        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(#fff 0.6px, transparent 0.6px)', backgroundSize: '28px 28px' }} />
+      </div>
+
+      <header className="relative z-20 mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
+        <div>
+          <h1 className="font-['Space_Grotesk'] text-2xl text-white/95">NEXUS</h1>
+          <p className="text-[11px] text-violet-300 uppercase tracking-[0.2em]">Neural Interface v3.0</p>
         </div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1 }}
-          className="relative z-10 text-center space-y-6"
-        >
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="h-px w-12 bg-indigo-500/50" />
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 italic">Neural Ecosystem v3.0</span>
-            <div className="h-px w-12 bg-indigo-500/50" />
-          </div>
-          
-          <h1 className="text-7xl md:text-9xl font-black italic tracking-tighter uppercase leading-none">
-            AGNES
-          </h1>
-          
-          <p className="max-w-lg mx-auto text-white/40 text-sm md:text-base font-medium leading-relaxed tracking-tight">
-            The world's first E2EE secured AI wellness sanctuary. 
-            Bridging clinical psychological insight with elite physical performance.
-          </p>
-
-          <div className="pt-8 flex flex-col md:flex-row items-center justify-center gap-4">
-            <NeuralButton size="xl" onClick={handleEnter} className="w-full md:w-auto">
-              Initialize Neural Link <Sparkles className="w-4 h-4 ml-2" />
-            </NeuralButton>
-            <NeuralButton variant="secondary" size="xl" onClick={() => {
-                const el = document.getElementById('features');
-                el?.scrollIntoView({ behavior: 'smooth' });
-            }} className="w-full md:w-auto">
-              Protocol Brief <ChevronDown className="w-4 h-4 ml-2" />
-            </NeuralButton>
-          </div>
-        </motion.div>
-
-        {/* Decorative HUD Elements */}
-        <div className="absolute bottom-12 left-12 hidden lg:block">
-          <div className="space-y-1 opacity-20">
-            <p className="text-[8px] font-mono">STATUS: CORE_STABLE</p>
-            <p className="text-[8px] font-mono">ENCRYPTION: AES-GCM-256</p>
-            <p className="text-[8px] font-mono">LATENCY: 14ms</p>
-          </div>
+        <div className="flex items-center gap-3">
+          <NeuralButton variant="ghost" size="md" onClick={goHub}>Sign In</NeuralButton>
+          <NeuralButton size="md" onClick={goHub}>Get Started</NeuralButton>
         </div>
-      </section>
+      </header>
 
-      {/* Feature Section */}
-      <section id="features" className="py-32 px-4 relative">
-        <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <GlassCard className="p-8 group hover:border-indigo-500/30 transition-colors">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 border border-indigo-500/20 group-hover:scale-110 transition-transform">
-                <Shield className="w-6 h-6 text-indigo-400" />
-              </div>
-              <h3 className="text-xl font-black italic uppercase mb-4 tracking-tight text-white/90">Absolute Privacy</h3>
-              <p className="text-white/40 text-sm leading-relaxed font-medium">
-                Your data is encrypted with a Master Vault password that only you hold. Even AGNES cannot read your soul.
-              </p>
-            </GlassCard>
+      <main className="relative z-10 px-6 pb-20">
+        <section className="max-w-5xl mx-auto text-center pt-10 md:pt-20">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
+            <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-violet-200 mb-8">
+              <Sparkles className="w-3.5 h-3.5" /> Neural Interface v3.0
+            </div>
+            <h2 className="font-['Space_Grotesk'] text-4xl md:text-7xl leading-[1.05] text-white/95">
+              A Unified AI Nervous System
+              <br />
+              For Human Wellness
+            </h2>
+            <p className="text-xl text-white/60 mt-8 mb-12 max-w-2xl mx-auto leading-relaxed">
+              Nexus is an AI wellness platform — a constellation of specialized agents working together to optimize your
+              biological, emotional, cognitive, and resource health.
+            </p>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+              <NeuralButton size="xl" onClick={goHub}>
+                <span className="flex items-center gap-2">
+                  Enter Neural Hub <ArrowRight className="w-4 h-4" />
+                </span>
+              </NeuralButton>
+              <NeuralButton variant="secondary" size="xl" onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}>
+                Explore Modules
+              </NeuralButton>
+            </div>
+          </motion.div>
+        </section>
 
-            <GlassCard className="p-8 group hover:border-indigo-500/30 transition-colors">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 border border-indigo-500/20 group-hover:scale-110 transition-transform">
-                <BrainCircuit className="w-6 h-6 text-indigo-400" />
-              </div>
-              <h3 className="text-xl font-black italic uppercase mb-4 tracking-tight text-white/90">Agnes Therapy</h3>
-              <p className="text-white/40 text-sm leading-relaxed font-medium">
-                Deep conversational empathy powered by a psychological baseline. A therapist that remembers every breakthrough.
-              </p>
-            </GlassCard>
-
-            <GlassCard className="p-8 group hover:border-indigo-500/30 transition-colors">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 border border-indigo-500/20 group-hover:scale-110 transition-transform">
-                <Activity className="w-6 h-6 text-indigo-400" />
-              </div>
-              <h3 className="text-xl font-black italic uppercase mb-4 tracking-tight text-white/90">Titan Performance</h3>
-              <p className="text-white/40 text-sm leading-relaxed font-medium">
-                Medical-grade biometric tracking. Titan adjusts your training intensity based on CNS fatigue and hormonal cycles.
-              </p>
-            </GlassCard>
+        <section id="modules" className="max-w-7xl mx-auto mt-20 md:mt-28">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            {FEATURE_CARDS.map((card, index) => {
+              const Icon = card.icon;
+              return (
+                <motion.article
+                  key={card.title}
+                  initial={{ opacity: 0, y: 12 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-80px' }}
+                  transition={{ delay: index * 0.08 }}
+                  className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 flex flex-col h-full"
+                >
+                  <div className="w-11 h-11 rounded-2xl border border-white/10 bg-black/30 flex items-center justify-center mb-5">
+                    <Icon className={`w-5 h-5 ${card.color}`} />
+                  </div>
+                  <h3 className="font-['Space_Grotesk'] text-2xl text-white/95">{card.title}</h3>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-white/35 mt-1">{card.subtitle}</p>
+                  <p className="text-sm text-white/60 mt-4 leading-relaxed flex-1">{card.description}</p>
+                  
+                  <div className="mt-8">
+                    <NeuralButton 
+                      variant="secondary" 
+                      size="sm" 
+                      className="w-full text-[10px] uppercase tracking-widest"
+                      onClick={() => tryGuest(card.route)}
+                    >
+                      Try as Guest
+                    </NeuralButton>
+                  </div>
+                </motion.article>
+              );
+            })}
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* Final CTA */}
-      <section className="py-32 relative overflow-hidden">
-        <div className="absolute inset-0 bg-indigo-600/5 blur-[100px]" />
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter mb-8">
-            READY TO SYNC?
-          </h2>
-          <NeuralButton size="xl" onClick={handleEnter}>
-            Enter Neural Nexus
-          </NeuralButton>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 border-t border-white/5 px-4 text-center">
-        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">
-          © 2026 AGNES NEURAL ECOSYSTEM. ALL RIGHTS SECURED.
-        </p>
+      <footer className="relative z-10 border-t border-white/10 py-8 text-center text-[11px] tracking-[0.2em] uppercase text-white/35">
+        © 2026 Nexus Neural Interface
       </footer>
 
-      <UnifiedAuthModal 
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        mode={authMode}
-      />
+      <UnifiedAuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} mode="global" />
     </div>
   );
 }

@@ -22,7 +22,7 @@ export interface RoutingDecision {
 }
 
 const ROUTER_PROMPT = `
-You are Nexus, the intent router for the AGNES system.
+You are Nexus, the intent router for the Nexus system.
 Classify the user's message into the single best target module.
 Return ONLY JSON in the format:
 {"target":"moduleId","confidence":0.0-1.0,"reason":"short_reason"}
