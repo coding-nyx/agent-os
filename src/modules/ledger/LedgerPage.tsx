@@ -68,6 +68,7 @@ export default function LedgerPage() {
       workspaceType="command"
       profileOptions={{
         loadProfile: loadLedgerProfile,
+        saveProfile: saveLedgerProfile,
         subscribeProfile: subscribeLedgerProfile,
         syncGuestProfile: syncGuestLedgerProfileToUser
       }}

@@ -8,7 +8,7 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { TrainerProfile } from '@/lib/types';
 import { buildTrainerSessionPrompt } from './prompts/trainer-session-prompt';
-import { loadTrainerProfile, subscribeTrainerProfile, syncGuestTrainerProfileToUser } from './services/trainer-profile-service';
+import { loadTrainerProfile, saveTrainerProfile, subscribeTrainerProfile, syncGuestTrainerProfileToUser } from './services/trainer-profile-service';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { NexusChat } from '@/core/components/NexusChat';
 import { cn } from '@/lib/utils';
@@ -52,6 +52,7 @@ export default function TrainerPage() {
       moduleId="trainer"
       profileOptions={{
         loadProfile: loadTrainerProfile,
+        saveProfile: saveTrainerProfile,
         subscribeProfile: subscribeTrainerProfile,
         syncGuestProfile: syncGuestTrainerProfileToUser
       }}
