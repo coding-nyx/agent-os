@@ -17,7 +17,14 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
 
-          if (id.includes('@react-three/fiber')) {
+          // React must be checked before @react-three/* (paths contain '/react/')
+          if (id.includes('/react-dom/') || id.includes('/scheduler/') ||
+              (id.includes('/react/') && !id.includes('@react-three/'))) {
+            return 'vendor-react';
+          }
+
+          // R3F depends on React — keep in same chunk to avoid load-order issues
+          if (id.includes('@react-three/fiber') || id.includes('@react-three/postprocessing')) {
             return 'vendor-r3f';
           }
 
@@ -47,10 +54,6 @@ export default defineConfig({
 
           if (id.includes('/gpt-tokenizer/')) {
             return 'vendor-gpt-tokenizer';
-          }
-
-          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
-            return 'vendor-react';
           }
 
           if (id.includes('/lucide-react/')) {
