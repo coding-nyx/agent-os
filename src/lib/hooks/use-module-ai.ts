@@ -157,11 +157,14 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
   useEffect(() => {
     if (isHydrating || !user || isGuest || messages.length === 0) return;
     const timer = setTimeout(() => {
+      const lastMessageAt = new Date().toISOString();
+      // Pre-set signature so subscription ignores its own echo
+      lastRemoteSignatureRef.current = `${lastMessageAt}:${messages.length}`;
       ModuleMemoryService.saveActiveSession(user.uid, {
         sessionId: 'current',
         moduleId,
         startTime: sessionStartRef.current,
-        lastMessageAt: new Date().toISOString(),
+        lastMessageAt,
         history: messages,
         tokenCount: 0,
         isGuestTrial: false
