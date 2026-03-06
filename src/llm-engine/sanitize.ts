@@ -18,7 +18,16 @@ export function stripProviderControlTokens(content: string): string {
 }
 
 export function isProviderControlOnly(content: string): boolean {
-  return stripProviderControlTokens(content).trim().length === 0;
+  if (!content) return false;
+  let hasControlPattern = false;
+  let next = content;
+  for (const pattern of PROVIDER_CONTROL_PATTERNS) {
+    if (content.match(pattern)) {
+      hasControlPattern = true;
+      next = next.replace(pattern, '');
+    }
+  }
+  return hasControlPattern && next.trim().length === 0;
 }
 
 export function stripInternalTags(content: string): SanitizedContent {
@@ -50,21 +59,23 @@ export function stripInternalTags(content: string): SanitizedContent {
   const internalParts = [thoughtText, actionText, toolCallText, rawToolCallText].filter(Boolean);
   const internalText = internalParts.length > 0 ? internalParts.join('\n\n') : null;
 
-  // Aggressively clean public text of all tags
+  // Aggressively clean public text of all tags - REPLACE WITH SPACE TO PREVENT WORD JOINING
   let publicText = normalized
-    .replace(/<thought>[\s\S]*?<\/thought>/g, '')
-    .replace(/<action[\s\S]*?<\/action>/g, '')
-    .replace(/<tool_calls_begin>[\s\S]*?<tool_calls_end>/g, '')
-    .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/g, '')
-    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
+    .replace(/<thought>[\s\S]*?<\/thought>/g, ' ')
+    .replace(/<action[\s\S]*?<\/action>/g, ' ')
+    .replace(/<tool_calls_begin>[\s\S]*?<tool_calls_end>/g, ' ')
+    .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/g, ' ')
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, ' ');
 
-  // Remove any unclosed tags at the end (for streaming)
+  // Remove any unclosed tags at the end (for streaming) - REPLACE WITH SPACE
   publicText = publicText
-    .replace(/<thought>[\s\S]*/g, '')
-    .replace(/<action[\s\S]*/g, '')
-    .replace(/<tool_calls_begin>[\s\S]*/g, '')
-    .replace(/<tool_call_begin>[\s\S]*/g, '')
-    .replace(/<tool_call>[\s\S]*/g, '')
+    .replace(/<thought>[\s\S]*/g, ' ')
+    .replace(/<action[\s\S]*/g, ' ')
+    .replace(/<tool_calls_begin>[\s\S]*/g, ' ')
+    .replace(/<tool_call_begin>[\s\S]*/g, ' ')
+    .replace(/<tool_call>[\s\S]*/g, ' ')
+    .replace(/<(?:t(?:h(?:o(?:u(?:g(?:ht?)?)?)?)?)?|a(?:c(?:t(?:i(?:on?)?)?)?)?|tool_call(?:s_begin|_begin)?)$/i, '')
+    .replace(/\s+/g, ' ') // Collapse multiple spaces to one
     .trim();
 
   return { publicText, internalText, isThinking };

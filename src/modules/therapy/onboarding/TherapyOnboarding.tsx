@@ -1,12 +1,17 @@
 import React, { useMemo } from 'react';
 import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
-import { GuidedChatSpec } from '@/core/intake/types';
+import { GuidedChatSpec, GuidedIntakeStep, IntakeModuleConfig } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
-import { extractActionPayloads, hasActionSignal } from '@/core/intake/action-parser';
+import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
 import { NexusChat } from '@/core/components/NexusChat';
+import { useAuth } from '@/lib/auth-context';
 import { BaseContext } from '../types';
 import { THERAPY_ONBOARDING_PERSONA } from '../personas';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
+import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import { mergeNSVPatch } from '@/lib/services/nsv-service';
+import { NyxHandoffService } from '@/lib/services/nyx-handoff-service';
+import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 
 interface TherapyOnboardingProps {
   initialBaseContext?: GlobalBaseIntakeContext;
@@ -18,33 +23,43 @@ type TherapyIntakeState = {
   stepProgress: number;
 };
 
-const THERAPY_STEPS = [
+const THERAPY_STEPS: GuidedIntakeStep[] = [
   {
     key: 'identity',
     label: 'Identity Anchor',
-    helperText: 'Start with name and pronouns to establish safe addressing in every session.'
+    helperText: 'Start with name and pronouns to establish safe addressing in every session.',
+    inferredKeywords: ['name', 'pronouns', 'call you', 'identity'],
+    focusActions: ['focus_identity']
   },
   {
     key: 'background',
     label: 'Background',
-    helperText: 'Capture key life context so advice aligns with lived experience.'
+    helperText: 'Capture key life context so advice aligns with lived experience.',
+    inferredKeywords: ['background', 'childhood', 'growing up', 'past', 'history', 'life context'],
+    focusActions: ['focus_background']
   },
   {
     key: 'struggles',
     label: 'Current Struggles',
-    helperText: 'Document active emotional load and recurring stress patterns.'
+    helperText: 'Document active emotional load and recurring stress patterns.',
+    inferredKeywords: ['struggle', 'heavy', 'hard', 'difficult', 'challenge', 'stress', 'trauma', 'lately', 'distress'],
+    focusActions: ['focus_struggles']
   },
   {
     key: 'goals',
     label: 'Goals',
-    helperText: 'Define what progress should look like over upcoming sessions.'
+    helperText: 'Define what progress should look like over upcoming sessions.',
+    inferredKeywords: ['goal', 'hope to achieve', 'work on', 'explore together', 'outcome', 'breakthrough'],
+    focusActions: ['focus_goals']
   },
   {
     key: 'preferences',
     label: 'Therapist Preferences',
-    helperText: 'Lock tone, communication style, and therapist-fit preferences.'
+    helperText: 'Lock tone, communication style, and therapist-fit preferences.',
+    inferredKeywords: ['preference', 'tone', 'gender', 'style', 'communication', 'approach'],
+    focusActions: ['focus_preferences']
   }
-] as const;
+];
 
 function normalizeOptionalString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
@@ -81,60 +96,6 @@ function mergeTherapyContext(current: Partial<BaseContext>, patch: Partial<BaseC
   return merged;
 }
 
-function extractIdentityFromUserMessage(message?: string): { name?: string; pronouns?: string } {
-  if (!message) return {};
-
-  const extracted: { name?: string; pronouns?: string } = {};
-  const nameMatch = message.match(/\b(?:my name is|call me|i'm)\s+([a-z][a-z' -]{0,30})/i);
-  if (nameMatch) {
-    const raw = nameMatch[1].trim().split(/\s+/)[0];
-    extracted.name = raw.charAt(0).toUpperCase() + raw.slice(1);
-  }
-
-  const pronounsMatch = message.match(
-    /\b(?:pronouns(?: are)?\s*)?(she\/her|he\/him|they\/them|she her|he him|they them)\b/i
-  );
-  if (pronounsMatch) {
-    extracted.pronouns = pronounsMatch[1].replace(/\s+/g, '/').toLowerCase();
-  }
-
-  return extracted;
-}
-
-function extractLifestyleFromUserMessage(message?: string): { occupation?: string; typicalSleepHours?: number } {
-  if (!message) return {};
-  const updates: { occupation?: string; typicalSleepHours?: number } = {};
-
-  const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|my job is|occupation is)\s+([a-z][a-z0-9'\/&,\- ]{1,50})/i);
-  if (occupationMatch) {
-    updates.occupation = occupationMatch[1].trim();
-  }
-
-  const sleepMatch = message.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:hours?|hrs?)\b/i);
-  if (sleepMatch) {
-    const parsed = Number.parseFloat(sleepMatch[1]);
-    if (Number.isFinite(parsed) && parsed > 0 && parsed <= 24) {
-      updates.typicalSleepHours = parsed;
-    }
-  }
-
-  return updates;
-}
-
-function isAffirmativeIdentityConfirmation(message?: string): boolean {
-  if (!message) return false;
-  return /\b(yes|yep|yup|correct|that'?s right|sounds right|exactly)\b/i.test(message);
-}
-
-function inferStepFromAssistantResponse(response: string): number | null {
-  if (/\b(therapist preferences|preferred therapist|tone|traits)\b/i.test(response)) return 4;
-  if (/\b(goals?|what do you hope|outcome)\b/i.test(response)) return 3;
-  if (/\b(struggles?|what has been feeling heavy|stress|trauma)\b/i.test(response)) return 2;
-  if (/\b(background|childhood|history|upbringing)\b/i.test(response)) return 1;
-  if (/\b(name|pronouns)\b/i.test(response)) return 0;
-  return null;
-}
-
 function buildInitialPrompt(initialBaseContext?: GlobalBaseIntakeContext): string {
   const name = normalizeOptionalString(initialBaseContext?.name);
   const pronouns = normalizeOptionalString(initialBaseContext?.pronouns);
@@ -163,7 +124,9 @@ function buildInitialPrompt(initialBaseContext?: GlobalBaseIntakeContext): strin
 }
 
 export function TherapyOnboarding({ initialBaseContext, onComplete }: TherapyOnboardingProps) {
-  const initialContext = useMemo<Partial<BaseContext>>(() => {
+  const { user } = useAuth();
+  
+  const initialContextState = useMemo<Partial<BaseContext>>(() => {
     const name = normalizeOptionalString(initialBaseContext?.name);
     const pronouns = normalizeOptionalString(initialBaseContext?.pronouns);
     const occupation = normalizeOptionalString(initialBaseContext?.occupation);
@@ -184,9 +147,56 @@ export function TherapyOnboarding({ initialBaseContext, onComplete }: TherapyOnb
     return next;
   }, [initialBaseContext]);
 
-  const spec = useMemo<GuidedChatSpec<TherapyIntakeState>>(() => ({
+  const config: IntakeModuleConfig<TherapyIntakeState, Partial<BaseContext>> = {
+    moduleId: 'therapy',
+    steps: THERAPY_STEPS,
+    updateActionType: 'update_therapy_context',
+    completeActionType: 'complete_therapy_onboarding',
+    applyPatch: (state, patch) => ({
+      ...state,
+      context: mergeTherapyContext(state.context, patch)
+    }),
+    extractFromUser: (message) => {
+        const patch: Partial<BaseContext> = {};
+        
+        const nameMatch = message.match(/\b(?:my name is|call me|i'm)\s+([a-z][a-z' -]{0,30})/i);
+        const pronounsMatch = message.match(/\b(?:pronouns(?: are)?\s*)?(she\/her|he\/him|they\/them|she her|he him|they them)\b/i);
+        
+        if (nameMatch || pronounsMatch) {
+            patch.identity = {};
+            if (nameMatch) {
+                const raw = nameMatch[1].trim().split(/\s+/)[0];
+                patch.identity.name = raw.charAt(0).toUpperCase() + raw.slice(1);
+            }
+            if (pronounsMatch) {
+                patch.identity.pronouns = pronounsMatch[1].replace(/\s+/g, '/').toLowerCase();
+            }
+        }
+
+        const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|my job is|occupation is)\s+([a-z][a-z0-9'\/&,\- ]{1,50})/i);
+        if (occupationMatch) patch.occupation = occupationMatch[1].trim();
+
+        const sleepMatch = message.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:hours?|hrs?)\b/i);
+        if (sleepMatch) {
+            const parsed = Number.parseFloat(sleepMatch[1]);
+            if (Number.isFinite(parsed) && parsed > 0 && parsed <= 24) patch.typicalSleepHours = parsed;
+        }
+
+        return patch;
+    },
+    validateCompletion: (state) => {
+        const identity = resolveIdentity(state.context.identity);
+        if (!identity.name || !identity.pronouns) {
+            return { valid: false, error: "Before we finalize, please confirm your preferred name and pronouns." };
+        }
+        return { valid: true };
+    }
+  };
+
+  const spec = useIntakeOrchestrator({
+    ...config,
     initialState: {
-      context: initialContext,
+      context: initialContextState,
       stepProgress: 0
     },
     initialMessages: [
@@ -195,78 +205,53 @@ export function TherapyOnboarding({ initialBaseContext, onComplete }: TherapyOnb
         content: buildInitialPrompt(initialBaseContext)
       }
     ],
-    initialStep: 0,
-    steps: [...THERAPY_STEPS],
     summary: 'Therapy onboarding intake.',
     placeholder: 'Share your response...',
-    buildContext: (state, history) => ({
-      systemPrompt: `${THERAPY_ONBOARDING_PERSONA}
+    systemPrompt: `${THERAPY_ONBOARDING_PERSONA}
 
 [PREFILLED_IDENTITY]
-- Name: ${resolveIdentity(state.context.identity).name || 'Unknown'}
-- Pronouns: ${resolveIdentity(state.context.identity).pronouns || 'Unknown'}
+- Name: ${resolveIdentity(initialContextState.identity).name || 'Unknown'}
+- Pronouns: ${resolveIdentity(initialContextState.identity).pronouns || 'Unknown'}
 [PREFILLED_LIFESTYLE]
-- Occupation: ${state.context.occupation || 'Unknown'}
-- Typical Sleep Hours: ${state.context.typicalSleepHours || 'Unknown'}
-`,
-      insights: [],
-      summary: 'Therapy onboarding intake.',
-      history
-    }),
-    onResponse: (response, state, meta) => {
-      let nextContext = { ...state.context };
-      let nextStep = state.stepProgress;
-
-      const updatePayloads = extractActionPayloads<Partial<BaseContext>>(response, 'update_therapy_context');
-      if (updatePayloads.length > 0) {
-        for (const parsed of updatePayloads) {
-          nextContext = mergeTherapyContext(nextContext, parsed);
-        }
-        nextStep = Math.min(nextStep + 1, THERAPY_STEPS.length - 1);
-      }
-
-      const identityFromUser = extractIdentityFromUserMessage(meta?.latestUserMessage);
-      if (identityFromUser.name || identityFromUser.pronouns) {
-        nextContext = mergeTherapyContext(nextContext, { identity: identityFromUser });
-      }
-      const lifestyleFromUser = extractLifestyleFromUserMessage(meta?.latestUserMessage);
-      if (lifestyleFromUser.occupation) {
-        nextContext.occupation = lifestyleFromUser.occupation;
-      }
-      if (typeof lifestyleFromUser.typicalSleepHours === 'number') {
-        nextContext.typicalSleepHours = lifestyleFromUser.typicalSleepHours;
-      }
-
-      const resolvedIdentity = resolveIdentity(nextContext.identity);
-      if (resolvedIdentity.name && resolvedIdentity.pronouns) {
-        if (isAffirmativeIdentityConfirmation(meta?.latestUserMessage) || identityFromUser.name || identityFromUser.pronouns) {
-          nextStep = Math.max(nextStep, 1);
-        }
-      }
-
-      const inferredStep = inferStepFromAssistantResponse(response);
-      if (typeof inferredStep === 'number') {
-        nextStep = Math.max(nextStep, inferredStep);
-      }
-
-      const completed = hasActionSignal(response, 'complete_therapy_onboarding');
-      if (completed) {
-        nextStep = THERAPY_STEPS.length - 1;
-      }
-
-      return {
-        nextState: {
-          context: nextContext,
-          stepProgress: nextStep
-        },
-        nextStep,
-        completed
-      };
-    }
-  }), [initialContext, initialBaseContext]);
+- Occupation: ${initialContextState.occupation || 'Unknown'}
+- Typical Sleep Hours: ${initialContextState.typicalSleepHours || 'Unknown'}
+`
+  });
 
   const intake = useGuidedChatIntake({
-    spec,
+    spec: {
+        ...spec,
+        // Override onResponse to handle specialized actions like sync_vitals
+        onResponse: async (response, state, meta) => {
+            const result = await spec.onResponse(response, state, meta);
+            
+            // Handle sync_vitals
+            const vitalsPatch = response.actions
+                .filter((action) => action.type === 'sync_vitals')
+                .map((action) => action.payload as Partial<any>)
+                .reduce((acc, payload) => mergeNSVPatch(acc, payload), {} as any);
+
+            if (user?.uid && Object.keys(vitalsPatch).length > 0) {
+                await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch((e) => {
+                    console.error('Therapy onboarding sync_vitals failed:', e);
+                });
+            }
+
+            // Handle calibration request on completion
+            if (result.completed && Object.keys(vitalsPatch).length === 0) {
+                NyxHandoffService.store({
+                    moduleId: 'therapy',
+                    type: 'delegate',
+                    content: buildCalibrationPrompt('therapy'),
+                    reason: 'calibration_request',
+                    sourceModuleId: 'therapy',
+                    createdAt: new Date().toISOString()
+                });
+            }
+
+            return result;
+        }
+    },
     onComplete: async (state) => {
       onComplete(state.context);
     }
@@ -277,7 +262,7 @@ export function TherapyOnboarding({ initialBaseContext, onComplete }: TherapyOnb
       title="Agnes Guided Intake"
       subtitle="Building a therapeutic baseline for long-term session continuity."
       statusLabel="ENCRYPTED_ONBOARDING"
-      steps={[...THERAPY_STEPS]}
+      steps={THERAPY_STEPS}
       currentStep={intake.stepIndex}
       themeColor="indigo"
     >

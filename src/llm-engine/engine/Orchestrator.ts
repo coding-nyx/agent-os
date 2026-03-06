@@ -1,9 +1,9 @@
 
 // v1.0.1 - Nexus Engine Core
 import { Message } from '../types';
-import { ModelMetadata, ModelTier, EngineConfig, OrchestratorState } from './types';
+import { ModelMetadata, ModelTier, EngineConfig, OrchestratorState, StructuredResponse, ParsedAction } from './types';
 import { ModelRegistry } from './ModelRegistry';
-import { sanitizeJsonPayload as nexusCleaner } from '../sanitize';
+import { sanitizeJsonPayload as nexusCleaner, stripInternalTags } from '../sanitize';
 import { isProviderControlOnly, stripProviderControlTokens } from '../sanitize';
 
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
@@ -67,9 +67,15 @@ export class Orchestrator {
     };
   }
 
-  async sendMessage(messages: Message[], onChunk?: (chunk: string) => void): Promise<string> {
+  async sendMessage(messages: Message[], onChunk?: (chunk: string) => void): Promise<StructuredResponse> {
     if (this.config.isMockMode) {
-        return "Neural link simulation active.";
+        return {
+            fullText: "Neural link simulation active.",
+            publicText: "Neural link simulation active.",
+            internalThoughts: null,
+            actions: [],
+            isInterrupted: false
+        };
     }
 
     let currentMessages = [...messages];
@@ -115,7 +121,13 @@ export class Orchestrator {
       if (!fullResponse.trim()) {
           // Provider interruption control packets should not trigger synthetic fallback replies.
           if (interruptionControlSeen) {
-            return '';
+            return {
+                fullText: '',
+                publicText: '',
+                internalThoughts: null,
+                actions: [],
+                isInterrupted: true
+            };
           }
           // If we have no content, try one absolute final "no-tool" call to force a summary/response
           // We add a system hint to guide the model
@@ -124,11 +136,57 @@ export class Orchestrator {
           fullResponse = finalRaw.choices?.[0]?.message?.content || "Neural link established. System status: Optimal.";
       }
 
-      return fullResponse;
+      return this.finalizeResponse(fullResponse, interruptionControlSeen);
     } catch (e) {
       console.error("Orchestrator Error:", e);
-      return fullResponse + "\n\n[Link interrupted. Please check your network connection.]";
+      return {
+          fullText: fullResponse + "\n\n[Link interrupted. Please check your network connection.]",
+          publicText: fullResponse + "\n\n[Link interrupted. Please check your network connection.]",
+          internalThoughts: null,
+          actions: [],
+          isInterrupted: true
+      };
     }
+  }
+
+  private finalizeResponse(fullText: string, isInterrupted: boolean): StructuredResponse {
+    const { publicText, internalText: internalThoughts } = stripInternalTags(fullText);
+    
+    const actions: ParsedAction[] = [];
+    
+    // Extract <action> tags
+    const actionRegex = /<action type="([^"]+)">([\s\S]*?)<\/action>/gi;
+    let match;
+    while ((match = actionRegex.exec(fullText)) !== null) {
+      try {
+        actions.push({
+          type: match[1],
+          payload: JSON.parse(nexusCleaner(match[2])),
+          raw: match[0]
+        });
+      } catch (e) {}
+    }
+
+    // Extract <tool_call> tags
+    const toolCallRegex = /<tool_call>([\s\S]*?)<\/tool_call>/gi;
+    while ((match = toolCallRegex.exec(fullText)) !== null) {
+      try {
+        const parsed = JSON.parse(nexusCleaner(match[1]));
+        actions.push({
+          type: parsed.name,
+          payload: parsed.arguments,
+          raw: match[0]
+        });
+      } catch (e) {}
+    }
+
+    return {
+      fullText,
+      publicText,
+      internalThoughts,
+      actions,
+      isInterrupted
+    };
   }
 
   private async executeRawRequest(messages: Message[], onChunk?: (chunk: string) => void, forceNoTools?: boolean): Promise<any> {
@@ -186,6 +244,7 @@ export class Orchestrator {
     if (!reader) return { fullText: "", toolCalls: [], streamInterrupted: false };
     const decoder = new TextDecoder();
     let fullText = '';
+    let publicTextAccumulated = '';
     let buffer = '';
     let toolCalls: any[] = [];
     let streamInterrupted = false;
@@ -209,12 +268,18 @@ export class Orchestrator {
               const deltaToolCalls = choice?.delta?.tool_calls;
 
               if (content) {
-                const normalized = stripProviderControlTokens(content);
-                if (normalized.trim().length > 0) {
-                  fullText += normalized;
-                  onChunk(normalized);
-                } else if (isProviderControlOnly(content)) {
+                if (isProviderControlOnly(content)) {
                   streamInterrupted = true;
+                } else {
+                  fullText += content;
+                  
+                  // Delta emission logic: only emit NEW public text
+                  const { publicText: nextPublicTotal } = stripInternalTags(fullText);
+                  const delta = nextPublicTotal.slice(publicTextAccumulated.length);
+                  if (delta.length > 0) {
+                    onChunk(delta);
+                    publicTextAccumulated = nextPublicTotal;
+                  }
                 }
               }
 
@@ -231,11 +296,32 @@ export class Orchestrator {
                   }
                 }
               }
-            } catch (e) {}
+            } catch (e) { console.warn('SSE chunk parse error:', (e as Error).message); }
           }
         }
       }
     } finally {
+      // Drain remaining buffer data
+      if (buffer.trim()) {
+        const remaining = buffer.trim();
+        if (remaining.startsWith('data: ') && remaining !== 'data: [DONE]') {
+          try {
+            const data = JSON.parse(remaining.slice(6));
+            const choice = data.choices?.[0];
+            const content = choice?.delta?.content || '';
+            if (content && !isProviderControlOnly(content)) {
+              fullText += content;
+              const { publicText: nextPublicTotal } = stripInternalTags(fullText);
+              const delta = nextPublicTotal.slice(publicTextAccumulated.length);
+              if (delta.length > 0) {
+                onChunk(delta);
+              }
+            }
+          } catch (e) {
+            console.warn('SSE buffer drain parse error:', (e as Error).message);
+          }
+        }
+      }
       reader.releaseLock();
     }
     return { fullText, toolCalls: toolCalls.filter(Boolean), streamInterrupted };

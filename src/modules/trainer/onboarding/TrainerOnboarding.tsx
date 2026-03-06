@@ -3,14 +3,19 @@ import { Shield, Sparkles } from 'lucide-react';
 import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
-import { extractActionPayloads, hasActionSignal } from '@/core/intake/action-parser';
 import { NexusChat } from '@/core/components/NexusChat';
 import { cn } from '@/lib/utils';
 import { TrainerProfile, TrainerPrivacyLevel } from '@/lib/types';
+import { StructuredResponse } from '@/llm-engine/engine/types';
+import { useAuth } from '@/lib/auth-context';
 import { buildTrainerOnboardingPrompt } from '../prompts/trainer-onboarding-prompt';
 import { mergeTrainerProfile, normalizeRoutines } from '../utils';
 import { saveGuestTrainerProfile } from '../services/trainer-profile-service';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
+import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import { mergeNSVPatch } from '@/lib/services/nsv-service';
+import { NyxHandoffService } from '@/lib/services/nyx-handoff-service';
+import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 import {
   RequiredSectionKey,
   TrainerIntakeAccumulator,
@@ -126,6 +131,7 @@ export function TrainerOnboarding({
   initialBaseContext,
   initialProfile
 }: TrainerOnboardingProps) {
+  const { user } = useAuth();
   const hasBaseContext = (context: GlobalBaseIntakeContext) =>
     Boolean(context.name || context.pronouns || context.occupation || typeof context.typicalSleepHours === 'number');
 
@@ -184,12 +190,12 @@ export function TrainerOnboarding({
 - Completion requires: nutrition + activity + training history/goals.
 - Emit complete action only when all required sections are captured.
 `,
-          insights: [],
+          memoryContext: [],
           summary: 'Trainer onboarding intake.',
           history
         };
       },
-      onResponse: (response, state, meta) => {
+      onResponse: async (response, state, meta) => {
         if (!state.profile) {
           return {};
         }
@@ -199,7 +205,10 @@ export function TrainerOnboarding({
         let nextBaseContext = { ...state.baseContext };
         let assistantMessage: string | undefined;
 
-        const profileUpdates = extractActionPayloads<Partial<TrainerProfile>>(response, 'update_trainer_profile');
+        const profileUpdates = response.actions
+          .filter(a => a.type === 'update_trainer_profile')
+          .map(a => a.payload as Partial<TrainerProfile>);
+
         if (profileUpdates.length > 0) {
           for (const parsed of profileUpdates) {
             const normalizedPatch = normalizeTrainerProfilePatch(parsed);
@@ -208,7 +217,10 @@ export function TrainerOnboarding({
           }
         }
 
-        const routineUpdates = extractActionPayloads<{ routines?: any[] }>(response, 'update_routine');
+        const routineUpdates = response.actions
+          .filter(a => a.type === 'update_routine')
+          .map(a => a.payload as { routines?: any[] });
+
         if (routineUpdates.length > 0) {
           for (const parsed of routineUpdates) {
             if (parsed.routines) {
@@ -218,7 +230,10 @@ export function TrainerOnboarding({
           }
         }
 
-        const baseContextUpdates = extractActionPayloads<Partial<GlobalBaseIntakeContext>>(response, 'update_global_base_context');
+        const baseContextUpdates = response.actions
+          .filter((a) => a.type === 'update_global_base_context')
+          .map((a) => a.payload as Partial<GlobalBaseIntakeContext>);
+
         if (baseContextUpdates.length > 0) {
           for (const parsed of baseContextUpdates) {
             if (typeof parsed.name === 'string' && parsed.name.trim()) nextBaseContext.name = parsed.name.trim();
@@ -235,6 +250,16 @@ export function TrainerOnboarding({
           }
         }
 
+        const focusAction = [...response.actions].reverse().find((a) => 
+          ['focus_nutrition', 'focus_physical_data', 'focus_history_goals'].includes(a.type)
+        );
+        let explicitFocus: number | undefined;
+        if (focusAction) {
+          if (focusAction.type === 'focus_nutrition') explicitFocus = 0;
+          if (focusAction.type === 'focus_physical_data') explicitFocus = 1;
+          if (focusAction.type === 'focus_history_goals') explicitFocus = 2;
+        }
+
         nextAccumulator = appendFromUserMessage(nextAccumulator, meta?.latestUserMessage);
         if (meta?.history?.length) {
           nextAccumulator = backfillFromHistory(nextAccumulator, meta.history);
@@ -245,10 +270,14 @@ export function TrainerOnboarding({
 
         const missingSections = getMissingSectionsFromAccumulator(nextAccumulator);
         const hasRequiredData = missingSections.length === 0;
-        let nextStep = deriveStepFromMissingSections(missingSections);
+        
+        // Map to sync UI with conversational focus, otherwise progress forward based on data
+        let nextStep = explicitFocus !== undefined 
+          ? explicitFocus 
+          : Math.max(state.stepProgress, deriveStepFromMissingSections(missingSections));
 
-        const hasCompletionAction = hasActionSignal(response, 'complete_trainer_onboarding');
-        const completionClaim = hasCompletionClaim(response);
+        const hasCompletionAction = response.actions.some((a) => a.type === 'complete_trainer_onboarding');
+        const completionClaim = hasCompletionClaim(response.publicText);
         const completionActionWithoutRequiredData = hasCompletionAction && !hasRequiredData;
         const nearCompleteImplicitFinalize = completionClaim && !hasCompletionAction && hasRequiredData;
         const completionClaimWithoutRequiredData = completionClaim && !hasRequiredData;
@@ -270,6 +299,27 @@ export function TrainerOnboarding({
         }
 
         nextProfile.updatedAt = new Date().toISOString();
+
+        const vitalsPatch = response.actions
+          .filter((action) => action.type === 'sync_vitals')
+          .map((action) => action.payload as Partial<any>)
+          .reduce((acc, payload) => mergeNSVPatch(acc, payload), {} as any);
+
+        if (user?.uid && Object.keys(vitalsPatch).length > 0) {
+          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch((e) => {
+            console.error('Trainer onboarding sync_vitals failed:', e);
+          });
+        }
+        if (completed && Object.keys(vitalsPatch).length === 0) {
+          NyxHandoffService.store({
+            moduleId: 'trainer',
+            type: 'delegate',
+            content: buildCalibrationPrompt('trainer'),
+            reason: 'calibration_request',
+            sourceModuleId: 'trainer',
+            createdAt: new Date().toISOString()
+          });
+        }
 
         return {
           nextState: {

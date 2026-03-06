@@ -52,7 +52,7 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
       }
 
       const nextHistory = [...messages, userMsg];
-      const result = spec.onResponse(response, state, {
+      const result = await spec.onResponse(response, state, {
         latestUserMessage: content,
         history: nextHistory
       });
@@ -64,12 +64,10 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
         setStepIndex(result.nextStep);
       }
 
-      const cleaned = stripInternalTags(response).publicText;
-      const shouldSuppressControlPacket = isProviderControlOnly(response) && !result.assistantMessage;
-      const assistantMessage = result.assistantMessage ?? cleaned;
+      const assistantMessage = result.assistantMessage ?? response.publicText;
 
-      if (!shouldSuppressControlPacket && assistantMessage.trim()) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: assistantMessage }]);
+      if (!response.isInterrupted && assistantMessage.trim()) {
+        setMessages((prev) => [...prev, { role: 'assistant', content: response.fullText }]);
       }
       setStreamingText('');
 
@@ -89,8 +87,6 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
     }
   }, [isProcessing, messages, onComplete, spec, state, streamMessage]);
 
-  const publicStreamingText = stripInternalTags(streamingText).publicText;
-
   return {
     state,
     setState,
@@ -100,7 +96,7 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
     setMessages,
     isProcessing,
     error,
-    streamingText: publicStreamingText,
+    streamingText,
     handleSendMessage
   };
 }

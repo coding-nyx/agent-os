@@ -1,18 +1,19 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { Message, ConversationContext } from './types';
-import { TherapistAgent } from './engine/Agent';
+import { CognitiveAgent } from './engine/CognitiveAgent';
 import { WebStorageAdapter } from './adapters/WebStorageAdapter';
+import { StructuredResponse } from './engine/types';
 
 export interface AIContextType {
   sendMessage: (
     content: string, 
     context: ConversationContext
-  ) => Promise<{ response: string, updatedHistory: Message[] }>;
+  ) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
   streamMessage: (
     content: string, 
     context: ConversationContext,
     onChunk: (chunk: string) => void
-  ) => Promise<{ response: string, updatedHistory: Message[] }>;
+  ) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
   isInitialized: boolean;
 }
 
@@ -25,7 +26,7 @@ interface AIProviderProps {
 
 export function AIProvider({ children, onToolCall }: AIProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [agent, setAgent] = useState<TherapistAgent | null>(null);
+  const [agent, setAgent] = useState<CognitiveAgent | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -42,7 +43,7 @@ export function AIProvider({ children, onToolCall }: AIProviderProps) {
         };
 
         const storage = new WebStorageAdapter();
-        const newAgent = new TherapistAgent(config, storage, onToolCall);
+        const newAgent = new CognitiveAgent(config, storage, onToolCall);
         await newAgent.initialize();
         
         setAgent(newAgent);
@@ -59,6 +60,10 @@ export function AIProvider({ children, onToolCall }: AIProviderProps) {
     }, 3000);
 
     init().finally(() => clearTimeout(timer));
+
+    return () => {
+      clearTimeout(timer);
+    };
   }, [onToolCall, isInitialized]);
 
   const sendMessage = useCallback(async (content: string, context: ConversationContext) => {
@@ -69,7 +74,10 @@ export function AIProvider({ children, onToolCall }: AIProviderProps) {
 
   const streamMessage = useCallback(async (content: string, context: ConversationContext, onChunk: (chunk: string) => void) => {
       if (!agent) throw new Error("Agent not initialized");
-      const result = await agent.chat(content, context, onChunk);
+      const safeChunk = (chunk: string) => {
+        try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }
+      };
+      const result = await agent.chat(content, context, safeChunk);
       return result;
   }, [agent]);
 
