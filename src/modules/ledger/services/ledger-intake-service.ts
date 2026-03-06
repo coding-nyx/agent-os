@@ -1,16 +1,62 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
+import { readDocOnce } from '@/lib/services/firestore-once';
 
 const GUEST_LEDGER_KEY = 'agnes_ledger_profile_guest';
 const VAULT_SALT_MARKER = 'vault_salt_used';
 
+export interface BudgetLineItem {
+  id: string;
+  label: string;
+  amount: number;
+}
+
+export interface DebtItem {
+  id: string;
+  name: string;
+  balance: number;
+  minPayment: number;
+  apr?: number;
+}
+
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  targetDate?: string;
+}
+
+export interface FinancialPlan {
+  id: string;
+  title: string;
+  summary: string;
+  monthlyTarget: number;
+  allocation: {
+    essentials: number;
+    growth: number;
+    buffer: number;
+  };
+  tasks: string[];
+  status: 'draft' | 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LedgerIntakeProfile {
   onboardingComplete: boolean;
-  primaryConcerns: string[];
-  medications: string[];
-  contraindications: string[];
+  currency: string;
+  monthlyIncome: number;
+  fixedExpenses: BudgetLineItem[];
+  variableExpenses: BudgetLineItem[];
+  debtItems: DebtItem[];
+  savingsGoals: SavingsGoal[];
+  planningHorizon: 'monthly' | 'quarterly' | 'yearly';
   summary: string;
+  plans: FinancialPlan[];
+  activePlanId: string | null;
+  plannerBotState: 'idle' | 'creating' | 'active';
+  lastPlanGeneratedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,14 +66,102 @@ type LoadContext = {
   encryptionKey?: CryptoKey | null;
 };
 
+function parseNumber(value: unknown, fallback = 0): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  return fallback;
+}
+
+function parseArray<T>(value: unknown, mapper: (entry: any, index: number) => T): T[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(mapper);
+}
+
+function normalizeLedgerProfile(raw: unknown): LedgerIntakeProfile {
+  const now = new Date().toISOString();
+  const base = createEmptyLedgerProfile();
+  if (!raw || typeof raw !== 'object') return base;
+
+  const candidate = raw as Record<string, any>;
+
+  const plans = parseArray(candidate.plans, (plan, index) => ({
+    id: typeof plan?.id === 'string' ? plan.id : `plan_${index}_${Date.now()}`,
+    title: typeof plan?.title === 'string' ? plan.title : 'Financial Plan',
+    summary: typeof plan?.summary === 'string' ? plan.summary : '',
+    monthlyTarget: parseNumber(plan?.monthlyTarget),
+    allocation: {
+      essentials: parseNumber(plan?.allocation?.essentials),
+      growth: parseNumber(plan?.allocation?.growth),
+      buffer: parseNumber(plan?.allocation?.buffer)
+    },
+    tasks: Array.isArray(plan?.tasks) ? plan.tasks.filter((t: unknown) => typeof t === 'string') : [],
+    status: plan?.status === 'active' || plan?.status === 'archived' ? plan.status : 'draft',
+    createdAt: typeof plan?.createdAt === 'string' ? plan.createdAt : now,
+    updatedAt: typeof plan?.updatedAt === 'string' ? plan.updatedAt : now
+  }));
+
+  const normalized: LedgerIntakeProfile = {
+    ...base,
+    onboardingComplete: candidate.onboardingComplete === true,
+    currency: typeof candidate.currency === 'string' && candidate.currency.trim() ? candidate.currency : 'USD',
+    monthlyIncome: parseNumber(candidate.monthlyIncome),
+    fixedExpenses: parseArray(candidate.fixedExpenses, (entry, index) => ({
+      id: typeof entry?.id === 'string' ? entry.id : `fixed_${index}`,
+      label: typeof entry?.label === 'string' ? entry.label : 'Fixed Expense',
+      amount: parseNumber(entry?.amount)
+    })),
+    variableExpenses: parseArray(candidate.variableExpenses, (entry, index) => ({
+      id: typeof entry?.id === 'string' ? entry.id : `variable_${index}`,
+      label: typeof entry?.label === 'string' ? entry.label : 'Variable Expense',
+      amount: parseNumber(entry?.amount)
+    })),
+    debtItems: parseArray(candidate.debtItems, (entry, index) => ({
+      id: typeof entry?.id === 'string' ? entry.id : `debt_${index}`,
+      name: typeof entry?.name === 'string' ? entry.name : 'Debt Item',
+      balance: parseNumber(entry?.balance),
+      minPayment: parseNumber(entry?.minPayment),
+      apr: typeof entry?.apr === 'number' ? entry.apr : undefined
+    })),
+    savingsGoals: parseArray(candidate.savingsGoals, (entry, index) => ({
+      id: typeof entry?.id === 'string' ? entry.id : `goal_${index}`,
+      name: typeof entry?.name === 'string' ? entry.name : 'Savings Goal',
+      targetAmount: parseNumber(entry?.targetAmount),
+      targetDate: typeof entry?.targetDate === 'string' ? entry.targetDate : undefined
+    })),
+    planningHorizon:
+      candidate.planningHorizon === 'quarterly' || candidate.planningHorizon === 'yearly'
+        ? candidate.planningHorizon
+        : 'monthly',
+    summary: typeof candidate.summary === 'string' ? candidate.summary : '',
+    plans,
+    activePlanId: typeof candidate.activePlanId === 'string' ? candidate.activePlanId : null,
+    plannerBotState:
+      candidate.plannerBotState === 'creating' || candidate.plannerBotState === 'active'
+        ? candidate.plannerBotState
+        : 'idle',
+    lastPlanGeneratedAt:
+      typeof candidate.lastPlanGeneratedAt === 'string' ? candidate.lastPlanGeneratedAt : undefined,
+    createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,
+    updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : now
+  };
+
+  return normalized;
+}
+
 export function createEmptyLedgerProfile(): LedgerIntakeProfile {
   const now = new Date().toISOString();
   return {
     onboardingComplete: false,
-    primaryConcerns: [],
-    medications: [],
-    contraindications: [],
+    currency: 'USD',
+    monthlyIncome: 0,
+    fixedExpenses: [],
+    variableExpenses: [],
+    debtItems: [],
+    savingsGoals: [],
+    planningHorizon: 'monthly',
     summary: '',
+    plans: [],
+    activePlanId: null,
+    plannerBotState: 'idle',
     createdAt: now,
     updatedAt: now
   };
@@ -38,7 +172,7 @@ export async function loadLedgerProfile({ userId, encryptionKey }: LoadContext):
     const { db } = getFirebase();
     if (!db) return null;
 
-    const snap = await getDoc(doc(db, 'ai_ledgers', userId));
+    const snap = await readDocOnce(doc(db, 'ai_ledgers', userId));
     if (!snap.exists()) return null;
 
     const data = snap.data();
@@ -46,7 +180,7 @@ export async function loadLedgerProfile({ userId, encryptionKey }: LoadContext):
 
     try {
       const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-      return JSON.parse(decrypted) as LedgerIntakeProfile;
+      return normalizeLedgerProfile(JSON.parse(decrypted));
     } catch (e) {
       console.error('Failed to decrypt ledger profile:', e);
       return null;
@@ -56,29 +190,77 @@ export async function loadLedgerProfile({ userId, encryptionKey }: LoadContext):
   return loadGuestLedgerProfile();
 }
 
+export function subscribeLedgerProfile(
+  { userId, encryptionKey }: LoadContext,
+  onUpdate: (profile: LedgerIntakeProfile | null) => void
+): () => void {
+  if (userId && encryptionKey) {
+    const { db } = getFirebase();
+    if (!db) return () => {};
+
+    const ref = doc(db, 'ai_ledgers', userId);
+    const unsubscribe = onSnapshot(
+      ref,
+      async (snap) => {
+        if (!snap.exists()) {
+          onUpdate(null);
+          return;
+        }
+        const data = snap.data();
+        if (!data?.encryptedData || !data?.iv) {
+          onUpdate(null);
+          return;
+        }
+        try {
+          const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
+          onUpdate(normalizeLedgerProfile(JSON.parse(decrypted)));
+        } catch (e) {
+          console.error('Failed to decrypt ledger profile:', e);
+          onUpdate(null);
+        }
+      },
+      (error) => {
+        console.error('Ledger profile subscription error:', error);
+      }
+    );
+    return unsubscribe;
+  }
+
+  onUpdate(loadGuestLedgerProfile());
+  return () => {};
+}
+
 export async function saveLedgerProfile(profile: LedgerIntakeProfile, { userId, encryptionKey }: LoadContext): Promise<void> {
+  const normalizedProfile = normalizeLedgerProfile(profile);
+
   if (userId && encryptionKey) {
     const { db } = getFirebase();
     if (!db) return;
 
-    const encrypted = await encryptWithKey(JSON.stringify(profile), encryptionKey);
-    await setDoc(
-      doc(db, 'ai_ledgers', userId),
-      {
-        encryptedData: encrypted.ciphertext,
-        iv: encrypted.iv,
-        salt: VAULT_SALT_MARKER,
-        metadata: {
-          onboardingComplete: profile.onboardingComplete,
-          lastActive: new Date().toISOString()
-        }
-      },
-      { merge: true }
-    );
+    const encrypted = await encryptWithKey(JSON.stringify(normalizedProfile), encryptionKey);
+    try {
+      await setDoc(
+        doc(db, 'ai_ledgers', userId),
+        {
+          encryptedData: encrypted.ciphertext,
+          iv: encrypted.iv,
+          salt: VAULT_SALT_MARKER,
+          metadata: {
+            onboardingComplete: normalizedProfile.onboardingComplete,
+            lastActive: new Date().toISOString(),
+            activePlanId: normalizedProfile.activePlanId,
+            plannerBotState: normalizedProfile.plannerBotState
+          }
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error('[LedgerIntakeService] Failed to save ledger profile:', error);
+    }
     return;
   }
 
-  saveGuestLedgerProfile(profile);
+  saveGuestLedgerProfile(normalizedProfile);
 }
 
 export async function syncGuestLedgerProfileToUser({ userId, encryptionKey }: LoadContext): Promise<boolean> {
@@ -90,7 +272,7 @@ export async function syncGuestLedgerProfileToUser({ userId, encryptionKey }: Lo
   const { db } = getFirebase();
   if (!db) return false;
 
-  const snap = await getDoc(doc(db, 'ai_ledgers', userId));
+  const snap = await readDocOnce(doc(db, 'ai_ledgers', userId));
   if (snap.exists() && snap.data()?.encryptedData) {
     return false;
   }
@@ -105,7 +287,7 @@ export function loadGuestLedgerProfile(): LedgerIntakeProfile | null {
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw) as LedgerIntakeProfile;
+    return normalizeLedgerProfile(JSON.parse(raw));
   } catch (e) {
     console.error('Failed to parse guest ledger profile:', e);
     return null;
@@ -113,7 +295,7 @@ export function loadGuestLedgerProfile(): LedgerIntakeProfile | null {
 }
 
 export function saveGuestLedgerProfile(profile: LedgerIntakeProfile) {
-  localStorage.setItem(GUEST_LEDGER_KEY, JSON.stringify(profile));
+  localStorage.setItem(GUEST_LEDGER_KEY, JSON.stringify(normalizeLedgerProfile(profile)));
 }
 
 export function clearGuestLedgerProfile() {

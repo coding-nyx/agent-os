@@ -28,7 +28,14 @@ function writeStore(next: Record<string, NexusHandoff>) {
 export const NexusHandoffService = {
   store(handoff: NexusHandoff) {
     const store = readStore();
-    store[handoff.moduleId] = handoff;
+    // Enforce content size limit
+    const safeHandoff = { ...handoff, content: handoff.content.slice(0, 4000) };
+    // Prune stale entries (> 10 min old)
+    const tenMinAgo = Date.now() - 10 * 60 * 1000;
+    for (const key of Object.keys(store)) {
+      if (new Date(store[key].createdAt).getTime() < tenMinAgo) delete store[key];
+    }
+    store[safeHandoff.moduleId] = safeHandoff;
     writeStore(store);
   },
 

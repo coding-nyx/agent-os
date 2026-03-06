@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { Message, ConversationContext } from './types';
 import { CognitiveAgent } from './engine/CognitiveAgent';
 import { WebStorageAdapter } from './adapters/WebStorageAdapter';
@@ -6,13 +6,15 @@ import { StructuredResponse } from './engine/types';
 
 export interface AIContextType {
   sendMessage: (
-    content: string, 
-    context: ConversationContext
+    content: string,
+    context: ConversationContext,
+    signal?: AbortSignal
   ) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
   streamMessage: (
-    content: string, 
+    content: string,
     context: ConversationContext,
-    onChunk: (chunk: string) => void
+    onChunk: (chunk: string) => void,
+    signal?: AbortSignal
   ) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
   isInitialized: boolean;
 }
@@ -22,13 +24,18 @@ const AIContext = createContext<AIContextType | null>(null);
 interface AIProviderProps {
   children: ReactNode;
   onToolCall?: (name: string, args: any) => Promise<any>;
+  guestMode?: boolean;
 }
 
-export function AIProvider({ children, onToolCall }: AIProviderProps) {
+export function AIProvider({ children, onToolCall, guestMode }: AIProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [agent, setAgent] = useState<CognitiveAgent | null>(null);
+  const initRef = useRef(false);
 
   useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
+
     const init = async () => {
         const openrouterKey = localStorage.getItem('VITE_OPENROUTER_API_KEY') || import.meta.env.VITE_OPENROUTER_API_KEY;
         const grokKey = localStorage.getItem('VITE_GROK_API_KEY') || import.meta.env.VITE_GROK_API_KEY;
@@ -39,45 +46,48 @@ export function AIProvider({ children, onToolCall }: AIProviderProps) {
             grokKey,
             googleKey,
             preferredModelId: localStorage.getItem('preferred_model') || undefined,
-            isMockMode: !openrouterKey && !grokKey && !googleKey
+            isMockMode: !openrouterKey && !grokKey && !googleKey,
+            freeModelsOnly: guestMode
         };
 
         const storage = new WebStorageAdapter();
         const newAgent = new CognitiveAgent(config, storage, onToolCall);
         await newAgent.initialize();
-        
+
         setAgent(newAgent);
         setIsInitialized(true);
     };
 
-    if (isInitialized) return;
-    
     const timer = setTimeout(() => {
-        if (!isInitialized) {
-            console.warn("AIProvider initialization timed out. Proceeding without agent.");
-            setIsInitialized(true);
-        }
-    }, 3000);
+        console.warn("AIProvider: initialization timed out after 8s. Proceeding with limited functionality.");
+        setIsInitialized(true);
+    }, 8000);
 
     init().finally(() => clearTimeout(timer));
 
     return () => {
       clearTimeout(timer);
     };
-  }, [onToolCall, isInitialized]);
+  }, [onToolCall]);
 
-  const sendMessage = useCallback(async (content: string, context: ConversationContext) => {
+  useEffect(() => {
+    if (agent) {
+      agent.setFreeModelsOnly(!!guestMode);
+    }
+  }, [guestMode, agent]);
+
+  const sendMessage = useCallback(async (content: string, context: ConversationContext, signal?: AbortSignal) => {
       if (!agent) throw new Error("Agent not initialized");
-      const result = await agent.chat(content, context);
+      const result = await agent.chat(content, context, undefined, signal);
       return result;
   }, [agent]);
 
-  const streamMessage = useCallback(async (content: string, context: ConversationContext, onChunk: (chunk: string) => void) => {
+  const streamMessage = useCallback(async (content: string, context: ConversationContext, onChunk: (chunk: string) => void, signal?: AbortSignal) => {
       if (!agent) throw new Error("Agent not initialized");
       const safeChunk = (chunk: string) => {
         try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }
       };
-      const result = await agent.chat(content, context, safeChunk);
+      const result = await agent.chat(content, context, safeChunk, signal);
       return result;
   }, [agent]);
 

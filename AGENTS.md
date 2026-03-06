@@ -14,6 +14,13 @@ This document serves as the foundational instruction set for all AI agents (Gemi
 - **Interface Only:** Interact with the engine through its public hooks and functions.
 - **No Structural Refactoring:** Structural changes to the engine are forbidden unless explicitly requested for performance optimization or foundational architectural shifts.
 
+### 2.1 Responsibility Separation & Dependency Inversion (Mandatory)
+- **No App State Ownership in LLM Engine:** Session lifecycle, onboarding state, Firestore sync, auth, and vault persistence MUST NOT live in `src/llm-engine/`.
+- **App-Layer Orchestration Only:** Keep these responsibilities in module services/hooks under `src/modules/*/services` and `src/lib/services`.
+- **Dependency Inversion Rule:** UI/pages depend on service interfaces; service implementations may depend on Firebase/crypto; `llm-engine` depends on none of these app concerns.
+- **Prompt vs Persistence Boundary:** `llm-engine` may generate/stream responses; parsing action tags and mutating persisted state must remain in app-layer adapters.
+- **Destructive Lifecycle Flows:** Account-wide data wipes (e.g., terminate/reset soul) MUST be implemented in dedicated app services and invoked by UI; never embed destructive Firestore logic directly in UI components or in `src/llm-engine/`.
+
 ### 3. Engineering Excellence
 - **TypeScript Strictness:** Maintain type safety. Avoid `any` unless necessary for Web Crypto API compatibility.
 - **UI/UX Focus:** Prioritize modern, "alive," and polished aesthetics (Framer Motion, Glassmorphism, Tailwind).

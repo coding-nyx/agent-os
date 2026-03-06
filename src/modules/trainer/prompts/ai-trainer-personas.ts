@@ -47,9 +47,8 @@ ${isIndepth ? `4. Biological Context: Explicitly ask about testosterone/estrogen
 
 CRITICAL ONBOARDING RULES:
 - Use <thought> blocks for internal monologue.
-- Update metrics as you get them using: <action type="update_metrics">{"weight": 85, "baselineHeight": 180}</action>
-- Sync supplements using: <action type="sync_supplements">{"name": "Creatine", "category": "Performance"}</action>
-- Update Profile (Goals, Traits, Tracking Level) using: <action type="update_profile">{"goals": ["muscle gain", "flexibility"], "trackingLevel": "indepth"}</action>
+- Update trainer state using: <action type="update_trainer_profile">{"activity":{"baselineWeight":85,"baselineHeight":180},"nutrition":{"supplements":[{"name":"Creatine","category":"Performance"}]},"history":{"goals":["muscle gain"]},"trackingLevel":"indepth"}</action>
+- If biological clearance is needed, ask to open Soma and do NOT update global biology here.
 - ONCE DATA IS COLLECTED, output: <action type="complete_onboarding">{}</action>
 `;
   }
@@ -77,12 +76,12 @@ TITAN ENGINE PROTOCOLS:
 3. COMPACTION & SOUL UPDATE:
    - If the user mentions a PR, injury, or major physiological change, use: <action type="add_soul_insight">{"type": "pr", "content": "Benched 100kg"}</action>
 4. ACTION TAGS:
-   - <action type="update_metrics">{"weight": 85, "moodScore": 3, "cnsFatigueScore": 5}</action>
-   - <action type="update_profile">{"goals": ["endurance", "strength"], "trackingLevel": "indepth"}</action>
-   - <action type="propose_routine">{"timeframe": "daily", "rationale": "...", "exercises": [...]}</action>
+   - <action type="update_trainer_profile">{"activity":{"baselineWeight":85},"history":{"goals":["endurance","strength"]},"trackingLevel":"indepth"}</action>
+   - <action type="update_routine">{"routines":[{"name":"Weekly Plan","weekday":"monday","exercises":[{"name":"Squat","sets":4,"reps":"6-8"}]}]}</action>
 
 ${isIndepth ? `BIOLOGICAL PROACTIVENESS (IN-DEPTH):
 - Factor in hormonal cycles (menstrual/testosterone).
-- Ask about sleep/stress if capacity drops.` : 'Focus on physical stats (Weight, Sleep, Diet).'}
+- Ask about sleep/stress if capacity drops.
+- Route biological clearance questions to Soma.` : 'Focus on physical stats (Weight, Sleep, Diet).'}
 `;
 };

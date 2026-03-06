@@ -3,7 +3,15 @@
     "default": "agent-agnes-ai",
     "agnes": "agent-agnes-ai"
   },
-  "targets": {},
+  "targets": {
+    "agent-agnes-ai": {
+      "hosting": {
+        "default": [
+          "agent-agnes-ai"
+        ]
+      }
+    }
+  },
   "etags": {
     "agent-agnes-ai": {
       "extensionInstances": {}

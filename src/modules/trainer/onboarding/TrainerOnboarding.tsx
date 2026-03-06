@@ -134,18 +134,31 @@ export function TrainerOnboarding({
   const { user } = useAuth();
   const [fastGoal, setFastGoal] = useState('');
   const [fastExperience, setFastExperience] = useState('');
+  const [fastSupplements, setFastSupplements] = useState('');
+  const [fastTrainingDays, setFastTrainingDays] = useState('');
+  const [fastInjuries, setFastInjuries] = useState('');
 
   const handleFastTrack = () => {
     if (!fastGoal || !fastExperience) return;
     const privacyLevel = (state?.privacyLevel ?? 'basic') as TrainerPrivacyLevel;
     const now = new Date().toISOString();
+    const supplements = fastSupplements.trim()
+      ? fastSupplements.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+    const trainingDays = fastTrainingDays.trim() ? Number.parseInt(fastTrainingDays) : undefined;
     const profile: TrainerProfile = {
       onboardingComplete: true,
       privacyLevel,
       trackingLevel: privacyLevel === 'complete' ? 'indepth' : 'standard',
-      nutrition: { supplements: [] },
-      activity: {},
-      history: { goals: fastGoal, pastTraining: fastExperience },
+      nutrition: { supplements },
+      activity: {
+        ...(Number.isFinite(trainingDays) && trainingDays! > 0 ? { workoutsPerWeek: trainingDays } : {})
+      },
+      history: {
+        goals: fastGoal,
+        pastTraining: fastExperience,
+        ...(fastInjuries.trim() ? { injuries: fastInjuries.trim() } : {})
+      },
       summary: `Express onboarding: ${fastExperience} level, goal: ${fastGoal}.`,
       routines: [],
       createdAt: now,
@@ -429,6 +442,7 @@ export function TrainerOnboarding({
       steps={[...TRAINER_STEPS]}
       currentStep={stepIndex}
       themeColor="orange"
+      preludeCollapsible={!!state.privacyLevel}
       prelude={
         !state.privacyLevel ? (
           <div className="p-6">
@@ -459,36 +473,75 @@ export function TrainerOnboarding({
               <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 flex items-center gap-2">
                 <Zap className="w-3 h-3" /> Fast Track Initialization
               </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <select
-                  value={fastGoal}
-                  onChange={e => setFastGoal(e.target.value)}
-                  className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50 appearance-none"
-                >
-                  <option value="" className="bg-zinc-900">Primary Goal</option>
-                  <option value="strength" className="bg-zinc-900">Strength</option>
-                  <option value="hypertrophy" className="bg-zinc-900">Hypertrophy</option>
-                  <option value="weight loss" className="bg-zinc-900">Weight Loss</option>
-                  <option value="endurance" className="bg-zinc-900">Endurance</option>
-                  <option value="general fitness" className="bg-zinc-900">General Fitness</option>
-                </select>
-                <select
-                  value={fastExperience}
-                  onChange={e => setFastExperience(e.target.value)}
-                  className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50 appearance-none"
-                >
-                  <option value="" className="bg-zinc-900">Experience Level</option>
-                  <option value="beginner" className="bg-zinc-900">Beginner</option>
-                  <option value="intermediate" className="bg-zinc-900">Intermediate</option>
-                  <option value="advanced" className="bg-zinc-900">Advanced</option>
-                </select>
-                <button
-                  onClick={handleFastTrack}
-                  disabled={!fastGoal || !fastExperience}
-                  className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
-                >
-                  Execute
-                </button>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[9px] text-white/40 uppercase tracking-wider mb-2">Primary Goal</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {['strength', 'hypertrophy', 'weight loss', 'endurance', 'general fitness'].map(goal => (
+                      <button
+                        key={goal}
+                        onClick={() => setFastGoal(goal)}
+                        className={cn(
+                          'px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all',
+                          fastGoal === goal
+                            ? 'bg-orange-600/30 border-orange-500/50 text-orange-300'
+                            : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                        )}
+                      >
+                        {goal}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[9px] text-white/40 uppercase tracking-wider mb-2">Experience Level</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {['beginner', 'intermediate', 'advanced'].map(level => (
+                      <button
+                        key={level}
+                        onClick={() => setFastExperience(level)}
+                        className={cn(
+                          'px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all',
+                          fastExperience === level
+                            ? 'bg-orange-600/30 border-orange-500/50 text-orange-300'
+                            : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                        )}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    placeholder="Supplements (comma-separated, optional)"
+                    value={fastSupplements}
+                    onChange={e => setFastSupplements(e.target.value)}
+                    className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-orange-500/50"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Training days/week (optional)"
+                    value={fastTrainingDays}
+                    onChange={e => setFastTrainingDays(e.target.value)}
+                    className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-orange-500/50"
+                  />
+                  <input
+                    placeholder="Injuries or limitations (optional)"
+                    value={fastInjuries}
+                    onChange={e => setFastInjuries(e.target.value)}
+                    className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-orange-500/50"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleFastTrack}
+                    disabled={!fastGoal || !fastExperience}
+                    className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+                  >
+                    Execute
+                  </button>
+                </div>
               </div>
               <p className="text-[9px] text-white/40 uppercase tracking-tight">
                 Bypass conversational intake. Requires goal and experience level.

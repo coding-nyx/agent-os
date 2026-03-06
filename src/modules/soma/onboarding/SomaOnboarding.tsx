@@ -121,6 +121,8 @@ export function SomaOnboarding({
 
   const [fastConditions, setFastConditions] = useState('');
   const [fastMedications, setFastMedications] = useState('');
+  const [fastAllergies, setFastAllergies] = useState('');
+  const [fastBiomarkers, setFastBiomarkers] = useState('');
 
   const handleFastTrack = () => {
     const now = new Date().toISOString();
@@ -130,17 +132,26 @@ export function SomaOnboarding({
     const medications = fastMedications.trim()
       ? fastMedications.split(',').map(s => s.trim()).filter(Boolean)
       : [];
+    const allergies = fastAllergies.trim()
+      ? fastAllergies.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+    const summaryParts = [
+      conditions.length > 0 ? `${conditions.length} condition(s)` : null,
+      medications.length > 0 ? `${medications.length} medication(s)` : null,
+      allergies.length > 0 ? `${allergies.length} allergy(ies)` : null,
+      fastBiomarkers.trim() ? 'biomarker notes provided' : null
+    ].filter(Boolean);
     const profile: SomaProfile = {
       onboardingComplete: true,
       knownConditions: conditions,
       medications,
-      allergies: [],
+      allergies,
       biomarkers: [],
       labSummaries: [],
       clearances: [],
-      summary: conditions.length > 0 || medications.length > 0
-        ? `Express onboarding: ${conditions.length} condition(s), ${medications.length} medication(s).`
-        : 'Express onboarding: No known conditions or medications reported.',
+      summary: summaryParts.length > 0
+        ? `Express onboarding: ${summaryParts.join(', ')}.${fastBiomarkers.trim() ? ` Notes: ${fastBiomarkers.trim()}` : ''}`
+        : 'Express onboarding: No known conditions, medications, or allergies reported.',
       createdAt: now,
       updatedAt: now
     };
@@ -304,19 +315,33 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
               <Zap className="w-3 h-3" /> Fast Track Initialization
             </p>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input
-                placeholder="Known conditions (e.g., asthma, diabetes — or leave blank)"
+                placeholder="Known conditions (e.g., asthma, diabetes)"
                 value={fastConditions}
                 onChange={e => setFastConditions(e.target.value)}
-                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50"
+                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-500/50"
               />
               <input
-                placeholder="Current medications (e.g., metformin — or leave blank)"
+                placeholder="Current medications (e.g., metformin)"
                 value={fastMedications}
                 onChange={e => setFastMedications(e.target.value)}
-                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50"
+                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-500/50"
               />
+              <input
+                placeholder="Allergies (e.g., penicillin, latex)"
+                value={fastAllergies}
+                onChange={e => setFastAllergies(e.target.value)}
+                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-500/50"
+              />
+              <input
+                placeholder="Recent lab notes (optional)"
+                value={fastBiomarkers}
+                onChange={e => setFastBiomarkers(e.target.value)}
+                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-500/50"
+              />
+            </div>
+            <div className="flex justify-end">
               <button
                 onClick={handleFastTrack}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
@@ -325,7 +350,7 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
               </button>
             </div>
             <p className="text-[9px] text-white/40 uppercase tracking-tight">
-              Bypass conversational intake. Fields are optional — execute with blank for clean baseline.
+              Bypass conversational intake. All fields optional — execute blank for clean baseline.
             </p>
           </div>
         </div>

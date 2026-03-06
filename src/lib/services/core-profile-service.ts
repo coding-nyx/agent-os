@@ -127,7 +127,12 @@ export const CoreProfileService = {
       updatedAt: new Date().toISOString()
     };
 
-    await setDoc(doc(db, COLLECTION, uid), newProfile);
+    try {
+      await setDoc(doc(db, COLLECTION, uid), newProfile);
+    } catch (error) {
+      console.error('[CoreProfileService] Failed to initialize profile:', error);
+      throw error;
+    }
     return newProfile;
   },
 
@@ -137,10 +142,14 @@ export const CoreProfileService = {
     if (!db) return;
 
     const docRef = doc(db, COLLECTION, uid);
-    await updateDoc(docRef, {
-      ...updates,
-      updatedAt: new Date().toISOString()
-    });
+    try {
+      await updateDoc(docRef, {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[CoreProfileService] Failed to update profile:', error);
+    }
   },
 
   async updatePersonality(uid: string, personality: Partial<AgentPersonalityProvision>): Promise<void> {
@@ -179,10 +188,14 @@ export const CoreProfileService = {
 
     if (Object.keys(updates).length === 0) return;
 
-    await updateDoc(docRef, {
-      ...updates,
-      updatedAt: new Date().toISOString()
-    });
+    try {
+      await updateDoc(docRef, {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[CoreProfileService] Failed to update personality:', error);
+    }
   },
   async updateSecurityPreferences(uid: string, prefs: Partial<UserSecurityPreferences>): Promise<void> {
     if (!uid) return;
@@ -202,9 +215,13 @@ export const CoreProfileService = {
 
     if (Object.keys(updates).length === 0) return;
 
-    await updateDoc(docRef, {
-      ...updates,
-      updatedAt: new Date().toISOString()
-    });
+    try {
+      await updateDoc(docRef, {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[CoreProfileService] Failed to update security preferences:', error);
+    }
   }
 };

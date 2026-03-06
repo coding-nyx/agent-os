@@ -4,6 +4,10 @@ export type SanitizedContent = {
   isThinking: boolean;
 };
 
+export type StripOptions = {
+  retainSpacings?: boolean;
+};
+
 const PROVIDER_CONTROL_PATTERNS = [
   /\[user interrupted\]/gi
 ];
@@ -30,7 +34,7 @@ export function isProviderControlOnly(content: string): boolean {
   return hasControlPattern && next.trim().length === 0;
 }
 
-export function stripInternalTags(content: string): SanitizedContent {
+export function stripInternalTags(content: string, options: StripOptions = {}): SanitizedContent {
   const normalized = stripProviderControlTokens(content);
   // 1. Extract thought content
   const thoughtMatch = normalized.match(/<thought>([\s\S]*?)<\/thought>/);
@@ -74,9 +78,15 @@ export function stripInternalTags(content: string): SanitizedContent {
     .replace(/<tool_calls_begin>[\s\S]*/g, ' ')
     .replace(/<tool_call_begin>[\s\S]*/g, ' ')
     .replace(/<tool_call>[\s\S]*/g, ' ')
-    .replace(/<(?:t(?:h(?:o(?:u(?:g(?:ht?)?)?)?)?)?|a(?:c(?:t(?:i(?:on?)?)?)?)?|tool_call(?:s_begin|_begin)?)$/i, '')
-    .replace(/\s+/g, ' ') // Collapse multiple spaces to one
-    .trim();
+    .replace(/<(?:t(?:h(?:o(?:u(?:g(?:ht?)?)?)?)?)?|a(?:c(?:t(?:i(?:on?)?)?)?)?|tool_call(?:s_begin|_begin)?)$/i, '');
+
+  if (!options.retainSpacings) {
+    publicText = publicText.replace(/\s+/g, ' '); // Collapse multiple spaces to one
+    publicText = publicText.trim();
+  } else {
+    // During streaming we want to keep leading/trailing spaces for immediate feedback
+    // but we still want to collapse internal tags to a single space
+  }
 
   return { publicText, internalText, isThinking };
 }
@@ -94,10 +104,15 @@ export function sanitizeJsonPayload(content: string): string {
   sanitized = sanitized.trim();
 
   // 4. Attempt to fix common JSON errors (trailing commas)
-  // This is a simple regex fix for trailing commas in arrays and objects
-  sanitized = sanitized
-    .replace(/,\s*\]/g, ']')
-    .replace(/,\s*\}/g, '}');
-  
+  // Only apply structural repairs if the JSON is already invalid
+  try {
+    JSON.parse(sanitized);
+    return sanitized; // already valid — don't mutate
+  } catch {
+    sanitized = sanitized
+      .replace(/,\s*\]/g, ']')
+      .replace(/,\s*\}/g, '}');
+  }
+
   return sanitized;
 }

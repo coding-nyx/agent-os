@@ -1,12 +1,14 @@
 
 import { encode } from 'gpt-tokenizer';
-import { Message, SessionSummary } from '../types';
+import { Message } from '../types';
 import { CognitiveContext } from './types';
 
 export class MemoryManager {
   private static MAX_TOTAL_TOKENS = 128000; // Default for many modern models
   private static COMPRESSION_THRESHOLD = 0.8; // 80% of limit
-  private static CONTEXT_WINDOW_SIZE = 15; // Number of recent messages to keep active
+  // Active context window: keeps last CONTEXT_WINDOW_SIZE * 2 messages
+  // Consolidation in use-module-ai.ts must preserve at least this many
+  private static CONTEXT_WINDOW_SIZE = 15;
 
   static countTokens(text: string): number {
     if (!text) return 0;
@@ -24,15 +26,13 @@ export class MemoryManager {
 
   static buildContext(
     systemPrompt: string,
-    insights: SessionSummary[],
+    memoryContext: string[],
     summary: string,
     messages: Message[]
   ): CognitiveContext {
     const systemTokens = this.countTokens(systemPrompt);
-    const insightsText = (insights || []).map(i => 
-      `[${i.date} - ${i.theme || 'General'}]: ${i.summary} (Insights: ${(i.keyInsights || []).join(', ')})`
-    ).join('\n');
-    const insightsTokens = this.countTokens(insightsText);
+    const contextText = (memoryContext || []).join('\n');
+    const contextTokens = this.countTokens(contextText);
     const summaryTokens = this.countTokens(summary);
     
     // Take a larger window for active messages in this new architecture
@@ -41,15 +41,15 @@ export class MemoryManager {
 
     return {
       systemPrompt,
-      facts: insightsText.trim() ? [insightsText] : [],
+      facts: contextText.trim() ? [contextText] : [],
       longTermSummary: summary,
       activeMessages,
       tokenCount: {
         system: systemTokens,
-        facts: insightsTokens,
+        facts: contextTokens,
         summary: summaryTokens,
         chat: chatTokens,
-        total: systemTokens + insightsTokens + summaryTokens + chatTokens
+        total: systemTokens + contextTokens + summaryTokens + chatTokens
       }
     };
   }

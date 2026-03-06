@@ -104,6 +104,36 @@ export const IntakeBaseContextService = {
     return fromCoreProfile(params.coreProfile);
   },
 
+  buildForSoma(params: {
+    coreProfile: CoreUserProfile | null | undefined;
+  }): GlobalBaseIntakeContext {
+    return fromCoreProfile(params.coreProfile);
+  },
+
+  buildForAtlas(params: {
+    coreProfile: CoreUserProfile | null | undefined;
+  }): GlobalBaseIntakeContext {
+    return fromCoreProfile(params.coreProfile);
+  },
+
+  buildForScout(params: {
+    coreProfile: CoreUserProfile | null | undefined;
+  }): GlobalBaseIntakeContext {
+    return fromCoreProfile(params.coreProfile);
+  },
+
+  buildForForge(params: {
+    coreProfile: CoreUserProfile | null | undefined;
+  }): GlobalBaseIntakeContext {
+    return fromCoreProfile(params.coreProfile);
+  },
+
+  buildForPulse(params: {
+    coreProfile: CoreUserProfile | null | undefined;
+  }): GlobalBaseIntakeContext {
+    return fromCoreProfile(params.coreProfile);
+  },
+
   toCoreProfilePatch(context: Partial<GlobalBaseIntakeContext>): Partial<CoreUserProfile> {
     return compact({
       preferredName: normalizeOptionalString(context.name),

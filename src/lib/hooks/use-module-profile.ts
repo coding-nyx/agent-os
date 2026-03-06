@@ -93,6 +93,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
     (async () => {
       const key = await getModuleKey(moduleId as any);
       if (!key) return;
+      if (!syncGuestProfileRef.current) return;
       const synced = await syncGuestProfileRef.current({ userId: user.uid, encryptionKey: key });
       if (synced) setHasSyncedGuest(true);
     })();

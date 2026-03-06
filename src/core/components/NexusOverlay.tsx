@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, X, Trash2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -19,6 +19,13 @@ export function NexusOverlay() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [subModule, setSubModule] = useState<SubModuleState | null>(null);
+
+  // Allow external components to open Nexus via a custom DOM event
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener('open-nexus', handler);
+    return () => window.removeEventListener('open-nexus', handler);
+  }, []);
 
   const handleDelegation = useCallback((path: string) => {
     // Extract moduleId from route path (e.g., "/therapy" → "therapy")
@@ -91,7 +98,7 @@ export function NexusOverlay() {
                     <h2 className="text-base font-black uppercase tracking-[0.3em] text-white">Nexus Proxy</h2>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                      <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Global_Access_Active</p>
+                      <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Global_Access_Active</p>
                     </div>
                   </div>
                 </div>
@@ -101,14 +108,14 @@ export function NexusOverlay() {
                     className="w-10 h-10 rounded-xl border border-white/5 bg-white/5 hover:bg-red-500/10 hover:border-red-500/20 flex items-center justify-center transition-colors group"
                     aria-label="Clear conversation"
                   >
-                    <Trash2 className="w-4 h-4 text-white/20 group-hover:text-red-400 transition-colors" />
+                    <Trash2 className="w-4 h-4 text-white/40 group-hover:text-red-400 transition-colors" />
                   </button>
                   <button
                     onClick={() => { setOpen(false); setSubModule(null); }}
                     className="w-10 h-10 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors group"
                     aria-label="Close overlay"
                   >
-                    <X className="w-4 h-4 text-white/20 group-hover:text-white transition-colors" />
+                    <X className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
                   </button>
                 </div>
               </div>

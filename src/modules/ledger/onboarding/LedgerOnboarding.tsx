@@ -4,6 +4,7 @@ import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
 import { Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { StructuredResponse } from '@/llm-engine/engine/types';
 import { useAuth } from '@/lib/auth-context';
 import { LedgerIntakeProfile, createEmptyLedgerProfile } from '../services/ledger-intake-service';
@@ -111,22 +112,39 @@ export function LedgerOnboarding({
 
   const [fastCurrency, setFastCurrency] = useState('');
   const [fastIncome, setFastIncome] = useState('');
+  const [fastFixedExpenses, setFastFixedExpenses] = useState('');
+  const [fastVariableExpenses, setFastVariableExpenses] = useState('');
+  const [fastDebt, setFastDebt] = useState('');
+  const [fastSavingsGoal, setFastSavingsGoal] = useState('');
+  const [fastHorizon, setFastHorizon] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
 
   const handleFastTrack = () => {
     if (!fastCurrency.trim() || !fastIncome.trim()) return;
     const income = Number.parseFloat(fastIncome);
     if (!Number.isFinite(income) || income < 0) return;
     const now = new Date().toISOString();
+    const fixedExpenses = fastFixedExpenses.trim()
+      ? fastFixedExpenses.split(',').map((s, i) => ({ id: `ft-fix-${i}`, label: s.trim(), amount: 0 })).filter(e => e.label)
+      : [];
+    const variableExpenses = fastVariableExpenses.trim()
+      ? fastVariableExpenses.split(',').map((s, i) => ({ id: `ft-var-${i}`, label: s.trim(), amount: 0 })).filter(e => e.label)
+      : [];
+    const debtItems = fastDebt.trim()
+      ? fastDebt.split(',').map((s, i) => ({ id: `ft-debt-${i}`, name: s.trim(), balance: 0, minPayment: 0 })).filter(d => d.name)
+      : [];
+    const savingsGoals = fastSavingsGoal.trim()
+      ? fastSavingsGoal.split(',').map((s, i) => ({ id: `ft-sav-${i}`, name: s.trim(), targetAmount: 0 })).filter(g => g.name)
+      : [];
     const profile: LedgerIntakeProfile = {
       onboardingComplete: true,
       currency: fastCurrency.trim().toUpperCase(),
       monthlyIncome: income,
-      fixedExpenses: [],
-      variableExpenses: [],
-      debtItems: [],
-      savingsGoals: [],
-      planningHorizon: 'monthly',
-      summary: `Express onboarding: ${fastCurrency.trim().toUpperCase()} ${income}/mo.`,
+      fixedExpenses,
+      variableExpenses,
+      debtItems,
+      savingsGoals,
+      planningHorizon: fastHorizon,
+      summary: `Express onboarding: ${fastCurrency.trim().toUpperCase()} ${income}/mo, ${fastHorizon} horizon.`,
       plans: [],
       activePlanId: null,
       plannerBotState: 'idle',
@@ -300,27 +318,74 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
             <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
               <Zap className="w-3 h-3" /> Fast Track Initialization
             </p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                placeholder="Currency (e.g., USD, EUR, INR)"
-                value={fastCurrency}
-                onChange={e => setFastCurrency(e.target.value)}
-                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-500/50"
-              />
-              <input
-                type="number"
-                placeholder="Monthly Income"
-                value={fastIncome}
-                onChange={e => setFastIncome(e.target.value)}
-                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-500/50"
-              />
-              <button
-                onClick={handleFastTrack}
-                disabled={!fastCurrency.trim() || !fastIncome.trim()}
-                className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
-              >
-                Execute
-              </button>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input
+                  placeholder="Currency (e.g., USD, EUR, INR)"
+                  value={fastCurrency}
+                  onChange={e => setFastCurrency(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                />
+                <input
+                  type="number"
+                  placeholder="Monthly Income"
+                  value={fastIncome}
+                  onChange={e => setFastIncome(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                />
+                <input
+                  placeholder="Fixed expenses (e.g., rent, insurance)"
+                  value={fastFixedExpenses}
+                  onChange={e => setFastFixedExpenses(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                />
+                <input
+                  placeholder="Variable expenses (e.g., groceries, dining)"
+                  value={fastVariableExpenses}
+                  onChange={e => setFastVariableExpenses(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                />
+                <input
+                  placeholder="Debt (e.g., student loan, credit card)"
+                  value={fastDebt}
+                  onChange={e => setFastDebt(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                />
+                <input
+                  placeholder="Savings goals (e.g., emergency fund)"
+                  value={fastSavingsGoal}
+                  onChange={e => setFastSavingsGoal(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                />
+              </div>
+              <div>
+                <p className="text-[9px] text-white/40 uppercase tracking-wider mb-2">Planning Horizon</p>
+                <div className="flex gap-2 flex-wrap">
+                  {(['monthly', 'quarterly', 'yearly'] as const).map(h => (
+                    <button
+                      key={h}
+                      onClick={() => setFastHorizon(h)}
+                      className={cn(
+                        'px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all',
+                        fastHorizon === h
+                          ? 'bg-cyan-600/30 border-cyan-500/50 text-cyan-300'
+                          : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                      )}
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={handleFastTrack}
+                  disabled={!fastCurrency.trim() || !fastIncome.trim()}
+                  className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+                >
+                  Execute
+                </button>
+              </div>
             </div>
             <p className="text-[9px] text-white/40 uppercase tracking-tight">
               Bypass conversational intake. Requires currency and income.

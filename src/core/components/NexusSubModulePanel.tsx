@@ -49,7 +49,7 @@ export function NexusSubModulePanel({ moduleId, initialContent, onBack, onNaviga
             className="w-9 h-9 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors group"
             aria-label="Back to Nexus"
           >
-            <ArrowLeft className="w-4 h-4 text-white/30 group-hover:text-white transition-colors" />
+            <ArrowLeft className="w-4 h-4 text-white/50 group-hover:text-white transition-colors" />
           </button>
           <div className="flex items-center gap-2.5">
             {Icon && (

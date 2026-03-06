@@ -16,7 +16,7 @@ class SpineEventBus {
   private listeners = new Map<string, Set<Listener>>();
   private recentEvents: SpineEvent[] = [];
   private cascadeRules: CascadeRule[] = [];
-  private debounceTimers = new Map<string, number>();
+  private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private uid: string | null = null;
 
   setUser(uid: string | null): void {
@@ -37,7 +37,7 @@ class SpineEventBus {
     const debounceKey = `${event.type}:${event.source}`;
     if (this.debounceTimers.has(debounceKey)) return;
 
-    const timer = window.setTimeout(() => {
+    const timer = globalThis.setTimeout(() => {
       this.debounceTimers.delete(debounceKey);
     }, 500);
     this.debounceTimers.set(debounceKey, timer);
@@ -89,7 +89,7 @@ class SpineEventBus {
     this.listeners.clear();
     this.recentEvents = [];
     this.cascadeRules = [];
-    this.debounceTimers.forEach((timer) => window.clearTimeout(timer));
+    this.debounceTimers.forEach((timer) => globalThis.clearTimeout(timer));
     this.debounceTimers.clear();
   }
 

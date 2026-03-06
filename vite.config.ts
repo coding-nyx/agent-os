@@ -12,5 +12,58 @@ export default defineConfig({
   build: {
     outDir: 'out',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+
+          if (id.includes('@react-three/fiber')) {
+            return 'vendor-r3f';
+          }
+
+          if (id.includes('@react-three/drei')) {
+            return 'vendor-drei';
+          }
+
+          if (id.includes('/three/')) {
+            return 'vendor-three-core';
+          }
+
+          if (id.includes('/firebase/')) {
+            return 'vendor-firebase';
+          }
+
+          if (id.includes('/framer-motion/')) {
+            return 'vendor-motion';
+          }
+
+          if (id.includes('/react-markdown/') || id.includes('/remark-gfm/')) {
+            return 'vendor-markdown';
+          }
+
+          if (id.includes('/react-router-dom/') || id.includes('/react-router/')) {
+            return 'vendor-router';
+          }
+
+          if (id.includes('/gpt-tokenizer/')) {
+            return 'vendor-gpt-tokenizer';
+          }
+
+          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
+            return 'vendor-react';
+          }
+
+          if (id.includes('/lucide-react/')) {
+            return 'vendor-icons';
+          }
+
+          if (id.includes('/@radix-ui/')) {
+            return 'vendor-radix';
+          }
+
+          return 'vendor';
+        },
+      },
+    },
   },
 })

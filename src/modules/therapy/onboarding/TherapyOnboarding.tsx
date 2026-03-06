@@ -5,6 +5,7 @@ import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
 import { NexusChat } from '@/core/components/NexusChat';
 import { Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 import { BaseContext } from '../types';
 import { THERAPY_ONBOARDING_PERSONA } from '../personas';
@@ -129,14 +130,25 @@ export function TherapyOnboarding({ initialBaseContext, onComplete }: TherapyOnb
 
   const [fastStyle, setFastStyle] = useState<'direct' | 'gentle' | 'analytical' | ''>('');
   const [fastStruggles, setFastStruggles] = useState('');
+  const [fastBackground, setFastBackground] = useState('');
+  const [fastGoals, setFastGoals] = useState('');
+  const [fastGender, setFastGender] = useState<'female' | 'male' | 'non-binary' | 'no-preference' | ''>('');
+  const [fastTrauma, setFastTrauma] = useState('');
+
+  const fastTrackReady = fastStyle && fastBackground.trim() && fastStruggles.trim() && fastGoals.trim();
 
   const handleFastTrack = () => {
+    if (!fastTrackReady) return;
     const name = initialBaseContext?.name;
     const pronouns = initialBaseContext?.pronouns;
     const context: Partial<BaseContext> = {
       communicationStyle: fastStyle || undefined,
       ...(name || pronouns ? { identity: { name, pronouns } } : {}),
-      ...(fastStruggles.trim() ? { struggles: fastStruggles.trim() } : {}),
+      struggles: fastStruggles.trim(),
+      backgroundSummary: fastBackground.trim(),
+      goals: fastGoals.trim(),
+      ...(fastTrauma.trim() ? { trauma: fastTrauma.trim() } : {}),
+      ...(fastGender ? { preferredTherapist: { gender: fastGender, tone: fastStyle } } : {}),
       ...(initialBaseContext?.occupation ? { occupation: initialBaseContext.occupation } : {}),
       ...(typeof initialBaseContext?.typicalSleepHours === 'number' ? { typicalSleepHours: initialBaseContext.typicalSleepHours } : {}),
       integratedInsights: []
@@ -291,33 +303,83 @@ ${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initial
             <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
               <Zap className="w-3 h-3" /> Fast Track Initialization
             </p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <select
-                value={fastStyle}
-                onChange={e => setFastStyle(e.target.value as typeof fastStyle)}
-                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500/50 appearance-none"
-              >
-                <option value="" className="bg-zinc-900">Communication Style</option>
-                <option value="direct" className="bg-zinc-900">Direct</option>
-                <option value="gentle" className="bg-zinc-900">Gentle</option>
-                <option value="analytical" className="bg-zinc-900">Analytical</option>
-              </select>
+            <div className="space-y-3">
+              <div>
+                <p className="text-[9px] text-white/40 uppercase tracking-wider mb-2">Communication Style</p>
+                <div className="flex gap-2 flex-wrap">
+                  {(['direct', 'gentle', 'analytical'] as const).map(style => (
+                    <button
+                      key={style}
+                      onClick={() => setFastStyle(style)}
+                      className={cn(
+                        'px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all',
+                        fastStyle === style
+                          ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-300'
+                          : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                      )}
+                    >
+                      {style}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-[9px] text-white/40 uppercase tracking-wider mb-2">Therapist Gender Preference</p>
+                <div className="flex gap-2 flex-wrap">
+                  {([['female', 'Female'], ['male', 'Male'], ['non-binary', 'Non-binary'], ['no-preference', 'No Preference']] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      onClick={() => setFastGender(value)}
+                      className={cn(
+                        'px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all',
+                        fastGender === value
+                          ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-300'
+                          : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  placeholder="Background context *"
+                  value={fastBackground}
+                  onChange={e => setFastBackground(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
+                />
+                <input
+                  placeholder="Current struggles *"
+                  value={fastStruggles}
+                  onChange={e => setFastStruggles(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
+                />
+                <input
+                  placeholder="Goals *"
+                  value={fastGoals}
+                  onChange={e => setFastGoals(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
+                />
+              </div>
               <input
-                placeholder="What brings you here? (optional)"
-                value={fastStruggles}
-                onChange={e => setFastStruggles(e.target.value)}
-                className="flex-[2] bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50"
+                placeholder="Past trauma or heavy experiences (optional)"
+                value={fastTrauma}
+                onChange={e => setFastTrauma(e.target.value)}
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
               />
-              <button
-                onClick={handleFastTrack}
-                disabled={!fastStyle}
-                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
-              >
-                Execute
-              </button>
+              <div className="flex justify-end">
+                <button
+                  onClick={handleFastTrack}
+                  disabled={!fastTrackReady}
+                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+                >
+                  Execute
+                </button>
+              </div>
             </div>
             <p className="text-[9px] text-white/40 uppercase tracking-tight">
-              Bypass conversational intake. Requires communication style.
+              Skip conversational intake. Fields marked * are required.
             </p>
           </div>
         </div>

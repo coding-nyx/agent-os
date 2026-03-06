@@ -1,14 +1,17 @@
 import { createContext, useContext, useState, ReactNode, useRef, useEffect, useCallback } from 'react';
-import { GlobalProjection } from './types';
+import { GlobalProjection, NeuralStateVectorPatch } from './types';
 import { useAuth } from './auth-context';
 import { GlobalProjectionService } from './services/global-projection-service';
 import { ConversationContext } from '@/llm-engine/types';
+import { formatNSVForPrompt, normalizeNSV } from './services/nsv-service';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { getFirebase } from './firebase';
 
 export interface GlobalSoulContextType {
   globalSoul: GlobalProjection | null;
   isLoading: boolean;
   refreshGlobalSoul: () => Promise<void>;
-  updateCrossFunctionalState: (updates: Partial<GlobalProjection['crossFunctionalState']>) => Promise<void>;
+  updateCrossFunctionalState: (updates: NeuralStateVectorPatch) => Promise<void>;
   updateTherapeuticBaseline: (baseline: GlobalProjection['therapeuticBaseline']) => Promise<void>;
   enhanceContext: (context: ConversationContext) => ConversationContext;
 }
@@ -38,15 +41,15 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const updateCrossFunctionalState = useCallback(async (updates: Partial<GlobalProjection['crossFunctionalState']>) => {
+  const updateCrossFunctionalState = useCallback(async (updates: NeuralStateVectorPatch) => {
     if (!user) return;
     try {
       await GlobalProjectionService.updateCrossFunctionalState(user.uid, updates);
-      await refreshGlobalSoul();
+      // onSnapshot listener on line ~76 handles state update automatically
     } catch (e) {
       console.error("Failed to update Cross Functional State:", e);
     }
-  }, [user, refreshGlobalSoul]);
+  }, [user]);
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -64,29 +67,49 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     }
   }, [profile, authLoading, refreshGlobalSoul]);
 
+  useEffect(() => {
+    if (!user || authLoading) return;
+    const { db } = getFirebase();
+    if (!db) return;
+
+    const projectionRef = doc(db, 'global_souls', user.uid);
+    const unsubscribe = onSnapshot(projectionRef, (snapshot) => {
+      if (!snapshot.exists()) return;
+      const projection = snapshot.data() as GlobalProjection;
+      setGlobalSoul({
+        ...projection,
+        crossFunctionalState: normalizeNSV(projection.crossFunctionalState)
+      });
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading]);
+
   const updateTherapeuticBaseline = useCallback(async (baseline: GlobalProjection['therapeuticBaseline']) => {
     if (!user) return;
     try {
       await GlobalProjectionService.updateTherapeuticBaseline(user.uid, baseline);
-      await refreshGlobalSoul();
+      // onSnapshot listener handles state update automatically
     } catch (e) {
       console.error("Failed to update Therapeutic Baseline:", e);
     }
-  }, [user, refreshGlobalSoul]);
+  }, [user]);
 
   const enhanceContext = useCallback((context: ConversationContext): ConversationContext => {
     if (!globalSoul) return context;
-    const state = globalSoul.crossFunctionalState;
+    const state = globalSoul?.crossFunctionalState;
+    const safeName = (profile?.preferredName || 'Unknown').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 50);
+    const safePronouns = (profile?.pronouns || 'They/Them').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 30);
+    const safeInsights = (globalSoul?.compactedInsights || [])
+      .map(i => i.slice(0, 200));
     const soulContext = `
 [GLOBAL SYSTEM CONTEXT]
-- Preferred Name: ${profile?.preferredName || 'Unknown'}
-- Pronouns: ${profile?.pronouns || 'They/Them'}
-- CNS Fatigue: ${state.cnsFatigue}/10
-- Emotional Resilience: ${state.emotionalResilience}/10
-- Sleep Quality: ${state.sleepQuality}/10
-- Hormonal Context: ${state.hormonalContext || 'Unknown'}
+- Preferred Name: ${safeName}
+- Pronouns: ${safePronouns}
+${formatNSVForPrompt(state)}
 ACTIVE TRENDS:
-${globalSoul.compactedInsights.map(i => `- ${i}`).join('\n')}
+${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
 `;
     return {
       ...context,

@@ -236,13 +236,13 @@ export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: Or
                 placeholder="Preferred Name"
                 value={fastName}
                 onChange={e => setFastName(e.target.value)}
-                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50"
+                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
               />
               <input
                 placeholder="Pronouns (e.g., they/them)"
                 value={fastPronouns}
                 onChange={e => setFastPronouns(e.target.value)}
-                className="flex-[1.5] bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50"
+                className="flex-[1.5] bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
               />
               <button
                 onClick={handleFastTrack}

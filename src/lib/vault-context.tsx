@@ -1,8 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './auth-context';
 import { deriveKey, encryptWithKey, decryptWithKey, base64ToUint8Array } from './encryption';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirebase } from './firebase';
+import { readDocOnce } from './services/firestore-once';
+import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
+import { syncAllGuestDataToUser } from './services/guest-sync-service';
 
 export type VaultPersistenceMode = 'STRICT' | 'SESSION' | 'GRACE';
 
@@ -18,6 +21,7 @@ interface VaultContextType {
   lockVault: () => void;
   getModuleKey: (moduleName: string) => Promise<CryptoKey | null>;
   checkModuleVault: (collectionName: string) => Promise<boolean>;
+  isModuleAccessible: (moduleId: ModuleId) => boolean;
   setSessionPassword: (password: string) => void;
   getSessionPassword: () => string | null;
 }
@@ -28,8 +32,9 @@ const SESSION_PWD_KEY = 'agnes_vault_session';
 const VAULT_COLLECTION = 'vaults';
 
 export function VaultProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, isGuest, loading: authLoading } = useAuth();
   const masterKeyRef = useRef<CryptoKey | null>(null);
+  const unlockInProgressRef = useRef(false);
   
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [hasVault, setHasVault] = useState(false);
@@ -60,23 +65,27 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       return sessionStorage.getItem(SESSION_PWD_KEY);
   };
 
+  const getModuleKey = useCallback(async (moduleName: string): Promise<CryptoKey | null> => {
+    return masterKeyRef.current;
+  }, []);
+
   const checkModuleVault = useCallback(async (collectionName: string): Promise<boolean> => {
     if (!user) return false;
     try {
       const { db } = getFirebase();
       if (!db) return false;
       const docRef = doc(db, collectionName, user.uid);
-      const snap = await getDoc(docRef);
+      const snap = await readDocOnce(docRef);
       return snap.exists();
     } catch (e) {
       console.error(`Error checking vault for ${collectionName}:`, e);
       return false;
     }
-  }, [user]);
+  }, [user?.uid]);
 
   const refreshVaultStatus = useCallback(async () => {
-    if (!user || authLoading) {
-      if (!user) {
+    if (!user?.uid || authLoading) {
+      if (!user?.uid) {
           setHasVault(false);
           setIsLoading(false);
       }
@@ -87,16 +96,19 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     try {
       const { db } = getFirebase();
       if (!db) return;
-      const snap = await getDoc(doc(db, VAULT_COLLECTION, user.uid));
+      const snap = await readDocOnce(doc(db, VAULT_COLLECTION, user.uid));
       setHasVault(snap.exists());
     } catch (e: any) {
       console.error("Error refreshing vault status:", e);
     } finally {
       setIsLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user?.uid, authLoading]);
 
-  const unlockVault = async (password: string) => {
+  const unlockVault = useCallback(async (password: string) => {
+    if (unlockInProgressRef.current) return;
+    unlockInProgressRef.current = true;
+
     if (!user) throw new Error("User must be logged in");
     const { db } = getFirebase();
     if (!db) throw new Error("Firebase failure");
@@ -104,7 +116,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     setIsHandshaking(true);
     try {
         const vaultRef = doc(db, VAULT_COLLECTION, user.uid);
-        const snap = await getDoc(vaultRef);
+        const snap = await readDocOnce(vaultRef);
         
         let salt: Uint8Array;
         let canary: any = null;
@@ -138,36 +150,79 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         setSessionPassword(password);
         await refreshVaultStatus();
     } finally {
+        unlockInProgressRef.current = false;
         setIsHandshaking(false);
     }
-  };
+  }, [user, refreshVaultStatus]);
 
   useEffect(() => {
       const tryAutoUnlock = async () => {
           const pwd = getSessionPassword();
-          // We only auto-unlock if we have a password AND a user, AND we aren't already handshaking
           if (pwd && user && !isUnlocked && !isHandshaking && persistenceMode !== 'STRICT') {
-              try { await unlockVault(pwd); } catch(e) {}
+              try { await unlockVault(pwd); } catch(e) { console.warn('Auto-unlock failed:', e); }
           }
       };
       if (!isLoading && !authLoading) tryAutoUnlock();
-  }, [user, isLoading, authLoading, persistenceMode, isUnlocked, isHandshaking]);
+  }, [user?.uid, isLoading, authLoading, persistenceMode, isUnlocked, isHandshaking, unlockVault]);
 
-  const getModuleKey = async (moduleName: string): Promise<CryptoKey | null> => {
-    return masterKeyRef.current;
-  };
+  const isModuleAccessible = useCallback((moduleId: ModuleId): boolean => {
+    if (isGuest) return true;
+    const manifestPolicy = MODULE_MANIFEST[moduleId]?.securityPolicy;
+    if (!manifestPolicy) return true;
+
+    const userPref = profile?.securityPreferences?.vaultLocks?.[moduleId];
+    const requiresVault = manifestPolicy.mandatory || (userPref ?? manifestPolicy.defaultLocked);
+
+    if (!requiresVault) return true;
+    return isUnlocked;
+  }, [isGuest, profile?.securityPreferences, isUnlocked]);
 
   useEffect(() => {
     if (!user && !authLoading) lockVault();
     if (!authLoading) void refreshVaultStatus();
   }, [user?.uid, authLoading, lockVault, refreshVaultStatus]);
 
+  useEffect(() => {
+    if (!user?.uid || authLoading) {
+      if (!user) {
+        setHasVault(false);
+        setIsLoading(false);
+      }
+      return () => {};
+    }
+
+    const { db } = getFirebase();
+    if (!db) return () => {};
+
+    setIsLoading(true);
+    const vaultRef = doc(db, VAULT_COLLECTION, user.uid);
+    const unsubscribe = onSnapshot(
+      vaultRef,
+      (snap) => {
+        setHasVault(snap.exists());
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error('Vault subscription error:', error);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user?.uid, authLoading]);
+
+  useEffect(() => {
+    if (isUnlocked && user && !isGuest && masterKeyRef.current) {
+      void syncAllGuestDataToUser(user.uid, masterKeyRef.current);
+    }
+  }, [isUnlocked, user?.uid, isGuest]);
+
   return (
     <VaultContext.Provider
       value={{
         isUnlocked, isLoading: isLoading || authLoading || isHandshaking, isHandshaking, hasVault,
         persistenceMode, setPersistenceMode,
-        refreshVaultStatus, unlockVault, lockVault, getModuleKey, checkModuleVault,
+        refreshVaultStatus, unlockVault, lockVault, getModuleKey, checkModuleVault, isModuleAccessible,
         setSessionPassword, getSessionPassword
       }}
     >

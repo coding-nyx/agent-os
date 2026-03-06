@@ -1,4 +1,11 @@
-import type { Message, SessionSummary } from '@/llm-engine/types';
+import type { Message } from '@/llm-engine/types';
+
+export interface SessionSummary {
+  date: string;
+  summary: string;
+  keyInsights: string[];
+  theme: string;
+}
 
 export type TherapyMode = 'intake' | 'analysis' | 'selection' | 'session';
 
@@ -46,6 +53,13 @@ export interface BaseContext {
   lastSessionSummary?: string; // Recap of where we left off
   occupation?: string;
   typicalSleepHours?: number;
+  
+  // Therapist Preferences
+  preferredTherapist?: {
+    gender?: Gender | 'no-preference';
+    tone?: string;
+    traits?: string[];
+  };
   
   // Legacy/Compatibility (Optional)
   childhood?: string;

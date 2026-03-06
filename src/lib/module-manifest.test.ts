@@ -1,0 +1,81 @@
+import { describe, it, expect } from 'vitest';
+import {
+  MODULE_IDS,
+  MODULE_MANIFEST,
+  HUB_MODULE_ORDER,
+  buildDefaultVaultLocks,
+  type ModuleId,
+} from './module-manifest';
+
+describe('MODULE_MANIFEST integrity', () => {
+  it('every MODULE_ID has a corresponding manifest entry', () => {
+    for (const id of MODULE_IDS) {
+      expect(MODULE_MANIFEST).toHaveProperty(id);
+      expect(MODULE_MANIFEST[id].id).toBe(id);
+    }
+  });
+
+  it('every manifest entry has required fields', () => {
+    for (const entry of Object.values(MODULE_MANIFEST)) {
+      expect(entry.route).toBeDefined();
+      expect(entry.title).toBeDefined();
+      expect(entry.alias).toBeDefined();
+      expect(entry.description).toBeDefined();
+      expect(entry.colorHex).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(entry.icon).toBeDefined();
+      expect(typeof entry.isCore).toBe('boolean');
+      expect(typeof entry.hasPage).toBe('boolean');
+      expect(entry.securityPolicy).toBeDefined();
+    }
+  });
+
+  it('bridge module has hasPage=false and empty route', () => {
+    expect(MODULE_MANIFEST.bridge.hasPage).toBe(false);
+    expect(MODULE_MANIFEST.bridge.route).toBe('');
+  });
+});
+
+describe('HUB_MODULE_ORDER', () => {
+  it('excludes orchestrator and bridge', () => {
+    expect(HUB_MODULE_ORDER).not.toContain('orchestrator');
+    expect(HUB_MODULE_ORDER).not.toContain('bridge');
+  });
+
+  it('contains only valid module IDs', () => {
+    for (const id of HUB_MODULE_ORDER) {
+      expect(MODULE_IDS).toContain(id);
+    }
+  });
+});
+
+describe('buildDefaultVaultLocks', () => {
+  it('returns locks for all page-bearing modules except bridge', () => {
+    const locks = buildDefaultVaultLocks();
+    expect(locks).not.toHaveProperty('bridge');
+  });
+
+  it('therapy is locked by default (mandatory + defaultLocked)', () => {
+    const locks = buildDefaultVaultLocks();
+    expect(locks.therapy).toBe(true);
+  });
+
+  it('soma is locked by default (defaultLocked)', () => {
+    const locks = buildDefaultVaultLocks();
+    expect(locks.soma).toBe(true);
+  });
+
+  it('ledger is locked by default (defaultLocked)', () => {
+    const locks = buildDefaultVaultLocks();
+    expect(locks.ledger).toBe(true);
+  });
+
+  it('trainer is unlocked by default', () => {
+    const locks = buildDefaultVaultLocks();
+    expect(locks.trainer).toBe(false);
+  });
+
+  it('atlas is unlocked by default', () => {
+    const locks = buildDefaultVaultLocks();
+    expect(locks.atlas).toBe(false);
+  });
+});

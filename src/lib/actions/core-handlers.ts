@@ -1,5 +1,6 @@
 import { ActionHub } from './action-hub';
 import { Spine } from '../spine/spine-event-bus';
+import { SpineEventType } from '../types';
 import { CoreProfileService } from '../services/core-profile-service';
 import { NexusRoutingService } from '../services/nexus-routing-service';
 import { EpisodicMemoryService } from '../services/episodic-memory-service';
@@ -58,9 +59,21 @@ export function registerCoreActions() {
     },
 
     broadcast_spine_event: ({ moduleId, payload }) => {
-      const eventType = typeof payload.type === 'string' ? payload.type : 'VITAL_UPDATED';
+      const VALID_SPINE_EVENT_TYPES = new Set<string>([
+        'VITAL_UPDATED', 'REDUCE_TRAINING_LOAD', 'BLOCK_HIGH_INTENSITY', 'FLATTEN_ENERGY_WAVE',
+        'RECOVERY_AVAILABLE', 'BURNOUT_WARNING', 'CLEARANCE_DENIED', 'CLEARANCE_GRANTED',
+        'COGNITIVE_OVERLOAD', 'SECURITY_POLICY_UPDATED', 'FINANCIAL_STRESS', 'MEDICAL_ALERT',
+        'DRAFT_PROPOSED', 'DRAFT_APPROVED', 'DRAFT_DISMISSED', 'SESSION_STARTED', 'SESSION_ENDED',
+        'MODULE_DELEGATED'
+      ]);
+      const rawType = typeof payload.type === 'string' ? payload.type : 'VITAL_UPDATED';
+      if (!VALID_SPINE_EVENT_TYPES.has(rawType)) {
+        console.warn(`[broadcast_spine_event] Blocked invalid event type: "${rawType}"`);
+        return;
+      }
+      const eventType = rawType as SpineEventType;
       Spine.emit({
-        type: eventType as any,
+        type: eventType,
         source: moduleId,
         domain: payload.domain || 'system',
         data: payload.data || payload,

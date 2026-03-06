@@ -25,7 +25,11 @@ function lexicalFallbackEmbedding(text: string): number[] {
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {
-  const length = Math.min(a.length, b.length);
+  if (a.length !== b.length) {
+    console.warn(`[EmbeddingService] Dimension mismatch: ${a.length} vs ${b.length}, returning 0`);
+    return 0;
+  }
+  const length = a.length;
   if (length === 0) return 0;
 
   let dot = 0;

@@ -50,4 +50,19 @@ export interface EngineConfig {
   googleKey?: string;
   preferredModelId?: string;
   isMockMode?: boolean;
+  freeModelsOnly?: boolean;
+}
+
+export interface ParsedAction {
+  type: string;
+  payload: Record<string, unknown>;
+  raw?: string;
+}
+
+export interface StructuredResponse {
+  fullText: string;
+  publicText: string;
+  internalThoughts: string | null;
+  actions: ParsedAction[];
+  isInterrupted: boolean;
 }

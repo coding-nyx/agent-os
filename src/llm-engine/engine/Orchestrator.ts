@@ -71,7 +71,7 @@ export class Orchestrator {
     this.state.activeModelId = enabled ? GUEST_MODEL : (this.config.preferredModelId || 'deepseek/deepseek-chat');
   }
 
-  async sendMessage(messages: Message[], onChunk?: (chunk: string) => void): Promise<StructuredResponse> {
+  async sendMessage(messages: Message[], onChunk?: (chunk: string) => void, signal?: AbortSignal): Promise<StructuredResponse> {
     if (this.config.isMockMode) {
         return {
             fullText: "Neural link simulation active.",
@@ -89,9 +89,9 @@ export class Orchestrator {
     let interruptionControlSeen = false;
 
     try {
-      while (toolCallCount <= MAX_TOOL_CALLS) {
-        const isLastAttempt = toolCallCount === MAX_TOOL_CALLS;
-        const rawResponse = await this.executeRawRequest(currentMessages, onChunk, isLastAttempt);
+      while (toolCallCount < MAX_TOOL_CALLS) {
+        const isLastAttempt = toolCallCount === MAX_TOOL_CALLS - 1;
+        const rawResponse = await this.executeRawRequest(currentMessages, onChunk, isLastAttempt, signal);
         
         const message = rawResponse.choices?.[0]?.message;
         if (!message) break;
@@ -136,7 +136,7 @@ export class Orchestrator {
           // If we have no content, try one absolute final "no-tool" call to force a summary/response
           // We add a system hint to guide the model
           const summaryPrompt = [...currentMessages, { role: 'system', content: "SYSTEM: The previous tool calls were successful. Now, provide a concise final response to the user based on the data retrieved." } as Message];
-          const finalRaw = await this.executeRawRequest(summaryPrompt, onChunk, true);
+          const finalRaw = await this.executeRawRequest(summaryPrompt, onChunk, true, signal);
           fullResponse = finalRaw.choices?.[0]?.message?.content || "Neural link established. System status: Optimal.";
       }
 
@@ -168,7 +168,7 @@ export class Orchestrator {
           payload: JSON.parse(nexusCleaner(match[2])),
           raw: match[0]
         });
-      } catch (e) {}
+      } catch (e) { /* JSON parse failed - not a valid action tag, continue */ }
     }
 
     // Extract <tool_call> tags
@@ -181,7 +181,7 @@ export class Orchestrator {
           payload: parsed.arguments,
           raw: match[0]
         });
-      } catch (e) {}
+      } catch (e) { /* JSON parse failed - not a valid tool_call, continue */ }
     }
 
     return {
@@ -193,10 +193,42 @@ export class Orchestrator {
     };
   }
 
-  private async executeRawRequest(messages: Message[], onChunk?: (chunk: string) => void, forceNoTools?: boolean): Promise<any> {
+  private async executeWithRetry(
+    fn: () => Promise<Response>,
+    maxRetries: number = 3,
+    signal?: AbortSignal
+  ): Promise<Response> {
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      try {
+        const response = await fn();
+        if (response.ok || response.status < 500) return response;
+        lastError = new Error(`API Error: ${response.status}`);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') throw error;
+        lastError = error instanceof Error ? error : new Error(String(error));
+      }
+      if (attempt < maxRetries - 1) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    throw lastError ?? new Error('Request failed after retries');
+  }
+
+  private async executeRawRequest(messages: Message[], onChunk?: (chunk: string) => void, forceNoTools?: boolean, signal?: AbortSignal): Promise<any> {
     const url = 'https://openrouter.ai/api/v1/chat/completions';
     const skipTools = forceNoTools || this.config.freeModelsOnly;
-    const response = await fetch(url, {
+    const body = JSON.stringify({
+      model: this.state.activeModelId,
+      messages: messages,
+      tools: skipTools ? undefined : GLOBAL_TOOLS,
+      tool_choice: skipTools ? undefined : 'auto',
+      stream: !!onChunk,
+    });
+
+    const response = await this.executeWithRetry(() => fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.config.openrouterKey}`,
@@ -204,14 +236,9 @@ export class Orchestrator {
         'HTTP-Referer': window.location.origin,
         'X-Title': 'Nexus Neural Engine',
       },
-      body: JSON.stringify({
-        model: this.state.activeModelId,
-        messages: messages,
-        tools: skipTools ? undefined : GLOBAL_TOOLS,
-        tool_choice: skipTools ? undefined : 'auto',
-        stream: !!onChunk,
-      })
-    });
+      body,
+      signal,
+    }), 3, signal);
 
     if (!response.ok) {
       throw new Error(`API Error: ${response.status}`);
@@ -279,7 +306,7 @@ export class Orchestrator {
                   streamInterrupted = true;
                 } else {
                   fullText += content;
-                  
+
                   // Delta emission logic: only emit NEW public text
                   const { publicText: nextPublicTotal } = stripInternalTags(fullText, { retainSpacings: true });
                   const delta = nextPublicTotal.slice(publicTextAccumulated.length);
@@ -307,6 +334,12 @@ export class Orchestrator {
           }
         }
       }
+    } catch (e: any) {
+      if (e?.name === 'AbortError') {
+        return { fullText: '', toolCalls: [], streamInterrupted: false };
+      }
+      // Non-abort errors: let finally run, then re-throw
+      throw e;
     } finally {
       // Drain remaining buffer data
       if (buffer.trim()) {

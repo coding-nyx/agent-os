@@ -11,6 +11,9 @@
 # Engineering Standards
 
 *   **Code Separability & Modular Concern:** Maintain strict separation of concerns. If a task involves a specific module (e.g., `src/modules/therapy`), all related logic and state changes should be confined to that directory. Do not modify global state or unrelated modules unless absolutely critical for the requested functionality.
+*   **Zero Duplication & Component Reuse (DRY):** Strictly avoid code duplication. If a UI component (e.g., `ChatInterface`) or logic block is needed across multiple modules with slight variations, it MUST be refactored into a reusable core component with configurable props or hooks. Never copy-paste existing code to create "new" versions of the same functionality.
+*   **Concurrency & Race Integrity:** Always account for data and network races. Use functional updates for state (e.g., `setProfile(prev => ...)`), implement cleanup functions in `useEffect` to cancel stale network requests or prevent out-of-order state updates, and ensure atomic operations when dealing with shared resources or persistent storage.
+*   **Data Structure & Performance Optimization:** Prioritize efficient data structures and algorithms. Minimize O(n^2) operations, avoid unnecessary re-renders by using `useMemo` and `useCallback` judiciously, and ensure that large datasets (like chat history or biometric logs) are handled with performance-first patterns (virtualization, pagination, or optimized filtering).
 *   **LLM Engine as External Entity:** Treat the `src/llm-engine/` as an external API or separate entity. Interaction should primarily happen via established interfaces. Avoid structural modifications to the engine unless it's necessary for critical optimization or required by a specific architectural directive. Refrain from deep engine changes in favor of interface consumption whenever possible.
 
 # Project Overview

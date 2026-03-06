@@ -51,11 +51,32 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
         return;
       }
 
+      // If the LLM stream was interrupted (API error, network failure),
+      // surface an error instead of silently dropping the response.
+      if (response.isInterrupted) {
+        setStreamingText('');
+        setError('Neural intake link interrupted. Retry transmission.');
+        return;
+      }
+
       const nextHistory = [...messages, userMsg];
-      const result = await spec.onResponse(response, state, {
-        latestUserMessage: content,
-        history: nextHistory
-      });
+      let result: Awaited<ReturnType<typeof spec.onResponse>>;
+      try {
+        result = await spec.onResponse(response, state, {
+          latestUserMessage: content,
+          history: nextHistory
+        });
+      } catch (onResponseError) {
+        console.error('Guided intake onResponse failed:', onResponseError);
+        // Still commit the LLM response so the chat doesn't silently stop
+        const fallback = response.publicText.trim() || response.fullText.trim();
+        if (fallback) {
+          setMessages((prev) => [...prev, { role: 'assistant', content: fallback }]);
+        }
+        setStreamingText('');
+        return;
+      }
+
       const nextState = result.nextState ?? state;
 
       setState(nextState);
@@ -66,8 +87,11 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
 
       const assistantMessage = result.assistantMessage ?? response.publicText;
 
-      if (!response.isInterrupted && assistantMessage.trim()) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: response.fullText }]);
+      if (assistantMessage.trim()) {
+        // When onResponse provides an explicit override, use it as display content;
+        // otherwise preserve the raw LLM output (tags stripped at render time).
+        const commitContent = result.assistantMessage || response.fullText;
+        setMessages((prev) => [...prev, { role: 'assistant', content: commitContent }]);
       }
       setStreamingText('');
 

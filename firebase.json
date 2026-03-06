@@ -6,6 +6,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "agent-agnes-ai",
     "public": "out",
     "ignore": [
       "firebase.json",
@@ -21,6 +22,12 @@
   },
   "storage": {
     "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "functions",
+    "predeploy": [
+      "npm --prefix functions run build"
+    ]
   },
   "remoteconfig": {
     "template": "remoteconfig.template.json"

@@ -22,13 +22,13 @@ export function NeuralInput({
       )}
       <div className="relative group">
         {icon && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-indigo-400 transition-colors">
             {icon}
           </div>
         )}
         <input
           className={cn(
-            'w-full bg-black/40 border border-white/10 rounded-2xl h-12 px-4 text-sm text-white placeholder:text-white/10 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300',
+            'w-full bg-black/40 border border-white/10 rounded-2xl h-12 px-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300',
             icon && 'pl-12',
             className
           )}

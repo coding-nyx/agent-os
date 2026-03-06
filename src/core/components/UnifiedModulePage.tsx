@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
@@ -19,6 +20,7 @@ interface UnifiedModulePageProps<TProfile extends { onboardingComplete?: boolean
   renderContent: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
   renderDashboard?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
   requireVault?: boolean;
+  sessionActive?: boolean;
 }
 
 export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolean }>({
@@ -28,7 +30,8 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   renderOnboarding,
   renderContent,
   renderDashboard,
-  requireVault = true
+  requireVault = true,
+  sessionActive = false
 }: UnifiedModulePageProps<TProfile>) {
   const { isGuest } = useAuth();
   const [guestReady, setGuestReady] = useState(() => {
@@ -96,7 +99,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
 
   const workspaceContent = (
     <div className={cn(
-        "flex-1 flex flex-col w-full mx-auto relative",
+        "flex-1 flex flex-col w-full mx-auto relative min-h-0",
         workspaceType === 'focus' ? "max-w-4xl" : "max-w-[1600px]"
     )}>
         {/* Background Stages */}
@@ -154,15 +157,22 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         )}
 
         {workspaceType === 'focus' && (
-            <div className="flex-1 flex flex-col h-full py-12 relative">
-                <div className="flex-1 flex flex-col min-h-0 bg-black/10 backdrop-blur-[1px] rounded-[40px] border border-white/5 shadow-2xl">
+            <div className="flex-1 flex flex-col min-h-0 py-6 relative">
+                <div className="flex-1 flex flex-col min-h-0 bg-black/10 backdrop-blur-[1px] rounded-[40px] border border-white/5 shadow-2xl overflow-hidden">
                     {renderContent({ profile, encryptionKey })}
                 </div>
-                {renderDashboard && (
-                    <div className="mt-12 opacity-60 hover:opacity-100 transition-opacity">
-                        {renderDashboard({ profile, encryptionKey })}
-                    </div>
-                )}
+                <AnimatePresence>
+                    {renderDashboard && !sessionActive && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 0.6, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            className="mt-12 hover:opacity-100 transition-opacity"
+                        >
+                            {renderDashboard({ profile, encryptionKey })}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         )}
 

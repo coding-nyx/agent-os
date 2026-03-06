@@ -30,12 +30,32 @@ Reference the user's CNS fatigue and biometric data when giving advice.`;
 
 registerTrainerActions();
 
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    setIsMobile(mql.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 function TrainerContent({ profile, encryptionKey }: { profile: TrainerProfile | null; encryptionKey: CryptoKey | null }) {
   const { globalSoul } = useGlobalSoul();
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('trainer');
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+
+  // Collapse chat by default on mobile
+  useEffect(() => {
+    if (isMobile) setIsChatCollapsed(true);
+  }, [isMobile]);
 
   const agentAlias = globalSoul?.displayNames?.trainer || 'Titan';
   const systemPrompt = useMemo(() => {
@@ -135,9 +155,15 @@ function TrainerContent({ profile, encryptionKey }: { profile: TrainerProfile | 
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             onClick={() => setIsChatCollapsed(false)}
-            className="absolute top-6 right-6 z-[70] flex items-center gap-3 px-4 py-2 bg-orange-600/20 border border-orange-500/20 rounded-full text-orange-400 font-black text-[9px] uppercase tracking-widest italic backdrop-blur-xl"
+            className={cn(
+              'z-[70] flex items-center gap-3 bg-orange-600/20 border border-orange-500/20 rounded-full text-orange-400 font-black text-[9px] uppercase tracking-widest italic backdrop-blur-xl',
+              isMobile
+                ? 'fixed bottom-6 right-6 px-5 py-3 text-[11px]'
+                : 'absolute top-6 right-6 px-4 py-2'
+            )}
           >
-            <MessageSquare className="w-3 h-3" /> Open Titan Link
+            <MessageSquare className={isMobile ? 'w-4 h-4' : 'w-3 h-3'} />
+            Open Titan Link
           </motion.button>
         )}
         <TrainerRoutinePanel routines={profile?.routines || []} />
@@ -146,33 +172,68 @@ function TrainerContent({ profile, encryptionKey }: { profile: TrainerProfile | 
         </div>
       </div>
 
-      <motion.aside
-        initial={false}
-        animate={{
-          width: isChatCollapsed ? 0 : chatWidth,
-          opacity: isChatCollapsed ? 0 : 1
-        }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="h-full border-l border-white/5 bg-black/20 overflow-hidden flex flex-col relative"
-      >
-        <NexusChat
-          ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
-          agentName={agentAlias}
-          themeColor="orange"
-          placeholder="Input training data or queries..."
-          authMode="trainer"
-        />
-        {!isChatCollapsed && (
-          <button
-            onClick={() => setIsChatCollapsed(true)}
-            className={cn(
-              'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-[60] w-7 h-12 flex items-center justify-center bg-orange-600/20 border border-orange-500/20 text-orange-400 backdrop-blur-xl transition-all hover:bg-orange-600/40 rounded-l-xl'
-            )}
+      {/* Mobile: full-screen overlay sheet */}
+      {isMobile ? (
+        !isChatCollapsed && (
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-xl flex flex-col"
           >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        )}
-      </motion.aside>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-orange-500/10">
+              <span className="text-orange-400 font-black text-xs uppercase tracking-widest italic">
+                Titan Link
+              </span>
+              <button
+                onClick={() => setIsChatCollapsed(true)}
+                className="px-3 py-1.5 bg-orange-600/20 border border-orange-500/20 rounded-full text-orange-400 text-[9px] font-black uppercase tracking-widest backdrop-blur-xl hover:bg-orange-600/40 transition-all"
+              >
+                Close
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <NexusChat
+                ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
+                agentName={agentAlias}
+                themeColor="orange"
+                placeholder="Input training data or queries..."
+                authMode="trainer"
+              />
+            </div>
+          </motion.div>
+        )
+      ) : (
+        /* Desktop: clamp sidebar */
+        <motion.aside
+          initial={false}
+          animate={{
+            width: isChatCollapsed ? 0 : chatWidth,
+            opacity: isChatCollapsed ? 0 : 1
+          }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className="h-full border-l border-white/5 bg-black/20 overflow-hidden flex flex-col relative"
+        >
+          <NexusChat
+            ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
+            agentName={agentAlias}
+            themeColor="orange"
+            placeholder="Input training data or queries..."
+            authMode="trainer"
+          />
+          {!isChatCollapsed && (
+            <button
+              onClick={() => setIsChatCollapsed(true)}
+              className={cn(
+                'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-[60] w-7 h-12 flex items-center justify-center bg-orange-600/20 border border-orange-500/20 text-orange-400 backdrop-blur-xl transition-all hover:bg-orange-600/40 rounded-l-xl'
+              )}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+        </motion.aside>
+      )}
     </div>
   );
 }

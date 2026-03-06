@@ -27,10 +27,10 @@ export function NeuralButton({
   };
 
   const sizes = {
-    sm: 'px-3 py-1.5 text-[9px]',
-    md: 'px-6 py-3 text-[10px]',
-    lg: 'px-8 py-4 text-[11px]',
-    xl: 'px-10 py-5 text-[12px]'
+    sm: 'h-8 px-3 text-xs',
+    md: 'h-10 px-5 text-sm',
+    lg: 'h-12 px-6 text-base',
+    xl: 'h-14 px-8 text-lg'
   };
 
   return (

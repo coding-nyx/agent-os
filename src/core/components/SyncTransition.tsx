@@ -75,7 +75,7 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
               </div>
               <div>
                 <h2 className="text-2xl font-black italic uppercase tracking-[0.2em] text-white">Soul Synchronization</h2>
-                <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.4em] mt-2 italic">Disconnecting from {moduleName}</p>
+                <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.4em] mt-2 italic">Disconnecting from {moduleName}</p>
               </div>
             </div>
 

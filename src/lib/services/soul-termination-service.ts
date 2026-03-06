@@ -21,9 +21,14 @@ export const SoulTerminationService = {
     if (!db) throw new Error('Firebase not initialized');
 
     const targets = getUserDataDeletionTargets(uid);
-    await Promise.all(
-      targets.map((target) => deleteDoc(doc(db, target.collection, target.documentId)))
-    );
+    try {
+      await Promise.all(
+        targets.map((target) => deleteDoc(doc(db, target.collection, target.documentId)))
+      );
+    } catch (error) {
+      console.error('[SoulTerminationService] Failed to purge user data:', error);
+      throw error;
+    }
   },
 
   clearLocalArtifacts(): void {

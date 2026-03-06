@@ -184,7 +184,12 @@ export const GlobalProjectionService = {
       ...(existing?.therapeuticBaseline ? { therapeuticBaseline: existing.therapeuticBaseline } : {})
     };
 
-    await setDoc(doc(db, COLLECTION, profile.uid), newProjection);
+    try {
+      await setDoc(doc(db, COLLECTION, profile.uid), newProjection);
+    } catch (error) {
+      console.error('[GlobalProjectionService] Failed to sync projection from profile:', error);
+      throw error;
+    }
     return newProjection;
   },
 
@@ -194,10 +199,14 @@ export const GlobalProjectionService = {
     if (!db) return;
 
     const docRef = doc(db, COLLECTION, uid);
-    await updateDoc(docRef, {
-      therapeuticBaseline: baseline,
-      lastSync: new Date().toISOString()
-    });
+    try {
+      await updateDoc(docRef, {
+        therapeuticBaseline: baseline,
+        lastSync: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[GlobalProjectionService] Failed to update therapeutic baseline:', error);
+    }
   },
 
   async updateCrossFunctionalState(uid: string, updates: NeuralStateVectorPatch): Promise<void> {
@@ -209,9 +218,13 @@ export const GlobalProjectionService = {
     const updatePayload = buildNSVUpdatePayload(updates, new Date().toISOString());
     if (Object.keys(updatePayload).length === 0) return;
 
-    await updateDoc(docRef, {
-      ...updatePayload,
-      lastSync: new Date().toISOString()
-    });
+    try {
+      await updateDoc(docRef, {
+        ...updatePayload,
+        lastSync: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[GlobalProjectionService] Failed to update cross-functional state:', error);
+    }
   }
 };

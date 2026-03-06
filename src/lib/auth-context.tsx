@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AuthUser, IAuthService } from './services/auth-service';
 import { FirebaseAuthService } from './services/firebase-auth-service';
 import { CoreProfileService } from './services/core-profile-service';
@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<CoreUserProfile | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
+  const profileUnsubRef = useRef<null | (() => void)>(null);
 
   const refreshProfile = useCallback(async () => {
     if (!user) {
@@ -76,33 +77,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       if (currentUser) {
         setIsGuest(false);
-        // SESSION LOCK: Only update state if this is still the active user session
-        try {
-            // SECURITY: Ensure Firebase Auth token is fully propagated before querying Firestore
-            const { ensureAuthReady } = await import('@/lib/firebase');
-            await ensureAuthReady();
-
-            const p = await CoreProfileService.getProfile(currentUser.uid);
-            // Re-verify UID after async fetch to prevent cross-session hydration
-            if (authService.getCurrentUser()?.uid === currentUser.uid) {
-                if (p) {
-                    setProfile(p);
-                    await GlobalProjectionService.syncFromProfile(p);
-                } else {
-                    setProfile(null);
-                }
-            }
-        } catch (e) {
-            console.error("Auth boot sequence encountered a data-sync delay:", e);
-        }
+        setLoading(true);
       } else {
         setProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [authService]);
+
+  useEffect(() => {
+    if (!user || isGuest) {
+      if (profileUnsubRef.current) {
+        profileUnsubRef.current();
+        profileUnsubRef.current = null;
+      }
+      setProfile(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+
+    (async () => {
+      try {
+        const { ensureAuthReady } = await import('@/lib/firebase');
+        await ensureAuthReady();
+        if (cancelled) return;
+
+        if (profileUnsubRef.current) {
+          profileUnsubRef.current();
+          profileUnsubRef.current = null;
+        }
+
+        profileUnsubRef.current = CoreProfileService.subscribeProfile(user.uid, async (nextProfile) => {
+          if (cancelled) return;
+          if (authService.getCurrentUser()?.uid !== user.uid) return;
+          setProfile(nextProfile);
+          if (nextProfile) {
+            await GlobalProjectionService.syncFromProfile(nextProfile);
+          }
+          setLoading(false);
+        });
+      } catch (e) {
+        console.error('Auth boot sequence encountered a data-sync delay:', e);
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (profileUnsubRef.current) {
+        profileUnsubRef.current();
+        profileUnsubRef.current = null;
+      }
+    };
+  }, [user, isGuest, authService]);
 
   const login = async (email: string, password: string) => {
     setLoading(true);

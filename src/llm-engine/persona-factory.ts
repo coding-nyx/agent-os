@@ -7,16 +7,23 @@ export interface PersonaConfig {
   globalSoul: GlobalProjection | null;
 }
 
+function sanitizeForPrompt(value: string, maxLen: number): string {
+  return value.replace(/[\x00-\x1f\x7f]/g, '').slice(0, maxLen);
+}
+
 export const PersonaFactory = {
   generateSystemPrompt({ moduleId, baseRole, userProfile, globalSoul }: PersonaConfig): string {
     if (!userProfile || !globalSoul) return baseRole;
 
     const provision = userProfile.agentPersonalityProvision;
-    const agentAlias = globalSoul.displayNames[moduleId] || provision.orchestratorAlias;
-    const agentGender = globalSoul.agentGenders[moduleId] || provision.moduleGenderProfiles.orchestrator;
+    const agentAlias = sanitizeForPrompt(
+      globalSoul.displayNames?.[moduleId] || provision.orchestratorAlias,
+      60
+    );
+    const agentGender = globalSoul.agentGenders?.[moduleId] || provision.moduleGenderProfiles.orchestrator;
 
-    const userPreferredName = userProfile.preferredName || 'the user';
-    const userPronouns = userProfile.pronouns || 'they/them';
+    const userPreferredName = sanitizeForPrompt(userProfile.preferredName || 'the user', 50);
+    const userPronouns = sanitizeForPrompt(userProfile.pronouns || 'they/them', 30);
 
     // Gender-specific linguistic framing
     const genderFraming = {

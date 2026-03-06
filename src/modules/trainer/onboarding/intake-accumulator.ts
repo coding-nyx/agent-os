@@ -330,9 +330,13 @@ export function appendFromUserMessage(base: TrainerIntakeAccumulator, message?: 
     history: { ...base.history, injuries: [...base.history.injuries], goals: [...base.history.goals] }
   };
 
-  const supplementsMatch = message.match(/\bsupplements?\s*(?:are|include|:)?\s*([^.!\n]+)/i);
+  const supplementsMatch = message.match(/\b(?:take|supplements?|include|using)\b[^.!\n]*?\b([^.!\n]+)/i);
   if (supplementsMatch) {
-    next.nutrition.supplements = appendUnique(next.nutrition.supplements, parseCsvText(supplementsMatch[1]));
+    const list = parseCsvText(supplementsMatch[1])
+      .filter(s => !/^(and|a|the|some|various|many|few|include)$/i.test(s));
+    if (list.length > 0) {
+      next.nutrition.supplements = appendUnique(next.nutrition.supplements, list);
+    }
   }
 
   const caloriesMatch = message.match(/\b(\d{3,4})\s*(?:k?cal|calories)\b/i);
@@ -341,13 +345,16 @@ export function appendFromUserMessage(base: TrainerIntakeAccumulator, message?: 
     if (Number.isFinite(parsed) && parsed > 0) next.nutrition.calories = parsed;
   }
 
-  const proteinMatch = message.match(/\bprotein(?:\s*[:=])?\s*(\d{2,3})\s*(?:g|grams?)\b/i);
+  const proteinMatch = message.match(/\b(\d{2,3})\s*(?:g|grams?)\s*protein\b/i) || message.match(/\bprotein(?:\s*[:=])?\s*(\d{2,3})\s*(?:g|grams?)\b/i);
   if (proteinMatch) next.nutrition.proteinGrams = Number.parseInt(proteinMatch[1], 10);
-  const carbsMatch = message.match(/\bcarb(?:s)?(?:\s*[:=])?\s*(\d{2,3})\s*(?:g|grams?)\b/i);
+  
+  const carbsMatch = message.match(/\b(\d{2,3})\s*(?:g|grams?)\s*carb(?:s)?\b/i) || message.match(/\bcarb(?:s)?(?:\s*[:=])?\s*(\d{2,3})\s*(?:g|grams?)\b/i);
   if (carbsMatch) next.nutrition.carbGrams = Number.parseInt(carbsMatch[1], 10);
-  const fatMatch = message.match(/\bfat(?:\s*[:=])?\s*(\d{2,3})\s*(?:g|grams?)\b/i);
+  
+  const fatMatch = message.match(/\b(\d{2,3})\s*(?:g|grams?)\s*fat\b/i) || message.match(/\bfat(?:\s*[:=])?\s*(\d{2,3})\s*(?:g|grams?)\b/i);
   if (fatMatch) next.nutrition.fatGrams = Number.parseInt(fatMatch[1], 10);
-  const mealsMatch = message.match(/\b(\d{1,2})\s*meals?\s*(?:per|a)\s*day\b/i);
+
+  const mealsMatch = message.match(/\b(\d{1,2})\s*meals?\s*(?:per|a)\s*day\b/i) || message.match(/\b(\d{1,2})\s*(?:times?)\s*a\s*day\b/i);
   if (mealsMatch) next.nutrition.mealsPerDay = Number.parseInt(mealsMatch[1], 10);
 
   const sleepMatch = message.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:hours?|hrs?)\b/i);
@@ -356,7 +363,7 @@ export function appendFromUserMessage(base: TrainerIntakeAccumulator, message?: 
     if (Number.isFinite(parsed) && parsed > 0 && parsed <= 24) next.activity.sleepHours = parsed;
   }
 
-  const workoutsMatch = message.match(/\b(\d{1,2})\s*(?:x|times?)\s*(?:per|a)\s*week\b/i);
+  const workoutsMatch = message.match(/\b(\d{1,2})\s*(?:x|times?|days?)\s*(?:per|a)\s*week\b/i);
   if (workoutsMatch) {
     const parsed = Number.parseInt(workoutsMatch[1], 10);
     if (Number.isFinite(parsed) && parsed > 0) next.activity.workoutsPerWeek = parsed;

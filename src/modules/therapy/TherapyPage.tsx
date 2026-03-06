@@ -5,7 +5,7 @@ import { useVault } from '@/lib/vault-context';
 import { TherapyOnboarding } from './onboarding/TherapyOnboarding';
 import { AGNES_PERSONA } from './personas';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { Sparkles, ShieldAlert, CheckSquare, LogOut } from 'lucide-react';
+import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield } from 'lucide-react';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,6 +45,7 @@ interface TherapyContentProps {
   refreshProfile: () => Promise<void>;
   isAccessible: boolean;
   setBeliefGraph: React.Dispatch<React.SetStateAction<BeliefGraph | null>>;
+  onSessionActiveChange: (active: boolean) => void;
 }
 
 function TherapyContent({
@@ -58,13 +59,20 @@ function TherapyContent({
   coreProfile,
   refreshProfile,
   isAccessible,
-  setBeliefGraph
+  setBeliefGraph,
+  onSessionActiveChange
 }: TherapyContentProps) {
   const [currentState, setCurrentState] = useState<TherapyState>('selecting');
   const [sessionType, setSessionType] = useState<'impromptu' | 'new' | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isClosingSession, setIsClosingSession] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<string | null>(null);
+  const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
+
+  // Notify parent of session state changes for layout adjustments
+  useEffect(() => {
+    onSessionActiveChange(currentState === 'session');
+  }, [currentState, onSessionActiveChange]);
 
   const agentAlias = globalSoul?.displayNames?.therapy || 'Agnes';
   const isDeepIntakeDone = Boolean(globalSoul?.therapeuticBaseline?.isInitialized || profile?.onboardingComplete);
@@ -131,6 +139,7 @@ function TherapyContent({
 
   // For this page, if we need to force onboarding, we can hook it into the startSession flow
   const startSession = async (type: 'impromptu' | 'new' | 'continue') => {
+    setSessionStartedAt(Date.now());
     if (type === 'continue') {
       const inferred = messages.some((msg) => msg.role === 'assistant' && msg.content.includes('Emergency protocol engaged'))
         ? 'impromptu'
@@ -300,16 +309,61 @@ function TherapyContent({
       />
 
       <AnimatePresence>
-        <NeuralModal isOpen={!!sessionSummary} onClose={() => setSessionSummary(null)} title="Session Reflection" icon={CheckSquare}>
-          <div className="space-y-6">
-            <p className="text-sm text-indigo-100 italic">\"{sessionSummary}\"</p>
+        <NeuralModal isOpen={!!sessionSummary} onClose={() => setSessionSummary(null)} title="Session Complete" subtitle="Neural synthesis finalized" icon={Brain} maxWidth="lg">
+          <div className="space-y-8">
+            {/* Session stats */}
             <div className="flex gap-4">
-              <NeuralButton size="xl" variant="secondary" className="w-full" loading={isClosingSession} onClick={handleDiscardAndClose}>
-                Discard & Close
-              </NeuralButton>
+              <div className="flex-1 p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/50">Exchanges</span>
+                </div>
+                <span className="text-2xl font-black text-white tabular-nums">
+                  {messages.filter(m => m.role === 'user').length}
+                </span>
+              </div>
+              <div className="flex-1 p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/50">Duration</span>
+                </div>
+                <span className="text-2xl font-black text-white tabular-nums">
+                  {(() => {
+                    const mins = Math.round((Date.now() - sessionStartedAt) / 60000);
+                    return mins < 1 ? '<1m' : `${mins}m`;
+                  })()}
+                </span>
+              </div>
+              <div className="flex-1 p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/50">Encryption</span>
+                </div>
+                <span className="text-sm font-black text-emerald-400 uppercase tracking-wider">E2EE</span>
+              </div>
+            </div>
+
+            {/* Summary reflection */}
+            <div className="relative p-6 rounded-2xl bg-indigo-500/[0.04] border border-indigo-500/10">
+              <div className="flex items-center gap-2 mb-4">
+                <Brain className="w-4 h-4 text-indigo-400" />
+                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-400/60">Session Reflection</span>
+              </div>
+              <p className="text-sm text-white/80 leading-relaxed font-medium">{sessionSummary}</p>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-3">
               <NeuralButton size="xl" className="w-full" loading={isClosingSession} onClick={handleMergeAndClose}>
-                Merge & Close
+                <CheckSquare className="w-4 h-4 mr-2" /> Save & Close Session
               </NeuralButton>
+              <button
+                onClick={handleDiscardAndClose}
+                disabled={isClosingSession}
+                className="w-full py-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white/50 transition-colors disabled:opacity-30"
+              >
+                Discard Session Data
+              </button>
             </div>
           </div>
         </NeuralModal>
@@ -325,11 +379,13 @@ export default function TherapyPage() {
   const isAccessible = isModuleAccessible('therapy');
 
   const [beliefGraph, setBeliefGraph] = useState<BeliefGraph | null>(null);
+  const [sessionActive, setSessionActive] = useState(false);
 
   return (
     <UnifiedModulePage<TherapyIntakeProfile>
       moduleId="therapy"
       workspaceType="focus"
+      sessionActive={sessionActive}
       // Therapy allows impromptu sessions even if the vault is locked
       requireVault={false}
       profileOptions={{
@@ -370,6 +426,7 @@ export default function TherapyPage() {
             refreshProfile={refreshProfile}
             isAccessible={isAccessible}
             setBeliefGraph={setBeliefGraph}
+            onSessionActiveChange={setSessionActive}
           />
         );
       }}

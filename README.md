@@ -29,13 +29,13 @@ AGNES operates as a unified platform with one primary orchestrator and specializ
 Users can explore the platform and try limited trial sessions of any module (Therapy, Trainer, Ledger) directly from the home page. Guest trials have a visible token quota; once exhausted, the interface locks, and the user must authenticate to continue and persist their memory.
 
 ### 2. Logged-In & Onboarding
-Upon authentication, users complete a core onboarding with the **Agnes Orchestrator**. This captures identity, preferences, and agent personality settings (naming and gender defaults). This "Base Context" then personalizes all subsequent module interactions.
+Upon authentication, users complete a core onboarding with **Nyx**, the system orchestrator. This captures identity, preferences, and agent personality settings (naming and gender defaults). This "Base Context" then personalizes all subsequent module interactions.
 
 ### 3. The Wellness Hub
 The central command center where users view their holistic wellness profile and launch specialized modules. It features an adaptive UI (3D pods for capable desktops, 2D cards for mobile).
 
 ### 4. Specialized Modules
-- **AI Therapy (Agnes):** An empathetic conversational agent focused on mental wellness and emotional support.
+- **Agnes (Therapy):** An empathetic conversational agent focused on mental wellness and emotional support.
 - **AI Trainer (Titan):** A data-driven fitness coach handling workout routines, macro tracking, and biometric logs.
 - **AI Ledger:** A medical-grade agent providing cautious, clinical guidance and cross-module health synthesis.
 

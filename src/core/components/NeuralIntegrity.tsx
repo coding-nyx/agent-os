@@ -41,7 +41,7 @@ export function NeuralIntegrity({ mode, onUpgrade }: NeuralIntegrityProps) {
             Neural Integrity: <span className={integrity.score < 30 ? 'text-red-500' : 'text-white'}>{integrity.label}</span>
           </span>
         </div>
-        <span className="text-[9px] font-bold text-white/20">{Math.round(integrity.score)}%</span>
+        <span className="text-[9px] font-bold text-white/40">{Math.round(integrity.score)}%</span>
       </div>
       
       <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
@@ -55,7 +55,7 @@ export function NeuralIntegrity({ mode, onUpgrade }: NeuralIntegrityProps) {
       {isGuest && integrity.score < 95 && onUpgrade && (
         <button 
           onClick={onUpgrade}
-          className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30 hover:text-indigo-400 transition-colors text-left flex items-center gap-1 mt-1 italic"
+          className="text-[8px] font-black uppercase tracking-[0.2em] text-white/50 hover:text-indigo-400 transition-colors text-left flex items-center gap-1 mt-1 italic"
         >
           Secure Neural Link Permanently →
         </button>

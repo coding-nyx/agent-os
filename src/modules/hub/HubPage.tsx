@@ -186,7 +186,6 @@ export default function HubPage() {
                 moduleAccess={moduleAccess}
                 hoveredNodeId={hoveredNodeId}
                 edgeIntensity={edgeIntensity}
-                wellnessGauge={wellnessGauge}
                 onModuleNavigate={handleModuleNavigate}
                 setHoveredNodeId={setHoveredNodeId}
               />
