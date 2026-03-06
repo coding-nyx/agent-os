@@ -26,6 +26,11 @@ This document serves as the foundational instruction set for all AI agents (Gemi
 - **UI/UX Focus:** Prioritize modern, "alive," and polished aesthetics (Framer Motion, Glassmorphism, Tailwind).
 - **Security First:** Never expose secrets or bypass E2EE (End-to-End Encryption) protocols.
 
+### 4. Build & Chunking Safety (`vite.config.ts`)
+- **manualChunks Order Matters:** The `manualChunks` function in `vite.config.ts` controls vendor bundle splitting. The match order is critical because package paths can overlap (e.g., `@react-three/fiber` contains `/react/`).
+- **React Must Match First:** The React/ReactDOM/Scheduler chunk check MUST appear before `@react-three/*` checks, with an explicit exclusion for `@react-three/`. Failing this causes `vendor-r3f` to load before React is available in static builds, producing `Cannot read properties of undefined (reading 'useLayoutEffect')`.
+- **Rule:** When adding new `manualChunks` entries, verify that no path substring matches an earlier rule unintentionally. Always test with `npm run build && npm run preview` to catch static load-order issues that don't surface in dev mode.
+
 ## Project Architecture Overview
 
 - **Entry Point:** `src/main.tsx` -> `src/App.tsx` (Vite SPA).

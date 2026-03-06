@@ -1,14 +1,10 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
-import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
-import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
-import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SCOUT_PERSONA } from './personas';
 import { ScoutDashboard } from './components/ScoutDashboard';
-import { ScoutOnboarding } from './onboarding/ScoutOnboarding';
 import {
   ScoutProfile,
   loadScoutProfile,
@@ -32,7 +28,7 @@ function ScoutContent({ profile, encryptionKey }: { profile: ScoutProfile | null
   });
 
   useEffect(() => {
-    if (messages.length === 0 && !isProcessing && !streamingText && profile?.onboardingComplete) {
+    if (messages.length === 0 && !isProcessing && !streamingText) {
       setMessages([
         {
           role: 'assistant',
@@ -42,7 +38,7 @@ function ScoutContent({ profile, encryptionKey }: { profile: ScoutProfile | null
         }
       ]);
     }
-  }, [messages.length, isProcessing, streamingText, profile?.onboardingComplete, setMessages, agentAlias]);
+  }, [messages.length, isProcessing, streamingText, setMessages, agentAlias]);
 
   return (
     <NexusChat
@@ -57,10 +53,8 @@ function ScoutContent({ profile, encryptionKey }: { profile: ScoutProfile | null
 
 export default function ScoutPage() {
   const { globalSoul } = useGlobalSoul();
-  const { user, isGuest, profile: coreProfile, refreshProfile } = useAuth();
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('scout');
-  const baseContext = useMemo(() => IntakeBaseContextService.buildForScout({ coreProfile }), [coreProfile]);
 
   return (
     <UnifiedModulePage<ScoutProfile>
@@ -72,23 +66,6 @@ export default function ScoutPage() {
         subscribeProfile: subscribeScoutProfile,
         syncGuestProfile: syncGuestScoutProfileToUser
       }}
-      renderOnboarding={({ profile, onComplete }) => (
-        <ScoutOnboarding
-          initialProfile={profile}
-          initialBaseContext={baseContext}
-          onGlobalBaseContextFinalize={async (context) => {
-            if (!user || isGuest) return;
-            const patch = IntakeBaseContextService.toCoreProfilePatch(context);
-            if (Object.keys(patch).length > 0) {
-              await CoreProfileService.updateProfile(user.uid, patch);
-              await refreshProfile();
-            }
-          }}
-          onComplete={async (completed) => {
-            onComplete(completed);
-          }}
-        />
-      )}
       renderDashboard={({ profile }) => (
         <ScoutDashboard soul={globalSoul} profile={profile} isLocked={isLocked} />
       )}

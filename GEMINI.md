@@ -77,7 +77,8 @@ This is a **React Single Page Application (SPA)** built with **Vite** and **Type
 
 ## Configuration
 
-*   **Vite:** `vite.config.ts` - Configures aliases (`@` -> `src`) and build output.
+*   **Vite:** `vite.config.ts` - Configures aliases (`@` -> `src`), build output, and **vendor chunk splitting**.
+    *   **⚠️ manualChunks Load-Order Pitfall:** The `manualChunks` function splits vendor bundles for code-splitting. Match order is critical — package paths can overlap (e.g., `@react-three/fiber` contains `/react/`). React/ReactDOM must be matched **before** `@react-three/*` with an explicit exclusion, otherwise R3F loads before React in static builds and crashes with `Cannot read properties of undefined (reading 'useLayoutEffect')`. This only surfaces in `npm run preview` / static hosting, NOT in `npm run dev`. Always validate chunking changes with `npm run build && npm run preview`.
 *   **Firebase:** `firebase.json` - Configures Firestore rules, indexes, and Hosting rewrites (SPA fallback to `index.html`).
 *   **Environment Variables:**
     *   Copy `.env.example` to `.env.local` to configure Firebase credentials.

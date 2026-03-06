@@ -97,7 +97,7 @@ function normalizeScoutProfile(raw: unknown): ScoutProfile {
 export function createEmptyScoutProfile(): ScoutProfile {
   const now = new Date().toISOString();
   return {
-    onboardingComplete: false,
+    onboardingComplete: true,
     researchFocus: [],
     knowledgeNodes: [],
     verificationQueue: [],
