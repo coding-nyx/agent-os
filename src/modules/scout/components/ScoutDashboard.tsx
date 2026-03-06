@@ -62,14 +62,13 @@ export function ScoutDashboard({
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="Knowledge Nodes" value={nodes.length || null} isEmpty={!profile} accentClassName="text-lime-300" />
-        <StatCard label="Verified" value={verified || null} isEmpty={!profile} accentClassName="text-emerald-300" />
-        <StatCard label="Queue" value={queue.length || null} isEmpty={!profile} accentClassName="text-amber-300" />
+        <StatCard label="Knowledge Nodes" value={nodes.length} accentClassName="text-lime-300" />
+        <StatCard label="Verified" value={verified} accentClassName="text-emerald-300" />
+        <StatCard label="Queue" value={queue.length} accentClassName="text-amber-300" />
         <StatCard
           label="Avg Confidence"
-          value={avgConfidence}
+          value={avgConfidence ?? 0}
           suffix="%"
-          isEmpty={!profile}
           accentClassName={avgConfidence !== null && avgConfidence < 50 ? 'text-red-400' : 'text-lime-300'}
         />
       </div>
