@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
+import { Zap } from 'lucide-react';
 import { StructuredResponse } from '@/llm-engine/engine/types';
 import { useAuth } from '@/lib/auth-context';
 import { LedgerIntakeProfile, createEmptyLedgerProfile } from '../services/ledger-intake-service';
@@ -107,6 +108,33 @@ export function LedgerOnboarding({
 }: LedgerOnboardingProps) {
   const { user } = useAuth();
   const initialContext = useMemo(() => initialBaseContext ?? {}, [initialBaseContext]);
+
+  const [fastCurrency, setFastCurrency] = useState('');
+  const [fastIncome, setFastIncome] = useState('');
+
+  const handleFastTrack = () => {
+    if (!fastCurrency.trim() || !fastIncome.trim()) return;
+    const income = Number.parseFloat(fastIncome);
+    if (!Number.isFinite(income) || income < 0) return;
+    const now = new Date().toISOString();
+    const profile: LedgerIntakeProfile = {
+      onboardingComplete: true,
+      currency: fastCurrency.trim().toUpperCase(),
+      monthlyIncome: income,
+      fixedExpenses: [],
+      variableExpenses: [],
+      debtItems: [],
+      savingsGoals: [],
+      planningHorizon: 'monthly',
+      summary: `Express onboarding: ${fastCurrency.trim().toUpperCase()} ${income}/mo.`,
+      plans: [],
+      activePlanId: null,
+      plannerBotState: 'idle',
+      createdAt: now,
+      updatedAt: now
+    };
+    onComplete(profile);
+  };
 
   const spec = useMemo<GuidedChatSpec<LedgerIntakeState>>(
     () => ({
@@ -266,6 +294,40 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
       steps={[...LEDGER_STEPS]}
       currentStep={intake.stepIndex}
       themeColor="cyan"
+      prelude={
+        <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-cyan-500/20 bg-cyan-500/5">
+          <div className="flex-1 w-full space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+              <Zap className="w-3 h-3" /> Fast Track Initialization
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                placeholder="Currency (e.g., USD, EUR, INR)"
+                value={fastCurrency}
+                onChange={e => setFastCurrency(e.target.value)}
+                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-500/50"
+              />
+              <input
+                type="number"
+                placeholder="Monthly Income"
+                value={fastIncome}
+                onChange={e => setFastIncome(e.target.value)}
+                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-500/50"
+              />
+              <button
+                onClick={handleFastTrack}
+                disabled={!fastCurrency.trim() || !fastIncome.trim()}
+                className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+              >
+                Execute
+              </button>
+            </div>
+            <p className="text-[9px] text-white/40 uppercase tracking-tight">
+              Bypass conversational intake. Requires currency and income.
+            </p>
+          </div>
+        </div>
+      }
     >
       <NexusChat
         ai={{

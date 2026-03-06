@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
 import { GuidedChatSpec, GuidedIntakeStep, IntakeModuleConfig } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
 import { NexusChat } from '@/core/components/NexusChat';
+import { Zap } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { BaseContext } from '../types';
 import { THERAPY_ONBOARDING_PERSONA } from '../personas';
@@ -125,6 +126,23 @@ function buildInitialPrompt(initialBaseContext?: GlobalBaseIntakeContext): strin
 
 export function TherapyOnboarding({ initialBaseContext, onComplete }: TherapyOnboardingProps) {
   const { user } = useAuth();
+
+  const [fastStyle, setFastStyle] = useState<'direct' | 'gentle' | 'analytical' | ''>('');
+  const [fastStruggles, setFastStruggles] = useState('');
+
+  const handleFastTrack = () => {
+    const name = initialBaseContext?.name;
+    const pronouns = initialBaseContext?.pronouns;
+    const context: Partial<BaseContext> = {
+      communicationStyle: fastStyle || undefined,
+      ...(name || pronouns ? { identity: { name, pronouns } } : {}),
+      ...(fastStruggles.trim() ? { struggles: fastStruggles.trim() } : {}),
+      ...(initialBaseContext?.occupation ? { occupation: initialBaseContext.occupation } : {}),
+      ...(typeof initialBaseContext?.typicalSleepHours === 'number' ? { typicalSleepHours: initialBaseContext.typicalSleepHours } : {}),
+      integratedInsights: []
+    };
+    onComplete(context);
+  };
   
   const initialContextState = useMemo<Partial<BaseContext>>(() => {
     const name = normalizeOptionalString(initialBaseContext?.name);
@@ -267,6 +285,43 @@ ${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initial
       steps={THERAPY_STEPS}
       currentStep={intake.stepIndex}
       themeColor="indigo"
+      prelude={
+        <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-indigo-500/20 bg-indigo-500/5">
+          <div className="flex-1 w-full space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
+              <Zap className="w-3 h-3" /> Fast Track Initialization
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={fastStyle}
+                onChange={e => setFastStyle(e.target.value as typeof fastStyle)}
+                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500/50 appearance-none"
+              >
+                <option value="" className="bg-zinc-900">Communication Style</option>
+                <option value="direct" className="bg-zinc-900">Direct</option>
+                <option value="gentle" className="bg-zinc-900">Gentle</option>
+                <option value="analytical" className="bg-zinc-900">Analytical</option>
+              </select>
+              <input
+                placeholder="What brings you here? (optional)"
+                value={fastStruggles}
+                onChange={e => setFastStruggles(e.target.value)}
+                className="flex-[2] bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50"
+              />
+              <button
+                onClick={handleFastTrack}
+                disabled={!fastStyle}
+                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+              >
+                Execute
+              </button>
+            </div>
+            <p className="text-[9px] text-white/40 uppercase tracking-tight">
+              Bypass conversational intake. Requires communication style.
+            </p>
+          </div>
+        </div>
+      }
     >
       <NexusChat
         ai={{

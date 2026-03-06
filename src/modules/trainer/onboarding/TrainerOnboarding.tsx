@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
-import { Shield, Sparkles } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Shield, Sparkles, Zap } from 'lucide-react';
 import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
@@ -132,6 +132,28 @@ export function TrainerOnboarding({
   initialProfile
 }: TrainerOnboardingProps) {
   const { user } = useAuth();
+  const [fastGoal, setFastGoal] = useState('');
+  const [fastExperience, setFastExperience] = useState('');
+
+  const handleFastTrack = () => {
+    if (!fastGoal || !fastExperience) return;
+    const privacyLevel = (state?.privacyLevel ?? 'basic') as TrainerPrivacyLevel;
+    const now = new Date().toISOString();
+    const profile: TrainerProfile = {
+      onboardingComplete: true,
+      privacyLevel,
+      trackingLevel: privacyLevel === 'complete' ? 'indepth' : 'standard',
+      nutrition: { supplements: [] },
+      activity: {},
+      history: { goals: fastGoal, pastTraining: fastExperience },
+      summary: `Express onboarding: ${fastExperience} level, goal: ${fastGoal}.`,
+      routines: [],
+      createdAt: now,
+      updatedAt: now
+    };
+    onComplete(profile);
+  };
+
   const hasBaseContext = (context: GlobalBaseIntakeContext) =>
     Boolean(context.name || context.pronouns || context.occupation || typeof context.typicalSleepHours === 'number');
 
@@ -408,7 +430,7 @@ export function TrainerOnboarding({
       currentStep={stepIndex}
       themeColor="orange"
       prelude={
-        !state.privacyLevel && (
+        !state.privacyLevel ? (
           <div className="p-6">
             <p className="text-[10px] text-white/50 uppercase font-black tracking-[0.2em] mb-4">Select Data Sharing Level</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -429,6 +451,48 @@ export function TrainerOnboarding({
                 <h3 className="text-sm font-black uppercase tracking-wider mb-2">Complete Data</h3>
                 <p className="text-xs text-white/50 leading-relaxed">Full intake including biological and intimate factors for maximum optimization.</p>
               </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-orange-500/20 bg-orange-500/5">
+            <div className="flex-1 w-full space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 flex items-center gap-2">
+                <Zap className="w-3 h-3" /> Fast Track Initialization
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <select
+                  value={fastGoal}
+                  onChange={e => setFastGoal(e.target.value)}
+                  className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50 appearance-none"
+                >
+                  <option value="" className="bg-zinc-900">Primary Goal</option>
+                  <option value="strength" className="bg-zinc-900">Strength</option>
+                  <option value="hypertrophy" className="bg-zinc-900">Hypertrophy</option>
+                  <option value="weight loss" className="bg-zinc-900">Weight Loss</option>
+                  <option value="endurance" className="bg-zinc-900">Endurance</option>
+                  <option value="general fitness" className="bg-zinc-900">General Fitness</option>
+                </select>
+                <select
+                  value={fastExperience}
+                  onChange={e => setFastExperience(e.target.value)}
+                  className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50 appearance-none"
+                >
+                  <option value="" className="bg-zinc-900">Experience Level</option>
+                  <option value="beginner" className="bg-zinc-900">Beginner</option>
+                  <option value="intermediate" className="bg-zinc-900">Intermediate</option>
+                  <option value="advanced" className="bg-zinc-900">Advanced</option>
+                </select>
+                <button
+                  onClick={handleFastTrack}
+                  disabled={!fastGoal || !fastExperience}
+                  className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+                >
+                  Execute
+                </button>
+              </div>
+              <p className="text-[9px] text-white/40 uppercase tracking-tight">
+                Bypass conversational intake. Requires goal and experience level.
+              </p>
             </div>
           </div>
         )

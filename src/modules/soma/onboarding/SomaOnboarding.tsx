@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
+import { Zap } from 'lucide-react';
 import { StructuredResponse } from '@/llm-engine/engine/types';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -117,6 +118,34 @@ export function SomaOnboarding({
 }: SomaOnboardingProps) {
   const { user } = useAuth();
   const initialContext = useMemo(() => initialBaseContext ?? {}, [initialBaseContext]);
+
+  const [fastConditions, setFastConditions] = useState('');
+  const [fastMedications, setFastMedications] = useState('');
+
+  const handleFastTrack = () => {
+    const now = new Date().toISOString();
+    const conditions = fastConditions.trim()
+      ? fastConditions.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+    const medications = fastMedications.trim()
+      ? fastMedications.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+    const profile: SomaProfile = {
+      onboardingComplete: true,
+      knownConditions: conditions,
+      medications,
+      allergies: [],
+      biomarkers: [],
+      labSummaries: [],
+      clearances: [],
+      summary: conditions.length > 0 || medications.length > 0
+        ? `Express onboarding: ${conditions.length} condition(s), ${medications.length} medication(s).`
+        : 'Express onboarding: No known conditions or medications reported.',
+      createdAt: now,
+      updatedAt: now
+    };
+    onComplete(profile);
+  };
 
   const spec = useMemo<GuidedChatSpec<SomaIntakeState>>(
     () => ({
@@ -269,6 +298,38 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
       steps={[...SOMA_STEPS]}
       currentStep={intake.stepIndex}
       themeColor="emerald"
+      prelude={
+        <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-emerald-500/20 bg-emerald-500/5">
+          <div className="flex-1 w-full space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
+              <Zap className="w-3 h-3" /> Fast Track Initialization
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                placeholder="Known conditions (e.g., asthma, diabetes — or leave blank)"
+                value={fastConditions}
+                onChange={e => setFastConditions(e.target.value)}
+                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50"
+              />
+              <input
+                placeholder="Current medications (e.g., metformin — or leave blank)"
+                value={fastMedications}
+                onChange={e => setFastMedications(e.target.value)}
+                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50"
+              />
+              <button
+                onClick={handleFastTrack}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+              >
+                Execute
+              </button>
+            </div>
+            <p className="text-[9px] text-white/40 uppercase tracking-tight">
+              Bypass conversational intake. Fields are optional — execute with blank for clean baseline.
+            </p>
+          </div>
+        </div>
+      }
     >
       <NexusChat
         ai={{
