@@ -116,8 +116,8 @@ export function AtlasDashboard({
         />
       </div>
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Energy Wave</h4>
+      <section className="space-y-3" aria-label="Energy wave visualization">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Energy Wave</h4>
         {profile?.energyWave?.length ? (
           <EnergyWaveChart points={profile.energyWave.slice(0, 10)} flattenedUntil={profile.flattenedUntil} />
         ) : null}
@@ -127,7 +127,7 @@ export function AtlasDashboard({
               <span>{point.slot}</span>
               <span className="text-sky-300 font-bold">Energy {point.energy}/10</span>
             </div>
-            <div className="mt-2 text-[10px] text-white/45">
+            <div className="mt-2 text-xs text-white/70">
               Focus {point.focus}/10 · Load {point.load}/10
             </div>
           </div>
@@ -142,17 +142,17 @@ export function AtlasDashboard({
         )}
       </section>
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Task Graph</h4>
+      <section className="space-y-3" aria-label="Task dependency graph">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Task Graph</h4>
         {(profile?.taskGraph || []).slice(0, 5).map((task) => (
           <div key={task.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
             <div className="flex items-center justify-between text-xs text-white/70">
               <span>{task.title}</span>
               <span className="text-sky-300 font-bold">Energy {task.energyCost}/10</span>
             </div>
-            <div className="mt-1 text-[10px] text-white/45 uppercase tracking-[0.2em]">{task.status}</div>
+            <div className="mt-1 text-xs text-white/70 uppercase tracking-[0.2em]">{task.status}</div>
             {task.dependencies?.length ? (
-              <div className="mt-2 text-[10px] text-white/40">
+              <div className="mt-2 text-xs text-white/70">
                 Depends on {task.dependencies.length} node{task.dependencies.length > 1 ? 's' : ''}
               </div>
             ) : null}
@@ -168,13 +168,13 @@ export function AtlasDashboard({
         )}
       </section>
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Recovery Windows</h4>
+      <section className="space-y-3" aria-label="Recovery windows">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Recovery Windows</h4>
         {(profile?.recoveryWindows || []).slice(0, 3).map((window) => (
           <SurfaceCard key={window.id} className="p-3 text-xs border-emerald-500/20 bg-emerald-500/5">
             <div className="flex items-center justify-between text-emerald-300">
               <span>{window.title}</span>
-              <CalendarClock className="w-4 h-4" />
+              <CalendarClock className="w-4 h-4" aria-hidden="true" />
             </div>
             <p className="mt-1 text-emerald-100/70">{window.reason}</p>
           </SurfaceCard>
@@ -189,15 +189,15 @@ export function AtlasDashboard({
         )}
       </section>
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Risk Flags</h4>
+      <section className="space-y-3" aria-label="Cognitive risk flags">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Risk Flags</h4>
         {riskFlags.length === 0 ? (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-[10px] text-emerald-300">
+          <div role="status" className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs text-emerald-300">
             Cognitive profile stable.
           </div>
         ) : (
           riskFlags.map((flag, index) => (
-            <div key={index} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-[10px] text-amber-100/80">
+            <div key={index} role="alert" className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-100/80">
               {flag}
             </div>
           ))

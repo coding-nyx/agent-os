@@ -1,4 +1,5 @@
 import { ActionHub } from '@/lib/actions/action-hub';
+import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import {
   AtlasProfile,
   AtlasTaskNode,
@@ -41,6 +42,7 @@ export function registerAtlasActions() {
             focus: parseBoundedScore(point?.focus),
             load: parseBoundedScore(point?.load)
           }))
+        .slice(0, 48)
         : [];
 
       if (wave.length === 0) return;
@@ -112,11 +114,12 @@ export function registerAtlasActions() {
             id: typeof task?.id === 'string' ? task.id : `task_${Date.now()}_${index}`,
             title: typeof task?.title === 'string' ? task.title : `Task ${index + 1}`,
             energyCost: parseBoundedScore(task?.energyCost, 4),
-            status: task?.status === 'active' || task?.status === 'done' ? task.status : 'queued',
+            status: (task?.status === 'active' || task?.status === 'done' ? task.status : 'queued') as 'active' | 'queued' | 'done',
             dependencies: Array.isArray(task?.dependencies)
               ? task.dependencies.filter((dep: Record<string, unknown>) => typeof dep === 'string')
               : undefined
           }))
+        .slice(0, 100)
         : [];
 
       if (tasks.length === 0) return;
@@ -132,6 +135,29 @@ export function registerAtlasActions() {
       const nextLoad = typeof payload?.activeLoad === 'number' ? payload.activeLoad : undefined;
       if (typeof nextLoad === 'number') {
         await updateGlobalSoul({ cognitive: { activeLoad: nextLoad } });
+      }
+    },
+
+    sync_vitals: async ({ userId, payload }) => {
+      if (!userId) return;
+      const cognitive = payload?.cognitive as Record<string, unknown> | undefined;
+      if (!cognitive || typeof cognitive !== 'object') return;
+
+      const patch: Record<string, unknown> = {};
+      if (typeof cognitive.energyBudget === 'number' && Number.isFinite(cognitive.energyBudget)) {
+        patch.energyBudget = Math.max(0, Math.min(10, cognitive.energyBudget));
+      }
+      if (typeof cognitive.focusScore === 'number' && Number.isFinite(cognitive.focusScore)) {
+        patch.focusScore = Math.max(0, Math.min(10, cognitive.focusScore));
+      }
+      if (typeof cognitive.activeLoad === 'number' && Number.isFinite(cognitive.activeLoad)) {
+        patch.activeLoad = Math.max(0, Math.min(10, cognitive.activeLoad));
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await GlobalProjectionService.updateCrossFunctionalState(userId, { cognitive: patch }).catch((e) => {
+          console.error('Atlas sync_vitals failed:', e);
+        });
       }
     }
   });

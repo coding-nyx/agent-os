@@ -48,7 +48,7 @@ export interface ModuleManifestEntry {
   colorHex: string;
   themeColor: ModuleTheme;
   icon: typeof Sparkles;
-  chatTheme?: 'indigo' | 'orange' | 'cyan';
+  chatTheme?: ModuleTheme;
   isCore: boolean;
   hasPage: boolean;
   securityPolicy: ModuleSecurityPolicy;
@@ -110,6 +110,7 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     description: 'Biological Source of Truth',
     colorHex: '#10B981',
     themeColor: 'emerald',
+    chatTheme: 'emerald',
     icon: HeartPulse,
     isCore: false,
     hasPage: true,
@@ -137,10 +138,11 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     description: 'Cognitive Domain',
     colorHex: '#0EA5E9',
     themeColor: 'sky',
+    chatTheme: 'sky',
     icon: Zap,
     isCore: false,
     hasPage: true,
-    securityPolicy: { defaultLocked: false, mandatory: false }
+    securityPolicy: { defaultLocked: true, mandatory: false }
   },
   scout: {
     id: 'scout',
@@ -150,10 +152,11 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     description: 'Research Extension',
     colorHex: '#84CC16',
     themeColor: 'lime',
+    chatTheme: 'lime',
     icon: Search,
     isCore: false,
     hasPage: true,
-    securityPolicy: { defaultLocked: false, mandatory: false }
+    securityPolicy: { defaultLocked: true, mandatory: false }
   },
   forge: {
     id: 'forge',

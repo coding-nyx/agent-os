@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { ChatInterface } from './ChatInterface';
 import { useAuth } from '@/lib/auth-context';
+import type { ModuleTheme } from '@/lib/module-manifest';
 import { UnifiedAuthModal, AuthMode } from './UnifiedAuthModal';
 import { stripInternalTags } from '@/llm-engine/sanitize';
 import type { Message, GuestQuota } from '@/lib/types';
@@ -15,7 +16,7 @@ interface NexusChatProps {
         handleSendMessage: (content: string, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
     };
     agentName: string;
-    themeColor: 'indigo' | 'orange' | 'cyan';
+    themeColor: ModuleTheme;
     placeholder?: string;
     onActionParsed?: (type: string, payload: Record<string, unknown>) => void;
     headerActions?: ReactNode;

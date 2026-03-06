@@ -29,7 +29,7 @@ export function EnergyWaveChart({ points, flattenedUntil }: EnergyWaveChartProps
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-32">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-32" role="img" aria-label="Energy wave chart showing energy, focus, and load over time">
         <defs>
           <linearGradient id="energyGradient" x1="0" x2="1" y1="0" y2="0">
             <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.2" />
@@ -41,7 +41,7 @@ export function EnergyWaveChart({ points, flattenedUntil }: EnergyWaveChartProps
         {focusPath && <path d={focusPath} fill="none" stroke="rgba(14,165,233,0.7)" strokeWidth="2" strokeDasharray="4 4" />}
         {loadPath && <path d={loadPath} fill="none" stroke="rgba(251,191,36,0.6)" strokeWidth="2" />}
       </svg>
-      <div className="mt-2 text-[10px] text-white/45">
+      <div className="mt-2 text-xs text-white/70">
         Energy (solid), Focus (dashed), Load (amber). {isFlattened ? 'Flattened window active.' : 'Wave active.'}
       </div>
     </div>

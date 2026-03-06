@@ -201,7 +201,7 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
           handleSendMessage: intake.handleSendMessage
         }}
         agentName="Scout Intake"
-        themeColor="cyan"
+        themeColor="lime"
         placeholder={spec.placeholder}
         showInternalSignals={false}
       />

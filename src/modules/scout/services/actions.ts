@@ -55,58 +55,77 @@ async function triggerWebSearch(
   userId?: string | null,
   encryptionKey?: CryptoKey | null
 ) {
-  const response = await ScoutWebSearchService.search(query, { maxResults: 6 });
-  const results: ScoutWebResult[] = Array.isArray(response?.results) ? response.results : [];
-  const reputable = results.filter((result) => isReputableDomain(extractDomain(result.url)));
-  const sources = (reputable.length > 0 ? reputable : results).map((result) => result.url).slice(0, 4);
-  const evidence = results.map((result) => result.content || result.title).filter(Boolean).slice(0, 6);
-  const confidence = reputable.length > 0 ? 0.8 : results.length > 0 ? 0.65 : 0.45;
-  const status: ScoutKnowledgeNode['status'] = results.length > 0 ? 'verified' : 'contested';
+  try {
+    const response = await ScoutWebSearchService.search(query, { maxResults: 6 });
+    const results: ScoutWebResult[] = Array.isArray(response?.results) ? response.results : [];
+    const reputable = results.filter((result) => isReputableDomain(extractDomain(result.url)));
+    const sources = (reputable.length > 0 ? reputable : results).map((result) => result.url).slice(0, 4);
+    const evidence = results.map((result) => result.content || result.title).filter(Boolean).slice(0, 6);
+    const confidence = reputable.length > 0 ? 0.8 : results.length > 0 ? 0.65 : 0.45;
 
-  const resultNodes: ScoutKnowledgeNode[] = results.map((result, index) => ({
-    id: `web_${Date.now()}_${index}`,
-    title: result.title || `Result ${index + 1}`,
-    claim: query,
-    confidence,
-    source: result.url,
-    sources: [result.url],
-    evidence: result.content ? [result.content] : undefined,
-    status,
-    updatedAt: new Date().toISOString()
-  }));
+    const resultNodes: ScoutKnowledgeNode[] = results.map((result, index) => ({
+      id: `web_${Date.now()}_${index}`,
+      title: result.title || `Result ${index + 1}`,
+      claim: query,
+      confidence,
+      source: result.url,
+      sources: [result.url],
+      evidence: result.content ? [result.content] : undefined,
+      searchCompleted: true,
+      status: 'pending' as const,
+      updatedAt: new Date().toISOString()
+    }));
 
-  const updatedKnowledge = baseProfile.knowledgeNodes.map((node) =>
-    node.claim === query
-      ? {
-          ...node,
-          status,
-          confidence,
-          source: sources[0],
-          sources,
-          evidence,
-          updatedAt: new Date().toISOString()
-        }
-      : node
-  );
+    const updatedKnowledge = baseProfile.knowledgeNodes.map((node) =>
+      node.claim === query
+        ? {
+            ...node,
+            status: 'pending' as const,
+            confidence,
+            source: sources[0],
+            sources,
+            evidence,
+            searchCompleted: true,
+            updatedAt: new Date().toISOString()
+          }
+        : node
+    );
 
-  const nextQueue: ScoutProfile['verificationQueue'] = baseProfile.verificationQueue.map((entry) =>
-    entry.id === entryId
-      ? {
-          ...entry,
-          status: status as ScoutProfile['verificationQueue'][number]['status'],
-          reason: 'web_search_completed'
-        }
-      : entry
-  );
+    const nextQueue: ScoutProfile['verificationQueue'] = baseProfile.verificationQueue.map((entry) =>
+      entry.id === entryId
+        ? {
+            ...entry,
+            status: 'pending' as const,
+            reason: 'web_search_completed'
+          }
+        : entry
+    );
 
-  const next: ScoutProfile = {
-    ...baseProfile,
-    knowledgeNodes: [...resultNodes, ...updatedKnowledge].slice(0, 250),
-    verificationQueue: nextQueue,
-    updatedAt: new Date().toISOString()
-  };
+    const next: ScoutProfile = {
+      ...baseProfile,
+      knowledgeNodes: [...resultNodes, ...updatedKnowledge].slice(0, 250),
+      verificationQueue: nextQueue,
+      updatedAt: new Date().toISOString()
+    };
 
-  await persistProfile(next, userId, encryptionKey);
+    await persistProfile(next, userId, encryptionKey);
+  } catch (error) {
+    console.error('[Scout] Web search failed:', error);
+
+    const failedQueue: ScoutProfile['verificationQueue'] = baseProfile.verificationQueue.map((entry) =>
+      entry.id === entryId
+        ? { ...entry, status: 'pending' as const, reason: 'search_failed' }
+        : entry
+    );
+
+    const fallback: ScoutProfile = {
+      ...baseProfile,
+      verificationQueue: failedQueue,
+      updatedAt: new Date().toISOString()
+    };
+
+    await persistProfile(fallback, userId, encryptionKey);
+  }
 }
 
 export function registerScoutActions() {

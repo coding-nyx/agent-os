@@ -15,6 +15,7 @@ export interface ScoutKnowledgeNode {
   source?: string;
   sources?: string[];
   evidence?: string[];
+  searchCompleted?: boolean;
   status: 'pending' | 'verified' | 'contested';
   updatedAt: string;
 }
@@ -68,6 +69,7 @@ function normalizeScoutProfile(raw: unknown): ScoutProfile {
           source: typeof entry?.source === 'string' ? entry.source : undefined,
           sources: Array.isArray(entry?.sources) ? normalizeStringArray(entry.sources) : undefined,
           evidence: Array.isArray(entry?.evidence) ? normalizeStringArray(entry.evidence) : undefined,
+          searchCompleted: entry?.searchCompleted === true ? true : undefined,
           status:
             entry?.status === 'verified' || entry?.status === 'contested'
               ? entry.status
@@ -195,8 +197,11 @@ export async function saveScoutProfile(profile: ScoutProfile, { userId, encrypti
       console.error('[ScoutKnowledgeService] Failed to save scout profile:', error);
     }
     try {
+      const activeNodes = normalized.knowledgeNodes.filter(n => n.status === 'pending').length;
+      const queueDepth = normalized.verificationQueue.filter(q => q.status === 'pending').length;
+      const researchLoad = Math.min(1, (activeNodes + queueDepth) / 20);
       await GlobalProjectionService.updateCrossFunctionalState(userId, {
-        cognitive: { researchLoad: normalized.researchFocus.length }
+        cognitive: { researchLoad }
       });
     } catch (error) {
       console.error('[ScoutKnowledgeService] Failed to update cross-functional state:', error);

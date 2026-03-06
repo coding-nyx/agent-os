@@ -74,11 +74,11 @@ export function ScoutDashboard({
         />
       </div>
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Focus Tracks</h4>
-        <div className="flex flex-wrap gap-2">
+      <section className="space-y-3" aria-label="Research focus tracks">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Focus Tracks</h4>
+        <div className="flex flex-wrap gap-2" role="list" aria-label="Active research topics">
           {(profile?.researchFocus || []).slice(0, 8).map((topic) => (
-            <span key={topic} className="px-3 py-1 rounded-full border border-lime-500/20 bg-lime-500/10 text-[10px] text-lime-300">
+            <span key={topic} role="listitem" className="px-3 py-1 rounded-full border border-lime-500/20 bg-lime-500/10 text-xs text-lime-300">
               {topic}
             </span>
           ))}
@@ -93,12 +93,12 @@ export function ScoutDashboard({
         )}
       </section>
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Queue Snapshot</h4>
+      <section className="space-y-3" aria-label="Verification queue snapshot">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Queue Snapshot</h4>
         {queue.slice(0, 4).map((item) => (
           <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
             <p className="text-xs text-white/75">{item.claim}</p>
-            <p className="text-[10px] text-lime-300 mt-1 uppercase tracking-wider">{item.status}</p>
+            <p className="text-xs text-lime-300 mt-1 uppercase tracking-wider">{item.status}</p>
           </div>
         ))}
         {queue.length === 0 && (
@@ -111,17 +111,17 @@ export function ScoutDashboard({
         )}
       </section>
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Risk Flags</h4>
+      <section className="space-y-3" aria-label="Risk flags and warnings">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Risk Flags</h4>
         {riskFlags.length === 0 ? (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-[10px] text-emerald-300">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs text-emerald-300">
             Verification pipeline is stable.
           </div>
         ) : (
           riskFlags.map((flag, index) => (
-            <div key={index} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3">
-              <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5" />
-              <p className="text-[10px] text-amber-100/80 leading-relaxed">{flag}</p>
+            <div key={index} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3" role="alert">
+              <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5" aria-hidden="true" />
+              <p className="text-xs text-amber-100/80 leading-relaxed">{flag}</p>
             </div>
           ))
         )}

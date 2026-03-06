@@ -188,24 +188,29 @@ export function SomaDashboard({
 
       <VitalsGrid metrics={metrics} columns={2} isLocked={isLocked} onCalibrate={onCalibrate} />
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Clinical Flags</h4>
+      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-200/80">
+        <p className="font-semibold text-amber-300">Medical Disclaimer</p>
+        <p className="mt-1">Soma provides informational guidance only. It does not provide medical diagnoses, treatment plans, or replace professional medical advice. Always consult a qualified healthcare provider for medical decisions.</p>
+      </div>
+
+      <section className="space-y-3" aria-label="Clinical flags">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Clinical Flags</h4>
         {flags.length === 0 ? (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-[10px] text-emerald-300">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs text-emerald-300">
             No elevated biological risk flags detected.
           </div>
         ) : (
           flags.map((flag, index) => (
-            <div key={index} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3">
-              <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5" />
-              <p className="text-[10px] text-amber-100/80 leading-relaxed">{flag}</p>
+            <div key={index} role="alert" className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3">
+              <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5" aria-hidden="true" />
+              <p className="text-xs text-amber-100/80 leading-relaxed">{flag}</p>
             </div>
           ))
         )}
       </section>
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Latest Biomarkers</h4>
+      <section className="space-y-3" aria-label="Latest biomarkers">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Latest Biomarkers</h4>
         {(profile?.biomarkers || []).slice(0, 5).map((entry) => (
           <div key={entry.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70 flex justify-between">
             <span>{entry.name}</span>
@@ -225,21 +230,21 @@ export function SomaDashboard({
         )}
       </section>
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Biomarker Trends</h4>
+      <section className="space-y-3" aria-label="Biomarker trends">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Biomarker Trends</h4>
         {trends.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3 text-xs text-white/45">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3 text-xs text-white/70">
             Not enough history yet to calculate trends.
           </div>
         ) : (
           trends.map((trend) => {
             const Icon = trend.direction === 'up' ? TrendingUp : trend.direction === 'down' ? TrendingDown : TestTube2;
             const color =
-              trend.direction === 'up' ? 'text-emerald-300' : trend.direction === 'down' ? 'text-amber-300' : 'text-white/60';
+              trend.direction === 'up' ? 'text-emerald-300' : trend.direction === 'down' ? 'text-amber-300' : 'text-white/70';
             return (
               <div key={trend.name} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs text-white/70">
-                  <Icon className={`w-4 h-4 ${color}`} />
+                  <Icon className={`w-4 h-4 ${color}`} aria-hidden="true" />
                   <span>{trend.name}</span>
                 </div>
                 <span className={`text-xs font-bold ${color}`}>
@@ -253,15 +258,15 @@ export function SomaDashboard({
         )}
       </section>
 
-      <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Lab Import</h4>
+      <section className="space-y-3" aria-label="Lab import">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Lab Import</h4>
         <SurfaceCard className="p-4 space-y-3">
-          <p className="text-[10px] text-white/50">
+          <p className="text-xs text-white/70">
             Upload CSV or text exports for best results. PDFs are accepted but may require cleaning.
           </p>
-          <label className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[10px] text-white/70">
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-white/70 cursor-pointer hover:bg-black/40 transition-colors">
             <span>{isImporting ? 'Importing...' : 'Select lab file'}</span>
-            <FileText className="w-4 h-4 text-emerald-300" />
+            <FileText className="w-4 h-4 text-emerald-300" aria-hidden="true" />
             <input
               type="file"
               accept=".csv,.txt,.pdf"
@@ -289,7 +294,7 @@ export function SomaDashboard({
               disabled={isImporting}
             />
           </label>
-          {importError && <div className="text-[10px] text-amber-300">{importError}</div>}
+          {importError && <div className="text-xs text-amber-300" role="alert">{importError}</div>}
         </SurfaceCard>
       </section>
     </div>

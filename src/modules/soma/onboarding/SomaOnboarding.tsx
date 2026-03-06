@@ -45,8 +45,9 @@ OBJECTIVE:
 ACTION TAGS:
 - <action type="update_soma_profile">{"knownConditions":["..."],"medications":["..."],"allergies":["..."],"summary":"..."}</action>
 - <action type="update_global_base_context">{"name":"...","pronouns":"...","age":28,"assignedSexAtBirth":"female"}</action>
-- After collecting baseline vitals, emit a bulk update (only once the user has provided actual data):
-  <action type="sync_vitals">{"biological":{"cnsFatigue":null,"sleepQuality":null,"recoveryScore":null,"hormonalContext":"..."}}</action>
+- After collecting baseline vitals, emit a bulk update with Soma-owned metrics only:
+  <action type="sync_vitals">{"biological":{"recoveryScore":7.5,"hormonalContext":"within normal range"}}</action>
+  Valid fields: recoveryScore (0-10 number), hormonalContext (string). Do NOT include cnsFatigue or sleepQuality (Trainer-owned).
 - Sync the UI stage with your current conversational focus by emitting:
   <action type="focus_conditions">{}</action>
   <action type="focus_contraindications">{}</action>
@@ -200,11 +201,20 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
 
         if (profileUpdates.length > 0) {
           for (const update of profileUpdates) {
-            nextProfile = {
-              ...nextProfile,
-              ...update,
-              updatedAt: new Date().toISOString()
-            };
+            // Whitelist: only allow fields documented in the onboarding action tag
+            if (Array.isArray(update.knownConditions)) {
+              nextProfile.knownConditions = update.knownConditions.filter((c): c is string => typeof c === 'string' && c.trim().length > 0);
+            }
+            if (Array.isArray(update.medications)) {
+              nextProfile.medications = update.medications.filter((m): m is string => typeof m === 'string' && m.trim().length > 0);
+            }
+            if (Array.isArray(update.allergies)) {
+              nextProfile.allergies = update.allergies.filter((a): a is string => typeof a === 'string' && a.trim().length > 0);
+            }
+            if (typeof update.summary === 'string' && update.summary.trim()) {
+              nextProfile.summary = update.summary.trim();
+            }
+            nextProfile.updatedAt = new Date().toISOString();
           }
         }
 
@@ -253,12 +263,15 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
         if (rawVitalsPayload.length > 0) {
            const payload = rawVitalsPayload[rawVitalsPayload.length - 1]; // Take the latest sync
            if (payload && payload.biological) {
-              // Sanitize the payload to only include explicit keys, removing null/undefined that crash deep merge
               const bio: NonNullable<NeuralStateVectorPatch['biological']> = {};
-              if (typeof payload.biological.cnsFatigue === 'number') bio.cnsFatigue = payload.biological.cnsFatigue;
-              if (typeof payload.biological.sleepQuality === 'number') bio.sleepQuality = payload.biological.sleepQuality;
-              if (typeof payload.biological.recoveryScore === 'number') bio.recoveryScore = payload.biological.recoveryScore;
-              if (typeof payload.biological.hormonalContext === 'string') bio.hormonalContext = payload.biological.hormonalContext;
+              if (typeof payload.biological.recoveryScore === 'number' &&
+                  Number.isFinite(payload.biological.recoveryScore) &&
+                  payload.biological.recoveryScore >= 0 && payload.biological.recoveryScore <= 10) {
+                bio.recoveryScore = payload.biological.recoveryScore;
+              }
+              if (typeof payload.biological.hormonalContext === 'string' && payload.biological.hormonalContext.trim()) {
+                bio.hormonalContext = payload.biological.hormonalContext.trim();
+              }
               vitalsPatch = { biological: bio };
            }
         }
@@ -314,34 +327,50 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
       prelude={
         <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-emerald-500/20 bg-emerald-500/5">
           <div className="flex-1 w-full space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
-              <Zap className="w-3 h-3" /> Fast Track Initialization
+            <p className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
+              <Zap className="w-3 h-3" aria-hidden="true" /> Fast Track Initialization
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input
-                placeholder="Known conditions (e.g., asthma, diabetes)"
-                value={fastConditions}
-                onChange={e => setFastConditions(e.target.value)}
-                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-500/50"
-              />
-              <input
-                placeholder="Current medications (e.g., metformin)"
-                value={fastMedications}
-                onChange={e => setFastMedications(e.target.value)}
-                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-500/50"
-              />
-              <input
-                placeholder="Allergies (e.g., penicillin, latex)"
-                value={fastAllergies}
-                onChange={e => setFastAllergies(e.target.value)}
-                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-500/50"
-              />
-              <input
-                placeholder="Recent lab notes (optional)"
-                value={fastBiomarkers}
-                onChange={e => setFastBiomarkers(e.target.value)}
-                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-500/50"
-              />
+              <div className="flex flex-col gap-1">
+                <label htmlFor="soma-fast-conditions" className="text-xs font-medium text-white/70">Conditions</label>
+                <input
+                  id="soma-fast-conditions"
+                  placeholder="e.g., asthma, diabetes"
+                  value={fastConditions}
+                  onChange={e => setFastConditions(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/60 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="soma-fast-medications" className="text-xs font-medium text-white/70">Medications</label>
+                <input
+                  id="soma-fast-medications"
+                  placeholder="e.g., metformin"
+                  value={fastMedications}
+                  onChange={e => setFastMedications(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/60 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="soma-fast-allergies" className="text-xs font-medium text-white/70">Allergies</label>
+                <input
+                  id="soma-fast-allergies"
+                  placeholder="e.g., penicillin, latex"
+                  value={fastAllergies}
+                  onChange={e => setFastAllergies(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/60 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="soma-fast-biomarkers" className="text-xs font-medium text-white/70">Lab Notes</label>
+                <input
+                  id="soma-fast-biomarkers"
+                  placeholder="Recent lab notes (optional)"
+                  value={fastBiomarkers}
+                  onChange={e => setFastBiomarkers(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/60 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
+                />
+              </div>
             </div>
             <div className="flex justify-end">
               <button
@@ -351,7 +380,7 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
                 Execute
               </button>
             </div>
-            <p className="text-[9px] text-white/40 uppercase tracking-tight">
+            <p className="text-xs text-white/70 uppercase tracking-tight">
               Bypass conversational intake. All fields optional — execute blank for clean baseline.
             </p>
           </div>
@@ -368,7 +397,7 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
           handleSendMessage: intake.handleSendMessage
         }}
         agentName="Soma Intake"
-        themeColor="cyan"
+        themeColor="emerald"
         placeholder={spec.placeholder}
         showInternalSignals={false}
       />

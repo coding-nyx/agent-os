@@ -11,7 +11,6 @@ import {
 } from '../services/atlas-profile-service';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import { mergeNSVPatch } from '@/lib/services/nsv-service';
 import type { NeuralStateVectorPatch } from '@/lib/types';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
@@ -44,8 +43,9 @@ OBJECTIVE:
 ACTION TAGS:
 - <action type="update_atlas_profile">{"summary":"...","energyWave":[{"slot":"09:00-11:00","energy":8,"focus":8,"load":4}],"taskGraph":[{"title":"Deep Work","energyCost":7,"status":"queued"}]}</action>
 - <action type="update_global_base_context">{"name":"...","occupation":"...","typicalSleepHours":7}</action>
-- After collecting baseline vitals, emit a bulk update (only once the user has provided actual data):
-  <action type="sync_vitals">{"cognitive":{"energyBudget":null,"focusScore":null,"activeLoad":null}}</action>
+- After collecting baseline vitals, emit a bulk update with Atlas-owned metrics only:
+  <action type="sync_vitals">{"cognitive":{"energyBudget":6,"focusScore":7,"activeLoad":4}}</action>
+  Valid fields: energyBudget (0-10), focusScore (0-10), activeLoad (0-10). Do NOT include biological or emotional metrics.
 - Sync the UI stage with your current conversational focus by emitting:
   <action type="focus_energy_wave">{}</action>
   <action type="focus_load_pressure">{}</action>
@@ -159,11 +159,37 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
 
         if (profileUpdates.length > 0) {
           for (const update of profileUpdates) {
-            nextProfile = {
-              ...nextProfile,
-              ...update,
-              updatedAt: new Date().toISOString()
-            };
+            // Whitelist: only allow fields documented in the onboarding action tag
+            if (typeof update.summary === 'string' && update.summary.trim()) {
+              nextProfile.summary = update.summary.trim();
+            }
+            if (Array.isArray(update.energyWave)) {
+              nextProfile.energyWave = (update.energyWave as unknown[])
+                .filter((p): p is Record<string, unknown> => typeof p === 'object' && p !== null)
+                .map((point, index) => ({
+                  id: typeof point.id === 'string' ? point.id : `wave_${Date.now()}_${index}`,
+                  slot: typeof point.slot === 'string' ? point.slot : `Slot ${index + 1}`,
+                  energy: typeof point.energy === 'number' ? Math.max(0, Math.min(10, point.energy)) : 5,
+                  focus: typeof point.focus === 'number' ? Math.max(0, Math.min(10, point.focus)) : 5,
+                  load: typeof point.load === 'number' ? Math.max(0, Math.min(10, point.load)) : 5
+                }))
+                .slice(0, 48);
+            }
+            if (Array.isArray(update.taskGraph)) {
+              nextProfile.taskGraph = (update.taskGraph as unknown[])
+                .filter((t): t is Record<string, unknown> => typeof t === 'object' && t !== null)
+                .map((task, index) => ({
+                  id: typeof task.id === 'string' ? task.id : `task_${Date.now()}_${index}`,
+                  title: typeof task.title === 'string' ? task.title : `Task ${index + 1}`,
+                  energyCost: typeof task.energyCost === 'number' ? Math.max(0, Math.min(10, task.energyCost)) : 4,
+                  status: (task.status === 'active' || task.status === 'done' ? task.status : 'queued') as 'active' | 'queued' | 'done',
+                  dependencies: Array.isArray(task.dependencies) 
+                    ? task.dependencies.filter((d: unknown): d is string => typeof d === 'string')
+                    : undefined
+                }))
+                .slice(0, 100);
+            }
+            nextProfile.updatedAt = new Date().toISOString();
           }
         }
 
@@ -209,12 +235,30 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
           nextStep = ATLAS_STEPS.length - 1;
         }
 
-        const vitalsPatch = response.actions
+        const rawVitalsPayload = response.actions
           .filter((action) => action.type === 'sync_vitals')
-          .map((action) => action.payload as Partial<NeuralStateVectorPatch>)
-          .reduce((acc, payload) => mergeNSVPatch(acc, payload), {} as NeuralStateVectorPatch);
+          .map((action) => action.payload as Partial<NeuralStateVectorPatch>);
 
-        if (user?.uid && Object.keys(vitalsPatch).length > 0) {
+        let vitalsPatch: NeuralStateVectorPatch = {};
+        if (rawVitalsPayload.length > 0) {
+          const payload = rawVitalsPayload[rawVitalsPayload.length - 1];
+          if (payload && payload.cognitive && typeof payload.cognitive === 'object') {
+            // Only write Atlas-owned cognitive metrics
+            const cog: NonNullable<NeuralStateVectorPatch['cognitive']> = {};
+            if (typeof payload.cognitive.energyBudget === 'number' && Number.isFinite(payload.cognitive.energyBudget)) {
+              cog.energyBudget = Math.max(0, Math.min(10, payload.cognitive.energyBudget));
+            }
+            if (typeof payload.cognitive.focusScore === 'number' && Number.isFinite(payload.cognitive.focusScore)) {
+              cog.focusScore = Math.max(0, Math.min(10, payload.cognitive.focusScore));
+            }
+            if (typeof payload.cognitive.activeLoad === 'number' && Number.isFinite(payload.cognitive.activeLoad)) {
+              cog.activeLoad = Math.max(0, Math.min(10, payload.cognitive.activeLoad));
+            }
+            vitalsPatch = { cognitive: cog };
+          }
+        }
+
+        if (user?.uid && Object.keys(vitalsPatch).length > 0 && Object.keys(vitalsPatch.cognitive || {}).length > 0) {
           await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch((e) => {
             console.error('Atlas onboarding sync_vitals failed:', e);
           });
@@ -273,7 +317,7 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
           handleSendMessage: intake.handleSendMessage
         }}
         agentName="Atlas Intake"
-        themeColor="cyan"
+        themeColor="sky"
         placeholder={spec.placeholder}
         showInternalSignals={false}
       />

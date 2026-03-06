@@ -1,5 +1,6 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import { Spine } from '@/lib/spine/spine-event-bus';
+import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import {
   BiomarkerRecord,
   ClearanceRecord,
@@ -10,7 +11,7 @@ import {
 
 let registered = false;
 
-function parseNumericValue(value: unknown): number | string {
+export function parseNumericValue(value: unknown): number | string {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim()) return value.trim();
   return 'unknown';
@@ -108,6 +109,29 @@ export function registerSomaActions() {
         cascadeDepth: 0,
         priority: clearance.status === 'granted' ? 'info' : 'alert'
       });
+    },
+
+    sync_vitals: async ({ userId, payload }) => {
+      if (!userId) return;
+      const biological = payload?.biological as Record<string, unknown> | undefined;
+      if (!biological || typeof biological !== 'object') return;
+
+      const patch: Record<string, unknown> = {};
+      // Only write Soma-owned metrics
+      if (typeof biological.recoveryScore === 'number' && 
+          Number.isFinite(biological.recoveryScore) && 
+          biological.recoveryScore >= 0 && biological.recoveryScore <= 10) {
+        patch.recoveryScore = biological.recoveryScore;
+      }
+      if (typeof biological.hormonalContext === 'string' && biological.hormonalContext.trim()) {
+        patch.hormonalContext = biological.hormonalContext.trim();
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await GlobalProjectionService.updateCrossFunctionalState(userId, { biological: patch }).catch((e) => {
+          console.error('Soma sync_vitals failed:', e);
+        });
+      }
     }
   });
 }
