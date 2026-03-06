@@ -17,53 +17,14 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
 
-          // React must be checked before @react-three/* (paths contain '/react/')
-          if (id.includes('/react-dom/') || id.includes('/scheduler/') ||
-              (id.includes('/react/') && !id.includes('@react-three/'))) {
-            return 'vendor-react';
-          }
+          // 1. Large Data Processors (Isolated to keep main bundle smaller)
+          if (id.includes('/gpt-tokenizer/')) return 'vendor-gpt';
+          if (id.includes('/pdfjs-dist/')) return 'vendor-pdf';
 
-          // R3F depends on React — keep in same chunk to avoid load-order issues
-          if (id.includes('@react-three/fiber') || id.includes('@react-three/postprocessing')) {
-            return 'vendor-r3f';
-          }
-
-          if (id.includes('@react-three/drei')) {
-            return 'vendor-drei';
-          }
-
-          if (id.includes('/three/')) {
-            return 'vendor-three-core';
-          }
-
-          if (id.includes('/firebase/')) {
-            return 'vendor-firebase';
-          }
-
-          if (id.includes('/framer-motion/')) {
-            return 'vendor-motion';
-          }
-
-          if (id.includes('/react-markdown/') || id.includes('/remark-gfm/')) {
-            return 'vendor-markdown';
-          }
-
-          if (id.includes('/react-router-dom/') || id.includes('/react-router/')) {
-            return 'vendor-router';
-          }
-
-          if (id.includes('/gpt-tokenizer/')) {
-            return 'vendor-gpt-tokenizer';
-          }
-
-          if (id.includes('/lucide-react/')) {
-            return 'vendor-icons';
-          }
-
-          if (id.includes('/@radix-ui/')) {
-            return 'vendor-radix';
-          }
-
+          // 2. Unified Vendor Chunk
+          // Consolidating all other node_modules (React, Three, Firebase, UI, etc.)
+          // into one chunk to ensure Rollup handles dependency initialization 
+          // order correctly and avoids 'useLayoutEffect' of undefined errors.
           return 'vendor';
         },
       },

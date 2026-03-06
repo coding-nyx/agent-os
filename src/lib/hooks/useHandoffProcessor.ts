@@ -58,7 +58,8 @@ export function useHandoffProcessor({
     content: string,
     recentMessages: Message[]
   ): Promise<RoutingResult> => {
-    if (moduleId === 'orchestrator') return { shouldDelegate: false };
+    // Specialized modules handle their own routing; skip the LLM classifier entirely
+    if (moduleId === 'orchestrator' || moduleId === 'scout') return { shouldDelegate: false };
 
     if (skipRoutingRef.current) {
       skipRoutingRef.current = false;
@@ -66,15 +67,19 @@ export function useHandoffProcessor({
     }
 
     try {
+      const routingAbort = new AbortController();
       const { response: routeResp } = await Promise.race([
         sendMessage(content, {
           systemPrompt: 'You are a routing intent classifier. Return ONLY a single <action> tag.',
           memoryContext: [],
           summary: 'Classifying intent.',
           history: recentMessages.slice(-3) // H-4: only last 3 turns for routing
-        }),
+        }, routingAbort.signal),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Routing classification timeout')), 5000)
+          setTimeout(() => {
+            routingAbort.abort();
+            reject(new Error('Routing classification timeout'));
+          }, 5000)
         )
       ]);
 

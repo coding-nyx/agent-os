@@ -5,6 +5,7 @@ import { ScoutProfile } from '../services/scout-knowledge-service';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { ScoutEvidenceSources } from './ScoutEvidenceSources';
 
 export function ScoutDashboard({
   soul,
@@ -155,6 +156,8 @@ export function ScoutDashboard({
               </div>
             </section>
           )}
+
+          <ScoutEvidenceSources knowledgeNodes={nodes} />
         </>
       )}
     </div>
