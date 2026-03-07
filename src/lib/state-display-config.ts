@@ -31,7 +31,7 @@ export const DOMAIN_PILLARS: Record<string, DomainPillarConfig> = {
     accentColor: 'emerald',
     metrics: ['biological.recoveryScore', 'biological.sleepQuality', 'biological.cnsFatigue'],
     words: { good: 'Strong', warn: 'Tired', bad: 'Drained', neutral: '—' },
-    owners: ['soma', 'titan'],
+    owners: ['titan'],
     invertedMetrics: ['biological.cnsFatigue']
   },
   cognitive: {
@@ -88,7 +88,19 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   DRAFT_DISMISSED: 'Suggestion dismissed',
   SESSION_STARTED: 'Session started',
   SESSION_ENDED: 'Session ended',
-  MODULE_DELEGATED: 'Handed off to another module'
+  MODULE_DELEGATED: 'Handed off to another module',
+  PLANNING_OVERLOAD: 'Planning capacity exceeded',
+  DEADLINE_CRUNCH: 'Approaching deadlines',
+  COMPOUND_STRESS: 'Cross-domain stress detected',
+  CRISIS_MODE: 'High-intensity recovery active',
+  EXECUTION_COLLAPSE: 'System execution halted',
+  STREAK_BROKEN: 'Habit streak broken',
+  TASK_COMPLETED: 'Task completed',
+  DEADLINE_APPROACHING: 'Deadline approaching',
+  HABIT_STREAK_BROKEN: 'Habit streak lost',
+  WEEKLY_REVIEW_COMPLETE: 'Weekly review completed',
+  DELEGATION_REQUEST: 'Module delegation requested',
+  NSV_CALIBRATION_REQUEST: 'NSV calibration requested'
 };
 
 // ---------------------------------------------------------------------------
@@ -150,7 +162,7 @@ export function generateBriefSentence(ctx: BriefContext): string {
   const { name, pillars, moduleNames } = ctx;
   const agnesName = moduleNames.agnes || 'Agnes';
   const atlasName = moduleNames.atlas || 'Atlas';
-  const somaName = moduleNames.soma || 'Soma';
+  const titanName = moduleNames.titan || 'Titan';
 
   const bodyTone = pillars.biological?.tone ?? 'neutral';
   const heartTone = pillars.emotional?.tone ?? 'neutral';
@@ -174,7 +186,7 @@ export function generateBriefSentence(ctx: BriefContext): string {
 
   // Body bad
   if (bodyTone === 'bad') {
-    return `You're in recovery mode. ${somaName} is monitoring your bounce-back. Go easy today.`;
+    return `You're in recovery mode. ${titanName} is monitoring your bounce-back. Go easy today.`;
   }
 
   // Mind overloaded

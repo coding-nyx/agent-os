@@ -3,7 +3,7 @@ import { getFirebase } from '@/lib/firebase';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { readDocOnce } from '@/lib/services/firestore-once';
 
-const GUEST_LEDGER_KEY = 'agnes_ledger_profile_guest';
+const GUEST_LEDGER_KEY = 'nexus_ledger_profile_guest';
 const VAULT_SALT_MARKER = 'vault_salt_used';
 
 export interface BudgetLineItem {
@@ -43,6 +43,13 @@ export interface FinancialPlan {
   updatedAt: string;
 }
 
+export interface DocumentAnalysis {
+  id: string;
+  analyzedAt: string;
+  periodLabel: string;
+  transactionCount: number;
+}
+
 export interface LedgerIntakeProfile {
   onboardingComplete: boolean;
   currency: string;
@@ -57,6 +64,8 @@ export interface LedgerIntakeProfile {
   activePlanId: string | null;
   plannerBotState: 'idle' | 'creating' | 'active';
   lastPlanGeneratedAt?: string;
+  documentAnalysisEnabled: boolean;
+  lastDocumentAnalysis?: DocumentAnalysis;
   createdAt: string;
   updatedAt: string;
 }
@@ -140,6 +149,22 @@ function normalizeLedgerProfile(raw: unknown): LedgerIntakeProfile {
         : 'idle',
     lastPlanGeneratedAt:
       typeof candidate.lastPlanGeneratedAt === 'string' ? candidate.lastPlanGeneratedAt : undefined,
+    documentAnalysisEnabled: candidate.documentAnalysisEnabled === true,
+    lastDocumentAnalysis:
+      candidate.lastDocumentAnalysis && typeof candidate.lastDocumentAnalysis === 'object'
+        ? {
+            id: typeof (candidate.lastDocumentAnalysis as Record<string, unknown>)?.id === 'string'
+              ? (candidate.lastDocumentAnalysis as Record<string, unknown>).id as string
+              : crypto.randomUUID(),
+            analyzedAt: typeof (candidate.lastDocumentAnalysis as Record<string, unknown>)?.analyzedAt === 'string'
+              ? (candidate.lastDocumentAnalysis as Record<string, unknown>).analyzedAt as string
+              : now,
+            periodLabel: typeof (candidate.lastDocumentAnalysis as Record<string, unknown>)?.periodLabel === 'string'
+              ? (candidate.lastDocumentAnalysis as Record<string, unknown>).periodLabel as string
+              : 'Unknown',
+            transactionCount: parseNumber((candidate.lastDocumentAnalysis as Record<string, unknown>)?.transactionCount, 0)
+          }
+        : undefined,
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : now
   };
@@ -162,6 +187,7 @@ export function createEmptyLedgerProfile(): LedgerIntakeProfile {
     plans: [],
     activePlanId: null,
     plannerBotState: 'idle',
+    documentAnalysisEnabled: false,
     createdAt: now,
     updatedAt: now
   };
@@ -172,7 +198,7 @@ export async function loadLedgerProfile({ userId, encryptionKey }: LoadContext):
     const { db } = getFirebase();
     if (!db) return null;
 
-    const snap = await readDocOnce(doc(db, 'ai_ledgers', userId));
+    const snap = await readDocOnce(doc(db, 'ledger_profiles', userId));
     if (!snap.exists()) return null;
 
     const data = snap.data();
@@ -198,7 +224,7 @@ export function subscribeLedgerProfile(
     const { db } = getFirebase();
     if (!db) return () => {};
 
-    const ref = doc(db, 'ai_ledgers', userId);
+    const ref = doc(db, 'ledger_profiles', userId);
     const unsubscribe = onSnapshot(
       ref,
       async (snap) => {
@@ -240,7 +266,7 @@ export async function saveLedgerProfile(profile: LedgerIntakeProfile, { userId, 
     const encrypted = await encryptWithKey(JSON.stringify(normalizedProfile), encryptionKey);
     try {
       await setDoc(
-        doc(db, 'ai_ledgers', userId),
+        doc(db, 'ledger_profiles', userId),
         {
           encryptedData: encrypted.ciphertext,
           iv: encrypted.iv,
@@ -272,7 +298,7 @@ export async function syncGuestLedgerProfileToUser({ userId, encryptionKey }: Lo
   const { db } = getFirebase();
   if (!db) return false;
 
-  const snap = await readDocOnce(doc(db, 'ai_ledgers', userId));
+  const snap = await readDocOnce(doc(db, 'ledger_profiles', userId));
   if (snap.exists() && snap.data()?.encryptedData) {
     return false;
   }

@@ -9,7 +9,7 @@ export interface NexusHandoff {
   createdAt: string;
 }
 
-const STORAGE_KEY = 'agnes_nexus_handoff';
+const STORAGE_KEY = 'nexus_nexus_handoff';
 
 function readStore(): Record<string, NexusHandoff> {
   const raw = sessionStorage.getItem(STORAGE_KEY);

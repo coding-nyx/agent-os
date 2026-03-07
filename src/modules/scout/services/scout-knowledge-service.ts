@@ -4,7 +4,7 @@ import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { readDocOnce } from '@/lib/services/firestore-once';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 
-const GUEST_SCOUT_KEY = 'agnes_scout_profile_guest';
+const GUEST_SCOUT_KEY = 'nexus_scout_profile_guest';
 const VAULT_SALT_MARKER = 'vault_salt_used';
 
 export interface ScoutKnowledgeNode {

@@ -27,12 +27,12 @@ export default function HubPage() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('global');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    const saved = localStorage.getItem('agnes-hub-view');
+    const saved = localStorage.getItem('nexus-hub-view');
     return (saved === '3D' || saved === 'GRAPH' || saved === 'CARDS') ? saved : 'CARDS';
   });
 
   useEffect(() => {
-    localStorage.setItem('agnes-hub-view', viewMode);
+    localStorage.setItem('nexus-hub-view', viewMode);
   }, [viewMode]);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [edgePulse, setEdgePulse] = useState(0);
@@ -103,10 +103,10 @@ export default function HubPage() {
 
   const cnsFatigue = globalSoul?.crossFunctionalState?.biological?.cnsFatigue;
   const emotionalResilience = globalSoul?.crossFunctionalState?.emotional?.emotionalResilience;
-  const coreModulesAccessible = ['therapy', 'trainer', 'soma', 'ledger'].every((id) => moduleAccess[id as ModuleId]);
-  const stabilityGauge = moduleAccess.trainer && typeof cnsFatigue === 'number'
+  const coreModulesAccessible = ['agnes', 'titan', 'ledger'].every((id) => moduleAccess[id as ModuleId]);
+  const stabilityGauge = moduleAccess.titan && typeof cnsFatigue === 'number'
     ? Math.max(0, Math.min(100, 100 - cnsFatigue * 10)) : null;
-  const resilienceGauge = moduleAccess.therapy && typeof emotionalResilience === 'number'
+  const resilienceGauge = moduleAccess.agnes && typeof emotionalResilience === 'number'
     ? Math.max(0, Math.min(100, emotionalResilience * 10)) : null;
   const wellnessGauge = coreModulesAccessible ? globalSoul?.overallWellnessScore ?? null : null;
 

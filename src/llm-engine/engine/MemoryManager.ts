@@ -21,7 +21,13 @@ export class MemoryManager {
   }
 
   static getMessageTokens(message: Message): number {
-    return this.countTokens(message.content) + 4; // Add overhead for role
+    const text = Array.isArray(message.content)
+      ? message.content
+          .filter(p => p.type === 'text')
+          .map(p => (p as { type: 'text'; text: string }).text)
+          .join(' ')
+      : message.content;
+    return this.countTokens(text) + 4; // Add overhead for role
   }
 
   static buildContext(

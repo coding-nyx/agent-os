@@ -4,9 +4,11 @@ export interface EncryptedData {
   ciphertext: string; // Base64
   iv: string;         // Base64
   salt: string;       // Base64
+  version?: number;   // 1 = legacy (100k iterations), 2 = OWASP 2024 (600k iterations)
 }
 
-const ITERATIONS = 100000;
+const ITERATIONS_V1 = 100000;
+const ITERATIONS_V2 = 600000;
 const ALGORITHM = 'AES-GCM';
 
 /**
@@ -37,8 +39,10 @@ export function uint8ArrayToBase64(buffer: ArrayBuffer | Uint8Array): string {
 
 /**
  * Derives an AES-GCM encryption key from a password and salt.
+ * @param iterations - defaults to ITERATIONS_V1 (100k) for backward compatibility
+ *   with existing vault canaries and direct callers. encryptData passes ITERATIONS_V2.
  */
-export async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+export async function deriveKey(password: string, salt: Uint8Array, iterations: number = ITERATIONS_V1): Promise<CryptoKey> {
   const enc = new TextEncoder();
   const keyMaterial = await window.crypto.subtle.importKey(
     "raw",
@@ -52,7 +56,7 @@ export async function deriveKey(password: string, salt: Uint8Array): Promise<Cry
     {
       name: "PBKDF2",
       salt: salt, 
-      iterations: ITERATIONS,
+      iterations,
       hash: "SHA-256"
     } as Pbkdf2Params,
     keyMaterial,
@@ -109,11 +113,12 @@ export async function decryptWithKey(data: { ciphertext: string; iv: string }, k
  */
 export async function encryptData(text: string, password: string): Promise<EncryptedData> {
   const salt = window.crypto.getRandomValues(new Uint8Array(16));
-  const key = await deriveKey(password, salt);
+  const key = await deriveKey(password, salt, ITERATIONS_V2);
   const encrypted = await encryptWithKey(text, key);
   return {
     ...encrypted,
-    salt: uint8ArrayToBase64(salt)
+    salt: uint8ArrayToBase64(salt),
+    version: 2
   };
 }
 
@@ -122,7 +127,10 @@ export async function decryptData(encryptedData: string | EncryptedData, passwor
     ? JSON.parse(encryptedData) 
     : encryptedData;
   
+  // Version-aware iteration count: v1/legacy (no version field) = 100k, v2 = 600k
+  const iterations = (data.version && data.version >= 2) ? ITERATIONS_V2 : ITERATIONS_V1;
+  
   const salt = base64ToUint8Array(data.salt);
-  const key = await deriveKey(password, salt);
+  const key = await deriveKey(password, salt, iterations);
   return decryptWithKey(data, key);
 }

@@ -36,7 +36,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   const { isGuest } = useAuth();
   const [guestReady, setGuestReady] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem(`agnes_guest_module_${moduleId}`) === 'true';
+    return sessionStorage.getItem(`nexus_guest_module_${moduleId}`) === 'true';
   });
 
   const { profile, setProfile, isOnboarding, setIsOnboarding, isLoading, encryptionKey, persistProfile } = useModuleProfile<TProfile>({
@@ -76,7 +76,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         <GuestModePanel
           moduleId={moduleId}
           onContinue={() => {
-            sessionStorage.setItem(`agnes_guest_module_${moduleId}`, 'true');
+            sessionStorage.setItem(`nexus_guest_module_${moduleId}`, 'true');
             setGuestReady(true);
           }}
         />

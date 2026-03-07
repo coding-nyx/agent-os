@@ -1,69 +1,21 @@
 
 // v1.0.1 - Nexus Engine Core
 import { Message, ToolCall } from '../types';
-import { ModelMetadata, ModelTier, EngineConfig, OrchestratorState, StructuredResponse, ParsedAction } from './types';
+import { EngineConfig, OrchestratorState, StructuredResponse, ParsedAction } from './types';
 import { sanitizeJsonPayload as nexusCleaner, stripInternalTags } from '../sanitize';
-import { isProviderControlOnly, stripProviderControlTokens } from '../sanitize';
-
-export interface ToolDefinition {
-  type: 'function';
-  function: {
-    name: string;
-    description: string;
-    // JSON Schema object — structure is inherently dynamic
-    parameters: Record<string, unknown>;
-  };
-}
-
-const GLOBAL_TOOLS: ToolDefinition[] = [
-  {
-    type: 'function',
-    function: {
-      name: 'request_biometric',
-      description: 'Request a specific biometric data point from the user.',
-      parameters: {
-        type: 'object',
-        properties: {
-          metric: { type: 'string' },
-          reason: { type: 'string' }
-        },
-        required: ['metric', 'reason']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'update_soul_resilience',
-      description: 'Update the users global emotional resilience score.',
-      parameters: {
-        type: 'object',
-        properties: {
-          score: { type: 'number' },
-          reason: { type: 'string' }
-        },
-        required: ['score', 'reason']
-      }
-    }
-  }
-];
+import { isProviderControlOnly } from '../sanitize';
 
 const GUEST_MODEL = 'x-ai/grok-3-mini-beta';
 
 export class Orchestrator {
   private config: EngineConfig;
   private state: OrchestratorState;
-  private onToolCall?: (name: string, args: any) => Promise<any>;
 
-  constructor(config: EngineConfig, onToolCall?: (name: string, args: any) => Promise<any>) {
+  constructor(config: EngineConfig) {
     this.config = config;
-    this.onToolCall = onToolCall;
     this.state = {
       activeModelId: config.freeModelsOnly ? GUEST_MODEL : (config.preferredModelId || 'deepseek/deepseek-chat'),
-      currentTier: ModelTier.S_REASONING,
-      failureCount: 0,
-      provider: 'openrouter',
-      isAutoScaling: true
+      provider: 'openrouter'
     };
   }
 
@@ -233,12 +185,9 @@ export class Orchestrator {
 
   private async executeRawRequest(messages: Message[], onChunk?: (chunk: string) => void, forceNoTools?: boolean, signal?: AbortSignal): Promise<any> {
     const url = 'https://openrouter.ai/api/v1/chat/completions';
-    const skipTools = forceNoTools || this.config.freeModelsOnly;
     const body = JSON.stringify({
       model: this.state.activeModelId,
       messages: messages,
-      tools: skipTools ? undefined : GLOBAL_TOOLS,
-      tool_choice: skipTools ? undefined : 'auto',
       stream: !!onChunk,
     });
 
@@ -275,16 +224,9 @@ export class Orchestrator {
     }
   }
 
-  private async handleToolCall(toolCall: ToolCall): Promise<unknown> {
-      const { name, arguments: argsString } = toolCall.function;
-      try {
-        const sanitizedArgs = nexusCleaner(argsString);
-        const args = JSON.parse(sanitizedArgs);
-        if (this.onToolCall) return await this.onToolCall(name, args);
-      } catch (e) {
-        console.error(`Failed to parse tool arguments for ${name}:`, e);
-      }
-      return { status: 'error', message: 'Invalid tool arguments' };
+  private async handleToolCall(_toolCall: ToolCall): Promise<unknown> {
+      // Native tool calls are disabled; all tool invocation uses <action> XML tags via ActionHub.
+      return { status: 'error', message: 'Native tool calls are not supported. Use <action> tags instead.' };
   }
 
   private async readStream(response: Response, onChunk: (chunk: string) => void): Promise<{ fullText: string, toolCalls: ToolCall[], streamInterrupted: boolean }> {

@@ -1,0 +1,463 @@
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, X, Calendar as CalendarIcon, Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+import type { AtlasProject } from '../services/atlas-profile-service';
+
+// ---------------------------------------------------------------------------
+// QuickAddForm — FAB + modal for rapid task / habit / goal creation
+// ---------------------------------------------------------------------------
+
+type ItemType = 'task' | 'habit' | 'goal';
+
+export interface TaskInput {
+  title: string;
+  priority: 1 | 2 | 3 | 4 | 5;
+  energyCost: number;
+  deadline?: string;
+  projectId?: string;
+}
+
+export interface HabitInput {
+  title: string;
+  energyCost: number;
+}
+
+export interface GoalInput {
+  title: string;
+  deadline?: string;
+}
+
+interface QuickAddFormProps {
+  projects: AtlasProject[];
+  onCreateTask: (task: TaskInput) => void;
+  onCreateHabit: (habit: HabitInput) => void;
+  onCreateGoal: (goal: GoalInput) => void;
+}
+
+const TYPE_OPTIONS: { key: ItemType; label: string }[] = [
+  { key: 'task', label: 'Task' },
+  { key: 'habit', label: 'Habit' },
+  { key: 'goal', label: 'Goal' },
+];
+
+const PRIORITY_OPTIONS = [1, 2, 3, 4, 5] as const;
+
+const PRIORITY_COLORS: Record<number, string> = {
+  1: 'bg-rose-500 border-rose-500 text-white',
+  2: 'bg-orange-400 border-orange-400 text-white',
+  3: 'bg-amber-400 border-amber-400 text-zinc-900',
+  4: 'bg-sky-400 border-sky-400 text-white',
+  5: 'bg-zinc-400 border-zinc-400 text-white',
+};
+
+const FOCUSABLE_SELECTOR =
+  'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+export function QuickAddForm({
+  projects,
+  onCreateTask,
+  onCreateHabit,
+  onCreateGoal,
+}: QuickAddFormProps) {
+  const reducedMotion = useReducedMotion();
+
+  // ---- Open / close state ----
+  const [isOpen, setIsOpen] = useState(false);
+
+  // ---- Form state ----
+  const [itemType, setItemType] = useState<ItemType>('task');
+  const [title, setTitle] = useState('');
+  const [priority, setPriority] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [energyCost, setEnergyCost] = useState(5);
+  const [deadline, setDeadline] = useState('');
+  const [projectId, setProjectId] = useState('');
+
+  // ---- Refs ----
+  const modalRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const fabRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-focus title input when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to let AnimatePresence mount the element
+      const raf = requestAnimationFrame(() => titleInputRef.current?.focus());
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [isOpen]);
+
+  // ---- Close & reset ----
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setTitle('');
+    setPriority(3);
+    setEnergyCost(5);
+    setDeadline('');
+    setProjectId('');
+    setItemType('task');
+    // Return focus to the FAB
+    setTimeout(() => fabRef.current?.focus(), 0);
+  }, []);
+
+  // ---- Focus trap & Escape ----
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const modal = modalRef.current;
+        if (!modal) return;
+
+        const focusable =
+          modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    },
+    [close]
+  );
+
+  // ---- Submit ----
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      const trimmed = title.trim();
+      if (!trimmed) return;
+
+      switch (itemType) {
+        case 'task':
+          onCreateTask({
+            title: trimmed,
+            priority,
+            energyCost,
+            deadline: deadline || undefined,
+            projectId: projectId || undefined,
+          });
+          break;
+        case 'habit':
+          onCreateHabit({ title: trimmed, energyCost });
+          break;
+        case 'goal':
+          onCreateGoal({ title: trimmed, deadline: deadline || undefined });
+          break;
+      }
+
+      close();
+    },
+    [
+      itemType,
+      title,
+      priority,
+      energyCost,
+      deadline,
+      projectId,
+      onCreateTask,
+      onCreateHabit,
+      onCreateGoal,
+      close,
+    ]
+  );
+
+  return (
+    <>
+      {/* ── Floating Action Button ── */}
+      <button
+        ref={fabRef}
+        onClick={() => setIsOpen(true)}
+        aria-label="Add new item"
+        aria-haspopup="dialog"
+        className={cn(
+          'fixed z-40 w-14 h-14 rounded-full flex items-center justify-center',
+          'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25',
+          'hover:bg-emerald-400 active:bg-emerald-600 transition-all',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900',
+          // Bottom-center on mobile, bottom-right on md+
+          'bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-8 md:translate-x-0 md:bottom-8'
+        )}
+      >
+        <Plus className="w-6 h-6" aria-hidden="true" />
+      </button>
+
+      {/* ── Modal overlay + dialog ── */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={reducedMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={reducedMotion ? { duration: 0 } : { duration: 0.2 }}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+              onClick={close}
+              aria-hidden="true"
+            />
+
+            {/* Dialog */}
+            <motion.div
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Create new item"
+              initial={
+                reducedMotion ? false : { opacity: 0, scale: 0.95, y: 20 }
+              }
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={
+                reducedMotion
+                  ? { duration: 0 }
+                  : { duration: 0.25, ease: [0.22, 1, 0.36, 1] }
+              }
+              onKeyDown={handleKeyDown}
+              className={cn(
+                'fixed z-50 w-[calc(100%-2rem)] max-w-md',
+                'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
+                'rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-xl p-6',
+                'shadow-2xl shadow-black/40'
+              )}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-emerald-400">
+                  Quick Add
+                </h2>
+                <button
+                  onClick={close}
+                  aria-label="Close dialog"
+                  className={cn(
+                    'w-8 h-8 flex items-center justify-center rounded-lg',
+                    'text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50'
+                  )}
+                >
+                  <X className="w-4 h-4" aria-hidden="true" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* ── Type toggle ── */}
+                <fieldset>
+                  <legend className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
+                    Type
+                  </legend>
+                  <div className="flex gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/5">
+                    {TYPE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setItemType(opt.key)}
+                        aria-pressed={itemType === opt.key}
+                        className={cn(
+                          'flex-1 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
+                          itemType === opt.key
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                            : 'text-white/30 hover:text-white/50 border border-transparent'
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                {/* ── Title ── */}
+                <div>
+                  <label
+                    htmlFor="quick-add-title"
+                    className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-2"
+                  >
+                    Title{' '}
+                    <span className="text-rose-400" aria-label="required">
+                      *
+                    </span>
+                  </label>
+                  <input
+                    ref={titleInputRef}
+                    id="quick-add-title"
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                    autoComplete="off"
+                    placeholder={`New ${itemType}…`}
+                    className={cn(
+                      'w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]',
+                      'text-sm text-white/90 placeholder:text-white/20',
+                      'focus:outline-none focus:border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/20',
+                      'transition-colors'
+                    )}
+                  />
+                </div>
+
+                {/* ── Priority selector (tasks only) ── */}
+                {itemType === 'task' && (
+                  <fieldset>
+                    <legend className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
+                      Priority
+                    </legend>
+                    <div className="flex gap-2">
+                      {PRIORITY_OPTIONS.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPriority(p)}
+                          aria-pressed={priority === p}
+                          aria-label={`Priority ${p}`}
+                          className={cn(
+                            'w-9 h-9 rounded-lg border-2 flex items-center justify-center text-xs font-black transition-all',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
+                            priority === p
+                              ? PRIORITY_COLORS[p]
+                              : 'border-white/10 text-white/30 hover:border-white/20'
+                          )}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
+
+                {/* ── Energy cost slider (tasks & habits) ── */}
+                {(itemType === 'task' || itemType === 'habit') && (
+                  <div>
+                    <label
+                      htmlFor="quick-add-energy"
+                      className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2 mb-2"
+                    >
+                      <Zap
+                        className="w-3 h-3 text-emerald-400"
+                        aria-hidden="true"
+                      />
+                      Energy Cost:{' '}
+                      <span className="text-emerald-400 tabular-nums">
+                        {energyCost}
+                      </span>
+                    </label>
+                    <input
+                      id="quick-add-energy"
+                      type="range"
+                      min={0}
+                      max={10}
+                      step={1}
+                      value={energyCost}
+                      onChange={(e) => setEnergyCost(Number(e.target.value))}
+                      aria-valuenow={energyCost}
+                      aria-valuemin={0}
+                      aria-valuemax={10}
+                      className={cn(
+                        'w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-emerald-500',
+                        '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4',
+                        '[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-400',
+                        '[&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-emerald-600',
+                        '[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4',
+                        '[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-emerald-400',
+                        '[&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-emerald-600'
+                      )}
+                    />
+                    <div className="flex justify-between text-[9px] text-white/15 mt-1 tabular-nums">
+                      <span>0</span>
+                      <span>5</span>
+                      <span>10</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Deadline (tasks & goals) ── */}
+                {(itemType === 'task' || itemType === 'goal') && (
+                  <div>
+                    <label
+                      htmlFor="quick-add-deadline"
+                      className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2 mb-2"
+                    >
+                      <CalendarIcon
+                        className="w-3 h-3 text-white/20"
+                        aria-hidden="true"
+                      />
+                      Deadline (optional)
+                    </label>
+                    <input
+                      id="quick-add-deadline"
+                      type="date"
+                      value={deadline}
+                      onChange={(e) => setDeadline(e.target.value)}
+                      className={cn(
+                        'w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]',
+                        'text-sm text-white/90',
+                        'focus:outline-none focus:border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/20',
+                        'transition-colors [color-scheme:dark]'
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* ── Project dropdown (tasks only) ── */}
+                {itemType === 'task' && projects.length > 0 && (
+                  <div>
+                    <label
+                      htmlFor="quick-add-project"
+                      className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-2"
+                    >
+                      Project (optional)
+                    </label>
+                    <select
+                      id="quick-add-project"
+                      value={projectId}
+                      onChange={(e) => setProjectId(e.target.value)}
+                      className={cn(
+                        'w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]',
+                        'text-sm text-white/90',
+                        'focus:outline-none focus:border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/20',
+                        'transition-colors [color-scheme:dark]'
+                      )}
+                    >
+                      <option value="">No project</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* ── Submit ── */}
+                <button
+                  type="submit"
+                  disabled={!title.trim()}
+                  className={cn(
+                    'w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wider transition-all',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
+                    title.trim()
+                      ? 'bg-emerald-500 text-white hover:bg-emerald-400 active:bg-emerald-600'
+                      : 'bg-white/5 text-white/20 cursor-not-allowed'
+                  )}
+                >
+                  Create {itemType}
+                </button>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}

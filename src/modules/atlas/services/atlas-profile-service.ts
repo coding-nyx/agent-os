@@ -4,7 +4,7 @@ import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { readDocOnce } from '@/lib/services/firestore-once';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 
-const GUEST_ATLAS_KEY = 'agnes_atlas_profile_guest';
+const GUEST_ATLAS_KEY = 'nexus_atlas_profile_guest';
 const VAULT_SALT_MARKER = 'vault_salt_used';
 
 export interface EnergyWavePoint {
@@ -32,6 +32,163 @@ export interface AtlasTaskNode {
   dependencies?: string[];
 }
 
+export interface ScheduledTask {
+  id: string;
+  title: string;
+  energyCost: number;        // 0-10
+  focusCost: number;         // 0-10
+  scheduledAt: string;       // ISO datetime
+  duration: number;          // minutes
+  category: 'deep_work' | 'admin' | 'social' | 'physical' | 'creative' | 'other';
+  status: 'scheduled' | 'done' | 'deferred' | 'skipped';
+  dependencies?: string[];
+  blockedBy?: 'low_energy' | 'low_focus' | 'recovery' | null;
+  deferredFrom?: string;     // ISO datetime if deferred
+  createdAt: string;
+}
+
+export interface DailyIntention {
+  id: string;
+  date: string;              // ISO date (YYYY-MM-DD)
+  theme: string;
+  focusDomain: string;
+  energyTarget: number;      // 0-10
+  createdAt: string;
+}
+
+export interface HabitRecord {
+  id: string;
+  habitId: string;
+  name: string;
+  completed: boolean;
+  streak: number;
+  loggedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Planner-mode domain types
+// ---------------------------------------------------------------------------
+
+export interface AtlasTask {
+  id: string;
+  title: string;
+  description?: string;
+  deadline?: string;
+  priority: 1 | 2 | 3 | 4 | 5;
+  energyCost: number;
+  status: 'queued' | 'active' | 'blocked' | 'done' | 'deferred';
+  dependencies: string[];
+  projectId?: string;
+  goalId?: string;
+  notes?: string;
+  completedAt?: string;
+  actualEnergyCost?: number;
+  tags?: string[];
+  recurrenceRule?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AtlasMilestone {
+  id: string;
+  title: string;
+  dueDate?: string;
+  completed: boolean;
+  completedAt?: string;
+}
+
+export interface AtlasGoal {
+  id: string;
+  title: string;
+  description?: string;
+  deadline?: string;
+  milestones: AtlasMilestone[];
+  associatedTaskIds: string[];
+  successCriteria: string;
+  progressPercent: number;
+  status: 'active' | 'paused' | 'completed' | 'abandoned';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AtlasHabit {
+  id: string;
+  title: string;
+  frequency: 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'custom';
+  customDays?: number[];
+  targetStreak: number;
+  currentStreak: number;
+  bestStreak: number;
+  lastCompleted?: string;
+  energyCost: number;
+  minimumViableVersion: string;
+  status: 'active' | 'paused' | 'archived';
+  pauseReason?: string;
+  pausedAt?: string;
+  resumeDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AtlasProject {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'active' | 'paused' | 'completed' | 'archived';
+  goalId?: string;
+  taskIds: string[];
+  deadline?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HabitWeekSummary {
+  habitId: string;
+  habitTitle: string;
+  streak: number;
+  completions: number;
+  status: 'active' | 'paused';
+}
+
+export interface GoalWeekProgress {
+  goalId: string;
+  goalTitle: string;
+  progressPercent: number;
+  milestonesCompleted: number;
+  milestonesTotal: number;
+}
+
+export interface WeeklyReviewSnapshot {
+  id: string;
+  weekOf: string;
+  completionRate: number;
+  totalScheduled: number;
+  totalCompleted: number;
+  habitSummary: HabitWeekSummary[];
+  goalProgress: GoalWeekProgress[];
+  nsvTrend: {
+    energyBudgetAvg: number;
+    resilienceTrend: 'improving' | 'stable' | 'declining';
+    focusScoreAvg: number;
+  };
+  nextWeekFocus: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface AtlasPreferences {
+  timezone: string;
+  wakeTime: string;
+  sleepTime: string;
+  peakEnergyStart: string;
+  peakEnergyEnd: string;
+  workStyle: 'deep_blocks' | 'pomodoro' | 'flexible';
+  planningHorizon: 'day' | 'week' | 'month';
+  recoveryPreference: 'aggressive' | 'moderate' | 'minimal';
+}
+
 export interface AtlasProfile {
   onboardingComplete: boolean;
   energyWave: EnergyWavePoint[];
@@ -39,6 +196,18 @@ export interface AtlasProfile {
   taskGraph: AtlasTaskNode[];
   flattenedUntil?: string;
   summary: string;
+  /** Planner-mode: explicitly scheduled tasks with energy/focus costs and time slots */
+  scheduledTasks: ScheduledTask[];
+  /** Planner-mode: daily intention/theme entries */
+  dailyIntentions: DailyIntention[];
+  /** Planner-mode: habit completion records */
+  habitRecords: HabitRecord[];
+  tasks: AtlasTask[];
+  goals: AtlasGoal[];
+  projects: AtlasProject[];
+  habits: AtlasHabit[];
+  weeklyReviews: WeeklyReviewSnapshot[];
+  preferences?: AtlasPreferences;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,6 +267,15 @@ function normalizeAtlasProfile(raw: unknown): AtlasProfile {
       : [],
     flattenedUntil: typeof candidate.flattenedUntil === 'string' ? candidate.flattenedUntil : undefined,
     summary: typeof candidate.summary === 'string' ? candidate.summary : '',
+    scheduledTasks: Array.isArray(candidate.scheduledTasks) ? candidate.scheduledTasks : [],
+    dailyIntentions: Array.isArray(candidate.dailyIntentions) ? candidate.dailyIntentions : [],
+    habitRecords: Array.isArray(candidate.habitRecords) ? candidate.habitRecords : [],
+    tasks: Array.isArray(candidate.tasks) ? candidate.tasks : [],
+    goals: Array.isArray(candidate.goals) ? candidate.goals : [],
+    projects: Array.isArray(candidate.projects) ? candidate.projects : [],
+    habits: Array.isArray(candidate.habits) ? candidate.habits : [],
+    weeklyReviews: Array.isArray(candidate.weeklyReviews) ? candidate.weeklyReviews : [],
+    preferences: (candidate.preferences as AtlasPreferences) || undefined,
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : now
   };
@@ -110,6 +288,14 @@ export function createEmptyAtlasProfile(): AtlasProfile {
     energyWave: [],
     recoveryWindows: [],
     taskGraph: [],
+    scheduledTasks: [],
+    dailyIntentions: [],
+    habitRecords: [],
+    tasks: [],
+    goals: [],
+    projects: [],
+    habits: [],
+    weeklyReviews: [],
     summary: '',
     createdAt: now,
     updatedAt: now

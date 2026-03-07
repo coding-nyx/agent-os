@@ -54,17 +54,6 @@ export function LedgerModel(props: Omit<ModelProps, 'soul'>) {
   return <group ref={group}><primitive object={scene} {...props} /></group>;
 }
 
-export function SomaModel({ scale = 1, ...props }: Omit<ModelProps, 'soul'>) {
-  const { scene } = useGLTF('/assets/models/soma.glb');
-  const group = useRef<THREE.Group>(null);
-  useFrame((state) => {
-    if (!group.current) return;
-    group.current.rotation.y += 0.003;
-    group.current.position.y = Math.sin(state.clock.elapsedTime * 0.8) * 0.08;
-  });
-  return <group ref={group}><primitive object={scene} scale={scale * 0.5} {...props} /></group>;
-}
-
 export function ForgeModel({ scale = 1, ...props }: Omit<ModelProps, 'soul'>) {
   const { scene } = useGLTF('/assets/models/forge.glb');
   const group = useRef<THREE.Group>(null);
@@ -119,6 +108,5 @@ export function PolyPodModel({ color, shape, ...props }: PolyPodModelProps) {
 useGLTF.preload('/assets/models/walle.glb');
 useGLTF.preload('/assets/models/eve.glb');
 useGLTF.preload('/assets/models/ledger.glb');
-useGLTF.preload('/assets/models/soma.glb');
 useGLTF.preload('/assets/models/forge.glb');
 useGLTF.preload('/assets/models/nexus.glb');

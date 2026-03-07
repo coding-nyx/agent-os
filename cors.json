@@ -1,13 +1,7 @@
 [
   {
-    "origin": ["*"],
+    "origin": ["https://agent-agnes-ai.web.app", "https://agent-agnes-ai.firebaseapp.com"],
     "method": ["GET"],
-    "maxAgeSeconds": 3600
-  },
-  {
-    "origin": ["http://localhost:3000", "https://your-production-domain.com"],
-    "method": ["GET", "PUT", "POST", "DELETE", "HEAD"],
-    "responseHeader": ["Content-Type", "Access-Control-Allow-Origin"],
     "maxAgeSeconds": 3600
   }
 ]

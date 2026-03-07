@@ -64,7 +64,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
 
   // Auto-transition from identity to vault if logged in but locked
   useEffect(() => {
-      if (user && user.emailVerified && !isUnlocked && view !== 'VAULT_HANDSHAKE') {
+      if (user && !isUnlocked && view !== 'VAULT_HANDSHAKE') {
           setView('VAULT_HANDSHAKE');
       }
   }, [user, isUnlocked, view]);

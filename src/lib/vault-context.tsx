@@ -27,8 +27,8 @@ interface VaultContextType {
 }
 
 const VaultContext = createContext<VaultContextType | null>(null);
-const PERSISTENCE_KEY = 'agnes_vault_mode';
-const SESSION_PWD_KEY = 'agnes_vault_session';
+const PERSISTENCE_KEY = 'nexus_vault_mode';
+const SESSION_PWD_KEY = 'nexus_vault_session';
 const VAULT_COLLECTION = 'vaults';
 
 export function VaultProvider({ children }: { children: React.ReactNode }) {
@@ -136,12 +136,12 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         if (canary) {
             try {
                 const decrypted = await decryptWithKey(canary, key);
-                if (decrypted !== 'AGNES') throw new Error("Invalid Vault Password.");
+                if (decrypted !== 'NEXUS') throw new Error("Invalid Vault Password.");
             } catch (e) {
                 throw new Error("Invalid Vault Password.");
             }
         } else {
-            const newCanary = await encryptWithKey('AGNES', key);
+            const newCanary = await encryptWithKey('NEXUS', key);
             await setDoc(vaultRef, { canary: newCanary }, { merge: !0 });
         }
 

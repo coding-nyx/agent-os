@@ -149,6 +149,7 @@ export function LedgerOnboarding({
       plans: [],
       activePlanId: null,
       plannerBotState: 'idle',
+      documentAnalysisEnabled: false,
       createdAt: now,
       updatedAt: now
     };

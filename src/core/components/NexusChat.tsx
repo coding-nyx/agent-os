@@ -75,7 +75,12 @@ export function NexusChat({
                 headerActions={headerActions}
                 onRetry={() => {
                     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-                    if (lastUserMsg) handleSendMessage(lastUserMsg.content, onActionParsed);
+                    if (lastUserMsg) {
+                      const content = typeof lastUserMsg.content === 'string'
+                        ? lastUserMsg.content
+                        : lastUserMsg.content.filter(p => p.type === 'text').map(p => (p as any).text).join(' ');
+                      handleSendMessage(content, onActionParsed);
+                    }
                 }}
             />
 

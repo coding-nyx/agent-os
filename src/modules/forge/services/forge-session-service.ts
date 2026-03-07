@@ -2,7 +2,7 @@ import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
 import { readDocOnce } from '@/lib/services/firestore-once';
 
-const GUEST_FORGE_KEY = 'agnes_forge_profile_guest';
+const GUEST_FORGE_KEY = 'nexus_forge_profile_guest';
 
 export interface ForgeExecutionRecord {
   id: string;

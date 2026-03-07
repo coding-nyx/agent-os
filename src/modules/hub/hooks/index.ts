@@ -36,34 +36,23 @@ export function useModuleStats(
     const isLocked = (moduleId: ModuleId) => !moduleAccess[moduleId];
 
     return {
-      therapy: {
+      agnes: {
         label: 'Resilience',
-        display: isLocked('therapy')
+        display: isLocked('agnes')
           ? '—'
           : emotionalResilience === undefined || emotionalResilience === null
           ? '—'
           : `${formatNumber(emotionalResilience, 1)}/10`,
-        tone: isLocked('therapy') ? 'neutral' : toneFromValue(emotionalResilience)
+        tone: isLocked('agnes') ? 'neutral' : toneFromValue(emotionalResilience)
       },
-      trainer: {
+      titan: {
         label: 'CNS Fatigue',
-        display: isLocked('trainer')
+        display: isLocked('titan')
           ? '—'
           : cnsFatigue === undefined || cnsFatigue === null
           ? '—'
           : `${formatNumber(cnsFatigue, 1)}/10`,
-        tone: isLocked('trainer') ? 'neutral' : toneFromValue(cnsFatigue, true)
-      },
-      soma: {
-        label: 'Recovery',
-        display: isLocked('soma')
-          ? '—'
-          : recoveryScore !== undefined && recoveryScore !== null
-          ? `${formatNumber(recoveryScore, 1)}/10`
-          : sleepQuality !== undefined && sleepQuality !== null
-          ? `${formatNumber(sleepQuality, 1)}/10`
-          : '—',
-        tone: isLocked('soma') ? 'neutral' : toneFromValue(recoveryScore ?? sleepQuality)
+        tone: isLocked('titan') ? 'neutral' : toneFromValue(cnsFatigue, true)
       },
       ledger: {
         label: 'Resonance ROI',
@@ -121,14 +110,15 @@ export function useHubLayout(modules: ModuleItem[]) {
     return modules.map((module) => {
       let position: [number, number, number] = [0, 0, 0];
       switch (module.id) {
-        case 'soma':    position = [-4.5, 0.3, 0]; break;
-        case 'ledger':  position = [4.5, 0.3, 0];  break;
-        case 'therapy': position = [0, 4.0, 1.5];  break;
-        case 'trainer': position = [0, -3.5, -1];  break;
-        case 'scout':   position = [-9, 1.0, 2];   break;
-        case 'atlas':   position = [9, -1.5, 3];   break;
-        case 'forge':   position = [7, 4.5, -4];   break;
-        case 'pulse':   position = [0, 5.5, -5];   break;
+        // Core triangle — Agnes at apex
+        case 'agnes':   position = [0, 3.5, 1];      break;
+        case 'titan':   position = [4, -2.5, 0.5];   break;
+        case 'ledger':  position = [-4, -2.5, 0.5];  break;
+        // Plugins orbit
+        case 'pulse':   position = [6, 3.5, -3];     break;
+        case 'forge':   position = [8, 0, -2];        break;
+        case 'scout':   position = [-8, 0, -2];       break;
+        case 'atlas':   position = [0, -5.5, -1];     break;
         default:        position = [0, 0, 0];
       }
       return { ...module, position };
@@ -137,37 +127,41 @@ export function useHubLayout(modules: ModuleItem[]) {
 
   const spinePoints = useMemo(
     () => [
-      new THREE.Vector3(-4.5, 0.3, 0),
-      new THREE.Vector3(0, 4.0, 1.5),
-      new THREE.Vector3(4.5, 0.3, 0),
-      new THREE.Vector3(0, -3.5, -1),
-      new THREE.Vector3(-4.5, 0.3, 0),
+      new THREE.Vector3(0, 3.5, 1),       // Agnes (top)
+      new THREE.Vector3(4, -2.5, 0.5),    // Titan (bottom right)
+      new THREE.Vector3(-4, -2.5, 0.5),   // Ledger (bottom left)
+      new THREE.Vector3(0, 3.5, 1),       // Close loop back to Agnes
     ],
     []
   );
 
   const orchestratorNodes: OrchestratorNode[] = useMemo(() => {
+    // 3 core modules: equilateral triangle — Agnes at apex
     const corePositions: Record<string, { x: number; y: number }> = {
-      soma:    { x: 32, y: 55 },
-      ledger:  { x: 50, y: 75 },
-      therapy: { x: 68, y: 45 },
-      trainer: { x: 50, y: 25 },
+      agnes:   { x: 50, y: 18 },   // top center (primary agent)
+      titan:   { x: 76, y: 68 },   // bottom right
+      ledger:  { x: 24, y: 68 },   // bottom left
     };
+    // 4 plugins: orbiting outside the core triangle
     const pluginPositions: Record<string, { x: number; y: number }> = {
-      scout:   { x: 15, y: 55 },
-      atlas:   { x: 35, y: 85 },
-      forge:   { x: 85, y: 45 },
-      pulse:   { x: 50, y: 8 },
+      pulse:   { x: 80, y: 18 },   // top right (near agnes)
+      forge:   { x: 88, y: 50 },   // far right
+      scout:   { x: 12, y: 50 },   // far left
+      atlas:   { x: 50, y: 88 },   // bottom center
     };
 
     return modules.map((module) => {
       const isCore = CORE_MODULES.includes(module.id);
       const pos = isCore ? corePositions[module.id] : pluginPositions[module.id];
-      const isLeft = pos.x < 50;
-      const cp1x = 50;
-      const cp1y = 50;
-      const cp2x = isLeft ? pos.x + 10 : pos.x - 10;
-      const cp2y = pos.y;
+      // Compute smooth bezier nerve from center (50,50) to node
+      const dx = pos.x - 50;
+      const dy = pos.y - 50;
+      // First control point: slight offset from center along the direction
+      const cp1x = 50 + dx * 0.3;
+      const cp1y = 50 + dy * 0.3;
+      // Second control point: closer to target with perpendicular curvature
+      const cp2x = pos.x - dx * 0.15 + dy * 0.08;
+      const cp2y = pos.y - dy * 0.15 - dx * 0.08;
 
       return {
         ...module,

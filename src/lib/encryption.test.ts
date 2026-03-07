@@ -4,6 +4,8 @@ import {
   uint8ArrayToBase64,
   encryptData,
   decryptData,
+  deriveKey,
+  encryptWithKey,
 } from './encryption';
 
 describe('Base64 utilities', () => {
@@ -38,6 +40,27 @@ describe('E2EE encrypt / decrypt round-trip', () => {
     expect(encrypted).toHaveProperty('salt');
 
     const decrypted = await decryptData(encrypted, password);
+    expect(decrypted).toBe(plaintext);
+  });
+
+  it('new encryptions include version 2', async () => {
+    const encrypted = await encryptData(plaintext, password);
+    expect(encrypted.version).toBe(2);
+  });
+
+  it('decrypts legacy v1 data without a version field', async () => {
+    // Create genuine v1 ciphertext using deriveKey with 100k iterations directly
+    const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
+    const key = await deriveKey(password, salt, 100000);
+    const encrypted = await encryptWithKey(plaintext, key);
+    const v1Data = {
+      ciphertext: encrypted.ciphertext,
+      iv: encrypted.iv,
+      salt: uint8ArrayToBase64(salt),
+      // no version field — legacy v1
+    };
+
+    const decrypted = await decryptData(v1Data, password);
     expect(decrypted).toBe(plaintext);
   });
 

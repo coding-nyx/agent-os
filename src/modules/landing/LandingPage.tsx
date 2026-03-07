@@ -2,28 +2,19 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { UnifiedAuthModal } from '@/core/components/UnifiedAuthModal';
-import { ArrowRight, Brain, ClipboardList, Dumbbell, HeartPulse, Sparkles } from 'lucide-react';
+import { ArrowRight, Brain, ClipboardList, Dumbbell, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
 
 const FEATURE_CARDS = [
   {
-    id: 'therapy',
+    id: 'agnes',
     title: 'Agnes',
-    subtitle: 'Psychotherapy module',
-    description: 'Attachment-aware therapy with continuity across sessions.',
+    subtitle: 'Psychoagnes module',
+    description: 'Attachment-aware agnes with continuity across sessions.',
     color: 'text-indigo-300',
     icon: Brain,
-    route: '/therapy'
-  },
-  {
-    id: 'soma',
-    title: 'Soma',
-    subtitle: 'Biological data',
-    description: 'Source-of-truth for biomarkers, labs, and readiness signals.',
-    color: 'text-emerald-300',
-    icon: HeartPulse,
-    route: '/soma'
+    route: '/agnes'
   },
   {
     id: 'ledger',
@@ -35,13 +26,13 @@ const FEATURE_CARDS = [
     route: '/ledger'
   },
   {
-    id: 'trainer',
+    id: 'titan',
     title: 'Titan',
     subtitle: 'Performance module',
-    description: 'CNS-aware coaching with recovery-aware load adjustments.',
+    description: 'CNS-aware coaching with biomarker tracking and recovery management.',
     color: 'text-amber-300',
     icon: Dumbbell,
-    route: '/trainer'
+    route: '/titan'
   }
 ];
 
@@ -52,13 +43,13 @@ export default function LandingPage() {
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/hub', { replace: true });
+      navigate('/orchestrator', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
   const goHub = () => {
     if (isAuthenticated) {
-      navigate('/hub');
+      navigate('/orchestrator');
       return;
     }
     setIsAuthOpen(true);
@@ -117,7 +108,7 @@ export default function LandingPage() {
         </section>
 
         <section id="modules" className="max-w-7xl mx-auto mt-20 md:mt-28">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {FEATURE_CARDS.map((card, index) => {
               const Icon = card.icon;
               return (

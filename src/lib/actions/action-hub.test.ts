@@ -66,7 +66,7 @@ function makeMockContext(overrides: Partial<ActionContext> = {}): ActionContext 
   return {
     userId: 'u1',
     isGuest: false,
-    moduleId: 'therapy',
+    moduleId: 'agnes',
     payload: {},
     emitSpineEvent: vi.fn(),
     updateGlobalSoul: vi.fn().mockResolvedValue(undefined),
@@ -84,10 +84,10 @@ describe('ModuleActionHub', () => {
 
   it('registers and executes a module handler', async () => {
     const handler = vi.fn();
-    hub.register('therapy', 'UPDATE_MOOD', handler);
+    hub.register('agnes', 'UPDATE_MOOD', handler);
 
     const ctx = makeMockContext();
-    const result = await hub.execute('therapy', 'UPDATE_MOOD', ctx);
+    const result = await hub.execute('agnes', 'UPDATE_MOOD', ctx);
 
     expect(result).toBe(true);
     expect(handler).toHaveBeenCalledWith(ctx);
@@ -99,18 +99,18 @@ describe('ModuleActionHub', () => {
   });
 
   it('returns false for unregistered action on a known module (no orchestrator fallback)', async () => {
-    hub.register('therapy', 'KNOWN_ACTION', vi.fn());
-    const result = await hub.execute('therapy', 'UNKNOWN_ACTION', makeMockContext());
+    hub.register('agnes', 'KNOWN_ACTION', vi.fn());
+    const result = await hub.execute('agnes', 'UNKNOWN_ACTION', makeMockContext());
     expect(result).toBe(false);
   });
 
   it('falls back to orchestrator handler when module handler is missing', async () => {
     const orchHandler = vi.fn();
     hub.register('orchestrator', 'GLOBAL_ACTION', orchHandler);
-    hub.register('therapy', 'LOCAL_ACTION', vi.fn());
+    hub.register('agnes', 'LOCAL_ACTION', vi.fn());
 
     const ctx = makeMockContext();
-    const result = await hub.execute('therapy', 'GLOBAL_ACTION', ctx);
+    const result = await hub.execute('agnes', 'GLOBAL_ACTION', ctx);
 
     expect(result).toBe(true);
     expect(orchHandler).toHaveBeenCalledWith(ctx);
@@ -130,21 +130,21 @@ describe('ModuleActionHub', () => {
   it('registerMultiple registers several handlers at once', async () => {
     const h1 = vi.fn();
     const h2 = vi.fn();
-    hub.registerMultiple('trainer', { SET_ROUTINE: h1, UPDATE_PR: h2 });
+    hub.registerMultiple('titan', { SET_ROUTINE: h1, UPDATE_PR: h2 });
 
-    await hub.execute('trainer', 'SET_ROUTINE', makeMockContext());
-    await hub.execute('trainer', 'UPDATE_PR', makeMockContext());
+    await hub.execute('titan', 'SET_ROUTINE', makeMockContext());
+    await hub.execute('titan', 'UPDATE_PR', makeMockContext());
 
     expect(h1).toHaveBeenCalledOnce();
     expect(h2).toHaveBeenCalledOnce();
   });
 
   it('getAllowedActions merges module and orchestrator actions', () => {
-    hub.register('therapy', 'LOCAL_A', vi.fn());
-    hub.register('therapy', 'LOCAL_B', vi.fn());
+    hub.register('agnes', 'LOCAL_A', vi.fn());
+    hub.register('agnes', 'LOCAL_B', vi.fn());
     hub.register('orchestrator', 'GLOBAL_C', vi.fn());
 
-    const actions = hub.getAllowedActions('therapy');
+    const actions = hub.getAllowedActions('agnes');
     expect(actions).toContain('LOCAL_A');
     expect(actions).toContain('LOCAL_B');
     expect(actions).toContain('GLOBAL_C');

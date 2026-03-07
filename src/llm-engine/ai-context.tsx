@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { Message, ConversationContext } from './types';
 import { CognitiveAgent } from './engine/CognitiveAgent';
-import { WebStorageAdapter } from './adapters/WebStorageAdapter';
 import { StructuredResponse } from './engine/types';
 
 export interface AIContextType {
@@ -23,11 +22,10 @@ const AIContext = createContext<AIContextType | null>(null);
 
 interface AIProviderProps {
   children: ReactNode;
-  onToolCall?: (name: string, args: any) => Promise<any>;
   guestMode?: boolean;
 }
 
-export function AIProvider({ children, onToolCall, guestMode }: AIProviderProps) {
+export function AIProvider({ children, guestMode }: AIProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [agent, setAgent] = useState<CognitiveAgent | null>(null);
   const initRef = useRef(false);
@@ -50,8 +48,7 @@ export function AIProvider({ children, onToolCall, guestMode }: AIProviderProps)
             freeModelsOnly: guestMode
         };
 
-        const storage = new WebStorageAdapter();
-        const newAgent = new CognitiveAgent(config, storage, onToolCall);
+        const newAgent = new CognitiveAgent(config);
         await newAgent.initialize();
 
         setAgent(newAgent);
@@ -68,7 +65,7 @@ export function AIProvider({ children, onToolCall, guestMode }: AIProviderProps)
     return () => {
       clearTimeout(timer);
     };
-  }, [onToolCall]);
+  }, []);
 
   useEffect(() => {
     if (agent) {

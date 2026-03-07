@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
-import { NeuralButton } from '@/core/components/NeuralButton';
 import { useAuth } from '@/lib/auth-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { ORCHESTRATOR_PERSONA, ORCHESTRATOR_WELCOME } from './personas';
-import { LayoutGrid } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { CoreUserProfile } from '@/lib/types';
-import { NexusChat } from '@/core/components/NexusChat';
 import { OrchestratorOnboarding } from './onboarding/OrchestratorOnboarding';
 import { GuestModePanel } from '@/core/components/GuestModePanel';
+import { NexusDashboard } from './components/NexusDashboard';
 
-type PageState = 'ONBOARDING' | 'CHAT';
+type PageState = 'ONBOARDING' | 'DASHBOARD';
 
 export default function OrchestratorPage() {
   const { user, isGuest, profile, refreshProfile, initializeNewUser } = useAuth();
@@ -34,9 +32,24 @@ export default function OrchestratorPage() {
     navigateTo: (path) => navigate(path)
   });
 
+  useEffect(() => {
+    if (!isGuest && user && !profile && !isSubmitting) {
+      initializeNewUser();
+    }
+  }, [isGuest, user, profile, initializeNewUser, isSubmitting]);
+
+  useEffect(() => {
+    if (!isGuest && profile?.onboardingComplete) {
+      setPageState('DASHBOARD');
+      if (messages.length === 0) {
+        setMessages([{ role: 'assistant', content: ORCHESTRATOR_WELCOME(profile.preferredName) }]);
+      }
+    }
+  }, [isGuest, profile?.onboardingComplete, messages.length, profile?.preferredName, setMessages]);
+
   if (isGuest) {
     return (
-      <ModuleLayout title="Nexus" themeColor="indigo" moduleId="orchestrator">
+      <ModuleLayout title="Nexus" themeColor="indigo" moduleId="orchestrator" hideBack>
         <GuestModePanel
           moduleId="orchestrator"
           description="Guest links cannot initialize your core profile. Authenticate to unlock full orchestration."
@@ -52,29 +65,13 @@ export default function OrchestratorPage() {
     );
   }
 
-  useEffect(() => {
-    if (user && !profile && !isSubmitting) {
-      initializeNewUser();
-    }
-  }, [user, profile, initializeNewUser, isSubmitting]);
-
-  useEffect(() => {
-    if (profile?.onboardingComplete) {
-      setPageState('CHAT');
-      if (messages.length === 0) {
-        setMessages([{ role: 'assistant', content: ORCHESTRATOR_WELCOME(profile.preferredName) }]);
-      }
-    }
-  }, [profile?.onboardingComplete, messages.length, profile?.preferredName, setMessages]);
-
   const handleComplete = async (updates: Partial<CoreUserProfile>) => {
     if (!user) return;
     setIsSubmitting(true);
     try {
       await CoreProfileService.updateProfile(user.uid, updates);
       await refreshProfile();
-      setPageState('CHAT');
-      navigate('/hub');
+      setPageState('DASHBOARD');
     } catch (e) {
       console.error('Failed to complete onboarding:', e);
     } finally {
@@ -82,26 +79,19 @@ export default function OrchestratorPage() {
     }
   };
 
-  if (pageState === 'CHAT') {
+  if (pageState === 'DASHBOARD') {
     return (
-      <ModuleLayout title="Nexus" themeColor="indigo">
-        <NexusChat
+      <ModuleLayout title="Nexus" themeColor="indigo" moduleId="orchestrator" hideBack>
+        <NexusDashboard
           ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
           agentName={profile?.agentPersonalityProvision?.orchestratorAlias || 'Nexus'}
-          themeColor="indigo"
-          placeholder="System command or inquiry..."
-          headerActions={
-            <NeuralButton size="sm" variant="secondary" onClick={() => navigate('/hub')} className="flex items-center gap-2">
-              <LayoutGrid className="w-3 h-3" /> Return to Hub
-            </NeuralButton>
-          }
         />
       </ModuleLayout>
     );
   }
 
   return (
-    <ModuleLayout title="Nexus" themeColor="indigo">
+    <ModuleLayout title="Nexus" themeColor="indigo" moduleId="orchestrator" hideBack>
       <OrchestratorOnboarding profile={profile} isSubmitting={isSubmitting} onComplete={handleComplete} />
     </ModuleLayout>
   );

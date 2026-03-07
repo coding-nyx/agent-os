@@ -92,6 +92,22 @@ function buildNSVUpdatePayload(updates: NeuralStateVectorPatch, timestamp: strin
   if (updates.cognitive?.researchLoad !== undefined) {
     stamp('cognitive.researchLoad', updates.cognitive.researchLoad);
   }
+  if (updates.cognitive?.planningLoad !== undefined) {
+    stamp('cognitive.planningLoad', updates.cognitive.planningLoad);
+  }
+  if (updates.cognitive?.taskCompletionRate !== undefined) {
+    stamp('cognitive.taskCompletionRate', updates.cognitive.taskCompletionRate);
+  }
+  if (updates.cognitive?.interestDiversity !== undefined) {
+    stamp('cognitive.interestDiversity', updates.cognitive.interestDiversity);
+  }
+
+  if (updates.planning?.streakHealth !== undefined) {
+    stamp('planning.streakHealth', updates.planning.streakHealth);
+  }
+  if (updates.planning?.deadlinePressure !== undefined) {
+    stamp('planning.deadlinePressure', updates.planning.deadlinePressure);
+  }
 
   if (updates.resource?.financialFriction !== undefined) {
     stamp('resource.financialFriction', updates.resource.financialFriction);
@@ -134,20 +150,18 @@ export const GlobalProjectionService = {
     const provision = profile.agentPersonalityProvision || {
       orchestratorAlias: 'Nexus',
       moduleAliases: {
-        therapy: 'Agnes',
-        trainer: 'Titan',
-        soma: 'Soma',
+        agnes: 'Agnes',
+        titan: 'Titan',
         ledger: 'Ledger',
         atlas: 'Atlas',
         scout: 'Scout',
         forge: 'Forge',
         pulse: 'Pulse'
       },
-      moduleGenderProfiles: {
+      agentGenders: {
         orchestrator: 'female',
-        therapy: 'female',
-        trainer: 'female',
-        soma: 'female',
+        agnes: 'female',
+        titan: 'female',
         ledger: 'female',
         atlas: 'female',
         scout: 'female',
@@ -168,11 +182,22 @@ export const GlobalProjectionService = {
     };
 
     const agentGenders: Record<string, any> = {
-      ...provision.moduleGenderProfiles
+      ...provision.agentGenders
     };
 
     // Load existing projection to preserve crossFunctionalState if it exists
     const existing = await this.getProjection(profile.uid);
+
+    // Skip write if the profile-derived fields haven't changed.
+    // This prevents the onSnapshot → syncFromProfile → setDoc feedback that
+    // fires 2+ unnecessary writes on every page load.
+    if (existing) {
+      const namesMatch = JSON.stringify(existing.displayNames) === JSON.stringify(displayNames);
+      const gendersMatch = JSON.stringify(existing.agentGenders) === JSON.stringify(agentGenders);
+      if (namesMatch && gendersMatch) {
+        return existing;
+      }
+    }
 
     const newProjection: GlobalProjection = {
       lastSync: new Date().toISOString(),

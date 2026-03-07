@@ -200,13 +200,13 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
 
   // Task completion stats
   const tasks = profile?.taskGraph ?? [];
-  const completedTasks = tasks.filter(t => t.status === 'done' || t.status === 'complete');
+  const completedTasks = tasks.filter(t => t.status === 'done');
   const totalTasks = tasks.length;
   const completionPct = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
 
   // Energy spent
   const totalEnergyCost = tasks
-    .filter(t => t.status === 'done' || t.status === 'complete')
+    .filter(t => t.status === 'done')
     .reduce((sum, t) => sum + (t.energyCost || 0), 0);
 
   const currentBudget = typeof cognitive?.energyBudget === 'number'
@@ -283,14 +283,14 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
               key={task.id}
               title={task.title}
               energyCost={task.energyCost}
-              status={task.status}
+              status={task.status as any}
               blockedReason={
-                task.status === 'blocked'
+                (task.status as any) === 'blocked'
                   ? 'Recovery is below safe threshold'
                   : undefined
               }
               blockedSource={
-                task.status === 'blocked'
+                (task.status as any) === 'blocked'
                   ? moduleNames.soma || 'Soma'
                   : undefined
               }

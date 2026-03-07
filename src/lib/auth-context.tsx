@@ -24,7 +24,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-const GUEST_SESSION_KEY = 'agnes_guest_active';
+const GUEST_SESSION_KEY = 'nexus_guest_active';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authService: IAuthService = useMemo(() => new FirebaseAuthService(), []);
@@ -47,13 +47,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(p);
         await GlobalProjectionService.syncFromProfile(p);
       } else {
-        // We set profile to null, but keep loading false. 
-        // ProtectedRoute will see isAuthenticated=true but profile=null and know we need initialization.
         setProfile(null);
       }
     } catch (e) {
       console.error("Profile sync suspended due to network integrity.");
-      // We don't set loading false here to prevent the route from jumping to a broken state
     }
   }, [user]);
 
@@ -168,9 +165,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setIsGuest(false);
     sessionStorage.removeItem(GUEST_SESSION_KEY);
-    sessionStorage.removeItem('agnes_vault_session');
+    sessionStorage.removeItem('nexus_vault_session');
     Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('agnes_') || key.includes('integrity')) {
+        if (key.startsWith('nexus_') || key.includes('integrity')) {
             localStorage.removeItem(key);
         }
     });

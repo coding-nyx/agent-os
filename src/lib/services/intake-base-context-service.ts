@@ -1,5 +1,5 @@
-import { CoreUserProfile, TrainerProfile } from '@/lib/types';
-import { BaseContext } from '@/modules/therapy/types';
+import { CoreUserProfile, TitanProfile } from '@/lib/types';
+import { BaseContext } from '@/modules/agnes/types';
 
 export interface GlobalBaseIntakeContext {
   name?: string;
@@ -45,7 +45,7 @@ function fromCoreProfile(profile: CoreUserProfile | null | undefined): GlobalBas
   });
 }
 
-function fromTherapyContext(context: Partial<BaseContext> | null | undefined): GlobalBaseIntakeContext {
+function fromAgnesContext(context: Partial<BaseContext> | null | undefined): GlobalBaseIntakeContext {
   if (!context) return {};
   const identity = context.identity;
 
@@ -63,7 +63,7 @@ function fromTherapyContext(context: Partial<BaseContext> | null | undefined): G
   });
 }
 
-function fromTrainerProfile(profile: TrainerProfile | null | undefined): GlobalBaseIntakeContext {
+function fromTitanProfile(profile: TitanProfile | null | undefined): GlobalBaseIntakeContext {
   if (!profile) return {};
   return compact({
     occupation:
@@ -77,23 +77,23 @@ export const IntakeBaseContextService = {
     return fromCoreProfile(profile);
   },
 
-  buildForTherapy(params: {
+  buildForAgnes(params: {
     coreProfile: CoreUserProfile | null | undefined;
-    therapyContext?: Partial<BaseContext> | null;
+    agnesContext?: Partial<BaseContext> | null;
   }): GlobalBaseIntakeContext {
     return mergeContexts(
       fromCoreProfile(params.coreProfile),
-      fromTherapyContext(params.therapyContext)
+      fromAgnesContext(params.agnesContext)
     );
   },
 
-  buildForTrainer(params: {
+  buildForTitan(params: {
     coreProfile: CoreUserProfile | null | undefined;
-    trainerProfile?: TrainerProfile | null;
+    titanProfile?: TitanProfile | null;
   }): GlobalBaseIntakeContext {
     return mergeContexts(
       fromCoreProfile(params.coreProfile),
-      fromTrainerProfile(params.trainerProfile)
+      fromTitanProfile(params.titanProfile)
     );
   },
 

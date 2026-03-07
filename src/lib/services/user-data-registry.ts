@@ -3,15 +3,15 @@ export interface UserDataDeletionTarget {
   documentId: string;
 }
 
-const MODULE_IDS = ['orchestrator', 'therapy', 'trainer', 'soma', 'ledger', 'atlas', 'scout', 'forge', 'pulse'] as const;
+const MODULE_IDS = ['orchestrator', 'agnes', 'titan', 'ledger', 'atlas', 'scout', 'forge', 'pulse'] as const;
 
 const DIRECT_USER_COLLECTIONS = [
   'users',
   'global_souls',
   'vaults',
-  'therapist_profiles',
-  'ai_trainers',
-  'ai_ledgers',
+  'agnes_profiles',
+  'titan_profiles',
+  'ledger_profiles',
   'soma_profiles',
   'atlas_profiles',
   'scout_knowledge',
@@ -19,9 +19,7 @@ const DIRECT_USER_COLLECTIONS = [
   'pulse_profiles',
   'semantic_memory',
   'spine_events',
-  'bridge_config',
-  'belief_graphs',
-  'training_logs'
+  'belief_graphs'
 ] as const;
 
 export function getUserDataDeletionTargets(uid: string): UserDataDeletionTarget[] {

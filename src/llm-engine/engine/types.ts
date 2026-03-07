@@ -20,6 +20,7 @@ export interface ModelMetadata {
   tier: ModelTier;
   isFree: boolean;
   isReasoning: boolean;
+  supportsVision?: boolean;
 }
 
 export interface CognitiveContext {
@@ -38,10 +39,7 @@ export interface CognitiveContext {
 
 export interface OrchestratorState {
   activeModelId: string;
-  currentTier: ModelTier;
-  failureCount: number;
   provider: 'openrouter' | 'grok' | 'google' | 'mock';
-  isAutoScaling: boolean;
 }
 
 export interface EngineConfig {

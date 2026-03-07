@@ -3,8 +3,8 @@ import { requiresModuleOnboarding, MODULES_REQUIRING_ONBOARDING } from './consta
 
 describe('requiresModuleOnboarding', () => {
   it('returns true for modules requiring onboarding', () => {
-    expect(requiresModuleOnboarding('therapy')).toBe(true);
-    expect(requiresModuleOnboarding('trainer')).toBe(true);
+    expect(requiresModuleOnboarding('agnes')).toBe(true);
+    expect(requiresModuleOnboarding('titan')).toBe(true);
     expect(requiresModuleOnboarding('soma')).toBe(true);
     expect(requiresModuleOnboarding('ledger')).toBe(true);
   });

@@ -2,14 +2,20 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      // Allow public read access to all assets (logos, profile images, etc.)
+    // Public assets (app icons, logos, etc.)
+    match /public/{allPaths=**} {
       allow read: if true;
-      
-      // Allow write access only to authenticated users
-      // In a real production app, you might want to further restrict users to only 
-      // write to their own folders (e.g. if request.auth.uid != null)
-      allow write: if request.auth != null;
+      allow write: if false;
+    }
+
+    // User-scoped files - only owner can read/write
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Shield, Zap, Sparkles, Database } from 'lucide-react';
 
@@ -23,7 +23,13 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
+    let safetyTimeout: NodeJS.Timeout | null = null;
     if (isActive) {
+      // Safety timeout: force-complete after 5 seconds no matter what
+      safetyTimeout = setTimeout(() => {
+        onComplete();
+      }, 5000);
+
       let currentLog = 0;
       const interval = setInterval(() => {
         if (currentLog < technicalLogs.length) {
@@ -38,12 +44,22 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
       return () => {
         clearInterval(interval);
         if (timeoutId) clearTimeout(timeoutId);
+        if (safetyTimeout) clearTimeout(safetyTimeout);
       };
     } else {
       setLogs([]);
       setProgress(0);
     }
-  }, [isActive]);
+  }, [isActive, onComplete]);
+
+  // Escape key dismissal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isActive) onComplete();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isActive, onComplete]);
 
   return (
     <AnimatePresence>
@@ -54,6 +70,14 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[9999] bg-[#020205] flex flex-col items-center justify-center p-8 overflow-hidden"
         >
+          {/* Skip button */}
+          <button 
+            onClick={onComplete}
+            className="absolute top-6 right-6 text-white/30 hover:text-white/60 text-xs z-[10000] transition-colors"
+            aria-label="Skip synchronization"
+          >
+            ✕ Skip
+          </button>
           {/* Background FX */}
           <div className="absolute inset-0 opacity-20">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/20 rounded-full blur-[120px] animate-pulse" />

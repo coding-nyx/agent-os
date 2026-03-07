@@ -1,19 +1,28 @@
 import React, { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   Send, Bot, User, Loader2, Sparkles, Shield,
-  Activity as ActivityIcon, Terminal, ChevronDown, Lock, Zap, 
+  Activity as ActivityIcon, Terminal, ChevronDown, Lock, Zap,
   ArrowRight, Plus, FileText, BarChart3, Image as ImageIcon, X,
   Search, Calculator, BrainCircuit
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { cn } from '@/lib/utils';
-import { Message, GuestQuota } from '@/lib/types';
+import { Message, GuestQuota, MessageContent } from '@/lib/types';
 import { NeuralLinkAlert } from './NeuralLinkAlert';
 import { stripInternalTags } from '@/llm-engine/sanitize';
 import { NeuralButton } from './NeuralButton';
 import { EmptyState } from '@/core/components/EmptyState';
+
+// Helper to convert MessageContent to string for display
+function messageContentToString(content: MessageContent): string {
+  if (typeof content === 'string') return content;
+  return content
+    .filter(p => p.type === 'text')
+    .map(p => (p as { type: 'text'; text: string }).text)
+    .join(' ');
+}
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -281,7 +290,7 @@ export function ChatInterface({
         </div>
       )}
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6 no-scrollbar scrollbar-ghost scroll-smooth min-h-0">
+      <div ref={scrollRef} role="log" aria-live="polite" aria-label="Conversation messages" className="flex-1 overflow-y-auto px-6 py-6 space-y-6 no-scrollbar scrollbar-ghost scroll-smooth min-h-0">
         {!hasMessages && !isLoading && !error && (
           <div className="h-full flex items-center justify-center">
             <EmptyState
@@ -307,7 +316,7 @@ export function ChatInterface({
                 )}
                 {isAI ? (
                     <AIMessage
-                      content={showInternalSignals ? msg.content : stripInternalTags(msg.content).publicText}
+                      content={showInternalSignals ? messageContentToString(msg.content) : stripInternalTags(messageContentToString(msg.content)).publicText}
                       theme={theme}
                       agentName={agentName}
                       isLast={isLast}
@@ -316,7 +325,7 @@ export function ChatInterface({
                 ) : (
                     <div className="flex flex-col max-w-[90%] items-end">
                         <div className={cn("p-5 border backdrop-blur-3xl transition-all", theme.userBubble, theme.glow)}>
-                            <div className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap">{msg.content}</div>
+                            <div className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap">{messageContentToString(msg.content)}</div>
                             <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-3">
                                 <span className="text-[8px] font-mono uppercase italic tracking-widest">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
@@ -448,12 +457,13 @@ export function ChatInterface({
                 onChange={(e) => setInput(e.target.value)} 
                 onKeyDown={handleKeyDown}
                 placeholder={error ? "Link severed..." : (quota?.isHardLocked ? "Trial Locked" : placeholder)} 
+                aria-label="Type your message"
                 className="flex-1 bg-transparent border-none outline-none px-8 py-4 text-base text-white placeholder:text-white/10 resize-none max-h-40 leading-relaxed" 
                 disabled={effectiveIsProcessing || !!error || quota?.isHardLocked}
                 rows={1}
               />
               
-              <button type="submit" disabled={effectiveIsProcessing || !input.trim() || !!error || quota?.isHardLocked} className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl", theme.btn)}>
+              <button type="submit" aria-label="Send message" disabled={effectiveIsProcessing || !input.trim() || !!error || quota?.isHardLocked} className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl", theme.btn)}>
                 <Send className="w-6 h-6 text-white" />
               </button>
             </div>

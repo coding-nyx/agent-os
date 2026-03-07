@@ -1,10 +1,12 @@
 import { ActionHub } from './action-hub';
 import { Spine } from '../spine/spine-event-bus';
-import { SpineEventType, NeuralStateVectorPatch } from '../types';
+import { SpineEventType, NeuralStateVectorPatch, NeuralStateVector } from '../types';
 import { CoreProfileService } from '../services/core-profile-service';
 import { NexusRoutingService } from '../services/nexus-routing-service';
 import { EpisodicMemoryService } from '../services/episodic-memory-service';
 import { SemanticMemoryService } from '../services/semantic-memory-service';
+import { NSV_READ_PERMISSIONS } from '../services/nsv-ownership';
+import { formatNSVForModulePrompt, formatNSVForAtlasPlanner, normalizeNSV } from '../services/nsv-service';
 import type { ModuleId } from '../module-manifest';
 
 function safeNumber(value: unknown): number | undefined {
@@ -65,7 +67,8 @@ export function registerCoreActions() {
         'RECOVERY_AVAILABLE', 'BURNOUT_WARNING', 'CLEARANCE_DENIED', 'CLEARANCE_GRANTED',
         'COGNITIVE_OVERLOAD', 'SECURITY_POLICY_UPDATED', 'FINANCIAL_STRESS', 'MEDICAL_ALERT',
         'DRAFT_PROPOSED', 'DRAFT_APPROVED', 'DRAFT_DISMISSED', 'SESSION_STARTED', 'SESSION_ENDED',
-        'MODULE_DELEGATED'
+        'MODULE_DELEGATED', 'PLANNING_OVERLOAD', 'DEADLINE_CRUNCH', 'COMPOUND_STRESS',
+        'CRISIS_MODE', 'EXECUTION_COLLAPSE', 'STREAK_BROKEN'
       ]);
       const rawType = typeof payload.type === 'string' ? payload.type : 'VITAL_UPDATED';
       if (!VALID_SPINE_EVENT_TYPES.has(rawType)) {
@@ -83,7 +86,7 @@ export function registerCoreActions() {
       });
     },
     
-    query_module: async ({ payload, sendMessage, pushAssistantMessage }) => {
+    query_module: async ({ payload, sendMessage, pushAssistantMessage, getLatestNSV }) => {
       if (typeof payload?.moduleId !== 'string') return;
 
       const question =
@@ -96,7 +99,7 @@ export function registerCoreActions() {
           : '';
       if (!question.trim()) return;
 
-      const targetModule = payload.moduleId;
+      const targetModule = payload.moduleId as ModuleId;
       const manifest = (await import('../module-manifest')).MODULE_MANIFEST;
       const moduleEntry = manifest[targetModule as keyof typeof manifest];
       const moduleName = moduleEntry?.alias || targetModule;
@@ -106,11 +109,32 @@ export function registerCoreActions() {
         return;
       }
 
+      // Build NSV context scoped to the target module's read permissions.
+      // This preserves ownership boundaries: the consulted module sees only its allowed fields.
+      let nsvContext = '';
       try {
-        const consultPrompt = `You are ${moduleName}, a specialist agent in the Nexus system. ` +
+        const rawNSV = getLatestNSV?.() as Partial<NeuralStateVector> | undefined;
+        if (rawNSV) {
+          const nsv = normalizeNSV(rawNSV);
+          const nsvBlock = targetModule === 'atlas'
+            ? formatNSVForAtlasPlanner(nsv)
+            : formatNSVForModulePrompt(nsv, NSV_READ_PERMISSIONS[targetModule] ?? []);
+          if (nsvBlock) {
+            nsvContext = `\n\n[CURRENT NEURAL STATE — use to inform your answer]\n${nsvBlock}`;
+          }
+        }
+      } catch (nsvErr) {
+        // NSV injection is best-effort — never block the consultation
+        console.warn('[query_module] NSV injection failed, proceeding without state context:', nsvErr);
+      }
+
+      try {
+        const consultPrompt =
+          `You are ${moduleName}, a specialist agent in the AGNES neural network. ` +
           `Your domain is: ${moduleEntry?.description || targetModule}. ` +
-          `Answer the following consultation query concisely and precisely from your domain expertise. ` +
-          `Do not use action tags. Respond in 2-4 sentences.`;
+          `Answer the following consultation from Nexus concisely and precisely from your domain expertise. ` +
+          `Do not use action tags. Respond in 2-4 sentences.` +
+          nsvContext;
 
         const { response } = await sendMessage(question, {
           systemPrompt: consultPrompt,
@@ -152,8 +176,8 @@ export function registerCoreActions() {
       const patch: Record<string, unknown> = {};
       if (typeof payload.orchestratorAlias === 'string') patch.orchestratorAlias = payload.orchestratorAlias.trim();
       if (payload.moduleAliases && typeof payload.moduleAliases === 'object') patch.moduleAliases = payload.moduleAliases;
-      if (payload.moduleGenderProfiles && typeof payload.moduleGenderProfiles === 'object') {
-        patch.moduleGenderProfiles = payload.moduleGenderProfiles;
+      if (payload.agentGenders && typeof payload.agentGenders === 'object') {
+        patch.agentGenders = payload.agentGenders;
       }
       if (payload.personaOverlays && typeof payload.personaOverlays === 'object') {
         patch.personaOverlays = payload.personaOverlays;
@@ -207,7 +231,7 @@ export function registerCoreActions() {
   });
 
   // Domain Actions that update NSV
-  ActionHub.register('therapy', 'update_soul_resilience', async ({ payload, updateGlobalSoul }) => {
+  ActionHub.register('agnes', 'update_soul_resilience', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score);
     if (typeof score === 'number') {
       await updateGlobalSoul({
@@ -217,7 +241,7 @@ export function registerCoreActions() {
     }
   });
 
-  ActionHub.register('therapy', 'update_emotional_resilience', async ({ payload, updateGlobalSoul }) => {
+  ActionHub.register('agnes', 'update_emotional_resilience', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.emotionalResilience);
     if (typeof score === 'number') {
       await updateGlobalSoul({
@@ -227,28 +251,28 @@ export function registerCoreActions() {
     }
   });
 
-  ActionHub.register('therapy', 'update_stress_load', async ({ payload, updateGlobalSoul }) => {
+  ActionHub.register('agnes', 'update_stress_load', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.stressLoad);
     if (typeof score === 'number') {
       await updateGlobalSoul({ emotional: { stressLoad: score } });
     }
   });
 
-  ActionHub.register('therapy', 'update_mood_trend', async ({ payload, updateGlobalSoul }) => {
+  ActionHub.register('agnes', 'update_mood_trend', async ({ payload, updateGlobalSoul }) => {
     const trend = safeString(payload.trend ?? payload.moodTrend);
     if (trend !== undefined) {
       await updateGlobalSoul({ emotional: { moodTrend: trend } });
     }
   });
 
-  ActionHub.register('therapy', 'update_trauma_markers', async ({ payload, updateGlobalSoul }) => {
+  ActionHub.register('agnes', 'update_trauma_markers', async ({ payload, updateGlobalSoul }) => {
     const markers = safeStringArray(payload.markers ?? payload.traumaMarkers);
     if (markers !== undefined) {
       await updateGlobalSoul({ emotional: { traumaMarkers: markers }, traumaMarkers: markers });
     }
   });
 
-  ActionHub.register('trainer', 'update_cns_fatigue', async ({ payload, updateGlobalSoul }) => {
+  ActionHub.register('titan', 'update_cns_fatigue', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score);
     if (typeof score === 'number') {
       await updateGlobalSoul({
@@ -258,7 +282,7 @@ export function registerCoreActions() {
     }
   });
 
-  ActionHub.register('trainer', 'update_sleep_quality', async ({ payload, updateGlobalSoul }) => {
+  ActionHub.register('titan', 'update_sleep_quality', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score);
     if (typeof score === 'number') {
       await updateGlobalSoul({
@@ -268,61 +292,21 @@ export function registerCoreActions() {
     }
   });
 
-  ActionHub.register('trainer', 'request_soma_clearance', ({ moduleId, payload, delegateToModule }) => {
+  ActionHub.register('titan', 'request_clearance', ({ payload, updateGlobalSoul }) => {
     const activity = typeof payload?.activity === 'string' ? payload.activity : 'training';
     const reason = typeof payload?.reason === 'string' ? payload.reason : 'clearance_request';
-    delegateToModule('soma', reason, `Clearance request for ${activity}. Reason: ${reason}.`);
+    // Clearance is now handled internally by Titan's biomarker subsystem
+    console.log(`[Titan] Clearance request: activity=${activity}, reason=${reason}`);
   });
 
-  ActionHub.register('soma', 'update_biological_state', async ({ payload, updateGlobalSoul }) => {
-    if (payload && typeof payload === 'object') {
-      const patch: NeuralStateVectorPatch = { biological: {} };
-      const cnsFatigue = safeNumber(payload.cnsFatigue);
-      if (cnsFatigue !== undefined) {
-        patch.biological!.cnsFatigue = cnsFatigue;
-        patch.cnsFatigue = cnsFatigue;
-      }
-      const sleepQuality = safeNumber(payload.sleepQuality);
-      if (sleepQuality !== undefined) {
-        patch.biological!.sleepQuality = sleepQuality;
-        patch.sleepQuality = sleepQuality;
-      }
-      const recoveryScore = safeNumber(payload.recoveryScore);
-      if (recoveryScore !== undefined) patch.biological!.recoveryScore = recoveryScore;
-      const hormonalContext = safeString(payload.hormonalContext);
-      if (hormonalContext !== undefined) {
-        patch.biological!.hormonalContext = hormonalContext;
-        patch.hormonalContext = hormonalContext;
-      }
-      await updateGlobalSoul(patch);
-    }
-  });
-
-  ActionHub.register('soma', 'update_recovery_score', async ({ payload, updateGlobalSoul }) => {
-    const score = safeNumber(payload.score ?? payload.recoveryScore);
-    if (typeof score === 'number') {
-      await updateGlobalSoul({ biological: { recoveryScore: score } });
-    }
-  });
-
-  ActionHub.register('soma', 'update_hormonal_context', async ({ payload, updateGlobalSoul }) => {
-    const context = safeString(payload.context ?? payload.hormonalContext);
-    if (context !== undefined) {
-      await updateGlobalSoul({
-        hormonalContext: context,
-        biological: { hormonalContext: context }
-      });
-    }
-  });
-
+  // Atlas batch update — only fields Atlas owns (excludes researchLoad which Scout owns)
   ActionHub.register('atlas', 'update_energy_wave', async ({ payload, updateGlobalSoul }) => {
     if (payload && typeof payload === 'object') {
       await updateGlobalSoul({
         cognitive: {
           energyBudget: safeNumber(payload.energyBudget),
           focusScore: safeNumber(payload.focusScore),
-          activeLoad: safeNumber(payload.activeLoad),
-          researchLoad: safeNumber(payload.researchLoad)
+          activeLoad: safeNumber(payload.activeLoad)
         }
       });
     }
@@ -350,7 +334,7 @@ export function registerCoreActions() {
     }
   });
 
-  ActionHub.register('therapy', 'update_emotional_state', async ({ payload, updateGlobalSoul }) => {
+  ActionHub.register('agnes', 'update_emotional_state', async ({ payload, updateGlobalSoul }) => {
     if (!payload || typeof payload !== 'object') return;
     const patch: NeuralStateVectorPatch = { emotional: {} };
     const resilience = safeNumber(payload.emotionalResilience);
@@ -391,10 +375,77 @@ export function registerCoreActions() {
     }
   });
 
+  ActionHub.register('atlas', 'update_planning_load', async ({ payload, updateGlobalSoul }) => {
+    const score = safeNumber(payload.score ?? payload.planningLoad);
+    if (typeof score === 'number') {
+      await updateGlobalSoul({ cognitive: { planningLoad: score } });
+    }
+  });
+
+  ActionHub.register('atlas', 'update_task_completion_rate', async ({ payload, updateGlobalSoul }) => {
+    const rate = safeNumber(payload.rate ?? payload.taskCompletionRate);
+    if (typeof rate === 'number') {
+      // Clamp to 0.0–1.0 range for this metric
+      const clamped = Math.max(0, Math.min(1, rate));
+      await updateGlobalSoul({ cognitive: { taskCompletionRate: clamped } });
+    }
+  });
+
   ActionHub.register('scout', 'update_research_load', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.researchLoad);
     if (typeof score === 'number') {
       await updateGlobalSoul({ cognitive: { researchLoad: score } });
+    }
+  });
+
+  // Scout — interest/momentum tracking (Pulse absorption)
+  // These actions update the research graph in module memory; no NSV writes needed.
+  ActionHub.register('scout', 'track_research_thread', async ({ payload, emitSpineEvent }) => {
+    emitSpineEvent('VITAL_UPDATED', {
+      source: 'scout',
+      action: 'track_research_thread',
+      threadId: payload.id,
+      momentum: payload.momentum,
+      relevanceScore: payload.relevanceScore,
+    });
+  });
+
+  ActionHub.register('scout', 'update_research_interests', async ({ payload, emitSpineEvent }) => {
+    emitSpineEvent('VITAL_UPDATED', {
+      source: 'scout',
+      action: 'update_research_interests',
+      threads: payload.threads,
+    });
+  });
+
+  ActionHub.register('scout', 'synthesize_research_trends', async ({ payload, emitSpineEvent }) => {
+    emitSpineEvent('VITAL_UPDATED', {
+      source: 'scout',
+      action: 'synthesize_research_trends',
+      sourceThreadIds: payload.sourceThreadIds,
+      synthesisTitle: payload.synthesisTitle,
+    });
+  });
+
+  ActionHub.register('scout', 'update_interest_diversity', async ({ payload, updateGlobalSoul }) => {
+    const score = safeNumber(payload.score ?? payload.interestDiversity);
+    if (typeof score === 'number') {
+      await updateGlobalSoul({ cognitive: { interestDiversity: score } });
+    }
+  });
+
+  // Atlas planning domain handlers
+  ActionHub.register('atlas', 'update_streak_health', async ({ payload, updateGlobalSoul }) => {
+    const score = safeNumber(payload.score ?? payload.streakHealth);
+    if (typeof score === 'number') {
+      await updateGlobalSoul({ planning: { streakHealth: score } });
+    }
+  });
+
+  ActionHub.register('atlas', 'update_deadline_pressure', async ({ payload, updateGlobalSoul }) => {
+    const score = safeNumber(payload.score ?? payload.deadlinePressure);
+    if (typeof score === 'number') {
+      await updateGlobalSoul({ planning: { deadlinePressure: score } });
     }
   });
 
@@ -405,50 +456,93 @@ export function registerCoreActions() {
     }
   });
 
-  ActionHub.register('orchestrator', 'sync_vitals', async ({ payload, updateGlobalSoul }) => {
+  // sync_vitals — orchestrator override with required reason and staleness guard.
+  // Only used for cross-module synchronisation when modules themselves are stale or unresponsive.
+  ActionHub.register('orchestrator', 'sync_vitals', async ({ payload, updateGlobalSoul, getLatestNSV }) => {
     if (!payload || typeof payload !== 'object') return;
+
+    const VALID_SYNC_REASONS = new Set([
+      'onboarding_calibration', 'module_unresponsive', 'manual_override',
+      'cross_module_sync', 'recovery_restore', 'session_init'
+    ]);
+    const reason = typeof payload.reason === 'string' ? payload.reason : '';
+    if (!VALID_SYNC_REASONS.has(reason)) {
+      console.warn(`[sync_vitals] Blocked — invalid or missing reason: "${reason}". Must be one of: ${[...VALID_SYNC_REASONS].join(', ')}`);
+      return;
+    }
+
+    // 5-minute staleness check — reject if fields were updated recently by their owners
+    const STALENESS_MS = 5 * 60 * 1000;
+    const rawNSV = getLatestNSV?.() as Partial<NeuralStateVector> | undefined;
+    const lastUpdated = (rawNSV?.lastUpdated as Record<string, string>) || {};
+    const now = Date.now();
+    const isStale = (field: string): boolean => {
+      const stamp = lastUpdated[field];
+      if (!stamp) return true;
+      return now - new Date(stamp).getTime() > STALENESS_MS;
+    };
+
     const bio = payload.biological as Record<string, unknown> | undefined;
     const emo = payload.emotional as Record<string, unknown> | undefined;
     const cog = payload.cognitive as Record<string, unknown> | undefined;
     const res = payload.resource as Record<string, unknown> | undefined;
+    const pln = payload.planning as Record<string, unknown> | undefined;
 
     const biological: Record<string, unknown> = {};
     const emotional: Record<string, unknown> = {};
     const cognitive: Record<string, unknown> = {};
+    const planning: Record<string, unknown> = {};
     const resource: Record<string, unknown> = {};
 
-    const setIfDefined = (target: Record<string, unknown>, field: string, value: unknown) => {
-      if (value !== undefined) target[field] = value;
+    const setIfStale = (target: Record<string, unknown>, field: string, value: unknown, nsvPath: string) => {
+      if (value === undefined) return;
+      if (!isStale(nsvPath) && reason !== 'manual_override' && reason !== 'recovery_restore') {
+        console.warn(`[sync_vitals] Skipping ${nsvPath} — updated within 5 minutes. Reason: ${reason}`);
+        return;
+      }
+      target[field] = value;
     };
 
-    setIfDefined(biological, 'cnsFatigue', bio?.cnsFatigue ?? payload.cnsFatigue);
-    setIfDefined(biological, 'sleepQuality', bio?.sleepQuality ?? payload.sleepQuality);
-    setIfDefined(biological, 'recoveryScore', bio?.recoveryScore);
-    setIfDefined(biological, 'hormonalContext', bio?.hormonalContext ?? payload.hormonalContext);
+    setIfStale(biological, 'cnsFatigue', bio?.cnsFatigue ?? payload.cnsFatigue, 'biological.cnsFatigue');
+    setIfStale(biological, 'sleepQuality', bio?.sleepQuality ?? payload.sleepQuality, 'biological.sleepQuality');
+    setIfStale(biological, 'recoveryScore', bio?.recoveryScore, 'biological.recoveryScore');
+    setIfStale(biological, 'hormonalContext', bio?.hormonalContext ?? payload.hormonalContext, 'biological.hormonalContext');
 
-    setIfDefined(emotional, 'emotionalResilience', emo?.emotionalResilience ?? payload.emotionalResilience);
-    setIfDefined(emotional, 'stressLoad', emo?.stressLoad);
-    setIfDefined(emotional, 'moodTrend', emo?.moodTrend);
+    setIfStale(emotional, 'emotionalResilience', emo?.emotionalResilience ?? payload.emotionalResilience, 'emotional.emotionalResilience');
+    setIfStale(emotional, 'stressLoad', emo?.stressLoad, 'emotional.stressLoad');
+    setIfStale(emotional, 'moodTrend', emo?.moodTrend, 'emotional.moodTrend');
     const traumaMarkers = safeStringArray(emo?.traumaMarkers ?? payload.traumaMarkers);
-    if (traumaMarkers !== undefined) {
+    if (traumaMarkers !== undefined && isStale('emotional.traumaMarkers')) {
       emotional.traumaMarkers = traumaMarkers;
     }
 
-    setIfDefined(cognitive, 'energyBudget', cog?.energyBudget);
-    setIfDefined(cognitive, 'focusScore', cog?.focusScore);
-    setIfDefined(cognitive, 'activeLoad', cog?.activeLoad);
-    setIfDefined(cognitive, 'researchLoad', cog?.researchLoad);
+    setIfStale(cognitive, 'energyBudget', cog?.energyBudget, 'cognitive.energyBudget');
+    setIfStale(cognitive, 'focusScore', cog?.focusScore, 'cognitive.focusScore');
+    setIfStale(cognitive, 'activeLoad', cog?.activeLoad, 'cognitive.activeLoad');
+    setIfStale(cognitive, 'researchLoad', cog?.researchLoad, 'cognitive.researchLoad');
+    setIfStale(cognitive, 'planningLoad', cog?.planningLoad, 'cognitive.planningLoad');
+    setIfStale(cognitive, 'taskCompletionRate', cog?.taskCompletionRate, 'cognitive.taskCompletionRate');
+    setIfStale(cognitive, 'interestDiversity', cog?.interestDiversity, 'cognitive.interestDiversity');
 
-    setIfDefined(resource, 'financialFriction', res?.financialFriction);
-    setIfDefined(resource, 'resonanceROI', res?.resonanceROI);
+    setIfStale(planning, 'streakHealth', pln?.streakHealth, 'planning.streakHealth');
+    setIfStale(planning, 'deadlinePressure', pln?.deadlinePressure, 'planning.deadlinePressure');
+
+    setIfStale(resource, 'financialFriction', res?.financialFriction, 'resource.financialFriction');
+    setIfStale(resource, 'resonanceROI', res?.resonanceROI, 'resource.resonanceROI');
 
     const compactedPatch: NeuralStateVectorPatch = {
       ...(Object.keys(biological).length ? { biological: biological as NeuralStateVectorPatch['biological'] } : {}),
       ...(Object.keys(emotional).length ? { emotional: emotional as NeuralStateVectorPatch['emotional'] } : {}),
       ...(Object.keys(cognitive).length ? { cognitive: cognitive as NeuralStateVectorPatch['cognitive'] } : {}),
+      ...(Object.keys(planning).length ? { planning: planning as NeuralStateVectorPatch['planning'] } : {}),
       ...(Object.keys(resource).length ? { resource: resource as NeuralStateVectorPatch['resource'] } : {}),
-      ...(traumaMarkers !== undefined ? { traumaMarkers } : {})
+      ...(traumaMarkers !== undefined && isStale('emotional.traumaMarkers') ? { traumaMarkers } : {})
     };
+
+    if (Object.keys(compactedPatch).length === 0) {
+      console.warn('[sync_vitals] All fields fresh — no updates applied.');
+      return;
+    }
 
     await updateGlobalSoul(compactedPatch);
   });

@@ -4,6 +4,7 @@ import { LayoutList, Share2, Box, Activity, Shield, Sparkles, Lock } from 'lucid
 import { cn } from '@/lib/utils';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralIntegrity } from '@/core/components/NeuralIntegrity';
+import { TrendArrow, type TrendDirection } from '@/core/components/TrendArrow';
 import type { ReactiveGaugeProps } from '../constants';
 import type { AuthMode } from '@/core/components/UnifiedAuthModal';
 import type { ModuleId } from '@/lib/module-manifest';
@@ -72,7 +73,7 @@ export function HubViewSwitcher({ viewMode, setViewMode }: HubViewSwitcherProps)
 
 // --- Reactive Gauge with progress bar ---
 
-export function ReactiveGauge({ label, value, colorClass, icon: Icon }: ReactiveGaugeProps) {
+export function ReactiveGauge({ label, value, colorClass, icon: Icon, trend }: ReactiveGaugeProps & { trend?: TrendDirection }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const prevValue = useRef(value);
   const isEmpty = value === null || value === undefined;
@@ -101,11 +102,12 @@ export function ReactiveGauge({ label, value, colorClass, icon: Icon }: Reactive
         <Icon className="w-3 h-3" /> {label}
       </span>
       <span className={cn(
-        "text-2xl font-bold leading-none transition-all duration-300",
+        "text-2xl font-bold leading-none transition-all duration-300 flex items-center gap-1.5",
         isEmpty ? "text-white/40" : colorClass,
         !isEmpty && isSyncing && "animate-pulse scale-110 blur-[1px] brightness-150"
       )}>
         {displayValue}
+        {trend && !isEmpty && <TrendArrow trend={trend} size="sm" />}
       </span>
       {/* Progress bar */}
       <div className="h-1 w-full bg-white/5 rounded-full mt-2 overflow-hidden">

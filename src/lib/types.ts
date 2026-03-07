@@ -5,15 +5,15 @@ export type GenderPersonality = 'female' | 'male' | 'non-binary' | 'gender-fluid
 export interface AgentPersonalityProvision {
   orchestratorAlias: string;
   moduleAliases: {
-    therapy: string;
-    trainer: string;
+    agnes: string;
+    titan: string;
     ledger: string;
     [key: string]: string;
   };
-  moduleGenderProfiles: {
+  agentGenders: {
     orchestrator: GenderPersonality;
-    therapy: GenderPersonality;
-    trainer: GenderPersonality;
+    agnes: GenderPersonality;
+    titan: GenderPersonality;
     ledger: GenderPersonality;
     [key: string]: GenderPersonality;
   };
@@ -86,6 +86,19 @@ export interface NeuralStateVector {
     focusScore?: number | null;
     activeLoad?: number | null;
     researchLoad?: number | null;
+    /** Atlas-owned: open loop count + planning complexity (0-10). High (>8) triggers plan compression. */
+    planningLoad?: number | null;
+    /** Atlas-owned: rolling 7-day ratio of completed tasks to scheduled tasks (0.0–1.0). */
+    taskCompletionRate?: number | null;
+    /** Scout-owned: breadth of active research interests (0-10). Low diversity may indicate hyperfocus. */
+    interestDiversity?: number | null;
+  };
+  /** Atlas-owned planning domain — habit/deadline health metrics. */
+  planning: {
+    /** Composite habit streak health (0-10). Drop >3 in 24h triggers STREAK_BROKEN cascade. */
+    streakHealth?: number | null;
+    /** Urgency pressure from nearest deadlines (0-10). ≥8 triggers DEADLINE_CRUNCH cascade. */
+    deadlinePressure?: number | null;
   };
   resource: {
     financialFriction?: number | null;
@@ -104,8 +117,9 @@ export type NeuralStateVectorPatch = {
   biological?: Partial<NeuralStateVector['biological']>;
   emotional?: Partial<NeuralStateVector['emotional']>;
   cognitive?: Partial<NeuralStateVector['cognitive']>;
+  planning?: Partial<NeuralStateVector['planning']>;
   resource?: Partial<NeuralStateVector['resource']>;
-} & Partial<Omit<NeuralStateVector, 'biological' | 'emotional' | 'cognitive' | 'resource'>>;
+} & Partial<Omit<NeuralStateVector, 'biological' | 'emotional' | 'cognitive' | 'planning' | 'resource'>>;
 
 export interface GlobalProjection {
   lastSync: string;
@@ -149,7 +163,9 @@ export type SpineEventType =
   | 'FLATTEN_ENERGY_WAVE'
   | 'RECOVERY_AVAILABLE'
   | 'BURNOUT_WARNING'
+  /** @deprecated Sunset after 90 days — use BLOCK_HIGH_INTENSITY instead */
   | 'CLEARANCE_DENIED'
+  /** @deprecated Sunset after 90 days — use BLOCK_HIGH_INTENSITY instead */
   | 'CLEARANCE_GRANTED'
   | 'COGNITIVE_OVERLOAD'
   | 'SECURITY_POLICY_UPDATED'
@@ -160,7 +176,19 @@ export type SpineEventType =
   | 'DRAFT_DISMISSED'
   | 'SESSION_STARTED'
   | 'SESSION_ENDED'
-  | 'MODULE_DELEGATED';
+  | 'MODULE_DELEGATED'
+  | 'PLANNING_OVERLOAD'
+  | 'DEADLINE_CRUNCH'
+  | 'COMPOUND_STRESS'
+  | 'CRISIS_MODE'
+  | 'EXECUTION_COLLAPSE'
+  | 'STREAK_BROKEN'
+  | 'TASK_COMPLETED'
+  | 'DEADLINE_APPROACHING'
+  | 'HABIT_STREAK_BROKEN'
+  | 'WEEKLY_REVIEW_COMPLETE'
+  | 'DELEGATION_REQUEST'
+  | 'NSV_CALIBRATION_REQUEST';
 
 export interface SpineEvent {
   id: string;
@@ -185,9 +213,15 @@ export interface ToolCall {
   };
 }
 
+export type MessageContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string; detail?: 'low' | 'high' | 'auto' } };
+
+export type MessageContent = string | MessageContentPart[];
+
 export interface Message {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string;
+  content: MessageContent;
   timestamp?: string;
   tool_calls?: ToolCall[];
   tool_call_id?: string;
@@ -203,16 +237,52 @@ export interface ActiveSessionState {
   isGuestTrial: boolean;
 }
 
-// --- Domain Specific: Trainer (Consolidated) ---
+// --- Domain Specific: Soma/Medical Records (absorbed into Titan) ---
 
-export type TrainerPrivacyLevel = 'basic' | 'complete';
+export interface BiomarkerRecord {
+  id: string;
+  name: string;
+  value: number | string;
+  unit?: string;
+  source?: string;
+  recordedAt: string;
+}
 
-export interface TrainerSupplement {
+export interface ClearanceRecord {
+  id: string;
+  activity: string;
+  status: 'granted' | 'denied' | 'conditional';
+  reason: string;
+  issuedAt: string;
+}
+
+export interface LabSummaryRecord {
+  id: string;
+  panel: string;
+  findings: string[];
+  flags: string[];
+  recordedAt: string;
+}
+
+export interface MedicalImageAnalysis {
+  id: string;
+  analyzedAt: string;
+  reportType: string;
+  sourceLabel: string;
+  biomarkerCount: number;
+  clinicalFlags: Array<{ flag: string; severity: string }>;
+}
+
+// --- Domain Specific: Titan (Consolidated) ---
+
+export type TitanPrivacyLevel = 'basic' | 'complete';
+
+export interface TitanSupplement {
   name: string;
   category?: string;
 }
 
-export interface TrainerMacroEstimate {
+export interface TitanMacroEstimate {
   calories?: number;
   protein?: number;
   carbs?: number;
@@ -220,15 +290,15 @@ export interface TrainerMacroEstimate {
   source?: string;
 }
 
-export interface TrainerNutrition {
+export interface TitanNutrition {
   dietNotes?: string;
-  supplements?: TrainerSupplement[];
-  macroEstimate?: TrainerMacroEstimate;
+  supplements?: TitanSupplement[];
+  macroEstimate?: TitanMacroEstimate;
   mealsPerDay?: number;
   [key: string]: unknown;
 }
 
-export interface TrainerActivity {
+export interface TitanActivity {
   activityLevel?: string;
   workoutsPerWeek?: number;
   sleepHours?: number;
@@ -239,7 +309,7 @@ export interface TrainerActivity {
   [key: string]: unknown;
 }
 
-export interface TrainerHistory {
+export interface TitanHistory {
   yearsTraining?: number;
   injuries?: string[];
   goals?: string[];
@@ -247,18 +317,28 @@ export interface TrainerHistory {
   [key: string]: unknown;
 }
 
-export interface TrainerProfile {
+export interface TitanProfile {
   onboardingComplete: boolean;
-  privacyLevel: TrainerPrivacyLevel;
+  privacyLevel: TitanPrivacyLevel;
   trackingLevel: 'standard' | 'indepth';
-  nutrition: TrainerNutrition;
-  activity: TrainerActivity;
-  history: TrainerHistory;
+  nutrition: TitanNutrition;
+  activity: TitanActivity;
+  history: TitanHistory;
   summary: string;
   routines: Routine[];
   createdAt: string;
   updatedAt: string;
   traits?: string[];
+  // --- Absorbed from SomaProfile ---
+  medicalOnboardingComplete?: boolean;
+  knownConditions: string[];
+  medications: string[];
+  allergies: string[];
+  biomarkers: BiomarkerRecord[];
+  labSummaries: LabSummaryRecord[];
+  clearances: ClearanceRecord[];
+  medicalImageAnalyses: MedicalImageAnalysis[];
+  medicalSummary?: string;
   // Transient/Legacy compat for prompts
   name?: string;
   gender?: string;

@@ -14,14 +14,14 @@ import { requiresModuleOnboarding } from '@/lib/constants';
 type ModuleHealth = 'complete' | 'pending' | 'unknown';
 
 const MODULE_STORAGE_MAP: Record<string, { collection: string; guestKey?: string }> = {
-  therapy: { collection: 'therapist_profiles', guestKey: 'agnes_therapy_profile_guest' },
-  trainer: { collection: 'ai_trainers', guestKey: 'agnes_trainer_profile_guest' },
-  soma: { collection: 'soma_profiles', guestKey: 'agnes_soma_profile_guest' },
-  ledger: { collection: 'ai_ledgers', guestKey: 'agnes_ledger_profile_guest' },
-  atlas: { collection: 'atlas_profiles', guestKey: 'agnes_atlas_profile_guest' },
-  scout: { collection: 'scout_knowledge', guestKey: 'agnes_scout_profile_guest' },
-  forge: { collection: 'forge_sessions', guestKey: 'agnes_forge_profile_guest' },
-  pulse: { collection: 'pulse_profiles', guestKey: 'agnes_pulse_profile_guest' }
+  agnes: { collection: 'agnes_profiles', guestKey: 'nexus_agnes_profile_guest' },
+  titan: { collection: 'titan_profiles', guestKey: 'nexus_titan_profile_guest' },
+  soma: { collection: 'soma_profiles', guestKey: 'nexus_soma_profile_guest' },
+  ledger: { collection: 'ledger_profiles', guestKey: 'nexus_ledger_profile_guest' },
+  atlas: { collection: 'atlas_profiles', guestKey: 'nexus_atlas_profile_guest' },
+  scout: { collection: 'scout_knowledge', guestKey: 'nexus_scout_profile_guest' },
+  forge: { collection: 'forge_sessions', guestKey: 'nexus_forge_profile_guest' },
+  pulse: { collection: 'pulse_profiles', guestKey: 'nexus_pulse_profile_guest' }
 };
 
 function parseGuestOnboarding(raw: string | null): boolean {

@@ -46,8 +46,8 @@ const ORCHESTRATOR_STEPS: GuidedIntakeStep[] = [
 const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
   orchestratorAlias: 'Nexus',
   moduleAliases: {
-    therapy: 'Agnes',
-    trainer: 'Titan',
+    agnes: 'Agnes',
+    titan: 'Titan',
     soma: 'Soma',
     ledger: 'Ledger',
     atlas: 'Atlas',
@@ -55,10 +55,10 @@ const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
     forge: 'Forge',
     pulse: 'Pulse'
   },
-  moduleGenderProfiles: {
+  agentGenders: {
     orchestrator: 'female',
-    therapy: 'female',
-    trainer: 'female',
+    agnes: 'female',
+    titan: 'female',
     soma: 'female',
     ledger: 'female',
     atlas: 'female',
@@ -106,9 +106,9 @@ export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: Or
           ...DEFAULT_PERSONALITY.moduleAliases,
           ...(existingProvision.moduleAliases || {})
         },
-        moduleGenderProfiles: {
-          ...DEFAULT_PERSONALITY.moduleGenderProfiles,
-          ...(existingProvision.moduleGenderProfiles || {})
+        agentGenders: {
+          ...DEFAULT_PERSONALITY.agentGenders,
+          ...(existingProvision.agentGenders || {})
         },
         personaOverlays: existingProvision.personaOverlays || {}
     };
@@ -198,9 +198,9 @@ export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: Or
           ...DEFAULT_PERSONALITY.moduleAliases,
           ...(existingProvision.moduleAliases || {})
         },
-        moduleGenderProfiles: {
-          ...DEFAULT_PERSONALITY.moduleGenderProfiles,
-          ...(existingProvision.moduleGenderProfiles || {})
+        agentGenders: {
+          ...DEFAULT_PERSONALITY.agentGenders,
+          ...(existingProvision.agentGenders || {})
         },
         personaOverlays: existingProvision.personaOverlays || {}
       };

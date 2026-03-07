@@ -1,6 +1,7 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import {
   FinancialPlan,
+  DocumentAnalysis,
   LedgerIntakeProfile,
   loadLedgerProfile,
   saveLedgerProfile
@@ -127,6 +128,57 @@ export function registerLedgerActions() {
       const next: LedgerIntakeProfile = {
         ...profile,
         summary: payload.summary.trim(),
+        updatedAt: new Date().toISOString()
+      };
+
+      ensureActivePlan(next);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+    },
+
+    analyze_financial_document: async ({ userId, encryptionKey, payload }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      // Extract vision LLM results from payload
+      const monthlyIncome = parseNumber(payload?.monthlyIncome, profile.monthlyIncome);
+      const currency = typeof payload?.currency === 'string' && payload.currency.trim() ? payload.currency : profile.currency;
+      const fixedExpenses = Array.isArray(payload?.fixedExpenses) ? payload.fixedExpenses : [];
+      const variableExpenses = Array.isArray(payload?.variableExpenses) ? payload.variableExpenses : [];
+      const transactions = Array.isArray(payload?.transactions) ? payload.transactions : [];
+
+      // Record analysis metadata
+      const analysis: DocumentAnalysis = {
+        id: crypto.randomUUID(),
+        analyzedAt: new Date().toISOString(),
+        periodLabel: typeof payload?.periodLabel === 'string' ? payload.periodLabel : 'Uploaded Statement',
+        transactionCount: transactions.length
+      };
+
+      // Build fixed and variable expense items from extracted data
+      const newFixedExpenses = fixedExpenses
+        .filter((e: unknown) => e && typeof e === 'object')
+        .map((e: Record<string, unknown>, i: number) => ({
+          id: crypto.randomUUID(),
+          label: typeof e.description === 'string' ? e.description : `Fixed Expense ${i + 1}`,
+          amount: parseNumber(e.amount, 0)
+        }));
+
+      const newVariableExpenses = variableExpenses
+        .filter((e: unknown) => e && typeof e === 'object')
+        .map((e: Record<string, unknown>, i: number) => ({
+          id: crypto.randomUUID(),
+          label: typeof e.description === 'string' ? e.description : `Variable Expense ${i + 1}`,
+          amount: parseNumber(e.amount, 0)
+        }));
+
+      // Update profile
+      const next: LedgerIntakeProfile = {
+        ...profile,
+        monthlyIncome: monthlyIncome > 0 ? monthlyIncome : profile.monthlyIncome,
+        currency,
+        fixedExpenses: [...newFixedExpenses, ...profile.fixedExpenses].slice(0, 100),
+        variableExpenses: [...newVariableExpenses, ...profile.variableExpenses].slice(0, 100),
+        lastDocumentAnalysis: analysis,
         updatedAt: new Date().toISOString()
       };
 

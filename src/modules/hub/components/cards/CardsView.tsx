@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toneClass, toneTextClass, CORE_MODULES, type ModuleCardProps } from '../../constants';
+import { DailyBrief } from '../DailyBrief';
 
 export const ModuleCard = React.memo(function ModuleCard({
   title, icon: Icon, color, isLocked, onClick, description, stat, isPlugin
@@ -87,6 +88,9 @@ export function CardsView({ modules, moduleAccess, moduleStats, displayNames, on
       className="flex-1 pointer-events-auto overflow-y-auto no-scrollbar pt-28 px-6 pb-40 flex flex-col"
     >
       <div className="flex-1 flex flex-col justify-center max-w-[1200px] mx-auto w-full mb-20">
+        {/* Daily Brief — Wellness at a Glance */}
+        <DailyBrief />
+
         <div className="flex items-center gap-6 mb-10" role="heading" aria-level={2}>
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" aria-hidden="true" />
           <h2 className="text-[11px] font-black uppercase tracking-[0.6em] text-white/60 italic drop-shadow-sm">Soul Core Interface</h2>

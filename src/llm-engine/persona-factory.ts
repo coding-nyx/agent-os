@@ -1,10 +1,10 @@
-import { CoreUserProfile, GenderPersonality, GlobalProjection } from '../lib/types';
+import { PersonaUserProfile, PersonaGenderPersonality, PersonaGlobalProjection } from './types';
 
 export interface PersonaConfig {
   moduleId: string;
   baseRole: string;
-  userProfile: CoreUserProfile | null;
-  globalSoul: GlobalProjection | null;
+  userProfile: PersonaUserProfile | null;
+  globalSoul: PersonaGlobalProjection | null;
 }
 
 function sanitizeForPrompt(value: string, maxLen: number): string {
@@ -20,7 +20,7 @@ export const PersonaFactory = {
       globalSoul.displayNames?.[moduleId] || provision.orchestratorAlias,
       60
     );
-    const agentGender = globalSoul.agentGenders?.[moduleId] || provision.moduleGenderProfiles.orchestrator;
+    const agentGender = globalSoul.agentGenders?.[moduleId] || provision.agentGenders.orchestrator;
 
     const userPreferredName = sanitizeForPrompt(userProfile.preferredName || 'the user', 50);
     const userPronouns = sanitizeForPrompt(userProfile.pronouns || 'they/them', 30);
@@ -31,7 +31,7 @@ export const PersonaFactory = {
       male: "Your tone is direct, stoic, and grounded. Use masculine-coded linguistic markers where appropriate for the persona.",
       'non-binary': "Your tone is balanced, inclusive, and neutral. Avoid gendered linguistic markers.",
       'gender-fluid': "Your tone is adaptive and expressive, shifting naturally between empathetic and direct styles."
-    }[agentGender as GenderPersonality] || "";
+    }[agentGender as PersonaGenderPersonality] || "";
 
     const identityContext = `
 [IDENTITY_SYNC]

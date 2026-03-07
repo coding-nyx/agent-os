@@ -10,13 +10,17 @@ interface NeuralInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export function NeuralInput({ 
   label, 
   icon, 
-  className, 
+  className,
+  id: externalId,
   ...props 
 }: NeuralInputProps) {
+  const autoId = React.useId();
+  const id = externalId ?? autoId;
+
   return (
     <div className="space-y-2 w-full">
       {label && (
-        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-4 italic">
+        <label htmlFor={id} className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-4 italic">
           {label}
         </label>
       )}
@@ -27,6 +31,8 @@ export function NeuralInput({
           </div>
         )}
         <input
+          id={id}
+          aria-label={!label ? props.placeholder ?? props.name : undefined}
           className={cn(
             'w-full bg-black/40 border border-white/10 rounded-2xl h-12 px-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300',
             icon && 'pl-12',

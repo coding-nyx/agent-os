@@ -38,7 +38,7 @@ export function NeuralButton({
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       className={cn(
-        'relative font-black uppercase italic tracking-[0.2em] rounded-2xl border transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed',
+        'relative font-black uppercase italic tracking-[0.2em] rounded-2xl border transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-black focus-visible:outline-none',
         variants[variant],
         sizes[size],
         className

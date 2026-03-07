@@ -80,10 +80,13 @@ const NodeCard = React.memo(function NodeCard({
           )}
         </AnimatePresence>
 
-        {/* Connector dot */}
+        {/* Connector dot — faces toward center */}
         <div className={cn(
-          "absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full transition-all duration-500",
-          isLeft ? "-right-0.75" : "-left-0.75",
+          "absolute w-1.5 h-1.5 rounded-full transition-all duration-500",
+          // Position dot on the edge closest to center (50,50)
+          Math.abs(node.x - 50) > Math.abs(node.y - 50)
+            ? cn("top-1/2 -translate-y-1/2", isLeft ? "-right-0.5" : "-left-0.5")
+            : cn("left-1/2 -translate-x-1/2", node.y < 50 ? "-bottom-0.5" : "-top-0.5"),
           isHovered ? "bg-white scale-125 shadow-[0_0_8px_white]" : "bg-white/20"
         )} />
       </div>
@@ -122,7 +125,7 @@ export function GraphView({
         />
         <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0px,transparent_60%)]" />
 
-        <svg className="absolute inset-0 w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        <svg className="absolute inset-0 w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
           <defs>
             <linearGradient id="edge-grad-left" x1="1" y1="0.5" x2="0" y2="0.5">
               <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4" />

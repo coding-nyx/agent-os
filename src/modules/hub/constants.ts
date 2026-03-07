@@ -1,6 +1,6 @@
 export type StatusTone = 'good' | 'warn' | 'bad' | 'neutral';
 
-export const CORE_MODULES = ['therapy', 'trainer', 'soma', 'ledger'];
+export const CORE_MODULES = ['agnes', 'titan', 'ledger'];
 
 export const toneClass = (tone: StatusTone) => {
   switch (tone) {
@@ -50,7 +50,7 @@ export interface FloatingPodProps {
   title: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   onClick: () => void;
-  modelType: 'eve' | 'walle' | 'ledger' | 'soma' | 'atlas' | 'scout' | 'forge' | 'pulse' | 'basic';
+  modelType: 'eve' | 'walle' | 'ledger' | 'atlas' | 'scout' | 'forge' | 'pulse' | 'basic';
   soul: import('@/lib/types').GlobalProjection | null;
   isLocked: boolean;
   isPlugin: boolean;

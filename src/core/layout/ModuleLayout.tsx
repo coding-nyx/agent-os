@@ -66,8 +66,9 @@ export function ModuleLayout({ children, title, themeColor, onExit, hideBack = f
   };
 
   const finalizeExit = () => {
+    setIsSyncing(false);
     if (onExit) onExit();
-    else navigate('/hub');
+    else navigate('/orchestrator');
   };
 
   const colors = {
@@ -117,9 +118,9 @@ export function ModuleLayout({ children, title, themeColor, onExit, hideBack = f
               <ArrowLeft className="w-5 h-5 text-white/40 group-hover:text-white" />
             </button>
           )}
-          <div className="flex flex-col hidden sm:flex">
-            <h1 className={`text-lg md:text-xl font-black italic tracking-[0.3em] uppercase ${theme.accent} truncate max-w-[150px] md:max-w-xs`}>{title}</h1>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col">
+            <h1 className={`text-sm sm:text-lg md:text-xl font-black italic tracking-[0.2em] sm:tracking-[0.3em] uppercase ${theme.accent} truncate max-w-[120px] sm:max-w-[150px] md:max-w-xs`}>{title}</h1>
+            <div className="hidden sm:flex items-center gap-2">
                 <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[7px] font-bold text-white/40 uppercase tracking-[0.2em] italic truncate">Link Stable // Secure Tunnel</span>
             </div>

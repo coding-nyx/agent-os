@@ -12,21 +12,17 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // For now, super-admin-uid or any other admin logic
-      return isAuthenticated() && request.auth.uid == 'super-admin-uid';
+      // Check for custom claims admin role
+      return isAuthenticated() && request.auth.token.admin == true;
     }
 
     // Vault and Core User Data
     match /users/{userId} {
       allow read, write: if isOwner(userId);
-
-      // Module sessions (Android client chat)
-      match /modules/{moduleId}/sessions/{sessionId} {
+      
+      // Explicitly allow all subcollections/paths under users/{userId}
+      match /{allPaths=**} {
         allow read, write: if isOwner(userId);
-
-        match /messages/{messageId} {
-          allow read, write: if isOwner(userId);
-        }
       }
     }
 
@@ -45,52 +41,52 @@ service cloud.firestore {
       allow read, write, delete: if isAuthenticated() && docId.matches('^' + request.auth.uid + '_.+$');
     }
     
-    // Therapy Module
-    match /therapist_profiles/{userId} {
+    // Agnes (Emotional Domain)
+    match /agnes_profiles/{userId} {
       allow read, write: if isOwner(userId);
     }
     
-    // AI Trainer Module
-    match /ai_trainers/{userId} {
+    // Titan (Performance Domain)
+    match /titan_profiles/{userId} {
       allow read, write: if isOwner(userId);
     }
 
-    // Soma Module
+    // Soma (Biological Domain)
     match /soma_profiles/{userId} {
       allow read, write: if isOwner(userId);
     }
 
-    // Ledger Module
-    match /ai_ledgers/{userId} {
+    // Ledger (Financial Domain)
+    match /ledger_profiles/{userId} {
       allow read, write: if isOwner(userId);
     }
 
-    // Atlas Module
+    // Atlas (Cognitive Domain)
     match /atlas_profiles/{userId} {
       allow read, write: if isOwner(userId);
     }
 
-    // Scout Module
+    // Scout (Research Extension)
     match /scout_knowledge/{userId} {
       allow read, write: if isOwner(userId);
     }
 
-    // Forge Module
+    // Forge (Technical Extension)
     match /forge_sessions/{userId} {
       allow read, write: if isOwner(userId);
     }
 
-    // Pulse Module
+    // Pulse (Interest Extension)
     match /pulse_profiles/{userId} {
       allow read, write: if isOwner(userId);
     }
     
-    // Global Soul (Integration)
+    // Global Soul (System-wide State)
     match /global_souls/{userId} {
       allow read, write: if isOwner(userId);
     }
 
-    // Semantic Memory
+    // Semantic Memory (Long-term Facts)
     match /semantic_memory/{userId} {
       allow read, write: if isOwner(userId);
 
@@ -99,7 +95,7 @@ service cloud.firestore {
       }
     }
 
-    // Spine Event Log
+    // Spine Event Log (Real-time Bus)
     match /spine_events/{userId} {
       allow read, write: if isOwner(userId);
 
@@ -108,47 +104,31 @@ service cloud.firestore {
       }
     }
 
-    // Bridge Configuration
-    match /bridge_config/{userId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    // Belief Graphs
+    // Belief Graphs (Agnes-specific visual data)
     match /belief_graphs/{userId} {
       allow read, write: if isOwner(userId);
     }
 
-    // Training Logs
-    match /training_logs/{userId} {
-      allow read, write: if isOwner(userId);
-    }
-    
-    // Guest Shadows (for transient state)
-    match /guest_shadows/{userId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    // Titan Fitness / Trainer Portfolio Module
-    match /trainers/{userId} {
-      // Anyone can read trainer profiles (they are public portfolios)
+    // Legacy Portfolio / Public Profiles (Titan Branding)
+    match /titan_portfolios/{userId} {
+      // Anyone can read public portfolios
       allow read: if true; 
-      // Only the trainer themselves can write to their root doc
+      // Only the owner can write
       allow write: if isOwner(userId);
 
-      // Subcollections under a trainer
       match /{subcollection}/{docId} {
         allow read: if true;
         allow write: if isOwner(userId);
       }
     }
     
-    // Platform Settings (Landing pages, global testimonials)
+    // Platform Settings (Admin-only configurations)
     match /platform_settings/{document=**} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Default deny
+    // Default deny all other documents
     match /{document=**} {
       allow read, write: if false;
     }

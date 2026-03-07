@@ -9,21 +9,18 @@ const COLLECTION = 'users';
 const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
   orchestratorAlias: 'Nexus',
   moduleAliases: {
-    therapy: 'Agnes',
-    trainer: 'Titan',
+    agnes: 'Agnes',
+    titan: 'Titan',
     ledger: 'Ledger',
-    soma: 'Soma',
     atlas: 'Atlas',
     scout: 'Scout',
     forge: 'Forge',
-    pulse: 'Pulse'
   },
-  moduleGenderProfiles: {
+  agentGenders: {
     orchestrator: 'female',
-    therapy: 'female',
-    trainer: 'female',
+    agnes: 'female',
+    titan: 'female',
     ledger: 'female',
-    soma: 'female',
     atlas: 'female',
     scout: 'female',
     forge: 'female',
@@ -93,7 +90,8 @@ export const CoreProfileService = {
         });
       },
       (error) => {
-        console.error('Profile subscription error:', error);
+        console.warn('Profile subscription encountered a permission delay or missing doc. Initializing fallback.', error);
+        onUpdate(null);
       }
     );
 
@@ -172,10 +170,10 @@ export const CoreProfileService = {
       });
     }
 
-    if (personality.moduleGenderProfiles) {
-      Object.entries(personality.moduleGenderProfiles).forEach(([key, value]) => {
+    if (personality.agentGenders) {
+      Object.entries(personality.agentGenders).forEach(([key, value]) => {
         if (typeof value === 'string') {
-          updates[`agentPersonalityProvision.moduleGenderProfiles.${key}`] = value;
+          updates[`agentPersonalityProvision.agentGenders.${key}`] = value;
         }
       });
     }

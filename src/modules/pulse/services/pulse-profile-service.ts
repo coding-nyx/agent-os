@@ -2,7 +2,7 @@ import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
 import { readDocOnce } from '@/lib/services/firestore-once';
 
-const GUEST_PULSE_KEY = 'agnes_pulse_profile_guest';
+const GUEST_PULSE_KEY = 'nexus_pulse_profile_guest';
 
 export interface InterestNode {
   id: string;

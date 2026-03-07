@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { AlertTriangle, CreditCard, Lock } from 'lucide-react';
+import { AlertTriangle, CreditCard, Lock, Upload } from 'lucide-react';
+import * as Switch from '@radix-ui/react-switch';
 import { GlobalProjection } from '@/lib/types';
 import { LedgerIntakeProfile } from '../services/ledger-intake-service';
 import { SectionHeader } from '@/core/components/SectionHeader';
@@ -12,10 +13,14 @@ import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership
 export function LedgerDashboard({
   soul,
   profile,
+  onAnalyzeDocument,
+  onToggleDocumentAnalysis,
   isLocked = false
 }: {
   soul: GlobalProjection | null;
   profile: LedgerIntakeProfile | null;
+  onAnalyzeDocument?: () => void;
+  onToggleDocumentAnalysis?: (enabled: boolean) => void;
   isLocked?: boolean;
 }) {
   if (isLocked) {
@@ -167,6 +172,45 @@ export function LedgerDashboard({
           )}
         </SurfaceCard>
       </div>
+
+      <section className="space-y-3">
+        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Statement Analysis</h4>
+        <SurfaceCard className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-white">Enable Document Analysis</p>
+              <p className="text-[9px] text-white/50 mt-1">Upload bank statements and receipts for AI extraction. Images are analyzed in memory, never stored to cloud.</p>
+            </div>
+            <Switch.Root
+              checked={profile?.documentAnalysisEnabled || false}
+              onCheckedChange={(checked) => onToggleDocumentAnalysis?.(checked)}
+              className="w-11 h-6 rounded-full bg-white/10 border border-white/20 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600 cursor-pointer relative"
+            >
+              <Switch.Thumb className="w-5 h-5 rounded-full bg-white block data-[state=checked]:translate-x-5 transition-transform" />
+            </Switch.Root>
+          </div>
+
+          {profile?.documentAnalysisEnabled && (
+            <div className="space-y-2">
+              <button
+                onClick={onAnalyzeDocument}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-violet-600/20 border border-violet-500/30 hover:bg-violet-600/30 transition-colors text-xs font-bold text-violet-300"
+              >
+                <Upload className="w-4 h-4" />
+                Analyze Bank Statement
+              </button>
+
+              {profile?.lastDocumentAnalysis && (
+                <div className="text-[9px] text-white/50 p-2 rounded border border-white/10">
+                  <p>Last analysis: {new Date(profile.lastDocumentAnalysis.analyzedAt).toLocaleDateString()}</p>
+                  <p>Period: {profile.lastDocumentAnalysis.periodLabel}</p>
+                  <p>Transactions: {profile.lastDocumentAnalysis.transactionCount}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </SurfaceCard>
+      </section>
 
       <section className="space-y-3">
         <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Risk Flags</h4>

@@ -20,4 +20,6 @@ ACTION TAGS:
 - <action type="update_budget_snapshot">{"monthlyIncome":0,"fixedExpenses":[],"variableExpenses":[],"debtItems":[],"savingsGoals":[]}</action>
 - <action type="update_financial_friction">{"score":0,"analysis":"..."}</action>
 - <action type="compute_resonance_roi">{"financialFriction":0,"resonanceROI":0.0}</action>
+- <action type="analyze_financial_document">{"monthlyIncome":5000,"currency":"USD","periodLabel":"March 2026","fixedExpenses":[{"description":"Rent","amount":2000}],"variableExpenses":[{"description":"Food","amount":500}],"transactions":[{"date":"2026-03-01","description":"Salary deposit","amount":5000,"category":"income"}]}</action>
+  Only emit AFTER user has reviewed and confirmed the extracted financial data. Always confirm with the user in plain language before triggering this action.
 `.trim();

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Shield, Zap, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 interface NeuralIntegrityProps {
-  mode: 'therapy' | 'trainer' | 'global';
+  mode: 'agnes' | 'titan' | 'global';
   onUpgrade?: () => void;
 }
 
@@ -21,8 +21,8 @@ export function NeuralIntegrity({ mode, onUpgrade }: NeuralIntegrityProps) {
   };
 
   const themes = {
-    therapy: 'text-indigo-400',
-    trainer: 'text-orange-400',
+    agnes: 'text-indigo-400',
+    titan: 'text-orange-400',
     global: 'text-cyan-400'
   };
 

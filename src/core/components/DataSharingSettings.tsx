@@ -77,15 +77,15 @@ function buildDefaultCategories(moduleNames: Record<string, string>): DataCatego
       label: 'Sleep & Recovery',
       description: 'Sleep quality, recovery score, and CNS fatigue levels.',
       sensitivity: 'open',
-      ownerModules: ['soma', 'titan'],
+      ownerModules: ['titan'],
       metrics: ['biological.sleepQuality', 'biological.recoveryScore', 'biological.cnsFatigue'],
       shareTargets: [
-        { targetModuleId: 'agnes', enabled: true, level: 'full' },
+        { targetModuleId: 'titan', enabled: true, level: 'full' },
         { targetModuleId: 'atlas', enabled: true, level: 'full' },
         { targetModuleId: 'ledger', enabled: false, level: 'none' }
       ],
       explanations: {
-        agnes: `So ${name('agnes')} understands when fatigue is affecting your mood`,
+        titan: `So ${name('titan')} understands when fatigue is affecting your training`,
         atlas: `So ${name('atlas')} can schedule deep work when you're well-rested`,
         ledger: `So ${name('ledger')} can factor energy into financial decisions`
       }
@@ -96,17 +96,15 @@ function buildDefaultCategories(moduleNames: Record<string, string>): DataCatego
       label: 'Hormonal Context',
       description: 'Cycle phase, hormonal shifts, and related biological context.',
       sensitivity: 'sensitive',
-      ownerModules: ['soma'],
+      ownerModules: ['titan'],
       metrics: ['biological.hormonalContext'],
       shareTargets: [
         { targetModuleId: 'agnes', enabled: true, level: 'summary' },
-        { targetModuleId: 'atlas', enabled: false, level: 'none' },
-        { targetModuleId: 'titan', enabled: true, level: 'summary' }
+        { targetModuleId: 'atlas', enabled: false, level: 'none' }
       ],
       explanations: {
         agnes: `So ${name('agnes')} can adjust therapeutic approach during hormonal shifts`,
-        atlas: `So ${name('atlas')} can account for energy fluctuations`,
-        titan: `So ${name('titan')} can adjust training intensity during cycle phases`
+        atlas: `So ${name('atlas')} can account for energy fluctuations`
       }
     },
     {
@@ -119,13 +117,11 @@ function buildDefaultCategories(moduleNames: Record<string, string>): DataCatego
       metrics: ['emotional.emotionalResilience', 'emotional.stressLoad'],
       shareTargets: [
         { targetModuleId: 'titan', enabled: true, level: 'full' },
-        { targetModuleId: 'atlas', enabled: true, level: 'full' },
-        { targetModuleId: 'soma', enabled: true, level: 'full' }
+        { targetModuleId: 'atlas', enabled: true, level: 'full' }
       ],
       explanations: {
         titan: `So ${name('titan')} can dial back intensity on hard days`,
-        atlas: `So ${name('atlas')} can lighten your schedule when stress is high`,
-        soma: `So ${name('soma')} can adjust recovery recommendations`
+        atlas: `So ${name('atlas')} can lighten your schedule when stress is high`
       }
     },
     {
@@ -149,13 +145,11 @@ function buildDefaultCategories(moduleNames: Record<string, string>): DataCatego
       metrics: ['cognitive.energyBudget', 'cognitive.focusScore', 'cognitive.activeLoad', 'cognitive.researchLoad'],
       shareTargets: [
         { targetModuleId: 'agnes', enabled: true, level: 'full' },
-        { targetModuleId: 'titan', enabled: true, level: 'full' },
-        { targetModuleId: 'soma', enabled: true, level: 'full' }
+        { targetModuleId: 'titan', enabled: true, level: 'full' }
       ],
       explanations: {
         agnes: `So ${name('agnes')} understands when cognitive overload is affecting you`,
-        titan: `So ${name('titan')} can coordinate training with mental load`,
-        soma: `So ${name('soma')} can factor mental fatigue into recovery`
+        titan: `So ${name('titan')} can coordinate training with mental load`
       }
     },
     {
@@ -411,7 +405,7 @@ export function DataSharingSettings() {
         </div>
         <p className="text-xs text-white/50 leading-relaxed">
           When your modules can see each other's data, they coordinate to protect you.
-          For example: if Soma knows your stress is high, it adjusts recovery recommendations.
+          For example: if Titan knows your stress is high, it adjusts recovery recommendations.
           Turning off sharing means that module will use general defaults instead of what's
           right for <em className="text-white/60 not-italic font-bold">you</em>.
         </p>

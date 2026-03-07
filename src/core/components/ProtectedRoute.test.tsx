@@ -39,7 +39,7 @@ function renderWithRouter(initialRoute: string, children: React.ReactNode) {
         <Route path="/" element={<div data-testid="landing">Landing</div>} />
         <Route path="/orchestrator" element={<div data-testid="orchestrator">Orchestrator</div>} />
         <Route path="/hub" element={<ProtectedRoute>{children}</ProtectedRoute>} />
-        <Route path="/therapy" element={
+        <Route path="/agnes" element={
           <ProtectedRoute requireOnboarding={false}>
             {children}
           </ProtectedRoute>

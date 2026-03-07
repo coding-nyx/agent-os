@@ -1,6 +1,6 @@
 import { GuestQuota } from '../types';
 
-const STORAGE_KEY = 'agnes_guest_quota';
+const STORAGE_KEY = 'nexus_guest_quota';
 const MAX_TURNS = 10;
 
 export const GuestQuotaService = {

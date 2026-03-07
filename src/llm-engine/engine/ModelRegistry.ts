@@ -49,6 +49,7 @@ export class ModelRegistry {
     const id = m.id;
     const isFree = id.includes(':free');
     const isReasoning = id.includes('r1') || id.includes('o1') || id.includes('reasoning') || id.includes('thinking');
+    const supportsVision = id.includes('gpt-4o') || id.includes('claude-3') || id.includes('gemini');
 
     let tier = ModelTier.B_ECONOMY;
     if (isReasoning && isFree) tier = ModelTier.S_REASONING;
@@ -63,14 +64,21 @@ export class ModelRegistry {
       pricing: m.pricing,
       tier,
       isFree,
-      isReasoning
+      isReasoning,
+      supportsVision
     };
   }
 
+  static isVisionCapable(modelId: string): boolean {
+    return modelId.includes('gpt-4o') || modelId.includes('claude-3') || modelId.includes('gemini');
+  }
+
+  // TODO: getModelsByTier is currently unused outside ModelRegistry — consider removing if auto-scaling is not implemented
   static getModelsByTier(tier: ModelTier): ModelMetadata[] {
     return this.models.filter(m => m.tier === tier);
   }
 
+  // TODO: getBestModel is currently unused — consider removing if auto-scaling is not implemented
   static getBestModel(tier: ModelTier): ModelMetadata | null {
     const tierModels = this.getModelsByTier(tier);
     if (tierModels.length === 0) return null;
@@ -82,6 +90,7 @@ export class ModelRegistry {
     })[0];
   }
 
+  // TODO: getBestFreeModel is currently unused — consider removing if auto-scaling is not implemented
   static getBestFreeModel(): ModelMetadata | null {
     const freeModels = this.models.filter(m => m.isFree && m.context_length >= 16000);
     if (freeModels.length === 0) {
@@ -95,6 +104,7 @@ export class ModelRegistry {
     })[0];
   }
 
+  // TODO: getAllModels is currently unused — consider removing if auto-scaling is not implemented
   static getAllModels(): ModelMetadata[] {
     return this.models;
   }

@@ -28,7 +28,7 @@ export function NexusOverlay() {
   }, []);
 
   const handleDelegation = useCallback((path: string) => {
-    // Extract moduleId from route path (e.g., "/therapy" → "therapy")
+    // Extract moduleId from route path (e.g., "/agnes" → "agnes")
     const moduleId = path.replace(/^\//, '').split('/')[0];
     if (moduleId) {
       setSubModule({ moduleId });

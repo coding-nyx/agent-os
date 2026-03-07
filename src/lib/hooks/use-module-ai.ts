@@ -33,8 +33,18 @@ function trimToCharLimit(text: string, limit: number): string {
 
 export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, navigateTo }: UseModuleAIOptions) {
   const { streamMessage, sendMessage } = useAI();
-  const { enhanceContext, globalSoul } = useGlobalSoul();
+  const { enhanceContext, enhanceContextForModule, globalSoul } = useGlobalSoul();
   const { user, isGuest, profile } = useAuth();
+
+  // Resolve which context enhancer to use:
+  // - orchestrator (Nexus) gets full NSV via enhanceContext
+  // - all other modules get filtered NSV via enhanceContextForModule
+  const resolvedEnhanceContext = useCallback((context: Parameters<typeof enhanceContext>[0]) => {
+    if (moduleId === 'orchestrator') {
+      return enhanceContext(context);
+    }
+    return enhanceContextForModule(context, moduleId as import('@/lib/module-manifest').ModuleId);
+  }, [moduleId, enhanceContext, enhanceContextForModule]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -45,6 +55,9 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
   const sessionStartRef = useRef<string>(new Date().toISOString());
   const lastRemoteSignatureRef = useRef<string | null>(null);
   const isProcessingRef = useRef(false);
+  // Tracks whether the last setMessages was from hydration (subscription echo)
+  // so the save effect can skip the redundant echo-write.
+  const hydratedFromRemoteRef = useRef(false);
   const currentAssistantMessageBodyRef = useRef('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
@@ -76,7 +89,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     userId: user?.uid,
     isGuest: !!isGuest,
     sendMessage,
-    enhanceContext,
+    enhanceContext: resolvedEnhanceContext,
     mountedRef
   });
 
@@ -102,6 +115,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
           const signature = `${session.lastMessageAt}:${session.history.length}`;
           if (signature !== lastRemoteSignatureRef.current) {
             lastRemoteSignatureRef.current = signature;
+            hydratedFromRemoteRef.current = true;
             setMessages(session.history);
             sessionStartRef.current = session.startTime || new Date().toISOString();
           }
@@ -111,7 +125,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     } else {
       // Guest/impromptu: try restoring from sessionStorage
       try {
-        const cached = sessionStorage.getItem(`agnes_session_${moduleId}`);
+        const cached = sessionStorage.getItem(`nexus_session_${moduleId}`);
         if (cached && mounted) {
           const parsed = JSON.parse(cached);
           if (parsed?.history?.length > 0) {
@@ -165,7 +179,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
 
     // Always persist to sessionStorage as a lightweight fallback
     try {
-      sessionStorage.setItem(`agnes_session_${moduleId}`, JSON.stringify({
+      sessionStorage.setItem(`nexus_session_${moduleId}`, JSON.stringify({
         history: currentMessages,
         startTime: sessionStartRef.current,
         savedAt: new Date().toISOString()
@@ -175,6 +189,13 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
 
   useEffect(() => {
     if (isHydrating || messages.length === 0) return;
+    // Skip echo-save when messages were just hydrated from Firestore — writing
+    // the same data back is a no-op that wastes a write and triggers the
+    // onSnapshot callback unnecessarily.
+    if (hydratedFromRemoteRef.current) {
+      hydratedFromRemoteRef.current = false;
+      return;
+    }
     saveTimerRef.current = setTimeout(flushActiveSession, 1500);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -271,7 +292,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
 
         const { response } = await streamMessage(
           content,
-          enhanceContext({
+          resolvedEnhanceContext({
             systemPrompt: finalSystemPrompt,
             memoryContext: [],
             summary: cappedMemorySummary || `Active session in ${moduleId}.`,
@@ -412,7 +433,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
             }).catch((e) => console.error('Failed to save completed message:', e));
           }
           try {
-            sessionStorage.setItem(`agnes_session_${moduleId}`, JSON.stringify({
+            sessionStorage.setItem(`nexus_session_${moduleId}`, JSON.stringify({
               history: localHistory,
               startTime: sessionStartRef.current,
               savedAt: new Date().toISOString()
@@ -464,7 +485,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
       isGuest,
       quota.isHardLocked,
       baseRole,
-      enhanceContext,
+      resolvedEnhanceContext,
       moduleId,
       user,
       profile,
@@ -486,7 +507,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     setMessages([]);
     sessionStartRef.current = new Date().toISOString();
     resetConsolidation();  // M-6: reset retry counter on clear
-    try { sessionStorage.removeItem(`agnes_session_${moduleId}`); } catch { /* ignore */ }
+    try { sessionStorage.removeItem(`nexus_session_${moduleId}`); } catch { /* ignore */ }
     if (user && !isGuest) {
       await ModuleMemoryService.clearActiveSession(user.uid, moduleId);
       Spine.emit({
@@ -505,7 +526,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     try {
       const { response } = await sendMessage(
         'Summarize this session in 2 supportive sentences focusing on key takeaways or health indicators.',
-        enhanceContext({
+        resolvedEnhanceContext({
           systemPrompt: 'You are an analytical supervisor.',
           memoryContext: [],
           summary: 'Summarizing.',
@@ -516,7 +537,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     } catch (e) {
       return 'Session completed and data synchronized.';
     }
-  }, [messages, sendMessage, enhanceContext]);
+  }, [messages, sendMessage, resolvedEnhanceContext]);
 
   return {
     messages,

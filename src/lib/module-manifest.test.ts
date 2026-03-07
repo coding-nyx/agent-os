@@ -54,9 +54,9 @@ describe('buildDefaultVaultLocks', () => {
     expect(locks).not.toHaveProperty('bridge');
   });
 
-  it('therapy is locked by default (mandatory + defaultLocked)', () => {
+  it('agnes is locked by default (mandatory + defaultLocked)', () => {
     const locks = buildDefaultVaultLocks();
-    expect(locks.therapy).toBe(true);
+    expect(locks.agnes).toBe(true);
   });
 
   it('soma is locked by default (defaultLocked)', () => {
@@ -69,9 +69,9 @@ describe('buildDefaultVaultLocks', () => {
     expect(locks.ledger).toBe(true);
   });
 
-  it('trainer is unlocked by default', () => {
+  it('titan is unlocked by default', () => {
     const locks = buildDefaultVaultLocks();
-    expect(locks.trainer).toBe(false);
+    expect(locks.titan).toBe(false);
   });
 
   it('atlas is unlocked by default', () => {

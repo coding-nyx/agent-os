@@ -3,7 +3,9 @@ import { GlobalProjection, NeuralStateVectorPatch } from './types';
 import { useAuth } from './auth-context';
 import { GlobalProjectionService } from './services/global-projection-service';
 import { ConversationContext } from '@/llm-engine/types';
-import { formatNSVForPrompt, normalizeNSV } from './services/nsv-service';
+import { formatNSVForPrompt, formatNSVForModulePrompt, formatNSVForAtlasPlanner, normalizeNSV } from './services/nsv-service';
+import { NSV_READ_PERMISSIONS } from './services/nsv-ownership';
+import type { ModuleId } from './module-manifest';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { getFirebase } from './firebase';
 
@@ -13,7 +15,17 @@ export interface GlobalSoulContextType {
   refreshGlobalSoul: () => Promise<void>;
   updateCrossFunctionalState: (updates: NeuralStateVectorPatch) => Promise<void>;
   updateTherapeuticBaseline: (baseline: GlobalProjection['therapeuticBaseline']) => Promise<void>;
+  /** Full NSV injection — used by Nexus (orchestrator) which requires all fields. */
   enhanceContext: (context: ConversationContext) => ConversationContext;
+  /**
+   * Filtered NSV injection — injects only the NSV fields permitted for the given module
+   * per NSV_READ_PERMISSIONS. Use this for all non-Nexus modules to enforce privacy
+   * boundaries and reduce prompt noise.
+   *
+   * Atlas receives a planning-optimised context block (formatNSVForAtlasPlanner) that
+   * includes derived directives in addition to raw field values.
+   */
+  enhanceContextForModule: (context: ConversationContext, moduleId: ModuleId) => ConversationContext;
 }
 
 const GlobalSoulContext = createContext<GlobalSoulContextType | null>(null);
@@ -51,21 +63,22 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  const hasRefreshedRef = useRef(false);
+
   useEffect(() => {
-    if (user && !authLoading) {
+    if (authLoading) return;
+
+    if (user) {
+      // Guard against double-fire when both user and profile resolve on mount
+      if (hasRefreshedRef.current) return;
+      hasRefreshedRef.current = true;
       refreshGlobalSoul();
-    } else if (!authLoading) {
+    } else {
+      hasRefreshedRef.current = false;
       setGlobalSoul(null);
       setIsLoading(false);
     }
-  }, [user, authLoading, refreshGlobalSoul]);
-
-  // Sync when profile changes (e.g. after onboarding)
-  useEffect(() => {
-    if (profile && !authLoading) {
-      refreshGlobalSoul();
-    }
-  }, [profile, authLoading, refreshGlobalSoul]);
+  }, [user, profile, authLoading, refreshGlobalSoul]);
 
   useEffect(() => {
     if (!user || authLoading) return;
@@ -73,15 +86,27 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     if (!db) return;
 
     const projectionRef = doc(db, 'global_souls', user.uid);
-    const unsubscribe = onSnapshot(projectionRef, (snapshot) => {
-      if (!snapshot.exists()) return;
-      const projection = snapshot.data() as GlobalProjection;
-      setGlobalSoul({
-        ...projection,
-        crossFunctionalState: normalizeNSV(projection.crossFunctionalState)
-      });
-      setIsLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      projectionRef, 
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setGlobalSoul(null);
+          setIsLoading(false);
+          return;
+        }
+        const projection = snapshot.data() as GlobalProjection;
+        setGlobalSoul({
+          ...projection,
+          crossFunctionalState: normalizeNSV(projection.crossFunctionalState)
+        });
+        setIsLoading(false);
+      },
+      (error) => {
+        console.warn('Global Soul subscription delay or missing doc:', error);
+        setGlobalSoul(null);
+        setIsLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [user, authLoading]);
@@ -117,9 +142,45 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
     };
   }, [globalSoul, profile]);
 
+  const enhanceContextForModule = useCallback((
+    context: ConversationContext,
+    moduleId: ModuleId
+  ): ConversationContext => {
+    if (!globalSoul) return context;
+
+    const state = globalSoul.crossFunctionalState;
+    const safeName = (profile?.preferredName || 'Unknown').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 50);
+    const safePronouns = (profile?.pronouns || 'They/Them').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 30);
+    const safeInsights = (globalSoul?.compactedInsights || []).map(i => i.slice(0, 200));
+
+    // Atlas gets a planning-optimised context block with derived directives
+    const nsvBlock = moduleId === 'atlas'
+      ? formatNSVForAtlasPlanner(state)
+      : formatNSVForModulePrompt(state, NSV_READ_PERMISSIONS[moduleId] ?? []);
+
+    // Skip appending if there's no meaningful state data for this module
+    if (!nsvBlock) return context;
+
+    const moduleContext = [
+      '[SYSTEM CONTEXT]',
+      `- Preferred Name: ${safeName}`,
+      `- Pronouns: ${safePronouns}`,
+      nsvBlock,
+      safeInsights.length > 0
+        ? `ACTIVE TRENDS:\n${safeInsights.map(i => `- ${i}`).join('\n')}`
+        : ''
+    ].filter(Boolean).join('\n');
+
+    return {
+      ...context,
+      systemPrompt: `${context.systemPrompt}\n\n${moduleContext}`
+    };
+  }, [globalSoul, profile]);
+
   return (
     <GlobalSoulContext.Provider value={{
-      globalSoul, isLoading: isLoading || authLoading, refreshGlobalSoul, updateCrossFunctionalState, updateTherapeuticBaseline, enhanceContext
+      globalSoul, isLoading: isLoading || authLoading, refreshGlobalSoul, updateCrossFunctionalState,
+      updateTherapeuticBaseline, enhanceContext, enhanceContextForModule
     }}>
       {children}
     </GlobalSoulContext.Provider>

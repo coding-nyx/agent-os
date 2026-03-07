@@ -11,14 +11,14 @@ import {
 import type { NeuralStateVector } from '@/lib/types';
 
 describe('NSV_OWNERSHIP map', () => {
-  it('therapy owns emotional metrics', () => {
-    expect(NSV_OWNERSHIP.therapy).toContain('emotional.emotionalResilience');
-    expect(NSV_OWNERSHIP.therapy).toContain('emotional.stressLoad');
+  it('agnes owns emotional metrics', () => {
+    expect(NSV_OWNERSHIP.agnes).toContain('emotional.emotionalResilience');
+    expect(NSV_OWNERSHIP.agnes).toContain('emotional.stressLoad');
   });
 
-  it('trainer owns biological fatigue/sleep', () => {
-    expect(NSV_OWNERSHIP.trainer).toContain('biological.cnsFatigue');
-    expect(NSV_OWNERSHIP.trainer).toContain('biological.sleepQuality');
+  it('titan owns biological fatigue/sleep', () => {
+    expect(NSV_OWNERSHIP.titan).toContain('biological.cnsFatigue');
+    expect(NSV_OWNERSHIP.titan).toContain('biological.sleepQuality');
   });
 
   it('orchestrator owns no metrics', () => {
@@ -27,12 +27,12 @@ describe('NSV_OWNERSHIP map', () => {
 });
 
 describe('getMetricOwner', () => {
-  it('returns therapy for emotional.emotionalResilience', () => {
-    expect(getMetricOwner('emotional.emotionalResilience')).toBe('therapy');
+  it('returns agnes for emotional.emotionalResilience', () => {
+    expect(getMetricOwner('emotional.emotionalResilience')).toBe('agnes');
   });
 
-  it('returns trainer for biological.cnsFatigue', () => {
-    expect(getMetricOwner('biological.cnsFatigue')).toBe('trainer');
+  it('returns titan for biological.cnsFatigue', () => {
+    expect(getMetricOwner('biological.cnsFatigue')).toBe('titan');
   });
 
   it('returns ledger for resource.financialFriction', () => {
@@ -48,7 +48,11 @@ describe('getMetricValue', () => {
   const nsv: NeuralStateVector = {
     biological: { cnsFatigue: 5, sleepQuality: 7, recoveryScore: null, hormonalContext: null },
     emotional: { emotionalResilience: 8, stressLoad: 3, moodTrend: 'stable', traumaMarkers: null },
-    cognitive: { energyBudget: 6, focusScore: 7, activeLoad: 4, researchLoad: 2 },
+    cognitive: { 
+      energyBudget: 6, focusScore: 7, activeLoad: 4, researchLoad: 2,
+      planningLoad: 3, taskCompletionRate: 0.8, interestDiversity: 5
+    },
+    planning: { streakHealth: 9, deadlinePressure: 2 },
     resource: { financialFriction: 2, resonanceROI: 0.8 },
     lastUpdated: {},
     cnsFatigue: 5,
@@ -72,22 +76,26 @@ describe('getMetricValue', () => {
 
 describe('getUncalibratedOwnedMetrics', () => {
   it('returns all owned metrics when NSV is null', () => {
-    const result = getUncalibratedOwnedMetrics(null, 'therapy');
-    expect(result).toEqual(NSV_OWNERSHIP.therapy);
+    const result = getUncalibratedOwnedMetrics(null, 'agnes');
+    expect(result).toEqual(NSV_OWNERSHIP.agnes);
   });
 
   it('returns only null/undefined metrics', () => {
     const nsv: NeuralStateVector = {
       biological: { cnsFatigue: 5, sleepQuality: null, recoveryScore: null, hormonalContext: null },
       emotional: { emotionalResilience: 8, stressLoad: null, moodTrend: null, traumaMarkers: null },
-      cognitive: { energyBudget: null, focusScore: null, activeLoad: null, researchLoad: null },
+      cognitive: { 
+        energyBudget: null, focusScore: null, activeLoad: null, researchLoad: null,
+        planningLoad: null, taskCompletionRate: null, interestDiversity: null
+      },
+      planning: { streakHealth: null, deadlinePressure: null },
       resource: { financialFriction: null, resonanceROI: null },
       lastUpdated: {},
       cnsFatigue: 5,
       emotionalResilience: 8,
       sleepQuality: null,
     };
-    const result = getUncalibratedOwnedMetrics(nsv, 'trainer');
+    const result = getUncalibratedOwnedMetrics(nsv, 'titan');
     // cnsFatigue=5 is calibrated, sleepQuality=null is not
     expect(result).toContain('biological.sleepQuality');
     expect(result).not.toContain('biological.cnsFatigue');
@@ -116,7 +124,7 @@ describe('isMetricStale', () => {
 
 describe('buildCalibrationPrompt', () => {
   it('includes prompt lines for modules with owned metrics', () => {
-    const prompt = buildCalibrationPrompt('therapy');
+    const prompt = buildCalibrationPrompt('agnes');
     expect(prompt).toContain('Calibration required');
     expect(prompt).toContain('resilient');
   });

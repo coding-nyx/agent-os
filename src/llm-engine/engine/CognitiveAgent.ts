@@ -1,4 +1,4 @@
-import { Message, ConversationContext } from '../types';
+import { Message, ConversationContext, MessageContent } from '../types';
 import { EngineConfig, CognitiveContext, StructuredResponse } from './types';
 import { Orchestrator } from './Orchestrator';
 import { MemoryManager } from './MemoryManager';
@@ -13,11 +13,10 @@ export class CognitiveAgent {
   constructor(
     config: EngineConfig, 
     storage?: StorageAdapter, 
-    onToolCall?: (name: string, args: any) => Promise<any>
   ) {
     this.config = config;
     this.storage = storage;
-    this.orchestrator = new Orchestrator(config, onToolCall);
+    this.orchestrator = new Orchestrator(config);
   }
 
   async initialize() {
@@ -36,7 +35,7 @@ export class CognitiveAgent {
   }
 
   async chat(
-    userMessage: string,
+    userMessage: MessageContent,
     context: ConversationContext,
     onChunk?: (chunk: string) => void,
     signal?: AbortSignal

@@ -16,73 +16,71 @@
 *   **Data Structure & Performance Optimization:** Prioritize efficient data structures and algorithms. Minimize O(n^2) operations, avoid unnecessary re-renders by using `useMemo` and `useCallback` judiciously, and ensure that large datasets (like chat history or biometric logs) are handled with performance-first patterns (virtualization, pagination, or optimized filtering).
 *   **LLM Engine as External Entity:** Treat the `src/llm-engine/` as an external API or separate entity. Interaction should primarily happen via established interfaces. Avoid structural modifications to the engine unless it's necessary for critical optimization or required by a specific architectural directive. Refrain from deep engine changes in favor of interface consumption whenever possible.
 
-# Project Overview
+# Project Overview: AGNES
 
-This is a **React Single Page Application (SPA)** built with **Vite** and **TypeScript**, designed as a portfolio and management platform for personal trainers and gyms ("Titan Fitness").
+**AGNES** (Artificial General Neural Ecosystem for Stability) is a unified, multi-agent wellness platform that bridges mental health and physical optimization. It features specialized AI agents (Therapy, Trainer, Ledger) operating within a futuristic, Wall-E and Eve-inspired aesthetic, secured by client-side End-to-End Encryption (E2EE).
 
-**Note:** While the project contains Next.js artifacts (e.g., `src/app`, `next` dependency) and the README mentions Next.js 14, the current active configuration, build scripts, and entry point (`src/main.tsx`) indicate it primarily runs as a **Vite SPA**.
+The project has evolved from its "Nexus" origins into a holistic "neural ecosystem" where mental and physical states are linked via a centralized event bus (**Spine**) and a synthesized state layer (**GlobalSoul**).
 
 ## Tech Stack
 
-*   **Framework:** React 19
-*   **Build Tool:** Vite
-*   **Language:** TypeScript
-*   **Styling:** Tailwind CSS, Framer Motion
-*   **Routing:** React Router DOM (`src/App.tsx`)
+*   **Framework:** React 19 (Vite SPA)
+*   **Language:** TypeScript (Strict)
+*   **Styling:** Tailwind CSS, Framer Motion, Shadcn UI
+*   **AI Engine:** Nexus (OpenRouter-based multi-agent orchestrator)
+*   **Event Bus:** Spine (Decoupled pub/sub with cascade logic)
+*   **Encryption:** Web Crypto API (PBKDF2 + AES-GCM Vault)
+*   **Database/Auth:** Firebase (Firestore, Auth, Storage)
 *   **State Management:** Zustand, React Context
-*   **Database/Auth:** Firebase (Firestore, Auth) with a Local Storage "Mock Mode" fallback.
-*   **UI Library:** Shadcn UI (Radix UI primitives).
 
-## Architecture
+## Core Architecture & Systems
 
-### Entry Point
-*   **Vite:** `index.html` -> `src/main.tsx` -> `src/App.tsx`
-*   **Routing:** Client-side routing is handled in `src/App.tsx` using `react-router-dom`.
-*   **Data Layer:** The app abstracts data fetching via `src/lib/data-provider.tsx` and `src/lib/services/firebase-service.ts`. It can toggle between live Firebase data and local mock data.
+### 1. Nexus Orchestrator (`src/llm-engine/`)
+The "brain" of AGNES. It manages interactions with LLMs (DeepSeek, Grok, Gemini), parses action tags, and handles tool calling. It is treated as an external API with no direct access to app-layer persistence or vault keys.
 
-### Key Directories
-*   `src/components/`: Reusable UI components (buttons, layout, specific features).
-*   `src/pages/`: Page-level components corresponding to routes (e.g., `HomePage`, `TrainerPage`, `AdminPage`).
-*   `src/lib/`: Core logic, utilities, and context providers.
-    *   `firebase.ts`: Firebase initialization.
-    *   `auth-context.tsx`: Authentication state management.
-*   `src/app/`: Next.js App Router directory (appears to be secondary or part of a migration; contains `layout.tsx` and `page.tsx`).
-*   `public/`: Static assets.
+### 2. Spine Event Bus (`src/lib/spine/`)
+The "nervous system." Facilitates decoupled communication between modules.
+*   **Cascade Rules:** Implements cross-module logic (e.g., blocking high-intensity training if emotional resilience is low).
 
-## Development
+### 3. GlobalSoul (`src/lib/global-soul-context.tsx`)
+The "synthesized state." Aggregates metrics (Neural State Vectors) and compacted insights from all modules into a unified wellness profile used to enhance AI context.
 
-### Prerequisites
-*   Node.js (v20+ recommended)
-*   npm
+### 4. Vault (`src/lib/vault-context.tsx`)
+The "security layer." Manages client-side E2EE. All sensitive data is encrypted before being sent to Firestore.
+
+### 5. Specialized Modules (`src/modules/`)
+*   **Hub:** Central command center and 3D visualization.
+*   **Orchestrator (Nyx):** Onboarding, routing, and identity.
+*   **Therapy (Agnes):** Mental wellness and emotional support.
+*   **Trainer (Titan):** Fitness coaching and biometric tracking.
+*   **Ledger:** Clinical health synthesis and record management.
+*   **Soma:** Physical readiness and biometric clearance.
+*   **Atlas:** Energy mapping and environmental stability.
+*   **Scout:** External data exploration and research.
+*   **Forge:** Habit formation and behavioral reinforcement.
+*   **Pulse:** Real-time biometric stream monitoring.
+*   **Profile:** User identity and global preference management.
+
+## Key Directories
+
+*   `src/core/`: Common layout, UI components, and theme providers.
+*   `src/lib/`: Core logic, services (Auth, Firebase, Spine, GlobalSoul), and contexts.
+*   `src/llm-engine/`: The AI orchestration layer (Agents, Memory, Orchestrator).
+*   `src/modules/`: Isolated feature domains (Therapy, Trainer, Ledger, etc.).
+*   `workitems/`: Sprint management system (`backlog/`, `sprints/`).
+
+## Development & Deployment
 
 ### Commands
-*   **Start Dev Server:**
-    ```bash
-    npm run dev
-    # Runs 'vite'
-    ```
-*   **Build for Production:**
-    ```bash
-    npm run build
-    # Runs 'tsc && vite build' (Outputs to 'out' directory)
-    ```
-*   **Preview Build:**
-    ```bash
-    npm run preview
-    ```
-*   **Lint:**
-    ```bash
-    npm run lint
-    ```
+*   `npm run dev`: Start Vite development server.
+*   `npm run build`: Type-check and build for production (outputs to `out/`).
+*   `npm run preview`: Preview the production build locally.
 
-## Configuration
+### Configuration
+*   **Vite:** `vite.config.ts` handles vendor chunking (React must load before R3F).
+*   **Firebase:** `firebase.json` manages Hosting, Firestore rules, and indexes.
 
-*   **Vite:** `vite.config.ts` - Configures aliases (`@` -> `src`), build output, and **vendor chunk splitting**.
-    *   **⚠️ manualChunks Load-Order Pitfall:** The `manualChunks` function splits vendor bundles for code-splitting. Match order is critical — package paths can overlap (e.g., `@react-three/fiber` contains `/react/`). React/ReactDOM must be matched **before** `@react-three/*` with an explicit exclusion, otherwise R3F loads before React in static builds and crashes with `Cannot read properties of undefined (reading 'useLayoutEffect')`. This only surfaces in `npm run preview` / static hosting, NOT in `npm run dev`. Always validate chunking changes with `npm run build && npm run preview`.
-*   **Firebase:** `firebase.json` - Configures Firestore rules, indexes, and Hosting rewrites (SPA fallback to `index.html`).
-*   **Environment Variables:**
-    *   Copy `.env.example` to `.env.local` to configure Firebase credentials.
-    *   The app checks for valid Firebase config; if missing or invalid, it may default to Mock Mode.
-
-## Deployment
-The project is configured for **Firebase Hosting**. The `vite.config.ts` sets the output directory to `out`, and `firebase.json` points hosting to `out`.
+## Sprint Management
+AGNES uses a Markdown-based sprint system located in `workitems/`.
+*   **Backlog:** `workitems/backlog/BACKLOG.md`
+*   **Current Sprint:** `workitems/sprints/SPRINT_1.md` (or latest)

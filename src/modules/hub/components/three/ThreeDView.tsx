@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import type { GlobalProjection } from '@/lib/types';
 import type { FloatingPodProps } from '../../constants';
 import { CORE_MODULES } from '../../constants';
-import { WallEModel, EveModel, LedgerModel, SomaModel, PolyPodModel, ForgeModel } from './models';
+import { WallEModel, EveModel, LedgerModel, PolyPodModel, ForgeModel } from './models';
 
 // --- Spine (neural pathway connecting core modules) ---
 
@@ -144,7 +144,7 @@ export const FloatingPod = React.memo(function FloatingPod({
   const torusRef = useRef<THREE.Mesh>(null);
   const scaleMult = isPlugin ? 0.6 : 1.6;
   const opacityMult = isPlugin ? 0.5 : 1;
-  const hasGlbModel = ['eve', 'walle', 'ledger', 'soma', 'forge'].includes(modelType);
+  const hasGlbModel = ['eve', 'walle', 'ledger', 'forge'].includes(modelType);
   const sphereOpacity = modelType === 'walle'
     ? (isLocked ? 0.005 : 0.01) * opacityMult
     : hasGlbModel
@@ -202,9 +202,6 @@ export const FloatingPod = React.memo(function FloatingPod({
         )}
         {modelType === 'ledger' && (
           <LedgerModel scale={0.8 * scaleMult} position={[0, -0.2 * scaleMult, 0]} />
-        )}
-        {modelType === 'soma' && (
-          <SomaModel scale={0.45 * scaleMult} position={[0, -0.3 * scaleMult, 0]} />
         )}
         {modelType === 'atlas' && (
           <PolyPodModel shape="octa" color={color} scale={0.45 * scaleMult} position={[0, -0.4 * scaleMult, 0]} rotation={[0, Math.PI / 6, 0]} />
@@ -298,10 +295,9 @@ export default function ThreeDView({ podLayout, spinePoints, moduleAccess, globa
         <HubSpine points={spinePoints} />
         {podLayout.map((module) => {
           const modelType =
-            module.id === 'therapy' ? 'eve' :
-            module.id === 'trainer' ? 'walle' :
+            module.id === 'agnes' ? 'eve' :
+            module.id === 'titan' ? 'walle' :
             module.id === 'ledger' ? 'ledger' :
-            module.id === 'soma' ? 'soma' :
             module.id === 'atlas' ? 'atlas' :
             module.id === 'scout' ? 'scout' :
             module.id === 'forge' ? 'forge' :

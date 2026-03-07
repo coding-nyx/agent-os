@@ -1,37 +1,24 @@
 import { describe, it, expect } from 'vitest';
 import { PersonaFactory } from './persona-factory';
-import type { CoreUserProfile, GlobalProjection } from '../lib/types';
+import type { PersonaUserProfile, PersonaGlobalProjection } from './types';
 
-function makeMockProfile(overrides: Partial<CoreUserProfile> = {}): CoreUserProfile {
+function makeMockProfile(overrides: Partial<PersonaUserProfile> = {}): PersonaUserProfile {
   return {
-    uid: 'u1',
-    email: 'test@test.com',
     preferredName: 'Alex',
     pronouns: 'they/them',
-    onboardingComplete: true,
     assignedSexAtBirth: 'male',
     agentPersonalityProvision: {
       orchestratorAlias: 'Nexus',
-      moduleAliases: { therapy: 'Agnes', trainer: 'Titan', ledger: 'Ledger' },
-      moduleGenderProfiles: { orchestrator: 'female', therapy: 'female', trainer: 'male', ledger: 'non-binary' },
-      personaOverlays: {},
+      agentGenders: { orchestrator: 'female', agnes: 'female', titan: 'male', ledger: 'non-binary' },
     },
-    securityPreferences: { vaultLocks: {} },
-    schemaVersion: 2,
-    createdAt: '2025-01-01',
-    updatedAt: '2025-01-01',
     ...overrides,
   };
 }
 
-function makeMockSoul(overrides: Partial<GlobalProjection> = {}): GlobalProjection {
+function makeMockSoul(overrides: Partial<PersonaGlobalProjection> = {}): PersonaGlobalProjection {
   return {
-    lastSync: '2025-01-01',
-    overallWellnessScore: 7,
-    displayNames: { therapy: 'Agnes', trainer: 'Titan', orchestrator: 'Nexus' },
-    agentGenders: { therapy: 'female', trainer: 'male', orchestrator: 'female' },
-    crossFunctionalState: {} as any,
-    compactedInsights: [],
+    displayNames: { agnes: 'Agnes', titan: 'Titan', orchestrator: 'Nexus' },
+    agentGenders: { agnes: 'female', titan: 'male', orchestrator: 'female' },
     ...overrides,
   };
 }
@@ -41,7 +28,7 @@ describe('PersonaFactory.generateSystemPrompt', () => {
 
   it('returns bare baseRole when userProfile is null', () => {
     const result = PersonaFactory.generateSystemPrompt({
-      moduleId: 'therapy',
+      moduleId: 'agnes',
       baseRole,
       userProfile: null,
       globalSoul: makeMockSoul(),
@@ -51,7 +38,7 @@ describe('PersonaFactory.generateSystemPrompt', () => {
 
   it('returns bare baseRole when globalSoul is null', () => {
     const result = PersonaFactory.generateSystemPrompt({
-      moduleId: 'therapy',
+      moduleId: 'agnes',
       baseRole,
       userProfile: makeMockProfile(),
       globalSoul: null,
@@ -61,7 +48,7 @@ describe('PersonaFactory.generateSystemPrompt', () => {
 
   it('injects identity context with alias and pronouns', () => {
     const result = PersonaFactory.generateSystemPrompt({
-      moduleId: 'therapy',
+      moduleId: 'agnes',
       baseRole,
       userProfile: makeMockProfile(),
       globalSoul: makeMockSoul(),
@@ -74,7 +61,7 @@ describe('PersonaFactory.generateSystemPrompt', () => {
 
   it('applies feminine tone for female gender', () => {
     const result = PersonaFactory.generateSystemPrompt({
-      moduleId: 'therapy',
+      moduleId: 'agnes',
       baseRole,
       userProfile: makeMockProfile(),
       globalSoul: makeMockSoul(),
@@ -84,7 +71,7 @@ describe('PersonaFactory.generateSystemPrompt', () => {
 
   it('applies masculine tone for male gender', () => {
     const result = PersonaFactory.generateSystemPrompt({
-      moduleId: 'trainer',
+      moduleId: 'titan',
       baseRole,
       userProfile: makeMockProfile(),
       globalSoul: makeMockSoul(),
@@ -95,7 +82,7 @@ describe('PersonaFactory.generateSystemPrompt', () => {
   it('adds biological context only for assignedSexAtBirth=female', () => {
     const femaleProfile = makeMockProfile({ assignedSexAtBirth: 'female' });
     const result = PersonaFactory.generateSystemPrompt({
-      moduleId: 'therapy',
+      moduleId: 'agnes',
       baseRole,
       userProfile: femaleProfile,
       globalSoul: makeMockSoul(),
@@ -106,7 +93,7 @@ describe('PersonaFactory.generateSystemPrompt', () => {
 
   it('omits biological context for assignedSexAtBirth=male', () => {
     const result = PersonaFactory.generateSystemPrompt({
-      moduleId: 'therapy',
+      moduleId: 'agnes',
       baseRole,
       userProfile: makeMockProfile({ assignedSexAtBirth: 'male' }),
       globalSoul: makeMockSoul(),
