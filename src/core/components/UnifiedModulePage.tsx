@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -47,9 +47,39 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   const manifest = MODULE_MANIFEST[moduleId];
   const themeColor = manifest.themeColor;
   const title = manifest.title;
-  const RenderOnboarding = renderOnboarding;
-  const RenderContent = renderContent;
-  const RenderDashboard = renderDashboard;
+
+  // Stabilize render props so inline arrow functions don't cause
+  // unmount/remount of the child tree on every parent re-render.
+  const renderContentRef = useRef(renderContent);
+  renderContentRef.current = renderContent;
+  const RenderContent = useMemo(() => {
+    return function StableContent(props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) {
+      const Comp = renderContentRef.current;
+      return <Comp {...props} />;
+    };
+  }, []);
+
+  const renderOnboardingRef = useRef(renderOnboarding);
+  renderOnboardingRef.current = renderOnboarding;
+  const RenderOnboarding = useMemo(() => {
+    if (!renderOnboarding) return undefined;
+    return function StableOnboarding(props: { profile: TProfile | null; onComplete: (profile: TProfile) => void }) {
+      const Comp = renderOnboardingRef.current;
+      if (!Comp) return null;
+      return <Comp {...props} />;
+    };
+  }, [!!renderOnboarding]);
+
+  const renderDashboardRef = useRef(renderDashboard);
+  renderDashboardRef.current = renderDashboard;
+  const RenderDashboard = useMemo(() => {
+    if (!renderDashboard) return undefined;
+    return function StableDashboard(props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) {
+      const Comp = renderDashboardRef.current;
+      if (!Comp) return null;
+      return <Comp {...props} />;
+    };
+  }, [!!renderDashboard]);
 
   if (isLoading) {
     return (
