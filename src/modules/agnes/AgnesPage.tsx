@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
@@ -8,9 +8,8 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield } from 'lucide-react';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { NexusChat } from '@/core/components/NexusChat';
-import { BaseContext } from './types';
 import { buildAgnesSessionPrompt } from './prompts/agnes-session-prompt';
 import { AgnesDashboard } from './components/AgnesDashboard';
 import {
@@ -20,48 +19,27 @@ import {
   subscribeAgnesProfile,
   TherapyIntakeProfile
 } from './services/agnes-profile-service';
-import { BeliefGraph, subscribeBeliefGraph } from './services/belief-graph-service';
 import { ModuleMemoryService } from '@/lib/services/module-memory-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
+import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
 import { registerAgnesActions } from './services/actions';
-import type { AuthUser } from '@/lib/services/auth-service';
-import type { CoreUserProfile, GlobalSoul } from '@/lib/types';
 
 type AgnesState = 'selecting' | 'session';
 
 registerAgnesActions();
 
-interface AgnesContentProps {
-  profile: TherapyIntakeProfile | null;
-  encryptionKey: CryptoKey | null;
-  globalSoul: GlobalSoul | null;
-  updateTherapeuticBaseline: (baseline: GlobalSoul['therapeuticBaseline']) => Promise<void>;
-  refreshGlobalSoul: () => Promise<void>;
-  user: AuthUser | null;
-  isGuest: boolean;
-  coreProfile: CoreUserProfile | null;
-  refreshProfile: () => Promise<void>;
-  isAccessible: boolean;
-  setBeliefGraph: React.Dispatch<React.SetStateAction<BeliefGraph | null>>;
-  onSessionActiveChange: (active: boolean) => void;
-}
-
 function AgnesContent({
   profile,
   encryptionKey,
-  globalSoul,
-  updateTherapeuticBaseline,
-  refreshGlobalSoul,
-  user,
-  isGuest,
-  coreProfile,
-  refreshProfile,
-  isAccessible,
-  setBeliefGraph,
-  onSessionActiveChange
-}: AgnesContentProps) {
+  setSessionActive
+}: ContentRenderProps<TherapyIntakeProfile>) {
+  const { globalSoul, updateTherapeuticBaseline, refreshGlobalSoul } = useGlobalSoul();
+  const { user, isGuest, profile: coreProfile, refreshProfile } = useAuth();
+  const { isModuleAccessible } = useVault();
+  const isAccessible = isModuleAccessible('agnes');
+
   const [currentState, setCurrentState] = useState<AgnesState>('selecting');
   const [sessionType, setSessionType] = useState<'impromptu' | 'new' | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -69,10 +47,10 @@ function AgnesContent({
   const [sessionSummary, setSessionSummary] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
 
-  // Notify parent of session state changes for layout adjustments
+  // Notify UnifiedModulePage of session state for layout adjustments
   useEffect(() => {
-    onSessionActiveChange(currentState === 'session');
-  }, [currentState, onSessionActiveChange]);
+    setSessionActive?.(currentState === 'session');
+  }, [currentState, setSessionActive]);
 
   const agentAlias = globalSoul?.displayNames?.agnes || 'Agnes';
   const isDeepIntakeDone = Boolean(globalSoul?.therapeuticBaseline?.isInitialized || profile?.onboardingComplete);
@@ -98,17 +76,6 @@ function AgnesContent({
     systemPrompt,
     encryptionKey
   });
-
-  // Effect for subscribing to belief graph
-  useEffect(() => {
-    if (!user || isGuest || !encryptionKey) {
-      setBeliefGraph(null);
-      return;
-    }
-    return subscribeBeliefGraph({ userId: user.uid, encryptionKey }, (graph) => {
-      setBeliefGraph(graph);
-    });
-  }, [user?.uid, isGuest, encryptionKey, setBeliefGraph]);
 
   // Intercept profile changes that happen post-onboarding (if needed)
   // For agnes, intake completion means we save it here
@@ -375,64 +342,40 @@ function AgnesContent({
   );
 }
 
+// Stable onboarding wrapper — uses hooks internally, no inline closure needed
+function AgnesOnboardingWrapper({ profile, onComplete }: { profile: TherapyIntakeProfile | null; onComplete: (profile: TherapyIntakeProfile) => void }) {
+  const { profile: coreProfile } = useAuth();
+  return (
+    <AgnesOnboarding
+      initialBaseContext={IntakeBaseContextService.buildForAgnes({ coreProfile, agnesContext: profile?.baseContext })}
+      onComplete={(ctx) => {
+        const now = new Date().toISOString();
+        const completedProfile: TherapyIntakeProfile = {
+          ...(profile ?? createEmptyAgnesProfile()),
+          onboardingComplete: true,
+          baseContext: ctx,
+          updatedAt: now
+        };
+        onComplete(completedProfile);
+      }}
+    />
+  );
+}
+
 export default function AgnesPage() {
-  const { globalSoul, refreshGlobalSoul, updateTherapeuticBaseline } = useGlobalSoul();
-  const { user, isGuest, profile: coreProfile, refreshProfile } = useAuth();
-  const { isModuleAccessible } = useVault();
-  const isAccessible = isModuleAccessible('agnes');
-
-  const [beliefGraph, setBeliefGraph] = useState<BeliefGraph | null>(null);
-  const [sessionActive, setSessionActive] = useState(false);
-
   return (
     <UnifiedModulePage<TherapyIntakeProfile>
       moduleId="agnes"
       workspaceType="focus"
-      sessionActive={sessionActive}
-      // Agnes allows impromptu sessions even if the vault is locked
       requireVault={false}
       profileOptions={{
         loadProfile: loadAgnesProfile,
         saveProfile: saveAgnesProfile,
         subscribeProfile: subscribeAgnesProfile
       }}
-      renderOnboarding={({ profile, onComplete }) => (
-         <AgnesOnboarding 
-            initialBaseContext={IntakeBaseContextService.buildForAgnes({ coreProfile, agnesContext: profile?.baseContext })} 
-            onComplete={(ctx) => {
-               // We merge context into a new profile and complete it
-               const now = new Date().toISOString();
-               const completedProfile: TherapyIntakeProfile = {
-                 ...(profile ?? createEmptyAgnesProfile()),
-                 onboardingComplete: true,
-                 baseContext: ctx,
-                 updatedAt: now
-               };
-               onComplete(completedProfile);
-            }} 
-         />
-      )}
-      renderDashboard={({ profile }) => (
-        <AgnesDashboard soul={globalSoul} graph={beliefGraph} isLocked={!isAccessible} />
-      )}
-      renderContent={({ profile, encryptionKey }) => {
-        return (
-          <AgnesContent
-            profile={profile}
-            encryptionKey={encryptionKey}
-            globalSoul={globalSoul}
-            updateTherapeuticBaseline={updateTherapeuticBaseline}
-            refreshGlobalSoul={refreshGlobalSoul}
-            user={user}
-            isGuest={isGuest}
-            coreProfile={coreProfile}
-            refreshProfile={refreshProfile}
-            isAccessible={isAccessible}
-            setBeliefGraph={setBeliefGraph}
-            onSessionActiveChange={setSessionActive}
-          />
-        );
-      }}
+      renderOnboarding={AgnesOnboardingWrapper}
+      renderDashboard={AgnesDashboard}
+      renderContent={AgnesContent}
     />
   );
 }

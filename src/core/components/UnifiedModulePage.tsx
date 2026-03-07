@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -12,15 +12,20 @@ import { cn } from '@/lib/utils';
 
 export type WorkspaceType = 'focus' | 'lab' | 'command' | 'terminal';
 
+export interface ContentRenderProps<TProfile> {
+  profile: TProfile | null;
+  encryptionKey: CryptoKey | null;
+  setSessionActive?: (active: boolean) => void;
+}
+
 interface UnifiedModulePageProps<TProfile extends { onboardingComplete?: boolean }> {
   moduleId: ModuleId;
   profileOptions: Omit<UseModuleProfileOptions<TProfile>, 'moduleId'>;
   workspaceType?: WorkspaceType;
   renderOnboarding?: React.ComponentType<{ profile: TProfile | null; onComplete: (profile: TProfile) => void }>;
-  renderContent: React.ComponentType<{ profile: TProfile | null; encryptionKey: CryptoKey | null }>;
+  renderContent: React.ComponentType<ContentRenderProps<TProfile>>;
   renderDashboard?: React.ComponentType<{ profile: TProfile | null; encryptionKey: CryptoKey | null }>;
   requireVault?: boolean;
-  sessionActive?: boolean;
 }
 
 export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolean }>({
@@ -31,7 +36,6 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   renderContent,
   renderDashboard,
   requireVault = true,
-  sessionActive = false
 }: UnifiedModulePageProps<TProfile>) {
   const { isGuest } = useAuth();
   const [guestReady, setGuestReady] = useState(() => {
@@ -44,6 +48,11 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
     ...profileOptions
   });
 
+  // Session-active state lives here so content components can signal it
+  // without triggering parent page re-renders that would cause remounts.
+  const [sessionActive, setSessionActive] = useState(false);
+  const stableSetSessionActive = useCallback((active: boolean) => setSessionActive(active), []);
+
   const manifest = MODULE_MANIFEST[moduleId];
   const themeColor = manifest.themeColor;
   const title = manifest.title;
@@ -53,7 +62,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   const renderContentRef = useRef(renderContent);
   renderContentRef.current = renderContent;
   const RenderContent = useMemo(() => {
-    return function StableContent(props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) {
+    return function StableContent(props: ContentRenderProps<TProfile>) {
       const Comp = renderContentRef.current;
       return <Comp {...props} />;
     };
@@ -165,7 +174,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     </div>
                 )}
                 <div className="flex-1 flex flex-col h-[600px] lg:h-auto min-h-0 min-w-0">
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
                 </div>
             </div>
         )}
@@ -184,7 +193,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     )}
                 </div>
                 <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col h-[600px] lg:h-auto min-h-0 bg-black/20 backdrop-blur-md">
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
                 </div>
             </div>
         )}
@@ -192,7 +201,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         {workspaceType === 'focus' && (
             <div className="flex-1 flex flex-col min-h-0 py-6 relative">
                 <div className="flex-1 flex flex-col min-h-0 bg-black/10 backdrop-blur-[1px] rounded-[40px] border border-white/5 shadow-2xl overflow-hidden">
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
                 </div>
                 <AnimatePresence>
                     {RenderDashboard && !sessionActive && (
@@ -215,7 +224,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     {RenderDashboard ? <RenderDashboard profile={profile} encryptionKey={encryptionKey} /> : "FILE_SYSTEM_IDLE"}
                 </div>
                 <div className="h-[40%] flex flex-col min-h-0">
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
                 </div>
             </div>
         )}

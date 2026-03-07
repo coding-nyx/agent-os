@@ -1,21 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, Activity } from 'lucide-react';
-import { GlobalProjection } from '@/lib/types';
-import { BeliefGraph } from '../services/belief-graph-service';
+import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useAuth } from '@/lib/auth-context';
+import { useVault } from '@/lib/vault-context';
+import { BeliefGraph, subscribeBeliefGraph } from '../services/belief-graph-service';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
 
 export function AgnesDashboard({
-  soul,
-  graph,
-  isLocked = false
+  profile,
+  encryptionKey
 }: {
-  soul: GlobalProjection | null;
-  graph: BeliefGraph | null;
-  isLocked?: boolean;
+  profile: unknown;
+  encryptionKey: CryptoKey | null;
 }) {
+  const { globalSoul } = useGlobalSoul();
+  const { user, isGuest } = useAuth();
+  const { isModuleAccessible } = useVault();
+  const isLocked = !isModuleAccessible('agnes');
+  const [graph, setGraph] = useState<BeliefGraph | null>(null);
+
+  useEffect(() => {
+    if (!user || isGuest || !encryptionKey) {
+      setGraph(null);
+      return;
+    }
+    return subscribeBeliefGraph({ userId: user.uid, encryptionKey }, setGraph);
+  }, [user?.uid, isGuest, encryptionKey]);
+
+  const soul = globalSoul;
   if (isLocked) {
     return (
       <div className="h-full flex items-center justify-center p-8">
