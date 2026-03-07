@@ -14,8 +14,8 @@ import {
 
 export const MODULE_IDS = [
   'orchestrator',
-  'therapy',
-  'trainer',
+  'agnes',
+  'titan',
   'soma',
   'ledger',
   'atlas',
@@ -74,9 +74,9 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     hasPage: true,
     securityPolicy: { defaultLocked: false, mandatory: false }
   },
-  therapy: {
-    id: 'therapy',
-    route: '/therapy',
+  agnes: {
+    id: 'agnes',
+    route: '/agnes',
     title: 'Agnes',
     alias: 'Agnes',
     description: 'Emotional Domain',
@@ -88,12 +88,12 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     hasPage: true,
     securityPolicy: { defaultLocked: true, mandatory: true }
   },
-  trainer: {
-    id: 'trainer',
-    route: '/trainer',
+  titan: {
+    id: 'titan',
+    route: '/titan',
     title: 'Titan',
     alias: 'Titan',
-    description: 'Performance Domain',
+    description: 'Fitness coaching, biomarker tracking, and recovery management',
     colorHex: '#F59E0B',
     themeColor: 'orange',
     chatTheme: 'orange',
@@ -104,16 +104,16 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
   },
   soma: {
     id: 'soma',
-    route: '/soma',
+    route: '/titan?tab=biomarkers',
     title: 'Soma',
     alias: 'Soma',
-    description: 'Biological Source of Truth',
+    description: 'Absorbed into Titan — biomarker and recovery domain',
     colorHex: '#10B981',
     themeColor: 'emerald',
     chatTheme: 'emerald',
     icon: HeartPulse,
     isCore: false,
-    hasPage: true,
+    hasPage: false,
     securityPolicy: { defaultLocked: true, mandatory: false }
   },
   ledger: {
@@ -200,9 +200,8 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
 };
 
 export const HUB_MODULE_ORDER: ModuleId[] = [
-  'therapy',
-  'trainer',
-  'soma',
+  'agnes',
+  'titan',
   'ledger',
   'atlas',
   'scout',

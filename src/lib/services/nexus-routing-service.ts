@@ -4,11 +4,9 @@ import { StructuredResponse } from '@/llm-engine/engine/types';
 import type { Message } from '@/llm-engine/types';
 
 type SendMessageFn = (content: string, context: { systemPrompt: string; insights: string[]; summary: string; history: Message[] }) => Promise<{ response: StructuredResponse }>;
-
 const KEYWORD_ROUTES: Array<{ moduleId: ModuleId; keywords: string[] }> = [
-  { moduleId: 'therapy', keywords: ['therapy', 'anxiety', 'trauma', 'emotion', 'feeling', 'relationship'] },
-  { moduleId: 'trainer', keywords: ['workout', 'training', 'gym', 'strength', 'routine', 'fatigue', 'pr'] },
-  { moduleId: 'soma', keywords: ['lab', 'bloodwork', 'biomarker', 'hormone', 'medical', 'clearance'] },
+  { moduleId: 'agnes', keywords: ['agnes', 'anxiety', 'trauma', 'emotion', 'feeling', 'relationship'] },
+  { moduleId: 'titan', keywords: ['workout', 'training', 'gym', 'strength', 'routine', 'fatigue', 'pr', 'lab', 'bloodwork', 'biomarker', 'hormone', 'medical', 'clearance', 'recovery', 'soma'] },
   { moduleId: 'ledger', keywords: ['budget', 'expense', 'spending', 'debt', 'cashflow', 'savings', 'finance', 'money'] },
   { moduleId: 'atlas', keywords: ['schedule', 'energy', 'focus', 'task load', 'calendar', 'productivity'] },
   { moduleId: 'scout', keywords: ['research', 'verify', 'fact-check', 'evidence', 'sources'] },

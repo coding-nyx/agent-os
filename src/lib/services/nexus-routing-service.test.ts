@@ -2,16 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { NexusRoutingService } from './nexus-routing-service';
 
 describe('NexusRoutingService.classifyIntent', () => {
-  it('routes therapy-related keywords to therapy module', () => {
+  it('routes agnes-related keywords to agnes module', () => {
     const result = NexusRoutingService.classifyIntent('I feel anxious about my relationship');
-    expect(result.target).toBe('therapy');
+    expect(result.target).toBe('agnes');
     expect(result.confidence).toBe(0.72);
     expect(result.reason).toContain('matched');
   });
 
-  it('routes training keywords to trainer module', () => {
+  it('routes training keywords to titan module', () => {
     const result = NexusRoutingService.classifyIntent('Create a new workout plan');
-    expect(result.target).toBe('trainer');
+    expect(result.target).toBe('titan');
   });
 
   it('routes financial keywords to ledger module', () => {
@@ -19,9 +19,9 @@ describe('NexusRoutingService.classifyIntent', () => {
     expect(result.target).toBe('ledger');
   });
 
-  it('routes medical keywords to soma module', () => {
+  it('routes medical keywords to titan module (soma absorbed)', () => {
     const result = NexusRoutingService.classifyIntent('Can you check my bloodwork results?');
-    expect(result.target).toBe('soma');
+    expect(result.target).toBe('titan');
   });
 
   it('routes code keywords to forge module', () => {
@@ -36,7 +36,7 @@ describe('NexusRoutingService.classifyIntent', () => {
 
   it('is case-insensitive', () => {
     const result = NexusRoutingService.classifyIntent('WORKOUT PLAN');
-    expect(result.target).toBe('trainer');
+    expect(result.target).toBe('titan');
   });
 
   it('defaults to orchestrator for unmatched queries', () => {
@@ -48,8 +48,8 @@ describe('NexusRoutingService.classifyIntent', () => {
 });
 
 describe('NexusRoutingService.getRoute', () => {
-  it('returns correct route for therapy', () => {
-    expect(NexusRoutingService.getRoute('therapy')).toBe('/therapy');
+  it('returns correct route for agnes', () => {
+    expect(NexusRoutingService.getRoute('agnes')).toBe('/agnes');
   });
 
   it('returns correct route for orchestrator', () => {

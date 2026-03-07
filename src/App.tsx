@@ -11,6 +11,7 @@ import { ProtectedRoute } from './core/components/ProtectedRoute';
 import { NexusOverlay } from './core/components/NexusOverlay';
 import { NeuralDraftPanel } from './core/components/NeuralDraftPanel';
 import { SpineOverlay } from './core/components/SpineOverlay';
+import { SpineToastProvider } from './core/components/SpineToast';
 import { NexusRouteBanner } from './core/components/NexusRouteBanner';
 import { Spine } from './lib/spine/spine-event-bus';
 import { CORE_CASCADE_RULES } from './lib/spine/cascade-rules';
@@ -19,11 +20,11 @@ import { useEffect } from 'react';
 // Route-level lazy loading for chunk splitting.
 const LandingPage = lazy(() => import('./modules/landing/LandingPage'));
 const HubPage = lazy(() => import('./modules/hub/HubPage'));
-const TherapyPage = lazy(() => import('./modules/therapy/TherapyPage'));
-const TrainerPage = lazy(() => import('./modules/trainer/TrainerPage'));
+const AgnesPage = lazy(() => import('./modules/agnes/AgnesPage'));
+const TitanPage = lazy(() => import('./modules/titan/TitanPage'));
 const LedgerPage = lazy(() => import('./modules/ledger/LedgerPage'));
 const OrchestratorPage = lazy(() => import('./modules/orchestrator/OrchestratorPage'));
-const SomaPage = lazy(() => import('./modules/soma/SomaPage'));
+// Soma absorbed into Titan — SomaPage no longer used; /soma redirects to /titan?tab=biomarkers
 const AtlasPage = lazy(() => import('./modules/atlas/AtlasPage'));
 const ScoutPage = lazy(() => import('./modules/scout/ScoutPage'));
 const ForgePage = lazy(() => import('./modules/forge/ForgePage'));
@@ -67,6 +68,7 @@ function AppContent() {
       <NexusOverlay />
       <SpineOverlay />
       <NeuralDraftPanel />
+      <SpineToastProvider />
       <NexusRouteBanner />
       <Routes>
         <Route path="/" element={<LandingPage />} />
@@ -83,15 +85,15 @@ function AppContent() {
           </ProtectedRoute>
         } />
 
-        <Route path="/therapy" element={
+        <Route path="/agnes" element={
           <ProtectedRoute>
-            <TherapyPage />
+            <AgnesPage />
           </ProtectedRoute>
         } />
 
-        <Route path="/trainer" element={
+        <Route path="/titan" element={
           <ProtectedRoute>
-            <TrainerPage />
+            <TitanPage />
           </ProtectedRoute>
         } />
 
@@ -101,11 +103,8 @@ function AppContent() {
           </ProtectedRoute>
         } />
 
-        <Route path="/soma" element={
-          <ProtectedRoute>
-            <SomaPage />
-          </ProtectedRoute>
-        } />
+        {/* Soma absorbed into Titan — redirect to biomarkers tab */}
+        <Route path="/soma" element={<Navigate to="/titan?tab=biomarkers" replace />} />
 
         <Route path="/atlas" element={
           <ProtectedRoute>
