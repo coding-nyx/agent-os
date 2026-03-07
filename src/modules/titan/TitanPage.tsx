@@ -133,6 +133,25 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     [navigate]
   );
 
+  const handleAnalyzeRoutine = useCallback(
+    (routine: import('@/lib/types').Routine) => {
+      const exerciseList = routine.exercises
+        .map((ex, i) => `${i + 1}. **${ex.name}** — ${ex.sets}×${ex.reps}${ex.notes ? ` (${ex.notes})` : ''}`)
+        .join('\n');
+
+      const prompt = [
+        `Analyze my ${routine.weekday?.toUpperCase() || ''} routine "${routine.name}":`,
+        routine.rationale ? `Rationale: ${routine.rationale}` : '',
+        `\nExercises:\n${exerciseList}`,
+        '\nIs this well-balanced? Any improvements for injury prevention or performance?'
+      ].filter(Boolean).join('\n');
+
+      handleSendMessage(prompt);
+      if (isChatCollapsed) setIsChatCollapsed(false);
+    },
+    [handleSendMessage, isChatCollapsed]
+  );
+
   const handleImportLab = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -183,7 +202,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       default:
         return (
           <>
-            <TitanRoutinePanel routines={profile?.routines || []} />
+            <TitanRoutinePanel routines={profile?.routines || []} onAnalyzeRoutine={handleAnalyzeRoutine} />
             <TitanDashboard soul={globalSoul} isLocked={isLocked} onCalibrate={handleCalibrate} />
           </>
         );
