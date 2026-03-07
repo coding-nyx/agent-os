@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, MessageSquare } from 'lucide-react';
-import { TitanDashboard } from './components/TitanDashboard';
+import { TitanDashboard } from './components/TitanReadiness';
 import { TitanDashboardTabs } from './components/TitanDashboardTabs';
 import { BiomarkerDashboard } from './components/BiomarkerDashboard';
 import { ClearancePanel } from './components/ClearancePanel';
@@ -152,6 +152,16 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     [handleSendMessage, isChatCollapsed]
   );
 
+  const handleGeneratePlan = useCallback(() => {
+    handleSendMessage('Generate a personalized weekly training routine based on my profile, goals, and current recovery state.');
+    if (isChatCollapsed) setIsChatCollapsed(false);
+  }, [handleSendMessage, isChatCollapsed]);
+
+  const handleImportRoutine = useCallback(() => {
+    handleSendMessage("I already have a training routine I'd like to log. Let me describe it to you.");
+    if (isChatCollapsed) setIsChatCollapsed(false);
+  }, [handleSendMessage, isChatCollapsed]);
+
   const handleImportLab = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -202,7 +212,12 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       default:
         return (
           <>
-            <TitanRoutinePanel routines={profile?.routines || []} onAnalyzeRoutine={handleAnalyzeRoutine} />
+            <TitanRoutinePanel
+              routines={profile?.routines || []}
+              onAnalyzeRoutine={handleAnalyzeRoutine}
+              onGeneratePlan={handleGeneratePlan}
+              onImportRoutine={handleImportRoutine}
+            />
             <TitanDashboard soul={globalSoul} isLocked={isLocked} onCalibrate={handleCalibrate} />
           </>
         );
@@ -228,7 +243,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         </motion.button>
       )}
       <div className="flex-1 min-w-0 h-full overflow-y-auto no-scrollbar flex flex-col relative">
-        <div className="px-6 pt-6 pb-2">
+        <div className="px-6 pt-4 pb-1">
           <TitanDashboardTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}

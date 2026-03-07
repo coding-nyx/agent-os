@@ -3,6 +3,7 @@ import type { Message } from '../types';
 import type { ConversationContext } from '@/llm-engine/types';
 import type { StructuredResponse } from '@/llm-engine/engine/types';
 import { NexusHandoffService } from '../services/nexus-handoff-service';
+import { NexusRoutingService } from '../services/nexus-routing-service';
 import { Spine } from '../spine/spine-event-bus';
 
 function trimToCharLimit(text: string, limit: number): string {
@@ -66,6 +67,18 @@ export function useHandoffProcessor({
       return { shouldDelegate: false };
     }
 
+    // 1. FAST PATH: Keyword-based classification
+    const fastDecision = NexusRoutingService.classifyIntent(content);
+    if (fastDecision.target !== 'orchestrator' && fastDecision.target !== moduleId && fastDecision.confidence >= 0.7) {
+      return {
+        shouldDelegate: true,
+        target: fastDecision.target,
+        reason: fastDecision.reason,
+        confidence: fastDecision.confidence
+      };
+    }
+
+    // 2. SLOW PATH: LLM-based classification with relaxed timeout
     try {
       const routingAbort = new AbortController();
       const { response: routeResp } = await Promise.race([
@@ -73,13 +86,13 @@ export function useHandoffProcessor({
           systemPrompt: 'You are a routing intent classifier. Return ONLY a single <action> tag.',
           memoryContext: [],
           summary: 'Classifying intent.',
-          history: recentMessages.slice(-3) // H-4: only last 3 turns for routing
+          history: recentMessages.slice(-3)
         }, routingAbort.signal),
         new Promise<never>((_, reject) =>
           setTimeout(() => {
-            routingAbort.abort();
+            routingAbort.abort('timeout');
             reject(new Error('Routing classification timeout'));
-          }, 5000)
+          }, 10000) // Increased to 10s for better resilience
         )
       ]);
 
@@ -102,7 +115,9 @@ export function useHandoffProcessor({
         };
       }
     } catch (e) {
-      console.warn('Nexus routing gate failed, continuing in current module.', e);
+      if ((e as Error).name !== 'AbortError') {
+        console.warn('Nexus routing gate failed or timed out, continuing in current module.', e);
+      }
     }
 
     return { shouldDelegate: false };

@@ -4,7 +4,6 @@ import { Activity, Zap, Heart, Wind, Thermometer, Info, Lock } from 'lucide-reac
 import { GlobalProjection } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { VitalsGrid } from '@/core/components/VitalsGrid';
-import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
@@ -79,17 +78,20 @@ export function TitanDashboard({ soul, isLocked = false, onCalibrate }: TitanDas
   ];
 
   return (
-    <div className="p-6 bg-black/40 border-b border-white/5 backdrop-blur-xl space-y-6">
-      <SectionHeader
-        label="Performance Coach"
-        title="Today’s Readiness"
-        subtitle="CNS-aware training surfaced from biometrics, recovery load, and recent sessions."
-        accentClassName="text-orange-400"
-      />
+    <div className="p-5 bg-black/40 border-b border-white/5 backdrop-blur-xl space-y-4">
+      <div className="space-y-1">
+        <div className="text-[10px] font-black uppercase tracking-[0.3em] italic text-orange-400">Performance Coach</div>
+        <h2 className="text-xl font-black italic uppercase tracking-tight text-white">Today&apos;s Readiness</h2>
+        <p className="text-[11px] text-white/40 max-w-xl">CNS-aware training surfaced from biometrics, recovery load, and recent sessions.</p>
+      </div>
 
       <VitalsGrid metrics={metrics} isLocked={isLocked} onCalibrate={onCalibrate} />
 
-      {/* Progress and Biometric Devices are hidden until data is populated via action tags */}
+      {hasSoul && metrics.some(m => m.value === null || m.value === undefined) && !isLocked && (
+        <p className="text-[11px] text-white/30 text-center leading-relaxed">
+          Metrics update through module interactions, or tap <span className="text-white/50 font-semibold">Calibrate</span> to set values manually.
+        </p>
+      )}
 
       {/* Stat cards only render when cross-functional state has real values */}
       {hasSoul && typeof soul?.crossFunctionalState.cnsFatigue === 'number' && (
@@ -124,21 +126,21 @@ export function TitanDashboard({ soul, isLocked = false, onCalibrate }: TitanDas
 
               <div className="flex flex-wrap gap-4">
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-white/40 uppercase tracking-widest italic mb-1">Current State</span>
+                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest italic mb-1">Current State</span>
                   <span className="text-[10px] font-black text-white/80 uppercase tracking-tighter italic">
                     {isLocked ? 'SECURED' : soul?.crossFunctionalState.hormonalContext || 'Awaiting data'}
                   </span>
                 </div>
                 <div className="w-px h-6 bg-white/5 self-center" />
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-white/40 uppercase tracking-widest italic mb-1">Metabolic Intensity</span>
+                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest italic mb-1">Metabolic Intensity</span>
                   <span className="text-[10px] font-black text-white/80 uppercase tracking-tighter italic">Baseline Optimization</span>
                 </div>
               </div>
 
               <div className="p-3 bg-white/[0.03] border border-white/5 rounded-xl flex items-center gap-3 max-w-xs">
                 <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                <p className="text-[9px] text-white/40 leading-relaxed italic">
+                <p className="text-[10px] text-white/40 leading-relaxed italic">
                   Titan adapts load using cycle context once biomarkers are active.
                 </p>
               </div>

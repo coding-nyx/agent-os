@@ -1,4 +1,4 @@
-import { doc, setDoc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { getFirebase } from '../firebase';
 import { ModuleMemoryEnvelope, SessionEventSummary, ActiveSessionState } from '../types';
 import { EmbeddingService } from './embedding-service';
@@ -155,7 +155,7 @@ export const ModuleMemoryService = {
 
     const docRef = doc(db, 'active_sessions', `${uid}_${moduleId}`);
     try {
-      await setDoc(docRef, { history: [] }, { merge: true });
+      await deleteDoc(docRef);
     } catch (error) {
       console.error('[ModuleMemoryService] Failed to clear active session:', error);
     }

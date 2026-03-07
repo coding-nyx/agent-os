@@ -95,6 +95,9 @@ export class Orchestrator {
 
       return this.finalizeResponse(fullResponse, interruptionControlSeen);
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        throw e;
+      }
       console.error("Orchestrator Error:", e);
       return {
           fullText: fullResponse + "\n\n[Link interrupted. Please check your network connection.]",
@@ -292,7 +295,7 @@ export class Orchestrator {
       }
     } catch (e: unknown) {
       if (e instanceof DOMException && e.name === 'AbortError') {
-        return { fullText: '', toolCalls: [], streamInterrupted: false };
+        throw e;
       }
       // Non-abort errors: let finally run, then re-throw
       throw e;

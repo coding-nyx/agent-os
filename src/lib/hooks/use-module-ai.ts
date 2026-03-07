@@ -10,8 +10,6 @@ import { GlobalProjectionService } from '../services/global-projection-service';
 import { Spine } from '../spine/spine-event-bus';
 import { NexusHandoffService } from '../services/nexus-handoff-service';
 import { ActionHub } from '../actions/action-hub';
-import { getUncalibratedOwnedMetrics } from '../services/nsv-ownership';
-import type { ModuleId } from '../module-manifest';
 import { useMemoryIntegration } from './useMemoryIntegration';
 import { useConsolidation } from './useConsolidation';
 import { useHandoffProcessor } from './useHandoffProcessor';
@@ -68,7 +66,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      abortControllerRef.current?.abort();
+      abortControllerRef.current?.abort('unmount');
     };
   }, []);
 
@@ -260,21 +258,12 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
         const memoryQuery = `${content}\n${recentHistorySlice}`;
         const { recalledSessionsSummary, recalledFactsSummary } = await retrieveMemoryContext(memoryQuery);
 
-        const uncalibrated = globalSoul
-          ? getUncalibratedOwnedMetrics(globalSoul.crossFunctionalState, moduleId as ModuleId)
-          : [];
-
-        const calibrationDirective = uncalibrated.length
-          ? `\n[UNCALIBRATED_OWNED_METRICS]\n${uncalibrated.map((metric) => `- ${metric}`).join('\n')}\n` +
-            'If any owned metrics are uncalibrated, prioritize asking for the missing values before moving on.'
-          : '';
-
-        const finalSystemPrompt = `${PersonaFactory.generateSystemPrompt({
+        const finalSystemPrompt = PersonaFactory.generateSystemPrompt({
           moduleId,
           baseRole,
           userProfile: profile,
           globalSoul: globalSoul
-        })}${calibrationDirective}`;
+        });
 
         const memorySummarySections = [
           `[MODULE]: ${moduleId}`,
@@ -504,6 +493,12 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
   handleSendMessageRef.current = handleSendMessage;
 
   const clearSession = useCallback(async () => {
+    // Cancel any pending debounced save so it cannot race with clearActiveSession
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    messagesRef.current = [];
     setMessages([]);
     sessionStartRef.current = new Date().toISOString();
     resetConsolidation();  // M-6: reset retry counter on clear
