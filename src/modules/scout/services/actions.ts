@@ -2,16 +2,23 @@ import { ActionHub } from '@/lib/actions/action-hub';
 import {
   ScoutKnowledgeNode,
   ScoutProfile,
+  InterestNode,
   loadScoutProfile,
   saveScoutProfile
 } from './scout-knowledge-service';
 import { ScoutWebSearchService, ScoutWebResult } from './scout-web-search-service';
+import { generateNewsBriefs } from './pulse-news-service';
 
 let registered = false;
 
 function parseConfidence(value: unknown, fallback = 0.5): number {
   if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
   return Math.max(0, Math.min(1, value));
+}
+
+function parseScore(value: unknown, fallback = 50): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
+  return Math.max(0, Math.min(100, value));
 }
 
 const REPUTABLE_DOMAINS = new Set([
@@ -277,6 +284,76 @@ export function registerScoutActions() {
         updatedAt: new Date().toISOString()
       };
 
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+    },
+
+    update_interest_map: async ({ userId, encryptionKey, payload }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      const next: ScoutProfile = { ...profile };
+
+      if (Array.isArray(payload?.interests)) {
+        const mapped: InterestNode[] = payload.interests.map((entry: Record<string, unknown>, index: number) => ({
+          id: typeof entry?.id === 'string' ? entry.id : `interest_${Date.now()}_${index}`,
+          topic: typeof entry?.topic === 'string' ? entry.topic : `Topic ${index + 1}`,
+          score: parseScore(entry?.score),
+          trend: entry?.trend === 'rising' || entry?.trend === 'cooling' ? entry.trend : 'steady',
+          lastSeenAt: new Date().toISOString()
+        }));
+        next.interests = mapped;
+      }
+
+      if (typeof payload?.summary === 'string') {
+        next.summary = payload.summary;
+      }
+
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+    },
+
+    track_topic: async ({ userId, encryptionKey, payload }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      const node: InterestNode = {
+        id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
+        topic: typeof payload?.topic === 'string' ? payload.topic : 'Topic',
+        score: parseScore(payload?.score),
+        trend: payload?.trend === 'rising' || payload?.trend === 'cooling' ? payload.trend : 'steady',
+        lastSeenAt: new Date().toISOString()
+      };
+
+      const next: ScoutProfile = {
+        ...profile,
+        interests: [node, ...profile.interests.filter((item) => item.topic !== node.topic)].slice(0, 120)
+      };
+
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+    },
+
+    synthesize_research_trends: async ({ userId, encryptionKey, payload }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      if (Array.isArray(payload?.briefs)) {
+        const next: ScoutProfile = {
+          ...profile,
+          trendBriefs: payload.briefs.filter((entry: Record<string, unknown>) => typeof entry === 'string').slice(0, 20)
+        };
+        await persistProfile(next, userId ?? null, encryptionKey ?? null);
+        return;
+      }
+
+      if (profile.interests.length === 0) return;
+      const topics = profile.interests.map(i => i.topic);
+      const briefs = await generateNewsBriefs(topics, { maxTopics: 5 });
+      const now = new Date().toISOString();
+      const next: ScoutProfile = {
+        ...profile,
+        newsBriefs: briefs,
+        newsUpdatedAt: now,
+        updatedAt: now
+      };
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
     }
   });

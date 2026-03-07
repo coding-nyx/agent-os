@@ -9,9 +9,8 @@ const KEYWORD_ROUTES: Array<{ moduleId: ModuleId; keywords: string[] }> = [
   { moduleId: 'titan', keywords: ['workout', 'training', 'gym', 'strength', 'routine', 'fatigue', 'pr', 'lab', 'bloodwork', 'biomarker', 'hormone', 'medical', 'clearance', 'recovery', 'soma'] },
   { moduleId: 'ledger', keywords: ['budget', 'expense', 'spending', 'debt', 'cashflow', 'savings', 'finance', 'money'] },
   { moduleId: 'atlas', keywords: ['schedule', 'energy', 'focus', 'task load', 'calendar', 'productivity'] },
-  { moduleId: 'scout', keywords: ['research', 'verify', 'fact-check', 'evidence', 'sources'] },
-  { moduleId: 'forge', keywords: ['code', 'refactor', 'build', 'typescript', 'bug', 'repository'] },
-  { moduleId: 'pulse', keywords: ['trend', 'news', 'interest', 'discover', 'topic map'] }
+  { moduleId: 'scout', keywords: ['research', 'verify', 'fact-check', 'evidence', 'sources', 'trend', 'news', 'interest', 'discover', 'topic map'] },
+  { moduleId: 'forge', keywords: ['code', 'refactor', 'build', 'typescript', 'bug', 'repository'] }
 ];
 
 export interface RoutingDecision {

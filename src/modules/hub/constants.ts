@@ -50,7 +50,7 @@ export interface FloatingPodProps {
   title: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   onClick: () => void;
-  modelType: 'eve' | 'walle' | 'ledger' | 'atlas' | 'scout' | 'forge' | 'pulse' | 'basic';
+  modelType: 'eve' | 'walle' | 'ledger' | 'atlas' | 'scout' | 'forge' | 'basic';
   soul: import('@/lib/types').GlobalProjection | null;
   isLocked: boolean;
   isPlugin: boolean;

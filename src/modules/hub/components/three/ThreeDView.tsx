@@ -212,9 +212,6 @@ export const FloatingPod = React.memo(function FloatingPod({
         {modelType === 'forge' && (
           <ForgeModel scale={0.45 * scaleMult} position={[0, -0.4 * scaleMult, 0]} />
         )}
-        {modelType === 'pulse' && (
-          <PolyPodModel shape="icosa" color={color} scale={0.45 * scaleMult} position={[0, -0.4 * scaleMult, 0]} rotation={[0, Math.PI / 6, 0]} />
-        )}
       </Suspense>
       <Html position={[0, (isPlugin ? -1.8 : -2.5) * (isPlugin ? 0.6 : 1), 0]} center distanceFactor={10}>
         <div className={cn(
@@ -300,8 +297,7 @@ export default function ThreeDView({ podLayout, spinePoints, moduleAccess, globa
             module.id === 'ledger' ? 'ledger' :
             module.id === 'atlas' ? 'atlas' :
             module.id === 'scout' ? 'scout' :
-            module.id === 'forge' ? 'forge' :
-            module.id === 'pulse' ? 'pulse' : 'basic';
+            module.id === 'forge' ? 'forge' : 'basic';
 
           return (
             <FloatingPod

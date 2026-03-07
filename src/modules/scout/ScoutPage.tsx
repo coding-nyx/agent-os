@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
@@ -12,6 +13,7 @@ import {
   subscribeScoutProfile,
   syncGuestScoutProfileToUser
 } from './services/scout-knowledge-service';
+import { generateNewsBriefs } from './services/pulse-news-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { registerScoutActions } from './services/actions';
 import { NeuralModal } from '@/core/components/NeuralModal';
@@ -21,7 +23,14 @@ import { buildDocumentAnalysisPrompt, type DocumentParseResult } from './service
 
 registerScoutActions();
 
-function ScoutContent({ profile, encryptionKey }: { profile: ScoutProfile | null; encryptionKey: CryptoKey | null }) {
+interface ScoutViewProps {
+  profile: ScoutProfile | null;
+  encryptionKey: CryptoKey | null;
+  isRefreshingNews?: boolean;
+  onRefreshNews?: () => void;
+}
+
+function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews }: ScoutViewProps) {
   const { globalSoul } = useGlobalSoul();
   const agentAlias = globalSoul?.displayNames?.scout || 'Scout';
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -48,7 +57,7 @@ function ScoutContent({ profile, encryptionKey }: { profile: ScoutProfile | null
           role: 'assistant',
           content:
             `Research link active. I am ${agentAlias}. ` +
-            `Share claims, topics, or evidence requests and I will build your verification graph.`
+            `Share claims, topics, or interest signals and I will map your verification graph and momentum.`
         }
       ]);
     }
@@ -104,8 +113,38 @@ function ScoutContent({ profile, encryptionKey }: { profile: ScoutProfile | null
 
 export default function ScoutPage() {
   const { globalSoul } = useGlobalSoul();
+  const { user } = useAuth();
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('scout');
+  const [isRefreshingNews, setIsRefreshingNews] = useState(false);
+
+  const handleRefreshNews = useCallback(async (profile: ScoutProfile | null, encryptionKey: CryptoKey | null) => {
+    if (!profile || profile.interests.length === 0 || isRefreshingNews) return;
+    const lastUpdated = profile.newsUpdatedAt ? Date.parse(profile.newsUpdatedAt) : 0;
+    const cooldownMs = 30 * 60 * 1000;
+    if (lastUpdated && Date.now() - lastUpdated < cooldownMs) {
+      // In a real app we might show a toast here
+      return;
+    }
+
+    setIsRefreshingNews(true);
+    try {
+      const topics = profile.interests.map(i => i.topic);
+      const briefs = await generateNewsBriefs(topics, { maxTopics: 5 });
+      const now = new Date().toISOString();
+      const next: ScoutProfile = {
+        ...profile,
+        newsBriefs: briefs,
+        newsUpdatedAt: now,
+        updatedAt: now
+      };
+      await saveScoutProfile(next, { userId: user?.uid, encryptionKey });
+    } catch (err) {
+      console.error('Scout news refresh failed:', err);
+    } finally {
+      setIsRefreshingNews(false);
+    }
+  }, [user?.uid, isRefreshingNews]);
 
   return (
     <UnifiedModulePage<ScoutProfile>
@@ -117,11 +156,22 @@ export default function ScoutPage() {
         subscribeProfile: subscribeScoutProfile,
         syncGuestProfile: syncGuestScoutProfileToUser
       }}
-      renderDashboard={({ profile }) => (
-        <ScoutDashboard soul={globalSoul} profile={profile} isLocked={isLocked} />
+      renderDashboard={({ profile, encryptionKey }) => (
+        <ScoutDashboard 
+          soul={globalSoul} 
+          profile={profile} 
+          isLocked={isLocked}
+          isRefreshingNews={isRefreshingNews}
+          onRefreshNews={() => handleRefreshNews(profile, encryptionKey)}
+        />
       )}
       renderContent={({ profile, encryptionKey }) => (
-        <ScoutContent profile={profile} encryptionKey={encryptionKey} />
+        <ScoutContent 
+          profile={profile} 
+          encryptionKey={encryptionKey} 
+          isRefreshingNews={isRefreshingNews}
+          onRefreshNews={() => handleRefreshNews(profile, encryptionKey)}
+        />
       )}
     />
   );

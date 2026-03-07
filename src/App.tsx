@@ -28,7 +28,6 @@ const OrchestratorPage = lazy(() => import('./modules/orchestrator/OrchestratorP
 const AtlasPage = lazy(() => import('./modules/atlas/AtlasPage'));
 const ScoutPage = lazy(() => import('./modules/scout/ScoutPage'));
 const ForgePage = lazy(() => import('./modules/forge/ForgePage'));
-const PulsePage = lazy(() => import('./modules/pulse/PulsePage'));
 const ProfilePage = lazy(() => import('./modules/profile/ProfilePage'));
 
 function AIWrapper({ children }: { children: React.ReactNode }) {
@@ -124,11 +123,8 @@ function AppContent() {
           </ProtectedRoute>
         } />
 
-        <Route path="/pulse" element={
-          <ProtectedRoute>
-            <PulsePage />
-          </ProtectedRoute>
-        } />
+        {/* Pulse absorbed into Scout */}
+        <Route path="/pulse" element={<Navigate to="/scout" replace />} />
 
         <Route path="/profile" element={
           <ProtectedRoute>

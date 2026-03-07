@@ -20,10 +20,29 @@ export interface ScoutKnowledgeNode {
   updatedAt: string;
 }
 
+export interface InterestNode {
+  id: string;
+  topic: string;
+  score: number;
+  trend: 'rising' | 'steady' | 'cooling';
+  lastSeenAt: string;
+}
+
+export interface PulseNewsBrief {
+  topic: string;
+  summary: string;
+  source?: string;
+  updatedAt: string;
+}
+
 export interface ScoutProfile {
   onboardingComplete: boolean;
   researchFocus: string[];
   knowledgeNodes: ScoutKnowledgeNode[];
+  interests: InterestNode[];
+  trendBriefs: string[];
+  newsBriefs: PulseNewsBrief[];
+  newsUpdatedAt?: string;
   verificationQueue: Array<{
     id: string;
     claim: string;
@@ -43,6 +62,11 @@ type LoadContext = {
 function clampConfidence(value: unknown): number {
   if (typeof value !== 'number' || Number.isNaN(value)) return 0.5;
   return Math.max(0, Math.min(1, value));
+}
+
+function clampScore(value: unknown): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(100, value));
 }
 
 function normalizeStringArray(value: unknown): string[] {
@@ -77,6 +101,32 @@ function normalizeScoutProfile(raw: unknown): ScoutProfile {
           updatedAt: typeof entry?.updatedAt === 'string' ? entry.updatedAt : now
         }))
       : [],
+    interests: Array.isArray(candidate.interests)
+      ? candidate.interests.map((entry: Record<string, unknown>, index: number) => ({
+          id: typeof entry?.id === 'string' ? entry.id : `interest_${index}`,
+          topic: typeof entry?.topic === 'string' ? entry.topic : `Topic ${index + 1}`,
+          score: clampScore(entry?.score),
+          trend:
+            entry?.trend === 'rising' || entry?.trend === 'cooling'
+              ? entry.trend
+              : 'steady',
+          lastSeenAt: typeof entry?.lastSeenAt === 'string' ? entry.lastSeenAt : now
+        }))
+      : [],
+    trendBriefs: Array.isArray(candidate.trendBriefs)
+      ? candidate.trendBriefs.filter((entry): entry is string => typeof entry === 'string')
+      : [],
+    newsBriefs: Array.isArray(candidate.newsBriefs)
+      ? candidate.newsBriefs
+          .map((entry: Record<string, unknown>) => ({
+            topic: typeof entry?.topic === 'string' ? entry.topic : 'Topic',
+            summary: typeof entry?.summary === 'string' ? entry.summary : '',
+            source: typeof entry?.source === 'string' ? entry.source : undefined,
+            updatedAt: typeof entry?.updatedAt === 'string' ? entry.updatedAt : now
+          }))
+          .filter((entry: PulseNewsBrief) => entry.summary)
+      : [],
+    newsUpdatedAt: typeof candidate.newsUpdatedAt === 'string' ? candidate.newsUpdatedAt : undefined,
     verificationQueue: Array.isArray(candidate.verificationQueue)
       ? candidate.verificationQueue.map((entry: Record<string, unknown>, index: number) => ({
           id: typeof entry?.id === 'string' ? entry.id : `verify_${index}`,
@@ -100,6 +150,9 @@ export function createEmptyScoutProfile(): ScoutProfile {
     onboardingComplete: true,
     researchFocus: [],
     knowledgeNodes: [],
+    interests: [],
+    trendBriefs: [],
+    newsBriefs: [],
     verificationQueue: [],
     summary: '',
     createdAt: now,

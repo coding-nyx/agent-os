@@ -13,8 +13,6 @@ export function useModuleStats(
     const nsv = globalSoul?.crossFunctionalState;
     const emotionalResilience = nsv?.emotional?.emotionalResilience ?? undefined;
     const cnsFatigue = nsv?.biological?.cnsFatigue ?? undefined;
-    const recoveryScore = nsv?.biological?.recoveryScore ?? undefined;
-    const sleepQuality = nsv?.biological?.sleepQuality ?? undefined;
     const resonanceROI = nsv?.resource?.resonanceROI ?? undefined;
     const financialFriction = nsv?.resource?.financialFriction ?? undefined;
     const energyBudget = nsv?.cognitive?.energyBudget ?? undefined;
@@ -91,15 +89,6 @@ export function useModuleStats(
         label: 'Link',
         display: isLocked('forge') ? '—' : 'LOCAL',
         tone: isLocked('forge') ? 'neutral' : 'good'
-      },
-      pulse: {
-        label: 'Signal',
-        display: isLocked('pulse')
-          ? '—'
-          : globalSoul?.compactedInsights?.length
-          ? 'ACTIVE'
-          : 'IDLE',
-        tone: isLocked('pulse') ? 'neutral' : globalSoul?.compactedInsights?.length ? 'good' : 'neutral'
       }
     };
   }, [globalSoul, moduleAccess]);
@@ -115,7 +104,6 @@ export function useHubLayout(modules: ModuleItem[]) {
         case 'titan':   position = [4, -2.5, 0.5];   break;
         case 'ledger':  position = [-4, -2.5, 0.5];  break;
         // Plugins orbit
-        case 'pulse':   position = [6, 3.5, -3];     break;
         case 'forge':   position = [8, 0, -2];        break;
         case 'scout':   position = [-8, 0, -2];       break;
         case 'atlas':   position = [0, -5.5, -1];     break;
@@ -142,9 +130,8 @@ export function useHubLayout(modules: ModuleItem[]) {
       titan:   { x: 76, y: 68 },   // bottom right
       ledger:  { x: 24, y: 68 },   // bottom left
     };
-    // 4 plugins: orbiting outside the core triangle
+    // Plugins: orbiting outside the core triangle
     const pluginPositions: Record<string, { x: number; y: number }> = {
-      pulse:   { x: 80, y: 18 },   // top right (near agnes)
       forge:   { x: 88, y: 50 },   // far right
       scout:   { x: 12, y: 50 },   // far left
       atlas:   { x: 50, y: 88 },   // bottom center

@@ -21,7 +21,6 @@ export const MODULE_IDS = [
   'atlas',
   'scout',
   'forge',
-  'pulse',
   'bridge'
 ] as const;
 
@@ -171,19 +170,6 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     hasPage: true,
     securityPolicy: { defaultLocked: false, mandatory: false }
   },
-  pulse: {
-    id: 'pulse',
-    route: '/pulse',
-    title: 'Pulse',
-    alias: 'Pulse',
-    description: 'Interest Extension',
-    colorHex: '#D946EF',
-    themeColor: 'fuchsia',
-    icon: Radio,
-    isCore: false,
-    hasPage: true,
-    securityPolicy: { defaultLocked: false, mandatory: false }
-  },
   bridge: {
     id: 'bridge',
     route: '',
@@ -205,8 +191,7 @@ export const HUB_MODULE_ORDER: ModuleId[] = [
   'ledger',
   'atlas',
   'scout',
-  'forge',
-  'pulse'
+  'forge'
 ];
 
 export function buildDefaultVaultLocks(): Record<string, boolean> {
