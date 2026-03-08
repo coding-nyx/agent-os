@@ -1,7 +1,7 @@
-# AGNES: System Architecture & Product Definition
+# Nexus: System Architecture & Product Definition
 
 ## 1. Product Identity
-AGNES (Artificial General Neural Ecosystem for Stability) is a cohesive, multi-agent wellness platform that unifies mental health support, physical optimization, cognitive planning, and financial stability. It operates entirely on client-side E2E encryption and a shared "Global Soul" memory bridge.
+**Nexus** (Artificial General Neural Ecosystem for Stability - AGNES) is a cohesive, multi-agent wellness platform that unifies mental health support, physical optimization, cognitive planning, and financial stability. It operates entirely on client-side E2E encryption and a shared "Global Soul" memory bridge.
 
 ## 2. Core Modules
 

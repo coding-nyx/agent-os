@@ -1,6 +1,6 @@
-# AGNES: Holistic AI Wellness Ecosystem
+# Nexus: Holistic AI Wellness Ecosystem
 
-AGNES (Artificial General Neural Ecosystem for Stability) is a unified, multi-agent wellness platform featuring specialized AI agents (Therapy, Trainer, Ledger, etc.) with a futuristic, Wall-E and Eve-inspired aesthetic. It combines mental health support, physical optimization, cognitive planning, and financial stability into a single, cohesive "Global Soul," secured by client-side End-to-End Encryption (E2EE).
+**Nexus** (Artificial General Neural Ecosystem for Stability - AGNES) is a unified, multi-agent wellness platform featuring specialized AI agents (Therapy, Trainer, Ledger, etc.) with a futuristic, Wall-E and Eve-inspired aesthetic. It combines mental health support, physical optimization, cognitive planning, and financial stability into a single, cohesive "Global Soul," secured by client-side End-to-End Encryption (E2EE).
 
 For a detailed breakdown of the system architecture, product definition, and module functionalities, please see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

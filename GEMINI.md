@@ -16,11 +16,11 @@
 *   **Data Structure & Performance Optimization:** Prioritize efficient data structures and algorithms. Minimize O(n^2) operations, avoid unnecessary re-renders by using `useMemo` and `useCallback` judiciously, and ensure that large datasets (like chat history or biometric logs) are handled with performance-first patterns (virtualization, pagination, or optimized filtering).
 *   **LLM Engine as External Entity:** Treat the `src/llm-engine/` as an external API or separate entity. Interaction should primarily happen via established interfaces. Avoid structural modifications to the engine unless it's necessary for critical optimization or required by a specific architectural directive. Refrain from deep engine changes in favor of interface consumption whenever possible.
 
-# Project Overview: AGNES
+# Project Overview: Nexus
 
-**AGNES** (Artificial General Neural Ecosystem for Stability) is a unified, multi-agent wellness platform that bridges mental health and physical optimization. It features specialized AI agents (Therapy, Trainer, Ledger) operating within a futuristic, Wall-E and Eve-inspired aesthetic, secured by client-side End-to-End Encryption (E2EE).
+**Nexus** (Artificial General Neural Ecosystem for Stability - AGNES) is a unified, multi-agent wellness platform that bridges mental health and physical optimization. It features specialized AI agents (Therapy, Trainer, Ledger) operating within a futuristic, Wall-E and Eve-inspired aesthetic, secured by client-side End-to-End Encryption (E2EE).
 
-The project has evolved from its "Nexus" origins into a holistic "neural ecosystem" where mental and physical states are linked via a centralized event bus (**Spine**) and a synthesized state layer (**GlobalSoul**).
+The project has evolved into a holistic "neural ecosystem" where mental and physical states are linked via a centralized event bus (**Spine**) and a synthesized state layer (**GlobalSoul**).
 
 ## Tech Stack
 
