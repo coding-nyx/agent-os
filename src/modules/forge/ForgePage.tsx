@@ -18,9 +18,6 @@ import {
 } from './services/forge-session-service';
 import { ForgeCloudExecutionService } from './services/forge-cloud-execution';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
-import { registerForgeActions } from './services/actions';
-
-registerForgeActions();
 
 function formatExecutionOutput(payload: { logs?: string[]; result?: string; error?: string }): string {
   const lines: string[] = [];

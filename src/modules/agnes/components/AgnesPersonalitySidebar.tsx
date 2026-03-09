@@ -7,10 +7,12 @@ import { cn } from '@/lib/utils';
 interface AgnesPersonalitySidebarProps {
   baseContext: Partial<BaseContext> | undefined;
   className?: string;
+  naked?: boolean;
 }
 
-export function AgnesPersonalitySidebar({ baseContext, className }: AgnesPersonalitySidebarProps) {
+export function AgnesPersonalitySidebar({ baseContext, className, naked = false }: AgnesPersonalitySidebarProps) {
   if (!baseContext) {
+    if (naked) return null;
     return (
         <motion.div 
             initial={{ opacity: 0, x: -40 }}
@@ -30,6 +32,7 @@ export function AgnesPersonalitySidebar({ baseContext, className }: AgnesPersona
   const hasData = identity?.name || struggles.length > 0 || goals.length > 0 || baseContext.communicationStyle;
 
   if (!hasData) {
+    if (naked) return null;
     return (
         <motion.div 
             initial={{ opacity: 0, x: -40 }}
@@ -42,12 +45,8 @@ export function AgnesPersonalitySidebar({ baseContext, className }: AgnesPersona
     );
   }
 
-  return (
-    <motion.div 
-      initial={{ opacity: 0, x: -40 }}
-      animate={{ opacity: 1, x: 0 }}
-      className={cn("w-72 flex flex-col gap-6 p-6 surface-card h-full !backdrop-blur-[2px] overflow-y-auto no-scrollbar", className)}
-    >
+  const content = (
+    <div className={cn("flex flex-col gap-6", !naked && "h-full")}>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
@@ -100,6 +99,18 @@ export function AgnesPersonalitySidebar({ baseContext, className }: AgnesPersona
           </div>
         </div>
       )}
+    </div>
+  );
+
+  if (naked) return content;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: -40 }}
+      animate={{ opacity: 1, x: 0 }}
+      className={cn("w-72 flex flex-col gap-6 p-6 surface-card h-full !backdrop-blur-[2px] overflow-y-auto no-scrollbar", className)}
+    >
+      {content}
     </motion.div>
   );
 }

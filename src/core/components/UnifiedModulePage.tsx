@@ -31,6 +31,7 @@ interface UnifiedModulePageProps<TProfile extends { onboardingComplete?: boolean
   hideNavigation?: boolean;
   renderLeftRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
   renderRightRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
+  renderMobileFooter?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
 }
 
 export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolean }>({
@@ -44,7 +45,8 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   noContainer = false,
   hideNavigation = false,
   renderLeftRail,
-  renderRightRail
+  renderRightRail,
+  renderMobileFooter
   }: UnifiedModulePageProps<TProfile>) {
   const { isGuest } = useAuth();
   const { isFocusMode, setIsFocusMode } = useUIStore();
@@ -148,10 +150,9 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   }
 
   const workspaceContent = (
-    <motion.div 
-        layout
+    <div
         className={cn(
-            "flex-1 flex flex-col w-full mx-auto relative min-h-0 min-w-0",
+            "flex-1 flex flex-col w-full mx-auto relative min-h-0 min-w-0 transition-[max-width,padding] duration-500",
             workspaceType === 'focus' ? (isFocusMode ? "max-w-full px-2 md:px-12" : "max-w-5xl") : "max-w-[1600px]"
         )}
     >
@@ -211,15 +212,14 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
 
         {workspaceType === 'focus' && (
             <div className="flex-1 flex flex-col min-h-0 py-6 relative">
-                <motion.div 
-                    layout
+                <div
                     className={cn(
                         "flex-1 flex flex-col min-h-0",
                         !noContainer && "bg-black/10 backdrop-blur-[1px] rounded-panel border border-white/5 shadow-2xl overflow-hidden"
                     )}
                 >
                     <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
-                </motion.div>
+                </div>
                 <AnimatePresence>
                     {RenderDashboard && !isFocusMode && !noContainer && (
                         <motion.div
@@ -245,7 +245,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                 </div>
             </div>
         )}
-    </motion.div>
+    </div>
   );
 
   return (
@@ -256,6 +256,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         hideNavigation={hideNavigation}
         renderLeftRail={renderLeftRail ? () => renderLeftRail({ profile, encryptionKey }) : undefined}
         renderRightRail={renderRightRail ? () => renderRightRail({ profile, encryptionKey }) : undefined}
+        renderMobileFooter={renderMobileFooter ? () => renderMobileFooter({ profile, encryptionKey }) : undefined}
     >
       {workspaceContent}
     </ModuleLayout>

@@ -36,10 +36,13 @@ export function isProviderControlOnly(content: string): boolean {
 
 export function stripInternalTags(content: string, options: StripOptions = {}): SanitizedContent {
   const normalized = stripProviderControlTokens(content);
-  // 1. Extract thought content
-  const thoughtMatch = normalized.match(/<thought>([\s\S]*?)<\/thought>/);
+
+  // 1. Extract thought content — handles <thought> (custom), <think>/<thinking> (model-native, e.g. DeepSeek, Grok)
+  const thoughtMatch = normalized.match(/<thought>([\s\S]*?)<\/thought>/)
+    ?? normalized.match(/<thinking>([\s\S]*?)<\/thinking>/)
+    ?? normalized.match(/<think>([\s\S]*?)<\/think>/);
   const thoughtText = thoughtMatch ? thoughtMatch[1].trim() : '';
-  
+
   // 2. Extract action content — \s+ tolerates extra whitespace between tag name and attribute
   const actionMatches = [...normalized.matchAll(/<action\s+type="([^"]+)">([\s\S]*?)<\/action>/gi)];
   const actionText = actionMatches.map(m => `[ACTION: ${m[1]}] ${m[2].trim()}`).join('\n');
@@ -56,16 +59,22 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
     .map(m => `[TOOL_CALL_RAW] ${m[1].trim()}`)
     .join('\n');
 
-  // Check if currently thinking (open tag but no close tag)
-  const isThinking = normalized.includes('<thought>') && !normalized.includes('</thought>');
+  // Check if currently thinking — open tag present but no closing tag yet (streaming)
+  const isThinking = (
+    (normalized.includes('<thought>') && !normalized.includes('</thought>')) ||
+    (normalized.includes('<think>') && !normalized.includes('</think>')) ||
+    (normalized.includes('<thinking>') && !normalized.includes('</thinking>'))
+  );
 
   // Combine all internal context
   const internalParts = [thoughtText, actionText, toolCallText, rawToolCallText].filter(Boolean);
   const internalText = internalParts.length > 0 ? internalParts.join('\n\n') : null;
 
-  // Aggressively clean public text of all tags - REPLACE WITH SPACE TO PREVENT WORD JOINING
+  // Aggressively clean public text of all internal tags - REPLACE WITH SPACE TO PREVENT WORD JOINING
   let publicText = normalized
     .replace(/<thought>[\s\S]*?<\/thought>/g, ' ')
+    .replace(/<think>[\s\S]*?<\/think>/g, ' ')
+    .replace(/<thinking>[\s\S]*?<\/thinking>/g, ' ')
     .replace(/<action[\s\S]*?<\/action>/g, ' ')
     .replace(/<tool_calls_begin>[\s\S]*?<tool_calls_end>/g, ' ')
     .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/g, ' ')
@@ -74,11 +83,13 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   // Remove any unclosed tags at the end (for streaming) - REPLACE WITH SPACE
   publicText = publicText
     .replace(/<thought>[\s\S]*/g, ' ')
+    .replace(/<think>[\s\S]*/g, ' ')
+    .replace(/<thinking>[\s\S]*/g, ' ')
     .replace(/<action[\s\S]*/g, ' ')
     .replace(/<tool_calls_begin>[\s\S]*/g, ' ')
     .replace(/<tool_call_begin>[\s\S]*/g, ' ')
     .replace(/<tool_call>[\s\S]*/g, ' ')
-    .replace(/<(?:t(?:h(?:o(?:u(?:g(?:ht?)?)?)?)?)?|a(?:c(?:t(?:i(?:on?)?)?)?)?|tool_call(?:s_begin|_begin)?)$/i, '');
+    .replace(/<(?:t(?:h(?:o(?:u(?:g(?:ht?)?)?)?|i(?:n(?:k(?:ing?)?)?)?)?)?|a(?:c(?:t(?:i(?:on?)?)?)?)?|tool_call(?:s_begin|_begin)?)$/i, '');
 
   if (!options.retainSpacings) {
     publicText = publicText.replace(/\s+/g, ' '); // Collapse multiple spaces to one

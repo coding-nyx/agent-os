@@ -6,10 +6,13 @@ import { readDocOnce } from '@/lib/services/firestore-once';
 const GUEST_LEDGER_KEY = 'nexus_ledger_profile_guest';
 const VAULT_SALT_MARKER = 'vault_salt_used';
 
+export type TaxCategory = 'essential' | 'deductible' | 'discretionary' | 'investment' | 'non-deductible' | 'partial' | 'unknown';
+
 export interface BudgetLineItem {
   id: string;
   label: string;
   amount: number;
+  taxCategory?: TaxCategory;
 }
 
 export interface DebtItem {

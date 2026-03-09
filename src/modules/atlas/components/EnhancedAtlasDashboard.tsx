@@ -41,8 +41,13 @@ import { GoalProgress } from './GoalProgress';
 import { HabitTracker } from './HabitTracker';
 import { FieldsTab } from './FieldsTab';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
+import { QuickAddForm } from './QuickAddForm';
+import { TodaysPlanCard } from './TodaysPlanCard';
+import { FocusView } from './FocusView';
+import { ViewSwitcher } from './ViewSwitcher';
 
 type AtlasTab = 'dashboard' | 'backlog' | 'routines' | 'fields' | 'review';
+type AtlasView = 'today' | 'week' | 'focus';
 
 interface EnhancedAtlasDashboardProps {
   soul: GlobalProjection | null;
@@ -102,6 +107,7 @@ export function EnhancedAtlasDashboard({
 }: EnhancedAtlasDashboardProps) {
   const [isEditingIntention, setIsEditingIntention] = useState(false);
   const [intentionForm, setIntentionForm] = useState({ theme: '', focusDomain: '', energyTarget: 5 });
+  const [activeView, setActiveView] = useState<AtlasView>('today');
 
   const tabs: NeuralTabItem<AtlasTab>[] = [
     { id: 'dashboard', label: 'Dashboard', icon: CalendarRange },
@@ -173,6 +179,40 @@ export function EnhancedAtlasDashboard({
         {/* ══════════════ DASHBOARD TAB ══════════════ */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
+            {/* ── Sub-view navigation: Today / Week / Focus ── */}
+            <ViewSwitcher activeView={activeView} onViewChange={setActiveView} />
+
+            {/* ── Focus Mode (Zen / Pomodoro) ── */}
+            {activeView === 'focus' && (
+              <FocusView
+                activeTask={tasks.find(t => t.status === 'active' || t.status === 'queued') ?? null}
+                energyLevel={energyBudget}
+                onComplete={onCompleteTask}
+                onDefer={(id) => onUpdateTask(id, { status: 'deferred' })}
+                onOpenChat={noop}
+              />
+            )}
+
+            {/* ── Today plan card (Today view only) ── */}
+            {activeView === 'today' && (
+              <TodaysPlanCard profile={profile} isLocked={isLocked} />
+            )}
+
+            {/* ── Quick-add FAB (Today & Week views) ── */}
+            {activeView !== 'focus' && (
+              <div className="relative">
+                <QuickAddForm
+                  projects={profile?.projects ?? []}
+                  onCreateTask={(t) => onCreateTask(t)}
+                  onCreateHabit={(h) => onCreateHabit(h)}
+                  onCreateGoal={(g) => onCreateGoal(g)}
+                />
+              </div>
+            )}
+
+            {/* ── Normal dashboard content (Today & Week views) ── */}
+            {activeView !== 'focus' && (
+              <div className="space-y-6">
             {/* Daily Intention & Focus */}
             {profile?.dailyIntentions && profile.dailyIntentions.length > 0 && (
               <section className="space-y-3">
@@ -373,6 +413,8 @@ export function EnhancedAtlasDashboard({
                 onExpandGoal={noop}
               />
             </section>
+              </div>
+            )}
           </div>
         )}
 

@@ -77,6 +77,14 @@ export function normalizeSomaProfile(userId: string, raw: unknown): SomaProfile 
 }
 
 /**
+ * Placeholder for guest sync logic.
+ */
+export async function syncGuestSomaProfileToUser({ userId, encryptionKey }: { userId: string; encryptionKey: CryptoKey }): Promise<boolean> {
+    if (!userId || !encryptionKey) return true;
+    return true;
+}
+
+/**
  * Loads and decrypts a SomaProfile from Firestore.
  * Returns `null` when the document doesn't exist or decryption fails.
  */

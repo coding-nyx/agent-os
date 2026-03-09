@@ -29,14 +29,10 @@ import { LEDGER_PERSONA } from './personas';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { computeResonanceROI } from './services/resonance-roi-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
-import { registerLedgerActions } from './services/actions';
-import { registerLedgerFieldActions } from './actions/ledger-field-actions';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { ledgerDiagnosisSpec } from './diagnosis/ledger-diagnosis-spec';
 
-registerLedgerActions();
-registerLedgerFieldActions();
 registerDiagnosisSpec(ledgerDiagnosisSpec);
 
 function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {

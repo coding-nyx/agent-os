@@ -67,9 +67,9 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     alias: 'Nexus',
     description: 'System Orchestrator',
     colorHex: '#8B5CF6',
-    themeColor: 'violet',
+    themeColor: 'cyan',
     icon: Sparkles,
-    chatTheme: 'indigo',
+    chatTheme: 'cyan',
     isCore: true,
     hasPage: true,
     securityPolicy: { defaultLocked: false, mandatory: false }

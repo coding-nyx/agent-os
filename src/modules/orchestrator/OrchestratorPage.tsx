@@ -49,7 +49,7 @@ export default function OrchestratorPage() {
 
   if (isGuest) {
     return (
-      <ModuleLayout title="Nexus" themeColor="indigo" moduleId="orchestrator" hideBack>
+      <ModuleLayout title="Nexus" themeColor="cyan" moduleId="orchestrator" hideBack>
         <GuestModePanel
           moduleId="orchestrator"
           description="Guest links cannot initialize your core profile. Authenticate to unlock full orchestration."
@@ -81,7 +81,7 @@ export default function OrchestratorPage() {
 
   if (pageState === 'DASHBOARD') {
     return (
-      <ModuleLayout title="Nexus" themeColor="indigo" moduleId="orchestrator" hideBack>
+      <ModuleLayout title="Nexus" themeColor="cyan" moduleId="orchestrator" hideBack>
         <NexusDashboard
           ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
           agentName={profile?.agentPersonalityProvision?.orchestratorAlias || 'Nexus'}
@@ -91,7 +91,7 @@ export default function OrchestratorPage() {
   }
 
   return (
-    <ModuleLayout title="Nexus" themeColor="indigo" moduleId="orchestrator" hideBack>
+    <ModuleLayout title="Nexus" themeColor="cyan" moduleId="orchestrator" hideBack>
       <OrchestratorOnboarding profile={profile} isSubmitting={isSubmitting} onComplete={handleComplete} />
     </ModuleLayout>
   );

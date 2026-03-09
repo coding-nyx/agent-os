@@ -142,6 +142,13 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   CYCLE_COMPLETED: 'Cycle completed',
   // Titan Workout Events
   WORKOUT_COMPLETED: 'Workout session logged',
+  SPENDING_DETECTED: 'Spending detected',
+  CONFLICT_DETECTED: 'Conflict detected',
+  CONFLICT_RESOLVED: 'Conflict resolved',
+  ATLAS_RECOVERY_SCHEDULED: 'Recovery scheduled',
+  ATLAS_PREDICTIVE_ALERT: 'Predictive alert',
+  ATLAS_STATE_CHANGED: 'System state changed',
+  GOAL_MISSING_PROGRESS: 'Goal stalled',
 };
 
 // ---------------------------------------------------------------------------

@@ -23,6 +23,7 @@ interface ModuleLayoutProps {
   hideNavigation?: boolean;
   renderLeftRail?: () => React.ReactNode;
   renderRightRail?: () => React.ReactNode;
+  renderMobileFooter?: () => React.ReactNode;
 }
 
 function TelemetryTicker() {
@@ -64,7 +65,8 @@ export function ModuleLayout({
   moduleId, 
   hideNavigation = false,
   renderLeftRail: RenderLeftRail,
-  renderRightRail: RenderRightRail
+  renderRightRail: RenderRightRail,
+  renderMobileFooter: RenderMobileFooter
 }: ModuleLayoutProps) {
   const navigate = useNavigate();
   const [isSyncing, setIsSyncing] = useState(false);
@@ -228,7 +230,16 @@ export function ModuleLayout({
                     )}
                   </div>
                 ) : (
-                  children
+                  <>
+                    <div className="flex-1 overflow-y-auto no-scrollbar">
+                        {children}
+                    </div>
+                    {RenderMobileFooter && (
+                        <div className="lg:hidden shrink-0 border-t border-white/5 bg-black/40 backdrop-blur-2xl">
+                            <RenderMobileFooter />
+                        </div>
+                    )}
+                  </>
                 )}
               </motion.div>
             )}

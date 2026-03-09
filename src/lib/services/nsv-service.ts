@@ -30,6 +30,7 @@ const DEFAULT_NSV: NeuralStateVector = {
     financialFriction: null,
     resonanceROI: null
   },
+  version: 1,
   lastUpdated: {},
   cnsFatigue: null,
   emotionalResilience: null,

@@ -104,6 +104,7 @@ export interface NeuralStateVector {
     financialFriction?: number | null;
     resonanceROI?: number | null;
   };
+  version: number;
   lastUpdated: Record<string, string>;
   // Legacy aliases kept for existing UI/hooks while migrating to domain-based reads.
   cnsFatigue: number | null;
@@ -195,6 +196,13 @@ export type SpineEventType =
   | 'FIELD_CREATED'
   | 'FIELD_DELETED'
   | 'FIELD_VALUE_UPDATED'
+  | 'SPENDING_DETECTED'
+  | 'CONFLICT_DETECTED'
+  | 'CONFLICT_RESOLVED'
+  | 'ATLAS_RECOVERY_SCHEDULED'
+  | 'ATLAS_PREDICTIVE_ALERT'
+  | 'ATLAS_STATE_CHANGED'
+  | 'GOAL_MISSING_PROGRESS'
   // Atlas Spine Events
   | 'ATLAS_TASK_COMPLETED'
   | 'ATLAS_HABIT_LOGGED'
@@ -877,6 +885,7 @@ export interface SomaProfile {
   medicalImageAnalyses: MedicalImageAnalysis[];
   medicalSummary?: string;
   medicalOnboardingComplete?: boolean;
+  onboardingComplete?: boolean;
   createdAt: string;
   updatedAt: string;
   encryptedData?: string;

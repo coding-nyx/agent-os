@@ -284,10 +284,9 @@ export function ChatInterface({
   const hasMessages = messages.some((msg) => msg.role !== 'system');
 
   return (
-    <motion.div 
-      layout
+    <div
       className={cn(
-        "flex-1 flex flex-col w-full mx-auto relative h-full min-h-0",
+        "flex-1 flex flex-col w-full mx-auto relative h-full min-h-0 transition-[max-width,padding] duration-500",
         isFocusMode ? "max-w-full px-4 md:px-12" : "max-w-5xl"
       )}
     >
@@ -505,6 +504,6 @@ export function ChatInterface({
           </form>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

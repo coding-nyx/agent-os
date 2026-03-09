@@ -16,7 +16,6 @@ import {
 } from './services/scout-knowledge-service';
 import { generateNewsBriefs } from './services/pulse-news-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
-import { registerScoutActions } from './services/actions';
 import { FileUp, Plus, X, Search, LayoutDashboard } from 'lucide-react';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
@@ -27,7 +26,6 @@ import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 
-registerScoutActions();
 registerDiagnosisSpec(scoutDiagnosisSpec);
 
 interface ResearchWindow {

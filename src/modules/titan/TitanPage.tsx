@@ -28,8 +28,6 @@ import { IntakeBaseContextService } from '@/lib/services/intake-base-context-ser
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
-import { registerTitanActions } from './services/actions';
-import { registerSomaFieldActions } from '@/modules/soma/actions/soma-field-actions';
 import { useVault } from '@/lib/vault-context';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
@@ -46,8 +44,6 @@ Your tone is direct, clinical, and data-driven.
 You prioritize biological optimization and injury prevention.
 Reference the user's CNS fatigue and biometric data when giving advice.`;
 
-registerTitanActions();
-registerSomaFieldActions();
 registerDiagnosisSpec(titanDiagnosisSpec);
 
 function resolveInitialTab(searchParams: URLSearchParams): TitanTab {

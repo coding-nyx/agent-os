@@ -25,54 +25,59 @@ import {
 } from './services/agnes-profile-service';
 import { ModuleMemoryService } from '@/lib/services/module-memory-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
-import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
-import { registerAgnesActions } from './services/actions';
 import { useUIStore } from '@/lib/stores/ui-store';
 
 type AgnesState = 'selecting' | 'session';
 
-registerAgnesActions();
-
-function AgnesLeftRail({ profile }: { profile: TherapyIntakeProfile | null }) {
+function AgnesSidebar({ profile, agentAlias, isMobile = false }: { profile: TherapyIntakeProfile | null; agentAlias: string; isMobile?: boolean }) {
   return (
-    <div className="h-full flex gap-4 p-6 pl-8">
-      {/* Vertical Status Bar */}
-      <div className="flex flex-col items-center py-8 gap-8 border-r border-white/5 pr-4 h-full relative shrink-0">
-        <div className="[writing-mode:vertical-lr] rotate-180 text-[10px] font-black uppercase tracking-[0.5em] text-indigo-400 opacity-40 whitespace-nowrap">
-          Neural_Synchronization_Active
+    <div className={cn(
+      "h-full flex gap-4",
+      isMobile ? "flex-col p-6 overflow-visible bg-black/40" : "p-6 pl-8 flex-row"
+    )}>
+      {/* Combined Vertical Spine */}
+      {!isMobile && (
+        <div className="flex flex-col items-center py-8 gap-8 border-r border-white/5 pr-4 h-full relative shrink-0">
+          <div className="[writing-mode:vertical-lr] rotate-180 text-[10px] font-black uppercase tracking-[0.5em] text-indigo-400 opacity-40 whitespace-nowrap">
+            Neural_Synchronization_Active
+          </div>
+          <div className="flex-1 w-px bg-gradient-to-b from-indigo-500/20 via-white/5 to-rose-500/20" />
+          <div className="[writing-mode:vertical-lr] text-[10px] font-black uppercase tracking-[0.5em] text-rose-400 opacity-40 whitespace-nowrap">
+            Clinical_Support_Active
+          </div>
         </div>
-        <div className="flex-1 w-px bg-gradient-to-b from-indigo-500/20 via-white/5 to-transparent" />
-      </div>
+      )}
 
-      <AgnesPersonalitySidebar 
-        baseContext={profile?.baseContext} 
-        className="relative z-20 shadow-2xl shrink-0" 
-      />
+      <div className={cn(
+        "flex flex-col h-full",
+        isMobile ? "w-full" : "w-80"
+      )}>
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex flex-col surface-card !backdrop-blur-md h-full overflow-hidden border-white/10"
+        >
+          <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-8">
+            <AgnesPersonalitySidebar 
+              baseContext={profile?.baseContext} 
+              naked
+            />
+            
+            <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            
+            <AgnesTherapistCard 
+              baseContext={profile?.baseContext} 
+              agentAlias={agentAlias}
+              naked
+            />
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 }
-
-function AgnesRightRail({ profile, agentAlias }: { profile: TherapyIntakeProfile | null; agentAlias: string }) {
-    return (
-      <div className="h-full flex gap-4 p-6 pr-8">
-        <AgnesTherapistCard 
-          baseContext={profile?.baseContext} 
-          agentAlias={agentAlias}
-          className="relative z-20 shadow-2xl shrink-0" 
-        />
-        
-        {/* Vertical Decoration */}
-        <div className="flex flex-col items-center py-8 gap-8 border-l border-white/5 pl-4 h-full relative shrink-0">
-          <div className="[writing-mode:vertical-lr] text-[10px] font-black uppercase tracking-[0.5em] text-rose-400 opacity-40 whitespace-nowrap">
-            Clinical_Support_Link_Established
-          </div>
-          <div className="flex-1 w-px bg-gradient-to-b from-rose-500/20 via-white/5 to-transparent" />
-        </div>
-      </div>
-    );
-  }
 
 interface AgnesContentProps extends ContentRenderProps<TherapyIntakeProfile> {}
 
@@ -225,7 +230,7 @@ function AgnesContent({
       </div>
 
       <div className={cn(
-        "flex-1 flex flex-col min-h-0 relative z-10 surface-card !backdrop-blur-[1px] overflow-y-auto no-scrollbar min-[620px]:overflow-hidden min-[620px]:rounded-panel transition-all duration-700 w-full min-w-0",
+        "flex-1 flex flex-col min-h-0 relative z-10 !backdrop-blur-[1px] min-[620px]:rounded-panel transition-all duration-700 w-full min-w-0",
         isFocusMode ? "!bg-transparent border-transparent shadow-none" : ""
       )}>
         <AnimatePresence mode="wait">
@@ -235,105 +240,106 @@ function AgnesContent({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
-              className="min-h-full flex flex-col items-center justify-start p-6 pt-12 min-[620px]:p-12 min-[620px]:justify-center max-w-5xl mx-auto w-full space-y-12 pb-20"
+              className="min-h-full flex flex-col items-center justify-start p-4 min-[620px]:p-12 min-[620px]:justify-center max-w-5xl mx-auto w-full space-y-12 pb-20"
             >
-              <div className="text-center space-y-4">
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4"
-                >
-                  <Shield className="w-3.5 h-3.5 text-indigo-400" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400/80 italic">Secure Neural Environment</span>
-                </motion.div>
-                <h2 className="text-4xl min-[620px]:text-6xl font-black italic tracking-tighter text-white uppercase leading-none">
-                  Neural <span className="text-indigo-400">Sync</span>
-                </h2>
-                <p className="text-white/40 text-xs min-[620px]:text-sm font-medium tracking-wide">Establish a high-fidelity link with your emotional telemetry.</p>
-              </div>
+              <motion.div 
+                className="w-full bg-black/20 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-8 min-[620px]:p-16 shadow-2xl space-y-12"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <div className="text-center space-y-4">
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400/80 italic">Secure Neural Environment</span>
+                  </motion.div>
+                  <h2 className="text-4xl min-[620px]:text-7xl font-black italic tracking-tighter text-white uppercase leading-none">
+                    Neural <span className="text-indigo-400">Sync</span>
+                  </h2>
+                  <p className="text-white/40 text-xs min-[620px]:text-sm font-medium tracking-wide">Establish a high-fidelity link with your emotional telemetry.</p>
+                </div>
 
-              {/* Session Cards - Primary on Mobile */}
-              <div className="grid grid-cols-1 min-[620px]:grid-cols-2 gap-4 min-[620px]:gap-8 w-full px-2">
-                <motion.button 
-                  whileHover={{ scale: 1.02, y: -4 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => startSession('impromptu')} 
-                  className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[3rem] bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
-                >
-                  <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                      <ShieldAlert className="w-20 h-24 text-orange-400" />
-                  </div>
-                  <div className="relative z-10">
-                      <ShieldAlert className="w-10 h-10 text-orange-400 mb-6" />
-                      <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic">Impromptu</h3>
-                      <p className="text-xs text-white/40 leading-relaxed font-medium max-w-[200px]">Detached session for rapid emotional recalibration.</p>
-                      <div className="mt-6 flex items-center gap-2 text-orange-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
-                          <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
-                          <ArrowRight className="w-4 h-4" />
-                      </div>
-                  </div>
-                </motion.button>
-
-                {(!isGuest) && (
-                  hasActiveSession ? (
-                    <motion.button 
-                      whileHover={{ scale: 1.02, y: -4 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => startSession('continue')} 
-                      className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[3rem] bg-indigo-500/10 border-2 border-indigo-500/40 hover:bg-indigo-500/20 transition-all text-left group relative overflow-hidden backdrop-blur-md shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]"
-                    >
-                      <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity">
-                          <Sparkles className="w-20 h-24 text-indigo-400 animate-pulse" />
-                      </div>
-                      <div className="relative z-10">
-                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-400/20 border border-indigo-400/30 mb-6">
-                            <Shield className="w-3 h-3 text-indigo-400" />
-                            <span className="text-[8px] font-black uppercase tracking-widest text-indigo-300">Active Handshake</span>
-                          </div>
-                          <h3 className="text-xl min-[620px]:text-3xl font-black tracking-tighter uppercase mb-3 italic text-white">Reconnect Link</h3>
-                          <p className="text-xs text-indigo-200/60 leading-relaxed font-medium max-w-[240px]">Neural link interrupted. Re-establish secure tunnel to continue your session.</p>
-                          <div className="mt-8 flex items-center gap-3 text-indigo-400">
-                              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Resume Session</span>
-                              <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                          </div>
-                      </div>
-                    </motion.button>
-                  ) : isAccessible ? (
-                    <motion.button 
-                      whileHover={{ scale: 1.02, y: -4 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => startSession('new')} 
-                      className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[3rem] bg-indigo-500/5 border border-indigo-500/20 hover:bg-indigo-500/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
-                    >
-                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                          <Sparkles className="w-20 h-24 text-indigo-400" />
-                      </div>
-                      <div className="relative z-10">
-                          <Sparkles className="w-10 h-10 text-indigo-400 mb-6" />
-                          <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic">New Session</h3>
-                          <p className="text-xs text-indigo-200/40 leading-relaxed font-medium max-w-[200px]">Initialize a deep baseline synchronization.</p>
-                          <div className="mt-6 flex items-center gap-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
-                              <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
-                              <ArrowRight className="w-4 h-4" />
-                          </div>
-                      </div>
-                    </motion.button>
-                  ) : (
-                    <div className="p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-white/[0.01] border border-white/5 opacity-40 cursor-not-allowed text-left backdrop-blur-sm">
-                      <ShieldAlert className="w-10 h-10 text-white/20 mb-6" />
-                      <h3 className="text-xl md:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white/20">Locked</h3>
-                      <p className="text-xs text-white/10 leading-relaxed font-medium max-w-[200px]">Unlock vault to access encrypted neural sessions.</p>
+                {/* Session Cards - Primary on Mobile */}
+                <div className="grid grid-cols-1 min-[620px]:grid-cols-2 gap-4 min-[620px]:gap-8 w-full">
+                  <motion.button 
+                    whileHover={{ scale: 1.02, y: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => startSession('impromptu')} 
+                    className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
+                  >
+                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <ShieldAlert className="w-20 h-24 text-orange-400" />
                     </div>
-                  )
-                )}
-              </div>
+                    <div className="relative z-10">
+                        <ShieldAlert className="w-10 h-10 text-orange-400 mb-6" />
+                        <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white">Impromptu</h3>
+                        <p className="text-xs text-white/40 leading-relaxed font-medium max-w-[200px]">Detached session for rapid emotional recalibration.</p>
+                        <div className="mt-6 flex items-center gap-2 text-orange-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
+                            <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
+                            <ArrowRight className="w-4 h-4" />
+                        </div>
+                    </div>
+                  </motion.button>
 
-              {/* Mobile Profile Summary - Secondary on Mobile */}
-              <div className="grid grid-cols-1 min-[620px]:hidden gap-4 w-full px-2">
-                <AgnesPersonalitySidebar baseContext={profile?.baseContext} className="w-full h-auto py-4 shadow-none" />
-                <AgnesTherapistCard baseContext={profile?.baseContext} agentAlias={agentAlias} className="w-full h-auto py-4 shadow-none" />
-              </div>
+                  {(!isGuest) && (
+                    hasActiveSession ? (
+                      <motion.button 
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => startSession('continue')} 
+                        className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-indigo-500/10 border-2 border-indigo-500/40 hover:bg-indigo-500/20 transition-all text-left group relative overflow-hidden backdrop-blur-md shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]"
+                      >
+                        <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity">
+                            <Sparkles className="w-20 h-24 text-indigo-400 animate-pulse" />
+                        </div>
+                        <div className="relative z-10">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-400/20 border border-indigo-400/30 mb-6">
+                              <Shield className="w-3 h-3 text-indigo-400" />
+                              <span className="text-[8px] font-black uppercase tracking-widest text-indigo-300">Active Handshake</span>
+                            </div>
+                            <h3 className="text-xl min-[620px]:text-3xl font-black tracking-tighter uppercase mb-3 italic text-white">Reconnect Link</h3>
+                            <p className="text-xs text-indigo-200/60 leading-relaxed font-medium max-w-[240px]">Neural link interrupted. Re-establish secure tunnel to continue your session.</p>
+                            <div className="mt-8 flex items-center gap-3 text-indigo-400">
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Resume Session</span>
+                                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+                            </div>
+                        </div>
+                      </motion.button>
+                    ) : isAccessible ? (
+                      <motion.button 
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => startSession('new')} 
+                        className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-indigo-500/5 border border-indigo-500/20 hover:bg-indigo-500/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
+                      >
+                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Sparkles className="w-20 h-24 text-indigo-400" />
+                        </div>
+                        <div className="relative z-10">
+                            <Sparkles className="w-10 h-10 text-indigo-400 mb-6" />
+                            <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white">New Session</h3>
+                            <p className="text-xs text-indigo-200/40 leading-relaxed font-medium max-w-[200px]">Initialize a deep baseline synchronization.</p>
+                            <div className="mt-6 flex items-center gap-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
+                                <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
+                                <ArrowRight className="w-4 h-4" />
+                            </div>
+                        </div>
+                      </motion.button>
+                    ) : (
+                      <div className="p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] bg-white/[0.01] border border-white/5 opacity-40 cursor-not-allowed text-left backdrop-blur-sm">
+                        <ShieldAlert className="w-10 h-10 text-white/20 mb-6" />
+                        <h3 className="text-xl md:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white/20">Locked</h3>
+                        <p className="text-xs text-white/10 leading-relaxed font-medium max-w-[200px]">Unlock vault to access encrypted neural sessions.</p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </motion.div>
             </motion.div>
           ) : (
             <motion.div 
@@ -462,9 +468,11 @@ export default function AgnesPage() {
       }}
       renderOnboarding={AgnesOnboardingWrapper}
       renderContent={AgnesContent}
-      renderLeftRail={({ profile }) => <AgnesLeftRail profile={profile} />}
-      renderRightRail={({ profile }) => (
-        <AgnesRightRail profile={profile} agentAlias={agentAlias} />
+      renderLeftRail={({ profile }) => (
+        <AgnesSidebar profile={profile} agentAlias={agentAlias} />
+      )}
+      renderMobileFooter={({ profile }) => (
+        <AgnesSidebar profile={profile} agentAlias={agentAlias} isMobile />
       )}
     />
   );

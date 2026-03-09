@@ -68,7 +68,7 @@ export interface SomaProfile {
   energyLevel?: number;
   stressPhysical?: number;
   chronicConditions?: string[];
-  medications?: string;
+  medications?: string[];
   supplements?: string[];
   
   // Medical clearance

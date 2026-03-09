@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
-export type NeuralThemeColor = 'lime' | 'sky' | 'orange' | 'cyan' | 'purple' | 'rose' | 'amber' | 'indigo' | 'white';
+export type NeuralThemeColor = 'lime' | 'sky' | 'orange' | 'cyan' | 'purple' | 'rose' | 'amber' | 'indigo' | 'emerald' | 'white';
 
 export interface NeuralTabItem<T extends string = string> {
   id: T;
@@ -112,6 +112,15 @@ const THEME_MAP: Record<NeuralThemeColor, {
     badgeBg: 'bg-white/10',
     badgeBorder: 'border-white/20',
     badgeText: 'text-white/80'
+  },
+  emerald: {
+    activeText: 'text-white',
+    pillBg: 'bg-emerald-500/10',
+    pillBorder: 'border-emerald-500/20',
+    underline: 'bg-emerald-400',
+    badgeBg: 'bg-emerald-500/20',
+    badgeBorder: 'border-emerald-500/30',
+    badgeText: 'text-emerald-300'
   }
 };
 

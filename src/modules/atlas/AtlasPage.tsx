@@ -22,11 +22,6 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useSchemaRegistry } from '@/lib/hooks/use-schema-registry';
 import { AtlasOnboarding } from './onboarding/AtlasOnboarding';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
-import { registerAtlasActions } from './services/actions';
-import { registerAtlasFieldActions } from './actions/atlas-field-actions';
-
-registerAtlasActions();
-registerAtlasFieldActions();
 
 function buildRecoveryWindow(reason: string): RecoveryWindow {
   const now = Date.now();
