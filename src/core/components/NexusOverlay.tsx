@@ -13,8 +13,8 @@ interface SubModuleState {
   content?: string;
 }
 
-const NEXUS_COLLAPSED_WIDTH = 36;
-const NEXUS_EXPANDED_WIDTH = 148;
+const NEXUS_COLLAPSED_WIDTH = 42;
+const NEXUS_EXPANDED_WIDTH = 160;
 
 export function NexusOverlay() {
   const { user, profile } = useAuth();
@@ -68,12 +68,16 @@ export function NexusOverlay() {
         onClick={() => setOpen(true)}
         style={{
           width: isHovered ? NEXUS_EXPANDED_WIDTH : NEXUS_COLLAPSED_WIDTH,
+          height: NEXUS_COLLAPSED_WIDTH,
           minWidth: NEXUS_COLLAPSED_WIDTH,
+          gap: isHovered ? 8 : 0,
+          paddingLeft: isHovered ? 14 : 0,
+          paddingRight: isHovered ? 14 : 0,
         }}
-        className="fixed bottom-4 right-4 z-[110] flex items-center justify-center gap-2 rounded-xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] px-2.5 py-2 shadow-lg shadow-black/20 transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:border-white/[0.12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40"
+        className="fixed bottom-4 right-4 z-[110] flex items-center justify-center rounded-xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] shadow-lg shadow-black/20 transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:border-white/[0.12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40"
         aria-label="Open Nexus overlay"
       >
-        <Sparkles className="w-4 h-4 text-white/35 shrink-0" />
+        <Sparkles className="w-[18px] h-[18px] text-white/35 shrink-0" />
         <motion.span
           initial={{ opacity: 0 }}
           animate={{ opacity: isHovered ? 1 : 0 }}
