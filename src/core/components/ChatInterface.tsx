@@ -39,6 +39,7 @@ interface ChatInterfaceProps {
   onQuotaExhausted?: () => void;
   showInternalSignals?: boolean;
   renderCustomActions?: () => React.ReactNode;
+  renderMessageActions?: (message: Message, index: number) => React.ReactNode;
   moduleId?: string;
   headerActions?: React.ReactNode;
 }
@@ -207,6 +208,7 @@ export function ChatInterface({
   onQuotaExhausted,
   showInternalSignals = true,
   renderCustomActions,
+  renderMessageActions,
   moduleId,
   headerActions
 }: ChatInterfaceProps) {
@@ -307,8 +309,10 @@ export function ChatInterface({
             const isAI = msg.role === 'assistant';
             const isLast = i === messages.length - 1;
             
+            const actions = renderMessageActions ? renderMessageActions(msg, i) : null;
             return (
-              <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn("flex gap-4 w-full", isAI ? "justify-start" : "justify-end")}>
+              <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
+                <div className={cn("flex gap-4 w-full", isAI ? "justify-start" : "justify-end")}>
                 {isAI && (
                   <div className={cn("w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center bg-black/60 shrink-0 mt-1 shadow-xl transition-colors", theme.accent)}>
                     <Bot className="w-5 h-5" />
@@ -335,6 +339,12 @@ export function ChatInterface({
                 {!isAI && (
                   <div className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center bg-black/60 shrink-0 mt-1 shadow-xl">
                     <User className="w-5 h-5 text-white/40" />
+                  </div>
+                )}
+                </div>
+                {actions && (
+                  <div className={cn("mt-3", isAI ? "ml-12" : "mr-12")}>
+                    {actions}
                   </div>
                 )}
               </motion.div>

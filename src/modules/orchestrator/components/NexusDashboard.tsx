@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { NexusChat } from '@/core/components/NexusChat';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
-import type { Message, GuestQuota } from '@/lib/types';
+import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import { DailyBriefSection } from './DailyBriefSection';
 import { SynthesisPanel } from './SynthesisPanel';
 import { ModuleHealthCards } from './ModuleHealthCards';
@@ -17,9 +17,17 @@ interface NexusDashboardProps {
     streamingText: string;
     error: string | null;
     quota: GuestQuota | null;
-    handleSendMessage: (content: string, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
+    handleSendMessage: (content: MessageContent, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
   };
   agentName: string;
+}
+
+function contentToText(content: MessageContent): string {
+  if (typeof content === 'string') return content;
+  return content
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join(' ');
 }
 
 export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
@@ -43,9 +51,10 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
 
   // Smart routing: classify intent before sending
   const handleSendWithRouting = useCallback(async (
-    content: string,
+    content: MessageContent,
     onActionParsed?: (type: string, payload: Record<string, unknown>) => void
   ) => {
+    const contentText = contentToText(content);
     // Skip routing in these cases per spec
     const shouldSkipRouting =
       conversationDepth === 0 || // First message stays in Nexus
@@ -53,7 +62,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
       suggestionCount >= 2;      // Already suggested twice
 
     if (!shouldSkipRouting) {
-      const decision = NexusRoutingService.classifyIntent(content);
+      const decision = NexusRoutingService.classifyIntent(contentText);
       // Multi-keyword check: if target isn't orchestrator and confidence is high enough
       if (decision.target !== 'orchestrator' && decision.confidence >= 0.62) {
         setRoutingSuggestion({ target: decision.target, reason: decision.reason });

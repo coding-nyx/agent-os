@@ -21,7 +21,8 @@ export const MODULE_IDS = [
   'atlas',
   'scout',
   'forge',
-  'bridge'
+  'bridge',
+  'documents'
 ] as const;
 
 export type ModuleId = (typeof MODULE_IDS)[number];
@@ -182,6 +183,19 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     isCore: false,
     hasPage: false,
     securityPolicy: { defaultLocked: false, mandatory: false }
+  },
+  documents: {
+    id: 'documents',
+    route: '/documents',
+    title: 'Documents',
+    alias: 'Documents',
+    description: 'Document Intelligence Workspace',
+    colorHex: '#94A3B8',
+    themeColor: 'slate',
+    icon: Database,
+    isCore: false,
+    hasPage: true,
+    securityPolicy: { defaultLocked: true, mandatory: false }
   }
 };
 

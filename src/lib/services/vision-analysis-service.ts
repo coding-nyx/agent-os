@@ -39,6 +39,8 @@ For any field you cannot extract with confidence, use null. Never hallucinate va
 For any field you cannot extract with confidence, use null. Never hallucinate values. Return ONLY the JSON object.`
 };
 
+const DOCUMENT_OCR_PROMPT = `Extract all readable text from this document image. Return only the plain text, no markdown, no JSON, no commentary. Preserve line breaks where possible.`;
+
 function stripActionTagsAndMarkdown(text: string): string {
   // Remove action tags
   let cleaned = text.replace(/<action\b[^>]*>[\s\S]*?<\/action>/gi, '');
@@ -102,6 +104,65 @@ async function attemptVisionCall(
   return JSON.parse(cleaned);
 }
 
+async function attemptVisionTextCall(
+  imageDataUrl: string,
+  prompt: string,
+  openrouterKey: string,
+  modelId: string
+): Promise<string> {
+  const content: MessageContentPart[] = [
+    {
+      type: 'image_url',
+      image_url: {
+        url: imageDataUrl,
+        detail: 'auto'
+      }
+    },
+    {
+      type: 'text',
+      text: prompt
+    }
+  ];
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${openrouterKey}`,
+      'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://agnes.ai'
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [
+        {
+          role: 'user',
+          content
+        }
+      ],
+      temperature: 0.2,
+      max_tokens: 2000
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Vision API error: ${response.status} ${error}`);
+  }
+
+  const data = await response.json();
+  const text = data.choices?.[0]?.message?.content || '';
+  return stripActionTagsAndMarkdown(text);
+}
+
+function resolveOpenRouterKey(explicitKey?: string) {
+  if (explicitKey) return explicitKey;
+  if (typeof window !== 'undefined') {
+    const fromLocal = localStorage.getItem('VITE_OPENROUTER_API_KEY');
+    if (fromLocal) return fromLocal;
+  }
+  return import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined;
+}
+
 export async function analyzeImageWithVision(
   imageDataUrl: string,
   mode: VisionAnalysisMode,
@@ -132,4 +193,16 @@ export async function analyzeImageWithVision(
     rawJson: {},
     error: lastError?.message || 'Unknown error during vision analysis'
   };
+}
+
+export async function extractTextWithVision(
+  imageDataUrl: string,
+  openrouterKey?: string,
+  modelId: string = 'openai/gpt-4o'
+): Promise<string> {
+  const key = resolveOpenRouterKey(openrouterKey);
+  if (!key) {
+    throw new Error('OpenRouter API key is required for vision OCR.');
+  }
+  return attemptVisionTextCall(imageDataUrl, DOCUMENT_OCR_PROMPT, key, modelId);
 }

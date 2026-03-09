@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
 import { useGlobalSoul } from '../global-soul-context';
 import { useAuth } from '../auth-context';
-import { Message, GuestQuota, NeuralStateVectorPatch, SpineEventType } from '../types';
+import { Message, MessageContent, GuestQuota, NeuralStateVectorPatch, SpineEventType, ContextPolicy } from '../types';
 import { GuestQuotaService } from '../services/guest-quota-service';
 import { ModuleMemoryService } from '../services/module-memory-service';
 import { PersonaFactory } from '@/llm-engine/persona-factory';
@@ -19,6 +19,8 @@ interface UseModuleAIOptions {
   systemPrompt: string;
   encryptionKey?: CryptoKey | null;
   navigateTo?: (path: string) => void;
+  sessionId?: string;
+  contextPolicy?: ContextPolicy;
 }
 
 const MEMORY_SECTION_CHAR_LIMIT = 1800;
@@ -29,20 +31,31 @@ function trimToCharLimit(text: string, limit: number): string {
   return `${text.slice(0, Math.max(0, limit - 12)).trim()}...`;
 }
 
-export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, navigateTo }: UseModuleAIOptions) {
+function contentToText(content: MessageContent): string {
+  if (typeof content === 'string') return content;
+  return content
+    .filter((part) => part.type === 'text')
+    .map((part) => (part as { type: 'text'; text: string }).text)
+    .join(' ');
+}
+
+export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, navigateTo, sessionId, contextPolicy }: UseModuleAIOptions) {
   const { streamMessage, sendMessage } = useAI();
   const { enhanceContext, enhanceContextForModule, globalSoul } = useGlobalSoul();
   const { user, isGuest, profile } = useAuth();
+  const activeSessionId = sessionId ?? 'current';
+  const resolvedContextPolicy: ContextPolicy = contextPolicy ?? 'base-context';
 
   // Resolve which context enhancer to use:
   // - orchestrator (Nexus) gets full NSV via enhanceContext
   // - all other modules get filtered NSV via enhanceContextForModule
   const resolvedEnhanceContext = useCallback((context: Parameters<typeof enhanceContext>[0]) => {
+    if (resolvedContextPolicy === 'doc-only') return context;
     if (moduleId === 'orchestrator') {
       return enhanceContext(context);
     }
     return enhanceContextForModule(context, moduleId as import('@/lib/module-manifest').ModuleId);
-  }, [moduleId, enhanceContext, enhanceContextForModule]);
+  }, [moduleId, enhanceContext, enhanceContextForModule, resolvedContextPolicy]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -59,7 +72,17 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
   const currentAssistantMessageBodyRef = useRef('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
-  const handleSendMessageRef = useRef<((content: string) => void) | null>(null);
+  const handleSendMessageRef = useRef<((content: MessageContent) => void) | null>(null);
+
+  useEffect(() => {
+    setMessages([]);
+    setStreamingText('');
+    setError(null);
+    setIsProcessing(false);
+    isProcessingRef.current = false;
+    sessionStartRef.current = new Date().toISOString();
+    lastRemoteSignatureRef.current = null;
+  }, [activeSessionId, moduleId]);
 
   // C-1: Abort in-flight stream on unmount
   useEffect(() => {
@@ -107,7 +130,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     let unsubscribe: (() => void) | null = null;
 
     if (user && !isGuest) {
-      unsubscribe = ModuleMemoryService.subscribeActiveSession(user.uid, moduleId, (session) => {
+      unsubscribe = ModuleMemoryService.subscribeActiveSession(user.uid, moduleId, activeSessionId, (session) => {
         if (!mounted) return;
         if (session && session.history.length > 0) {
           const signature = `${session.lastMessageAt}:${session.history.length}`;
@@ -123,7 +146,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     } else {
       // Guest/impromptu: try restoring from sessionStorage
       try {
-        const cached = sessionStorage.getItem(`nexus_session_${moduleId}`);
+        const cached = sessionStorage.getItem(`nexus_session_${moduleId}_${activeSessionId}`);
         if (cached && mounted) {
           const parsed = JSON.parse(cached);
           if (parsed?.history?.length > 0) {
@@ -139,7 +162,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
       mounted = false;
       if (unsubscribe) unsubscribe();
     };
-  }, [user, isGuest, moduleId]);
+  }, [user, isGuest, moduleId, activeSessionId]);
 
   // Save active session to Firestore with debounce; guest sessions to sessionStorage
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -165,25 +188,26 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
       const lastMessageAt = new Date().toISOString();
       lastRemoteSignatureRef.current = `${lastMessageAt}:${currentMessages.length}`;
       ModuleMemoryService.saveActiveSession(user.uid, {
-        sessionId: 'current',
+        sessionId: activeSessionId,
         moduleId,
         startTime: sessionStartRef.current,
         lastMessageAt,
         history: currentMessages,
         tokenCount: 0,
-        isGuestTrial: false
+        isGuestTrial: false,
+        contextPolicy: resolvedContextPolicy
       }).catch((e) => console.error('Failed to save active session:', e));
     }
 
     // Always persist to sessionStorage as a lightweight fallback
     try {
-      sessionStorage.setItem(`nexus_session_${moduleId}`, JSON.stringify({
+      sessionStorage.setItem(`nexus_session_${moduleId}_${activeSessionId}`, JSON.stringify({
         history: currentMessages,
         startTime: sessionStartRef.current,
         savedAt: new Date().toISOString()
       }));
     } catch { /* sessionStorage full or unavailable */ }
-  }, [user, isGuest, moduleId]);
+  }, [user, isGuest, moduleId, activeSessionId, resolvedContextPolicy]);
 
   useEffect(() => {
     if (isHydrating || messages.length === 0) return;
@@ -208,7 +232,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
   }, [flushActiveSession]);
 
   const handleSendMessage = useCallback(
-    async (content: string, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void) => {
+    async (content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void) => {
       if (isProcessingRef.current) return;
       if (isGuest && quota.isHardLocked) return;
 
@@ -222,8 +246,10 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
       setError(null);
       setStreamingText('');
 
+      const contentText = contentToText(content);
+
       // --- Routing classification (delegated to useHandoffProcessor) ---
-      const routingResult = await classifyAndRoute(content, messages);
+      const routingResult = await classifyAndRoute(contentText, messages);
       if (!mountedRef.current) return;
 
       if (routingResult.shouldDelegate) {
@@ -254,9 +280,14 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
 
       try {
         // --- Memory retrieval (delegated to useMemoryIntegration) ---
-        const recentHistorySlice = messages.slice(-3).map((msg) => `${msg.role}: ${msg.content}`).join('\n');
-        const memoryQuery = `${content}\n${recentHistorySlice}`;
-        const { recalledSessionsSummary, recalledFactsSummary } = await retrieveMemoryContext(memoryQuery);
+        const recentHistorySlice = messages
+          .slice(-3)
+          .map((msg) => `${msg.role}: ${contentToText(msg.content)}`)
+          .join('\n');
+        const memoryQuery = `${contentText}\n${recentHistorySlice}`;
+        const { recalledSessionsSummary, recalledFactsSummary } = resolvedContextPolicy === 'doc-only'
+          ? { recalledSessionsSummary: '', recalledFactsSummary: '' }
+          : await retrieveMemoryContext(memoryQuery);
 
         const finalSystemPrompt = PersonaFactory.generateSystemPrompt({
           moduleId,
@@ -284,7 +315,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
           resolvedEnhanceContext({
             systemPrompt: finalSystemPrompt,
             memoryContext: [],
-            summary: cappedMemorySummary || `Active session in ${moduleId}.`,
+            summary: cappedMemorySummary || `Active session in ${moduleId}${resolvedContextPolicy === 'doc-only' ? ' (doc-only).' : '.'}`,
             history: messages  // history before user message — CognitiveAgent adds user msg
           }),
           (chunk) => {
@@ -357,7 +388,9 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
             },
             pushAssistantMessage: (content: string) => {
               if (!content.trim()) return;
-              setMessages((prev) => [...prev, { role: 'assistant', content } as Message].slice(-MAX_MESSAGES));
+              localHistory = [...localHistory, { role: 'assistant', content } as Message].slice(-MAX_MESSAGES);
+              messagesRef.current = localHistory;
+              setMessages(localHistory);
             },
             sendMessage,
             emitSpineEvent: (type: SpineEventType, data: Record<string, unknown>) => Spine.emit({
@@ -412,17 +445,18 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
             const lastMessageAt = new Date().toISOString();
             lastRemoteSignatureRef.current = `${lastMessageAt}:${localHistory.length}`;
             ModuleMemoryService.saveActiveSession(user.uid, {
-              sessionId: 'current',
+              sessionId: activeSessionId,
               moduleId,
               startTime: sessionStartRef.current,
               lastMessageAt,
               history: localHistory,
               tokenCount: 0,
-              isGuestTrial: false
+              isGuestTrial: false,
+              contextPolicy: resolvedContextPolicy
             }).catch((e) => console.error('Failed to save completed message:', e));
           }
           try {
-            sessionStorage.setItem(`nexus_session_${moduleId}`, JSON.stringify({
+            sessionStorage.setItem(`nexus_session_${moduleId}_${activeSessionId}`, JSON.stringify({
               history: localHistory,
               startTime: sessionStartRef.current,
               savedAt: new Date().toISOString()
@@ -446,13 +480,14 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
             lastRemoteSignatureRef.current =
               `${consolidationResult.lastMessageAt}:${consolidationResult.trimmedHistory.length}`;
             ModuleMemoryService.saveActiveSession(user.uid, {
-              sessionId: 'current',
+              sessionId: activeSessionId,
               moduleId,
               startTime: sessionStartRef.current,
               lastMessageAt: consolidationResult.lastMessageAt,
               history: consolidationResult.trimmedHistory,
               tokenCount: 0,
-              isGuestTrial: false
+              isGuestTrial: false,
+              contextPolicy: resolvedContextPolicy
             }).catch((e) => console.error('Failed to save trimmed session:', e));
           }
         }
@@ -485,7 +520,9 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
       storeDelegation,
       retrieveMemoryContext,
       handlePendingQueryResult,
-      consolidateIfNeeded
+      consolidateIfNeeded,
+      activeSessionId,
+      resolvedContextPolicy
     ]
   );
 
@@ -502,9 +539,9 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
     setMessages([]);
     sessionStartRef.current = new Date().toISOString();
     resetConsolidation();  // M-6: reset retry counter on clear
-    try { sessionStorage.removeItem(`nexus_session_${moduleId}`); } catch { /* ignore */ }
+    try { sessionStorage.removeItem(`nexus_session_${moduleId}_${activeSessionId}`); } catch { /* ignore */ }
     if (user && !isGuest) {
-      await ModuleMemoryService.clearActiveSession(user.uid, moduleId);
+      await ModuleMemoryService.clearActiveSession(user.uid, moduleId, activeSessionId);
       Spine.emit({
         type: 'SESSION_ENDED',
         source: moduleId,
@@ -514,7 +551,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
         priority: 'info'
       });
     }
-  }, [user, isGuest, moduleId, resetConsolidation]);
+  }, [user, isGuest, moduleId, resetConsolidation, activeSessionId]);
 
   const summarizeSession = useCallback(async (): Promise<string> => {
     if (messages.length < 3) return 'Session was too brief for full synthesis.';

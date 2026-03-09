@@ -5,6 +5,14 @@ import { EmbeddingService } from './embedding-service';
 import { readDocOnce } from './firestore-once';
 
 const COLLECTION_PREFIX = 'module_memory';
+const ACTIVE_SESSION_COLLECTION = 'active_sessions';
+
+function getActiveSessionDocId(uid: string, moduleId: string, sessionId?: string) {
+  if (sessionId && sessionId !== 'current') {
+    return `${uid}_${moduleId}_${sessionId}`;
+  }
+  return `${uid}_${moduleId}`;
+}
 
 export const ModuleMemoryService = {
   async getEnvelope(uid: string, moduleId: string): Promise<ModuleMemoryEnvelope | null> {
@@ -99,7 +107,7 @@ export const ModuleMemoryService = {
     const { db } = getFirebase();
     if (!db) return;
 
-    const docRef = doc(db, 'active_sessions', `${uid}_${session.moduleId}`);
+    const docRef = doc(db, ACTIVE_SESSION_COLLECTION, getActiveSessionDocId(uid, session.moduleId, session.sessionId));
     try {
       await setDoc(docRef, session);
     } catch (error) {
@@ -107,12 +115,12 @@ export const ModuleMemoryService = {
     }
   },
 
-  async getActiveSession(uid: string, moduleId: string): Promise<ActiveSessionState | null> {
+  async getActiveSession(uid: string, moduleId: string, sessionId?: string): Promise<ActiveSessionState | null> {
     if (!uid || !moduleId) return null;
     const { db } = getFirebase();
     if (!db) return null;
 
-    const docRef = doc(db, 'active_sessions', `${uid}_${moduleId}`);
+    const docRef = doc(db, ACTIVE_SESSION_COLLECTION, getActiveSessionDocId(uid, moduleId, sessionId));
     const snap = await readDocOnce(docRef);
 
     if (snap.exists()) {
@@ -124,13 +132,14 @@ export const ModuleMemoryService = {
   subscribeActiveSession(
     uid: string,
     moduleId: string,
+    sessionId: string | undefined,
     onUpdate: (session: ActiveSessionState | null) => void
   ): () => void {
     if (!uid || !moduleId) return () => {};
     const { db } = getFirebase();
     if (!db) return () => {};
 
-    const docRef = doc(db, 'active_sessions', `${uid}_${moduleId}`);
+    const docRef = doc(db, ACTIVE_SESSION_COLLECTION, getActiveSessionDocId(uid, moduleId, sessionId));
     const unsubscribe = onSnapshot(
       docRef,
       (snap) => {
@@ -148,12 +157,12 @@ export const ModuleMemoryService = {
     return unsubscribe;
   },
 
-  async clearActiveSession(uid: string, moduleId: string): Promise<void> {
+  async clearActiveSession(uid: string, moduleId: string, sessionId?: string): Promise<void> {
     if (!uid || !moduleId) return;
     const { db } = getFirebase();
     if (!db) return;
 
-    const docRef = doc(db, 'active_sessions', `${uid}_${moduleId}`);
+    const docRef = doc(db, ACTIVE_SESSION_COLLECTION, getActiveSessionDocId(uid, moduleId, sessionId));
     try {
       await deleteDoc(docRef);
     } catch (error) {

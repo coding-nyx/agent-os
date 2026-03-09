@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth-context';
 import type { ModuleTheme } from '@/lib/module-manifest';
 import { UnifiedAuthModal, AuthMode } from './UnifiedAuthModal';
 import { stripInternalTags } from '@/llm-engine/sanitize';
-import type { Message, GuestQuota } from '@/lib/types';
+import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 
 interface NexusChatProps {
     ai: {
@@ -13,7 +13,7 @@ interface NexusChatProps {
         streamingText: string;
         error: string | null;
         quota: GuestQuota | null;
-        handleSendMessage: (content: string, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
+        handleSendMessage: (content: MessageContent, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
     };
     agentName: string;
     themeColor: ModuleTheme;
@@ -23,6 +23,7 @@ interface NexusChatProps {
     authMode?: AuthMode;
     showInternalSignals?: boolean;
     renderCustomActions?: () => ReactNode;
+    renderMessageActions?: (message: Message, index: number) => ReactNode;
     moduleId?: string;
 }
 
@@ -36,6 +37,7 @@ export function NexusChat({
     authMode = 'global',
     showInternalSignals = true,
     renderCustomActions,
+    renderMessageActions,
     moduleId
 }: NexusChatProps) {
     const { isGuest } = useAuth();
@@ -71,6 +73,7 @@ export function NexusChat({
                 onQuotaExhausted={() => setShowAuth(true)}
                 showInternalSignals={showInternalSignals}
                 renderCustomActions={renderCustomActions}
+                renderMessageActions={renderMessageActions}
                 moduleId={moduleId}
                 headerActions={headerActions}
                 onRetry={() => {

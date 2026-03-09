@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Activity, TestTube2, ShieldCheck } from 'lucide-react';
+import { Activity, TestTube2, ShieldCheck, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
@@ -9,7 +9,7 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 // Training | Biomarkers | Recovery
 // ---------------------------------------------------------------------------
 
-type TitanTab = 'training' | 'biomarkers' | 'recovery';
+type TitanTab = 'training' | 'biomarkers' | 'recovery' | 'diagnosis';
 
 interface TitanDashboardTabsProps {
   activeTab: TitanTab;
@@ -26,6 +26,7 @@ const TABS: {
   { key: 'training', label: 'Training', icon: Activity },
   { key: 'biomarkers', label: 'Biomarkers', icon: TestTube2 },
   { key: 'recovery', label: 'Recovery', icon: ShieldCheck },
+  { key: 'diagnosis', label: 'Diagnosis', icon: FileText },
 ];
 
 const CLEARANCE_BADGE_COLORS: Record<string, string> = {

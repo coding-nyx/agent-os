@@ -59,53 +59,6 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
   };
 }
 
-/**
- * One-time migration: reads soma_profiles and merges medical data into titan profile.
- * No-op if titan already has biomarkers or medical onboarding complete.
- */
-export async function migrateSomaDataToTitan(
-  titanProfile: TitanProfile,
-  context: { userId?: string | null; encryptionKey?: CryptoKey | null }
-): Promise<TitanProfile> {
-  if (titanProfile.biomarkers?.length > 0 || titanProfile.medicalOnboardingComplete) {
-    return titanProfile;
-  }
-
-  const { userId, encryptionKey } = context;
-  if (!userId || !encryptionKey) return titanProfile;
-
-  const { db } = getFirebase();
-  if (!db) return titanProfile;
-
-  try {
-    const snap = await readDocOnce(doc(db, 'soma_profiles', userId));
-    if (!snap.exists()) return titanProfile;
-
-    const raw = snap.data();
-    if (!raw?.encryptedData || !raw?.iv) return titanProfile;
-
-    const decrypted = await decryptWithKey({ ciphertext: raw.encryptedData, iv: raw.iv }, encryptionKey);
-    const somaData = JSON.parse(decrypted) as Record<string, unknown>;
-
-    return {
-      ...titanProfile,
-      medicalOnboardingComplete: Boolean(somaData.onboardingComplete),
-      knownConditions: Array.isArray(somaData.knownConditions) ? somaData.knownConditions as string[] : titanProfile.knownConditions,
-      medications: Array.isArray(somaData.medications) ? somaData.medications as string[] : titanProfile.medications,
-      allergies: Array.isArray(somaData.allergies) ? somaData.allergies as string[] : titanProfile.allergies,
-      biomarkers: Array.isArray(somaData.biomarkers) ? (somaData.biomarkers as TitanProfile['biomarkers']).slice(0, 200) : titanProfile.biomarkers,
-      labSummaries: Array.isArray(somaData.labSummaries) ? (somaData.labSummaries as TitanProfile['labSummaries']).slice(0, 50) : titanProfile.labSummaries,
-      clearances: Array.isArray(somaData.clearances) ? (somaData.clearances as TitanProfile['clearances']).slice(0, 100) : titanProfile.clearances,
-      medicalImageAnalyses: Array.isArray(somaData.medicalImageAnalyses) ? (somaData.medicalImageAnalyses as TitanProfile['medicalImageAnalyses']).slice(0, 100) : titanProfile.medicalImageAnalyses,
-      medicalSummary: typeof somaData.summary === 'string' ? somaData.summary : titanProfile.medicalSummary ?? '',
-      updatedAt: new Date().toISOString(),
-    };
-  } catch (e) {
-    console.warn('[TitanProfileService] Soma migration failed (non-fatal):', e);
-    return titanProfile;
-  }
-}
-
 export async function loadTitanProfile({ userId, encryptionKey }: LoadContext): Promise<TitanProfile | null> {
   if (userId && encryptionKey) {
     const { db } = getFirebase();

@@ -1,11 +1,20 @@
-import React, { useMemo } from 'react';
-import { AlertTriangle, Camera, FileText, Lock, TestTube2 } from 'lucide-react';
+import React, { useMemo, useCallback } from 'react';
+import { AlertTriangle, Camera, FileText, Lock, TestTube2, Plus, TrendingUp, TrendingDown, Minus, Activity, Heart, Droplet, Shield, Sun, BarChart3 } from 'lucide-react';
 import type { TitanProfile, GlobalProjection } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { BiomarkerCharts, VitalsDashboard } from './BiomarkerCharts';
+import { SchemaRegistry } from '@/lib/schema-registry';
+import type { FieldDefinition } from '@/lib/field-system/types';
+import {
+  SOMA_FIELD_CATEGORIES,
+  evaluateBiomarkerStatus,
+  getSomaFieldSuggestions,
+  SOMA_FIELD_LIMITS,
+} from '@/modules/soma/field-templates';
 
 // ---------------------------------------------------------------------------
 // BiomarkerDashboard — Biomarkers tab for the merged Titan dashboard
@@ -18,6 +27,8 @@ interface BiomarkerDashboardProps {
   isLocked?: boolean;
   onImportLab?: () => void;
   onAnalyzeImage?: () => void;
+  onAddBiomarker?: () => void;
+  onSelectBiomarker?: (fieldId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,6 +84,8 @@ export function BiomarkerDashboard({
   isLocked = false,
   onImportLab,
   onAnalyzeImage,
+  onAddBiomarker,
+  onSelectBiomarker,
 }: BiomarkerDashboardProps) {
   if (isLocked) {
     return (
@@ -89,6 +102,24 @@ export function BiomarkerDashboard({
 
   const biomarkers = profile?.biomarkers ?? [];
   const labSummaries = profile?.labSummaries ?? [];
+
+  // ── Extension fields from SchemaRegistry ────────────────────────────
+  const extensionFields = useMemo(() => {
+    const schema = SchemaRegistry.getSchema('soma');
+    return schema?.extensionFields ?? [];
+  }, []);
+
+  const extensionFieldIds = useMemo(
+    () => extensionFields.map((f) => f.id),
+    [extensionFields]
+  );
+
+  const availableSuggestions = useMemo(
+    () => getSomaFieldSuggestions(extensionFieldIds),
+    [extensionFieldIds]
+  );
+
+  const canAddMore = extensionFields.length < SOMA_FIELD_LIMITS.maxExtensions;
 
   const sortedBiomarkers = useMemo(
     () =>
@@ -174,10 +205,35 @@ export function BiomarkerDashboard({
         />
       </div>
 
+      {/* Vitals Dashboard */}
+      {biomarkers.length > 0 && (
+        <section className="space-y-3" aria-label="Vital signs">
+          <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+            Current Vitals
+          </h4>
+          <VitalsDashboard
+            heartRate={biomarkers.find(b => b.name.toLowerCase().includes('heart rate'))?.value as number}
+            bloodPressureSystolic={biomarkers.find(b => b.name.toLowerCase().includes('systolic'))?.value as number}
+            bloodPressureDiastolic={biomarkers.find(b => b.name.toLowerCase().includes('diastolic'))?.value as number}
+            spo2={biomarkers.find(b => b.name.toLowerCase().includes('spo2') || b.name.toLowerCase().includes('oxygen'))?.value as number}
+          />
+        </section>
+      )}
+
+      {/* Biomarker Trends */}
+      {biomarkers.length > 0 && (
+        <section className="space-y-3" aria-label="Biomarker trends">
+          <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+            Biomarker Trends
+          </h4>
+          <BiomarkerCharts biomarkers={biomarkers} />
+        </section>
+      )}
+
       {/* Biomarker List */}
       <section className="space-y-3" aria-label="Latest biomarkers">
         <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
-          Latest Biomarkers
+          Latest Biomarker Entries
         </h4>
         {sortedBiomarkers.length === 0 ? (
           <EmptyState
@@ -207,6 +263,16 @@ export function BiomarkerDashboard({
           ))
         )}
       </section>
+
+      {/* Custom Biomarkers (Extension Fields) */}
+      <CustomBiomarkersSection
+        extensionFields={extensionFields}
+        canAddMore={canAddMore}
+        onAddBiomarker={onAddBiomarker}
+        onSelectBiomarker={onSelectBiomarker}
+        extensionCount={extensionFields.length}
+        maxExtensions={SOMA_FIELD_LIMITS.maxExtensions}
+      />
 
       {/* Lab Summaries */}
       <section className="space-y-3" aria-label="Lab summaries">
@@ -338,5 +404,231 @@ export function BiomarkerDashboard({
         )}
       </section>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Custom Biomarkers Section — renders extension fields from SchemaRegistry
+// ---------------------------------------------------------------------------
+
+/** Map category keys to Lucide icon components */
+const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  vitals: Heart,
+  hormones: Activity,
+  metabolic: Droplet,
+  general: Shield,
+};
+
+/** Color class mapping for biomarker status */
+const STATUS_STYLE: Record<string, { border: string; bg: string; text: string; dot: string }> = {
+  normal: {
+    border: 'border-emerald-500/30',
+    bg: 'bg-emerald-500/5',
+    text: 'text-emerald-400',
+    dot: 'bg-emerald-400',
+  },
+  warning: {
+    border: 'border-amber-500/30',
+    bg: 'bg-amber-500/5',
+    text: 'text-amber-400',
+    dot: 'bg-amber-400',
+  },
+  critical: {
+    border: 'border-rose-500/30',
+    bg: 'bg-rose-500/5',
+    text: 'text-rose-400',
+    dot: 'bg-rose-400',
+  },
+  unknown: {
+    border: 'border-white/10',
+    bg: 'bg-white/[0.03]',
+    text: 'text-white/60',
+    dot: 'bg-white/30',
+  },
+};
+
+/** Color class mapping for category accents */
+const CATEGORY_ACCENT: Record<string, string> = {
+  emerald: 'text-emerald-400 border-emerald-500/30',
+  purple: 'text-purple-400 border-purple-500/30',
+  amber: 'text-amber-400 border-amber-500/30',
+  cyan: 'text-cyan-400 border-cyan-500/30',
+};
+
+interface CustomBiomarkersSectionProps {
+  extensionFields: FieldDefinition[];
+  canAddMore: boolean;
+  onAddBiomarker?: () => void;
+  onSelectBiomarker?: (fieldId: string) => void;
+  extensionCount: number;
+  maxExtensions: number;
+}
+
+function CustomBiomarkersSection({
+  extensionFields,
+  canAddMore,
+  onAddBiomarker,
+  onSelectBiomarker,
+  extensionCount,
+  maxExtensions,
+}: CustomBiomarkersSectionProps) {
+  return (
+    <section className="space-y-3" aria-label="Custom biomarkers">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+          Custom Biomarkers
+          {extensionCount > 0 && (
+            <span className="ml-2 text-white/30 font-normal">
+              {extensionCount}/{maxExtensions}
+            </span>
+          )}
+        </h4>
+        {onAddBiomarker && (
+          <button
+            onClick={onAddBiomarker}
+            disabled={!canAddMore}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all',
+              canAddMore
+                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 cursor-pointer'
+                : 'bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+            )}
+          >
+            <Plus className="w-3 h-3" aria-hidden="true" />
+            Add Biomarker
+          </button>
+        )}
+      </div>
+
+      {extensionFields.length === 0 ? (
+        <EmptyState
+          size="sm"
+          icon={TestTube2}
+          title="No custom biomarkers"
+          description="Add custom biomarkers to track lab values, hormones, and health metrics beyond core vitals."
+          className="bg-transparent border-white/10"
+        />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {extensionFields.map((field) => (
+            <CustomBiomarkerCard
+              key={field.id}
+              field={field}
+              onSelect={onSelectBiomarker}
+            />
+          ))}
+        </div>
+      )}
+
+      {!canAddMore && extensionFields.length > 0 && (
+        <p className="text-[10px] text-amber-300/60 italic">
+          Maximum custom biomarkers reached ({maxExtensions}/{maxExtensions}).
+          Remove a field to add a new one.
+        </p>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Individual Custom Biomarker Card
+// ---------------------------------------------------------------------------
+
+interface CustomBiomarkerCardProps {
+  field: FieldDefinition;
+  onSelect?: (fieldId: string) => void;
+}
+
+function CustomBiomarkerCard({ field, onSelect }: CustomBiomarkerCardProps) {
+  const category = field.metadata?.category || 'general';
+  const categoryInfo =
+    SOMA_FIELD_CATEGORIES[category as keyof typeof SOMA_FIELD_CATEGORIES];
+  const categoryColor = categoryInfo?.color || 'cyan';
+  const categoryLabel = categoryInfo?.label || 'General Health';
+  const unit = field.metadata?.unit || '';
+
+  const CategoryIcon =
+    CATEGORY_ICONS[category] || Shield;
+
+  // Determine status based on current value (if numeric)
+  const status =
+    field.defaultValue != null && typeof field.defaultValue === 'number'
+      ? evaluateBiomarkerStatus(field.id, field.defaultValue)
+      : 'unknown';
+  const statusStyle = STATUS_STYLE[status] || STATUS_STYLE.unknown;
+
+  const handleClick = useCallback(() => {
+    onSelect?.(field.id);
+  }, [onSelect, field.id]);
+
+  return (
+    <SurfaceCard
+      className={cn(
+        'p-3.5 cursor-pointer transition-all hover:ring-1 hover:ring-white/10',
+        statusStyle.bg,
+        statusStyle.border
+      )}
+    >
+      <button
+        onClick={handleClick}
+        className="w-full text-left"
+        aria-label={`View details for ${field.name}`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div
+              className={cn(
+                'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                `bg-${categoryColor}-500/10 border border-${categoryColor}-500/20`
+              )}
+              style={{
+                backgroundColor: `color-mix(in srgb, var(--color-${categoryColor}-500, #10b981) 10%, transparent)`,
+                borderColor: `color-mix(in srgb, var(--color-${categoryColor}-500, #10b981) 20%, transparent)`,
+              }}
+            >
+              <CategoryIcon
+                className={cn('w-3.5 h-3.5', CATEGORY_ACCENT[categoryColor]?.split(' ')[0] || 'text-cyan-400')}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="min-w-0">
+              <span className="text-xs font-bold text-white/90 block truncate">
+                {field.name}
+              </span>
+              <span className="text-[9px] text-white/40 uppercase tracking-wider">
+                {categoryLabel}
+              </span>
+            </div>
+          </div>
+
+          {/* Status Indicator */}
+          <div className="flex items-center gap-1 shrink-0">
+            <div
+              className={cn('w-1.5 h-1.5 rounded-full', statusStyle.dot)}
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+
+        {/* Value display */}
+        <div className="mt-2 flex items-end justify-between">
+          <span className={cn('text-lg font-black tabular-nums', statusStyle.text)}>
+            {field.defaultValue != null ? String(field.defaultValue) : '—'}
+          </span>
+          {unit && (
+            <span className="text-[10px] text-white/30 mb-0.5 ml-1">
+              {unit}
+            </span>
+          )}
+        </div>
+
+        {/* Description (truncated) */}
+        {field.description && (
+          <p className="text-[10px] text-white/30 mt-1.5 line-clamp-2 leading-relaxed">
+            {field.description}
+          </p>
+        )}
+      </button>
+    </SurfaceCard>
   );
 }

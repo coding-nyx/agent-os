@@ -3,9 +3,13 @@ import { motion } from 'framer-motion';
 import { ChevronRight, MessageSquare } from 'lucide-react';
 import { TitanDashboard } from './components/TitanReadiness';
 import { TitanDashboardTabs } from './components/TitanDashboardTabs';
-import { BiomarkerDashboard } from './components/BiomarkerDashboard';
-import { ClearancePanel } from './components/ClearancePanel';
+import { TitanDiagnosisPanel } from './components/TitanDiagnosisPanel';
+import { BiomarkerDashboard } from '@/modules/soma/components/BiomarkerDashboard';
+import { ClearancePanel } from '@/modules/soma/components/ClearancePanel';
 import { TitanRoutinePanel } from './components/TitanRoutinePanel';
+import { ClearanceStatus } from '@/modules/soma/components/ClearanceStatus';
+import { CustomFieldManager } from './components/CustomFieldManager';
+import { RoutineProgress } from './components/RoutineProgress';
 import { TitanOnboarding } from './onboarding/TitanOnboarding';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
@@ -20,6 +24,7 @@ import { IntakeBaseContextService } from '@/lib/services/intake-base-context-ser
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { registerTitanActions } from './services/actions';
+import { registerSomaFieldActions } from '@/modules/soma/actions/soma-field-actions';
 import { useVault } from '@/lib/vault-context';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
@@ -27,7 +32,7 @@ import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import type { ModuleId } from '@/lib/module-manifest';
 import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
 
-type TitanTab = 'training' | 'biomarkers' | 'recovery';
+type TitanTab = 'training' | 'biomarkers' | 'recovery' | 'diagnosis';
 
 const TITAN_PROMPT = `You are TITAN, an elite AI Physical Performance Strategist. 
 Your tone is direct, clinical, and data-driven. 
@@ -35,6 +40,7 @@ You prioritize biological optimization and injury prevention.
 Reference the user's CNS fatigue and biometric data when giving advice.`;
 
 registerTitanActions();
+registerSomaFieldActions();
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(() =>
@@ -52,13 +58,14 @@ function useIsMobile(breakpoint = 768) {
 
 function resolveInitialTab(searchParams: URLSearchParams): TitanTab {
   const param = searchParams.get('tab');
-  if (param === 'biomarkers' || param === 'recovery' || param === 'training') return param;
+  if (param === 'biomarkers' || param === 'recovery' || param === 'training' || param === 'diagnosis') return param;
   return 'training';
 }
 
 function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null }) {
   const { globalSoul } = useGlobalSoul();
   const { isModuleAccessible } = useVault();
+  const { user } = useAuth();
   const isLocked = !isModuleAccessible('titan');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -72,7 +79,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   }, [isMobile]);
 
   // Derive prompt mode from active tab
-  const promptMode: TitanSessionMode = activeTab === 'biomarkers' || activeTab === 'recovery' ? 'medical' : 'training';
+  const promptMode: TitanSessionMode = activeTab === 'biomarkers' || activeTab === 'recovery' || activeTab === 'diagnosis' ? 'medical' : 'training';
 
   const agentAlias = globalSoul?.displayNames?.titan || 'Titan';
   const systemPrompt = useMemo(() => {
@@ -193,21 +200,46 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     switch (activeTab) {
       case 'biomarkers':
         return (
-          <BiomarkerDashboard
-            profile={profile}
-            soul={globalSoul}
-            isLocked={isLocked}
-            onImportLab={handleImportLab}
-            onAnalyzeImage={handleAnalyzeImage}
-          />
+          <>
+            <BiomarkerDashboard
+              profile={profile}
+              soul={globalSoul}
+              isLocked={isLocked}
+              onImportLab={handleImportLab}
+              onAnalyzeImage={handleAnalyzeImage}
+            />
+            {profile && (
+              <div className="px-6 pb-6">
+                <CustomFieldManager
+                  currentValues={profile?.nutrition || {}}
+                  onSave={async (values) => {
+                    const updated = { ...profile, nutrition: { ...profile.nutrition, ...values } };
+                    await saveTitanProfile(updated, { userId: user?.uid || null, encryptionKey });
+                  }}
+                />
+              </div>
+            )}
+          </>
         );
       case 'recovery':
         return (
-          <ClearancePanel
-            profile={profile}
-            soul={globalSoul}
-            isLocked={isLocked}
-          />
+          <>
+            <ClearanceStatus
+              profile={profile}
+              soul={globalSoul}
+            />
+            <div className="px-6 pb-6">
+              <ClearancePanel
+                profile={profile}
+                soul={globalSoul}
+                isLocked={isLocked}
+              />
+            </div>
+          </>
+        );
+      case 'diagnosis':
+        return (
+          <TitanDiagnosisPanel encryptionKey={encryptionKey} profile={profile} />
         );
       default:
         return (
@@ -218,6 +250,11 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               onGeneratePlan={handleGeneratePlan}
               onImportRoutine={handleImportRoutine}
             />
+            {profile?.routines && profile.routines.length > 0 && (
+              <div className="px-6 pb-6">
+                <RoutineProgress routines={profile.routines} />
+              </div>
+            )}
             <TitanDashboard soul={globalSoul} isLocked={isLocked} onCalibrate={handleCalibrate} />
           </>
         );

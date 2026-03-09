@@ -204,13 +204,30 @@ export const WebSearchService = {
       );
     }
 
-    switch (backend.kind) {
-      case 'cloud-function':
-        return searchViaCloudFunction(backend.url, query, maxResults);
-      case 'proxy':
-        return searchViaProxy(backend.url, query, maxResults);
-      case 'tavily-direct':
-        return searchViaTavily(backend.apiKey, query, maxResults);
+    const attempt = async () => {
+      switch (backend.kind) {
+        case 'cloud-function':
+          return searchViaCloudFunction(backend.url, query, maxResults);
+        case 'proxy':
+          return searchViaProxy(backend.url, query, maxResults);
+        case 'tavily-direct':
+          return searchViaTavily(backend.apiKey, query, maxResults);
+      }
+    };
+
+    const maxRetries = 2;
+    let lastError: Error | null = null;
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        return await attempt();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (i === maxRetries) break;
+        const delay = 400 * Math.pow(2, i);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
     }
+
+    throw lastError ?? new Error('Search failed after retries.');
   },
 };

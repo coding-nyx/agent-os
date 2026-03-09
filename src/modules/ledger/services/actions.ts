@@ -6,6 +6,7 @@ import {
   loadLedgerProfile,
   saveLedgerProfile
 } from './ledger-intake-service';
+import { parseFinancialStatement } from '@/lib/actions/parsing-actions';
 
 let registered = false;
 
@@ -184,6 +185,8 @@ export function registerLedgerActions() {
 
       ensureActivePlan(next);
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
-    }
+    },
+
+    parse_financial_statement: parseFinancialStatement,
   });
 }

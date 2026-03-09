@@ -5,7 +5,8 @@ import type { TitanProfile, Routine, BiomarkerRecord, ClearanceRecord, MedicalIm
 import { mergeTitanProfile, normalizeRoutines } from '../utils';
 import { normalizeTitanProfilePatch } from '../onboarding/intake-accumulator';
 import { loadTitanProfile, saveTitanProfile } from './titan-profile-service';
-import { ClearanceService } from './clearance-service';
+import { ClearanceService } from '@/modules/soma/services/clearance-service';
+import { parseHealthReport, parseWorkoutLog, parseBiometricData } from '@/lib/actions/parsing-actions';
 
 let registered = false;
 
@@ -33,6 +34,9 @@ export const titanAllowedActions = [
   'analyze_medical_image',
   'sync_vitals',
   'self_clearance_check',
+  'parse_health_report',
+  'parse_workout_log',
+  'parse_biometric_data',
 ] as const;
 
 export function registerTitanActions() {
@@ -328,5 +332,11 @@ export function registerTitanActions() {
 
       pushAssistantMessage?.(`✅ Clearance check passed for "${activity}". Recovery ${recoveryScore !== null ? `${recoveryScore}/10` : 'unknown'} — proceed safely.`);
     },
+
+    // ── AI Parsing Actions ──────────────────────────────────────────────
+
+    parse_health_report: parseHealthReport,
+    parse_workout_log: parseWorkoutLog,
+    parse_biometric_data: parseBiometricData,
   });
 }

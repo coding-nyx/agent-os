@@ -797,6 +797,149 @@ export function registerAtlasActions() {
           : [],
         reason: typeof payload?.reason === 'string' ? payload.reason : 'Manual calibration request'
       });
+    },
+
+    // === Additional CRUD Operations ===
+
+    delete_task: async ({ userId, encryptionKey, payload, updateGlobalSoul }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const taskId = typeof payload?.id === 'string' ? payload.id : null;
+      if (!taskId) return;
+
+      profile.tasks = profile.tasks.filter(t => t.id !== taskId);
+
+      // Remove from projects
+      for (const project of profile.projects) {
+        if (project.taskIds.includes(taskId)) {
+          project.taskIds = project.taskIds.filter(id => id !== taskId);
+        }
+      }
+
+      // Remove from goals
+      for (const goal of profile.goals) {
+        if (goal.associatedTaskIds.includes(taskId)) {
+          goal.associatedTaskIds = goal.associatedTaskIds.filter(id => id !== taskId);
+        }
+      }
+
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+      await updateGlobalSoul({ cognitive: { activeLoad: calculateActiveLoad(profile.tasks) } });
+    },
+
+    update_goal: async ({ userId, encryptionKey, payload }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const goalId = typeof payload?.id === 'string' ? payload.id : null;
+      if (!goalId) return;
+
+      const goal = profile.goals.find(g => g.id === goalId);
+      if (!goal) return;
+
+      const now = new Date().toISOString();
+
+      if (typeof payload?.title === 'string') goal.title = payload.title;
+      if (typeof payload?.description === 'string') goal.description = payload.description;
+      if (typeof payload?.deadline === 'string') goal.deadline = payload.deadline;
+      if (typeof payload?.successCriteria === 'string') goal.successCriteria = payload.successCriteria;
+      if (typeof payload?.notes === 'string') goal.notes = payload.notes;
+      if (typeof payload?.status === 'string') {
+        goal.status = payload.status as AtlasGoal['status'];
+      }
+
+      if (Array.isArray(payload?.milestones)) {
+        goal.milestones = payload.milestones;
+      }
+
+      if (Array.isArray(payload?.associatedTaskIds)) {
+        goal.associatedTaskIds = payload.associatedTaskIds.filter((id: unknown) => typeof id === 'string');
+      }
+
+      // Recalculate progress
+      const completedMilestones = goal.milestones.filter(m => m.completed).length;
+      const totalMilestones = goal.milestones.length;
+      goal.progressPercent = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+
+      goal.updatedAt = now;
+
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    },
+
+    delete_goal: async ({ userId, encryptionKey, payload }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const goalId = typeof payload?.id === 'string' ? payload.id : null;
+      if (!goalId) return;
+
+      profile.goals = profile.goals.filter(g => g.id !== goalId);
+
+      // Remove goalId from associated tasks
+      for (const task of profile.tasks) {
+        if (task.goalId === goalId) {
+          task.goalId = undefined;
+        }
+      }
+
+      // Remove goalId from projects
+      for (const project of profile.projects) {
+        if (project.goalId === goalId) {
+          project.goalId = undefined;
+        }
+      }
+
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    },
+
+    update_habit: async ({ userId, encryptionKey, payload }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const habitId = typeof payload?.id === 'string' ? payload.id : null;
+      if (!habitId) return;
+
+      const habit = profile.habits.find(h => h.id === habitId);
+      if (!habit) return;
+
+      const now = new Date().toISOString();
+
+      if (typeof payload?.title === 'string') habit.title = payload.title;
+      if (typeof payload?.frequency === 'string') habit.frequency = payload.frequency as AtlasHabit['frequency'];
+      if (typeof payload?.energyCost === 'number') {
+        habit.energyCost = Math.max(0, Math.min(10, payload.energyCost));
+      }
+      if (typeof payload?.minimumViableVersion === 'string') {
+        habit.minimumViableVersion = payload.minimumViableVersion;
+      }
+      if (typeof payload?.targetStreak === 'number') {
+        habit.targetStreak = Math.max(1, payload.targetStreak);
+      }
+      if (typeof payload?.status === 'string') {
+        habit.status = payload.status as AtlasHabit['status'];
+      }
+
+      habit.updatedAt = now;
+
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    },
+
+    delete_habit: async ({ userId, encryptionKey, payload }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const habitId = typeof payload?.id === 'string' ? payload.id : null;
+      if (!habitId) return;
+
+      profile.habits = profile.habits.filter(h => h.id !== habitId);
+
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
     }
   });
 }

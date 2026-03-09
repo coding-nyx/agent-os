@@ -100,7 +100,43 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   HABIT_STREAK_BROKEN: 'Habit streak lost',
   WEEKLY_REVIEW_COMPLETE: 'Weekly review completed',
   DELEGATION_REQUEST: 'Module delegation requested',
-  NSV_CALIBRATION_REQUEST: 'NSV calibration requested'
+  NSV_CALIBRATION_REQUEST: 'NSV calibration requested',
+  SCHEMA_EXTENDED: 'Schema extended',
+  SCHEMA_MODIFIED: 'Schema modified',
+  SCHEMA_MIGRATED: 'Schema migrated',
+  FIELD_CREATED: 'Custom field created',
+  FIELD_DELETED: 'Custom field deleted',
+  FIELD_VALUE_UPDATED: 'Custom field value updated',
+  // Ledger Spine Events
+  BUDGET_UPDATED: 'Budget updated',
+  GOAL_PROGRESS: 'Goal progress updated',
+  FINANCIAL_FRICTION_CHANGED: 'Financial friction changed',
+  RESONANCE_ROI_UPDATED: 'Resonance ROI updated',
+  FINANCIAL_PLAN_CREATED: 'Financial plan created',
+  DOCUMENT_ANALYZED: 'Financial document analyzed',
+  // Soma Spine Events
+  SOMA_BIOMARKER_COMMITTED: 'Soma biomarker committed',
+  SOMA_READINESS_UPDATED: 'Soma readiness updated',
+  SOMA_CLEARANCE_CHANGED: 'Soma clearance changed',
+  SOMA_FIELD_CREATED: 'Soma field created',
+  SOMA_FIELD_UPDATED: 'Soma field updated',
+  SOMA_FIELD_DELETED: 'Soma field deleted',
+  SOMA_VITAL_LOGGED: 'Soma vital logged',
+  SOMA_LAB_REPORT_PARSED: 'Soma lab report parsed',
+  SOMA_PROFILE_UPDATED: 'Soma profile updated',
+  // Soma Cascade Derived Events
+  HEALTH_CONTEXT_STALE: 'Health context refreshing',
+  ai_validation_suggestion: 'AI validation suggestion',
+  ai_contextual_validation: 'AI contextual validation',
+  ai_error_explanation: 'AI error explanation',
+  // Atlas Spine Events
+  ATLAS_TASK_COMPLETED: 'Atlas task completed',
+  ATLAS_HABIT_LOGGED: 'Atlas habit logged',
+  ATLAS_GOAL_MILESTONE: 'Atlas goal milestone',
+  ATLAS_ENERGY_UPDATED: 'Atlas energy updated',
+  ATLAS_FIELD_CREATED: 'Atlas field created',
+  ATLAS_FIELD_DELETED: 'Atlas field deleted',
+  ATLAS_FIELD_VALUE_UPDATED: 'Atlas field value updated',
 };
 
 // ---------------------------------------------------------------------------

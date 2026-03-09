@@ -1,16 +1,16 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import { Message, ConversationContext } from './types';
+import { Message, ConversationContext, MessageContent } from './types';
 import { CognitiveAgent } from './engine/CognitiveAgent';
 import { StructuredResponse } from './engine/types';
 
 export interface AIContextType {
   sendMessage: (
-    content: string,
+    content: MessageContent,
     context: ConversationContext,
     signal?: AbortSignal
   ) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
   streamMessage: (
-    content: string,
+    content: MessageContent,
     context: ConversationContext,
     onChunk: (chunk: string) => void,
     signal?: AbortSignal
@@ -73,13 +73,13 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
     }
   }, [guestMode, agent]);
 
-  const sendMessage = useCallback(async (content: string, context: ConversationContext, signal?: AbortSignal) => {
+  const sendMessage = useCallback(async (content: MessageContent, context: ConversationContext, signal?: AbortSignal) => {
       if (!agent) throw new Error("Agent not initialized");
       const result = await agent.chat(content, context, undefined, signal);
       return result;
   }, [agent]);
 
-  const streamMessage = useCallback(async (content: string, context: ConversationContext, onChunk: (chunk: string) => void, signal?: AbortSignal) => {
+  const streamMessage = useCallback(async (content: MessageContent, context: ConversationContext, onChunk: (chunk: string) => void, signal?: AbortSignal) => {
       if (!agent) throw new Error("Agent not initialized");
       const safeChunk = (chunk: string) => {
         try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }

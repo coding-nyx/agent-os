@@ -15,6 +15,10 @@ interface TaskCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   allTasks?: AtlasTask[];
+  /** Whether this card is currently selected for scoped chat */
+  isEntitySelected?: boolean;
+  /** Called when the user taps to select/deselect this card */
+  onEntitySelect?: (task: AtlasTask) => void;
 }
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -48,6 +52,8 @@ export function TaskCard({
   isExpanded,
   onToggleExpand,
   allTasks = [],
+  isEntitySelected = false,
+  onEntitySelect,
 }: TaskCardProps) {
   const reducedMotion = useReducedMotion();
   const isBlocked = task.status === 'blocked';
@@ -88,13 +94,15 @@ export function TaskCard({
 
   return (
     <div
+      onClick={() => onEntitySelect?.(task)}
       className={cn(
-        'group relative rounded-xl border overflow-hidden transition-colors',
+        'group relative rounded-xl border overflow-hidden transition-all cursor-pointer',
         'bg-white/[0.03] backdrop-blur-sm',
+        isEntitySelected && 'ring-2 ring-sky-400/40 shadow-[0_0_30px_rgba(14,165,233,0.15)]',
         isBlocked && 'opacity-60 border-white/5',
         isDone && 'border-emerald-500/15 bg-emerald-500/[0.03]',
         isDeferred && 'border-amber-500/10 bg-amber-500/[0.02]',
-        !isBlocked && !isDone && !isDeferred && 'border-white/10 hover:border-white/15'
+        !isBlocked && !isDone && !isDeferred && !isEntitySelected && 'border-white/10 hover:border-white/15'
       )}
     >
       {/* Left priority bar */}

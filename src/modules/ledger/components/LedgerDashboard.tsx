@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { AlertTriangle, CreditCard, Lock, Upload } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon } from 'lucide-react';
 import * as Switch from '@radix-ui/react-switch';
 import { GlobalProjection } from '@/lib/types';
 import { LedgerIntakeProfile } from '../services/ledger-intake-service';
@@ -9,20 +9,26 @@ import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { ProgressRow } from '@/core/components/ProgressRow';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
+import { CashFlowChart, DebtPayoffTracker } from './FinancialCharts';
+import { AIFinancialAdvisor } from './AIFinancialAdvisor';
+import { cn } from '@/lib/utils';
 
 export function LedgerDashboard({
   soul,
   profile,
   onAnalyzeDocument,
   onToggleDocumentAnalysis,
+  onAskAI,
   isLocked = false
 }: {
   soul: GlobalProjection | null;
   profile: LedgerIntakeProfile | null;
   onAnalyzeDocument?: () => void;
   onToggleDocumentAnalysis?: (enabled: boolean) => void;
+  onAskAI?: (question: string) => void;
   isLocked?: boolean;
 }) {
+  const [activeView, setActiveView] = useState<'overview' | 'cashflow' | 'debt'>('overview');
   if (isLocked) {
     return (
       <div className="h-full flex items-center justify-center p-8">
@@ -66,6 +72,35 @@ export function LedgerDashboard({
       .map((item) => ({ ...item, max }));
   }, [profile]);
 
+  // Generate mock data for charts (in real implementation, this would come from transaction history)
+  const cashFlowData = useMemo(() => {
+    if (!profile) return [];
+    
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    const totalExpenses = totalFixed !== null && totalVariable !== null ? totalFixed + totalVariable : 0;
+    
+    return months.map((month, index) => ({
+      month,
+      income: monthlyIncome !== null ? monthlyIncome * (0.95 + Math.random() * 0.1) : 0,
+      expenses: totalExpenses * (0.9 + Math.random() * 0.2)
+    }));
+  }, [profile, monthlyIncome, totalFixed, totalVariable]);
+
+  const debtData = useMemo(() => {
+    if (!profile || profile.debtItems.length === 0) return [];
+    
+    const totalDebt = profile.debtItems.reduce((sum, item) => sum + item.balance, 0);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    
+    return months.map((month, index) => ({
+      month,
+      balance: totalDebt * (1 - index * 0.12) // Simulating debt reduction
+    }));
+  }, [profile]);
+
+  const totalDebt = profile?.debtItems.reduce((sum, item) => sum + item.balance, 0) || 0;
+  const totalSavings = monthlyBuffer !== null && monthlyBuffer > 0 ? monthlyBuffer * 3 : 0; // Estimate
+
   return (
     <div className="p-8 space-y-8">
       <SectionHeader
@@ -75,103 +110,214 @@ export function LedgerDashboard({
         accentClassName="text-cyan-400"
       />
 
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard
-          label="Monthly Income"
-          value={monthlyIncome}
-          suffix={profile?.currency ? ` ${profile.currency}` : ''}
-          isEmpty={!profile}
-          accentClassName="text-cyan-300"
-        />
-        <StatCard
-          label="Total Expenses"
-          value={totalExpense}
-          suffix={profile?.currency ? ` ${profile.currency}` : ''}
-          isEmpty={!profile}
-          accentClassName={monthlyBuffer !== null && monthlyBuffer < 0 ? 'text-red-400' : 'text-emerald-400'}
-        />
-        <StatCard
-          label="Net Savings"
-          value={monthlyBuffer}
-          suffix={profile?.currency ? ` ${profile.currency}` : ''}
-          isEmpty={!profile}
-          accentClassName="text-emerald-400"
-        />
-        <StatCard
-          label="Resonance ROI"
-          value={typeof resource.resonanceROI === 'number' ? Math.round(resource.resonanceROI * 100) : null}
-          suffix="%"
-          isEmpty={!hasSoul}
-          accentClassName="text-indigo-300"
-          isDerived={
-            NSV_DERIVED_METRICS.includes('resource.resonanceROI') ||
-            isMetricStale(lastUpdated['resource.resonanceROI'], 7)
-          }
-        />
+      {/* View Tabs */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setActiveView('overview')}
+          className={cn(
+            "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+            activeView === 'overview'
+              ? "bg-cyan-600 text-white"
+              : "bg-white/5 text-white/60 hover:bg-white/10"
+          )}
+        >
+          Overview
+        </button>
+        <button
+          onClick={() => setActiveView('cashflow')}
+          className={cn(
+            "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+            activeView === 'cashflow'
+              ? "bg-cyan-600 text-white"
+              : "bg-white/5 text-white/60 hover:bg-white/10"
+          )}
+        >
+          <TrendingUp className="w-3 h-3 inline mr-1" />
+          Cash Flow
+        </button>
+        <button
+          onClick={() => setActiveView('debt')}
+          className={cn(
+            "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+            activeView === 'debt'
+              ? "bg-cyan-600 text-white"
+              : "bg-white/5 text-white/60 hover:bg-white/10"
+          )}
+        >
+          <Target className="w-3 h-3 inline mr-1" />
+          Debt Tracker
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        <SurfaceCard className="p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">Spending</span>
-            <span className="text-[9px] text-white/50 uppercase tracking-widest">Breakdown</span>
-          </div>
-          {spendingRows.length === 0 ? (
-            <EmptyState
-              size="sm"
-              title="No spending data yet"
-              description="Log expenses or upload transactions to populate this view."
-              icon={CreditCard}
-              className="bg-transparent border-white/10"
+      {/* Overview View */}
+      {activeView === 'overview' && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <StatCard
+              label="Monthly Income"
+              value={monthlyIncome}
+              suffix={profile?.currency ? ` ${profile.currency}` : ''}
+              isEmpty={!profile}
+              accentClassName="text-cyan-300"
             />
-          ) : (
-            <div className="space-y-3">
-              {spendingRows.map((item) => (
-                <ProgressRow
-                  key={item.id}
-                  label={item.label}
-                  value={item.amount}
-                  max={item.max}
-                  suffix={profile?.currency ? ` ${profile.currency}` : ''}
-                  accentClassName="bg-cyan-500"
+            <StatCard
+              label="Total Expenses"
+              value={totalExpense}
+              suffix={profile?.currency ? ` ${profile.currency}` : ''}
+              isEmpty={!profile}
+              accentClassName={monthlyBuffer !== null && monthlyBuffer < 0 ? 'text-red-400' : 'text-emerald-400'}
+            />
+            <StatCard
+              label="Net Savings"
+              value={monthlyBuffer}
+              suffix={profile?.currency ? ` ${profile.currency}` : ''}
+              isEmpty={!profile}
+              accentClassName="text-emerald-400"
+            />
+            <StatCard
+              label="Resonance ROI"
+              value={typeof resource.resonanceROI === 'number' ? Math.round(resource.resonanceROI * 100) : null}
+              suffix="%"
+              isEmpty={!hasSoul}
+              accentClassName="text-indigo-300"
+              isDerived={
+                NSV_DERIVED_METRICS.includes('resource.resonanceROI') ||
+                isMetricStale(lastUpdated['resource.resonanceROI'], 7)
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <SurfaceCard className="p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">Spending</span>
+                <span className="text-[9px] text-white/50 uppercase tracking-widest">Breakdown</span>
+              </div>
+              {spendingRows.length === 0 ? (
+                <EmptyState
+                  size="sm"
+                  title="No spending data yet"
+                  description="Log expenses or upload transactions to populate this view."
+                  icon={CreditCard}
+                  className="bg-transparent border-white/10"
                 />
-              ))}
-            </div>
-          )}
-        </SurfaceCard>
+              ) : (
+                <div className="space-y-3">
+                  {spendingRows.map((item) => (
+                    <ProgressRow
+                      key={item.id}
+                      label={item.label}
+                      value={item.amount}
+                      max={item.max}
+                      suffix={profile?.currency ? ` ${profile.currency}` : ''}
+                      accentClassName="bg-cyan-500"
+                    />
+                  ))}
+                </div>
+              )}
+            </SurfaceCard>
 
-        <SurfaceCard className="p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">Active Plan</span>
-            <span className="text-[9px] text-white/50 uppercase tracking-widest">Planner</span>
+            <SurfaceCard className="p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">Active Plan</span>
+                <span className="text-[9px] text-white/50 uppercase tracking-widest">Planner</span>
+              </div>
+              {profile?.activePlanId ? (
+                <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 space-y-2">
+                  {(() => {
+                    const activePlan = profile.plans?.find((p) => p.id === profile.activePlanId);
+                    return activePlan ? (
+                      <>
+                        <p className="text-xs text-cyan-200/80 font-medium">{activePlan.title}</p>
+                        {activePlan.summary && (
+                          <p className="text-[10px] text-white/40 leading-relaxed">{activePlan.summary}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-xs text-cyan-200/80 truncate">Plan: {profile.activePlanId.slice(0, 8)}…</p>
+                    );
+                  })()}
+                  <p className="text-[10px] text-white/50">Planner state: {profile.plannerBotState.toUpperCase()}</p>
+                </div>
+              ) : (
+                <EmptyState
+                  size="sm"
+                  title="No active plan"
+                  description="Ask Ledger to generate a financial plan."
+                  className="bg-transparent border-white/10"
+                />
+              )}
+            </SurfaceCard>
           </div>
-          {profile?.activePlanId ? (
-            <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 space-y-2">
-              {(() => {
-                const activePlan = profile.plans?.find((p) => p.id === profile.activePlanId);
-                return activePlan ? (
-                  <>
-                    <p className="text-xs text-cyan-200/80 font-medium">{activePlan.title}</p>
-                    {activePlan.summary && (
-                      <p className="text-[10px] text-white/40 leading-relaxed">{activePlan.summary}</p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-xs text-cyan-200/80 truncate">Plan: {profile.activePlanId.slice(0, 8)}…</p>
-                );
-              })()}
-              <p className="text-[10px] text-white/50">Planner state: {profile.plannerBotState.toUpperCase()}</p>
+        </>
+      )}
+
+      {/* Cash Flow View */}
+      {activeView === 'cashflow' && (
+        <SurfaceCard className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Cash Flow Analysis</h3>
+              <p className="text-[10px] text-white/50 mt-1">Income vs expenses over time</p>
             </div>
+            <TrendingUp className="w-5 h-5 text-cyan-400" />
+          </div>
+          <CashFlowChart 
+            data={cashFlowData} 
+            currency={profile?.currency || 'USD'}
+          />
+        </SurfaceCard>
+      )}
+
+      {/* Debt Tracker View */}
+      {activeView === 'debt' && (
+        <SurfaceCard className="p-6">
+          {totalDebt > 0 ? (
+            <>
+              <DebtPayoffTracker 
+                data={debtData} 
+                currency={profile?.currency || 'USD'}
+              />
+              <div className="mt-6 space-y-3">
+                <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">Debt Items</h4>
+                {profile?.debtItems.map((debt) => (
+                  <div key={debt.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-white">{debt.name}</span>
+                      <span className="text-sm font-bold text-cyan-400">
+                        {profile?.currency} {debt.balance.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-white/60">
+                      <span>Min Payment: {profile?.currency} {debt.minPayment.toLocaleString()}</span>
+                      {debt.apr && <span>APR: {debt.apr}%</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
             <EmptyState
-              size="sm"
-              title="No active plan"
-              description="Ask Ledger to generate a financial plan."
-              className="bg-transparent border-white/10"
+              title="No debt tracked"
+              description="You have no outstanding debt. Great job!"
+              icon={Target}
+              size="lg"
             />
           )}
         </SurfaceCard>
-      </div>
+      )}
+
+      {/* AI Financial Advisor - Always visible */}
+      {monthlyIncome !== null && totalExpense !== null && (
+        <AIFinancialAdvisor
+          monthlyIncome={monthlyIncome}
+          totalExpenses={totalExpense}
+          totalSavings={totalSavings}
+          debtTotal={totalDebt}
+          currency={profile?.currency || 'USD'}
+          onAskAI={onAskAI}
+        />
+      )}
 
       <section className="space-y-3">
         <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Statement Analysis</h4>

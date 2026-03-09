@@ -1,6 +1,8 @@
 import Papa from 'papaparse';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import workerSrc from 'pdfjs-dist/build/pdf.worker?url';
+import { Spine } from '@/lib/spine/spine-event-bus';
+import type { SpineEventType } from '@/lib/types';
 
 GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -43,18 +45,36 @@ export async function parseLabFile(file: File): Promise<LabImportResult> {
   const notes: string[] = [];
   const filename = file.name.toLowerCase();
 
+  let result: LabImportResult;
+
   if (file.type === 'application/pdf' || filename.endsWith('.pdf')) {
     notes.push('Parsed as PDF text extraction.');
     const text = await parsePdf(buffer);
-    return { text, notes };
+    result = { text, notes };
+  } else {
+    const rawText = new TextDecoder('utf-8').decode(buffer);
+    if (file.type === 'text/csv' || filename.endsWith('.csv')) {
+      notes.push('Parsed as CSV.');
+      result = { text: parseCsv(rawText), notes };
+    } else {
+      notes.push('Parsed as plain text.');
+      result = { text: rawText, notes };
+    }
   }
 
-  const rawText = new TextDecoder('utf-8').decode(buffer);
-  if (file.type === 'text/csv' || filename.endsWith('.csv')) {
-    notes.push('Parsed as CSV.');
-    return { text: parseCsv(rawText), notes };
-  }
+  Spine.emit({
+    type: 'SOMA_LAB_REPORT_PARSED' as SpineEventType,
+    source: 'soma',
+    domain: 'B',
+    cascadeDepth: 0,
+    priority: 'info',
+    data: {
+      fileName: file.name,
+      fileType: file.type,
+      textLength: result.text.length,
+      notes: result.notes,
+    },
+  });
 
-  notes.push('Parsed as plain text.');
-  return { text: rawText, notes };
+  return result;
 }

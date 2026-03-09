@@ -218,5 +218,103 @@ export const CORE_CASCADE_RULES: CascadeRule[] = [
         note: 'Streak health critically low — emotional support may be needed'
       }
     })
+  },
+  // --- Soma Cascade Rules ---
+  // Rule 1: SOMA_READINESS_UPDATED → MEDICAL_ALERT when readiness is poor (<40)
+  // Maps readiness score (0-100) to biological state vector (0-10 scale)
+  // and emits a cross-module alert so all modules are aware of degraded state.
+  {
+    id: 'soma-readiness-biological-alert',
+    trigger: 'SOMA_READINESS_UPDATED',
+    condition: (event) => Number(event.data.score ?? 100) < 40,
+    transform: (event) => {
+      const score = Number(event.data.score ?? 0);
+      // Map 0-100 readiness → 0-10 NSV-compatible biological vector
+      const biologicalVector = Math.round((score / 10) * 10) / 10;
+      return {
+        type: 'MEDICAL_ALERT',
+        source: 'cascade',
+        domain: 'B',
+        priority: 'critical',
+        target: 'orchestrator',
+        data: {
+          reason: 'soma_readiness_poor',
+          readinessScore: score,
+          level: event.data.level,
+          biologicalVector,
+          recommendations: event.data.recommendations,
+          note: `Readiness score ${score}/100 is critically low — biological state degraded`
+        }
+      };
+    }
+  },
+  // Rule 2: SOMA_CLEARANCE_CHANGED → BLOCK_HIGH_INTENSITY when clearance revoked/expired
+  // Prevents Titan from recommending high-intensity training when clearance is denied.
+  {
+    id: 'soma-clearance-block-training',
+    trigger: 'SOMA_CLEARANCE_CHANGED',
+    condition: (event) => {
+      const action = String(event.data.action ?? '');
+      return action === 'revoked' || action === 'expired';
+    },
+    transform: (event) => ({
+      type: 'BLOCK_HIGH_INTENSITY',
+      source: 'cascade',
+      domain: 'B',
+      priority: 'alert',
+      target: 'titan',
+      data: {
+        reason: 'soma_clearance_denied',
+        clearanceId: event.data.clearanceId,
+        clearanceType: event.data.clearanceType,
+        action: event.data.action,
+        note: `Soma clearance ${event.data.action} — high-intensity training blocked`
+      }
+    })
+  },
+  // Rule 3: SOMA_BIOMARKER_COMMITTED → FLATTEN_ENERGY_WAVE for energy-relevant biomarkers
+  // When cortisol, sleep quality, or HRV are logged, Atlas may need to recalculate
+  // the energy budget. Emits FLATTEN_ENERGY_WAVE so Atlas's energy planner reacts.
+  {
+    id: 'soma-biomarker-energy-recalc',
+    trigger: 'SOMA_BIOMARKER_COMMITTED',
+    condition: (event) => {
+      const fieldId = String(event.data.fieldId ?? '').toLowerCase();
+      return ['cortisol', 'sleep_quality', 'sleep', 'hrv', 'heart_rate_variability'].some(
+        (key) => fieldId.includes(key)
+      );
+    },
+    transform: (event) => ({
+      type: 'FLATTEN_ENERGY_WAVE',
+      source: 'cascade',
+      domain: 'C',
+      priority: 'info',
+      target: 'atlas',
+      data: {
+        reason: 'soma_biomarker_energy_relevant',
+        fieldId: event.data.fieldId,
+        newValue: event.data.newValue,
+        note: 'Energy-relevant biomarker changed — Atlas should recalculate energy budget'
+      }
+    })
+  },
+  // Rule 4: SOMA_PROFILE_UPDATED → HEALTH_CONTEXT_STALE
+  // When the Soma profile changes, the GlobalSoul's health context is stale.
+  // This ensures the next enhanceContextForModule() call fetches fresh data.
+  {
+    id: 'soma-profile-context-stale',
+    trigger: 'SOMA_PROFILE_UPDATED',
+    condition: () => true,
+    transform: () => ({
+      type: 'HEALTH_CONTEXT_STALE',
+      source: 'cascade',
+      domain: 'B',
+      priority: 'info',
+      target: 'orchestrator',
+      data: {
+        reason: 'soma_profile_changed',
+        note: 'Soma profile updated — health context should be refreshed'
+      }
+    })
   }
 ];

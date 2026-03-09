@@ -3,13 +3,11 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
-import { NexusChat } from '@/core/components/NexusChat';
-import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import { SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { ATLAS_PERSONA } from './personas';
-import { AtlasDashboard } from './components/AtlasDashboard';
+import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
 import {
   AtlasProfile,
   RecoveryWindow,
@@ -19,11 +17,15 @@ import {
   syncGuestAtlasProfileToUser
 } from './services/atlas-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
+import { CollapsibleAIPanel } from '@/core/components/CollapsibleAIPanel';
+import { useSchemaRegistry } from '@/lib/hooks/use-schema-registry';
 import { AtlasOnboarding } from './onboarding/AtlasOnboarding';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { registerAtlasActions } from './services/actions';
+import { registerAtlasFieldActions } from './actions/atlas-field-actions';
 
 registerAtlasActions();
+registerAtlasFieldActions();
 
 function buildRecoveryWindow(reason: string): RecoveryWindow {
   const now = Date.now();
@@ -49,22 +51,29 @@ interface AtlasContentProps {
 
 function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updateCrossFunctionalState, isLocked }: AtlasContentProps) {
   const agentAlias = globalSoul?.displayNames?.atlas || 'Atlas';
-  const [mobileTab, setMobileTab] = useState<'planner' | 'chat'>('planner');
 
-  const { messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage } = useModuleAI({
-    moduleId: 'atlas',
-    systemPrompt: ATLAS_PERSONA,
-    encryptionKey
-  });
+  // Extension field management via SchemaRegistry
+  const {
+    extensions,
+    addExtension,
+    removeExtension,
+  } = useSchemaRegistry('atlas');
 
-  useEffect(() => {
-    if (messages.length === 0 && !isProcessing && !streamingText && profile?.onboardingComplete) {
-      setMessages([{
-        role: 'assistant',
-        content: `Cognitive link active. I am ${agentAlias}. Share task pressure, schedule constraints, or focus instability and I will reshape your wave.`
-      }]);
+  // Field values state (ephemeral for now — persisted via SchemaRegistry in future)
+  const [fieldValues, setFieldValues] = useState<Record<string, import('@/lib/field-system/types').FieldValue>>({});
+
+  const handleAddField = useCallback(() => {
+    // Opens field-CRUD chat panel — for now trigger via the main chat with a hint
+    console.log('[Atlas] Add field triggered — use chat to create custom metrics');
+  }, []);
+
+  const handleDeleteField = useCallback(async (fieldId: string) => {
+    try {
+      await removeExtension(fieldId);
+    } catch (err) {
+      console.error('[Atlas] Failed to delete extension field:', err);
     }
-  }, [messages.length, isProcessing, streamingText, agentAlias, setMessages, profile?.onboardingComplete]);
+  }, [removeExtension]);
 
   const persistUpdate = useCallback((nextProfile: AtlasProfile) => {
     nextProfile.updatedAt = new Date().toISOString();
@@ -157,6 +166,45 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
     }));
   }, [buildActionContext]);
 
+  const handleUpdateTask = useCallback((taskId: string, updates: Record<string, unknown>) => {
+    ActionHub.execute('atlas', 'update_task', buildActionContext({
+      id: taskId,
+      ...updates
+    }));
+  }, [buildActionContext]);
+
+  const handleDeleteTask = useCallback((taskId: string) => {
+    ActionHub.execute('atlas', 'delete_task', buildActionContext({
+      id: taskId
+    }));
+  }, [buildActionContext]);
+
+  const handleUpdateGoal = useCallback((goalId: string, updates: Record<string, unknown>) => {
+    ActionHub.execute('atlas', 'update_goal', buildActionContext({
+      id: goalId,
+      ...updates
+    }));
+  }, [buildActionContext]);
+
+  const handleDeleteGoal = useCallback((goalId: string) => {
+    ActionHub.execute('atlas', 'delete_goal', buildActionContext({
+      id: goalId
+    }));
+  }, [buildActionContext]);
+
+  const handleUpdateHabit = useCallback((habitId: string, updates: Record<string, unknown>) => {
+    ActionHub.execute('atlas', 'update_habit', buildActionContext({
+      id: habitId,
+      ...updates
+    }));
+  }, [buildActionContext]);
+
+  const handleDeleteHabit = useCallback((habitId: string) => {
+    ActionHub.execute('atlas', 'delete_habit', buildActionContext({
+      id: habitId
+    }));
+  }, [buildActionContext]);
+
   useSpineEvent('BURNOUT_WARNING', (event) => {
     if (!profile) return;
     const window = buildRecoveryWindow('burnout_warning');
@@ -199,62 +247,43 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Mobile tab bar */}
-      <div className="flex md:hidden border-b border-white/10">
-        <button
-          onClick={() => setMobileTab('planner')}
-          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-            mobileTab === 'planner'
-              ? 'text-sky-400 border-b-2 border-sky-400'
-              : 'text-white/50 hover:text-white/70'
-          }`}
-        >
-          Planner
-        </button>
-        <button
-          onClick={() => setMobileTab('chat')}
-          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-            mobileTab === 'chat'
-              ? 'text-sky-400 border-b-2 border-sky-400'
-              : 'text-white/50 hover:text-white/70'
-          }`}
-        >
-          Chat
-        </button>
+      {/* Full-width planner dashboard */}
+      <div className="flex-1 overflow-y-auto no-scrollbar">
+        <EnhancedAtlasDashboard
+          soul={globalSoul}
+          profile={profile}
+          isLocked={isLocked}
+          onCompleteTask={handleCompleteTask}
+          onCompleteHabit={handleCompleteHabit}
+          onUpdateGoalProgress={handleUpdateGoalProgress}
+          onPauseHabit={handlePauseHabit}
+          onCreateTask={handleCreateTask}
+          onCreateHabit={handleCreateHabit}
+          onCreateGoal={handleCreateGoal}
+          onUpdateTask={handleUpdateTask}
+          onUpdateHabit={handleUpdateHabit}
+          onUpdateGoal={handleUpdateGoal}
+          onDeleteTask={handleDeleteTask}
+          onDeleteHabit={handleDeleteHabit}
+          onDeleteGoal={handleDeleteGoal}
+          extensions={extensions}
+          fieldValues={fieldValues}
+          onAddField={handleAddField}
+          onDeleteField={handleDeleteField}
+        />
       </div>
 
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Planner panel */}
-        <div className={`w-full md:w-1/2 lg:w-[40%] md:h-full md:border-r border-white/5 overflow-y-auto no-scrollbar ${
-          mobileTab !== 'planner' ? 'hidden md:block' : 'flex-1'
-        }`}>
-          <AtlasDashboard
-            soul={globalSoul}
-            profile={profile}
-            isLocked={isLocked}
-            onCompleteTask={handleCompleteTask}
-            onCompleteHabit={handleCompleteHabit}
-            onUpdateGoalProgress={handleUpdateGoalProgress}
-            onPauseHabit={handlePauseHabit}
-            onCreateTask={handleCreateTask}
-            onCreateHabit={handleCreateHabit}
-            onCreateGoal={handleCreateGoal}
-            onDeferTask={handleDeferTask}
-          />
-        </div>
-
-        {/* Chat panel */}
-        <div className={`flex-1 md:h-full overflow-hidden ${
-          mobileTab !== 'chat' ? 'hidden md:block' : ''
-        }`}>
-          <NexusChat
-            ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
-            agentName={agentAlias}
-            themeColor="sky"
-            placeholder="Share your schedule pressure, focus bottlenecks, or request load flattening..."
-          />
-        </div>
-      </div>
+      {/* Collapsible AI chat panel */}
+      <CollapsibleAIPanel
+        moduleId="atlas"
+        persona={agentAlias}
+        systemPrompt={ATLAS_PERSONA}
+        themeColor="sky"
+        encryptionKey={encryptionKey}
+        placeholder="Share your schedule pressure, focus bottlenecks, or request load flattening..."
+        greeting={`Cognitive link active. I am ${agentAlias}. Share task pressure, schedule constraints, or focus instability and I will reshape your wave.`}
+        authMode="atlas"
+      />
     </div>
   );
 }

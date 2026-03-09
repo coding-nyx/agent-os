@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
@@ -16,10 +17,8 @@ import {
 import { generateNewsBriefs } from './services/pulse-news-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { registerScoutActions } from './services/actions';
-import { NeuralModal } from '@/core/components/NeuralModal';
-import { ScoutUploadZone } from './components/ScoutUploadZone';
 import { FileUp, Trash2 } from 'lucide-react';
-import { buildDocumentAnalysisPrompt, type DocumentParseResult } from './services/scout-document-service';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 
 registerScoutActions();
 
@@ -33,7 +32,7 @@ interface ScoutViewProps {
 function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews }: ScoutViewProps) {
   const { globalSoul } = useGlobalSoul();
   const agentAlias = globalSoul?.displayNames?.scout || 'Scout';
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const navigate = useNavigate();
 
   const { messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage, clearSession } = useModuleAI({
     moduleId: 'scout',
@@ -41,14 +40,17 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews 
     encryptionKey
   });
 
-  const handleDocumentSubmit = useCallback(
-    async (result: DocumentParseResult) => {
-      setIsUploadOpen(false);
-      const prompt = buildDocumentAnalysisPrompt(result);
-      await handleSendMessage(prompt);
-    },
-    [handleSendMessage]
-  );
+  const handleOpenDocuments = useCallback(() => {
+    NexusHandoffService.store({
+      moduleId: 'documents',
+      type: 'delegate',
+      content: 'Open the document intelligence workspace for Scout evidence analysis.',
+      reason: 'scout_document_upload',
+      sourceModuleId: 'scout',
+      createdAt: new Date().toISOString()
+    });
+    navigate('/documents');
+  }, [navigate]);
 
   useEffect(() => {
     if (messages.length === 0 && !isProcessing && !streamingText) {
@@ -83,30 +85,15 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews 
         ) : undefined}
         renderCustomActions={() => (
           <button
-            onClick={() => setIsUploadOpen(true)}
+            onClick={handleOpenDocuments}
             className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-lime-500/10 border border-lime-500/20 hover:bg-lime-500/20 transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-400/50"
             aria-label="Upload evidence document for analysis"
           >
             <FileUp className="w-6 h-6 text-lime-400 group-hover:scale-110 transition-transform" aria-hidden="true" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-lime-400/80">Upload Evidence</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-lime-400/80">Open Notebook</span>
           </button>
         )}
       />
-
-      <NeuralModal
-        isOpen={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
-        title="Upload Evidence"
-        subtitle="Submit a document source for claim extraction and verification"
-        icon={FileUp}
-        themeColor="emerald"
-        maxWidth="lg"
-      >
-        <ScoutUploadZone
-          onSubmit={handleDocumentSubmit}
-          onCancel={() => setIsUploadOpen(false)}
-        />
-      </NeuralModal>
     </>
   );
 }

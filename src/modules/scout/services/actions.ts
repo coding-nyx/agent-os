@@ -261,6 +261,11 @@ export function registerScoutActions() {
       await triggerWebSearch(claim, entry.id, next, userId ?? null, encryptionKey ?? null, pushAssistantMessage);
     },
 
+    search: async (context) => {
+      // Alias for search_web in case the LLM drops the _web suffix
+      await ActionHub.execute('scout', 'search_web', context);
+    },
+
     update_research_graph: async ({ userId, encryptionKey, payload }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;

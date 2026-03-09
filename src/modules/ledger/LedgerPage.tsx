@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
@@ -6,12 +7,12 @@ import { useVault } from '@/lib/vault-context';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { LedgerDashboard } from './components/LedgerDashboard';
-import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { NexusChat } from '@/core/components/NexusChat';
+import { LedgerWorkspace } from './components/LedgerWorkspace';
 import { LedgerOnboarding } from './onboarding/LedgerOnboarding';
 import { ImageCaptureModal } from '@/core/components/ImageCaptureModal';
 import { NeuralModal } from '@/core/components/NeuralModal';
-import { BarChart3 } from 'lucide-react';
+import { CollapsibleAIPanel, CollapsibleAIPanelRef } from '@/core/components/CollapsibleAIPanel';
+import { BarChart3, Camera, FileUp, FolderOpen } from 'lucide-react';
 import { analyzeImageWithVision } from '@/lib/services/vision-analysis-service';
 import { ModelRegistry } from '@/llm-engine/engine/ModelRegistry';
 import {
@@ -27,8 +28,12 @@ import { GlobalProjectionService } from '@/lib/services/global-projection-servic
 import { computeResonanceROI } from './services/resonance-roi-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { registerLedgerActions } from './services/actions';
+import { registerLedgerFieldActions } from './actions/ledger-field-actions';
+import { cn } from '@/lib/utils';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 
 registerLedgerActions();
+registerLedgerFieldActions();
 
 function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
   const totalFixed = profile.fixedExpenses.reduce((sum, item) => sum + item.amount, 0);
@@ -61,21 +66,29 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
 function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfile | null; encryptionKey: CryptoKey | null }) {
   const { globalSoul } = useGlobalSoul();
   const { user, isGuest } = useAuth();
+  const navigate = useNavigate();
 
   const agentAlias = globalSoul?.displayNames?.ledger || 'Ledger';
   const plannerBootstrappedRef = useRef(false);
-
-  const { messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage } = useModuleAI({
-    moduleId: 'ledger',
-    systemPrompt: LEDGER_PERSONA,
-    encryptionKey
-  });
+  const aiPanelRef = useRef<CollapsibleAIPanelRef>(null);
 
   // Vision analysis state for financial documents
   const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
   const [isVisionAnalyzing, setIsVisionAnalyzing] = useState(false);
   const [visionReviewData, setVisionReviewData] = useState<Record<string, unknown> | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
+  const handleOpenDocuments = useCallback(() => {
+    NexusHandoffService.store({
+      moduleId: 'documents',
+      type: 'delegate',
+      content: 'Open document intelligence for financial analysis.',
+      reason: 'ledger_document_notebook',
+      sourceModuleId: 'ledger',
+      createdAt: new Date().toISOString()
+    });
+    navigate('/documents');
+  }, [navigate]);
 
   const handleDocumentCapture = useCallback(
     async (dataUrl: string) => {
@@ -84,7 +97,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
         // Check API key availability
         const apiKey = localStorage.getItem('openrouter_api_key') || process.env.REACT_APP_OPENROUTER_KEY;
         if (!apiKey) {
-          await handleSendMessage('I need an OpenRouter API key to analyze financial documents. Please set your API key in settings.');
+          aiPanelRef.current?.sendMessage('I need an OpenRouter API key to analyze financial documents. Please set your API key in settings.');
           setIsCaptureModalOpen(false);
           return;
         }
@@ -92,12 +105,12 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
         // Check if model supports vision (use default GPT-4o for vision analysis)
         const modelId = 'openai/gpt-4o';
         if (!ModelRegistry.isVisionCapable(modelId)) {
-          await handleSendMessage('Document analysis requires a vision-capable model. GPT-4o will be used for this analysis.');
+          aiPanelRef.current?.sendMessage('Document analysis requires a vision-capable model. GPT-4o will be used for this analysis.');
         }
 
         const result = await analyzeImageWithVision(dataUrl, 'financial_document', apiKey, modelId);
         if (!result.success) {
-          await handleSendMessage(`Financial document analysis failed: ${result.error}`);
+          aiPanelRef.current?.sendMessage(`Financial document analysis failed: ${result.error}`);
           setIsCaptureModalOpen(false);
           return;
         }
@@ -109,7 +122,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
         setIsVisionAnalyzing(false);
       }
     },
-    [handleSendMessage]
+    [],
   );
 
   const handleDocReviewCommit = useCallback(async () => {
@@ -124,10 +137,10 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
       'User has confirmed this data. Now emit: <action type="analyze_financial_document">...(include the extracted data)</action>'
     ].join('\n\n');
 
-    await handleSendMessage(prompt);
+    aiPanelRef.current?.sendMessage(prompt);
     setIsReviewModalOpen(false);
     setVisionReviewData(null);
-  }, [visionReviewData, handleSendMessage]);
+  }, [visionReviewData]);
 
   const persistUpdate = useCallback((nextProfile: LedgerIntakeProfile) => {
      nextProfile.updatedAt = new Date().toISOString();
@@ -152,16 +165,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
 
     plannerBootstrappedRef.current = true;
     persistUpdate(nextProfile);
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'assistant',
-        content:
-          `No active plan was found. I created a starter financial plan and activated planner mode. ` +
-          `Tell me what constraint to optimize first: debt reduction, savings speed, or monthly cashflow.`
-      }
-    ]);
-  }, [profile, setMessages, persistUpdate]);
+  }, [profile, persistUpdate]);
 
   useEffect(() => {
     if (!user || isGuest || !profile || !profile.onboardingComplete) return;
@@ -182,50 +186,32 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
     }).catch((err) => console.error('Failed to update resonance ROI:', err));
   }, [user, isGuest, profile, globalSoul?.crossFunctionalState?.resource]);
 
-  useEffect(() => {
-    if (messages.length === 0 && !isProcessing && !streamingText && profile?.onboardingComplete && profile.activePlanId) {
-      setMessages([
-        {
-          role: 'assistant',
-          content:
-            `Resource link active. I am ${agentAlias}. I optimize your budget, spending strategy, and plan execution. ` +
-            `What should we optimize first this week?`
-        }
-      ]);
+  // Determine greeting based on starter plan state
+  const greeting = useMemo(() => {
+    if (!profile?.onboardingComplete) return undefined;
+    if (!profile.activePlanId) {
+      return `No active plan was found. I created a starter financial plan and activated planner mode. Tell me what constraint to optimize first: debt reduction, savings speed, or monthly cashflow.`;
     }
-  }, [messages.length, isProcessing, streamingText, agentAlias, setMessages, profile?.onboardingComplete, profile?.activePlanId]);
+    return `Resource link active. I am ${agentAlias}. I optimize your budget, spending strategy, and plan execution. What should we optimize first this week?`;
+  }, [profile?.onboardingComplete, profile?.activePlanId, agentAlias]);
 
-  const handleLedgerMessage = useCallback(async (content: string) => {
-    const medicalIntent = /\b(symptom|diagnosis|doctor|medication|lab|biomarker|hormone|pain|clinical)\b/i.test(content);
-    if (medicalIntent) {
-      const redirectText =
-        'Ledger is dedicated to financial planning. I routed your medical query to Soma domain. Open Soma for clinical guidance.';
-      setMessages((prev) => [...prev, { role: 'user', content }, { role: 'assistant', content: redirectText }]);
-      import('@/lib/spine/spine-event-bus').then(({ Spine }) => {
-          Spine.emit({
-            type: 'MODULE_DELEGATED',
-            source: 'ledger',
-            target: 'soma',
-            domain: 'system',
-            data: { content, reason: 'medical_query_in_finance_module' },
-            cascadeDepth: 0,
-            priority: 'info'
-          });
-      });
-      import('@/lib/services/nexus-handoff-service').then(({ NexusHandoffService }) => {
-          NexusHandoffService.store({
-            moduleId: 'soma',
-            type: 'delegate',
-            content,
-            reason: 'medical_query_in_finance_module',
-            sourceModuleId: 'ledger',
-            createdAt: new Date().toISOString()
-          });
-      });
-      return;
-    }
-    await handleSendMessage(content);
-  }, [handleSendMessage, setMessages]);
+  const handleImportCsv = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,.txt';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (re) => {
+          const text = re.target?.result as string;
+          aiPanelRef.current?.sendMessage(`CSV Import received: ${file.name}. Content: ${text || 'FILE_EMPTY'}`);
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
+  }, []);
 
   // Render FinancialDocumentReviewModal
   const financialDocumentReviewModal = (
@@ -323,48 +309,58 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
 
       {financialDocumentReviewModal}
 
-      <NexusChat
-        moduleId="ledger"
-        ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage: handleLedgerMessage }}
-        agentName={agentAlias}
-        themeColor="cyan"
-        authMode="ledger"
-        placeholder="Ask for budgeting, debt strategy, cashflow planning, or savings optimization..."
-        renderCustomActions={() => (
-          <div className="flex gap-3">
+      {/* Financial Workspace — always visible as primary content */}
+      {profile && (
+        <div className="p-4 sm:p-6 space-y-4">
+          {/* Quick actions toolbar */}
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setIsCaptureModalOpen(true)}
-              className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 transition-all group"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 transition-all text-violet-400 text-xs font-bold uppercase tracking-wider"
             >
-              <BarChart3 className="w-6 h-6 text-violet-400 group-hover:scale-110 transition-transform" />
-              <span className="text-[8px] font-black uppercase tracking-widest text-violet-400/60">Analyze Statement</span>
+              <Camera className="w-4 h-4" />
+              Analyze Statement
             </button>
-
             <button
-              onClick={() => {
-                 const input = document.createElement('input');
-                 input.type = 'file';
-                 input.accept = '.csv,.txt';
-                 input.onchange = (e) => {
-                    const file = (e.target as HTMLInputElement).files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (re) => {
-                         const text = re.target?.result as string;
-                         handleLedgerMessage(`CSV Import received: ${file.name}. Content: ${text || 'FILE_EMPTY'}`);
-                      };
-                      reader.readAsText(file);
-                    }
-                 };
-                 input.click();
-              }}
-              className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all group"
+              onClick={handleImportCsv}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all text-cyan-400 text-xs font-bold uppercase tracking-wider"
             >
-              <BarChart3 className="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform" />
-              <span className="text-[8px] font-black uppercase tracking-widest text-cyan-400/60">Import CSV Data</span>
+              <FileUp className="w-4 h-4" />
+              Import CSV
+            </button>
+            <button
+              onClick={handleOpenDocuments}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/60 text-xs font-bold uppercase tracking-wider"
+            >
+              <FolderOpen className="w-4 h-4" />
+              Open Notebook
             </button>
           </div>
-        )}
+
+          <LedgerWorkspace
+            profile={profile}
+            onUpdateProfile={(updates) => {
+              const nextProfile = { ...profile, ...updates };
+              nextProfile.updatedAt = new Date().toISOString();
+              saveLedgerProfile(nextProfile, { userId: user?.uid, encryptionKey }).catch((saveError) => {
+                console.error('Failed to save ledger profile:', saveError);
+              });
+            }}
+          />
+        </div>
+      )}
+
+      {/* Collapsible AI chat panel */}
+      <CollapsibleAIPanel
+        ref={aiPanelRef}
+        moduleId="ledger"
+        persona={agentAlias}
+        systemPrompt={LEDGER_PERSONA}
+        themeColor="cyan"
+        encryptionKey={encryptionKey}
+        placeholder="Ask for budgeting, debt strategy, cashflow planning, or savings optimization..."
+        greeting={greeting}
+        authMode="ledger"
       />
     </>
   );

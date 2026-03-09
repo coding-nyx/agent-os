@@ -29,6 +29,7 @@ const AtlasPage = lazy(() => import('./modules/atlas/AtlasPage'));
 const ScoutPage = lazy(() => import('./modules/scout/ScoutPage'));
 const ForgePage = lazy(() => import('./modules/forge/ForgePage'));
 const ProfilePage = lazy(() => import('./modules/profile/ProfilePage'));
+const DocumentsPage = lazy(() => import('./modules/documents/DocumentsPage'));
 
 function AIWrapper({ children }: { children: React.ReactNode }) {
   const { isGuest } = useAuth();
@@ -120,6 +121,12 @@ function AppContent() {
         <Route path="/forge" element={
           <ProtectedRoute>
             <ForgePage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/documents" element={
+          <ProtectedRoute>
+            <DocumentsPage />
           </ProtectedRoute>
         } />
 

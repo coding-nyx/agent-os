@@ -31,6 +31,7 @@ export const NSV_OWNERSHIP: Record<ModuleId, NSVMetricPath[]> = {
   atlas: ['cognitive.energyBudget', 'cognitive.focusScore', 'cognitive.activeLoad', 'cognitive.planningLoad', 'cognitive.taskCompletionRate', 'planning.streakHealth', 'planning.deadlinePressure'],
   scout: ['cognitive.researchLoad', 'cognitive.interestDiversity'],
   forge: [],
+  documents: [],
   bridge: []
 };
 
@@ -141,6 +142,7 @@ export const NSV_READ_PERMISSIONS: Record<ModuleId, NSVMetricPath[]> = {
     'cognitive.focusScore',           // deep work feasibility
     'cognitive.activeLoad'            // parallel task burden
   ],
+  documents: [],
   bridge: []   // Bridge is a connectivity layer — no LLM
 };
 

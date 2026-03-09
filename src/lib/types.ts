@@ -188,7 +188,44 @@ export type SpineEventType =
   | 'HABIT_STREAK_BROKEN'
   | 'WEEKLY_REVIEW_COMPLETE'
   | 'DELEGATION_REQUEST'
-  | 'NSV_CALIBRATION_REQUEST';
+  | 'NSV_CALIBRATION_REQUEST'
+  | 'SCHEMA_EXTENDED'
+  | 'SCHEMA_MODIFIED'
+  | 'SCHEMA_MIGRATED'
+  | 'FIELD_CREATED'
+  | 'FIELD_DELETED'
+  | 'FIELD_VALUE_UPDATED'
+  // Atlas Spine Events
+  | 'ATLAS_TASK_COMPLETED'
+  | 'ATLAS_HABIT_LOGGED'
+  | 'ATLAS_GOAL_MILESTONE'
+  | 'ATLAS_ENERGY_UPDATED'
+  | 'ATLAS_FIELD_CREATED'
+  | 'ATLAS_FIELD_DELETED'
+  | 'ATLAS_FIELD_VALUE_UPDATED'
+  // Ledger Spine Events
+  | 'BUDGET_UPDATED'
+  | 'GOAL_PROGRESS'
+  | 'FINANCIAL_FRICTION_CHANGED'
+  | 'RESONANCE_ROI_UPDATED'
+  | 'FINANCIAL_PLAN_CREATED'
+  | 'DOCUMENT_ANALYZED'
+  // Soma Spine Events
+  | 'SOMA_BIOMARKER_COMMITTED'
+  | 'SOMA_READINESS_UPDATED'
+  | 'SOMA_CLEARANCE_CHANGED'
+  | 'SOMA_FIELD_CREATED'
+  | 'SOMA_FIELD_UPDATED'
+  | 'SOMA_FIELD_DELETED'
+  | 'SOMA_VITAL_LOGGED'
+  | 'SOMA_LAB_REPORT_PARSED'
+  | 'SOMA_PROFILE_UPDATED'
+  // Soma Cascade Derived Events
+  | 'HEALTH_CONTEXT_STALE'
+  // AI Validation Events
+  | 'ai_validation_suggestion'
+  | 'ai_contextual_validation'
+  | 'ai_error_explanation';
 
 export interface SpineEvent {
   id: string;
@@ -235,6 +272,61 @@ export interface ActiveSessionState {
   history: Message[];
   tokenCount: number;
   isGuestTrial: boolean;
+  threadTitle?: string;
+  contextPolicy?: ContextPolicy;
+  docIds?: string[];
+}
+
+export type ContextPolicy = 'doc-only' | 'prompted' | 'base-context';
+
+export interface ChatThread {
+  id: string;
+  moduleId: string;
+  userId: string;
+  title: string;
+  contextPolicy: ContextPolicy;
+  docIds: string[];
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string;
+}
+
+export interface DocumentRecord {
+  id: string;
+  userId: string;
+  moduleId: string;
+  threadId: string;
+  filename: string;
+  fileType: 'pdf' | 'image' | 'txt' | 'csv' | 'md' | 'unknown';
+  pageCount: number | null;
+  wordCount: number;
+  extractedTitle: string | null;
+  notes: string[];
+  encryptedData: {
+    ciphertext: string;
+    iv: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotebookCell {
+  id: string;
+  userId: string;
+  moduleId: string;
+  threadId: string;
+  type: 'markdown' | 'analysis' | 'citation';
+  content: string;
+  encryptedData: {
+    ciphertext: string;
+    iv: string;
+  };
+  citations: Array<{ pageIndex: number; snippet: string; docId?: string }>;
+  docIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  order: number;
 }
 
 // --- Domain Specific: Soma/Medical Records (absorbed into Titan) ---
@@ -330,14 +422,23 @@ export interface TitanProfile {
   updatedAt: string;
   traits?: string[];
   // --- Absorbed from SomaProfile ---
+  /** @deprecated Moving to SomaProfile — dual-write phase */
   medicalOnboardingComplete?: boolean;
+  /** @deprecated Moving to SomaProfile — dual-write phase */
   knownConditions: string[];
+  /** @deprecated Moving to SomaProfile — dual-write phase */
   medications: string[];
+  /** @deprecated Moving to SomaProfile — dual-write phase */
   allergies: string[];
+  /** @deprecated Moving to SomaProfile — dual-write phase */
   biomarkers: BiomarkerRecord[];
+  /** @deprecated Moving to SomaProfile — dual-write phase */
   labSummaries: LabSummaryRecord[];
+  /** @deprecated Moving to SomaProfile — dual-write phase */
   clearances: ClearanceRecord[];
+  /** @deprecated Moving to SomaProfile — dual-write phase */
   medicalImageAnalyses: MedicalImageAnalysis[];
+  /** @deprecated Moving to SomaProfile — dual-write phase */
   medicalSummary?: string;
   // Transient/Legacy compat for prompts
   name?: string;

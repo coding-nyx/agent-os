@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
 import { stripInternalTags, isProviderControlOnly } from '@/llm-engine/sanitize';
-import { Message } from '@/llm-engine/types';
+import { Message, MessageContent } from '@/llm-engine/types';
 import { GuidedChatSpec } from './types';
 
 interface UseGuidedChatIntakeOptions<TState> {
@@ -19,7 +19,7 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
   const [streamingText, setStreamingText] = useState('');
   const activeTurnRef = useRef(0);
 
-  const handleSendMessage = useCallback(async (content: string) => {
+  const handleSendMessage = useCallback(async (content: MessageContent) => {
     if (isProcessing) {
       return;
     }
@@ -36,6 +36,10 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
     setIsProcessing(true);
     setError(null);
     setStreamingText('');
+    const contentText =
+      typeof content === 'string'
+        ? content
+        : content.filter((part) => part.type === 'text').map((part) => part.text).join(' ');
 
     try {
       const { response } = await streamMessage(
@@ -63,7 +67,7 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
       let result: Awaited<ReturnType<typeof spec.onResponse>>;
       try {
         result = await spec.onResponse(response, state, {
-          latestUserMessage: content,
+          latestUserMessage: contentText,
           history: nextHistory
         });
       } catch (onResponseError) {

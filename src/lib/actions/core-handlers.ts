@@ -68,7 +68,8 @@ export function registerCoreActions() {
         'COGNITIVE_OVERLOAD', 'SECURITY_POLICY_UPDATED', 'FINANCIAL_STRESS', 'MEDICAL_ALERT',
         'DRAFT_PROPOSED', 'DRAFT_APPROVED', 'DRAFT_DISMISSED', 'SESSION_STARTED', 'SESSION_ENDED',
         'MODULE_DELEGATED', 'PLANNING_OVERLOAD', 'DEADLINE_CRUNCH', 'COMPOUND_STRESS',
-        'CRISIS_MODE', 'EXECUTION_COLLAPSE', 'STREAK_BROKEN'
+        'CRISIS_MODE', 'EXECUTION_COLLAPSE', 'STREAK_BROKEN',
+        'ai_validation_suggestion', 'ai_contextual_validation', 'ai_error_explanation'
       ]);
       const rawType = typeof payload.type === 'string' ? payload.type : 'VITAL_UPDATED';
       if (!VALID_SPINE_EVENT_TYPES.has(rawType)) {

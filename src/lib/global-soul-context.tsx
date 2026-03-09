@@ -8,6 +8,7 @@ import { NSV_READ_PERMISSIONS } from './services/nsv-ownership';
 import type { ModuleId } from './module-manifest';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { getFirebase } from './firebase';
+import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 
 export interface GlobalSoulContextType {
   globalSoul: GlobalProjection | null;
@@ -24,8 +25,16 @@ export interface GlobalSoulContextType {
    *
    * Atlas receives a planning-optimised context block (formatNSVForAtlasPlanner) that
    * includes derived directives in addition to raw field values.
+   *
+   * @param extensionFieldsBlock - Optional pre-serialized extension fields block
+   *   (e.g. "[CUSTOM TRACKED FIELDS — TRAINER]\n- Creatine Cycle: ...").
+   *   Produced by `serializeExtensionFields()` in titan-session-prompt.ts.
    */
-  enhanceContextForModule: (context: ConversationContext, moduleId: ModuleId) => ConversationContext;
+  enhanceContextForModule: (
+    context: ConversationContext,
+    moduleId: ModuleId,
+    extensionFieldsBlock?: string,
+  ) => ConversationContext;
 }
 
 const GlobalSoulContext = createContext<GlobalSoulContextType | null>(null);
@@ -111,6 +120,13 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, [user, authLoading]);
 
+  // When the Soma profile changes, the cascade rule emits HEALTH_CONTEXT_STALE.
+  // Force a projection refresh so enhanceContextForModule() uses fresh data.
+  useSpineEvent('HEALTH_CONTEXT_STALE', () => {
+    console.info('[GlobalSoul] HEALTH_CONTEXT_STALE received — refreshing projection');
+    refreshGlobalSoul();
+  });
+
   const updateTherapeuticBaseline = useCallback(async (baseline: GlobalProjection['therapeuticBaseline']) => {
     if (!user) return;
     try {
@@ -144,7 +160,8 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
 
   const enhanceContextForModule = useCallback((
     context: ConversationContext,
-    moduleId: ModuleId
+    moduleId: ModuleId,
+    extensionFieldsBlock?: string,
   ): ConversationContext => {
     if (!globalSoul) return context;
 
@@ -159,7 +176,8 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
       : formatNSVForModulePrompt(state, NSV_READ_PERMISSIONS[moduleId] ?? []);
 
     // Skip appending if there's no meaningful state data for this module
-    if (!nsvBlock) return context;
+    // (and no extension fields to inject either)
+    if (!nsvBlock && !extensionFieldsBlock) return context;
 
     const moduleContext = [
       '[SYSTEM CONTEXT]',
@@ -168,7 +186,9 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
       nsvBlock,
       safeInsights.length > 0
         ? `ACTIVE TRENDS:\n${safeInsights.map(i => `- ${i}`).join('\n')}`
-        : ''
+        : '',
+      // Append extension field values (dynamic fields tracked by the user)
+      extensionFieldsBlock || '',
     ].filter(Boolean).join('\n');
 
     return {

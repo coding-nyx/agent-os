@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import type { Message } from '../types';
+import type { Message, MessageContent } from '../types';
 import type { ConversationContext } from '@/llm-engine/types';
 import type { StructuredResponse } from '@/llm-engine/engine/types';
 import { NexusHandoffService } from '../services/nexus-handoff-service';
@@ -24,13 +24,21 @@ interface UseHandoffProcessorOptions {
   messagesCount: number;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   /** Ref to the parent's handleSendMessage — set after definition to avoid circular deps */
-  onSendMessageRef: React.MutableRefObject<((content: string) => void) | null>;
+  onSendMessageRef: React.MutableRefObject<((content: import('@/lib/types').MessageContent) => void) | null>;
   sendMessage: (
-    content: string,
+    content: MessageContent,
     context: ConversationContext,
     signal?: AbortSignal
   ) => Promise<{ response: StructuredResponse; updatedHistory: Message[] }>;
   mountedRef: React.RefObject<boolean>;
+}
+
+function contentToText(content: MessageContent): string {
+  if (typeof content === 'string') return content;
+  return content
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join(' ');
 }
 
 export function useHandoffProcessor({
@@ -126,14 +134,15 @@ export function useHandoffProcessor({
   /** Persist a delegation handoff and emit a spine event. */
   const storeDelegation = useCallback((
     target: string,
-    content: string,
+    content: MessageContent,
     reason?: string,
     confidence?: number
   ) => {
+    const contentText = contentToText(content);
     NexusHandoffService.store({
       moduleId: target,
       type: 'delegate',
-      content,
+      content: contentText,
       reason,
       sourceModuleId: moduleId,
       createdAt: new Date().toISOString()
@@ -144,7 +153,7 @@ export function useHandoffProcessor({
       source: moduleId,
       target,
       domain: 'system',
-      data: { content, confidence, reason },
+      data: { content: contentText, confidence, reason },
       cascadeDepth: 0,
       priority: 'info'
     });
