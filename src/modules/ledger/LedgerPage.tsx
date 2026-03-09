@@ -275,7 +275,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
       </NeuralModal>
 
       <div className="flex flex-col h-full overflow-hidden">
-        <div className="px-8 pt-8 pb-4">
+        <div className="px-4 md:px-8 pt-4 md:pt-8 pb-2 md:pb-4">
           <SectionHeader
             label="Resource Control"
             title="Financial Command Center"
@@ -284,7 +284,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
           />
         </div>
 
-        <div className="px-8 pb-6 border-b border-white/5 flex items-center justify-between">
+        <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5 flex items-center justify-between">
           <NeuralTabGroup
             tabs={mainTabs}
             activeTab={activeMainTab}
@@ -293,13 +293,13 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
           />
           
           <div className="flex gap-2">
-            <button onClick={() => setIsCaptureModalOpen(true)} className="p-2 rounded-xl bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-violet-400 transition-all"><Camera size={16} /></button>
-            <button onClick={handleImportCsv} className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-cyan-400 transition-all"><FileUp size={16} /></button>
-            <button onClick={handleOpenDocuments} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/60 transition-all"><FolderOpen size={16} /></button>
+            <button onClick={() => setIsCaptureModalOpen(true)} className="p-1.5 md:p-2 rounded-xl bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-violet-400 transition-all"><Camera size={14} className="md:w-4 md:h-4" /></button>
+            <button onClick={handleImportCsv} className="p-1.5 md:p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-cyan-400 transition-all"><FileUp size={14} className="md:w-4 md:h-4" /></button>
+            <button onClick={handleOpenDocuments} className="p-1.5 md:p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/60 transition-all"><FolderOpen size={14} className="md:w-4 md:h-4" /></button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar pt-6 pb-20">
+        <div className="flex-1 overflow-y-auto no-scrollbar pt-4 md:pt-6 pb-20">
           {activeMainTab === 'dashboard' ? (
             <LedgerDashboard
               soul={globalSoul}
@@ -311,7 +311,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
               }}
             />
           ) : (
-            <div className="px-8">
+            <div className="px-4 md:px-8">
               <LedgerWorkspace
                 profile={profile!}
                 onUpdateProfile={(updates) => {

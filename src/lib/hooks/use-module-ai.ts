@@ -113,13 +113,15 @@ export function useModuleAI({
   const { retrieveMemoryContext } = useMemoryIntegration({
     moduleId,
     userId: user?.uid,
-    isGuest: !!isGuest
+    isGuest: !!isGuest,
+    encryptionKey
   });
 
   const { consolidateIfNeeded, resetConsolidation } = useConsolidation({
     moduleId,
     userId: user?.uid,
     isGuest: !!isGuest,
+    encryptionKey,
     sendMessage,
     enhanceContext: resolvedEnhanceContext,
     mountedRef

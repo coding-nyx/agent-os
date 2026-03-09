@@ -5,21 +5,34 @@ import { getTodayWeekday } from '../utils';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
-import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus } from 'lucide-react';
+import { PanelLabel } from '@/core/components/PanelLabel';
+import { RoutineBuilder } from './RoutineBuilder';
+import { RestPeriodCalculator } from './RestPeriodCalculator';
+import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus, Pencil } from 'lucide-react';
 
 interface TitanRoutinePanelProps {
   routines: Routine[];
   onAnalyzeRoutine?: (routine: Routine) => void;
   onGeneratePlan?: () => void;
   onImportRoutine?: () => void;
+  /** Sends the routine to Titan AI for validation before it is committed. */
+  onSubmitForApproval?: (routine: Routine) => void;
 }
 
 const WEEKDAY_ORDER: Weekday[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-export function TitanRoutinePanel({ routines, onAnalyzeRoutine, onGeneratePlan, onImportRoutine }: TitanRoutinePanelProps) {
+export function TitanRoutinePanel({
+  routines,
+  onAnalyzeRoutine,
+  onGeneratePlan,
+  onImportRoutine,
+  onSubmitForApproval,
+}: TitanRoutinePanelProps) {
   const today = getTodayWeekday();
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
-  
+  const [editingRoutine, setEditingRoutine] = useState<Routine | undefined>(undefined);
+  const [showBuilder, setShowBuilder] = useState(false);
+
   const sorted = [...(routines || [])].sort((a, b) => {
     const aIndex = WEEKDAY_ORDER.indexOf(a.weekday || 'monday');
     const bIndex = WEEKDAY_ORDER.indexOf(b.weekday || 'monday');
@@ -28,109 +41,170 @@ export function TitanRoutinePanel({ routines, onAnalyzeRoutine, onGeneratePlan, 
 
   const todayRoutine = sorted.find(r => r.weekday === today);
 
-  // ── Empty state: single card with clear CTAs ──
+  const handleOpenCreate = () => {
+    setEditingRoutine(undefined);
+    setShowBuilder(true);
+  };
+
+  const handleOpenEdit = (routine: Routine) => {
+    setEditingRoutine(routine);
+    setSelectedRoutine(null);
+    setShowBuilder(true);
+  };
+
+  const handleBuilderSave = (routine: Routine) => {
+    setShowBuilder(false);
+    setEditingRoutine(undefined);
+    onSubmitForApproval?.(routine);
+  };
+
+  const handleBuilderClose = () => {
+    setShowBuilder(false);
+    setEditingRoutine(undefined);
+  };
+
+  // ── Empty state ──
   if (sorted.length === 0) {
     return (
-      <div className="px-6 pt-3 pb-5 bg-black/40 border-b border-white/5 backdrop-blur-xl">
-        <SurfaceCard className="p-6">
-          <div className="flex flex-col items-center text-center space-y-4 py-2">
-            <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-              <Dumbbell className="w-5 h-5 text-orange-400" />
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-base font-black italic uppercase tracking-tight text-white">
-                No Training Plan Yet
-              </h3>
-              <p className="text-xs text-white/50 max-w-sm leading-relaxed">
-                Titan will build a personalized weekly routine based on your goals, recovery state, and biometrics.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
-              {onGeneratePlan && (
-                <NeuralButton onClick={onGeneratePlan}>
+      <>
+        <div className="px-6 pt-3 pb-5 bg-black/40 border-b border-white/5 backdrop-blur-xl">
+          <SurfaceCard className="p-6">
+            <div className="flex flex-col items-center text-center space-y-4 py-2">
+              <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+                <Dumbbell className="w-5 h-5 text-orange-400" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-black italic uppercase tracking-tight text-white">
+                  No Training Plan Yet
+                </h3>
+                <p className="text-xs text-white/50 max-w-sm leading-relaxed">
+                  Build your weekly routine manually, or let Titan generate one based on your goals and recovery state.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+                <NeuralButton onClick={handleOpenCreate}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Generate Weekly Plan
+                  Build Manually
                 </NeuralButton>
-              )}
-              {onImportRoutine && (
-                <button
-                  type="button"
-                  onClick={onImportRoutine}
-                  className="text-[11px] text-white/40 hover:text-orange-300/70 transition-colors underline underline-offset-4 decoration-white/20"
-                >
-                  I already have a routine
-                </button>
-              )}
+                {onGeneratePlan && (
+                  <NeuralButton onClick={onGeneratePlan} variant="ghost">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Generate with AI
+                  </NeuralButton>
+                )}
+                {onImportRoutine && (
+                  <button
+                    type="button"
+                    onClick={onImportRoutine}
+                    className="text-[11px] text-white/40 hover:text-orange-300/70 transition-colors underline underline-offset-4 decoration-white/20"
+                  >
+                    I already have a routine
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </SurfaceCard>
-      </div>
+          </SurfaceCard>
+        </div>
+
+        <RoutineBuilderModal
+          isOpen={showBuilder}
+          routine={editingRoutine}
+          onSave={handleBuilderSave}
+          onClose={handleBuilderClose}
+        />
+      </>
     );
   }
 
   // ── Populated state ──
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-6 pt-3 pb-5 bg-black/40 border-b border-white/5 backdrop-blur-xl">
-        <SurfaceCard className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Weekly Plan</span>
-            <span className="text-[10px] font-mono uppercase text-white/40">{sorted.length} days</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-6 pt-3 pb-8 bg-black/40 border-b border-white/5 backdrop-blur-xl">
+        <SurfaceCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <PanelLabel label="Weekly Plan" metadata={`${sorted.length} days`} />
+            <NeuralButton size="sm" onClick={handleOpenCreate}>
+              <Plus className="w-3 h-3 mr-1.5" />
+              Add Day
+            </NeuralButton>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {sorted.map((routine) => (
-              <button
+              <div
                 key={`${routine.weekday}-${routine.id}`}
-                type="button"
-                onClick={() => setSelectedRoutine(routine)}
                 className={cn(
-                  'w-full flex items-center justify-between text-[11px] px-3 py-2 rounded-xl transition-all group',
+                  'w-full flex items-center justify-between text-xs px-3 py-3 rounded-xl transition-all group',
                   routine.weekday === today
-                    ? 'text-orange-300 font-bold bg-orange-500/10 hover:bg-orange-500/20'
-                    : 'text-white/60 hover:bg-white/5 hover:text-white/80'
+                    ? 'text-orange-300 font-bold bg-orange-500/10'
+                    : 'text-white/60 bg-white/[0.02]'
                 )}
               >
-                <span className="uppercase tracking-wider">{routine.weekday}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-white/50">{routine.exercises.length} exercises</span>
-                  <ChevronRight className="w-3 h-3 text-white/30 group-hover:text-white/50 transition-colors" />
+                <button
+                  type="button"
+                  onClick={() => setSelectedRoutine(routine)}
+                  className="flex-1 flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
+                >
+                  <span className="uppercase tracking-wider">{routine.weekday}</span>
+                  <span className="text-white/40 truncate">{routine.name}</span>
+                </button>
+                <div className="flex items-center gap-1">
+                  <span className="text-white/40 mr-1">{routine.exercises.length} ex</span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(routine)}
+                    className="p-1 rounded-lg text-white/30 hover:text-orange-400 hover:bg-orange-500/10 transition-all opacity-0 group-hover:opacity-100"
+                    title="Edit routine"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRoutine(routine)}
+                    className="text-white/30 hover:text-white/50 transition-colors"
+                  >
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         </SurfaceCard>
 
-        <SurfaceCard className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Today&apos;s Protocol</span>
-            <span className="text-[10px] font-mono uppercase text-white/40 capitalize">{today}</span>
-          </div>
+        <SurfaceCard className="p-4">
+          <PanelLabel label="Today's Protocol" metadata={today} />
           {!todayRoutine ? (
-            <div className="flex flex-col items-center text-center py-3 space-y-2">
-              <p className="text-xs text-white/50">Rest day — no protocol scheduled.</p>
+            <div className="flex flex-col items-center text-center py-6 space-y-3">
+              <p className="text-sm text-white/40 italic">Rest day — no protocol scheduled.</p>
               {onGeneratePlan && (
                 <button
                   type="button"
                   onClick={onGeneratePlan}
-                  className="text-[11px] text-orange-400/70 hover:text-orange-300 transition-colors font-medium"
+                  className="text-xs text-orange-400/70 hover:text-orange-300 transition-colors font-medium"
                 >
                   Request a session →
                 </button>
               )}
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {todayRoutine.exercises.map((ex, idx) => (
                 <button
                   key={`${todayRoutine.id}-${idx}`}
                   type="button"
                   onClick={() => setSelectedRoutine(todayRoutine)}
-                  className="w-full flex items-center justify-between text-[11px] text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all"
+                  className="w-full flex items-center justify-between text-xs text-white/60 px-3 py-3 rounded-xl hover:bg-white/5 transition-all"
                 >
                   <span className="font-medium">{ex.name}</span>
                   <span className="text-white/40 tabular-nums">{ex.sets}×{ex.reps}</span>
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => handleOpenEdit(todayRoutine)}
+                className="w-full text-[10px] text-orange-400/60 hover:text-orange-300 transition-colors pt-1 text-center"
+              >
+                Edit today's routine →
+              </button>
             </div>
           )}
         </SurfaceCard>
@@ -147,7 +221,7 @@ export function TitanRoutinePanel({ routines, onAnalyzeRoutine, onGeneratePlan, 
         maxWidth="lg"
       >
         {selectedRoutine && (
-          <div className="space-y-6">
+          <div className="space-y-7">
             {/* Routine meta */}
             {(selectedRoutine.rationale || selectedRoutine.timeframe) && (
               <div className="p-4 rounded-2xl bg-orange-500/[0.04] border border-orange-500/10 space-y-3">
@@ -174,12 +248,10 @@ export function TitanRoutinePanel({ routines, onAnalyzeRoutine, onGeneratePlan, 
 
             {/* Exercise list */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">
-                  Exercises ({selectedRoutine.exercises.length})
-                </span>
-              </div>
-              <div className="space-y-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">
+                Exercises ({selectedRoutine.exercises.length})
+              </span>
+              <div className="space-y-3">
                 {selectedRoutine.exercises.map((ex, idx) => (
                   <div
                     key={idx}
@@ -206,23 +278,73 @@ export function TitanRoutinePanel({ routines, onAnalyzeRoutine, onGeneratePlan, 
               </div>
             </div>
 
-            {/* Analyze action */}
-            {onAnalyzeRoutine && (
+            {/* Rest period calculator */}
+            <RestPeriodCalculator />
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              {onAnalyzeRoutine && (
+                <NeuralButton
+                  size="xl"
+                  className="flex-1"
+                  onClick={() => {
+                    onAnalyzeRoutine(selectedRoutine);
+                    setSelectedRoutine(null);
+                  }}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Analyze with Titan
+                </NeuralButton>
+              )}
               <NeuralButton
                 size="xl"
-                className="w-full"
-                onClick={() => {
-                  onAnalyzeRoutine(selectedRoutine);
-                  setSelectedRoutine(null);
-                }}
+                variant="ghost"
+                onClick={() => handleOpenEdit(selectedRoutine)}
               >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Analyze with Titan
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit
               </NeuralButton>
-            )}
+            </div>
           </div>
         )}
       </NeuralModal>
+
+      {/* Routine Builder Modal */}
+      <RoutineBuilderModal
+        isOpen={showBuilder}
+        routine={editingRoutine}
+        onSave={handleBuilderSave}
+        onClose={handleBuilderClose}
+      />
     </>
+  );
+}
+
+// ── RoutineBuilder wrapped in NeuralModal ─────────────────────────────────────
+
+interface RoutineBuilderModalProps {
+  isOpen: boolean;
+  routine?: Routine;
+  onSave: (routine: Routine) => void;
+  onClose: () => void;
+}
+
+function RoutineBuilderModal({ isOpen, routine, onSave, onClose }: RoutineBuilderModalProps) {
+  return (
+    <NeuralModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={routine ? `Edit — ${routine.name}` : 'New Routine'}
+      subtitle={routine ? routine.weekday?.toUpperCase() : 'Build your protocol'}
+      icon={Dumbbell}
+      themeColor="orange"
+      maxWidth="2xl"
+    >
+      <RoutineBuilder
+        routine={routine}
+        onSave={onSave}
+        onCancel={onClose}
+      />
+    </NeuralModal>
   );
 }

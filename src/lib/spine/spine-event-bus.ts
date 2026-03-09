@@ -1,23 +1,36 @@
 import { addDoc, collection } from 'firebase/firestore';
 import { useEffect, useRef } from 'react';
 import { getFirebase } from '@/lib/firebase';
-import { SpineEvent, SpineEventType } from '@/lib/types';
+import { SpineDomain, SpineEvent, SpineEventPayload, SpineEventPriority, SpineEventType } from '@/lib/types';
 
 export interface CascadeRule {
   id: string;
   trigger: SpineEventType;
   condition: (event: SpineEvent) => boolean;
-  transform: (event: SpineEvent) => Omit<SpineEvent, 'id' | 'timestamp' | 'cascadeDepth'>;
+  transform: (event: SpineEvent) => SpineEventPayload;
 }
 
+export interface EventFilterOptions {
+  minPriority?: 'info' | 'alert' | 'critical';
+}
+
+const PRIORITY_LEVELS = { info: 0, alert: 1, critical: 2 };
+
 type Listener = (event: SpineEvent) => void;
+interface ListenerRegistration {
+  handler: Listener;
+  options?: EventFilterOptions;
+}
 
 class SpineEventBus {
-  private listeners = new Map<string, Set<Listener>>();
+  private listeners = new Map<string, Set<ListenerRegistration>>();
   private recentEvents: SpineEvent[] = [];
   private cascadeRules: CascadeRule[] = [];
   private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private uid: string | null = null;
+
+  private readonly validDomains: SpineDomain[] = ['B', 'E', 'C', 'R', 'system'];
+  private readonly validPriorities: SpineEventPriority[] = ['info', 'alert', 'critical'];
 
   setUser(uid: string | null): void {
     this.uid = uid;
@@ -27,15 +40,24 @@ class SpineEventBus {
     this.cascadeRules = rules;
   }
 
-  emit(eventInput: Omit<SpineEvent, 'id' | 'timestamp'>): void {
+  publish(eventInput: SpineEventPayload): SpineEvent {
+    return this.emit(eventInput);
+  }
+
+  subscribe(type: SpineEventType | '*', listener: Listener, options?: EventFilterOptions): () => void {
+    return this.on(type, listener, options);
+  }
+
+  emit(eventInput: SpineEventPayload): SpineEvent {
+    const normalized = this.validateAndNormalize(eventInput);
     const event: SpineEvent = {
-      ...eventInput,
+      ...normalized,
       id: crypto.randomUUID(),
       timestamp: Date.now()
     };
 
     const debounceKey = `${event.type}:${event.source}`;
-    if (this.debounceTimers.has(debounceKey)) return;
+    if (this.debounceTimers.has(debounceKey)) return event;
 
     const timer = globalThis.setTimeout(() => {
       this.debounceTimers.delete(debounceKey);
@@ -44,7 +66,16 @@ class SpineEventBus {
 
     const typeListeners = this.listeners.get(event.type) || new Set();
     const wildcardListeners = this.listeners.get('*') || new Set();
-    [...typeListeners, ...wildcardListeners].forEach((listener) => listener(event));
+    const allListeners = [...typeListeners, ...wildcardListeners];
+
+    allListeners.forEach((reg) => {
+      if (reg.options?.minPriority) {
+        if (PRIORITY_LEVELS[event.priority] < PRIORITY_LEVELS[reg.options.minPriority]) {
+          return; // Skip if event priority is below minimum required
+        }
+      }
+      reg.handler(event);
+    });
 
     this.recentEvents = [event, ...this.recentEvents].slice(0, 50);
 
@@ -65,15 +96,18 @@ class SpineEventBus {
         console.warn('[SpineEventBus] Failed to log event:', error);
       });
     }
+
+    return event;
   }
 
-  on(type: SpineEventType | '*', listener: Listener): () => void {
+  on(type: SpineEventType | '*', listener: Listener, options?: EventFilterOptions): () => void {
     if (!this.listeners.has(type)) {
       this.listeners.set(type, new Set());
     }
-    this.listeners.get(type)?.add(listener);
+    const registration = { handler: listener, options };
+    this.listeners.get(type)?.add(registration);
     return () => {
-      this.listeners.get(type)?.delete(listener);
+      this.listeners.get(type)?.delete(registration);
     };
   }
 
@@ -100,14 +134,51 @@ class SpineEventBus {
 
     await addDoc(collection(db, 'spine_events', this.uid, 'events'), event);
   }
+
+  private validateAndNormalize(event: SpineEventPayload): SpineEventPayload & { cascadeDepth: number } {
+    if (!event || typeof event !== 'object') {
+      throw new Error('[SpineEventBus] Event payload must be an object');
+    }
+
+    if (!event.type) {
+      throw new Error('[SpineEventBus] Missing required field: type');
+    }
+
+    if (!event.source || typeof event.source !== 'string') {
+      throw new Error('[SpineEventBus] Missing or invalid required field: source');
+    }
+
+    if (!this.validDomains.includes(event.domain)) {
+      throw new Error(`[SpineEventBus] Invalid domain "${event.domain}"`);
+    }
+
+    if (!this.validPriorities.includes(event.priority)) {
+      throw new Error(`[SpineEventBus] Invalid priority "${event.priority}"`);
+    }
+
+    if (event.data === undefined || event.data === null || typeof event.data !== 'object') {
+      throw new Error('[SpineEventBus] Missing or invalid required field: data');
+    }
+
+    if (event.cascadeDepth !== undefined && typeof event.cascadeDepth !== 'number') {
+      throw new Error('[SpineEventBus] cascadeDepth must be a number when provided');
+    }
+
+    return {
+      ...event,
+      cascadeDepth: event.cascadeDepth ?? 0
+    };
+  }
 }
 
 export const Spine = new SpineEventBus();
 
-export function useSpineEvent(type: SpineEventType | '*', handler: Listener): void {
+export function useSpineEvent(type: SpineEventType | '*', handler: Listener, options?: EventFilterOptions): void {
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
   useEffect(() => {
-    return Spine.on(type, (event) => handlerRef.current(event));
+    return Spine.on(type, (event) => handlerRef.current(event), optionsRef.current);
   }, [type]);
 }

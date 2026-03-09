@@ -1,17 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { AgnesOnboarding } from './onboarding/AgnesOnboarding';
 import { AGNES_PERSONA } from './personas';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield } from 'lucide-react';
+import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield, ArrowRight } from 'lucide-react';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { NexusChat } from '@/core/components/NexusChat';
 import { buildAgnesSessionPrompt } from './prompts/agnes-session-prompt';
-import { AgnesDashboard } from './components/AgnesDashboard';
+import { Agnes3DEnvironment } from './components/Agnes3DEnvironment';
+import { AgnesTelemetryHeader } from './components/AgnesTelemetryHeader';
+import { AgnesPersonalitySidebar } from './components/AgnesPersonalitySidebar';
+import { AgnesTherapistCard } from './components/AgnesTherapistCard';
 import {
   createEmptyAgnesProfile,
   loadAgnesProfile,
@@ -25,18 +29,61 @@ import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
 import { registerAgnesActions } from './services/actions';
+import { useUIStore } from '@/lib/stores/ui-store';
 
 type AgnesState = 'selecting' | 'session';
 
 registerAgnesActions();
 
+function AgnesLeftRail({ profile }: { profile: TherapyIntakeProfile | null }) {
+  return (
+    <div className="h-full flex gap-4 p-6 pl-8">
+      {/* Vertical Status Bar */}
+      <div className="flex flex-col items-center py-8 gap-8 border-r border-white/5 pr-4 h-full relative shrink-0">
+        <div className="[writing-mode:vertical-lr] rotate-180 text-[10px] font-black uppercase tracking-[0.5em] text-indigo-400 opacity-40 whitespace-nowrap">
+          Neural_Synchronization_Active
+        </div>
+        <div className="flex-1 w-px bg-gradient-to-b from-indigo-500/20 via-white/5 to-transparent" />
+      </div>
+
+      <AgnesPersonalitySidebar 
+        baseContext={profile?.baseContext} 
+        className="relative z-20 shadow-2xl shrink-0" 
+      />
+    </div>
+  );
+}
+
+function AgnesRightRail({ profile, agentAlias }: { profile: TherapyIntakeProfile | null; agentAlias: string }) {
+    return (
+      <div className="h-full flex gap-4 p-6 pr-8">
+        <AgnesTherapistCard 
+          baseContext={profile?.baseContext} 
+          agentAlias={agentAlias}
+          className="relative z-20 shadow-2xl shrink-0" 
+        />
+        
+        {/* Vertical Decoration */}
+        <div className="flex flex-col items-center py-8 gap-8 border-l border-white/5 pl-4 h-full relative shrink-0">
+          <div className="[writing-mode:vertical-lr] text-[10px] font-black uppercase tracking-[0.5em] text-rose-400 opacity-40 whitespace-nowrap">
+            Clinical_Support_Link_Established
+          </div>
+          <div className="flex-1 w-px bg-gradient-to-b from-rose-500/20 via-white/5 to-transparent" />
+        </div>
+      </div>
+    );
+  }
+
+interface AgnesContentProps extends ContentRenderProps<TherapyIntakeProfile> {}
+
 function AgnesContent({
   profile,
   encryptionKey,
   setSessionActive
-}: ContentRenderProps<TherapyIntakeProfile>) {
-  const { globalSoul, updateTherapeuticBaseline, refreshGlobalSoul } = useGlobalSoul();
-  const { user, isGuest, profile: coreProfile, refreshProfile } = useAuth();
+}: AgnesContentProps) {
+  const { isFocusMode, setIsFocusMode } = useUIStore();
+  const { globalSoul } = useGlobalSoul();
+  const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
   const isAccessible = isModuleAccessible('agnes');
 
@@ -47,14 +94,12 @@ function AgnesContent({
   const [sessionSummary, setSessionSummary] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
 
-  // Notify UnifiedModulePage of session state for layout adjustments
   useEffect(() => {
     setSessionActive?.(currentState === 'session');
   }, [currentState, setSessionActive]);
 
   const agentAlias = globalSoul?.displayNames?.agnes || 'Agnes';
-  const isDeepIntakeDone = Boolean(globalSoul?.therapeuticBaseline?.isInitialized || profile?.onboardingComplete);
-
+  
   const systemPrompt = useMemo(
     () => buildAgnesSessionPrompt(AGNES_PERSONA, profile?.baseContext),
     [profile?.baseContext]
@@ -64,7 +109,6 @@ function AgnesContent({
     messages,
     setMessages,
     isProcessing,
-    isHydrating,
     streamingText,
     error,
     quota,
@@ -77,36 +121,9 @@ function AgnesContent({
     encryptionKey
   });
 
-  // Intercept profile changes that happen post-onboarding (if needed)
-  // For agnes, intake completion means we save it here
-  const handleIntakeCompleteWrapper = async (completedProfile: TherapyIntakeProfile) => {
-    if (user && !isGuest && encryptionKey) {
-      await saveAgnesProfile(completedProfile, { userId: user.uid, encryptionKey });
-    } else if (isGuest) {
-      await saveAgnesProfile(completedProfile, {});
-    }
-
-    if (user && !isGuest) {
-      const onboardingBaseContext = IntakeBaseContextService.buildForAgnes({ coreProfile, agnesContext: profile?.baseContext });
-      const globalPatch = IntakeBaseContextService.toCoreProfilePatch({
-        ...onboardingBaseContext,
-        ...completedProfile.baseContext
-      });
-      if (Object.keys(globalPatch).length > 0) {
-        await CoreProfileService.updateProfile(user.uid, globalPatch);
-      }
-    }
-    await updateTherapeuticBaseline({ isInitialized: true, initializedAt: new Date().toISOString() });
-    setCurrentState('session');
-    setSessionType('new');
-    setMessages([{ role: 'assistant', content: "Breakthrough achieved. Your neural baseline is now synchronized. How should we begin our first deep session?" }]);
-    await refreshProfile();
-    await refreshGlobalSoul();
-  };
-
-  // For this page, if we need to force onboarding, we can hook it into the startSession flow
   const startSession = async (type: 'impromptu' | 'new' | 'continue') => {
     setSessionStartedAt(Date.now());
+    setIsFocusMode(true);
     if (type === 'continue') {
       const inferred = messages.some((msg) => {
         const content = typeof msg.content === 'string' ? msg.content : msg.content.filter(p => p.type === 'text').map(p => (p as any).text).join(' ');
@@ -145,6 +162,7 @@ function AgnesContent({
 
   const finalizeClose = async () => {
     await clearSession();
+    setIsFocusMode(false);
     setCurrentState('selecting');
     setSessionType(null);
     setSessionSummary(null);
@@ -160,7 +178,7 @@ function AgnesContent({
           history: messages
         });
 
-        const existing = await ModuleMemoryService.getEnvelope(user.uid, 'agnes');
+        const existing = await ModuleMemoryService.getEnvelope(user.uid, 'agnes', encryptionKey);
         if (!existing) {
           await ModuleMemoryService.initializeEnvelope(user.uid, 'agnes');
         }
@@ -176,7 +194,8 @@ function AgnesContent({
             sentiment: 0,
             tokenUsage: 0
           },
-          snapshot
+          snapshot,
+          { encryptionKey }
         );
       }
 
@@ -199,91 +218,163 @@ function AgnesContent({
 
   const hasActiveSession = !isGuest && messages.length > 0;
 
-  if (currentState === 'selecting') {
-    if (!isGuest && isHydrating) {
-      return (
-        <div className="h-full flex items-center justify-center text-white/40 text-sm">
-          Initializing agnes session...
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 max-w-3xl mx-auto">
-        <div className="text-center space-y-4 mb-12">
-          <h2 className="text-4xl font-black italic tracking-widest text-indigo-400 uppercase">Initialize Connection</h2>
-            <p className="text-white/60 text-sm leading-relaxed">Choose your neural synchronization mode.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-            <button onClick={() => startSession('impromptu')} className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-left group">
-              <ShieldAlert className="w-10 h-10 text-orange-400 mb-6 group-hover:scale-110 transition-transform" />
-              <h3 className="text-xl font-black tracking-wider uppercase mb-3">Impromptu</h3>
-              <p className="text-sm text-white/50 leading-relaxed font-medium">A detached session with an attuned agent. Perfect for trials.</p>
-            </button>
-
-            {(!isGuest) && (
-              hasActiveSession ? (
-                <button onClick={() => startSession('continue')} className="p-8 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all text-left group">
-                  <Sparkles className="w-10 h-10 text-emerald-400 mb-6 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-xl font-black tracking-wider uppercase mb-3">Continue Session</h3>
-                  <p className="text-sm text-emerald-200/60 leading-relaxed font-medium">
-                    Resume your active encrypted agnes session.
-                  </p>
-                </button>
-              ) : isAccessible ? (
-                <button onClick={() => {
-                  if (!isDeepIntakeDone) {
-                    // Trigger onboarding manually here if we want to force it
-                    // In this specific flow, since renderOnboarding handles it via state,
-                    // we can just pretend it's complete if it skips, or ideally we just render Onboarding inline.
-                    // For now, if the profile isn't onboarded, the UnifiedModulePage would have caught it
-                    // EXCEPT we didn't force it to display. Let's just start the session.
-                    startSession('new');
-                  } else {
-                    startSession('new');
-                  }
-                }} className="p-8 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left group">
-                  <Sparkles className="w-10 h-10 text-indigo-400 mb-6 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-xl font-black tracking-wider uppercase mb-3">New Session</h3>
-                  <p className="text-sm text-indigo-200/60 leading-relaxed font-medium">
-                    Initialize your deep therapeutic baseline.
-                  </p>
-                </button>
-              ) : (
-                <div className="p-8 rounded-3xl bg-amber-500/5 border border-amber-500/10 opacity-50 cursor-not-allowed text-left">
-                  <ShieldAlert className="w-10 h-10 text-amber-500 mb-6" />
-                  <h3 className="text-xl font-black tracking-wider uppercase mb-3">Vault Locked</h3>
-                  <p className="text-sm text-amber-200/40 leading-relaxed font-medium">Unlock vault to start encrypted sessions.</p>
-                </div>
-              )
-            )}
-          </div>
-        </div>
-    );
-  }
-
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <NexusChat
-        ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
-        agentName={sessionType === 'impromptu' ? 'Emergency Agent' : agentAlias}
-        themeColor="indigo"
-        placeholder="Share your thoughts..."
-        authMode="agnes"
-        headerActions={messages.length > 2 && (
-          <NeuralButton size="sm" variant="secondary" onClick={endSession} loading={isSummarizing} className="flex items-center gap-2">
-            <LogOut className="w-3 h-3" /> End Session
-          </NeuralButton>
-        )}
-      />
+    <div className="flex-1 flex min-h-0 relative p-0 min-[620px]:p-4 lg:p-6">
+      <div className={cn("absolute inset-0 transition-opacity duration-1000", isFocusMode ? "opacity-20" : "opacity-100")}>
+        <Agnes3DEnvironment activeSession={currentState === 'session'} isProcessing={isProcessing} isFocusMode={isFocusMode} />
+      </div>
+
+      <div className={cn(
+        "flex-1 flex flex-col min-h-0 relative z-10 surface-card !backdrop-blur-[1px] overflow-y-auto no-scrollbar min-[620px]:overflow-hidden min-[620px]:rounded-panel transition-all duration-700 w-full min-w-0",
+        isFocusMode ? "!bg-transparent border-transparent shadow-none" : ""
+      )}>
+        <AnimatePresence mode="wait">
+          {currentState === 'selecting' ? (
+            <motion.div 
+              key="selecting"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              className="min-h-full flex flex-col items-center justify-start p-6 pt-12 min-[620px]:p-12 min-[620px]:justify-center max-w-5xl mx-auto w-full space-y-12 pb-20"
+            >
+              <div className="text-center space-y-4">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4"
+                >
+                  <Shield className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400/80 italic">Secure Neural Environment</span>
+                </motion.div>
+                <h2 className="text-4xl min-[620px]:text-6xl font-black italic tracking-tighter text-white uppercase leading-none">
+                  Neural <span className="text-indigo-400">Sync</span>
+                </h2>
+                <p className="text-white/40 text-xs min-[620px]:text-sm font-medium tracking-wide">Establish a high-fidelity link with your emotional telemetry.</p>
+              </div>
+
+              {/* Session Cards - Primary on Mobile */}
+              <div className="grid grid-cols-1 min-[620px]:grid-cols-2 gap-4 min-[620px]:gap-8 w-full px-2">
+                <motion.button 
+                  whileHover={{ scale: 1.02, y: -4 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => startSession('impromptu')} 
+                  className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[3rem] bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
+                >
+                  <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                      <ShieldAlert className="w-20 h-24 text-orange-400" />
+                  </div>
+                  <div className="relative z-10">
+                      <ShieldAlert className="w-10 h-10 text-orange-400 mb-6" />
+                      <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic">Impromptu</h3>
+                      <p className="text-xs text-white/40 leading-relaxed font-medium max-w-[200px]">Detached session for rapid emotional recalibration.</p>
+                      <div className="mt-6 flex items-center gap-2 text-orange-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
+                          <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
+                          <ArrowRight className="w-4 h-4" />
+                      </div>
+                  </div>
+                </motion.button>
+
+                {(!isGuest) && (
+                  hasActiveSession ? (
+                    <motion.button 
+                      whileHover={{ scale: 1.02, y: -4 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => startSession('continue')} 
+                      className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[3rem] bg-indigo-500/10 border-2 border-indigo-500/40 hover:bg-indigo-500/20 transition-all text-left group relative overflow-hidden backdrop-blur-md shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]"
+                    >
+                      <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity">
+                          <Sparkles className="w-20 h-24 text-indigo-400 animate-pulse" />
+                      </div>
+                      <div className="relative z-10">
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-400/20 border border-indigo-400/30 mb-6">
+                            <Shield className="w-3 h-3 text-indigo-400" />
+                            <span className="text-[8px] font-black uppercase tracking-widest text-indigo-300">Active Handshake</span>
+                          </div>
+                          <h3 className="text-xl min-[620px]:text-3xl font-black tracking-tighter uppercase mb-3 italic text-white">Reconnect Link</h3>
+                          <p className="text-xs text-indigo-200/60 leading-relaxed font-medium max-w-[240px]">Neural link interrupted. Re-establish secure tunnel to continue your session.</p>
+                          <div className="mt-8 flex items-center gap-3 text-indigo-400">
+                              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Resume Session</span>
+                              <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+                          </div>
+                      </div>
+                    </motion.button>
+                  ) : isAccessible ? (
+                    <motion.button 
+                      whileHover={{ scale: 1.02, y: -4 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => startSession('new')} 
+                      className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[3rem] bg-indigo-500/5 border border-indigo-500/20 hover:bg-indigo-500/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
+                    >
+                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                          <Sparkles className="w-20 h-24 text-indigo-400" />
+                      </div>
+                      <div className="relative z-10">
+                          <Sparkles className="w-10 h-10 text-indigo-400 mb-6" />
+                          <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic">New Session</h3>
+                          <p className="text-xs text-indigo-200/40 leading-relaxed font-medium max-w-[200px]">Initialize a deep baseline synchronization.</p>
+                          <div className="mt-6 flex items-center gap-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
+                              <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
+                              <ArrowRight className="w-4 h-4" />
+                          </div>
+                      </div>
+                    </motion.button>
+                  ) : (
+                    <div className="p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-white/[0.01] border border-white/5 opacity-40 cursor-not-allowed text-left backdrop-blur-sm">
+                      <ShieldAlert className="w-10 h-10 text-white/20 mb-6" />
+                      <h3 className="text-xl md:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white/20">Locked</h3>
+                      <p className="text-xs text-white/10 leading-relaxed font-medium max-w-[200px]">Unlock vault to access encrypted neural sessions.</p>
+                    </div>
+                  )
+                )}
+              </div>
+
+              {/* Mobile Profile Summary - Secondary on Mobile */}
+              <div className="grid grid-cols-1 min-[620px]:hidden gap-4 w-full px-2">
+                <AgnesPersonalitySidebar baseContext={profile?.baseContext} className="w-full h-auto py-4 shadow-none" />
+                <AgnesTherapistCard baseContext={profile?.baseContext} agentAlias={agentAlias} className="w-full h-auto py-4 shadow-none" />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="session"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex-1 flex flex-col min-h-0 relative z-10"
+            >
+              <NexusChat
+                ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
+                agentName={sessionType === 'impromptu' ? 'Emergency Agent' : agentAlias}
+                themeColor="indigo"
+                placeholder="Communicate..."
+                authMode="agnes"
+                headerActions={
+                  <div className="flex items-center gap-4">
+                    <AgnesTelemetryHeader />
+                    <div className="h-6 w-px bg-white/5" />
+                    <NeuralButton 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={endSession} 
+                      loading={isSummarizing} 
+                      className="flex items-center gap-2 px-4 rounded-full border-white/5 hover:border-rose-500/20 hover:text-rose-400"
+                    >
+                      <LogOut className="w-3 h-3" /> End
+                    </NeuralButton>
+                  </div>
+                }
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <AnimatePresence>
         <NeuralModal isOpen={!!sessionSummary} onClose={() => setSessionSummary(null)} title="Session Complete" subtitle="Neural synthesis finalized" icon={Brain} maxWidth="lg">
           <div className="space-y-8">
-            {/* Session stats */}
             <div className="flex gap-4">
-              <div className="flex-1 p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+              <div className="flex-1 p-4 rounded-[2rem] bg-white/[0.03] border border-white/5">
                 <div className="flex items-center gap-2 mb-2">
                   <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
                   <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/50">Exchanges</span>
@@ -292,7 +383,7 @@ function AgnesContent({
                   {messages.filter(m => m.role === 'user').length}
                 </span>
               </div>
-              <div className="flex-1 p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+              <div className="flex-1 p-4 rounded-[2rem] bg-white/[0.03] border border-white/5">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="w-3.5 h-3.5 text-indigo-400" />
                   <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/50">Duration</span>
@@ -304,35 +395,28 @@ function AgnesContent({
                   })()}
                 </span>
               </div>
-              <div className="flex-1 p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/50">Encryption</span>
-                </div>
-                <span className="text-sm font-black text-emerald-400 uppercase tracking-wider">E2EE</span>
-              </div>
             </div>
 
-            {/* Summary reflection */}
-            <div className="relative p-6 rounded-2xl bg-indigo-500/[0.04] border border-indigo-500/10">
+            <div className="relative p-6 rounded-[2rem] bg-indigo-500/[0.04] border border-indigo-500/10">
               <div className="flex items-center gap-2 mb-4">
                 <Brain className="w-4 h-4 text-indigo-400" />
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-400/60">Session Reflection</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-400/60">Reflection</span>
               </div>
-              <p className="text-sm text-white/80 leading-relaxed font-medium">{sessionSummary}</p>
+              <p className="text-sm text-white/80 leading-relaxed font-medium italic">"{sessionSummary}"</p>
             </div>
 
-            {/* Actions */}
             <div className="space-y-3">
-              <NeuralButton size="xl" className="w-full" loading={isClosingSession} onClick={handleMergeAndClose}>
-                <CheckSquare className="w-4 h-4 mr-2" /> Save & Close Session
-              </NeuralButton>
+              {sessionType !== 'impromptu' && (
+                <NeuralButton size="xl" className="w-full rounded-full" loading={isClosingSession} onClick={handleMergeAndClose}>
+                  <CheckSquare className="w-4 h-4 mr-2" /> Sync to Vault
+                </NeuralButton>
+              )}
               <button
                 onClick={handleDiscardAndClose}
                 disabled={isClosingSession}
-                className="w-full py-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white/50 transition-colors disabled:opacity-30"
+                className="w-full py-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white/40 transition-colors disabled:opacity-30"
               >
-                Discard Session Data
+                {sessionType === 'impromptu' ? 'Finalize Session' : 'Discard Session Data'}
               </button>
             </div>
           </div>
@@ -342,7 +426,6 @@ function AgnesContent({
   );
 }
 
-// Stable onboarding wrapper — uses hooks internally, no inline closure needed
 function AgnesOnboardingWrapper({ profile, onComplete }: { profile: TherapyIntakeProfile | null; onComplete: (profile: TherapyIntakeProfile) => void }) {
   const { profile: coreProfile } = useAuth();
   return (
@@ -363,19 +446,26 @@ function AgnesOnboardingWrapper({ profile, onComplete }: { profile: TherapyIntak
 }
 
 export default function AgnesPage() {
+  const { globalSoul } = useGlobalSoul();
+  const agentAlias = globalSoul?.displayNames?.agnes || 'Agnes';
+
   return (
     <UnifiedModulePage<TherapyIntakeProfile>
       moduleId="agnes"
       workspaceType="focus"
       requireVault={false}
+      noContainer={true}
       profileOptions={{
         loadProfile: loadAgnesProfile,
         saveProfile: saveAgnesProfile,
         subscribeProfile: subscribeAgnesProfile
       }}
       renderOnboarding={AgnesOnboardingWrapper}
-      renderDashboard={AgnesDashboard}
       renderContent={AgnesContent}
+      renderLeftRail={({ profile }) => <AgnesLeftRail profile={profile} />}
+      renderRightRail={({ profile }) => (
+        <AgnesRightRail profile={profile} agentAlias={agentAlias} />
+      )}
     />
   );
 }

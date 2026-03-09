@@ -97,14 +97,14 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
 
               <Dialog.Content asChild forceMount aria-describedby={undefined}>
                 <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
-                  <div className="relative w-full max-w-md max-h-[90vh] overflow-hidden rounded-[40px] border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,1)] flex flex-col pointer-events-auto">
+                  <div className="relative w-full max-w-md max-h-[90vh] overflow-hidden rounded-card border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,1)] flex flex-col pointer-events-auto">
                     <Dialog.Close asChild>
                       <button className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors z-20"><X className="w-5 h-5" /></button>
                     </Dialog.Close>
 
                     <div className={`p-8 sm:p-10 border-b border-white/5 ${activeTheme.bg} shrink-0`}>
                       <div className="flex items-start gap-5">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border border-white/10 bg-black/40 shadow-2xl shrink-0`}>
+                        <div className={`w-14 h-14 rounded-panel flex items-center justify-center border border-white/10 bg-black/40 shadow-2xl shrink-0`}>
                           <activeTheme.icon className={`w-7 h-7 ${activeTheme.color}`} />
                         </div>
                         <div className="flex-1">
@@ -135,11 +135,11 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <button onClick={() => setView('LOGIN')} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/5 transition-all text-center group">
+                                <button onClick={() => setView('LOGIN')} className="p-4 rounded-panel bg-white/[0.03] border border-white/5 hover:bg-white/5 transition-all text-center group">
                                     <Key className="w-5 h-5 text-white/40 mx-auto mb-2 group-hover:text-white transition-colors" />
                                     <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">Recognize</span>
                                 </button>
-                                <button onClick={() => setView('REGISTER')} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/5 transition-all text-center group">
+                                <button onClick={() => setView('REGISTER')} className="p-4 rounded-panel bg-white/[0.03] border border-white/5 hover:bg-white/5 transition-all text-center group">
                                     <UserPlus className="w-5 h-5 text-white/40 mx-auto mb-2 group-hover:text-white transition-colors" />
                                     <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">Initialize</span>
                                 </button>
@@ -212,7 +212,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} 
                                 className="space-y-6"
                             >
-                                <div className={cn("p-5 border rounded-3xl flex items-start gap-4 transition-colors", hasVault ? "bg-emerald-500/5 border-emerald-500/20" : "bg-cyan-500/5 border-cyan-500/20")}>
+                                <div className={cn("p-5 border rounded-card flex items-start gap-4 transition-colors", hasVault ? "bg-emerald-500/5 border-emerald-500/20" : "bg-cyan-500/5 border-cyan-500/20")}>
                                     {hasVault ? <Fingerprint className="w-6 h-6 text-emerald-400 shrink-0 mt-1" /> : <ShieldCheck className="w-6 h-6 text-cyan-400 shrink-0 mt-1" />}
                                     <div className="space-y-1">
                                         <p className="text-xs text-white font-black uppercase italic tracking-tighter">

@@ -71,12 +71,12 @@ export function NeuralModal({
                     "fixed inset-0 z-[101] m-auto flex items-center justify-center p-4 pointer-events-none"
                   )}
                 >
-                  <div
-                    className={cn(
-                      "relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,0.5)] pointer-events-auto",
-                      widths[maxWidth]
-                    )}
-                  >
+                    <div
+                      className={cn(
+                        "relative w-full overflow-hidden rounded-modal border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,0.5)] pointer-events-auto",
+                        widths[maxWidth]
+                      )}
+                    >
                     <Dialog.Close asChild>
                       <button
                         aria-label="Close dialog"
@@ -89,7 +89,7 @@ export function NeuralModal({
                     <div className={cn("p-8 border-b border-white/5", theme.bg)}>
                       <div className="flex items-center gap-4">
                         {Icon && (
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 bg-black/40 shadow-xl">
+                            <div className="w-12 h-12 rounded-panel flex items-center justify-center border border-white/10 bg-black/40 shadow-xl">
                             <Icon className={cn("w-6 h-6", theme.color)} />
                           </div>
                         )}

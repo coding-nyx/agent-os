@@ -6,9 +6,11 @@ import {
   getUncalibratedOwnedMetrics,
   isMetricStale,
   buildCalibrationPrompt,
+  filterNSVForModule,
+  filterGlobalSoulForModule,
   type NSVMetricPath,
 } from './nsv-ownership';
-import type { NeuralStateVector } from '@/lib/types';
+import type { GlobalProjection, NeuralStateVector } from '@/lib/types';
 
 describe('NSV_OWNERSHIP map', () => {
   it('agnes owns emotional metrics', () => {
@@ -133,5 +135,77 @@ describe('buildCalibrationPrompt', () => {
     const prompt = buildCalibrationPrompt('orchestrator');
     expect(prompt).toContain('Calibration required');
     expect(prompt).toContain('missing vital metrics');
+  });
+});
+
+describe('filterNSVForModule', () => {
+  const sampleNSV: NeuralStateVector = {
+    biological: { cnsFatigue: 6, sleepQuality: 7, recoveryScore: 5, hormonalContext: 'luteal' },
+    emotional: { emotionalResilience: 4, stressLoad: 8, moodTrend: 'declining', traumaMarkers: ['flashback'] },
+    cognitive: { energyBudget: 5, focusScore: 6, activeLoad: 7, researchLoad: 2, planningLoad: 4, taskCompletionRate: 0.5, interestDiversity: 3 },
+    planning: { streakHealth: 6, deadlinePressure: 9 },
+    resource: { financialFriction: 8, resonanceROI: 0.6 },
+    lastUpdated: {
+      'biological.cnsFatigue': '2024-01-01T00:00:00.000Z',
+      'emotional.traumaMarkers': '2024-01-02T00:00:00.000Z'
+    },
+    cnsFatigue: 6,
+    emotionalResilience: 4,
+    sleepQuality: 7,
+    hormonalContext: 'luteal',
+    traumaMarkers: ['flashback']
+  };
+
+  it('redacts disallowed metrics for module-level reads', () => {
+    const filtered = filterNSVForModule(sampleNSV, 'forge');
+    expect(filtered.biological.cnsFatigue).toBe(6); // allowed for forge
+    expect(filtered.cognitive.activeLoad).toBe(7);  // allowed for forge
+
+    // disallowed emotional/resource data should be nullified
+    expect(filtered.emotional.traumaMarkers).toBeNull();
+    expect(filtered.emotional.emotionalResilience).toBeNull();
+    expect(filtered.resource.financialFriction).toBeNull();
+
+    // lastUpdated only retains allowed paths
+    expect(filtered.lastUpdated['biological.cnsFatigue']).toBe('2024-01-01T00:00:00.000Z');
+    expect(filtered.lastUpdated['emotional.traumaMarkers']).toBeUndefined();
+  });
+
+  it('returns full access for orchestrator', () => {
+    const filtered = filterNSVForModule(sampleNSV, 'orchestrator');
+    expect(filtered.emotional.traumaMarkers).toEqual(['flashback']);
+    expect(filtered.resource.financialFriction).toBe(8);
+    expect(filtered.lastUpdated['emotional.traumaMarkers']).toBe('2024-01-02T00:00:00.000Z');
+  });
+});
+
+describe('filterGlobalSoulForModule', () => {
+  const projection: GlobalProjection = {
+    lastSync: '2024-02-01T00:00:00.000Z',
+    overallWellnessScore: 7,
+    displayNames: { orchestrator: 'Nexus' },
+    agentGenders: { orchestrator: 'female' },
+    crossFunctionalState: {
+      biological: { cnsFatigue: 3, sleepQuality: 6, recoveryScore: 5, hormonalContext: 'follicular' },
+      emotional: { emotionalResilience: 8, stressLoad: 1, moodTrend: 'stable', traumaMarkers: ['redacted'] },
+      cognitive: { energyBudget: 7, focusScore: 8, activeLoad: 5, researchLoad: 1, planningLoad: 2, taskCompletionRate: 0.9, interestDiversity: 6 },
+      planning: { streakHealth: 8, deadlinePressure: 1 },
+      resource: { financialFriction: 1, resonanceROI: 0.9 },
+      lastUpdated: { 'emotional.traumaMarkers': '2024-01-03T00:00:00.000Z' },
+      cnsFatigue: 3,
+      emotionalResilience: 8,
+      sleepQuality: 6,
+      hormonalContext: 'follicular',
+      traumaMarkers: ['redacted']
+    },
+    compactedInsights: ['insight-1']
+  };
+
+  it('filters projection crossFunctionalState while keeping envelope data', () => {
+    const filtered = filterGlobalSoulForModule(projection, 'forge');
+    expect(filtered?.displayNames).toBe(projection.displayNames);
+    expect(filtered?.compactedInsights).toBe(projection.compactedInsights);
+    expect(filtered?.crossFunctionalState.emotional.traumaMarkers).toBeNull();
+    expect(filtered?.crossFunctionalState.emotional.emotionalResilience).toBeNull();
   });
 });

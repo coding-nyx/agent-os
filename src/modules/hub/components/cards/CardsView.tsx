@@ -10,7 +10,6 @@ export const ModuleCard = React.memo(function ModuleCard({
 }: ModuleCardProps) {
   return (
     <motion.button
-      layoutId={title}
       onClick={onClick}
       whileHover={{ y: -6, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}

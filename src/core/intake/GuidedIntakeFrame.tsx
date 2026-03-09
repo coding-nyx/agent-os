@@ -45,7 +45,7 @@ export function GuidedIntakeFrame({
 
   return (
     <div className="h-full w-full flex flex-col items-center justify-center p-4">
-      <div className="relative w-full max-w-5xl h-[84vh] flex flex-col bg-black/40 backdrop-blur-xl rounded-[28px] border border-white/10 overflow-hidden shadow-2xl">
+      <div className="relative w-full max-w-5xl h-[84vh] flex flex-col bg-black/40 backdrop-blur-xl rounded-panel border border-white/10 overflow-hidden shadow-2xl">
         {/* Simplified Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-white/5 bg-gradient-to-r from-white/[0.04] to-transparent shrink-0">
           <div className="space-y-1">

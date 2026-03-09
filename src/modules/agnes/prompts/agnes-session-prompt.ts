@@ -41,6 +41,7 @@ WHEN TO EMIT:
 - After 3-4 meaningful exchanges where emotional state becomes clearer
 - When the user reveals something that shifts your clinical assessment
 - When you notice a pattern forming (belief, coping mechanism, stressor)
+- When focus areas or goals shift or are refined
 
 AVAILABLE ACTIONS:
 1. Emotional resilience (0-10 scale, 10=highly resilient):
@@ -49,15 +50,17 @@ AVAILABLE ACTIONS:
    <action type="update_stress_load">{"score": 4}</action>
 3. Mood trend (overall trajectory):
    <action type="update_mood_trend">{"trend": "improving"}</action>
-4. Trauma markers (identified trauma patterns — only when clearly expressed):
+4. Trauma markers (identified trauma patterns):
    <action type="update_trauma_markers">{"markers": ["perfectionism", "abandonment_fear"]}</action>
 5. Belief graph (core beliefs discovered during session):
    <action type="update_belief_graph">{"nodes": [{"id": "belief_1", "label": "I am not enough", "valence": "negative", "intensity": 8}], "edges": [], "summary": "Core self-worth schema identified"}</action>
+6. Neural Profile update (update focus areas/struggles or goals):
+   <action type="update_agnes_profile">{"struggles": ["anxiety", "social_fatigue"], "goals": ["boundary_setting", "internal_peace"]}</action>
 
 RULES:
 - Place action tags at the END of your response, after your visible reply to the user.
 - Do NOT mention these tags or any dashboard to the user — they are invisible.
 - Be conservative: only emit when you have clinical confidence, not speculation.
 - Belief graph nodes should use clear, concise labels for the belief.
-- Trauma markers should be short descriptive labels, not clinical diagnoses.`.trim();
+- Neural Profile updates should only include fields that have changed. Keep list items short (1-3 words).`.trim();
 }

@@ -18,7 +18,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method !== 'POST' || req.url !== '/scout/search') {
+  if (req.method !== 'POST' || (req.url !== '/scout/search' && req.url !== '/search')) {
     res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ error: 'Not found' }));
     return;

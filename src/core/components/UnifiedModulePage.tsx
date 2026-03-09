@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useModuleProfile, UseModuleProfileOptions } from '@/lib/hooks/use-module-profile';
 import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
 import { cn } from '@/lib/utils';
+import { useUIStore } from '@/lib/stores/ui-store';
 
 export type WorkspaceType = 'focus' | 'lab' | 'command' | 'terminal';
 
@@ -26,6 +27,10 @@ interface UnifiedModulePageProps<TProfile extends { onboardingComplete?: boolean
   renderContent: React.ComponentType<ContentRenderProps<TProfile>>;
   renderDashboard?: React.ComponentType<{ profile: TProfile | null; encryptionKey: CryptoKey | null }>;
   requireVault?: boolean;
+  noContainer?: boolean;
+  hideNavigation?: boolean;
+  renderLeftRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
+  renderRightRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
 }
 
 export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolean }>({
@@ -36,8 +41,14 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   renderContent,
   renderDashboard,
   requireVault = true,
-}: UnifiedModulePageProps<TProfile>) {
+  noContainer = false,
+  hideNavigation = false,
+  renderLeftRail,
+  renderRightRail
+  }: UnifiedModulePageProps<TProfile>) {
   const { isGuest } = useAuth();
+  const { isFocusMode, setIsFocusMode } = useUIStore();
+  
   const [guestReady, setGuestReady] = useState(() => {
     if (typeof window === 'undefined') return false;
     return sessionStorage.getItem(`nexus_guest_module_${moduleId}`) === 'true';
@@ -48,17 +59,15 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
     ...profileOptions
   });
 
-  // Session-active state lives here so content components can signal it
-  // without triggering parent page re-renders that would cause remounts.
-  const [sessionActive, setSessionActive] = useState(false);
-  const stableSetSessionActive = useCallback((active: boolean) => setSessionActive(active), []);
+  // Sync sessionActive with focus mode
+  const stableSetSessionActive = useCallback((active: boolean) => {
+    setIsFocusMode(active);
+  }, [setIsFocusMode]);
 
   const manifest = MODULE_MANIFEST[moduleId];
   const themeColor = manifest.themeColor;
   const title = manifest.title;
 
-  // Stabilize render props so inline arrow functions don't cause
-  // unmount/remount of the child tree on every parent re-render.
   const renderContentRef = useRef(renderContent);
   renderContentRef.current = renderContent;
   const RenderContent = useMemo(() => {
@@ -123,7 +132,6 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
     );
   }
 
-   // Onboarding Screen
   if (isOnboarding && RenderOnboarding) {
     return (
       <ModuleLayout title={`${title} Intake`} themeColor={themeColor} moduleId={moduleId}>
@@ -140,10 +148,13 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   }
 
   const workspaceContent = (
-    <div className={cn(
-        "flex-1 flex flex-col w-full mx-auto relative min-h-0",
-        workspaceType === 'focus' ? "max-w-4xl" : "max-w-[1600px]"
-    )}>
+    <motion.div 
+        layout
+        className={cn(
+            "flex-1 flex flex-col w-full mx-auto relative min-h-0 min-w-0",
+            workspaceType === 'focus' ? (isFocusMode ? "max-w-full px-2 md:px-12" : "max-w-5xl") : "max-w-[1600px]"
+        )}
+    >
         {/* Background Stages */}
         {workspaceType === 'focus' && (
           <div className="fixed inset-0 z-[-1] pointer-events-none opacity-40">
@@ -200,11 +211,17 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
 
         {workspaceType === 'focus' && (
             <div className="flex-1 flex flex-col min-h-0 py-6 relative">
-                <div className="flex-1 flex flex-col min-h-0 bg-black/10 backdrop-blur-[1px] rounded-[40px] border border-white/5 shadow-2xl overflow-hidden">
+                <motion.div 
+                    layout
+                    className={cn(
+                        "flex-1 flex flex-col min-h-0",
+                        !noContainer && "bg-black/10 backdrop-blur-[1px] rounded-panel border border-white/5 shadow-2xl overflow-hidden"
+                    )}
+                >
                     <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
-                </div>
+                </motion.div>
                 <AnimatePresence>
-                    {RenderDashboard && !sessionActive && (
+                    {RenderDashboard && !isFocusMode && !noContainer && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 0.6, y: 0 }}
@@ -228,11 +245,18 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                 </div>
             </div>
         )}
-    </div>
+    </motion.div>
   );
 
   return (
-    <ModuleLayout title={title} themeColor={themeColor} moduleId={moduleId}>
+    <ModuleLayout 
+        title={title} 
+        themeColor={themeColor} 
+        moduleId={moduleId}
+        hideNavigation={hideNavigation}
+        renderLeftRail={renderLeftRail ? () => renderLeftRail({ profile, encryptionKey }) : undefined}
+        renderRightRail={renderRightRail ? () => renderRightRail({ profile, encryptionKey }) : undefined}
+    >
       {workspaceContent}
     </ModuleLayout>
   );

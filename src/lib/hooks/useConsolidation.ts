@@ -21,6 +21,7 @@ interface UseConsolidationOptions {
   moduleId: string;
   userId: string | undefined;
   isGuest: boolean;
+  encryptionKey?: CryptoKey | null;
   sendMessage: (
     content: string,
     context: ConversationContext,
@@ -34,6 +35,7 @@ export function useConsolidation({
   moduleId,
   userId,
   isGuest,
+  encryptionKey,
   sendMessage,
   enhanceContext,
   mountedRef
@@ -87,7 +89,7 @@ export function useConsolidation({
       const summary = parsed.summary || 'Session consolidated.';
       const keyInsights = parsed.insights;
 
-      const existing = await ModuleMemoryService.getEnvelope(userId, moduleId);
+      const existing = await ModuleMemoryService.getEnvelope(userId, moduleId, encryptionKey);
       if (!existing) {
         await ModuleMemoryService.initializeEnvelope(userId, moduleId);
       }
@@ -107,7 +109,8 @@ export function useConsolidation({
           moduleId,
           consolidatedAt: new Date().toISOString(),
           history: localHistory
-        })
+        }),
+        { encryptionKey }
       );
 
       const trimmed = localHistory.slice(-CONSOLIDATION_KEEP_COUNT);
@@ -124,7 +127,7 @@ export function useConsolidation({
     } finally {
       consolidationRef.current = false;
     }
-  }, [moduleId, userId, isGuest, sendMessage, enhanceContext, mountedRef]);
+  }, [moduleId, userId, isGuest, encryptionKey, sendMessage, enhanceContext, mountedRef]);
 
   const resetConsolidation = useCallback(() => {
     consolidationRetryRef.current = 0;

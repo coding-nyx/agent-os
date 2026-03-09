@@ -1,8 +1,7 @@
-import { doc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { getFirebase } from '../firebase';
 import { CoreUserProfile, AgentPersonalityProvision, UserSecurityPreferences } from '../types';
 import { buildDefaultVaultLocks, MODULE_MANIFEST } from '@/lib/module-manifest';
-import { readDocOnce } from './firestore-once';
+import { getNexusDataLayer } from '../data-layer/provider';
+import { NexusDataLayer } from '../data-layer';
 
 const COLLECTION = 'users';
 
@@ -46,68 +45,49 @@ const normalizeSecurityPreferences = (prefs?: UserSecurityPreferences): UserSecu
 };
 
 export const CoreProfileService = {
-  async getProfile(uid: string): Promise<CoreUserProfile | null> {
+  async getProfile(uid: string, dataLayer: NexusDataLayer = getNexusDataLayer()): Promise<CoreUserProfile | null> {
     if (!uid) return null;
-    const { db } = getFirebase();
-    if (!db) return null;
-    
-    try {
-      const docRef = doc(db, COLLECTION, uid);
-      const snap = await readDocOnce(docRef);
-      
-      if (snap.exists()) {
-        const raw = { ...snap.data(), uid: snap.id } as CoreUserProfile;
-        return {
-          ...raw,
-          securityPreferences: normalizeSecurityPreferences(raw.securityPreferences)
-        };
-      }
-      return null;
-    } catch (e) {
-      console.error("Critical Profile Fetch Failure:", e);
-      // Throwing so the caller knows this isn't a "missing user" but a "failed read"
-      throw e;
-    }
+    const record = await dataLayer.getDocument<CoreUserProfile>(COLLECTION, uid);
+    if (!record) return null;
+    const { id: _discard, ...rest } = record;
+    const normalized = rest as CoreUserProfile;
+    return {
+      ...normalized,
+      securityPreferences: normalizeSecurityPreferences(normalized.securityPreferences),
+    };
   },
 
-  subscribeProfile(uid: string, onUpdate: (profile: CoreUserProfile | null) => void): () => void {
+  subscribeProfile(
+    uid: string,
+    onUpdate: (profile: CoreUserProfile | null) => void,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): () => void {
     if (!uid) return () => {};
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const docRef = doc(db, COLLECTION, uid);
-    const unsubscribe = onSnapshot(
-      docRef,
-      (snap) => {
-        if (!snap.exists()) {
-          onUpdate(null);
-          return;
-        }
-        const raw = { ...snap.data(), uid: snap.id } as CoreUserProfile;
-        onUpdate({
-          ...raw,
-          securityPreferences: normalizeSecurityPreferences(raw.securityPreferences)
-        });
-      },
-      (error) => {
-        console.warn('Profile subscription encountered a permission delay or missing doc. Initializing fallback.', error);
+    return dataLayer.subscribeToDocument<CoreUserProfile>(COLLECTION, uid, (record) => {
+      if (!record) {
         onUpdate(null);
+        return;
       }
-    );
-
-    return unsubscribe;
+      const { id: _discard, ...rest } = record;
+      const normalized = rest as CoreUserProfile;
+      onUpdate({
+        ...normalized,
+        securityPreferences: normalizeSecurityPreferences(normalized.securityPreferences),
+      });
+    });
   },
 
-  async initializeProfile(uid: string, email: string): Promise<CoreUserProfile> {
+  async initializeProfile(
+    uid: string,
+    email: string,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<CoreUserProfile> {
     if (!uid || !email) throw new Error('Missing UID or email');
-    const { db } = getFirebase();
-    if (!db) throw new Error('Firebase not initialized');
-
-    // Security: Check if profile exists before nuking it
-    const existing = await readDocOnce(doc(db, COLLECTION, uid));
-    if (existing.exists()) {
-        console.warn("Attempted to initialize an existing profile. Aborting reset.");
-        return { ...existing.data(), uid: existing.id } as CoreUserProfile;
+    const existing = await dataLayer.getDocument<CoreUserProfile>(COLLECTION, uid);
+    if (existing) {
+      console.warn('Attempted to initialize an existing profile. Aborting reset.');
+      const { id: _discard, ...rest } = existing;
+      return rest as CoreUserProfile;
     }
 
     const newProfile: CoreUserProfile = {
@@ -126,7 +106,7 @@ export const CoreProfileService = {
     };
 
     try {
-      await setDoc(doc(db, COLLECTION, uid), newProfile);
+      await dataLayer.setDocument(COLLECTION, uid, newProfile);
     } catch (error) {
       console.error('[CoreProfileService] Failed to initialize profile:', error);
       throw error;
@@ -134,90 +114,86 @@ export const CoreProfileService = {
     return newProfile;
   },
 
-  async updateProfile(uid: string, updates: Partial<CoreUserProfile>): Promise<void> {
+  async updateProfile(
+    uid: string,
+    updates: Partial<CoreUserProfile>,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<void> {
     if (!uid) return;
-    const { db } = getFirebase();
-    if (!db) return;
+    const patch = {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
 
-    const docRef = doc(db, COLLECTION, uid);
     try {
-      await updateDoc(docRef, {
-        ...updates,
-        updatedAt: new Date().toISOString()
-      });
+      await dataLayer.updateDocument(COLLECTION, uid, patch);
     } catch (error) {
       console.error('[CoreProfileService] Failed to update profile:', error);
     }
   },
 
-  async updatePersonality(uid: string, personality: Partial<AgentPersonalityProvision>): Promise<void> {
+  async updatePersonality(
+    uid: string,
+    personality: Partial<AgentPersonalityProvision>,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<void> {
     if (!uid) return;
-    const { db } = getFirebase();
-    if (!db) return;
+    const existing = await dataLayer.getDocument<CoreUserProfile>(COLLECTION, uid);
+    if (!existing) return;
 
-    const docRef = doc(db, COLLECTION, uid);
-    const updates: Record<string, unknown> = {};
-
-    if (typeof personality.orchestratorAlias === 'string') {
-      updates['agentPersonalityProvision.orchestratorAlias'] = personality.orchestratorAlias;
-    }
-
-    if (personality.moduleAliases) {
-      Object.entries(personality.moduleAliases).forEach(([key, value]) => {
-        if (typeof value === 'string') {
-          updates[`agentPersonalityProvision.moduleAliases.${key}`] = value;
-        }
-      });
-    }
-
-    if (personality.agentGenders) {
-      Object.entries(personality.agentGenders).forEach(([key, value]) => {
-        if (typeof value === 'string') {
-          updates[`agentPersonalityProvision.agentGenders.${key}`] = value;
-        }
-      });
-    }
-
-    if (personality.personaOverlays) {
-      Object.entries(personality.personaOverlays).forEach(([key, value]) => {
-        updates[`agentPersonalityProvision.personaOverlays.${key}`] = value;
-      });
-    }
-
-    if (Object.keys(updates).length === 0) return;
+    const next: CoreUserProfile = {
+      ...existing,
+      agentPersonalityProvision: {
+        ...existing.agentPersonalityProvision,
+        ...(personality.orchestratorAlias
+          ? { orchestratorAlias: personality.orchestratorAlias }
+          : {}),
+        moduleAliases: {
+          ...(existing.agentPersonalityProvision?.moduleAliases || {}),
+          ...(personality.moduleAliases || {}),
+        },
+        agentGenders: {
+          ...(existing.agentPersonalityProvision?.agentGenders || {}),
+          ...(personality.agentGenders || {}),
+        },
+        personaOverlays: {
+          ...(existing.agentPersonalityProvision?.personaOverlays || {}),
+          ...(personality.personaOverlays || {}),
+        },
+      },
+      updatedAt: new Date().toISOString(),
+    };
 
     try {
-      await updateDoc(docRef, {
-        ...updates,
-        updatedAt: new Date().toISOString()
-      });
+      await dataLayer.setDocument(COLLECTION, uid, next);
     } catch (error) {
       console.error('[CoreProfileService] Failed to update personality:', error);
     }
   },
-  async updateSecurityPreferences(uid: string, prefs: Partial<UserSecurityPreferences>): Promise<void> {
+  async updateSecurityPreferences(
+    uid: string,
+    prefs: Partial<UserSecurityPreferences>,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<void> {
     if (!uid) return;
-    const { db } = getFirebase();
-    if (!db) return;
+    const existing = await dataLayer.getDocument<CoreUserProfile>(COLLECTION, uid);
+    if (!existing) return;
 
-    const docRef = doc(db, COLLECTION, uid);
-    const updates: Record<string, unknown> = {};
+    const nextLocks = prefs.vaultLocks
+      ? { ...(existing.securityPreferences?.vaultLocks || {}), ...prefs.vaultLocks }
+      : existing.securityPreferences?.vaultLocks;
 
-    if (prefs.vaultLocks) {
-      Object.entries(prefs.vaultLocks).forEach(([key, value]) => {
-        if (typeof value === 'boolean') {
-          updates[`securityPreferences.vaultLocks.${key}`] = value;
-        }
-      });
-    }
-
-    if (Object.keys(updates).length === 0) return;
+    const nextProfile: CoreUserProfile = {
+      ...existing,
+      securityPreferences: normalizeSecurityPreferences({
+        ...existing.securityPreferences,
+        ...(prefs ? { ...prefs, vaultLocks: nextLocks } : {}),
+      }),
+      updatedAt: new Date().toISOString(),
+    };
 
     try {
-      await updateDoc(docRef, {
-        ...updates,
-        updatedAt: new Date().toISOString()
-      });
+      await dataLayer.setDocument(COLLECTION, uid, nextProfile);
     } catch (error) {
       console.error('[CoreProfileService] Failed to update security preferences:', error);
     }

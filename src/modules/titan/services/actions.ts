@@ -1,7 +1,7 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import type { TitanProfile, Routine, BiomarkerRecord, ClearanceRecord, MedicalImageAnalysis } from '@/lib/types';
+import type { TitanProfile, Routine, BiomarkerRecord, ClearanceRecord, MedicalImageAnalysis, SleepEntry, CycleEntry, CyclePhase, WorkoutSession, ExerciseLog, ExerciseSet } from '@/lib/types';
 import { mergeTitanProfile, normalizeRoutines } from '../utils';
 import { normalizeTitanProfilePatch } from '../onboarding/intake-accumulator';
 import { loadTitanProfile, saveTitanProfile } from './titan-profile-service';
@@ -37,6 +37,11 @@ export const titanAllowedActions = [
   'parse_health_report',
   'parse_workout_log',
   'parse_biometric_data',
+  'log_sleep',
+  'create_cycle',
+  'advance_cycle_phase',
+  'complete_cycle',
+  'log_workout_session',
 ] as const;
 
 export function registerTitanActions() {
@@ -331,6 +336,264 @@ export function registerTitanActions() {
       }
 
       pushAssistantMessage?.(`✅ Clearance check passed for "${activity}". Recovery ${recoveryScore !== null ? `${recoveryScore}/10` : 'unknown'} — proceed safely.`);
+    },
+
+    log_sleep: async ({ userId, encryptionKey, payload }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      const entry: SleepEntry = {
+        id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
+        date: typeof payload?.date === 'string' ? payload.date : new Date().toISOString().slice(0, 10),
+        bedtime: typeof payload?.bedtime === 'string' ? payload.bedtime : undefined,
+        wakeTime: typeof payload?.wakeTime === 'string' ? payload.wakeTime : undefined,
+        durationHours: typeof payload?.durationHours === 'number' && Number.isFinite(payload.durationHours)
+          ? Math.max(0, Math.min(24, payload.durationHours))
+          : 7,
+        quality: typeof payload?.quality === 'number' && Number.isFinite(payload.quality)
+          ? Math.max(0, Math.min(10, payload.quality))
+          : 5,
+        deepSleepPct: typeof payload?.deepSleepPct === 'number' ? payload.deepSleepPct : undefined,
+        remSleepPct: typeof payload?.remSleepPct === 'number' ? payload.remSleepPct : undefined,
+        awakenings: typeof payload?.awakenings === 'number' ? payload.awakenings : undefined,
+        notes: typeof payload?.notes === 'string' ? payload.notes : undefined,
+        tags: Array.isArray(payload?.tags) ? payload.tags.filter((t: unknown) => typeof t === 'string') : undefined,
+        recordedAt: new Date().toISOString(),
+      };
+
+      const next: TitanProfile = {
+        ...profile,
+        sleepLog: [entry, ...(profile.sleepLog ?? [])].slice(0, 365),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+
+      // Sync quality score to NSV so all modules see the updated sleep state
+      if (userId) {
+        await GlobalProjectionService.updateCrossFunctionalState(userId, {
+          biological: { sleepQuality: entry.quality },
+        }).catch((e) => console.error('log_sleep NSV sync failed:', e));
+      }
+    },
+
+    // ── Cycle Actions ───────────────────────────────────────────────────
+
+    create_cycle: async ({ userId, encryptionKey, payload }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      const rawPhases = Array.isArray(payload?.phases) ? payload.phases : [];
+      const phases: CyclePhase[] = rawPhases
+        .filter((p: unknown) => p && typeof p === 'object')
+        .map((p: Record<string, unknown>) => ({
+          id: typeof p.id === 'string' ? p.id : crypto.randomUUID(),
+          name: typeof p.name === 'string' ? p.name : 'Phase',
+          durationDays: typeof p.durationDays === 'number' && Number.isFinite(p.durationDays)
+            ? Math.max(1, Math.floor(p.durationDays))
+            : 7,
+          notes: typeof p.notes === 'string' ? p.notes : undefined,
+          dosage: typeof p.dosage === 'string' ? p.dosage : undefined,
+          trainingModifier:
+            p.trainingModifier === 'increase' || p.trainingModifier === 'maintain' ||
+            p.trainingModifier === 'reduce' || p.trainingModifier === 'rest'
+              ? p.trainingModifier
+              : undefined,
+        }));
+
+      if (phases.length === 0) return;
+
+      const now = new Date().toISOString();
+      const cycle: CycleEntry = {
+        id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
+        name: typeof payload?.name === 'string' ? payload.name : 'Custom Cycle',
+        type:
+          payload?.type === 'supplement' || payload?.type === 'workout' ||
+          payload?.type === 'hormonal' || payload?.type === 'nutrition' ||
+          payload?.type === 'recovery' || payload?.type === 'custom'
+            ? payload.type
+            : 'custom',
+        description: typeof payload?.description === 'string' ? payload.description : undefined,
+        startDate: typeof payload?.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.startDate) ? payload.startDate : now.slice(0, 10),
+        endDate: typeof payload?.endDate === 'string' ? payload.endDate : undefined,
+        phases,
+        currentPhaseIndex: 0,
+        currentPhaseStartDate: typeof payload?.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.startDate) ? payload.startDate : now.slice(0, 10),
+        status: 'active',
+        notes: typeof payload?.notes === 'string' ? payload.notes : undefined,
+        cycleLength: typeof payload?.cycleLength === 'number' ? payload.cycleLength : undefined,
+        lastPeriodDate: typeof payload?.lastPeriodDate === 'string' ? payload.lastPeriodDate : undefined,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const next: TitanProfile = {
+        ...profile,
+        cycles: [cycle, ...(profile.cycles ?? [])].slice(0, 50),
+        updatedAt: now,
+      };
+
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+
+      Spine.emit({
+        type: 'CYCLE_STARTED',
+        source: 'titan',
+        domain: 'B',
+        data: { cycleId: cycle.id, name: cycle.name, type: cycle.type },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    },
+
+    advance_cycle_phase: async ({ userId, encryptionKey, payload }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile || !profile.cycles) return;
+
+      const cycleId = typeof payload?.cycleId === 'string' ? payload.cycleId : null;
+      if (!cycleId) return;
+
+      if (!profile.cycles.some(c => c.id === cycleId)) {
+        console.warn(`advance_cycle_phase: cycle "${cycleId}" not found — no-op`);
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const updatedCycles = profile.cycles.map((cycle) => {
+        if (cycle.id !== cycleId) return cycle;
+        const nextPhaseIndex = cycle.currentPhaseIndex + 1;
+        if (nextPhaseIndex >= cycle.phases.length) {
+          // All phases done — mark complete
+          return { ...cycle, status: 'completed' as const, updatedAt: now };
+        }
+        return {
+          ...cycle,
+          currentPhaseIndex: nextPhaseIndex,
+          currentPhaseStartDate: now.slice(0, 10),
+          updatedAt: now,
+        };
+      });
+
+      const next: TitanProfile = { ...profile, cycles: updatedCycles, updatedAt: now };
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+
+      const cycle = updatedCycles.find(c => c.id === cycleId);
+      if (cycle?.status === 'completed') {
+        Spine.emit({
+          type: 'CYCLE_COMPLETED',
+          source: 'titan',
+          domain: 'B',
+          data: { cycleId: cycle.id, name: cycle.name, type: cycle.type },
+          cascadeDepth: 0,
+          priority: 'info',
+        });
+      }
+    },
+
+    complete_cycle: async ({ userId, encryptionKey, payload }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile || !profile.cycles) return;
+
+      const cycleId = typeof payload?.cycleId === 'string' ? payload.cycleId : null;
+      if (!cycleId) return;
+
+      const now = new Date().toISOString();
+      const updatedCycles = profile.cycles.map((cycle) =>
+        cycle.id === cycleId
+          ? { ...cycle, status: 'completed' as const, updatedAt: now }
+          : cycle
+      );
+
+      await persistProfile({ ...profile, cycles: updatedCycles, updatedAt: now }, userId ?? null, encryptionKey ?? null);
+    },
+
+    // ── Workout Session Actions ─────────────────────────────────────────
+
+    log_workout_session: async ({ userId, encryptionKey, payload, getLatestNSV }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      const rawExercises = Array.isArray(payload?.exercises) ? payload.exercises : [];
+      const exercises: ExerciseLog[] = rawExercises
+        .filter((e: unknown) => e && typeof e === 'object')
+        .map((e: Record<string, unknown>) => {
+          const rawSets = Array.isArray(e.sets) ? e.sets : [];
+          const sets: ExerciseSet[] = rawSets
+            .filter((s: unknown) => s && typeof s === 'object')
+            .map((s: Record<string, unknown>, idx: number) => ({
+              setNumber: typeof s.setNumber === 'number' ? s.setNumber : idx + 1,
+              weight: typeof s.weight === 'number' ? s.weight : undefined,
+              repsCompleted: typeof s.repsCompleted === 'number' ? Math.max(0, s.repsCompleted) : 0,
+              completed: Boolean(s.completed),
+              notes: typeof s.notes === 'string' ? s.notes : undefined,
+            }));
+          return {
+            exerciseName: typeof e.exerciseName === 'string' ? e.exerciseName : 'Exercise',
+            plannedSets: typeof e.plannedSets === 'number' ? e.plannedSets : sets.length,
+            plannedReps: typeof e.plannedReps === 'string' ? e.plannedReps : '—',
+            sets,
+          };
+        });
+
+      // Compute total volume from completed sets with weight
+      const totalVolume = exercises.reduce((total, ex) =>
+        total + ex.sets.reduce((exTotal, s) =>
+          s.completed && s.weight ? exTotal + s.weight * s.repsCompleted : exTotal, 0), 0);
+
+      const session: WorkoutSession = {
+        id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
+        routineId: typeof payload?.routineId === 'string' ? payload.routineId : '',
+        routineName: typeof payload?.routineName === 'string' ? payload.routineName : 'Workout',
+        date: typeof payload?.date === 'string' ? payload.date : new Date().toISOString().slice(0, 10),
+        startedAt: typeof payload?.startedAt === 'string' ? payload.startedAt : new Date().toISOString(),
+        completedAt: typeof payload?.completedAt === 'string' ? payload.completedAt : new Date().toISOString(),
+        exercises,
+        totalVolume: totalVolume > 0 ? Math.round(totalVolume) : undefined,
+        rpe: typeof payload?.rpe === 'number' ? Math.max(1, Math.min(10, payload.rpe)) : undefined,
+        notes: typeof payload?.notes === 'string' ? payload.notes : undefined,
+        status: exercises.length === 0
+          ? 'abandoned'
+          : (payload?.status === 'completed' || payload?.status === 'partial' || payload?.status === 'abandoned'
+            ? payload.status
+            : 'completed'),
+      };
+
+      const next: TitanProfile = {
+        ...profile,
+        workoutSessions: [session, ...(profile.workoutSessions ?? [])].slice(0, 365),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+
+      Spine.emit({
+        type: 'WORKOUT_COMPLETED',
+        source: 'titan',
+        domain: 'B',
+        data: {
+          sessionId: session.id,
+          routineName: session.routineName,
+          date: session.date,
+          totalVolume: session.totalVolume,
+          rpe: session.rpe,
+          exerciseCount: exercises.length,
+          status: session.status,
+        },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+
+      // Update NSV recovery — high RPE sessions reduce recovery score
+      if (userId && session.rpe != null) {
+        const recoveryImpact = session.rpe >= 8 ? -1.5 : session.rpe >= 6 ? -0.5 : 0;
+        if (recoveryImpact !== 0) {
+          const nsv = getLatestNSV?.() ?? {};
+          const bio = (nsv.biological ?? {}) as Record<string, unknown>;
+          const currentRecovery = typeof bio.recoveryScore === 'number' ? bio.recoveryScore : 7;
+          await GlobalProjectionService.updateCrossFunctionalState(userId, {
+            biological: { recoveryScore: Math.max(0, Math.min(10, currentRecovery + recoveryImpact)) },
+          }).catch((e) => console.error('log_workout_session NSV sync failed:', e));
+        }
+      }
     },
 
     // ── AI Parsing Actions ──────────────────────────────────────────────

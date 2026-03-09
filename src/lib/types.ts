@@ -186,7 +186,7 @@ export type SpineEventType =
   | 'TASK_COMPLETED'
   | 'DEADLINE_APPROACHING'
   | 'HABIT_STREAK_BROKEN'
-  | 'WEEKLY_REVIEW_COMPLETE'
+  | 'TEMPORAL_REVIEW_COMPLETE'
   | 'DELEGATION_REQUEST'
   | 'NSV_CALIBRATION_REQUEST'
   | 'SCHEMA_EXTENDED'
@@ -222,21 +222,39 @@ export type SpineEventType =
   | 'SOMA_PROFILE_UPDATED'
   // Soma Cascade Derived Events
   | 'HEALTH_CONTEXT_STALE'
+  // Titan Cycle Events
+  | 'CYCLE_STARTED'
+  | 'CYCLE_COMPLETED'
+  // Titan Workout Events
+  | 'WORKOUT_COMPLETED'
   // AI Validation Events
   | 'ai_validation_suggestion'
   | 'ai_contextual_validation'
   | 'ai_error_explanation';
+
+export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
+export type SpineEventPriority = 'info' | 'alert' | 'critical';
+
+export interface SpineEventPayload {
+  type: SpineEventType;
+  source: string;
+  target?: string;
+  domain: SpineDomain;
+  data: Record<string, unknown>;
+  cascadeDepth?: number;
+  priority: SpineEventPriority;
+}
 
 export interface SpineEvent {
   id: string;
   type: SpineEventType;
   source: string;
   target?: string;
-  domain: 'B' | 'E' | 'C' | 'R' | 'system';
+  domain: SpineDomain;
   data: Record<string, unknown>;
   timestamp: number;
   cascadeDepth: number;
-  priority: 'info' | 'alert' | 'critical';
+  priority: SpineEventPriority;
 }
 
 // --- Active Chat & Engine Types ---
@@ -409,6 +427,88 @@ export interface TitanHistory {
   [key: string]: unknown;
 }
 
+export interface SleepEntry {
+  id: string;
+  /** ISO date YYYY-MM-DD */
+  date: string;
+  bedtime?: string;
+  wakeTime?: string;
+  durationHours: number;
+  /** 0–10 subjective quality */
+  quality: number;
+  deepSleepPct?: number;
+  remSleepPct?: number;
+  awakenings?: number;
+  notes?: string;
+  /** e.g. 'alcohol', 'late_meal', 'stress', 'caffeine' */
+  tags?: string[];
+  recordedAt: string;
+}
+
+export type CycleType = 'supplement' | 'workout' | 'hormonal' | 'nutrition' | 'recovery' | 'custom';
+
+export interface CyclePhase {
+  id: string;
+  name: string;
+  durationDays: number;
+  notes?: string;
+  /** e.g. dosage for supplement cycles */
+  dosage?: string;
+  trainingModifier?: 'increase' | 'maintain' | 'reduce' | 'rest';
+}
+
+export interface CycleEntry {
+  id: string;
+  name: string;
+  type: CycleType;
+  description?: string;
+  startDate: string;        // ISO date YYYY-MM-DD
+  endDate?: string;
+  phases: CyclePhase[];
+  currentPhaseIndex: number;
+  currentPhaseStartDate: string;
+  status: 'active' | 'completed' | 'paused';
+  notes?: string;
+  /** For hormonal cycles: typical cycle length in days */
+  cycleLength?: number;
+  /** For hormonal cycles: date of last period */
+  lastPeriodDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExerciseSet {
+  setNumber: number;
+  weight?: number;       // kg or lbs
+  repsCompleted: number;
+  completed: boolean;
+  notes?: string;
+}
+
+export interface ExerciseLog {
+  exerciseName: string;
+  plannedSets: number;
+  plannedReps: string;
+  sets: ExerciseSet[];
+}
+
+export interface WorkoutSession {
+  id: string;
+  routineId: string;
+  routineName: string;
+  /** ISO date YYYY-MM-DD */
+  date: string;
+  startedAt: string;
+  completedAt?: string;
+  exercises: ExerciseLog[];
+  /** Total volume in weight units (sum of weight × repsCompleted across all completed sets) */
+  totalVolume?: number;
+  /** Rate of perceived exertion 1–10 */
+  rpe?: number;
+  notes?: string;
+  status: 'completed' | 'partial' | 'abandoned';
+}
+
 export interface TitanProfile {
   onboardingComplete: boolean;
   privacyLevel: TitanPrivacyLevel;
@@ -418,6 +518,9 @@ export interface TitanProfile {
   history: TitanHistory;
   summary: string;
   routines: Routine[];
+  sleepLog?: SleepEntry[];
+  cycles?: CycleEntry[];
+  workoutSessions?: WorkoutSession[];
   createdAt: string;
   updatedAt: string;
   traits?: string[];
@@ -472,6 +575,312 @@ export interface HealthDataLog {
   stressLevel?: number;
   moodScore?: number;
   cnsFatigueScore?: number;
+}
+
+// --- Module Profile Types ---
+
+// Agnes (therapy intake)
+export interface SessionSummary {
+  date: string;
+  summary: string;
+  keyInsights: string[];
+  theme: string;
+}
+
+export type AgnesMode = 'intake' | 'analysis' | 'selection' | 'session';
+export type Gender = 'female' | 'male' | 'non-binary';
+
+export interface AgnesArchetype {
+  id: string;
+  name: string;
+  basePrompt: string;
+  traits: string[];
+}
+
+export interface GeneratedAgnes {
+  id: string;
+  name: string;
+  gender: Gender;
+  archetypeId: string;
+  role: string;
+  description: string;
+  systemPrompt: string;
+  greeting: string;
+}
+
+export interface BaseContext {
+  identity?: string | {
+    name?: string;
+    pronouns?: string;
+    ageGroup?: string;
+  };
+  struggles?: string | string[];
+  goals?: string | string[];
+  backgroundSummary?: string;
+  integratedInsights: SessionSummary[];
+  communicationStyle?: 'direct' | 'gentle' | 'analytical';
+  sessionCount?: number;
+  lastSessionSummary?: string;
+  occupation?: string;
+  typicalSleepHours?: number;
+  preferredAgnes?: {
+    gender?: Gender | 'no-preference';
+    tone?: string;
+    traits?: string[];
+  };
+  childhood?: string;
+  trauma?: string;
+  history?: string;
+  intakeTranscript?: Message[];
+}
+
+export interface TherapyIntakeProfile {
+  onboardingComplete: boolean;
+  baseContext: Partial<BaseContext>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Atlas
+export interface RoutineBlock {
+  id: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+  daysOfWeek: number[];
+  category: 'deep_work' | 'admin' | 'social' | 'physical' | 'creative' | 'other' | 'recovery';
+  energyCost: number;
+}
+
+export interface AtlasRoutine {
+  id: string;
+  blocks: RoutineBlock[];
+  isActive: boolean;
+}
+
+export interface EnergyWavePoint {
+  id: string;
+  slot: string;
+  energy: number;
+  focus: number;
+  load: number;
+}
+
+export interface RecoveryWindow {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  reason: string;
+  status: 'planned' | 'active' | 'completed';
+}
+
+export interface AtlasTaskNode {
+  id: string;
+  title: string;
+  energyCost: number;
+  status: 'queued' | 'active' | 'done';
+  dependencies?: string[];
+}
+
+export interface ScheduledTask {
+  id: string;
+  title: string;
+  energyCost: number;
+  focusCost: number;
+  scheduledAt: string;
+  duration: number;
+  category: 'deep_work' | 'admin' | 'social' | 'physical' | 'creative' | 'other';
+  status: 'scheduled' | 'done' | 'deferred' | 'skipped';
+  dependencies?: string[];
+  blockedBy?: 'low_energy' | 'low_focus' | 'recovery' | null;
+  deferredFrom?: string;
+  createdAt: string;
+}
+
+export interface DailyIntention {
+  id: string;
+  date: string;
+  theme: string;
+  focusDomain: string;
+  energyTarget: number;
+  createdAt: string;
+}
+
+export interface HabitRecord {
+  id: string;
+  habitId: string;
+  name: string;
+  completed: boolean;
+  streak: number;
+  loggedAt: string;
+}
+
+export interface AtlasTask {
+  id: string;
+  title: string;
+  description?: string;
+  deadline?: string;
+  priority: 1 | 2 | 3 | 4 | 5;
+  energyCost: number;
+  status: 'queued' | 'active' | 'blocked' | 'done' | 'deferred';
+  dependencies: string[];
+  projectId?: string;
+  goalId?: string;
+  notes?: string;
+  completedAt?: string;
+  actualEnergyCost?: number;
+  tags?: string[];
+  recurrenceRule?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AtlasMilestone {
+  id: string;
+  title: string;
+  dueDate?: string;
+  completed: boolean;
+  completedAt?: string;
+}
+
+export interface AtlasGoal {
+  id: string;
+  title: string;
+  description?: string;
+  deadline?: string;
+  milestones: AtlasMilestone[];
+  associatedTaskIds: string[];
+  successCriteria: string;
+  progressPercent: number;
+  status: 'active' | 'paused' | 'completed' | 'abandoned';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AtlasHabit {
+  id: string;
+  title: string;
+  type?: 'boolean' | 'counter' | 'timer' | 'sober' | 'learning';
+  frequency: 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'custom';
+  customDays?: number[];
+  targetStreak: number;
+  currentStreak: number;
+  bestStreak: number;
+  lastCompleted?: string;
+  energyCost: number;
+  minimumViableVersion: string;
+  status: 'active' | 'paused' | 'archived';
+  pauseReason?: string;
+  pausedAt?: string;
+  resumeDate?: string;
+  metricValue?: number;
+  logs?: { date: string; value: string | number; notes?: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AtlasProject {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'active' | 'paused' | 'completed' | 'archived';
+  goalId?: string;
+  taskIds: string[];
+  deadline?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HabitWeekSummary {
+  habitId: string;
+  habitTitle: string;
+  streak: number;
+  completions: number;
+  status: 'active' | 'paused';
+}
+
+export interface GoalWeekProgress {
+  goalId: string;
+  goalTitle: string;
+  progressPercent: number;
+  milestonesCompleted: number;
+  milestonesTotal: number;
+}
+
+export interface TemporalReview {
+  id: string;
+  scope: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  periodStart: string;
+  periodEnd: string;
+  completionRate: number;
+  totalScheduled: number;
+  totalCompleted: number;
+  habitSummary: HabitWeekSummary[];
+  goalProgress: GoalWeekProgress[];
+  nsvTrend: {
+    energyBudgetAvg: number;
+    resilienceTrend: 'improving' | 'stable' | 'declining';
+    focusScoreAvg: number;
+  };
+  insights: string[];
+  driftScore?: number;
+  nextPeriodFocus: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface AtlasPreferences {
+  timezone: string;
+  wakeTime: string;
+  sleepTime: string;
+  peakEnergyStart: string;
+  peakEnergyEnd: string;
+  workStyle: 'deep_blocks' | 'pomodoro' | 'flexible';
+  planningHorizon: 'day' | 'week' | 'month';
+  recoveryPreference: 'aggressive' | 'moderate' | 'minimal';
+}
+
+export interface AtlasProfile {
+  onboardingComplete: boolean;
+  energyWave: EnergyWavePoint[];
+  recoveryWindows: RecoveryWindow[];
+  taskGraph: AtlasTaskNode[];
+  flattenedUntil?: string;
+  summary: string;
+  scheduledTasks: ScheduledTask[];
+  dailyIntentions: DailyIntention[];
+  habitRecords: HabitRecord[];
+  tasks: AtlasTask[];
+  goals: AtlasGoal[];
+  projects: AtlasProject[];
+  habits: AtlasHabit[];
+  routine: AtlasRoutine;
+  reviews: TemporalReview[];
+  preferences?: AtlasPreferences;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Soma
+export interface SomaProfile {
+  id: string;
+  userId: string;
+  knownConditions: string[];
+  medications: string[];
+  allergies: string[];
+  biomarkers: BiomarkerRecord[];
+  labSummaries: LabSummaryRecord[];
+  clearances: ClearanceRecord[];
+  medicalImageAnalyses: MedicalImageAnalysis[];
+  medicalSummary?: string;
+  medicalOnboardingComplete?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  encryptedData?: string;
+  iv?: string;
 }
 
 export interface GuestQuota {

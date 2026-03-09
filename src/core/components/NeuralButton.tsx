@@ -7,6 +7,7 @@ interface NeuralButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonEl
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   loading?: boolean;
+  as?: 'button' | 'div' | 'span';
 }
 
 export function NeuralButton({ 
@@ -16,6 +17,7 @@ export function NeuralButton({
   size = 'md', 
   loading, 
   disabled,
+  as = 'button',
   ...props 
 }: NeuralButtonProps) {
   
@@ -33,18 +35,20 @@ export function NeuralButton({
     xl: 'h-14 px-8 text-lg'
   };
 
+  const Component = as === 'div' ? motion.div : as === 'span' ? motion.span : motion.button;
+
   return (
-    <motion.button
+    <Component
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       className={cn(
-        'relative font-black uppercase italic tracking-[0.2em] rounded-2xl border transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-black focus-visible:outline-none',
+        'relative font-black uppercase italic tracking-[0.2em] rounded-button border transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-black focus-visible:outline-none',
         variants[variant],
         sizes[size],
         className
       )}
-      disabled={disabled || loading}
-      {...props}
+      disabled={as === 'button' ? (disabled || loading) : undefined}
+      {...(props as any)}
     >
       {/* Glossy Overlay */}
       <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -52,6 +56,6 @@ export function NeuralButton({
       {loading ? (
         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
       ) : (children as React.ReactNode)}
-    </motion.button>
+    </Component>
   );
 }

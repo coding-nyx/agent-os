@@ -1,15 +1,18 @@
-import { ActionHub } from '@/lib/actions/action-hub';
+import { ActionHub, ActionContext } from '@/lib/actions/action-hub';
 import {
   ScoutKnowledgeNode,
   ScoutProfile,
   InterestNode,
   loadScoutProfile,
-  saveScoutProfile
+  saveScoutProfile,
+  createEmptyScoutProfile
 } from './scout-knowledge-service';
 import { ScoutWebSearchService, ScoutWebResult } from './scout-web-search-service';
 import { generateNewsBriefs } from './pulse-news-service';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 let registered = false;
+let currentDraftProfile: ScoutProfile | null = null;
 
 function parseConfidence(value: unknown, fallback = 0.5): number {
   if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
@@ -47,22 +50,38 @@ function isReputableDomain(domain: string): boolean {
 }
 
 async function loadProfile(userId?: string | null, encryptionKey?: CryptoKey | null) {
-  return loadScoutProfile({ userId, encryptionKey });
+  const profile = await loadScoutProfile({ userId, encryptionKey });
+  return profile ?? createEmptyScoutProfile();
 }
 
-async function persistProfile(profile: ScoutProfile, userId?: string | null, encryptionKey?: CryptoKey | null) {
+async function persistProfile(profile: ScoutProfile, context: ActionContext) {
+  const { userId, encryptionKey, persistencePolicy } = context;
   profile.updatedAt = new Date().toISOString();
-  await saveScoutProfile(profile, { userId, encryptionKey });
+  currentDraftProfile = profile;
+  
+  if (persistencePolicy === 'scout-research') {
+    // During research, only update local state via Spine events
+    Spine.emit({
+      type: 'SCOUT_PROFILE_DRAFT_UPDATED' as any,
+      source: 'scout',
+      domain: 'system',
+      data: profile as unknown as Record<string, unknown>,
+      cascadeDepth: 0,
+      priority: 'info'
+    });
+    return;
+  }
+  
+  await saveScoutProfile(profile, { userId: userId ?? null, encryptionKey });
 }
 
 async function triggerWebSearch(
   query: string,
   entryId: string,
   baseProfile: ScoutProfile,
-  userId?: string | null,
-  encryptionKey?: CryptoKey | null,
-  pushAssistantMessage?: (content: string) => void
+  context: ActionContext
 ) {
+  const { userId, encryptionKey, pushAssistantMessage } = context;
   try {
     const response = await ScoutWebSearchService.search(query, { maxResults: 6 });
     const results: ScoutWebResult[] = Array.isArray(response?.results) ? response.results : [];
@@ -119,7 +138,7 @@ async function triggerWebSearch(
       updatedAt: new Date().toISOString()
     };
 
-    await persistProfile(next, userId, encryptionKey);
+    await persistProfile(next, context);
 
     if (pushAssistantMessage) {
       if (results.length === 0) {
@@ -147,7 +166,7 @@ async function triggerWebSearch(
       updatedAt: new Date().toISOString()
     };
 
-    await persistProfile(fallback, userId, encryptionKey);
+    await persistProfile(fallback, context);
 
     if (pushAssistantMessage) {
       const message = error instanceof Error && error.message.includes('No Scout search backend configured')
@@ -163,7 +182,8 @@ export function registerScoutActions() {
   registered = true;
 
   ActionHub.registerMultiple('scout', {
-    add_knowledge_node: async ({ userId, encryptionKey, payload }) => {
+    add_knowledge_node: async (context) => {
+      const { userId, encryptionKey, payload } = context;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -186,10 +206,11 @@ export function registerScoutActions() {
         updatedAt: new Date().toISOString()
       };
 
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, context);
     },
 
-    verify_claim: async ({ userId, encryptionKey, payload }) => {
+    verify_claim: async (context) => {
+      const { userId, encryptionKey, payload } = context;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -219,14 +240,15 @@ export function registerScoutActions() {
         updatedAt: new Date().toISOString()
       };
 
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, context);
 
       if (claim) {
-        await triggerWebSearch(claim, entryId, next, userId ?? null, encryptionKey ?? null);
+        await triggerWebSearch(claim, entryId, next, context);
       }
     },
 
-    search_web: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+    search_web: async (context) => {
+      const { userId, encryptionKey, payload, pushAssistantMessage } = context;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) {
         pushAssistantMessage?.('⚠️ Unable to load research profile. Please try again.');
@@ -257,8 +279,8 @@ export function registerScoutActions() {
         updatedAt: new Date().toISOString()
       };
 
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
-      await triggerWebSearch(claim, entry.id, next, userId ?? null, encryptionKey ?? null, pushAssistantMessage);
+      await persistProfile(next, context);
+      await triggerWebSearch(claim, entry.id, next, context);
     },
 
     search: async (context) => {
@@ -266,7 +288,20 @@ export function registerScoutActions() {
       await ActionHub.execute('scout', 'search_web', context);
     },
 
-    update_research_graph: async ({ userId, encryptionKey, payload }) => {
+    commit_research: async (context) => {
+       const { userId, encryptionKey, pushAssistantMessage } = context;
+       if (!currentDraftProfile) {
+          console.warn('[Scout] commit_research called but no draft profile exists.');
+          return;
+       }
+       
+       // Force a save to Firestore
+       await saveScoutProfile(currentDraftProfile, { userId: userId ?? null, encryptionKey });
+       pushAssistantMessage?.('✅ Research session successfully synchronized with the neural vault.');
+    },
+
+    update_research_graph: async (context) => {
+      const { userId, encryptionKey, payload } = context;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -289,10 +324,11 @@ export function registerScoutActions() {
         updatedAt: new Date().toISOString()
       };
 
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, context);
     },
 
-    update_interest_map: async ({ userId, encryptionKey, payload }) => {
+    update_interest_map: async (context) => {
+      const { userId, encryptionKey, payload } = context;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -313,10 +349,11 @@ export function registerScoutActions() {
         next.summary = payload.summary;
       }
 
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, context);
     },
 
-    track_topic: async ({ userId, encryptionKey, payload }) => {
+    track_topic: async (context) => {
+      const { userId, encryptionKey, payload } = context;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -333,10 +370,11 @@ export function registerScoutActions() {
         interests: [node, ...profile.interests.filter((item) => item.topic !== node.topic)].slice(0, 120)
       };
 
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, context);
     },
 
-    synthesize_research_trends: async ({ userId, encryptionKey, payload }) => {
+    synthesize_research_trends: async (context) => {
+      const { userId, encryptionKey, payload } = context;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -345,7 +383,7 @@ export function registerScoutActions() {
           ...profile,
           trendBriefs: payload.briefs.filter((entry: Record<string, unknown>) => typeof entry === 'string').slice(0, 20)
         };
-        await persistProfile(next, userId ?? null, encryptionKey ?? null);
+        await persistProfile(next, context);
         return;
       }
 
@@ -359,7 +397,7 @@ export function registerScoutActions() {
         newsUpdatedAt: now,
         updatedAt: now
       };
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, context);
     }
   });
 }

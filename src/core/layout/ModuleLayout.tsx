@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +11,7 @@ import { UnifiedAuthModal } from '@/core/components/UnifiedAuthModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+import { useUIStore } from '@/lib/stores/ui-store';
 
 interface ModuleLayoutProps {
   children: React.ReactNode;
@@ -20,9 +20,10 @@ interface ModuleLayoutProps {
   onExit?: () => void;
   hideBack?: boolean;
   moduleId?: ModuleId;
+  hideNavigation?: boolean;
+  renderLeftRail?: () => React.ReactNode;
+  renderRightRail?: () => React.ReactNode;
 }
-
-// ... TelemetryTicker component
 
 function TelemetryTicker() {
     const [log, setLog] = useState('SYSTEM_IDLE');
@@ -54,12 +55,23 @@ function TelemetryTicker() {
     );
 }
 
-export function ModuleLayout({ children, title, themeColor, onExit, hideBack = false, moduleId }: ModuleLayoutProps) {
+export function ModuleLayout({ 
+  children, 
+  title, 
+  themeColor, 
+  onExit, 
+  hideBack = false, 
+  moduleId, 
+  hideNavigation = false,
+  renderLeftRail: RenderLeftRail,
+  renderRightRail: RenderRightRail
+}: ModuleLayoutProps) {
   const navigate = useNavigate();
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const { isModuleAccessible } = useVault();
   const reducedMotion = useReducedMotion();
+  const { isFocusMode, isLeftRailVisible, isRightRailVisible } = useUIStore();
 
   const handleExit = () => {
     setIsSyncing(true);
@@ -105,82 +117,135 @@ export function ModuleLayout({ children, title, themeColor, onExit, hideBack = f
         <div className="absolute inset-0 surface-grid opacity-[0.015]" />
         <div className={`absolute top-0 right-0 w-[820px] h-[820px] ${theme.glow} rounded-full blur-[170px] animate-pulse opacity-45`} />
         <div className={`absolute bottom-0 left-0 w-[600px] h-[600px] ${theme.glow} rounded-full blur-[150px] opacity-25`} />
+        
+        {/* Deep Focus Vignette */}
+        <AnimatePresence>
+          {isFocusMode && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(2,2,5,0.8)_100%)] z-[5]"
+            />
+          )}
+        </AnimatePresence>
       </div>
 
-      <header className="sticky top-0 z-[60] border-b border-white/5 bg-black/50 backdrop-blur-2xl px-4 md:px-8 py-3 md:py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3 md:gap-6">
-          {!hideBack && (
-            <button 
-              onClick={handleExit}
-              aria-label="Back to Hub"
-              className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all group shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5 text-white/40 group-hover:text-white" />
-            </button>
-          )}
-          <div className="flex flex-col">
-            <h1 className={`text-sm sm:text-lg md:text-xl font-black italic tracking-[0.2em] sm:tracking-[0.3em] uppercase ${theme.accent} truncate max-w-[120px] sm:max-w-[150px] md:max-w-xs`}>{title}</h1>
-            <div className="hidden sm:flex items-center gap-2">
-                <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[7px] font-bold text-white/40 uppercase tracking-[0.2em] italic truncate">Link Stable // Secure Tunnel</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 md:gap-8">
-          <TelemetryTicker />
-          <button
-            type="button"
-            onClick={openSecurityProtocol}
-            className="hidden lg:flex flex-col items-end text-left focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg px-2 py-1 hover:bg-white/5 transition-colors"
+      <AnimatePresence>
+        {(!hideNavigation && !isFocusMode) && (
+          <motion.header 
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="sticky top-0 z-[60] border-b border-white/5 bg-black/50 backdrop-blur-2xl px-4 md:px-8 py-3 md:py-4 flex items-center justify-between"
           >
-            <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1 italic leading-none">Security Protocol</span>
-            <div className="flex items-center gap-2">
-              <Shield className={`w-3 h-3 ${theme.accent}`} />
-              <span className="text-[10px] font-bold text-white/60 tracking-tight leading-none uppercase">E2EE_Active</span>
-            </div>
-          </button>
-          <div className="w-px h-8 bg-white/5 hidden md:block" />
-          <div className="flex items-center gap-2">
-            <SystemCommandCenter />
-          </div>
-        </div>
-      </header>
-
-      <main className="relative z-10 flex-1 flex flex-col w-full max-w-[100vw] overflow-x-hidden min-h-0">
-        <AnimatePresence mode="wait">
-          {!isSyncing && (
-            <motion.div
-              key={title}
-              initial={reducedMotion ? false : { opacity: 0, y: 10 }}
-              animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
-              transition={reducedMotion ? { duration: 0 } : undefined}
-              className="flex-1 w-full flex flex-col min-h-0"
-            >
-              {isLocked ? (
-                <div className="flex-1 flex items-center justify-center p-8">
-                  <div className="max-w-xl w-full p-12 rounded-[48px] border border-white/10 bg-white/[0.02] backdrop-blur-3xl text-center space-y-8 shadow-2xl">
-                    <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
-                      <div className={cn("w-3 h-3 rounded-full animate-ping", `bg-${themeColor}-500`)} />
-                    </div>
-                    <div className="space-y-3">
-                      <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white">Vault Sync Required</h3>
-                      <p className="text-sm text-white/40 leading-relaxed font-medium px-8">
-                        This domain is end-to-end encrypted. Initialize a local handshake to decrypt your profile synchronization.
-                      </p>
-                    </div>
-                    <NeuralButton size="xl" className="w-full" onClick={() => setShowAuth(true)}>
-                      Unlock {title} Vault
-                    </NeuralButton>
-                  </div>
-                  {moduleId && (
-                    <UnifiedAuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} mode={moduleId} />
-                  )}
-                </div>
-              ) : (
-                children
+            <div className="flex items-center gap-3 md:gap-6">
+              {!hideBack && (
+                <button 
+                  onClick={handleExit}
+                  aria-label="Back to Hub"
+                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all group shrink-0"
+                >
+                  <ArrowLeft className="w-5 h-5 text-white/40 group-hover:text-white" />
+                </button>
               )}
+              <div className="flex flex-col">
+                <h1 className={`text-sm sm:text-lg md:text-xl font-black italic tracking-[0.2em] sm:tracking-[0.3em] uppercase ${theme.accent} truncate max-w-[120px] sm:max-w-[150px] md:max-w-xs`}>{title}</h1>
+                <div className="hidden sm:flex items-center gap-2">
+                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[7px] font-bold text-white/40 uppercase tracking-[0.2em] italic truncate">Link Stable // Secure Tunnel</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 md:gap-8">
+              <TelemetryTicker />
+              <button
+                type="button"
+                onClick={openSecurityProtocol}
+                className="hidden lg:flex flex-col items-end text-left focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg px-2 py-1 hover:bg-white/5 transition-colors"
+              >
+                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1 italic leading-none">Security Protocol</span>
+                <div className="flex items-center gap-2">
+                  <Shield className={`w-3 h-3 ${theme.accent}`} />
+                  <span className="text-[10px] font-bold text-white/60 tracking-tight leading-none uppercase">E2EE_Active</span>
+                </div>
+              </button>
+              <div className="w-px h-8 bg-white/5 hidden md:block" />
+              <div className="flex items-center gap-2">
+                <SystemCommandCenter />
+              </div>
+            </div>
+          </motion.header>
+        )}
+      </AnimatePresence>
+
+      <main className="relative z-10 flex-1 flex w-full max-w-[100vw] overflow-x-hidden min-h-0">
+        <AnimatePresence mode="popLayout">
+          {RenderLeftRail && isLeftRailVisible && (
+            <motion.div 
+              key="left-rail"
+              initial={{ x: -300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -300, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="hidden lg:block shrink-0 h-full relative z-30"
+            >
+              <RenderLeftRail />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
+          <AnimatePresence mode="wait">
+            {!isSyncing && (
+              <motion.div
+                key={title}
+                initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+                animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
+                transition={reducedMotion ? { duration: 0 } : undefined}
+                className="flex-1 w-full flex flex-col min-h-0"
+              >
+                {isLocked ? (
+                  <div className="flex-1 flex items-center justify-center p-8">
+                    <div className="max-w-xl w-full p-12 rounded-card-strong border border-white/10 bg-white/[0.02] backdrop-blur-3xl text-center space-y-8 shadow-2xl">
+                      <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
+                        <div className={cn("w-3 h-3 rounded-full animate-ping", `bg-${themeColor}-500`)} />
+                      </div>
+                      <div className="space-y-3">
+                        <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white">Vault Sync Required</h3>
+                        <p className="text-sm text-white/40 leading-relaxed font-medium px-8">
+                          This domain is end-to-end encrypted. Initialize a local handshake to decrypt your profile synchronization.
+                        </p>
+                      </div>
+                      <NeuralButton size="xl" className="w-full" onClick={() => setShowAuth(true)}>
+                        Unlock {title} Vault
+                      </NeuralButton>
+                    </div>
+                    {moduleId && (
+                      <UnifiedAuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} mode={moduleId} />
+                    )}
+                  </div>
+                ) : (
+                  children
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <AnimatePresence mode="popLayout">
+          {RenderRightRail && isRightRailVisible && (
+            <motion.div 
+              key="right-rail"
+              initial={{ x: 300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 300, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="hidden lg:block shrink-0 h-full relative z-30"
+            >
+              <RenderRightRail />
             </motion.div>
           )}
         </AnimatePresence>

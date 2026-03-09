@@ -1,15 +1,24 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Grid3X3, Lock, LayoutDashboard, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useModuleHealth, type StatusTone } from '../hooks/useModuleHealth';
+import { UnifiedAuthModal, type AuthMode } from '@/core/components/UnifiedAuthModal';
+import type { ModuleId } from '@/lib/module-manifest';
 
 const TONE_DOT: Record<StatusTone, string> = {
   good: 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]',
   warn: 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.5)]',
   bad: 'bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.5)]',
   neutral: 'bg-white/20',
+};
+
+const TONE_LABEL: Record<StatusTone, string> = {
+  good: 'healthy',
+  warn: 'warning',
+  bad: 'critical',
+  neutral: 'unknown',
 };
 
 function formatLastActive(iso: string | null): string {
@@ -27,7 +36,15 @@ export function ModuleHealthFAB() {
   const { modules, isLoading } = useModuleHealth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('global');
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const fabRef = useRef<HTMLButtonElement>(null);
+  const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const shouldReduceMotion = useReducedMotion();
+
+  // +1 for Hub tile at the end
+  const totalTiles = modules.length + 1;
 
   const alertCount = modules.filter(
     (m) => m.hasAlert || m.keyMetricTone === 'bad'
@@ -35,26 +52,70 @@ export function ModuleHealthFAB() {
   const warnCount = modules.filter((m) => m.keyMetricTone === 'warn').length;
   const badgeCount = alertCount + warnCount;
 
+  const close = useCallback(() => {
+    setIsOpen(false);
+    fabRef.current?.focus();
+  }, []);
+
   // Outside click dismiss
   const handleClickOutside = useCallback((e: MouseEvent) => {
     if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-      setIsOpen(false);
+      close();
     }
-  }, []);
+  }, [close]);
 
   useEffect(() => {
     if (isOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, handleClickOutside]);
 
+  // Escape key
   useEffect(() => {
     if (!isOpen) return;
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsOpen(false); };
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
-  }, [isOpen]);
+  }, [isOpen, close]);
 
-  const go = (route: string) => { setIsOpen(false); navigate(route); };
+  // Focus first accessible tile when popover opens
+  useEffect(() => {
+    if (!isOpen || isLoading) return;
+    const firstAccessible = tileRefs.current.find((el) => el && !el.disabled);
+    firstAccessible?.focus();
+  }, [isOpen, isLoading]);
+
+  // Arrow key navigation within grid (3 columns)
+  const handleGridKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
+    const cols = 3;
+    let next: number | null = null;
+    if (e.key === 'ArrowRight') next = index + 1 < totalTiles ? index + 1 : null;
+    if (e.key === 'ArrowLeft')  next = index - 1 >= 0 ? index - 1 : null;
+    if (e.key === 'ArrowDown')  next = index + cols < totalTiles ? index + cols : null;
+    if (e.key === 'ArrowUp')    next = index - cols >= 0 ? index - cols : null;
+    if (next !== null) {
+      e.preventDefault();
+      tileRefs.current[next]?.focus();
+    }
+  }, [totalTiles]);
+
+  const go = useCallback((route: string) => {
+    setIsOpen(false);
+    navigate(route);
+  }, [navigate]);
+
+  const openAuth = useCallback((moduleId: ModuleId) => {
+    setIsOpen(false);
+    setAuthMode(moduleId);
+    setIsAuthOpen(true);
+  }, []);
+
+  const springTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { type: 'spring' as const, stiffness: 500, damping: 32 };
+
+  const tileTransition = (i: number) => shouldReduceMotion
+    ? { duration: 0 }
+    : { delay: i * 0.025, duration: 0.2 };
 
   return (
     <div ref={containerRef} className="absolute bottom-4 right-4 z-40">
@@ -66,9 +127,9 @@ export function ModuleHealthFAB() {
             initial={{ opacity: 0, scale: 0.9, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 6 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-            role="dialog"
-            aria-label="Module Navigator"
+            transition={springTransition}
+            role="menu"
+            aria-label="Module navigator"
             className={cn(
               'absolute bottom-16 right-0',
               'w-[280px] p-2.5 rounded-2xl',
@@ -83,9 +144,10 @@ export function ModuleHealthFAB() {
                 Modules
               </span>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={close}
                 className="p-0.5 rounded-md hover:bg-white/5 transition-colors"
-                aria-label="Close"
+                aria-label="Close module navigator"
+                tabIndex={-1}
               >
                 <X className="w-3 h-3 text-white/25" />
               </button>
@@ -102,36 +164,42 @@ export function ModuleHealthFAB() {
                     return (
                       <motion.button
                         key={mod.moduleId}
+                        ref={(el) => { tileRefs.current[i] = el; }}
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.025, duration: 0.2 }}
-                        onClick={() => go(mod.route)}
-                        disabled={!mod.isAccessible}
+                        transition={tileTransition(i)}
+                        role="menuitem"
+                        aria-label={`${mod.alias || mod.title}${mod.isAccessible ? `, status: ${TONE_LABEL[mod.keyMetricTone]}, last active: ${formatLastActive(mod.lastActive)}` : ', locked — click to unlock'}`}
+                        onClick={() => mod.isAccessible ? go(mod.route) : openAuth(mod.moduleId as ModuleId)}
+                        onKeyDown={(e) => handleGridKeyDown(e, i)}
                         className={cn(
                           'group flex flex-col items-center justify-center gap-1',
                           'h-[56px] rounded-xl px-1',
                           'transition-all duration-150',
+                          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30',
                           mod.isAccessible
                             ? 'hover:bg-white/[0.04] active:scale-95 cursor-pointer'
-                            : 'opacity-30 cursor-not-allowed'
+                            : 'hover:bg-white/[0.03] active:scale-95 cursor-pointer opacity-50 hover:opacity-80'
                         )}
-                        aria-label={`${mod.title}${mod.isAccessible ? '' : ' (locked)'}`}
                       >
                         <div className="relative">
+                          <Icon
+                            className="w-4 h-4 transition-colors"
+                            style={mod.isAccessible ? { color: mod.colorHex } : undefined}
+                          />
                           {mod.isAccessible ? (
-                            <Icon className="w-4 h-4 transition-colors" style={{ color: mod.colorHex }} />
+                            <>
+                              <div className={cn(
+                                'absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full',
+                                TONE_DOT[mod.keyMetricTone]
+                              )} aria-hidden="true" />
+                              <span className="sr-only">{TONE_LABEL[mod.keyMetricTone]}</span>
+                            </>
                           ) : (
-                            <Lock className="w-3.5 h-3.5 text-white/20" />
-                          )}
-                          {/* Status dot */}
-                          {mod.isAccessible && (
-                            <div className={cn(
-                              'absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full',
-                              TONE_DOT[mod.keyMetricTone]
-                            )} />
+                            <Lock className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 text-white/40" />
                           )}
                         </div>
-                        <span className="text-[8px] font-semibold text-white/50 group-hover:text-white/70 truncate max-w-full transition-colors">
+                        <span className="text-[8px] font-semibold text-white/40 group-hover:text-white/60 truncate max-w-full transition-colors">
                           {mod.title}
                         </span>
                       </motion.button>
@@ -141,17 +209,21 @@ export function ModuleHealthFAB() {
               {/* Hub tile */}
               {!isLoading && (
                 <motion.button
+                  ref={(el) => { tileRefs.current[modules.length] = el; }}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: modules.length * 0.025, duration: 0.2 }}
+                  transition={tileTransition(modules.length)}
+                  role="menuitem"
+                  aria-label="Hub — 3D module graph"
                   onClick={() => go('/hub')}
+                  onKeyDown={(e) => handleGridKeyDown(e, modules.length)}
                   className={cn(
                     'group flex flex-col items-center justify-center gap-1',
                     'h-[56px] rounded-xl px-1',
                     'transition-all duration-150',
+                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40',
                     'hover:bg-indigo-500/[0.06] active:scale-95 cursor-pointer'
                   )}
-                  aria-label="Hub — 3D module graph"
                 >
                   <LayoutDashboard className="w-4 h-4 text-indigo-400/60 group-hover:text-indigo-400 transition-colors" />
                   <span className="text-[8px] font-semibold text-indigo-300/40 group-hover:text-indigo-300/70 transition-colors">
@@ -166,9 +238,10 @@ export function ModuleHealthFAB() {
 
       {/* ── FAB Trigger ── */}
       <motion.button
+        ref={fabRef}
         onClick={() => setIsOpen(!isOpen)}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.94 }}
+        whileHover={shouldReduceMotion ? undefined : { scale: 1.06 }}
+        whileTap={shouldReduceMotion ? undefined : { scale: 0.94 }}
         className={cn(
           'relative w-[60px] h-[60px] rounded-2xl',
           'bg-white/[0.04] backdrop-blur-xl',
@@ -179,17 +252,29 @@ export function ModuleHealthFAB() {
           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40',
           isOpen && 'bg-white/[0.08] border-white/[0.15]'
         )}
-        aria-label={isOpen ? 'Close modules' : `Module navigator${badgeCount > 0 ? ` (${badgeCount} alerts)` : ''}`}
+        aria-label={isOpen ? 'Close module navigator' : `Open module navigator${badgeCount > 0 ? ` (${badgeCount} alerts)` : ''}`}
         aria-expanded={isOpen}
-        aria-haspopup="dialog"
+        aria-haspopup="menu"
       >
         <AnimatePresence mode="wait">
           {isOpen ? (
-            <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.12 }}>
+            <motion.div
+              key="close"
+              initial={shouldReduceMotion ? undefined : { rotate: -90, opacity: 0 }}
+              animate={shouldReduceMotion ? undefined : { rotate: 0, opacity: 1 }}
+              exit={shouldReduceMotion ? undefined : { rotate: 90, opacity: 0 }}
+              transition={{ duration: 0.12 }}
+            >
               <X className="w-5 h-5 text-white/40" />
             </motion.div>
           ) : (
-            <motion.div key="grid" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.12 }}>
+            <motion.div
+              key="grid"
+              initial={shouldReduceMotion ? undefined : { rotate: 90, opacity: 0 }}
+              animate={shouldReduceMotion ? undefined : { rotate: 0, opacity: 1 }}
+              exit={shouldReduceMotion ? undefined : { rotate: -90, opacity: 0 }}
+              transition={{ duration: 0.12 }}
+            >
               <Grid3X3 className="w-5 h-5 text-white/35" />
             </motion.div>
           )}
@@ -197,19 +282,27 @@ export function ModuleHealthFAB() {
 
         {/* Alert badge */}
         {badgeCount > 0 && !isOpen && (
-          <span className={cn(
-            'absolute -top-1 -right-1',
-            'w-[14px] h-[14px]',
-            'rounded-full flex items-center justify-center',
-            'text-[7px] font-bold text-white',
-            alertCount > 0
-              ? 'bg-rose-500/90 shadow-[0_0_6px_rgba(244,63,94,0.4)]'
-              : 'bg-amber-500/90 shadow-[0_0_6px_rgba(245,158,11,0.3)]'
-          )}>
+          <span
+            className={cn(
+              'absolute -top-1 -right-1',
+              'w-[14px] h-[14px]',
+              'rounded-full flex items-center justify-center',
+              'text-[7px] font-bold text-white',
+              alertCount > 0
+                ? 'bg-rose-500/90 shadow-[0_0_6px_rgba(244,63,94,0.4)]'
+                : 'bg-amber-500/90 shadow-[0_0_6px_rgba(245,158,11,0.3)]'
+            )}
+            aria-hidden="true"
+          >
             {badgeCount}
           </span>
         )}
       </motion.button>
+      <UnifiedAuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        mode={authMode}
+      />
     </div>
   );
 }

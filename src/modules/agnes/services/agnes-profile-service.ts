@@ -1,18 +1,13 @@
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { BaseContext } from '../types';
 import { readDocOnce } from '@/lib/services/firestore-once';
+import type { TherapyIntakeProfile } from '@/lib/types';
+
+export type { TherapyIntakeProfile } from '@/lib/types';
 
 const GUEST_PROFILE_KEY = 'nexus_agnes_profile_guest';
 const VAULT_SALT_MARKER = 'vault_salt_used';
-
-export interface TherapyIntakeProfile {
-  onboardingComplete: boolean;
-  baseContext: Partial<BaseContext>;
-  createdAt: string;
-  updatedAt: string;
-}
 
 type LoadContext = {
   userId?: string | null;
@@ -29,6 +24,21 @@ export function createEmptyAgnesProfile(): TherapyIntakeProfile {
   };
 }
 
+function normalizeAgnesProfile(raw: unknown): TherapyIntakeProfile {
+  const base = createEmptyAgnesProfile();
+  if (!raw || typeof raw !== 'object') return base;
+
+  const data = raw as Partial<TherapyIntakeProfile>;
+  const now = new Date().toISOString();
+
+  return {
+    onboardingComplete: data.onboardingComplete === true,
+    baseContext: (data.baseContext && typeof data.baseContext === 'object') ? data.baseContext : {},
+    createdAt: typeof data.createdAt === 'string' ? data.createdAt : base.createdAt,
+    updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : now
+  };
+}
+
 export async function loadAgnesProfile({ userId, encryptionKey }: LoadContext): Promise<TherapyIntakeProfile | null> {
   if (userId && encryptionKey) {
     const { db } = getFirebase();
@@ -42,7 +52,7 @@ export async function loadAgnesProfile({ userId, encryptionKey }: LoadContext): 
 
     try {
       const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-      return JSON.parse(decrypted) as TherapyIntakeProfile;
+      return normalizeAgnesProfile(JSON.parse(decrypted));
     } catch (e) {
       console.error('Failed to decrypt agnes profile:', e);
       return null;
@@ -75,7 +85,7 @@ export function subscribeAgnesProfile(
         }
         try {
           const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-          onUpdate(JSON.parse(decrypted) as TherapyIntakeProfile);
+          onUpdate(normalizeAgnesProfile(JSON.parse(decrypted)));
         } catch (e) {
           console.error('Failed to decrypt agnes profile:', e);
           onUpdate(null);
@@ -97,11 +107,13 @@ export async function saveAgnesProfile(
   profile: TherapyIntakeProfile,
   { userId, encryptionKey }: LoadContext
 ): Promise<void> {
+  const normalized = normalizeAgnesProfile({ ...profile, updatedAt: new Date().toISOString() });
+
   if (userId && encryptionKey) {
     const { db } = getFirebase();
     if (!db) return;
 
-    const encrypted = await encryptWithKey(JSON.stringify(profile), encryptionKey);
+    const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
     try {
       await setDoc(
         doc(db, 'agnes_profiles', userId),
@@ -110,7 +122,7 @@ export async function saveAgnesProfile(
           iv: encrypted.iv,
           salt: VAULT_SALT_MARKER,
           metadata: {
-            onboardingComplete: profile.onboardingComplete,
+            onboardingComplete: normalized.onboardingComplete,
             lastActive: new Date().toISOString()
           }
         },
@@ -122,7 +134,7 @@ export async function saveAgnesProfile(
     return;
   }
 
-  saveGuestAgnesProfile(profile);
+  saveGuestAgnesProfile(normalized);
 }
 
 export function loadGuestAgnesProfile(): TherapyIntakeProfile | null {
@@ -130,7 +142,7 @@ export function loadGuestAgnesProfile(): TherapyIntakeProfile | null {
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw) as TherapyIntakeProfile;
+    return normalizeAgnesProfile(JSON.parse(raw));
   } catch (e) {
     console.error('Failed to parse guest agnes profile:', e);
     return null;
@@ -138,7 +150,7 @@ export function loadGuestAgnesProfile(): TherapyIntakeProfile | null {
 }
 
 export function saveGuestAgnesProfile(profile: TherapyIntakeProfile) {
-  localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile));
+  localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(normalizeAgnesProfile(profile)));
 }
 
 export function clearGuestAgnesProfile() {

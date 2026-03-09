@@ -22,13 +22,13 @@ export function NeuralLinkAlert({ error, onRetry, type = 'generic' }: NeuralLink
     <motion.div 
       initial={{ opacity: 0, scale: 0.95, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      className="p-6 rounded-[32px] bg-red-500/5 border border-red-500/20 backdrop-blur-xl max-w-md mx-auto my-8 relative overflow-hidden group"
+    className="p-6 rounded-card-strong bg-red-500/5 border border-red-500/20 backdrop-blur-xl max-w-md mx-auto my-8 relative overflow-hidden group"
     >
       {/* Background Glitch Effect */}
       <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity animate-pulse" />
       
       <div className="relative z-10 flex flex-col items-center text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-panel bg-red-500/10 border border-red-500/20 flex items-center justify-center">
           <Icon className="w-6 h-6 text-red-400" />
         </div>
         
@@ -39,7 +39,7 @@ export function NeuralLinkAlert({ error, onRetry, type = 'generic' }: NeuralLink
 
         <button 
           onClick={onRetry}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all group/btn"
+          className="flex items-center gap-2 px-6 py-2.5 rounded-panel bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all group/btn"
         >
           <RefreshCw className="w-3.5 h-3.5 text-red-400 group-hover/btn:rotate-180 transition-transform duration-500" />
           <span className="text-[9px] font-black uppercase tracking-widest text-red-400">Re-establish Handshake</span>

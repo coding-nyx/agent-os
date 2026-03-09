@@ -17,7 +17,7 @@ export function GlassCard({
 }: GlassCardProps) {
   return (
     <div className={cn(
-      'relative bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-[32px] overflow-hidden',
+    'relative bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-card overflow-hidden',
       glow && 'shadow-2xl',
       className
     )}

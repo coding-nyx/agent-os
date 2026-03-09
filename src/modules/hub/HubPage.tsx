@@ -30,10 +30,14 @@ export default function HubPage() {
     const saved = localStorage.getItem('nexus-hub-view');
     return (saved === '3D' || saved === 'GRAPH' || saved === 'CARDS') ? saved : 'CARDS';
   });
+  const [webglError, setWebglError] = useState(false);
 
   useEffect(() => {
+    if (viewMode === '3D' && webglError) {
+      setViewMode('CARDS');
+    }
     localStorage.setItem('nexus-hub-view', viewMode);
-  }, [viewMode]);
+  }, [viewMode, webglError]);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [edgePulse, setEdgePulse] = useState(0);
   const [edgePulsePriority, setEdgePulsePriority] = useState<SpineEvent['priority']>('info');
@@ -53,7 +57,7 @@ export default function HubPage() {
     setEdgePulse(1);
   }, []);
 
-  useSpineEvent('*', pushSpineEvent);
+  useSpineEvent('*', pushSpineEvent, { minPriority: 'alert' });
 
   // Edge pulse decay with debounced state updates
   useEffect(() => {
@@ -133,20 +137,32 @@ export default function HubPage() {
         </AnimatePresence>
 
         {/* View Switcher */}
-        <HubViewSwitcher viewMode={viewMode} setViewMode={setViewMode} />
+        <HubViewSwitcher viewMode={viewMode} setViewMode={setViewMode} hide3D={webglError} />
 
         {/* 3D Canvas Background (lazy loaded) */}
         <div
           className={cn(
             "absolute inset-0 z-0 transition-opacity duration-1000",
-            viewMode === '3D' ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            viewMode === '3D' && !webglError ? 'opacity-100' : 'opacity-0 pointer-events-none'
           )}
           style={{ touchAction: 'none' }}
         >
-          {viewMode === '3D' && (
+          {viewMode === '3D' && !webglError && (
             <Canvas
               camera={{ position: [0, 5, 20], fov: 50 }}
-              gl={{ antialias: true, alpha: true }}
+              dpr={1}
+              performance={{ min: 0.5 }}
+              gl={{ 
+                antialias: false, 
+                alpha: true,
+                powerPreference: "low-power",
+                stencil: false,
+                depth: true
+              }}
+              onError={(err) => {
+                console.warn('[Hub3D] WebGL initialization failed:', err);
+                setWebglError(true);
+              }}
               style={{ touchAction: 'none' }}
             >
               <color attach="background" args={['#020205']} />
@@ -166,7 +182,7 @@ export default function HubPage() {
 
         {/* Content Layers */}
         <div className="absolute inset-0 z-10 flex flex-col pointer-events-none">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence mode="wait">
             {viewMode === 'CARDS' && (
               <CardsView
                 key="cards"

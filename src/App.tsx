@@ -16,6 +16,7 @@ import { NexusRouteBanner } from './core/components/NexusRouteBanner';
 import { Spine } from './lib/spine/spine-event-bus';
 import { CORE_CASCADE_RULES } from './lib/spine/cascade-rules';
 import { useEffect } from 'react';
+import { DataLayerProvider } from './lib/data-layer/provider';
 
 // Route-level lazy loading for chunk splitting.
 const LandingPage = lazy(() => import('./modules/landing/LandingPage'));
@@ -148,21 +149,23 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <AuthProvider>
-          <VaultProvider>
-            <GlobalSoulProvider>
-              <AIWrapper>
-                <AppErrorBoundary>
-                  <AIRuntimeGate>
-                    <AppContent />
-                  </AIRuntimeGate>
-                </AppErrorBoundary>
-              </AIWrapper>
-            </GlobalSoulProvider>
-          </VaultProvider>
-        </AuthProvider>
-      </Router>
+      <DataLayerProvider>
+        <Router>
+          <AuthProvider>
+            <VaultProvider>
+              <GlobalSoulProvider>
+                <AIWrapper>
+                  <AppErrorBoundary>
+                    <AIRuntimeGate>
+                      <AppContent />
+                    </AIRuntimeGate>
+                  </AppErrorBoundary>
+                </AIWrapper>
+              </GlobalSoulProvider>
+            </VaultProvider>
+          </AuthProvider>
+        </Router>
+      </DataLayerProvider>
     </ThemeProvider>
   );
 }

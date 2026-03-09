@@ -98,7 +98,7 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   TASK_COMPLETED: 'Task completed',
   DEADLINE_APPROACHING: 'Deadline approaching',
   HABIT_STREAK_BROKEN: 'Habit streak lost',
-  WEEKLY_REVIEW_COMPLETE: 'Weekly review completed',
+  TEMPORAL_REVIEW_COMPLETE: 'Temporal review completed',
   DELEGATION_REQUEST: 'Module delegation requested',
   NSV_CALIBRATION_REQUEST: 'NSV calibration requested',
   SCHEMA_EXTENDED: 'Schema extended',
@@ -137,6 +137,11 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   ATLAS_FIELD_CREATED: 'Atlas field created',
   ATLAS_FIELD_DELETED: 'Atlas field deleted',
   ATLAS_FIELD_VALUE_UPDATED: 'Atlas field value updated',
+  // Titan Cycle Events
+  CYCLE_STARTED: 'Cycle started',
+  CYCLE_COMPLETED: 'Cycle completed',
+  // Titan Workout Events
+  WORKOUT_COMPLETED: 'Workout session logged',
 };
 
 // ---------------------------------------------------------------------------

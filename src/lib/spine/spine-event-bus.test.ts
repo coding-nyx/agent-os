@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { SpineEvent } from '@/lib/types';
+import type { SpineEventPayload } from '@/lib/types';
 
 // We need to mock firebase to avoid import errors in test environment
 vi.mock('@/lib/firebase', () => ({
@@ -10,15 +10,12 @@ vi.mock('@/lib/firebase', () => ({
 const { Spine } = await import('./spine-event-bus');
 type CascadeRule = import('./spine-event-bus').CascadeRule;
 
-function makeTestEvent(
-  overrides: Partial<Omit<SpineEvent, 'id' | 'timestamp'>> = {}
-): Omit<SpineEvent, 'id' | 'timestamp'> {
+function makeTestEvent(overrides: Partial<SpineEventPayload> = {}): SpineEventPayload {
   return {
     type: 'VITAL_UPDATED',
     source: 'test',
     domain: 'B',
     data: {},
-    cascadeDepth: 0,
     priority: 'info',
     ...overrides,
   };
@@ -116,6 +113,66 @@ describe('SpineEventBus', () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
+  it('defaults cascadeDepth to 0 when omitted and validates payload', () => {
+    const handler = vi.fn();
+    Spine.on('VITAL_UPDATED', handler);
+
+    const emitted = Spine.emit({
+      type: 'VITAL_UPDATED',
+      source: 'alpha',
+      domain: 'B',
+      data: {},
+      priority: 'info',
+    });
+
+    expect(emitted.cascadeDepth).toBe(0);
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
+  it('throws when required fields are missing', () => {
+    // @ts-expect-error Deliberately invalid for runtime validation
+    expect(() => Spine.emit({})).toThrow('[SpineEventBus] Missing required field: type');
+
+    // @ts-expect-error Deliberately invalid for runtime validation
+    expect(() =>
+      Spine.emit({
+        type: 'VITAL_UPDATED',
+        source: '',
+        domain: 'B',
+        data: {},
+        priority: 'info',
+      })
+    ).toThrow('[SpineEventBus] Missing or invalid required field: source');
+
+    // @ts-expect-error invalid domain
+    expect(() =>
+      Spine.emit({
+        type: 'VITAL_UPDATED',
+        source: 'alpha',
+        // @ts-expect-error invalid domain for runtime validation
+        domain: 'X',
+        data: {},
+        priority: 'info',
+      })
+    ).toThrow('[SpineEventBus] Invalid domain "X"');
+  });
+
+  it('supports publish/subscribe aliases', () => {
+    const handler = vi.fn();
+    const unsub = Spine.subscribe('SESSION_STARTED', handler);
+
+    Spine.publish({
+      type: 'SESSION_STARTED',
+      source: 'alias-test',
+      domain: 'system',
+      priority: 'info',
+      data: {},
+    });
+
+    expect(handler).toHaveBeenCalledOnce();
+    unsub();
+  });
+
   describe('cascade rules', () => {
     it('fires cascade rule when condition matches', () => {
       const cascadeHandler = vi.fn();
@@ -131,7 +188,6 @@ describe('SpineEventBus', () => {
           domain: 'system',
           priority: 'critical',
           data: { reason: 'test' },
-          cascadeDepth: 0, // will be overridden
         }),
       };
       Spine.registerCascadeRules([rule]);

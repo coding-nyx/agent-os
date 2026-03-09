@@ -1,72 +1,21 @@
-import type { Message } from '@/llm-engine/types';
+import type {
+  Message,
+  SessionSummary,
+  AgnesMode,
+  Gender,
+  AgnesArchetype,
+  GeneratedAgnes,
+  BaseContext
+} from '@/lib/types';
 
-export interface SessionSummary {
-  date: string;
-  summary: string;
-  keyInsights: string[];
-  theme: string;
-}
-
-export type AgnesMode = 'intake' | 'analysis' | 'selection' | 'session';
-
-export type Gender = 'female' | 'male' | 'non-binary';
-
-export interface AgnesArchetype {
-  id: string;
-  name: string; // Internal name e.g. "The Analyst"
-  basePrompt: string; // The core personality instructions
-  traits: string[];
-}
-
-export interface GeneratedAgnes {
-  id: string;
-  name: string;
-  gender: Gender;
-  archetypeId: string;
-  role: string; // displayed role e.g. "Clinical Psychologist"
-  description: string; // "I specialize in..."
-  systemPrompt: string; // The final compiled prompt with user context
-  greeting: string;
-}
-
-// 1. Long-Term Memory (The "Soul" - Optimized for System Prompt Injection)
-export interface BaseContext {
-  // Core Identity
-  identity?: string | {
-    name?: string;
-    pronouns?: string;
-    ageGroup?: string;
-  };
-  // The "Why"
-  struggles?: string | string[]; // e.g., ["anxiety", "insomnia"]
-  goals?: string | string[];     // e.g., ["better sleep", "conflict resolution"]
-  
-  // The "Deep" Context (Summarized)
-  backgroundSummary?: string; // Condensed childhood/trauma summary
-  
-  // Integrated Insights (Past Sessions)
-  integratedInsights: SessionSummary[];
-  
-  // Agnes State
-  communicationStyle?: 'direct' | 'gentle' | 'analytical';
-  sessionCount?: number;
-  lastSessionSummary?: string; // Recap of where we left off
-  occupation?: string;
-  typicalSleepHours?: number;
-  
-  // Agnes Preferences
-  preferredAgnes?: {
-    gender?: Gender | 'no-preference';
-    tone?: string;
-    traits?: string[];
-  };
-  
-  // Legacy/Compatibility (Optional)
-  childhood?: string;
-  trauma?: string;
-  history?: string;
-  intakeTranscript?: Message[];
-}
+export {
+  SessionSummary,
+  AgnesMode,
+  Gender,
+  AgnesArchetype,
+  GeneratedAgnes,
+  BaseContext
+};
 
 // 2. Short-Term Memory (The "Moment" - Active Conversation)
 export interface ActiveSession {

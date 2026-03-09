@@ -12,7 +12,7 @@ import {
   RecoveryWindow,
   ScheduledTask,
   DailyIntention,
-  WeeklyReviewSnapshot,
+  TemporalReview,
   HabitWeekSummary,
   GoalWeekProgress,
   loadAtlasProfile,
@@ -676,7 +676,7 @@ export function registerAtlasActions() {
       await updateGlobalSoul({ cognitive: { planningLoad } });
     },
 
-    weekly_review: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
+    temporal_review: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
       const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!raw) return;
       const profile = raw;
@@ -706,9 +706,14 @@ export function registerAtlasActions() {
       const resilienceTrend = (['improving', 'stable', 'declining'] as const)
         .find(v => v === payload?.resilienceTrend) ?? 'stable';
 
-      const snapshot: WeeklyReviewSnapshot = {
+      const scope = (['daily', 'weekly', 'monthly', 'yearly'] as const)
+        .find(v => v === payload?.scope) ?? 'weekly';
+
+      const snapshot: TemporalReview = {
         id: `review_${crypto.randomUUID()}`,
-        weekOf: typeof payload?.weekOf === 'string' ? payload.weekOf : now,
+        scope,
+        periodStart: typeof payload?.periodStart === 'string' ? payload.periodStart : now,
+        periodEnd: typeof payload?.periodEnd === 'string' ? payload.periodEnd : now,
         completionRate: typeof payload?.completionRate === 'number' ? payload.completionRate : 0,
         totalScheduled: typeof payload?.totalScheduled === 'number' ? payload.totalScheduled : 0,
         totalCompleted: typeof payload?.totalCompleted === 'number' ? payload.totalCompleted : 0,
@@ -719,21 +724,24 @@ export function registerAtlasActions() {
           resilienceTrend,
           focusScoreAvg: typeof payload?.focusScoreAvg === 'number' ? payload.focusScoreAvg : 5
         },
-        nextWeekFocus: typeof payload?.nextWeekFocus === 'string' ? payload.nextWeekFocus : '',
+        insights: Array.isArray(payload?.insights) ? payload.insights : [],
+        driftScore: typeof payload?.driftScore === 'number' ? payload.driftScore : undefined,
+        nextPeriodFocus: typeof payload?.nextPeriodFocus === 'string' ? payload.nextPeriodFocus : '',
         notes: typeof payload?.notes === 'string' ? payload.notes : undefined,
         createdAt: now
       };
 
-      if (profile.weeklyReviews.length >= 52) {
-        profile.weeklyReviews = profile.weeklyReviews.slice(-51);
+      if (profile.reviews.length >= 52) {
+        profile.reviews = profile.reviews.slice(-51);
       }
-      profile.weeklyReviews.push(snapshot);
+      profile.reviews.push(snapshot);
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
 
-      emitSpineEvent('WEEKLY_REVIEW_COMPLETE', {
+      emitSpineEvent('TEMPORAL_REVIEW_COMPLETE', {
         reviewId: snapshot.id,
-        weekOf: snapshot.weekOf,
+        scope: snapshot.scope,
+        periodStart: snapshot.periodStart,
         completionRate: snapshot.completionRate,
         totalCompleted: snapshot.totalCompleted
       });
@@ -939,6 +947,102 @@ export function registerAtlasActions() {
 
       profile.habits = profile.habits.filter(h => h.id !== habitId);
 
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    },
+
+    set_daily_intention: async ({ userId, encryptionKey, payload }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const now = new Date().toISOString();
+      const dateOnly = now.slice(0, 10);
+
+      const existingIdx = profile.dailyIntentions.findIndex(i => i.date === dateOnly);
+      
+      if (existingIdx >= 0) {
+        // Update existing for today
+        const current = profile.dailyIntentions[existingIdx];
+        profile.dailyIntentions[existingIdx] = {
+          ...current,
+          theme: typeof payload?.theme === 'string' ? payload.theme : current.theme,
+          focusDomain: typeof payload?.focusDomain === 'string' ? payload.focusDomain : current.focusDomain,
+          energyTarget: typeof payload?.energyTarget === 'number' ? Math.max(0, Math.min(10, payload.energyTarget)) : current.energyTarget,
+        };
+      } else {
+        // Create new
+        const entry: DailyIntention = {
+          id: `intent_${crypto.randomUUID()}`,
+          date: dateOnly,
+          theme: typeof payload?.theme === 'string' ? payload.theme : 'Standard Operation',
+          focusDomain: typeof payload?.focusDomain === 'string' ? payload.focusDomain : 'General',
+          energyTarget: typeof payload?.energyTarget === 'number' ? Math.max(0, Math.min(10, payload.energyTarget)) : 5,
+          createdAt: now
+        };
+        profile.dailyIntentions = [entry, ...profile.dailyIntentions].slice(0, 30);
+      }
+      
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    },
+
+    update_routine: async ({ userId, encryptionKey, payload }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      if (typeof payload?.isActive === 'boolean') {
+        profile.routine.isActive = payload.isActive;
+      }
+      
+      if (Array.isArray(payload?.blocks)) {
+        profile.routine.blocks = payload.blocks.map((b: any, index: number) => ({
+          id: b?.id || `block_${crypto.randomUUID()}`,
+          title: b?.title || `Block ${index}`,
+          startTime: b?.startTime || '09:00',
+          endTime: b?.endTime || '10:00',
+          daysOfWeek: Array.isArray(b?.daysOfWeek) ? b.daysOfWeek : [1, 2, 3, 4, 5],
+          category: b?.category || 'other',
+          energyCost: typeof b?.energyCost === 'number' ? b.energyCost : 5
+        }));
+      }
+      
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    },
+
+    log_habit_metric: async ({ userId, encryptionKey, payload }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const habitId = typeof payload?.id === 'string' ? payload.id : null;
+      const value = payload?.value;
+      if (!habitId || value === undefined) return;
+
+      const habit = profile.habits.find(h => h.id === habitId);
+      if (!habit) return;
+
+      if (!habit.logs) habit.logs = [];
+      
+      const now = new Date().toISOString();
+      const dateOnly = now.slice(0, 10);
+      
+      habit.logs.push({
+        date: dateOnly,
+        value: typeof value === 'number' || typeof value === 'string' ? value : String(value),
+        notes: typeof payload?.notes === 'string' ? payload.notes : undefined
+      });
+      
+      if (typeof value === 'number' && typeof habit.metricValue === 'number') {
+         if (payload?.operation === 'add') {
+             habit.metricValue += value;
+         } else if (payload?.operation === 'set') {
+             habit.metricValue = value;
+         }
+      } else if (typeof value === 'number') {
+         habit.metricValue = value;
+      }
+
+      habit.updatedAt = now;
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
     }
   });

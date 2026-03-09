@@ -17,7 +17,8 @@ import {
   syncGuestAtlasProfileToUser
 } from './services/atlas-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
-import { CollapsibleAIPanel } from '@/core/components/CollapsibleAIPanel';
+import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
+import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useSchemaRegistry } from '@/lib/hooks/use-schema-registry';
 import { AtlasOnboarding } from './onboarding/AtlasOnboarding';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
@@ -51,6 +52,26 @@ interface AtlasContentProps {
 
 function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updateCrossFunctionalState, isLocked }: AtlasContentProps) {
   const agentAlias = globalSoul?.displayNames?.atlas || 'Atlas';
+  const [activeTab, setActiveTab] = useState<any>('dashboard');
+
+  // AI Logic for Atlas
+  const ai = useModuleAI({
+    moduleId: 'atlas',
+    systemPrompt: ATLAS_PERSONA,
+    encryptionKey,
+    persistencePolicy: 'atlas-planning'
+  });
+
+  useEffect(() => {
+    if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
+      ai.setMessages([
+        {
+          role: 'assistant',
+          content: `Cognitive link active. I am ${agentAlias}. Share task pressure, schedule constraints, or focus instability and I will reshape your wave.`
+        }
+      ]);
+    }
+  }, [profile?.onboardingComplete, ai.messages.length, ai.isProcessing, ai.streamingText, agentAlias, ai.setMessages]);
 
   // Extension field management via SchemaRegistry
   const {
@@ -125,11 +146,20 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
   }, [buildActionContext]);
 
   const handlePauseHabit = useCallback((habitId: string) => {
-    ActionHub.execute('atlas', 'pause_habit', buildActionContext({
-      id: habitId,
-      paused: true
-    }));
-  }, [buildActionContext]);
+    const habit = profile?.habits.find(h => h.id === habitId);
+    if (!habit) return;
+    
+    if (habit.status === 'paused') {
+      ActionHub.execute('atlas', 'update_habit', buildActionContext({
+        id: habitId,
+        status: 'active'
+      }));
+    } else {
+      ActionHub.execute('atlas', 'pause_habit', buildActionContext({
+        id: habitId
+      }));
+    }
+  }, [profile?.habits, buildActionContext]);
 
   const handleCreateTask = useCallback((task: Record<string, unknown>) => {
     const now = new Date().toISOString();
@@ -205,6 +235,14 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
     }));
   }, [buildActionContext]);
 
+  const handleUpdateRoutine = useCallback((updates: Record<string, unknown>) => {
+    ActionHub.execute('atlas', 'update_routine', buildActionContext(updates));
+  }, [buildActionContext]);
+
+  const handleUpdateIntention = useCallback((updates: Record<string, unknown>) => {
+    ActionHub.execute('atlas', 'set_daily_intention', buildActionContext(updates));
+  }, [buildActionContext]);
+
   useSpineEvent('BURNOUT_WARNING', (event) => {
     if (!profile) return;
     const window = buildRecoveryWindow('burnout_warning');
@@ -246,45 +284,41 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
   });
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Full-width planner dashboard */}
-      <div className="flex-1 overflow-y-auto no-scrollbar">
-        <EnhancedAtlasDashboard
-          soul={globalSoul}
-          profile={profile}
-          isLocked={isLocked}
-          onCompleteTask={handleCompleteTask}
-          onCompleteHabit={handleCompleteHabit}
-          onUpdateGoalProgress={handleUpdateGoalProgress}
-          onPauseHabit={handlePauseHabit}
-          onCreateTask={handleCreateTask}
-          onCreateHabit={handleCreateHabit}
-          onCreateGoal={handleCreateGoal}
-          onUpdateTask={handleUpdateTask}
-          onUpdateHabit={handleUpdateHabit}
-          onUpdateGoal={handleUpdateGoal}
-          onDeleteTask={handleDeleteTask}
-          onDeleteHabit={handleDeleteHabit}
-          onDeleteGoal={handleDeleteGoal}
-          extensions={extensions}
-          fieldValues={fieldValues}
-          onAddField={handleAddField}
-          onDeleteField={handleDeleteField}
-        />
-      </div>
-
-      {/* Collapsible AI chat panel */}
-      <CollapsibleAIPanel
-        moduleId="atlas"
-        persona={agentAlias}
-        systemPrompt={ATLAS_PERSONA}
-        themeColor="sky"
-        encryptionKey={encryptionKey}
-        placeholder="Share your schedule pressure, focus bottlenecks, or request load flattening..."
-        greeting={`Cognitive link active. I am ${agentAlias}. Share task pressure, schedule constraints, or focus instability and I will reshape your wave.`}
-        authMode="atlas"
+    <SingleAgentLayout
+      moduleId="atlas"
+      agentName={agentAlias}
+      themeColor="sky"
+      ai={ai}
+      authMode="atlas"
+      placeholder="Share task pressure or schedule constraints..."
+    >
+      <EnhancedAtlasDashboard
+        soul={globalSoul}
+        profile={profile}
+        isLocked={isLocked}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onCompleteTask={handleCompleteTask}
+        onCompleteHabit={handleCompleteHabit}
+        onUpdateGoalProgress={handleUpdateGoalProgress}
+        onPauseHabit={handlePauseHabit}
+        onCreateTask={handleCreateTask}
+        onCreateHabit={handleCreateHabit}
+        onCreateGoal={handleCreateGoal}
+        onUpdateTask={handleUpdateTask}
+        onUpdateHabit={handleUpdateHabit}
+        onUpdateGoal={handleUpdateGoal}
+        onDeleteTask={handleDeleteTask}
+        onDeleteHabit={handleDeleteHabit}
+        onDeleteGoal={handleDeleteGoal}
+        onUpdateRoutine={handleUpdateRoutine}
+        onUpdateIntention={handleUpdateIntention}
+        extensions={extensions}
+        fieldValues={fieldValues}
+        onAddField={handleAddField}
+        onDeleteField={handleDeleteField}
       />
-    </div>
+    </SingleAgentLayout>
   );
 }
 

@@ -1,5 +1,6 @@
 import { ModuleId } from '@/lib/module-manifest';
-import { NeuralStateVector } from '@/lib/types';
+import { GlobalProjection, NeuralStateVector } from '@/lib/types';
+import { createDefaultNSV, normalizeNSV } from './nsv-service';
 
 export type NSVMetricPath =
   | 'biological.cnsFatigue'
@@ -190,6 +191,67 @@ export function buildCalibrationPrompt(moduleId: ModuleId): string {
   }
   const lines = owned.map((metric) => `- ${NSV_CALIBRATION_PROMPTS[metric] ?? metric}`);
   return ['Calibration required. Please provide:', ...lines].join('\n');
+}
+
+export function filterNSVForModule(
+  nsv: NeuralStateVector | null | undefined,
+  moduleId: ModuleId
+): NeuralStateVector {
+  const allowedPaths = NSV_READ_PERMISSIONS[moduleId] ?? [];
+  const allowed = new Set<NSVMetricPath>(allowedPaths);
+
+  // If nothing is allowed for the module, return an empty/default NSV to avoid leaking data.
+  if (allowed.size === 0) {
+    return createDefaultNSV();
+  }
+
+  const source = normalizeNSV(nsv);
+  const filtered: any = {
+    biological: {},
+    emotional: {},
+    cognitive: {},
+    planning: {},
+    resource: {},
+    lastUpdated: {}
+  };
+
+  const copyMetric = (path: NSVMetricPath) => {
+    const [root, leaf] = path.split('.') as [keyof NeuralStateVector, string];
+    const rootVal = (source as Record<string, any>)[root];
+    if (!rootVal || typeof rootVal !== 'object') return;
+    const value = rootVal[leaf];
+    if (value === undefined) return;
+    if (!(filtered as Record<string, any>)[root]) {
+      (filtered as Record<string, any>)[root] = {};
+    }
+    (filtered as Record<string, any>)[root][leaf] = value;
+  };
+
+  allowed.forEach(copyMetric);
+
+  filtered.lastUpdated = Object.entries(source.lastUpdated || {}).reduce<Record<string, string>>(
+    (acc, [metric, stamp]) => {
+      if (allowed.has(metric as NSVMetricPath)) {
+        acc[metric] = stamp;
+      }
+      return acc;
+    },
+    {}
+  );
+
+  // normalizeNSV merges defaults and binds legacy aliases without reintroducing redacted fields.
+  return normalizeNSV(filtered);
+}
+
+export function filterGlobalSoulForModule(
+  projection: GlobalProjection | null,
+  moduleId: ModuleId
+): GlobalProjection | null {
+  if (!projection) return null;
+  return {
+    ...projection,
+    crossFunctionalState: filterNSVForModule(projection.crossFunctionalState, moduleId)
+  };
 }
 
 export function getMetricValue(nsv: NeuralStateVector | null | undefined, path: NSVMetricPath): unknown {

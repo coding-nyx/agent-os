@@ -1,9 +1,8 @@
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
-import { getFirebase } from '../firebase';
 import { GlobalProjection, CoreUserProfile, NeuralStateVector, NeuralStateVectorPatch } from '../types';
 import { createDefaultNSV, normalizeNSV } from './nsv-service';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
-import { readDocOnce } from './firestore-once';
+import { getNexusDataLayer } from '../data-layer/provider';
+import { NexusDataLayer } from '../data-layer';
 
 const COLLECTION = 'global_souls';
 
@@ -120,27 +119,24 @@ function buildNSVUpdatePayload(updates: NeuralStateVectorPatch, timestamp: strin
 }
 
 export const GlobalProjectionService = {
-  async getProjection(uid: string): Promise<GlobalProjection | null> {
+  async getProjection(
+    uid: string,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<GlobalProjection | null> {
     if (!uid) return null;
-    const { db } = getFirebase();
-    if (!db) return null;
-
-    const docRef = doc(db, COLLECTION, uid);
-    const snap = await readDocOnce(docRef);
-
-    if (snap.exists()) {
-      const projection = snap.data() as GlobalProjection;
-      return {
-        ...projection,
-        crossFunctionalState: normalizeNSV(projection.crossFunctionalState)
-      };
-    }
-    return null;
+    const projection = await dataLayer.getDocument<GlobalProjection>(COLLECTION, uid);
+    if (!projection) return null;
+    const { id: _discard, ...rest } = projection;
+    return {
+      ...(rest as GlobalProjection),
+      crossFunctionalState: normalizeNSV((rest as GlobalProjection).crossFunctionalState),
+    };
   },
 
-  async syncFromProfile(profile: CoreUserProfile): Promise<GlobalProjection | null> {
-    const { db } = getFirebase();
-    if (!db) throw new Error('Firebase not initialized');
+  async syncFromProfile(
+    profile: CoreUserProfile,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<GlobalProjection | null> {
     if (!profile?.uid) {
       console.warn('syncFromProfile called with no profile UID');
       return null;
@@ -186,7 +182,7 @@ export const GlobalProjectionService = {
     };
 
     // Load existing projection to preserve crossFunctionalState if it exists
-    const existing = await this.getProjection(profile.uid);
+    const existing = await this.getProjection(profile.uid, dataLayer);
 
     // Skip write if the profile-derived fields haven't changed.
     // This prevents the onSnapshot → syncFromProfile → setDoc feedback that
@@ -210,7 +206,7 @@ export const GlobalProjectionService = {
     };
 
     try {
-      await setDoc(doc(db, COLLECTION, profile.uid), newProjection);
+      await dataLayer.setDocument(COLLECTION, profile.uid, newProjection);
     } catch (error) {
       console.error('[GlobalProjectionService] Failed to sync projection from profile:', error);
       throw error;
@@ -218,38 +214,63 @@ export const GlobalProjectionService = {
     return newProjection;
   },
 
-  async updateTherapeuticBaseline(uid: string, baseline: GlobalProjection['therapeuticBaseline']): Promise<void> {
+  async updateTherapeuticBaseline(
+    uid: string,
+    baseline: GlobalProjection['therapeuticBaseline'],
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<void> {
     if (!uid) return;
-    const { db } = getFirebase();
-    if (!db) return;
-
-    const docRef = doc(db, COLLECTION, uid);
     try {
-      await updateDoc(docRef, {
+      await dataLayer.updateDocument<GlobalProjection>(COLLECTION, uid, {
         therapeuticBaseline: baseline,
-        lastSync: new Date().toISOString()
+        lastSync: new Date().toISOString(),
       });
     } catch (error) {
       console.error('[GlobalProjectionService] Failed to update therapeutic baseline:', error);
     }
   },
 
-  async updateCrossFunctionalState(uid: string, updates: NeuralStateVectorPatch): Promise<void> {
+  async updateCrossFunctionalState(
+    uid: string,
+    updates: NeuralStateVectorPatch,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<void> {
     if (!uid) return;
-    const { db } = getFirebase();
-    if (!db) return;
+    const existing = await dataLayer.getDocument<GlobalProjection>(COLLECTION, uid);
+    if (!existing) return;
 
-    const docRef = doc(db, COLLECTION, uid);
     const updatePayload = buildNSVUpdatePayload(updates, new Date().toISOString());
     if (Object.keys(updatePayload).length === 0) return;
 
+    const next: GlobalProjection = { ...existing };
+    Object.entries(updatePayload).forEach(([path, value]) => {
+      applyPathValue(next, path, value);
+    });
+    next.lastSync = new Date().toISOString();
+    next.crossFunctionalState = normalizeNSV(next.crossFunctionalState);
+
     try {
-      await updateDoc(docRef, {
-        ...updatePayload,
-        lastSync: new Date().toISOString()
-      });
+      await dataLayer.setDocument(COLLECTION, uid, next);
     } catch (error) {
       console.error('[GlobalProjectionService] Failed to update cross-functional state:', error);
     }
   }
 };
+
+function applyPathValue(target: any, path: string, value: unknown) {
+  const segments = path.split('.');
+  if (segments.length === 1) {
+    target[path] = value;
+    return;
+  }
+  let cursor: Record<string, unknown> = target;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const key = segments[i];
+    const existing = cursor[key];
+    if (typeof existing !== 'object' || existing === null) {
+      cursor[key] = {};
+    }
+    cursor = cursor[key] as Record<string, unknown>;
+  }
+  cursor[segments[segments.length - 1]] = value;
+}

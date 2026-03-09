@@ -37,12 +37,57 @@ export function uint8ArrayToBase64(buffer: ArrayBuffer | Uint8Array): string {
   return window.btoa(binary);
 }
 
+let worker: Worker | null = null;
+let callbackMap = new Map<number, { resolve: Function, reject: Function }>();
+let messageId = 0;
+
+if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
+  try {
+    worker = new Worker(new URL('./encryption.worker.ts', import.meta.url), { type: 'module' });
+    worker.onmessage = (e) => {
+      const { id, rawKey, error, success } = e.data;
+      const cb = callbackMap.get(id);
+      if (cb) {
+        if (success) cb.resolve(rawKey);
+        else cb.reject(new Error(error));
+        callbackMap.delete(id);
+      }
+    };
+  } catch (err) {
+    console.warn("Failed to initialize encryption worker, falling back to main thread.");
+  }
+}
+
 /**
  * Derives an AES-GCM encryption key from a password and salt.
  * @param iterations - defaults to ITERATIONS_V1 (100k) for backward compatibility
  *   with existing vault canaries and direct callers. encryptData passes ITERATIONS_V2.
  */
 export async function deriveKey(password: string, salt: Uint8Array, iterations: number = ITERATIONS_V1): Promise<CryptoKey> {
+  if (worker) {
+    return new Promise((resolve, reject) => {
+      const id = ++messageId;
+      callbackMap.set(id, {
+        resolve: async (rawKey: ArrayBuffer) => {
+          try {
+            const key = await window.crypto.subtle.importKey(
+              "raw",
+              rawKey,
+              { name: "AES-GCM", length: 256 },
+              false,
+              ["encrypt", "decrypt"]
+            );
+            resolve(key);
+          } catch (err) {
+            reject(err);
+          }
+        },
+        reject
+      });
+      worker!.postMessage({ id, password, salt, iterations });
+    });
+  }
+
   const enc = new TextEncoder();
   const keyMaterial = await window.crypto.subtle.importKey(
     "raw",

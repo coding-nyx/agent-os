@@ -1,14 +1,28 @@
 import { createContext, useContext, useState, ReactNode, useRef, useEffect, useCallback } from 'react';
+import { create } from 'zustand';
 import { GlobalProjection, NeuralStateVectorPatch } from './types';
 import { useAuth } from './auth-context';
 import { GlobalProjectionService } from './services/global-projection-service';
 import { ConversationContext } from '@/llm-engine/types';
 import { formatNSVForPrompt, formatNSVForModulePrompt, formatNSVForAtlasPlanner, normalizeNSV } from './services/nsv-service';
-import { NSV_READ_PERMISSIONS } from './services/nsv-ownership';
+import { NSV_READ_PERMISSIONS, filterGlobalSoulForModule } from './services/nsv-ownership';
 import type { ModuleId } from './module-manifest';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { getFirebase } from './firebase';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
+import { useDataLayer } from './data-layer/provider';
+
+interface GlobalSoulStore {
+  globalSoul: GlobalProjection | null;
+  isLoading: boolean;
+  setGlobalSoul: (soul: GlobalProjection | null) => void;
+  setIsLoading: (loading: boolean) => void;
+}
+
+export const useGlobalSoulStore = create<GlobalSoulStore>((set) => ({
+  globalSoul: null,
+  isLoading: true,
+  setGlobalSoul: (soul) => set({ globalSoul: soul }),
+  setIsLoading: (loading) => set({ isLoading: loading })
+}));
 
 export interface GlobalSoulContextType {
   globalSoul: GlobalProjection | null;
@@ -16,33 +30,24 @@ export interface GlobalSoulContextType {
   refreshGlobalSoul: () => Promise<void>;
   updateCrossFunctionalState: (updates: NeuralStateVectorPatch) => Promise<void>;
   updateTherapeuticBaseline: (baseline: GlobalProjection['therapeuticBaseline']) => Promise<void>;
-  /** Full NSV injection — used by Nexus (orchestrator) which requires all fields. */
   enhanceContext: (context: ConversationContext) => ConversationContext;
-  /**
-   * Filtered NSV injection — injects only the NSV fields permitted for the given module
-   * per NSV_READ_PERMISSIONS. Use this for all non-Nexus modules to enforce privacy
-   * boundaries and reduce prompt noise.
-   *
-   * Atlas receives a planning-optimised context block (formatNSVForAtlasPlanner) that
-   * includes derived directives in addition to raw field values.
-   *
-   * @param extensionFieldsBlock - Optional pre-serialized extension fields block
-   *   (e.g. "[CUSTOM TRACKED FIELDS — TRAINER]\n- Creatine Cycle: ...").
-   *   Produced by `serializeExtensionFields()` in titan-session-prompt.ts.
-   */
   enhanceContextForModule: (
     context: ConversationContext,
     moduleId: ModuleId,
     extensionFieldsBlock?: string,
   ) => ConversationContext;
+  getFilteredSoulForModule: (moduleId: ModuleId) => GlobalProjection | null;
 }
 
-const GlobalSoulContext = createContext<GlobalSoulContextType | null>(null);
+// Actions remain in Context so they have access to `user` and `profile` from useAuth
+const GlobalSoulActionsContext = createContext<Omit<GlobalSoulContextType, 'globalSoul' | 'isLoading'> | null>(null);
 
 export function GlobalSoulProvider({ children }: { children: ReactNode }) {
   const { user, profile, loading: authLoading } = useAuth();
-  const [globalSoul, setGlobalSoul] = useState<GlobalProjection | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const dataLayer = useDataLayer();
+  const setGlobalSoul = useGlobalSoulStore(s => s.setGlobalSoul);
+  const setIsLoading = useGlobalSoulStore(s => s.setIsLoading);
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
 
   const refreshGlobalSoul = useCallback(async () => {
     if (!user) {
@@ -53,24 +58,23 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     
     setIsLoading(true);
     try {
-      const projection = await GlobalProjectionService.getProjection(user.uid);
+      const projection = await GlobalProjectionService.getProjection(user.uid, dataLayer);
       setGlobalSoul(projection);
     } catch (e) {
       console.error("Failed to refresh Global Projection:", e);
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, setGlobalSoul, setIsLoading, dataLayer]);
 
   const updateCrossFunctionalState = useCallback(async (updates: NeuralStateVectorPatch) => {
     if (!user) return;
     try {
-      await GlobalProjectionService.updateCrossFunctionalState(user.uid, updates);
-      // onSnapshot listener on line ~76 handles state update automatically
+      await GlobalProjectionService.updateCrossFunctionalState(user.uid, updates, dataLayer);
     } catch (e) {
       console.error("Failed to update Cross Functional State:", e);
     }
-  }, [user]);
+  }, [user, dataLayer]);
 
   const hasRefreshedRef = useRef(false);
 
@@ -78,7 +82,6 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     if (authLoading) return;
 
     if (user) {
-      // Guard against double-fire when both user and profile resolve on mount
       if (hasRefreshedRef.current) return;
       hasRefreshedRef.current = true;
       refreshGlobalSoul();
@@ -87,41 +90,30 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
       setGlobalSoul(null);
       setIsLoading(false);
     }
-  }, [user, profile, authLoading, refreshGlobalSoul]);
+  }, [user, profile, authLoading, refreshGlobalSoul, setGlobalSoul, setIsLoading]);
 
   useEffect(() => {
     if (!user || authLoading) return;
-    const { db } = getFirebase();
-    if (!db) return;
-
-    const projectionRef = doc(db, 'global_souls', user.uid);
-    const unsubscribe = onSnapshot(
-      projectionRef, 
-      (snapshot) => {
-        if (!snapshot.exists()) {
+    const unsubscribe = dataLayer.subscribeToDocument<GlobalProjection>(
+      'global_souls',
+      user.uid,
+      (record) => {
+        if (!record) {
           setGlobalSoul(null);
           setIsLoading(false);
           return;
         }
-        const projection = snapshot.data() as GlobalProjection;
         setGlobalSoul({
-          ...projection,
-          crossFunctionalState: normalizeNSV(projection.crossFunctionalState)
+          ...record,
+          crossFunctionalState: normalizeNSV(record.crossFunctionalState),
         });
-        setIsLoading(false);
-      },
-      (error) => {
-        console.warn('Global Soul subscription delay or missing doc:', error);
-        setGlobalSoul(null);
         setIsLoading(false);
       }
     );
 
     return () => unsubscribe();
-  }, [user, authLoading]);
+  }, [user, authLoading, setGlobalSoul, setIsLoading, dataLayer]);
 
-  // When the Soma profile changes, the cascade rule emits HEALTH_CONTEXT_STALE.
-  // Force a projection refresh so enhanceContextForModule() uses fresh data.
   useSpineEvent('HEALTH_CONTEXT_STALE', () => {
     console.info('[GlobalSoul] HEALTH_CONTEXT_STALE received — refreshing projection');
     refreshGlobalSoul();
@@ -130,12 +122,11 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
   const updateTherapeuticBaseline = useCallback(async (baseline: GlobalProjection['therapeuticBaseline']) => {
     if (!user) return;
     try {
-      await GlobalProjectionService.updateTherapeuticBaseline(user.uid, baseline);
-      // onSnapshot listener handles state update automatically
+      await GlobalProjectionService.updateTherapeuticBaseline(user.uid, baseline, dataLayer);
     } catch (e) {
       console.error("Failed to update Therapeutic Baseline:", e);
     }
-  }, [user]);
+  }, [user, dataLayer]);
 
   const enhanceContext = useCallback((context: ConversationContext): ConversationContext => {
     if (!globalSoul) return context;
@@ -170,13 +161,10 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
     const safePronouns = (profile?.pronouns || 'They/Them').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 30);
     const safeInsights = (globalSoul?.compactedInsights || []).map(i => i.slice(0, 200));
 
-    // Atlas gets a planning-optimised context block with derived directives
     const nsvBlock = moduleId === 'atlas'
       ? formatNSVForAtlasPlanner(state)
       : formatNSVForModulePrompt(state, NSV_READ_PERMISSIONS[moduleId] ?? []);
 
-    // Skip appending if there's no meaningful state data for this module
-    // (and no extension fields to inject either)
     if (!nsvBlock && !extensionFieldsBlock) return context;
 
     const moduleContext = [
@@ -187,7 +175,6 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
       safeInsights.length > 0
         ? `ACTIVE TRENDS:\n${safeInsights.map(i => `- ${i}`).join('\n')}`
         : '',
-      // Append extension field values (dynamic fields tracked by the user)
       extensionFieldsBlock || '',
     ].filter(Boolean).join('\n');
 
@@ -197,18 +184,37 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
     };
   }, [globalSoul, profile]);
 
+  const getFilteredSoulForModule = useCallback((moduleId: ModuleId) => {
+    return filterGlobalSoulForModule(useGlobalSoulStore.getState().globalSoul, moduleId);
+  }, []);
+
   return (
-    <GlobalSoulContext.Provider value={{
-      globalSoul, isLoading: isLoading || authLoading, refreshGlobalSoul, updateCrossFunctionalState,
-      updateTherapeuticBaseline, enhanceContext, enhanceContextForModule
+    <GlobalSoulActionsContext.Provider value={{
+      refreshGlobalSoul, updateCrossFunctionalState,
+      updateTherapeuticBaseline, enhanceContext, enhanceContextForModule, getFilteredSoulForModule
     }}>
       {children}
-    </GlobalSoulContext.Provider>
+    </GlobalSoulActionsContext.Provider>
   );
 }
 
-export function useGlobalSoul() {
-  const context = useContext(GlobalSoulContext);
-  if (!context) throw new Error("useGlobalSoul must be used within GlobalSoulProvider");
-  return context;
+// Backward compatible hook that merges Zustand state and React Context actions
+export function useGlobalSoul(): GlobalSoulContextType {
+  const actions = useContext(GlobalSoulActionsContext);
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
+  const isLoading = useGlobalSoulStore(s => s.isLoading);
+  
+  if (!actions) throw new Error("useGlobalSoul must be used within GlobalSoulProvider");
+  
+  return {
+    ...actions,
+    globalSoul,
+    isLoading
+  };
+}
+
+export function useFilteredGlobalSoul(moduleId: ModuleId): { globalSoul: GlobalProjection | null; isLoading: boolean } {
+  const globalSoul = useGlobalSoulStore((state) => filterGlobalSoulForModule(state.globalSoul, moduleId));
+  const isLoading = useGlobalSoulStore((state) => state.isLoading);
+  return { globalSoul, isLoading };
 }

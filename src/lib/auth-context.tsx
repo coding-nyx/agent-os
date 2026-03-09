@@ -6,6 +6,7 @@ import { FirebaseAuthService } from './services/firebase-auth-service';
 import { CoreProfileService } from './services/core-profile-service';
 import { GlobalProjectionService } from './services/global-projection-service';
 import { CoreUserProfile } from './types';
+import { useDataLayer } from './data-layer/provider';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -28,6 +29,7 @@ const GUEST_SESSION_KEY = 'nexus_guest_active';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authService: IAuthService = useMemo(() => new FirebaseAuthService(), []);
+  const dataLayer = useDataLayer();
   
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<CoreUserProfile | null>(null);
@@ -42,25 +44,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const p = await CoreProfileService.getProfile(user.uid);
+      const p = await CoreProfileService.getProfile(user.uid, dataLayer);
       if (p) {
         setProfile(p);
-        await GlobalProjectionService.syncFromProfile(p);
+        await GlobalProjectionService.syncFromProfile(p, dataLayer);
       } else {
         setProfile(null);
       }
     } catch (e) {
       console.error("Profile sync suspended due to network integrity.");
     }
-  }, [user]);
+  }, [user, dataLayer]);
 
   const initializeNewUser = async () => {
       if (!user || !user.email) return;
       setLoading(true);
       try {
-          const newP = await CoreProfileService.initializeProfile(user.uid, user.email);
+          const newP = await CoreProfileService.initializeProfile(user.uid, user.email, dataLayer);
           setProfile(newP);
-          await GlobalProjectionService.syncFromProfile(newP);
+          await GlobalProjectionService.syncFromProfile(newP, dataLayer);
       } finally {
           setLoading(false);
       }
@@ -113,10 +115,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (authService.getCurrentUser()?.uid !== user.uid) return;
           setProfile(nextProfile);
           if (nextProfile) {
-            await GlobalProjectionService.syncFromProfile(nextProfile);
+            await GlobalProjectionService.syncFromProfile(nextProfile, dataLayer);
           }
           setLoading(false);
-        });
+        }, dataLayer);
       } catch (e) {
         console.error('Auth boot sequence encountered a data-sync delay:', e);
         setLoading(false);
@@ -130,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profileUnsubRef.current = null;
       }
     };
-  }, [user, isGuest, authService]);
+  }, [user, isGuest, authService, dataLayer]);
 
   const login = async (email: string, password: string) => {
     setLoading(true);

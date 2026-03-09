@@ -170,7 +170,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div className="px-8 pt-8 pb-4">
+      <div className="px-4 md:px-8 pt-4 md:pt-8 pb-2 md:pb-4">
         <SectionHeader
           label="Research Domain"
           title="Knowledge Node"
@@ -179,7 +179,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
         />
       </div>
 
-      <div className="px-8 pb-6 border-b border-white/5">
+      <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5">
         <NeuralTabGroup
           tabs={tabs}
           activeTab={activeView}
@@ -188,7 +188,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pt-6">
+      <div className="flex-1 overflow-y-auto no-scrollbar pt-4 md:pt-6">
         {activeView === 'research' ? (
           <div className="flex-1 flex flex-col min-h-0 p-6 pt-0 gap-6 overflow-hidden">
             <div className={cn(

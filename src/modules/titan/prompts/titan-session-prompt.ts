@@ -1,4 +1,4 @@
-import { Routine, TitanProfile, BiomarkerRecord, ClearanceRecord, LabSummaryRecord } from '@/lib/types';
+import { Routine, TitanProfile, BiomarkerRecord, ClearanceRecord, LabSummaryRecord, SleepEntry, CycleEntry, WorkoutSession } from '@/lib/types';
 import type { ContextPolicy } from '@/lib/types';
 import { SchemaRegistry } from '@/lib/schema-registry';
 import { serializeSomaExtensionFields, SOMA_MEDICAL_DISCLAIMER } from '@/modules/soma/prompts/soma-prompt-builder';
@@ -51,6 +51,11 @@ export const TITAN_ALLOWED_ACTIONS: Record<TitanContextMode['kind'], readonly st
     'parse_health_report',
     'parse_workout_log',
     'parse_biometric_data',
+    'log_sleep',
+    'create_cycle',
+    'advance_cycle_phase',
+    'complete_cycle',
+    'log_workout_session',
     'suggest_field',
     'create_field',
     'delete_field',
@@ -96,6 +101,80 @@ function formatClearances(clearances: ClearanceRecord[]): string {
     .join('\n');
 }
 
+function formatSleepLog(entries: SleepEntry[]): string {
+  if (!entries.length) return 'No sleep entries logged.';
+
+  const recent = entries.slice(0, 14);
+  const avgQuality = (recent.reduce((s, e) => s + e.quality, 0) / recent.length).toFixed(1);
+  const avgDuration = (recent.reduce((s, e) => s + e.durationHours, 0) / recent.length).toFixed(1);
+
+  // Compact: when more than 30 total entries exist, summarise older nights as aggregates
+  // and show per-night detail only for the last 7
+  const detailed = entries.slice(0, 7);
+  const older = entries.slice(7, 14);
+
+  const detailedLines = detailed.map(e => {
+    const tags = e.tags?.length ? ` [${e.tags.join(', ')}]` : '';
+    const extra = [
+      `${e.durationHours}h`,
+      e.bedtime && e.wakeTime ? `${e.bedtime}→${e.wakeTime}` : null,
+      e.deepSleepPct != null ? `deep ${e.deepSleepPct}%` : null,
+      e.remSleepPct != null ? `REM ${e.remSleepPct}%` : null,
+      e.awakenings != null ? `${e.awakenings} awakenings` : null,
+    ].filter(Boolean).join(', ');
+    return `${e.date}: quality ${e.quality}/10, ${extra}${tags}${e.notes ? ` — "${e.notes}"` : ''}`;
+  });
+
+  const lines = [...detailedLines];
+
+  if (older.length) {
+    const olderAvgQ = (older.reduce((s, e) => s + e.quality, 0) / older.length).toFixed(1);
+    const olderAvgD = (older.reduce((s, e) => s + e.durationHours, 0) / older.length).toFixed(1);
+    lines.push(`(nights ${detailed.length + 1}–${recent.length} avg: quality ${olderAvgQ}/10, ${olderAvgD}h)`);
+  }
+
+  const totalNote = entries.length > 14 ? ` | ${entries.length} total nights on record` : '';
+  return `14-day averages: quality ${avgQuality}/10, duration ${avgDuration}h${totalNote}\n${lines.join('\n')}`;
+}
+
+function formatRecentSessions(sessions: WorkoutSession[]): string {
+  if (!sessions.length) return 'No sessions logged yet.';
+
+  const recent = sessions.slice(0, 7);
+
+  // Per-session detail for last 7
+  const lines = recent.map(s => {
+    const vol = s.totalVolume ? `, ${s.totalVolume}kg` : '';
+    const rpe = s.rpe != null ? `, RPE ${s.rpe}/10` : '';
+    const status = s.status !== 'completed' ? ` [${s.status}]` : '';
+    return `${s.date}: ${s.routineName}${vol}${rpe}${status}`;
+  });
+
+  // Compact aggregate for everything beyond the last 7
+  const older = sessions.slice(7);
+  if (older.length) {
+    const totalVol = older.reduce((t, s) => t + (s.totalVolume ?? 0), 0);
+    const avgRpe = older.filter(s => s.rpe != null).length
+      ? (older.reduce((t, s) => t + (s.rpe ?? 0), 0) / older.filter(s => s.rpe != null).length).toFixed(1)
+      : null;
+    lines.push(`(${older.length} older sessions — total ${totalVol}kg lifted${avgRpe ? `, avg RPE ${avgRpe}` : ''})`);
+  }
+
+  return lines.join('\n');
+}
+
+function formatCycles(cycles: CycleEntry[]): string {
+  const active = cycles.filter(c => c.status === 'active');
+  if (!active.length) return 'No active cycles.';
+  return active.map(c => {
+    const phase = c.phases[c.currentPhaseIndex];
+    const phaseInfo = phase
+      ? `Phase ${c.currentPhaseIndex + 1}/${c.phases.length}: "${phase.name}" (${phase.durationDays}d${phase.dosage ? `, ${phase.dosage}` : ''}${phase.trainingModifier ? `, training: ${phase.trainingModifier}` : ''})`
+      : 'No phases defined';
+    return `${c.name} [${c.type}] — started ${c.startDate} — ${phaseInfo}${c.notes ? ` — ${c.notes}` : ''}`;
+  }).join('\n');
+}
+
 function formatLabSummaries(labs: LabSummaryRecord[]): string {
   if (!labs.length) return 'No lab summaries.';
   const recent = labs.slice(0, 5);
@@ -123,8 +202,11 @@ Macro Estimate: ${profile.nutrition?.macroEstimate ? `${profile.nutrition.macroE
 ACTIVITY:
 Level: ${profile.activity?.activityLevel || 'Unknown'}
 Workouts/Week: ${profile.activity?.workoutsPerWeek || 'Unknown'}
-Sleep Hours: ${profile.activity?.sleepHours || 'Unknown'}
+Sleep Hours (baseline): ${profile.activity?.sleepHours || 'Unknown'}
 Notes: ${profile.activity?.dayToDayNotes || 'None'}
+
+SLEEP LOG (last 14 nights):
+${formatSleepLog(profile.sleepLog ?? [])}
 
 HISTORY & GOALS:
 Years Training: ${profile.history?.yearsTraining || 'Unknown'}
@@ -132,7 +214,13 @@ Injuries: ${Array.isArray(profile.history?.injuries) ? profile.history.injuries.
 Goals: ${Array.isArray(profile.history?.goals) ? profile.history.goals.join(', ') : (profile.history?.goals || profile.history?.bodyGoals || 'Unknown')}
 
 CURRENT ROUTINES:
-${routinesText}`;
+${routinesText}
+
+ACTIVE CYCLES:
+${formatCycles(profile.cycles ?? [])}
+
+RECENT WORKOUT SESSIONS (last 7):
+${formatRecentSessions(profile.workoutSessions ?? [])}`;
 
   const hasMedicalData = profile.knownConditions?.length || profile.medications?.length || profile.allergies?.length;
   if (hasMedicalData) {
@@ -144,6 +232,7 @@ Medications: ${profile.medications?.length ? profile.medications.join(', ') : 'N
 Allergies: ${profile.allergies?.length ? profile.allergies.join(', ') : 'None reported'}
 Medical Summary: ${profile.medicalSummary || 'Not yet summarized'}`;
   }
+
 
   return context;
 }
@@ -178,6 +267,11 @@ ${recoveryBlock}${clearanceNote}
 [AVAILABLE ACTIONS]
 - Update profile: <action type="update_titan_profile">{...partialProfile}</action>
 - Update routine: <action type="update_routine">{"routines":[...]}</action>
+- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","deepSleepPct":20,"remSleepPct":25,"awakenings":1,"tags":["stress"],"notes":"..."}</action>
+- Create cycle: <action type="create_cycle">{"name":"Creatine Loading","type":"supplement","description":"...","startDate":"YYYY-MM-DD","phases":[{"id":"...","name":"Loading","durationDays":5,"dosage":"20g/day"},{"id":"...","name":"Maintenance","durationDays":30,"dosage":"5g/day"}]}</action>
+- Advance cycle phase: <action type="advance_cycle_phase">{"cycleId":"..."}</action>
+- Complete cycle: <action type="complete_cycle">{"cycleId":"..."}</action>
+- Log workout session: <action type="log_workout_session">{"routineId":"...","routineName":"...","date":"YYYY-MM-DD","startedAt":"...","completedAt":"...","rpe":7,"notes":"...","status":"completed","exercises":[{"exerciseName":"Squat","plannedSets":4,"plannedReps":"8","sets":[{"setNumber":1,"weight":100,"repsCompleted":8,"completed":true}]}]}</action>
 - Recovery clearance check: <action type="self_clearance_check">{"activity":"...","recoveryScore":...}</action>
 - Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
 
@@ -415,6 +509,10 @@ ${options?.profileSummary ? `[PROFILE SUMMARY]\n${options.profileSummary}\n` : '
 - Record biomarker: <action type="commit_biomarker">{"name":"...","value":...,"unit":"..."}</action>
 - Parse lab report: <action type="parse_lab_report">{"panel":"...","findings":[...],"flags":[...]}</action>
 - Issue clearance: <action type="issue_clearance">{"activity":"...","status":"granted|denied|conditional","reason":"..."}</action>
+- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","tags":["stress"]}</action>
+- Create cycle: <action type="create_cycle">{"name":"...","type":"supplement|workout|hormonal|nutrition|recovery|custom","startDate":"YYYY-MM-DD","phases":[{"id":"...","name":"...","durationDays":7,"dosage":"...","trainingModifier":"increase|maintain|reduce|rest"}]}</action>
+- Advance cycle phase: <action type="advance_cycle_phase">{"cycleId":"..."}</action>
+- Complete cycle: <action type="complete_cycle">{"cycleId":"..."}</action>
 - Recovery check: <action type="self_clearance_check">{"activity":"...","recoveryScore":...}</action>
 - Suggest field: <action type="suggest_field">{"description":"...","purpose":"..."}</action>
 - Create field: <action type="create_field">{"id":"...","name":"...","type":"...","description":"..."}</action>

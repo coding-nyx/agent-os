@@ -1,0 +1,488 @@
+/**
+ * Atlas Module — Prompt Builder & Context Mode Definitions
+ *
+ * Implements the three-scope pattern from the dynamic field system:
+ *   1. General — full context + all actions (persisted)
+ *   2. Scoped  — single entity context + entity-specific actions (ephemeral)
+ *   3. Field CRUD — schema definitions only, NO user wellness data (ephemeral)
+ *
+ * Architecture rules:
+ *   - Atlas NEVER writes to biological/emotional/resource NSV — read-only
+ *   - Atlas gets formatNSVForAtlasPlanner() instead of generic module prompt
+ *   - LLM is sole semantic validator for custom field relevance (NO keyword gates)
+ *   - One planning decision per response
+ *   - Recovery windows are inviolable
+ */
+
+import type { FieldDefinition } from '@/lib/field-system/types';
+import type { FieldValue } from '@/lib/field-system/types';
+import type {
+  AtlasTask,
+  AtlasHabit,
+  AtlasGoal,
+} from '../services/atlas-profile-service';
+import { ATLAS_PERSONA } from '../personas';
+
+// ============================================================================
+// Context Mode Discriminated Union
+// ============================================================================
+
+/**
+ * AtlasContextMode determines what system prompt and action set Atlas uses.
+ */
+export type AtlasContextMode =
+  | { kind: 'general' }
+  | { kind: 'task-focus'; task: AtlasTask }
+  | { kind: 'habit-review'; habits: AtlasHabit[] }
+  | { kind: 'goal-planning'; goal: AtlasGoal }
+  | { kind: 'field-crud'; currentExtensions: FieldDefinition[] };
+
+// ============================================================================
+// NSV Read Permissions (Atlas-specific)
+// ============================================================================
+
+/**
+ * NSV fields Atlas is permitted to READ (but never write).
+ */
+export const ATLAS_NSV_READ_FIELDS = [
+  'biological.cnsFatigue',
+  'biological.sleepQuality',
+  'biological.recoveryScore',
+  'emotional.emotionalResilience',
+  'emotional.stressLoad',
+  'emotional.moodTrend',
+  'cognitive.energyBudget',
+  'cognitive.focusScore',
+  'cognitive.activeLoad',
+  'cognitive.researchLoad',
+  'cognitive.planningLoad',
+  'cognitive.taskCompletionRate',
+  'planning.streakHealth',
+  'planning.deadlinePressure',
+  'resource.financialFriction',
+] as const;
+
+/**
+ * NSV fields Atlas is permitted to WRITE (cognitive + planning domains only).
+ */
+export const ATLAS_NSV_WRITE_FIELDS = [
+  'cognitive.energyBudget',
+  'cognitive.focusScore',
+  'cognitive.activeLoad',
+  'cognitive.planningLoad',
+  'cognitive.taskCompletionRate',
+  'planning.streakHealth',
+  'planning.deadlinePressure',
+] as const;
+
+// ============================================================================
+// Allowed Actions Per Scope
+// ============================================================================
+
+/**
+ * Action filtering map. Even if the LLM hallucinates an out-of-scope action,
+ * the runtime hook blocks it with a console warning.
+ */
+export const ATLAS_ALLOWED_ACTIONS: Record<AtlasContextMode['kind'], string[]> = {
+  general: [
+    // Task management
+    'create_task', 'update_task', 'complete_task', 'move_task', 'prioritize', 'delete_task',
+    // Goal management
+    'create_goal', 'update_goal', 'update_goal_progress', 'set_deadline', 'delete_goal',
+    // Habit management
+    'create_habit', 'update_habit', 'update_habit_streak', 'pause_habit', 'delete_habit',
+    // Schedule management
+    'daily_plan', 'weekly_review', 'schedule_block',
+    // Energy & recovery
+    'update_energy_wave', 'create_recovery_window', 'flatten_schedule',
+    // NSV sync (Atlas-owned fields only)
+    'sync_vitals', 'request_nsv_calibration',
+    // Cross-module delegation
+    'delegate_to_module',
+    // Field CRUD (also available in general for AI proactive suggestions)
+    'suggest_field', 'create_field', 'delete_field',
+  ],
+  'task-focus': [
+    'update_task', 'complete_task', 'move_task', 'prioritize', 'set_deadline',
+    'create_task',
+  ],
+  'habit-review': [
+    'update_habit_streak', 'pause_habit', 'create_habit', 'update_habit',
+  ],
+  'goal-planning': [
+    'update_goal_progress', 'set_deadline', 'create_goal', 'update_goal',
+    'create_task',
+  ],
+  'field-crud': [
+    'suggest_field', 'create_field', 'delete_field',
+  ],
+};
+
+// ============================================================================
+// Atlas 13 Rules
+// ============================================================================
+
+/**
+ * The 13 inviolable rules for Atlas behavior.
+ */
+export const ATLAS_RULES = [
+  '1. Start every response with <thought> — always. No exceptions.',
+  '2. NEVER fabricate NSV scores, deadlines, task data, or energy values.',
+  '3. NEVER schedule over a recovery window without explicit user override with a documented reason.',
+  '4. NEVER encourage sustained high-intensity work — if activeLoad > 7 for 2+ slots, inject recovery.',
+  '5. NEVER ignore biological context — if Soma/Titan signals a contraindication, surface it before scheduling.',
+  '6. NEVER contradict Soma clearance signals — do not schedule physical demands when recoveryScore < 5.',
+  '7. NEVER write to biological, emotional, or resource NSV fields — those belong to other modules.',
+  '8. NEVER therapize — if the user is in emotional distress, stop planning and suggest Agnes.',
+  '9. NEVER promise task completion — Atlas builds plans, execution belongs to the user.',
+  '10. NEVER give financial advice — financialFriction is a scheduling constraint only; Ledger owns financial guidance.',
+  '11. NEVER build a plan where total scheduled energyCost > energyBudget × 0.8 without flagging the overload.',
+  '12. NEVER overwhelm — one planning decision per response; do not restructure the user\'s entire life at once.',
+  '13. NEVER silently deprioritize — surface all scheduling conflicts explicitly before resolving them.',
+] as const;
+
+// ============================================================================
+// Energy Budget Computation Prompt Fragment
+// ============================================================================
+
+export const ENERGY_BUDGET_COMPUTATION_PROMPT = `
+ENERGY BUDGET COMPUTATION:
+1. Start with raw energyBudget (0-10) from cognitive domain.
+2. Apply sleep modifier: if sleepQuality < 4, reduce by 2 points.
+3. Apply fatigue modifier: if cnsFatigue > 7, cap at 4.
+4. Apply stress modifier: if stressLoad > 7, reduce by 1 point.
+5. Apply financial modifier: if financialFriction > 8, reduce by 1 point (hidden cognitive tax).
+6. Floor at 0, cap at 10.
+7. Safe planning threshold = effective budget × 0.8
+8. If total scheduled energyCost > threshold, flag overload BEFORE proceeding.
+`.trim();
+
+// ============================================================================
+// System Prompt Builders
+// ============================================================================
+
+/**
+ * Build the system prompt for Atlas based on the current context mode.
+ *
+ * @param mode - The current conversation scope
+ * @param nsvBlock - Pre-formatted NSV context from formatNSVForAtlasPlanner()
+ * @param extensionFieldsBlock - Serialized extension field values
+ * @returns Complete system prompt string
+ */
+export function buildAtlasPrompt(
+  mode: AtlasContextMode,
+  nsvBlock?: string,
+  extensionFieldsBlock?: string
+): string {
+  switch (mode.kind) {
+    case 'general':
+      return buildGeneralPrompt(nsvBlock, extensionFieldsBlock);
+    case 'task-focus':
+      return buildTaskFocusPrompt(mode.task, nsvBlock);
+    case 'habit-review':
+      return buildHabitReviewPrompt(mode.habits, nsvBlock);
+    case 'goal-planning':
+      return buildGoalPlanningPrompt(mode.goal, nsvBlock);
+    case 'field-crud':
+      return buildFieldCrudPrompt(mode.currentExtensions);
+  }
+}
+
+// ── General Mode ──────────────────────────────────────────────────────────
+
+function buildGeneralPrompt(
+  nsvBlock?: string,
+  extensionFieldsBlock?: string
+): string {
+  // Full ATLAS_PERSONA already contains identity, philosophy, mission,
+  // all 13 rules, action tags, cross-module intelligence, and planning methodology.
+  // enhanceContextForModule("atlas") appends NSV + extension + compacted insights.
+  const parts = [ATLAS_PERSONA];
+
+  if (extensionFieldsBlock) {
+    parts.push(extensionFieldsBlock);
+  }
+
+  if (nsvBlock) {
+    parts.push(nsvBlock);
+  }
+
+  parts.push(ENERGY_BUDGET_COMPUTATION_PROMPT);
+
+  return parts.join('\n\n');
+}
+
+// ── Task Focus Mode ───────────────────────────────────────────────────────
+
+function buildTaskFocusPrompt(task: AtlasTask, nsvBlock?: string): string {
+  const dependencyList = task.dependencies.length > 0
+    ? `Dependencies: ${task.dependencies.join(', ')}`
+    : 'No dependencies';
+
+  return `
+IDENTITY: You are Atlas, focused on a single task.
+You are providing targeted assistance for one specific task. Stay focused — do not plan the entire day.
+
+CURRENT TASK:
+- ID: ${task.id}
+- Title: ${task.title}
+- Status: ${task.status}
+- Priority: ${task.priority}/5
+- Energy Cost: ${task.energyCost}/10
+- Deadline: ${task.deadline || 'None set'}
+- ${dependencyList}
+- Description: ${task.description || 'None'}
+- Notes: ${task.notes || 'None'}
+- Tags: ${task.tags?.join(', ') || 'None'}
+- Created: ${task.createdAt}
+
+${nsvBlock ? `\nCOGNITIVE CONTEXT:\n${nsvBlock}\n` : ''}
+
+ALLOWED ACTIONS:
+- <action type="update_task">{"id":"${task.id}", ...changes}</action>
+- <action type="complete_task">{"id":"${task.id}","completedAt":"ISO8601"}</action>
+- <action type="move_task">{"id":"${task.id}","newSlot":"ISO8601","reason":"..."}</action>
+- <action type="set_deadline">{"targetId":"${task.id}","targetType":"task","deadline":"ISO8601"}</action>
+- <action type="create_task">{...sub-task linked to this task}</action>
+
+RULES:
+${ATLAS_RULES.join('\n')}
+
+SCOPE CONSTRAINT: Only discuss and modify THIS task. If the user asks about other tasks, suggest returning to the main Atlas view.
+`.trim();
+}
+
+// ── Habit Review Mode ─────────────────────────────────────────────────────
+
+function buildHabitReviewPrompt(habits: AtlasHabit[], nsvBlock?: string): string {
+  const habitLines = habits.map(h => [
+    `- [${h.status.toUpperCase()}] "${h.title}"`,
+    `  Frequency: ${h.frequency} | Streak: ${h.currentStreak}/${h.targetStreak} (best: ${h.bestStreak})`,
+    `  Energy: ${h.energyCost}/10 | MVV: "${h.minimumViableVersion || 'not set'}"`,
+    `  Last completed: ${h.lastCompleted || 'never'}`,
+  ].join('\n')).join('\n');
+
+  return `
+IDENTITY: You are Atlas, reviewing habit health.
+You are providing guidance on habit streaks, motivation, and minimum viable versions.
+
+ACTIVE HABITS:
+${habitLines || 'No habits tracked yet.'}
+
+${nsvBlock ? `\nCOGNITIVE CONTEXT:\n${nsvBlock}\n` : ''}
+
+HABIT RULES:
+- Protect high-streak habits (streak > 7) from schedule conflicts — they are momentum assets.
+- When a streak breaks: acknowledge without shame. Offer a restart protocol.
+- New habits use the minimum viable version principle (tiny habit). Escalate gradually.
+- Paused habits retain their best streak as a reference point on resume.
+
+ALLOWED ACTIONS:
+- <action type="update_habit_streak">{"id":"habit_id","currentStreak":N,"lastCompleted":"ISO8601"}</action>
+- <action type="pause_habit">{"id":"habit_id","reason":"...","resumeDate":"ISO8601"}</action>
+- <action type="create_habit">{"title":"...","frequency":"daily","targetStreak":21,"energyCost":2,"minimumViableVersion":"..."}</action>
+- <action type="update_habit">{"id":"habit_id",...changes}</action>
+
+RULES:
+${ATLAS_RULES.join('\n')}
+
+SCOPE CONSTRAINT: Only discuss habits. For tasks or goals, suggest returning to the main Atlas view.
+`.trim();
+}
+
+// ── Goal Planning Mode ────────────────────────────────────────────────────
+
+function buildGoalPlanningPrompt(goal: AtlasGoal, nsvBlock?: string): string {
+  const milestoneLines = goal.milestones.map((m, i) =>
+    `  ${i + 1}. [${m.completed ? '✅' : '⬜'}] "${m.title}" ${m.dueDate ? `(due: ${m.dueDate})` : ''}`
+  ).join('\n');
+
+  return `
+IDENTITY: You are Atlas, focused on goal architecture.
+You are helping plan, break down, and track progress on a specific goal.
+
+CURRENT GOAL:
+- ID: ${goal.id}
+- Title: ${goal.title}
+- Status: ${goal.status}
+- Progress: ${goal.progressPercent}%
+- Deadline: ${goal.deadline || 'None set (goals without deadlines are wishes)'}
+- Success Criteria: ${goal.successCriteria || 'Not defined'}
+- Description: ${goal.description || 'None'}
+- Associated Tasks: ${goal.associatedTaskIds.length} linked tasks
+
+MILESTONES:
+${milestoneLines || '  No milestones defined yet.'}
+
+${nsvBlock ? `\nCOGNITIVE CONTEXT:\n${nsvBlock}\n` : ''}
+
+GOAL RULES:
+- Break every goal into milestones. Break every milestone into tasks.
+- Goals without deadlines are wishes. Gently push for a "committed by" date.
+- Surface goal progress during reviews. Goals should never be invisible.
+
+ALLOWED ACTIONS:
+- <action type="update_goal_progress">{"id":"${goal.id}","completedMilestoneIds":["ms_id"]}</action>
+- <action type="set_deadline">{"targetId":"${goal.id}","targetType":"goal","deadline":"ISO8601"}</action>
+- <action type="create_task">{...task linked to goal via "goalId":"${goal.id}"}</action>
+- <action type="update_goal">{"id":"${goal.id}", ...changes}</action>
+- <action type="create_goal">{...new goal}</action>
+
+RULES:
+${ATLAS_RULES.join('\n')}
+
+SCOPE CONSTRAINT: Only discuss THIS goal and its milestones/tasks. For unrelated topics, suggest returning to the main Atlas view.
+`.trim();
+}
+
+// ── Field CRUD Mode ───────────────────────────────────────────────────────
+
+function buildFieldCrudPrompt(currentExtensions: FieldDefinition[]): string {
+  const extensionList = currentExtensions.length > 0
+    ? currentExtensions.map(f =>
+        `- "${f.name}" (${f.type}) — ${f.description || 'No description'}`
+      ).join('\n')
+    : 'No custom fields yet.';
+
+  return `
+IDENTITY: You are Atlas, managing custom productivity tracking fields.
+You help users create, modify, or delete custom data fields for their Atlas productivity dashboard.
+
+DOMAIN: Productivity, planning, energy management, task tracking, habit tracking, goal setting, focus optimization, cognitive load, time management.
+
+IMPORTANT: This is a field management conversation. You have NO access to the user's wellness data, NSV scores, or personal context. You only see schema definitions.
+
+CORE SCHEMA FIELDS (immutable — cannot be duplicated or shadowed):
+- userId, energyBudget, planningLoad, taskCompletionRate, streakHealth
+- urgencyPressure, peakProductivityTime, workStyle, priorityAreas
+- habitTracking, goalReviewFrequency, procrastinationTriggers
+- focusScore, openLoopCount, lastReview, nextReview
+
+CURRENT EXTENSION FIELDS (user-created, max 15):
+${extensionList}
+Extensions used: ${currentExtensions.length}/15
+
+DOMAIN VALIDATION — YOUR RESPONSIBILITY:
+You are the sole semantic domain validator. When a user proposes a field:
+1. Is it relevant to productivity, planning, energy, focus, or cognitive work? → Approve
+2. Is it a health/biometric field? → Reject, suggest Soma module
+3. Is it an emotional/psychological field? → Reject, suggest Agnes module
+4. Is it a financial field? → Reject, suggest Ledger module
+5. Is it a fitness/training field? → Reject, suggest Titan module
+6. Does the field ID conflict with core schema? → Reject with explanation
+
+ALLOWED ACTIONS:
+- <action type="suggest_field">{"name":"...","type":"number|range|text|select|boolean|date","description":"...","validation":{...},"metadata":{"category":"focus|energy|habits|meta","icon":"LucideIconName"}}</action>
+- <action type="create_field">{"id":"kebab-case-id","name":"...","type":"...","description":"...","validation":{...},"metadata":{"category":"...","icon":"..."}}</action>
+- <action type="delete_field">{"fieldId":"existing-field-id","reason":"..."}</action>
+
+RULES:
+- Field IDs must be kebab-case and unique across core + extensions
+- Validate type consistency (defaultValue matches field type)
+- Provide clear descriptions for every field
+- Categories: focus, energy, habits, meta
+- If rejecting, explain WHY and suggest the correct module
+- Maximum 15 extension fields — warn user when approaching limit
+`.trim();
+}
+
+// ============================================================================
+// Extension Field Context Serialization
+// ============================================================================
+
+/**
+ * Serialize extension field values for injection into general/task-focus prompts.
+ *
+ * Produces:
+ * ```
+ * [CUSTOM TRACKED METRICS — ATLAS]
+ * - Deep Work Hours: 4.5 (number: 0-16, daily)
+ * - Meeting Load: 7/10 (range)
+ * ```
+ */
+export function serializeAtlasExtensionFields(
+  extensions: FieldDefinition[],
+  values: Record<string, FieldValue> = {}
+): string {
+  if (extensions.length === 0) return '';
+
+  const lines = extensions.map(field => {
+    const val = values[field.id];
+    const currentValue = val?.value ?? field.defaultValue ?? '—';
+    const min = field.validation?.minimum;
+    const max = field.validation?.maximum;
+    const rangeStr = (min != null && max != null) ? `${min}-${max}` : '';
+
+    let formatted: string;
+    if (field.type === 'range' && max != null) {
+      formatted = `${currentValue}/${max}`;
+    } else {
+      formatted = String(currentValue);
+    }
+
+    const typeInfo = rangeStr ? `${field.type}: ${rangeStr}` : field.type;
+    const lastUpdatedStr = val?.timestamp
+      ? `, updated ${new Date(val.timestamp).toLocaleDateString()}`
+      : '';
+
+    return `- ${field.name}: ${formatted} (${typeInfo}${lastUpdatedStr})`;
+  });
+
+  return `[CUSTOM TRACKED METRICS — ATLAS]\n${lines.join('\n')}`;
+}
+
+// ============================================================================
+// Greeting Templates
+// ============================================================================
+
+/**
+ * Greeting messages per context mode.
+ */
+export function getAtlasGreeting(mode: AtlasContextMode, agentAlias: string): string {
+  switch (mode.kind) {
+    case 'general':
+      return `Cognitive link active. I am ${agentAlias}. Share task pressure, schedule constraints, or focus instability and I will reshape your wave.`;
+    case 'task-focus':
+      return `Focused on: "${mode.task.title}". What do you need — breakdown, reschedule, or completion?`;
+    case 'habit-review':
+      return `Reviewing ${mode.habits.length} habit(s). Let's check streaks and adjust if needed.`;
+    case 'goal-planning':
+      return `Planning mode for: "${mode.goal.title}" (${mode.goal.progressPercent}% complete). Where should we focus?`;
+    case 'field-crud':
+      return `Field management active. Describe what you want to track, or ask me to suggest productivity metrics.`;
+  }
+}
+
+// ============================================================================
+// Placeholder / Input Hint Templates
+// ============================================================================
+
+/**
+ * Chat input placeholder text per context mode.
+ */
+export function getAtlasPlaceholder(mode: AtlasContextMode): string {
+  switch (mode.kind) {
+    case 'general':
+      return 'Share your schedule pressure, focus bottlenecks, or request load flattening...';
+    case 'task-focus':
+      return 'Ask about this task — break it down, reschedule, or mark complete...';
+    case 'habit-review':
+      return 'Discuss streak health, adjust frequency, or pause a habit...';
+    case 'goal-planning':
+      return 'Plan milestones, link tasks, or update progress...';
+    case 'field-crud':
+      return 'Describe a productivity metric to track, or ask for suggestions...';
+  }
+}
+
+/**
+ * Check whether an action type is allowed in the given scope.
+ */
+export function isActionAllowedInScope(
+  actionType: string,
+  scopeKind: AtlasContextMode['kind']
+): boolean {
+  const allowed = ATLAS_ALLOWED_ACTIONS[scopeKind];
+  if (!allowed) return false;
+  return allowed.includes(actionType);
+}

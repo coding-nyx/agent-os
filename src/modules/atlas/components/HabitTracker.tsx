@@ -247,26 +247,32 @@ export function HabitTracker({
             Paused
           </span>
           {pausedHabits.map((habit) => (
-            <div
+            <button
               key={habit.id}
-              className="rounded-xl border border-white/5 bg-white/[0.01] p-3 opacity-50"
+              onClick={() => onPause(habit.id)}
+              className="w-full text-left rounded-xl border border-white/5 bg-white/[0.01] p-3 opacity-50 hover:opacity-80 transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3">
-                <Pause
-                  className="w-4 h-4 text-white/20 shrink-0"
-                  aria-hidden="true"
-                />
+                <div className="w-6 h-6 flex items-center justify-center">
+                  <Pause
+                    className="w-3.5 h-3.5 text-white/40 group-hover:text-emerald-400 transition-colors"
+                    aria-hidden="true"
+                  />
+                </div>
                 <span className="text-sm text-white/30 font-medium truncate flex-1">
                   {habit.title}
                 </span>
-                <span className="text-[10px] text-white/15 shrink-0">
+                <span className="text-[10px] text-emerald-400/40 font-black uppercase tracking-widest hidden group-hover:inline">
+                   RESUME
+                </span>
+                <span className="text-[10px] text-white/15 shrink-0 group-hover:hidden">
                   {FREQUENCY_LABELS[habit.frequency] ?? habit.frequency}
                 </span>
-                <span className="text-[10px] text-white/15 tabular-nums shrink-0">
+                <span className="text-[10px] text-white/15 tabular-nums shrink-0 group-hover:hidden">
                   Best: {habit.bestStreak}d
                 </span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}

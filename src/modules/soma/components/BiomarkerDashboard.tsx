@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
+import { PanelLabel } from '@/core/components/PanelLabel';
 import { EmptyState } from '@/core/components/EmptyState';
 import { BiomarkerCharts, VitalsDashboard } from './BiomarkerCharts';
 import { SchemaRegistry } from '@/lib/schema-registry';
@@ -231,10 +232,8 @@ export function BiomarkerDashboard({
       )}
 
       {/* Biomarker List */}
-      <section className="space-y-3" aria-label="Latest biomarkers">
-        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
-          Latest Biomarker Entries
-        </h4>
+      <section className="space-y-4" aria-label="Latest biomarkers">
+        <PanelLabel label="Latest Biomarkers" metadata={`${sortedBiomarkers.length} entries`} />
         {sortedBiomarkers.length === 0 ? (
           <EmptyState
             size="sm"
@@ -246,15 +245,18 @@ export function BiomarkerDashboard({
         ) : (
           sortedBiomarkers.map((entry) => (
             <SurfaceCard key={entry.id} className="p-3">
-              <div className="flex items-center justify-between text-xs">
-                <div className="space-y-0.5 min-w-0">
-                  <span className="font-bold text-white/90 truncate block">{entry.name}</span>
-                  <span className="text-white/40 text-[10px]">
+              <div 
+                className="flex items-center justify-between text-xs px-1"
+                style={{ paddingTop: 'var(--list-item-py)', paddingBottom: 'var(--list-item-py)' }}
+              >
+                <div className="space-y-1 min-w-0">
+                  <span className="font-bold text-white/90 truncate block text-sm">{entry.name}</span>
+                  <span className="text-white/40 text-xs">
                     {entry.source && `${entry.source} · `}
                     {formatRelativeTime(entry.recordedAt)}
                   </span>
                 </div>
-                <span className="font-bold text-orange-300 tabular-nums shrink-0 ml-3">
+                <span className="font-black text-orange-300 tabular-nums shrink-0 ml-3 text-sm">
                   {entry.value}
                   {entry.unit ? ` ${entry.unit}` : ''}
                 </span>
@@ -275,10 +277,8 @@ export function BiomarkerDashboard({
       />
 
       {/* Lab Summaries */}
-      <section className="space-y-3" aria-label="Lab summaries">
-        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
-          Lab Summaries
-        </h4>
+      <section className="space-y-4" aria-label="Lab summaries">
+        <PanelLabel label="Lab Summaries" metadata={`${sortedLabs.length} reports`} />
         {sortedLabs.length === 0 ? (
           <EmptyState
             size="sm"
@@ -291,10 +291,13 @@ export function BiomarkerDashboard({
           sortedLabs.map((lab) => {
             const labFlags = (lab.flags ?? []).map(normalizeFlag);
             return (
-              <SurfaceCard key={lab.id} className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white/90">{lab.panel}</span>
-                  <span className="text-[10px] text-white/40">
+              <SurfaceCard key={lab.id} className="p-4">
+                <div 
+                  className="flex items-center justify-between"
+                  style={{ paddingBottom: 'var(--list-item-py)' }}
+                >
+                  <span className="text-sm font-bold text-white/90">{lab.panel}</span>
+                  <span className="text-xs text-white/40">
                     {formatRelativeTime(lab.recordedAt)}
                   </span>
                 </div>

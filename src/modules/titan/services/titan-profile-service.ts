@@ -41,21 +41,34 @@ export function createEmptyTitanProfile(): TitanProfile {
 export function normalizeTitanProfile(raw: unknown): TitanProfile {
   const base = createEmptyTitanProfile();
   if (!raw || typeof raw !== 'object') return base;
-  const data = raw as Record<string, unknown>;
-
+  const data = raw as Partial<TitanProfile>;
+  const now = new Date().toISOString();
+  const toStringArray = (value: unknown) => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : []);
   return {
-    ...base,
-    ...(data as Partial<TitanProfile>),
+    onboardingComplete: data.onboardingComplete === true,
+    privacyLevel: data.privacyLevel === 'complete' ? 'complete' : 'basic',
+    trackingLevel: data.trackingLevel === 'indepth' ? 'indepth' : 'standard',
+    nutrition: data.nutrition && typeof data.nutrition === 'object' ? (data.nutrition as TitanProfile['nutrition']) : base.nutrition,
+    activity: data.activity && typeof data.activity === 'object' ? (data.activity as TitanProfile['activity']) : base.activity,
+    history: data.history && typeof data.history === 'object' ? (data.history as TitanProfile['history']) : base.history,
+    summary: typeof data.summary === 'string' ? data.summary : '',
+    routines: Array.isArray(data.routines) ? (data.routines as TitanProfile['routines']) : base.routines,
+    sleepLog: Array.isArray(data.sleepLog) ? (data.sleepLog as TitanProfile['sleepLog']) : base.sleepLog,
+    cycles: Array.isArray(data.cycles) ? (data.cycles as TitanProfile['cycles']) : base.cycles,
+    workoutSessions: Array.isArray(data.workoutSessions) ? (data.workoutSessions as TitanProfile['workoutSessions']) : base.workoutSessions,
+    createdAt: typeof data.createdAt === 'string' ? data.createdAt : base.createdAt,
+    updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : now,
+    traits: Array.isArray(data.traits) ? data.traits.filter((entry): entry is string => typeof entry === 'string') : base.traits,
     // Ensure medical arrays are safe and bounded
-    knownConditions: Array.isArray(data.knownConditions) ? data.knownConditions as string[] : [],
-    medications: Array.isArray(data.medications) ? data.medications as string[] : [],
-    allergies: Array.isArray(data.allergies) ? data.allergies as string[] : [],
-    biomarkers: Array.isArray(data.biomarkers) ? (data.biomarkers as TitanProfile['biomarkers']).slice(0, 200) : [],
-    labSummaries: Array.isArray(data.labSummaries) ? (data.labSummaries as TitanProfile['labSummaries']).slice(0, 50) : [],
-    clearances: Array.isArray(data.clearances) ? (data.clearances as TitanProfile['clearances']).slice(0, 100) : [],
-    medicalImageAnalyses: Array.isArray(data.medicalImageAnalyses) ? (data.medicalImageAnalyses as TitanProfile['medicalImageAnalyses']).slice(0, 100) : [],
-    medicalSummary: typeof data.medicalSummary === 'string' ? data.medicalSummary : '',
-    medicalOnboardingComplete: Boolean(data.medicalOnboardingComplete),
+    knownConditions: toStringArray(data.knownConditions),
+    medications: toStringArray(data.medications),
+    allergies: toStringArray(data.allergies),
+    biomarkers: Array.isArray(data.biomarkers) ? (data.biomarkers as TitanProfile['biomarkers']).slice(0, 200) : base.biomarkers,
+    labSummaries: Array.isArray(data.labSummaries) ? (data.labSummaries as TitanProfile['labSummaries']).slice(0, 50) : base.labSummaries,
+    clearances: Array.isArray(data.clearances) ? (data.clearances as TitanProfile['clearances']).slice(0, 100) : base.clearances,
+    medicalImageAnalyses: Array.isArray(data.medicalImageAnalyses) ? (data.medicalImageAnalyses as TitanProfile['medicalImageAnalyses']).slice(0, 100) : base.medicalImageAnalyses,
+    medicalSummary: typeof (data as Record<string, unknown>).medicalSummary === 'string' ? (data as Record<string, unknown>).medicalSummary as string : '',
+    medicalOnboardingComplete: data.medicalOnboardingComplete === true,
   };
 }
 
@@ -124,10 +137,12 @@ export async function saveTitanProfile(
   profile: TitanProfile,
   { userId, encryptionKey }: LoadContext
 ): Promise<void> {
+  const normalized = normalizeTitanProfile({ ...profile, updatedAt: new Date().toISOString() });
+
   if (userId && encryptionKey) {
     const { db } = getFirebase();
     if (!db) return;
-    const encrypted = await encryptWithKey(JSON.stringify(profile), encryptionKey);
+    const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
     try {
       await setDoc(
         doc(db, 'titan_profiles', userId),
@@ -136,8 +151,8 @@ export async function saveTitanProfile(
           iv: encrypted.iv,
           salt: VAULT_SALT_MARKER,
           metadata: {
-            onboardingComplete: profile.onboardingComplete,
-            privacyLevel: profile.privacyLevel,
+            onboardingComplete: normalized.onboardingComplete,
+            privacyLevel: normalized.privacyLevel,
             lastActive: new Date().toISOString()
           }
         },
@@ -149,7 +164,7 @@ export async function saveTitanProfile(
     return;
   }
 
-  saveGuestTitanProfile(profile);
+  saveGuestTitanProfile(normalized);
 }
 
 export async function syncGuestTitanProfileToUser(

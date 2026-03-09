@@ -13,9 +13,10 @@ interface UseMemoryIntegrationOptions {
   moduleId: string;
   userId: string | undefined;
   isGuest: boolean;
+  encryptionKey?: CryptoKey | null;
 }
 
-export function useMemoryIntegration({ moduleId, userId, isGuest }: UseMemoryIntegrationOptions) {
+export function useMemoryIntegration({ moduleId, userId, isGuest, encryptionKey }: UseMemoryIntegrationOptions) {
   const episodicEnvelopeRef = useRef<Record<string, ModuleMemoryEnvelope | null>>({});
   const episodicReadyRef = useRef<Record<string, boolean>>({});
   const semanticFactsRef = useRef<SemanticFact[]>([]);
@@ -36,7 +37,7 @@ export function useMemoryIntegration({ moduleId, userId, isGuest }: UseMemoryInt
       ModuleMemoryService.subscribeEnvelope(userId, id, (envelope) => {
         episodicEnvelopeRef.current[id] = envelope;
         episodicReadyRef.current[id] = true;
-      })
+      }, encryptionKey)
     );
 
     const semanticUnsub = SemanticMemoryService.subscribeFacts(userId, (facts) => {
@@ -48,7 +49,7 @@ export function useMemoryIntegration({ moduleId, userId, isGuest }: UseMemoryInt
       unsubs.forEach((unsub) => unsub());
       semanticUnsub();
     };
-  }, [userId, isGuest, moduleId]);
+  }, [userId, isGuest, moduleId, encryptionKey]);
 
   // Reset memory state on unmount
   useEffect(() => {

@@ -1,11 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './auth-context';
 import { deriveKey, encryptWithKey, decryptWithKey, base64ToUint8Array } from './encryption';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { getFirebase } from './firebase';
-import { readDocOnce } from './services/firestore-once';
 import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
 import { syncAllGuestDataToUser } from './services/guest-sync-service';
+import { useDataLayer } from './data-layer/provider';
 
 export type VaultPersistenceMode = 'STRICT' | 'SESSION' | 'GRACE';
 
@@ -33,6 +31,7 @@ const VAULT_COLLECTION = 'vaults';
 
 export function VaultProvider({ children }: { children: React.ReactNode }) {
   const { user, profile, isGuest, loading: authLoading } = useAuth();
+  const dataLayer = useDataLayer();
   const masterKeyRef = useRef<CryptoKey | null>(null);
   const unlockInProgressRef = useRef(false);
   
@@ -72,16 +71,13 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const checkModuleVault = useCallback(async (collectionName: string): Promise<boolean> => {
     if (!user) return false;
     try {
-      const { db } = getFirebase();
-      if (!db) return false;
-      const docRef = doc(db, collectionName, user.uid);
-      const snap = await readDocOnce(docRef);
-      return snap.exists();
+      const vaultDoc = await dataLayer.getDocument(collectionName, user.uid);
+      return !!vaultDoc;
     } catch (e) {
       console.error(`Error checking vault for ${collectionName}:`, e);
       return false;
     }
-  }, [user?.uid]);
+  }, [user?.uid, dataLayer]);
 
   const refreshVaultStatus = useCallback(async () => {
     if (!user?.uid || authLoading) {
@@ -94,41 +90,42 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
 
     setIsLoading(true);
     try {
-      const { db } = getFirebase();
-      if (!db) return;
-      const snap = await readDocOnce(doc(db, VAULT_COLLECTION, user.uid));
-      setHasVault(snap.exists());
+      const vaultDoc = await dataLayer.getDocument(VAULT_COLLECTION, user.uid);
+      setHasVault(!!vaultDoc);
     } catch (e: unknown) {
       console.error("Error refreshing vault status:", e);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid, authLoading]);
+  }, [user?.uid, authLoading, dataLayer]);
 
   const unlockVault = useCallback(async (password: string) => {
     if (unlockInProgressRef.current) return;
     unlockInProgressRef.current = true;
 
     if (!user) throw new Error("User must be logged in");
-    const { db } = getFirebase();
-    if (!db) throw new Error("Firebase failure");
 
     setIsHandshaking(true);
     try {
-        const vaultRef = doc(db, VAULT_COLLECTION, user.uid);
-        const snap = await readDocOnce(vaultRef);
-        
+        const snap = await dataLayer.getDocument<{
+            salt?: string;
+            canary?: { ciphertext: string; iv: string };
+        }>(VAULT_COLLECTION, user.uid);
+
         let salt: Uint8Array;
         let canary: { ciphertext: string; iv: string } | null = null;
 
-        if (snap.exists()) {
-            const data = snap.data();
-            salt = base64ToUint8Array(data.salt);
-            canary = data.canary;
+        if (snap && snap.salt) {
+            salt = base64ToUint8Array(snap.salt);
+            canary = snap.canary ?? null;
         } else {
             salt = window.crypto.getRandomValues(new Uint8Array(16));
             const saltBase64 = window.btoa(String.fromCharCode(...salt));
-            await setDoc(vaultRef, { salt: saltBase64 }, { merge: !0 });
+            if (snap) {
+                await dataLayer.updateDocument(VAULT_COLLECTION, user.uid, { salt: saltBase64 });
+            } else {
+                await dataLayer.setDocument(VAULT_COLLECTION, user.uid, { salt: saltBase64 });
+            }
         }
 
         const key = await deriveKey(password, salt);
@@ -142,7 +139,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
             }
         } else {
             const newCanary = await encryptWithKey('NEXUS', key);
-            await setDoc(vaultRef, { canary: newCanary }, { merge: !0 });
+            await dataLayer.updateDocument(VAULT_COLLECTION, user.uid, { canary: newCanary });
         }
 
         masterKeyRef.current = key;
@@ -153,7 +150,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         unlockInProgressRef.current = false;
         setIsHandshaking(false);
     }
-  }, [user, refreshVaultStatus]);
+  }, [user, refreshVaultStatus, dataLayer]);
 
   useEffect(() => {
       const tryAutoUnlock = async () => {
@@ -191,25 +188,18 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       return () => {};
     }
 
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
     setIsLoading(true);
-    const vaultRef = doc(db, VAULT_COLLECTION, user.uid);
-    const unsubscribe = onSnapshot(
-      vaultRef,
-      (snap) => {
-        setHasVault(snap.exists());
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error('Vault subscription error:', error);
+    const unsubscribe = dataLayer.subscribeToDocument(
+      VAULT_COLLECTION,
+      user.uid,
+      (record) => {
+        setHasVault(!!record);
         setIsLoading(false);
       }
     );
 
     return () => unsubscribe();
-  }, [user?.uid, authLoading]);
+  }, [user?.uid, authLoading, dataLayer]);
 
   useEffect(() => {
     if (isUnlocked && user && !isGuest && masterKeyRef.current) {

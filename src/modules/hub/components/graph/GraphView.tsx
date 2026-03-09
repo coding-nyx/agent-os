@@ -186,13 +186,11 @@ export function GraphView({
 
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('open-nexus'))}
-            className="relative w-40 h-40 rounded-full border border-white/10 bg-black/80 backdrop-blur-3xl flex flex-col items-center justify-center shadow-[0_0_80px_rgba(139,92,246,0.15)] cursor-pointer hover:border-violet-500/30 hover:shadow-[0_0_100px_rgba(139,92,246,0.25)] transition-all duration-500 group pointer-events-auto focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+            className="relative w-32 h-32 rounded-full overflow-hidden border border-violet-500/30 bg-violet-950/60 flex items-center justify-center shadow-[0_0_60px_rgba(139,92,246,0.25)] cursor-pointer hover:border-violet-400/50 hover:bg-violet-900/70 hover:shadow-[0_0_100px_rgba(139,92,246,0.4)] transition-all duration-500 group pointer-events-auto focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+            aria-label="Open Nexus"
           >
-            <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
-            <Orbit className="w-7 h-7 text-violet-400/80 mb-2 group-hover:text-violet-300 transition-colors" />
-            <span className="text-[13px] font-black uppercase tracking-[0.2em] text-violet-400 group-hover:text-violet-300 transition-colors">
-              Nexus
-            </span>
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.07] to-transparent pointer-events-none" />
+            <Orbit className="relative w-8 h-8 text-violet-300/80 group-hover:text-violet-200 transition-colors" />
           </button>
         </div>
 

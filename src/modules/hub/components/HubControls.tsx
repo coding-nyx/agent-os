@@ -16,26 +16,27 @@ type ViewMode = '3D' | 'GRAPH' | 'CARDS';
 interface HubViewSwitcherProps {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
+  hide3D?: boolean;
 }
 
-export function HubViewSwitcher({ viewMode, setViewMode }: HubViewSwitcherProps) {
+export function HubViewSwitcher({ viewMode, setViewMode, hide3D }: HubViewSwitcherProps) {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === '1') setViewMode('CARDS');
       if (e.key === '2') setViewMode('GRAPH');
-      if (e.key === '3') setViewMode('3D');
+      if (e.key === '3' && !hide3D) setViewMode('3D');
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setViewMode]);
+  }, [setViewMode, hide3D]);
 
   const views = [
     { mode: 'CARDS' as const, icon: LayoutList, label: 'Cards', key: '1' },
     { mode: 'GRAPH' as const, icon: Share2, label: 'Graph', key: '2' },
     { mode: '3D' as const, icon: Box, label: '3D', key: '3' },
-  ];
+  ].filter(v => v.mode !== '3D' || !hide3D);
 
   return (
     <div
@@ -58,13 +59,12 @@ export function HubViewSwitcher({ viewMode, setViewMode }: HubViewSwitcherProps)
             if (e.key === 'ArrowLeft') setViewMode(views[(idx - 1 + views.length) % views.length].mode);
           }}
           className={cn(
-            "relative flex flex-col items-center gap-0.5 w-12 py-1.5 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50",
+            "relative flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50",
             viewMode === mode ? "bg-white/15 text-white shadow-sm" : "text-white/40 hover:text-white hover:bg-white/5"
           )}
           aria-label={`Switch to ${label} View (${key})`}
         >
-          <ModeIcon className="w-4 h-4" />
-          <span className="text-[7px] uppercase tracking-wider font-bold">{label}</span>
+          <ModeIcon className="w-5 h-5" />
         </button>
       ))}
     </div>
@@ -145,10 +145,10 @@ export function HubBottomDashboard({
           <div className="flex-1 flex items-center gap-4 px-6 py-3 bg-amber-500/5 rounded-[24px] border border-amber-500/10">
             <Lock className="w-5 h-5 text-amber-400 shrink-0" />
             <div className="flex-1">
-              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest block mb-0.5">Vault Encrypted</span>
-              <p className="text-[9px] text-white/50 uppercase">
-                {lockedModules.length} module{lockedModules.length > 1 ? 's' : ''} locked. Initialize handshake to sync.
-              </p>
+            <span className="text-chip text-amber-400 block mb-0.5">Vault Encrypted</span>
+            <p className="text-chip-soft text-white/60">
+              {lockedModules.length} module{lockedModules.length > 1 ? 's' : ''} locked. Initialize handshake to sync.
+            </p>
             </div>
             <NeuralButton size="sm" onClick={() => openAuth(primaryLockedModule ?? 'global')} className="bg-amber-600 hover:bg-amber-500 h-9 px-6 text-[10px]">
               Sync Now

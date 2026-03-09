@@ -42,6 +42,7 @@ interface ChatInterfaceProps {
   renderMessageActions?: (message: Message, index: number) => React.ReactNode;
   moduleId?: string;
   headerActions?: React.ReactNode;
+  isFocusMode?: boolean;
 }
 
 const THEMES = {
@@ -210,7 +211,8 @@ export function ChatInterface({
   renderCustomActions,
   renderMessageActions,
   moduleId,
-  headerActions
+  headerActions,
+  isFocusMode
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -282,7 +284,13 @@ export function ChatInterface({
   const hasMessages = messages.some((msg) => msg.role !== 'system');
 
   return (
-    <div className="flex-1 flex flex-col w-full max-w-6xl mx-auto relative h-full min-h-0">
+    <motion.div 
+      layout
+      className={cn(
+        "flex-1 flex flex-col w-full mx-auto relative h-full min-h-0",
+        isFocusMode ? "max-w-full px-4 md:px-12" : "max-w-5xl"
+      )}
+    >
       {/* Header bar for session actions */}
       {headerActions && (
         <div className="shrink-0 flex justify-end px-6 py-3">
@@ -313,36 +321,40 @@ export function ChatInterface({
             return (
               <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
                 <div className={cn("flex gap-4 w-full", isAI ? "justify-start" : "justify-end")}>
-                {isAI && (
+                {isAI && !isFocusMode && (
                   <div className={cn("w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center bg-black/60 shrink-0 mt-1 shadow-xl transition-colors", theme.accent)}>
                     <Bot className="w-5 h-5" />
                   </div>
                 )}
                 {isAI ? (
-                    <AIMessage
-                      content={showInternalSignals ? messageContentToString(msg.content) : stripInternalTags(messageContentToString(msg.content)).publicText}
-                      theme={theme}
-                      agentName={agentName}
-                      isLast={isLast}
-                      isLoading={effectiveIsProcessing}
-                    />
+                    <div className={cn("w-full flex", isFocusMode ? "justify-center" : "justify-start")}>
+                        <AIMessage
+                          content={showInternalSignals ? messageContentToString(msg.content) : stripInternalTags(messageContentToString(msg.content)).publicText}
+                          theme={theme}
+                          agentName={agentName}
+                          isLast={isLast}
+                          isLoading={effectiveIsProcessing}
+                        />
+                    </div>
                 ) : (
-                    <div className="flex flex-col max-w-[90%] items-end">
-                        <div className={cn("p-5 border backdrop-blur-3xl transition-all", theme.userBubble, theme.glow)}>
+                    <div className={cn("flex flex-col max-w-[90%] items-end", isFocusMode && "w-full !items-center")}>
+                        <div className={cn("p-5 border backdrop-blur-3xl transition-all", theme.userBubble, theme.glow, isFocusMode && "max-w-2xl w-full text-center")}>
                             <div className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap">{messageContentToString(msg.content)}</div>
-                            <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-3">
-                                <span className="text-[8px] font-mono uppercase italic tracking-widest">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
+                            {!isFocusMode && (
+                                <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-3">
+                                    <span className="text-[8px] font-mono uppercase italic tracking-widest">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
-                {!isAI && (
+                {!isAI && !isFocusMode && (
                   <div className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center bg-black/60 shrink-0 mt-1 shadow-xl">
                     <User className="w-5 h-5 text-white/40" />
                   </div>
                 )}
                 </div>
-                {actions && (
+                {actions && !isFocusMode && (
                   <div className={cn("mt-3", isAI ? "ml-12" : "mr-12")}>
                     {actions}
                   </div>
@@ -396,8 +408,8 @@ export function ChatInterface({
         <AnimatePresence>
             {quota?.isHardLocked && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute inset-x-0 bottom-full mb-10 z-[100]">
-                    <div className="bg-[#05050a]/95 backdrop-blur-3xl border border-white/10 rounded-[48px] p-12 shadow-[0_0_80px_rgba(0,0,0,0.8)] text-center space-y-8">
-                        <div className="w-20 h-20 rounded-3xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-6">
+                    <div className="bg-[#05050a]/95 backdrop-blur-3xl border border-white/10 rounded-card-strong p-12 shadow-[0_0_80px_rgba(0,0,0,0.8)] text-center space-y-8">
+                        <div className="w-20 h-20 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-6">
                             <Lock className="w-10 h-10 text-orange-400" />
                         </div>
                         <div className="space-y-3">
@@ -419,19 +431,19 @@ export function ChatInterface({
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                className="absolute bottom-full mb-4 left-0 w-80 bg-[#0a0a0f]/90 backdrop-blur-3xl border border-white/10 rounded-[32px] p-6 shadow-2xl grid grid-cols-2 gap-3"
+                className="absolute bottom-full mb-4 left-0 w-80 bg-[#0a0a0f]/90 backdrop-blur-3xl border border-white/10 rounded-card p-6 shadow-2xl grid grid-cols-2 gap-3"
               >
                 {canUploadDocs && (
                   <>
-                    <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+                    <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
                        <FileText className="w-6 h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
                        <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Upload Doc</span>
                     </button>
-                    <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+                    <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
                        <BarChart3 className="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform" />
                        <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Data CSV</span>
                     </button>
-                    <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+                    <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
                        <Search className="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform" />
                        <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Web Research</span>
                     </button>
@@ -445,7 +457,7 @@ export function ChatInterface({
           <form onSubmit={handleSubmit} className={cn("relative group transition-all duration-700", quota?.isHardLocked && "blur-2xl opacity-10 pointer-events-none")}>
             <div className={cn("absolute inset-0 blur-[100px] opacity-0 group-focus-within:opacity-40 transition-opacity rounded-full", theme.bgGlow)} />
             <div className={cn(
-                "relative flex items-end bg-[#05050a]/60 border border-white/10 rounded-[40px] p-3 backdrop-blur-3xl group-focus-within:border-white/40 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.6)]",
+                "relative flex items-end bg-[#05050a]/60 border border-white/10 rounded-panel p-3 backdrop-blur-3xl group-focus-within:border-white/40 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.6)]",
                 (error || quota?.isHardLocked) && "opacity-20 grayscale pointer-events-none"
             )}>
               {(canUploadDocs || renderCustomActions) && (
@@ -453,7 +465,7 @@ export function ChatInterface({
                   type="button"
                   onClick={() => setIsDrawerOpen(!isDrawerOpen)}
                   className={cn(
-                    "w-14 h-14 rounded-3xl flex items-center justify-center transition-all bg-white/5 border border-white/5 hover:bg-white/10 group/plus",
+                    "w-14 h-14 rounded-panel flex items-center justify-center transition-all bg-white/5 border border-white/5 hover:bg-white/10 group/plus",
                     isDrawerOpen && "bg-white/10 border-white/20 rotate-45"
                   )}
                 >
@@ -493,6 +505,6 @@ export function ChatInterface({
           </form>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,5 +1,4 @@
-import { CoreUserProfile, TitanProfile } from '@/lib/types';
-import { BaseContext } from '@/modules/agnes/types';
+import { BaseContext, CoreUserProfile, TitanProfile } from '@/lib/types';
 
 export interface GlobalBaseIntakeContext {
   name?: string;
