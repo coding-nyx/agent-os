@@ -27,7 +27,6 @@ import { ModuleMemoryService } from '@/lib/services/module-memory-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
-import { useUIStore } from '@/lib/stores/ui-store';
 
 type AgnesState = 'selecting' | 'session';
 
@@ -86,7 +85,6 @@ function AgnesContent({
   encryptionKey,
   setSessionActive
 }: AgnesContentProps) {
-  const { isFocusMode, setIsFocusMode } = useUIStore();
   const { globalSoul } = useGlobalSoul();
   const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
@@ -127,29 +125,63 @@ function AgnesContent({
   });
 
   const startSession = async (type: 'impromptu' | 'new' | 'continue') => {
-    setSessionStartedAt(Date.now());
-    setIsFocusMode(true);
+    console.log('[Agnes] startSession called with:', type);
+    
     if (type === 'continue') {
-      const inferred = messages.some((msg) => {
-        const content = typeof msg.content === 'string' ? msg.content : msg.content.filter(p => p.type === 'text').map(p => (p as any).text).join(' ');
-        return msg.role === 'assistant' && content.includes('Emergency protocol engaged');
-      })
-        ? 'impromptu'
-        : 'new';
-      setSessionType(inferred);
+      setSessionStartedAt(Date.now());
       setCurrentState('session');
       return;
     }
 
+    // Starting a fresh session (new or impromptu)
+    // 1. Clear any existing AI state/messages
+    await clearSession();
+    
+    // 2. Set the new state
     setSessionType(type);
+    setSessionStartedAt(Date.now());
     setCurrentState('session');
 
-    let initialMsg = `Neural link established. I'm ${agentAlias}. I'm here to provide a safe, encrypted space for your thoughts. Where shall we begin?`;
+    // 3. Define greeting based on type
+    const userName = (typeof profile?.baseContext?.identity === 'object' 
+      ? profile?.baseContext?.identity?.name 
+      : profile?.baseContext?.identity) || 'there';
 
+    const isFirstSession = !profile?.baseContext?.sessionCount || profile.baseContext.sessionCount === 0;
+
+    const firstTimeGreetings = [
+      `Hi, I'm ${agentAlias}. I'm here to provide a safe, encrypted space for your thoughts. Where shall we begin?`,
+      `Hello, I'm ${agentAlias}. It's a privilege to establish this link with you. How are you feeling today?`,
+      `Hi there, I'm ${agentAlias}. Think of me as a mirror for your inner world. What's on your mind?`
+    ];
+
+    const returningGreetings = [
+      `Hi ${userName}, it's good to see you again. Shall we pick up where we left off?`,
+      `Hello ${userName}, welcome back. I've been holding space for our next session. How has your journey been since we last spoke?`,
+      `Hi ${userName}, I'm glad you're back. How are you holding up today?`,
+      `Good to see you, ${userName}. I'm ready whenever you are. What's been surfacing for you lately?`
+    ];
+
+    const impromptuGreetings = [
+      "Emergency protocol engaged. I am a supportive, in-house neural agent. This session is detached from your primary encrypted context. How can I support you right now?",
+      "Support link active. I'm here for immediate recalibration. What's happening in this moment?",
+      "Priority link established. I'm here to listen and support you through this. Tell me what's on your mind."
+    ];
+
+    let initialMsg = "";
     if (type === 'impromptu') {
-      initialMsg = "Emergency protocol engaged. I am a supportive, in-house neural agent. This session is detached from your primary encrypted context. How can I support you right now?";
+      initialMsg = impromptuGreetings[Math.floor(Math.random() * impromptuGreetings.length)];
+    } else if (isFirstSession || type === 'new') {
+      // If messages exist but it's marked 'new', it might be a manual restart, 
+      // but we use returning greetings if we have a session count > 0
+      if (!isFirstSession) {
+        initialMsg = returningGreetings[Math.floor(Math.random() * returningGreetings.length)];
+      } else {
+        initialMsg = firstTimeGreetings[Math.floor(Math.random() * firstTimeGreetings.length)];
+      }
     }
 
+    console.log('[Agnes] Initializing fresh session messages for:', type);
     setMessages([{ role: 'assistant', content: initialMsg }]);
   };
 
@@ -167,7 +199,6 @@ function AgnesContent({
 
   const finalizeClose = async () => {
     await clearSession();
-    setIsFocusMode(false);
     setCurrentState('selecting');
     setSessionType(null);
     setSessionSummary(null);
@@ -225,13 +256,12 @@ function AgnesContent({
 
   return (
     <div className="flex-1 flex min-h-0 relative p-0 min-[620px]:p-4 lg:p-6">
-      <div className={cn("absolute inset-0 transition-opacity duration-1000", isFocusMode ? "opacity-20" : "opacity-100")}>
-        <Agnes3DEnvironment activeSession={currentState === 'session'} isProcessing={isProcessing} isFocusMode={isFocusMode} />
+      <div className="absolute inset-0">
+        <Agnes3DEnvironment activeSession={currentState === 'session'} isProcessing={isProcessing} />
       </div>
 
       <div className={cn(
-        "flex-1 flex flex-col min-h-0 relative z-10 !backdrop-blur-[1px] min-[620px]:rounded-panel transition-all duration-700 w-full min-w-0",
-        isFocusMode ? "!bg-transparent border-transparent shadow-none" : ""
+        "flex-1 flex flex-col min-h-0 relative z-10 !backdrop-blur-[1px] min-[620px]:rounded-panel w-full min-w-0"
       )}>
         <AnimatePresence mode="wait">
           {currentState === 'selecting' ? (

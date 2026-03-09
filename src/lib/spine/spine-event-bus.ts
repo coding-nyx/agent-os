@@ -2,6 +2,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { useEffect, useRef } from 'react';
 import { getFirebase } from '@/lib/firebase';
 import { SpineDomain, SpineEvent, SpineEventPayload, SpineEventPriority, SpineEventType } from '@/lib/types';
+import type { NexusDataLayer } from '@/lib/data-layer';
 
 export interface CascadeRule {
   id: string;
@@ -28,12 +29,23 @@ class SpineEventBus {
   private cascadeRules: CascadeRule[] = [];
   private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private uid: string | null = null;
+  private dataLayer: NexusDataLayer | null = null;
 
   private readonly validDomains: SpineDomain[] = ['B', 'E', 'C', 'R', 'system'];
   private readonly validPriorities: SpineEventPriority[] = ['info', 'alert', 'critical'];
 
   setUser(uid: string | null): void {
     this.uid = uid;
+  }
+
+  /**
+   * Inject a NexusDataLayer so Spine can persist events through the abstraction
+   * layer instead of hitting Firebase directly. Call this at app bootstrap (main.tsx).
+   * When set, `logEvent` prefers the data layer over the direct Firebase path,
+   * enabling InMemoryDataLayer injection in tests.
+   */
+  setDataLayer(layer: NexusDataLayer): void {
+    this.dataLayer = layer;
   }
 
   registerCascadeRules(rules: CascadeRule[]): void {
@@ -129,9 +141,17 @@ class SpineEventBus {
 
   private async logEvent(event: SpineEvent): Promise<void> {
     if (!this.uid) return;
+
+    // Prefer NexusDataLayer when injected — supports InMemoryDataLayer in tests
+    // and keeps Spine decoupled from the Firebase SDK.
+    if (this.dataLayer) {
+      await this.dataLayer.createDocument(`spine_events/${this.uid}/events`, event);
+      return;
+    }
+
+    // Fallback: direct Firebase write (legacy path — used until full NexusDataLayer rollout).
     const { db } = getFirebase();
     if (!db) return;
-
     await addDoc(collection(db, 'spine_events', this.uid, 'events'), event);
   }
 

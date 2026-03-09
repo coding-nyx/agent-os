@@ -44,7 +44,7 @@ export function NexusChat({
 }: NexusChatProps) {
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
-    const { isFocusMode } = useUIStore();
+
     const { messages, isProcessing, streamingText, error, quota, handleSendMessage } = ai;
 
     // streamingText is now already cleaned by the Orchestrator delta logic
@@ -61,10 +61,7 @@ export function NexusChat({
         : messages;
 
     return (
-        <div className={cn(
-            "flex-1 flex flex-col h-full min-h-0 relative transition-all duration-700",
-            isFocusMode ? "bg-black/40 backdrop-blur-3xl" : ""
-        )}>
+        <div className="flex-1 flex flex-col h-full min-h-0 relative">
             <ChatInterface 
                 messages={renderedMessages}
                 onSendMessage={(content) => handleSendMessage(content, onActionParsed)}
@@ -77,17 +74,16 @@ export function NexusChat({
                 isGuestTrial={isGuest}
                 quota={quota ?? undefined}
                 onQuotaExhausted={() => setShowAuth(true)}
-                showInternalSignals={showInternalSignals && !isFocusMode}
+                showInternalSignals={showInternalSignals}
                 renderCustomActions={renderCustomActions}
                 renderMessageActions={renderMessageActions}
                 moduleId={moduleId}
-                isFocusMode={isFocusMode}
                 headerActions={
-                  <div className="flex items-center gap-4">
-                      <div className={cn("transition-all duration-500", isFocusMode ? "opacity-0 pointer-events-none scale-95" : "opacity-100")}>
-                          {headerActions}
-                      </div>
-                  </div>
+                  headerActions ? (
+                    <div className="flex items-center gap-4">
+                        {headerActions}
+                    </div>
+                  ) : undefined
                 }
                 onRetry={() => {
                     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');

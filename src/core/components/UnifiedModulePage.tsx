@@ -49,7 +49,6 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   renderMobileFooter
   }: UnifiedModulePageProps<TProfile>) {
   const { isGuest } = useAuth();
-  const { isFocusMode, setIsFocusMode } = useUIStore();
   
   const [guestReady, setGuestReady] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -61,10 +60,10 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
     ...profileOptions
   });
 
-  // Sync sessionActive with focus mode
-  const stableSetSessionActive = useCallback((active: boolean) => {
-    setIsFocusMode(active);
-  }, [setIsFocusMode]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const stableSetSessionActive = useCallback((_active: boolean) => {
+    // Focus mode removed — session active state managed locally by each module
+  }, []);
 
   const manifest = MODULE_MANIFEST[moduleId];
   const themeColor = manifest.themeColor;
@@ -153,7 +152,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
     <div
         className={cn(
             "flex-1 flex flex-col w-full mx-auto relative min-h-0 min-w-0 transition-[max-width,padding] duration-500",
-            workspaceType === 'focus' ? (isFocusMode ? "max-w-full px-2 md:px-12" : "max-w-5xl") : "max-w-[1600px]"
+            workspaceType === 'focus' ? "max-w-5xl" : "max-w-[1600px]"
         )}
     >
         {/* Background Stages */}
@@ -221,7 +220,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
                 </div>
                 <AnimatePresence>
-                    {RenderDashboard && !isFocusMode && !noContainer && (
+                    {RenderDashboard && !noContainer && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 0.6, y: 0 }}

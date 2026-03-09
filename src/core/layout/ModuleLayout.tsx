@@ -73,7 +73,7 @@ export function ModuleLayout({
   const [showAuth, setShowAuth] = useState(false);
   const { isModuleAccessible } = useVault();
   const reducedMotion = useReducedMotion();
-  const { isFocusMode, isLeftRailVisible, isRightRailVisible } = useUIStore();
+  const { isLeftRailVisible, isRightRailVisible } = useUIStore();
 
   const handleExit = () => {
     setIsSyncing(true);
@@ -120,21 +120,10 @@ export function ModuleLayout({
         <div className={`absolute top-0 right-0 w-[820px] h-[820px] ${theme.glow} rounded-full blur-[170px] animate-pulse opacity-45`} />
         <div className={`absolute bottom-0 left-0 w-[600px] h-[600px] ${theme.glow} rounded-full blur-[150px] opacity-25`} />
         
-        {/* Deep Focus Vignette */}
-        <AnimatePresence>
-          {isFocusMode && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(2,2,5,0.8)_100%)] z-[5]"
-            />
-          )}
-        </AnimatePresence>
       </div>
 
       <AnimatePresence>
-        {(!hideNavigation && !isFocusMode) && (
+        {(!hideNavigation) && (
           <motion.header 
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}

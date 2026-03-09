@@ -8,6 +8,8 @@ import { registerAnalysisActions } from './lib/actions/analysis-actions'
 import { registerGlobalValidationActions } from './lib/actions/validation-actions'
 import { registerFieldSuggestionActions } from './lib/actions/field-suggestion-actions'
 import { initializeSchemas } from './lib/schemas/init'
+import { getNexusDataLayer } from './lib/data-layer/provider'
+import { Spine } from './lib/spine/spine-event-bus'
 
 // Module-specific action registrations — imported here so handlers are available
 // immediately, regardless of which page the user visits first (or Nexus delegates to).
@@ -41,6 +43,11 @@ registerSomaFieldActions();
 
 // Initialize schema registry with all module schemas
 initializeSchemas();
+
+// Wire NexusDataLayer into SpineEventBus so spine_events persistence goes through
+// the abstraction layer rather than hitting Firebase directly. This allows tests
+// to inject InMemoryDataLayer via setNexusDataLayer() before the Spine emits.
+Spine.setDataLayer(getNexusDataLayer());
 
 // Suppress THREE.Clock deprecation warning as it's internal to @react-three/fiber
 const oriWarn = console.warn;

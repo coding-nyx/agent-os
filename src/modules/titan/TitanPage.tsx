@@ -36,13 +36,9 @@ import type { ModuleId } from '@/lib/module-manifest';
 import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { titanDiagnosisSpec } from './diagnosis/titan-diagnosis-spec';
+import { TITAN_PERSONA } from './personas';
 
 type TitanTab = 'training' | 'biomarkers' | 'recovery' | 'sleep' | 'cycles' | 'diagnosis';
-
-const TITAN_PROMPT = `You are TITAN, an elite AI Physical Performance Strategist.
-Your tone is direct, clinical, and data-driven.
-You prioritize biological optimization and injury prevention.
-Reference the user's CNS fatigue and biometric data when giving advice.`;
 
 registerDiagnosisSpec(titanDiagnosisSpec);
 
@@ -93,7 +89,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
   const agentAlias = globalSoul?.displayNames?.titan || 'Titan';
   const systemPrompt = useMemo(() => {
-    if (!profile) return TITAN_PROMPT;
+    if (!profile) return TITAN_PERSONA;
     return buildTitanSessionPrompt(profile, {
       mode: promptMode,
       recoveryScore: globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null,

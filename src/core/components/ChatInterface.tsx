@@ -42,7 +42,6 @@ interface ChatInterfaceProps {
   renderMessageActions?: (message: Message, index: number) => React.ReactNode;
   moduleId?: string;
   headerActions?: React.ReactNode;
-  isFocusMode?: boolean;
 }
 
 const THEMES = {
@@ -212,7 +211,6 @@ export function ChatInterface({
   renderMessageActions,
   moduleId,
   headerActions,
-  isFocusMode
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -286,8 +284,7 @@ export function ChatInterface({
   return (
     <div
       className={cn(
-        "flex-1 flex flex-col w-full mx-auto relative h-full min-h-0 transition-[max-width,padding] duration-500",
-        isFocusMode ? "max-w-full px-4 md:px-12" : "max-w-5xl"
+        "flex-1 flex flex-col w-full mx-auto relative h-full min-h-0 max-w-5xl"
       )}
     >
       {/* Header bar for session actions */}
@@ -320,13 +317,13 @@ export function ChatInterface({
             return (
               <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
                 <div className={cn("flex gap-4 w-full", isAI ? "justify-start" : "justify-end")}>
-                {isAI && !isFocusMode && (
+                {isAI && (
                   <div className={cn("w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center bg-black/60 shrink-0 mt-1 shadow-xl transition-colors", theme.accent)}>
                     <Bot className="w-5 h-5" />
                   </div>
                 )}
                 {isAI ? (
-                    <div className={cn("w-full flex", isFocusMode ? "justify-center" : "justify-start")}>
+                    <div className="w-full flex justify-start">
                         <AIMessage
                           content={showInternalSignals ? messageContentToString(msg.content) : stripInternalTags(messageContentToString(msg.content)).publicText}
                           theme={theme}
@@ -336,24 +333,22 @@ export function ChatInterface({
                         />
                     </div>
                 ) : (
-                    <div className={cn("flex flex-col max-w-[90%] items-end", isFocusMode && "w-full !items-center")}>
-                        <div className={cn("p-5 border backdrop-blur-3xl transition-all", theme.userBubble, theme.glow, isFocusMode && "max-w-2xl w-full text-center")}>
+                    <div className="flex flex-col max-w-[75%] items-end">
+                        <div className={cn("p-5 border backdrop-blur-3xl transition-all", theme.userBubble, theme.glow)}>
                             <div className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap">{messageContentToString(msg.content)}</div>
-                            {!isFocusMode && (
-                                <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-3">
-                                    <span className="text-[8px] font-mono uppercase italic tracking-widest">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                            )}
+                            <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-3">
+                                <span className="text-[8px] font-mono uppercase italic tracking-widest">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
                         </div>
                     </div>
                 )}
-                {!isAI && !isFocusMode && (
+                {!isAI && (
                   <div className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center bg-black/60 shrink-0 mt-1 shadow-xl">
                     <User className="w-5 h-5 text-white/40" />
                   </div>
                 )}
                 </div>
-                {actions && !isFocusMode && (
+                {actions && (
                   <div className={cn("mt-3", isAI ? "ml-12" : "mr-12")}>
                     {actions}
                   </div>

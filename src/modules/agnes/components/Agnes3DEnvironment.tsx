@@ -47,15 +47,13 @@ function BeliefNebula() {
 interface Agnes3DEnvironmentProps {
   activeSession: boolean;
   isProcessing?: boolean;
-  isFocusMode?: boolean;
 }
 
-export function Agnes3DEnvironment({ activeSession, isProcessing, isFocusMode }: Agnes3DEnvironmentProps) {
+export function Agnes3DEnvironment({ activeSession, isProcessing }: Agnes3DEnvironmentProps) {
   const { globalSoul } = useGlobalSoul();
   const [webglError, setWebglError] = useState(false);
   
-  // Kill WebGL completely if in focus mode or error to save resources
-  const shouldRender3D = !webglError && !isFocusMode;
+  const shouldRender3D = !webglError;
 
   if (!shouldRender3D) {
     return (
