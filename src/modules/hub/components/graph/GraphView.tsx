@@ -108,6 +108,14 @@ export function GraphView({
   orchestratorNodes, moduleStats, moduleAccess, hoveredNodeId, edgeIntensity,
   onModuleNavigate, setHoveredNodeId
 }: GraphViewProps) {
+  const [showNexusStats, setShowNexusStats] = useState(false);
+  
+  // Aggregate stats from core modules for nexus display
+  const nexusStats = ['agnes', 'titan', 'ledger']
+    .map(id => ({ id, stat: moduleStats[id] }))
+    .filter(item => item.stat)
+    .map(item => item.stat as ModuleStat);
+  
   return (
     <motion.div
       key="graph"
@@ -186,11 +194,63 @@ export function GraphView({
 
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('open-nexus'))}
-            className="relative w-32 h-32 rounded-full overflow-hidden border border-violet-500/30 bg-violet-950/60 flex items-center justify-center shadow-[0_0_60px_rgba(139,92,246,0.25)] cursor-pointer hover:border-violet-400/50 hover:bg-violet-900/70 hover:shadow-[0_0_100px_rgba(139,92,246,0.4)] transition-all duration-500 group pointer-events-auto focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+            onMouseEnter={() => setShowNexusStats(true)}
+            onMouseLeave={() => setShowNexusStats(false)}
+            className="relative overflow-hidden border border-violet-500/30 bg-violet-950/60 flex items-center justify-center shadow-[0_0_60px_rgba(139,92,246,0.25)] cursor-pointer hover:border-violet-400/50 hover:bg-violet-900/70 hover:shadow-[0_0_100px_rgba(139,92,246,0.4)] transition-all duration-500 group pointer-events-auto focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+            style={{
+              width: '128px',
+              height: '128px',
+              borderRadius: '50%'
+            }}
             aria-label="Open Nexus"
           >
             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.07] to-transparent pointer-events-none" />
+            
+            {/* Orbital rings */}
+            <svg className="absolute w-full h-full" style={{ filter: 'drop-shadow(0 0 8px rgba(139, 92, 246, 0.4))' }}>
+              {/* Outer ring */}
+              <circle cx="64" cy="64" r="45" fill="none" stroke="#a78bfa" strokeWidth="0.5" opacity="0.6" />
+              {/* Middle ring */}
+              <circle cx="64" cy="64" r="30" fill="none" stroke="#a78bfa" strokeWidth="0.5" opacity="0.5" />
+              {/* Inner ring */}
+              <circle cx="64" cy="64" r="18" fill="none" stroke="#a78bfa" strokeWidth="0.5" opacity="0.4" />
+              
+              {/* Electron particles on outer orbit */}
+              <circle cx="64" cy="19" r="1.5" fill="#a78bfa" opacity="0.8" />
+              <circle cx="109" cy="64" r="1.5" fill="#a78bfa" opacity="0.7" />
+              <circle cx="64" cy="109" r="1.5" fill="#a78bfa" opacity="0.8" />
+              
+              {/* Electron particles on middle orbit */}
+              <circle cx="79" cy="39" r="1" fill="#c4b5fd" opacity="0.6" />
+              <circle cx="89" cy="64" r="1" fill="#c4b5fd" opacity="0.5" />
+              <circle cx="79" cy="89" r="1" fill="#c4b5fd" opacity="0.6" />
+            </svg>
+            
+            {/* Nexus icon in center */}
             <Orbit className="relative w-8 h-8 text-violet-300/80 group-hover:text-violet-200 transition-colors" />
+            
+            {/* Stats tooltip on hover */}
+            <AnimatePresence>
+              {showNexusStats && nexusStats.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-full mt-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/80 backdrop-blur-md border border-violet-500/50 rounded-lg px-3 py-2 shadow-lg pointer-events-none"
+                >
+                  <div className="space-y-1 text-xs">
+                    {nexusStats.map((stat, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <div className={cn("w-1.5 h-1.5 rounded-full", toneClass(stat.tone).split(' ')[0])} />
+                        <span className="text-white/80">{stat.label}:</span>
+                        <span className={cn("font-mono", toneTextClass(stat.tone))}>{stat.display}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </button>
         </div>
 

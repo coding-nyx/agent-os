@@ -564,7 +564,8 @@ export default function AgnesPage() {
       profileOptions={{
         loadProfile: loadAgnesProfile,
         saveProfile: saveAgnesProfile,
-        subscribeProfile: subscribeAgnesProfile
+        subscribeProfile: subscribeAgnesProfile,
+        refreshProfile: loadAgnesProfile
       }}
       renderOnboarding={AgnesOnboardingWrapper}
       renderContent={AgnesContent}

@@ -6,6 +6,8 @@ import { useSpineEvent } from '../spine/spine-event-bus';
 export interface UseModuleProfileOptions<TProfile> {
   moduleId: string;
   loadProfile: (params: { userId: string; encryptionKey: CryptoKey | null }) => Promise<TProfile | null>;
+  /** Optional alias for loadProfile; used to trigger an explicit profile reload from outside the hook. */
+  refreshProfile?: (params: { userId: string; encryptionKey: CryptoKey | null }) => Promise<TProfile | null>;
   saveProfile?: (profile: TProfile, params: { userId: string; encryptionKey: CryptoKey | null }) => Promise<void>;
   subscribeProfile?: (params: { userId: string; encryptionKey: CryptoKey }, onUpdate: (profile: TProfile | null) => void) => () => void;
   syncGuestProfile?: (params: { userId: string; encryptionKey: CryptoKey }) => Promise<boolean>;

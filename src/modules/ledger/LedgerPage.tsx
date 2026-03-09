@@ -333,6 +333,7 @@ export default function LedgerPage() {
         loadProfile: loadLedgerProfile,
         saveProfile: saveLedgerProfile,
         subscribeProfile: subscribeLedgerProfile,
+        refreshProfile: loadLedgerProfile,
         syncGuestProfile: syncGuestLedgerProfileToUser
       }}
       renderOnboarding={({ profile, onComplete }) => (

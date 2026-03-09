@@ -8,7 +8,7 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import { RoutineBuilder } from './RoutineBuilder';
 import { RestPeriodCalculator } from './RestPeriodCalculator';
-import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus, Pencil } from 'lucide-react';
+import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus, Pencil, MoreVertical } from 'lucide-react';
 
 interface TitanRoutinePanelProps {
   routines: Routine[];
@@ -32,6 +32,7 @@ export function TitanRoutinePanel({
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<Routine | undefined>(undefined);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const sorted = [...(routines || [])].sort((a, b) => {
     const aIndex = WEEKDAY_ORDER.indexOf(a.weekday || 'monday');
@@ -81,7 +82,7 @@ export function TitanRoutinePanel({
                   Build your weekly routine manually, or let Titan generate one based on your goals and recovery state.
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-1 relative">
                 <NeuralButton onClick={handleOpenCreate}>
                   <Plus className="w-4 h-4 mr-2" />
                   Build Manually
@@ -93,13 +94,30 @@ export function TitanRoutinePanel({
                   </NeuralButton>
                 )}
                 {onImportRoutine && (
-                  <button
-                    type="button"
-                    onClick={onImportRoutine}
-                    className="text-[11px] text-white/40 hover:text-orange-300/70 transition-colors underline underline-offset-4 decoration-white/20"
-                  >
-                    I already have a routine
-                  </button>
+                  <div className="relative z-50">
+                    <button
+                      type="button"
+                      onClick={() => setDropdownOpen(!dropdownOpen)}
+                      className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white"
+                      title="More options"
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                    {dropdownOpen && (
+                      <div className="absolute top-full right-0 mt-2 w-56 rounded-lg bg-white/10 border border-white/20 backdrop-blur-lg shadow-2xl z-[9999] overflow-visible">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onImportRoutine();
+                            setDropdownOpen(false);
+                          }}
+                          className="w-full px-4 py-3 text-sm text-left text-white/80 hover:bg-white/20 transition-colors whitespace-nowrap"
+                        >
+                          Use an Existing Routine
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

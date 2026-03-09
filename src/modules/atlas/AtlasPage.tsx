@@ -332,6 +332,7 @@ export default function AtlasPage() {
         loadProfile: loadAtlasProfile,
         saveProfile: saveAtlasProfile,
         subscribeProfile: subscribeAtlasProfile,
+        refreshProfile: loadAtlasProfile,
         syncGuestProfile: syncGuestAtlasProfileToUser
       }}
       renderOnboarding={({ profile, onComplete }) => (

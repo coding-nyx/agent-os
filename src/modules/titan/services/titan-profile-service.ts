@@ -1,8 +1,6 @@
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { TitanProfile } from '@/lib/types';
-import { readDocOnce } from '@/lib/services/firestore-once';
 
 const GUEST_PROFILE_KEY = 'nexus_titan_profile_guest';
 const VAULT_SALT_MARKER = 'vault_salt_used';
@@ -74,12 +72,10 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
 
 export async function loadTitanProfile({ userId, encryptionKey }: LoadContext): Promise<TitanProfile | null> {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return null;
-    const snap = await readDocOnce(doc(db, 'titan_profiles', userId));
-    if (!snap.exists()) return null;
-    const data = snap.data();
-    if (!data?.encryptedData || !data?.iv) return null;
+    const dataLayer = getNexusDataLayer();
+    const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>('titan_profiles', userId);
+    if (!data) return null;
+    if (!data.encryptedData || !data.iv) return null;
     try {
       const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
       return normalizeTitanProfile(JSON.parse(decrypted));
@@ -97,19 +93,16 @@ export function subscribeTitanProfile(
   onUpdate: (profile: TitanProfile | null) => void
 ): () => void {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const ref = doc(db, 'titan_profiles', userId);
-    const unsubscribe = onSnapshot(
-      ref,
-      async (snap) => {
-        if (!snap.exists()) {
+    const dataLayer = getNexusDataLayer();
+    const unsubscribe = dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
+      'titan_profiles',
+      userId,
+      async (data) => {
+        if (!data) {
           onUpdate(null);
           return;
         }
-        const data = snap.data();
-        if (!data?.encryptedData || !data?.iv) {
+        if (!data.encryptedData || !data.iv) {
           onUpdate(null);
           return;
         }
@@ -120,10 +113,6 @@ export function subscribeTitanProfile(
           console.error('Failed to decrypt titan profile:', e);
           onUpdate(null);
         }
-      },
-      (error) => {
-        console.warn('Titan profile subscription delay or missing doc:', error);
-        onUpdate(null);
       }
     );
     return unsubscribe;
@@ -140,24 +129,19 @@ export async function saveTitanProfile(
   const normalized = normalizeTitanProfile({ ...profile, updatedAt: new Date().toISOString() });
 
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return;
+    const dataLayer = getNexusDataLayer();
     const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
     try {
-      await setDoc(
-        doc(db, 'titan_profiles', userId),
-        {
-          encryptedData: encrypted.ciphertext,
-          iv: encrypted.iv,
-          salt: VAULT_SALT_MARKER,
-          metadata: {
-            onboardingComplete: normalized.onboardingComplete,
-            privacyLevel: normalized.privacyLevel,
-            lastActive: new Date().toISOString()
-          }
-        },
-        { merge: true }
-      );
+      await dataLayer.setDocument('titan_profiles', userId, {
+        encryptedData: encrypted.ciphertext,
+        iv: encrypted.iv,
+        salt: VAULT_SALT_MARKER,
+        metadata: {
+          onboardingComplete: normalized.onboardingComplete,
+          privacyLevel: normalized.privacyLevel,
+          lastActive: new Date().toISOString()
+        }
+      });
     } catch (error) {
       console.error('[TitanProfileService] Failed to save titan profile:', error);
     }
@@ -174,10 +158,9 @@ export async function syncGuestTitanProfileToUser(
   const guestProfile = loadGuestTitanProfile();
   if (!guestProfile) return false;
 
-  const { db } = getFirebase();
-  if (!db) return false;
-  const snap = await readDocOnce(doc(db, 'titan_profiles', userId));
-  if (snap.exists() && snap.data()?.encryptedData) {
+  const dataLayer = getNexusDataLayer();
+  const existing = await dataLayer.getDocument<{ encryptedData?: string }>('titan_profiles', userId);
+  if (existing?.encryptedData) {
     return false;
   }
 

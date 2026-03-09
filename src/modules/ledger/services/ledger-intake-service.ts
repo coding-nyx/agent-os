@@ -1,7 +1,5 @@
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { readDocOnce } from '@/lib/services/firestore-once';
 
 const GUEST_LEDGER_KEY = 'nexus_ledger_profile_guest';
 const VAULT_SALT_MARKER = 'vault_salt_used';
@@ -198,15 +196,10 @@ export function createEmptyLedgerProfile(): LedgerIntakeProfile {
 
 export async function loadLedgerProfile({ userId, encryptionKey }: LoadContext): Promise<LedgerIntakeProfile | null> {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return null;
-
-    const snap = await readDocOnce(doc(db, 'ledger_profiles', userId));
-    if (!snap.exists()) return null;
-
-    const data = snap.data();
-    if (!data?.encryptedData || !data?.iv) return null;
-
+    const dataLayer = getNexusDataLayer();
+    const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>('ledger_profiles', userId);
+    if (!data) return null;
+    if (!data.encryptedData || !data.iv) return null;
     try {
       const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
       return normalizeLedgerProfile(JSON.parse(decrypted));
@@ -224,19 +217,16 @@ export function subscribeLedgerProfile(
   onUpdate: (profile: LedgerIntakeProfile | null) => void
 ): () => void {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const ref = doc(db, 'ledger_profiles', userId);
-    const unsubscribe = onSnapshot(
-      ref,
-      async (snap) => {
-        if (!snap.exists()) {
+    const dataLayer = getNexusDataLayer();
+    const unsubscribe = dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
+      'ledger_profiles',
+      userId,
+      async (data) => {
+        if (!data) {
           onUpdate(null);
           return;
         }
-        const data = snap.data();
-        if (!data?.encryptedData || !data?.iv) {
+        if (!data.encryptedData || !data.iv) {
           onUpdate(null);
           return;
         }
@@ -247,9 +237,6 @@ export function subscribeLedgerProfile(
           console.error('Failed to decrypt ledger profile:', e);
           onUpdate(null);
         }
-      },
-      (error) => {
-        console.error('Ledger profile subscription error:', error);
       }
     );
     return unsubscribe;
@@ -263,26 +250,20 @@ export async function saveLedgerProfile(profile: LedgerIntakeProfile, { userId, 
   const normalizedProfile = normalizeLedgerProfile(profile);
 
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return;
-
+    const dataLayer = getNexusDataLayer();
     const encrypted = await encryptWithKey(JSON.stringify(normalizedProfile), encryptionKey);
     try {
-      await setDoc(
-        doc(db, 'ledger_profiles', userId),
-        {
-          encryptedData: encrypted.ciphertext,
-          iv: encrypted.iv,
-          salt: VAULT_SALT_MARKER,
-          metadata: {
-            onboardingComplete: normalizedProfile.onboardingComplete,
-            lastActive: new Date().toISOString(),
-            activePlanId: normalizedProfile.activePlanId,
-            plannerBotState: normalizedProfile.plannerBotState
-          }
-        },
-        { merge: true }
-      );
+      await dataLayer.setDocument('ledger_profiles', userId, {
+        encryptedData: encrypted.ciphertext,
+        iv: encrypted.iv,
+        salt: VAULT_SALT_MARKER,
+        metadata: {
+          onboardingComplete: normalizedProfile.onboardingComplete,
+          lastActive: new Date().toISOString(),
+          activePlanId: normalizedProfile.activePlanId,
+          plannerBotState: normalizedProfile.plannerBotState
+        }
+      });
     } catch (error) {
       console.error('[LedgerIntakeService] Failed to save ledger profile:', error);
     }
@@ -298,11 +279,9 @@ export async function syncGuestLedgerProfileToUser({ userId, encryptionKey }: Lo
   const guestProfile = loadGuestLedgerProfile();
   if (!guestProfile) return false;
 
-  const { db } = getFirebase();
-  if (!db) return false;
-
-  const snap = await readDocOnce(doc(db, 'ledger_profiles', userId));
-  if (snap.exists() && snap.data()?.encryptedData) {
+  const dataLayer = getNexusDataLayer();
+  const existing = await dataLayer.getDocument<{ encryptedData?: string }>('ledger_profiles', userId);
+  if (existing?.encryptedData) {
     return false;
   }
 

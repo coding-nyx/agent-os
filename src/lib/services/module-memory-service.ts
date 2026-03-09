@@ -1,8 +1,6 @@
-import { doc, setDoc, deleteDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
-import { getFirebase } from '../firebase';
+import { getNexusDataLayer } from '../data-layer/provider';
 import { ModuleMemoryEnvelope, SessionEventSummary, ActiveSessionState } from '../types';
 import { EmbeddingService } from './embedding-service';
-import { readDocOnce } from './firestore-once';
 import { encryptWithKey, decryptWithKey } from '../encryption';
 import { MODULE_MANIFEST } from '../module-manifest';
 
@@ -20,20 +18,16 @@ function getActiveSessionDocId(uid: string, moduleId: string, sessionId?: string
 export const ModuleMemoryService = {
   async getEnvelope(uid: string, moduleId: string, encryptionKey?: CryptoKey | null): Promise<ModuleMemoryEnvelope | null> {
     if (!uid || !moduleId) return null;
-    const { db } = getFirebase();
-    if (!db) return null;
+    const dataLayer = getNexusDataLayer();
 
-    const docRef = doc(db, COLLECTION_PREFIX, `${uid}_${moduleId}`);
-    const snap = await readDocOnce(docRef);
-
-    if (!snap.exists()) return null;
-
-    const data = snap.data() as ModuleMemoryEnvelope & {
+    const data = await dataLayer.getDocument<ModuleMemoryEnvelope & {
       encryptedPayload?: { ciphertext: string; iv: string };
       metadata?: Record<string, unknown>;
       lastActive?: string;
       latestSnapshot?: string;
-    };
+    }>(COLLECTION_PREFIX, `${uid}_${moduleId}`);
+
+    if (!data) return null;
 
     const baseEnvelope: ModuleMemoryEnvelope = {
       moduleId,
@@ -89,18 +83,16 @@ export const ModuleMemoryService = {
     encryptionKey?: CryptoKey | null
   ): () => void {
     if (!uid || !moduleId) return () => {};
-    const { db } = getFirebase();
-    if (!db) return () => {};
+    const dataLayer = getNexusDataLayer();
 
-    const docRef = doc(db, COLLECTION_PREFIX, `${uid}_${moduleId}`);
-    const unsubscribe = onSnapshot(
-      docRef,
-      (snap) => {
-        if (!snap.exists()) {
+    const unsubscribe = dataLayer.subscribeToDocument<ModuleMemoryEnvelope & { encryptedPayload?: { ciphertext: string; iv: string } }>(
+      COLLECTION_PREFIX,
+      `${uid}_${moduleId}`,
+      (data) => {
+        if (!data) {
           onUpdate(null);
           return;
         }
-        const data = snap.data() as ModuleMemoryEnvelope & { encryptedPayload?: { ciphertext: string; iv: string } };
         if (data.encryptedPayload) {
           if (!encryptionKey) {
             onUpdate({
@@ -145,9 +137,6 @@ export const ModuleMemoryService = {
           eventHistory: data.eventHistory || [],
           metadata: data.metadata || {}
         });
-      },
-      (error) => {
-        console.error('Module memory subscription error:', error);
       }
     );
 
@@ -156,8 +145,7 @@ export const ModuleMemoryService = {
 
   async initializeEnvelope(uid: string, moduleId: string): Promise<ModuleMemoryEnvelope> {
     if (!uid || !moduleId) throw new Error('Missing UID or Module ID');
-    const { db } = getFirebase();
-    if (!db) throw new Error('Firebase not initialized');
+    const dataLayer = getNexusDataLayer();
 
     const newEnvelope: ModuleMemoryEnvelope = {
       moduleId,
@@ -168,7 +156,7 @@ export const ModuleMemoryService = {
     };
 
     try {
-      await setDoc(doc(db, COLLECTION_PREFIX, `${uid}_${moduleId}`), newEnvelope);
+      await dataLayer.setDocument(COLLECTION_PREFIX, `${uid}_${moduleId}`, newEnvelope);
     } catch (error) {
       console.error('[ModuleMemoryService] Failed to initialize envelope:', error);
       throw error;
@@ -184,8 +172,7 @@ export const ModuleMemoryService = {
     options?: { encryptionKey?: CryptoKey | null }
   ): Promise<void> {
     if (!uid || !moduleId) return;
-    const { db } = getFirebase();
-    if (!db) return;
+    const dataLayer = getNexusDataLayer();
 
     const now = new Date().toISOString();
     const encryptionKey = options?.encryptionKey || null;
@@ -197,7 +184,7 @@ export const ModuleMemoryService = {
       return;
     }
 
-    const docRef = doc(db, COLLECTION_PREFIX, `${uid}_${moduleId}`);
+    const docId = `${uid}_${moduleId}`;
     const embeddedEvent: SessionEventSummary = {
       ...event,
       embedding: event.embedding || await EmbeddingService.embed(`${event.summary}\n${event.keyInsights.join('\n')}`)
@@ -207,20 +194,21 @@ export const ModuleMemoryService = {
       try {
         let existingMetadata: Record<string, unknown> = {};
         let existingHistory: SessionEventSummary[] = [];
-        const snap = await readDocOnce(docRef);
-        if (snap.exists()) {
-          const data = snap.data() as ModuleMemoryEnvelope & { encryptedPayload?: { ciphertext: string; iv: string } };
-          existingMetadata = (data.metadata as Record<string, unknown>) || {};
-          if (data.encryptedPayload) {
+        const existingDoc = await dataLayer.getDocument<ModuleMemoryEnvelope & { encryptedPayload?: { ciphertext: string; iv: string } }>(
+          COLLECTION_PREFIX, docId
+        );
+        if (existingDoc) {
+          existingMetadata = (existingDoc.metadata as Record<string, unknown>) || {};
+          if (existingDoc.encryptedPayload) {
             try {
-              const decrypted = await decryptWithKey(data.encryptedPayload, encryptionKey);
+              const decrypted = await decryptWithKey(existingDoc.encryptedPayload, encryptionKey);
               const parsed = JSON.parse(decrypted) as Pick<ModuleMemoryEnvelope, 'eventHistory'>;
               existingHistory = parsed.eventHistory || [];
             } catch (error) {
               console.warn('[ModuleMemoryService] Failed to decrypt existing envelope, starting new history:', error);
             }
-          } else if (Array.isArray(data.eventHistory)) {
-            existingHistory = data.eventHistory;
+          } else if (Array.isArray(existingDoc.eventHistory)) {
+            existingHistory = existingDoc.eventHistory;
           }
         }
 
@@ -233,7 +221,7 @@ export const ModuleMemoryService = {
           encryptionKey
         );
 
-        await setDoc(docRef, {
+        await dataLayer.setDocument(COLLECTION_PREFIX, docId, {
           moduleId,
           lastActive: now,
           // Do not persist plaintext event history when vault is available
@@ -249,7 +237,7 @@ export const ModuleMemoryService = {
               updatedAt: now
             }
           }
-        }, { merge: true });
+        });
         return;
       } catch (error) {
         console.error('[ModuleMemoryService] Failed to commit encrypted session:', error);
@@ -257,14 +245,20 @@ export const ModuleMemoryService = {
       }
     }
 
-    // Fallback (non-vault modules): Atomic update contract: event append -> snapshot write -> lastActive update
+    // Fallback (non-vault modules): read existing history, append, then write back
     try {
-      await setDoc(docRef, {
+      const existingDoc = await dataLayer.getDocument<{ eventHistory?: SessionEventSummary[] }>(
+        COLLECTION_PREFIX, docId
+      );
+      const existingHistory: SessionEventSummary[] = Array.isArray(existingDoc?.eventHistory)
+        ? existingDoc.eventHistory as SessionEventSummary[]
+        : [];
+      await dataLayer.setDocument(COLLECTION_PREFIX, docId, {
         moduleId,
-        eventHistory: arrayUnion(embeddedEvent),
+        eventHistory: [...existingHistory, embeddedEvent],
         latestSnapshot: snapshot,
         lastActive: now
-      }, { merge: true });
+      });
     } catch (error) {
       console.error('[ModuleMemoryService] Failed to commit session:', error);
     }
@@ -272,12 +266,10 @@ export const ModuleMemoryService = {
 
   async saveActiveSession(uid: string, session: ActiveSessionState): Promise<void> {
     if (!uid || !session?.moduleId) return;
-    const { db } = getFirebase();
-    if (!db) return;
-
-    const docRef = doc(db, ACTIVE_SESSION_COLLECTION, getActiveSessionDocId(uid, session.moduleId, session.sessionId));
+    const dataLayer = getNexusDataLayer();
+    const docId = getActiveSessionDocId(uid, session.moduleId, session.sessionId);
     try {
-      await setDoc(docRef, session);
+      await dataLayer.setDocument(ACTIVE_SESSION_COLLECTION, docId, session);
     } catch (error) {
       console.error('[ModuleMemoryService] Failed to save active session:', error);
     }
@@ -285,16 +277,10 @@ export const ModuleMemoryService = {
 
   async getActiveSession(uid: string, moduleId: string, sessionId?: string): Promise<ActiveSessionState | null> {
     if (!uid || !moduleId) return null;
-    const { db } = getFirebase();
-    if (!db) return null;
-
-    const docRef = doc(db, ACTIVE_SESSION_COLLECTION, getActiveSessionDocId(uid, moduleId, sessionId));
-    const snap = await readDocOnce(docRef);
-
-    if (snap.exists()) {
-      return snap.data() as ActiveSessionState;
-    }
-    return null;
+    const dataLayer = getNexusDataLayer();
+    const docId = getActiveSessionDocId(uid, moduleId, sessionId);
+    const data = await dataLayer.getDocument<ActiveSessionState>(ACTIVE_SESSION_COLLECTION, docId);
+    return data ?? null;
   },
 
   subscribeActiveSession(
@@ -304,35 +290,24 @@ export const ModuleMemoryService = {
     onUpdate: (session: ActiveSessionState | null) => void
   ): () => void {
     if (!uid || !moduleId) return () => {};
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const docRef = doc(db, ACTIVE_SESSION_COLLECTION, getActiveSessionDocId(uid, moduleId, sessionId));
-    const unsubscribe = onSnapshot(
-      docRef,
-      (snap) => {
-        if (!snap.exists()) {
-          onUpdate(null);
-          return;
-        }
-        onUpdate(snap.data() as ActiveSessionState);
-      },
-      (error) => {
-        console.error('Active session subscription error:', error);
+    const dataLayer = getNexusDataLayer();
+    const docId = getActiveSessionDocId(uid, moduleId, sessionId);
+    const unsubscribe = dataLayer.subscribeToDocument<ActiveSessionState>(
+      ACTIVE_SESSION_COLLECTION,
+      docId,
+      (data) => {
+        onUpdate(data ?? null);
       }
     );
-
     return unsubscribe;
   },
 
   async clearActiveSession(uid: string, moduleId: string, sessionId?: string): Promise<void> {
     if (!uid || !moduleId) return;
-    const { db } = getFirebase();
-    if (!db) return;
-
-    const docRef = doc(db, ACTIVE_SESSION_COLLECTION, getActiveSessionDocId(uid, moduleId, sessionId));
+    const dataLayer = getNexusDataLayer();
+    const docId = getActiveSessionDocId(uid, moduleId, sessionId);
     try {
-      await deleteDoc(docRef);
+      await dataLayer.deleteDocument(ACTIVE_SESSION_COLLECTION, docId);
     } catch (error) {
       console.error('[ModuleMemoryService] Failed to clear active session:', error);
     }

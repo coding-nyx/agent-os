@@ -172,7 +172,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
   const estimatedDuration = exercises.length * 5; // Rough estimate: 5 min per exercise
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
       {/* Header Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">

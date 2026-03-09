@@ -480,18 +480,8 @@ export function useModuleAI({
           if (onActionParsed) onActionParsed(type, payload);
         }
 
-        // Emit overall update event to trigger UI refresh across listeners
-        if (response.actions.length > 0) {
-          Spine.emit({
-            type: 'MODULE_PROFILE_UPDATED' as any,
-            source: moduleId,
-            domain: 'system',
-            data: { moduleId, actionCount: response.actions.length },
-            cascadeDepth: 0,
-            priority: 'info'
-          });
-        }
-
+        // CRITICAL FIX: Persist NSV updates BEFORE emitting MODULE_PROFILE_UPDATED
+        // This ensures profile refresh happens with stable NSV state, preventing stale reads
         const shouldUpdateGlobalSoul = persistencePolicy !== 'scout-research' && user && !isGuest && Object.keys(soulUpdates).length > 0;
 
         if (shouldUpdateGlobalSoul && user) {
@@ -504,6 +494,18 @@ export function useModuleAI({
             data: soulUpdates,
             cascadeDepth: 0,
             priority: 'alert'
+          });
+        }
+
+        // Emit overall update event AFTER NSV is persisted to trigger UI refresh with stable state
+        if (response.actions.length > 0) {
+          Spine.emit({
+            type: 'MODULE_PROFILE_UPDATED' as any,
+            source: moduleId,
+            domain: 'system',
+            data: { moduleId, actionCount: response.actions.length },
+            cascadeDepth: 0,
+            priority: 'info'
           });
         }
 

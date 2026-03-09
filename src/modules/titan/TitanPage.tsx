@@ -421,6 +421,7 @@ export default function TitanPage() {
         loadProfile: loadTitanProfile,
         saveProfile: saveTitanProfile,
         subscribeProfile: subscribeTitanProfile,
+        refreshProfile: loadTitanProfile,
         syncGuestProfile: syncGuestTitanProfileToUser
       }}
       renderOnboarding={({ profile, onComplete }) => (

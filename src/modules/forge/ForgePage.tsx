@@ -280,6 +280,7 @@ export default function ForgePage() {
       profileOptions={{
         loadProfile: (params) => loadForgeProfile({ userId: params.userId }),
         subscribeProfile: (params, onUpdate) => subscribeForgeProfile({ userId: params.userId }, onUpdate),
+        refreshProfile: (params) => loadForgeProfile({ userId: params.userId }),
         syncGuestProfile: (params) => syncGuestForgeProfileToUser({ userId: params.userId })
       }}
       renderContent={ForgeContent}

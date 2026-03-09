@@ -356,6 +356,11 @@ export default function ScoutPage() {
               onUpdate(p);
            });
         },
+        refreshProfile: async (params) => {
+          const p = await loadScoutProfile(params);
+          setActiveProfile(p);
+          return p;
+        },
         syncGuestProfile: syncGuestScoutProfileToUser
       }}
       renderOnboarding={(props) => (

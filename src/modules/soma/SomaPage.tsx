@@ -34,6 +34,7 @@ export default function SomaPage() {
         loadProfile: loadSomaProfile,
         saveProfile: saveSomaProfile,
         subscribeProfile: subscribeSomaProfile,
+        refreshProfile: loadSomaProfile,
         syncGuestProfile: syncGuestSomaProfileToUser
       }}
       renderContent={({ profile, encryptionKey }) => {
