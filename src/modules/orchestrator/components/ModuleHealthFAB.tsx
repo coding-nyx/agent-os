@@ -70,7 +70,7 @@ export function ModuleHealthFAB() {
             role="dialog"
             aria-label="Module Navigator"
             className={cn(
-              'absolute bottom-11 right-0',
+              'absolute bottom-16 right-0',
               'w-[280px] p-2.5 rounded-2xl',
               'bg-black/70 backdrop-blur-2xl',
               'border border-white/[0.08]',
@@ -170,7 +170,7 @@ export function ModuleHealthFAB() {
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
         className={cn(
-          'relative w-[42px] h-[42px] rounded-xl',
+          'relative w-[60px] h-[60px] rounded-2xl',
           'bg-white/[0.04] backdrop-blur-xl',
           'border border-white/[0.08]',
           'flex items-center justify-center',
@@ -186,11 +186,11 @@ export function ModuleHealthFAB() {
         <AnimatePresence mode="wait">
           {isOpen ? (
             <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.12 }}>
-              <X className="w-[18px] h-[18px] text-white/40" />
+              <X className="w-5 h-5 text-white/40" />
             </motion.div>
           ) : (
             <motion.div key="grid" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.12 }}>
-              <Grid3X3 className="w-[18px] h-[18px] text-white/35" />
+              <Grid3X3 className="w-5 h-5 text-white/35" />
             </motion.div>
           )}
         </AnimatePresence>

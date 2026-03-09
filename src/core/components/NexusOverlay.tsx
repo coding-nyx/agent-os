@@ -13,8 +13,8 @@ interface SubModuleState {
   content?: string;
 }
 
-const NEXUS_COLLAPSED_WIDTH = 42;
-const NEXUS_EXPANDED_WIDTH = 160;
+const NEXUS_COLLAPSED_WIDTH = 60;
+const NEXUS_EXPANDED_WIDTH = 180;
 
 export function NexusOverlay() {
   const { user, profile } = useAuth();
@@ -70,23 +70,22 @@ export function NexusOverlay() {
           width: isHovered ? NEXUS_EXPANDED_WIDTH : NEXUS_COLLAPSED_WIDTH,
           height: NEXUS_COLLAPSED_WIDTH,
           minWidth: NEXUS_COLLAPSED_WIDTH,
-          gap: isHovered ? 8 : 0,
-          paddingLeft: isHovered ? 14 : 0,
-          paddingRight: isHovered ? 14 : 0,
         }}
-        className="fixed bottom-4 right-4 z-[110] flex items-center justify-center rounded-xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] shadow-lg shadow-black/20 transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:border-white/[0.12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40"
+        className="fixed bottom-4 right-4 z-[110] flex items-center justify-center rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] shadow-lg shadow-black/20 transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:border-white/[0.12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40"
         aria-label="Open Nexus overlay"
       >
-        <Sparkles className="w-[18px] h-[18px] text-white/35 shrink-0" />
-        <motion.span
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isHovered ? 1 : 0 }}
-          transition={{ duration: 0.15 }}
-          style={{ maxWidth: isHovered ? 120 : 0 }}
-          className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 whitespace-nowrap overflow-hidden transition-all duration-300"
-        >
-          Consult Nexus
-        </motion.span>
+        <Sparkles className="w-5 h-5 text-white/35 shrink-0" />
+        {isHovered && (
+          <motion.span
+            initial={{ opacity: 0, width: 0 }}
+            animate={{ opacity: 1, width: 'auto' }}
+            exit={{ opacity: 0, width: 0 }}
+            transition={{ duration: 0.15 }}
+            className="ml-2 text-[9px] font-bold uppercase tracking-[0.2em] text-white/40 whitespace-nowrap overflow-hidden"
+          >
+            Consult Nexus
+          </motion.span>
+        )}
       </motion.button>
 
       <AnimatePresence>
