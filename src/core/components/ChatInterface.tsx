@@ -4,7 +4,7 @@ import {
   Send, Bot, User, Loader2, Sparkles, Shield,
   Activity as ActivityIcon, Terminal, ChevronDown, Lock, Zap,
   ArrowRight, Plus, FileText, BarChart3, Image as ImageIcon, X,
-  Search, Calculator, BrainCircuit
+  Search, Calculator, BrainCircuit, Trash2, RefreshCw
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
@@ -14,6 +14,7 @@ import { NeuralLinkAlert } from './NeuralLinkAlert';
 import { stripInternalTags } from '@/llm-engine/sanitize';
 import { NeuralButton } from './NeuralButton';
 import { EmptyState } from '@/core/components/EmptyState';
+import { getActionLabel } from '@/lib/actions/action-labels';
 
 // Helper to convert MessageContent to string for display
 function messageContentToString(content: MessageContent): string {
@@ -29,11 +30,17 @@ interface ChatInterfaceProps {
   onSendMessage: (content: string) => void;
   isLoading: boolean;
   isProcessing?: boolean;
+  aiState?: {
+    isThinking: boolean;
+    isActing: boolean;
+    currentActionType: string | null;
+  };
   themeColor: 'indigo' | 'orange' | 'cyan' | 'violet' | 'emerald' | 'sky' | 'lime' | 'rose' | 'fuchsia' | 'slate';
   placeholder?: string;
   agentName: string;
   error?: string | null;
   onRetry?: () => void;
+  onClearHistory?: () => void;
   isGuestTrial?: boolean;
   quota?: GuestQuota;
   onQuotaExhausted?: () => void;
@@ -130,37 +137,41 @@ const THEMES = {
 type ThemeConfig = typeof THEMES[keyof typeof THEMES];
 
 const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean }) {
-    const { publicText, internalText, isThinking } = stripInternalTags(content);
+    const { publicText, internalText, isThinking, isActing, currentActionType } = stripInternalTags(content);
     const [showInternal, setShowInternal] = useState(false);
     const hasPublicContent = publicText.length > 0;
 
+    // Extract completed action types for chips
+    const actionMatches = [...content.matchAll(/<action\s+type="([^"]+)">/gi)];
+    const completedActions = actionMatches.map(m => m[1]);
+
     return (
         <div className="flex flex-col w-full max-w-[90%] items-start">
-            {(isThinking || (internalText && isLast)) && (
+            {(isThinking || isActing || (internalText && isLast)) && (
                 <div className="mb-3 w-full">
                     <button 
-                        onClick={() => !isThinking && setShowInternal(!showInternal)}
-                        disabled={isThinking}
+                        onClick={() => !isThinking && !isActing && setShowInternal(!showInternal)}
+                        disabled={isThinking || isActing}
                         className={cn(
                             "flex items-center gap-3 px-4 py-2 rounded-2xl transition-all group border",
-                            isThinking ? "bg-white/[0.03] border-white/10 animate-pulse" : "bg-white/5 border-white/5 hover:bg-white/10"
+                            (isThinking || isActing) ? "bg-white/[0.03] border-white/10 animate-pulse" : "bg-white/5 border-white/5 hover:bg-white/10"
                         )}
                     >
-                        {isThinking ? (
+                        {isThinking || isActing ? (
                             <BrainCircuit className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
                         ) : (
                             <Terminal className="w-3.5 h-3.5 text-white/20 group-hover:text-white/40" />
                         )}
                         <span className={cn(
                             "text-[8px] font-black uppercase tracking-[0.3em] italic",
-                            isThinking ? "text-indigo-400" : "text-white/20 group-hover:text-white/40"
+                            (isThinking || isActing) ? "text-indigo-400" : "text-white/20 group-hover:text-white/40"
                         )}>
-                            {isThinking ? 'Processing Neural Signals...' : 'View Internal Signals'}
+                            {isThinking ? 'Processing Neural Signals...' : (isActing ? `${getActionLabel(currentActionType || 'action')}...` : 'View Internal Signals')}
                         </span>
                     </button>
                     
                     <AnimatePresence>
-                        {showInternal && !isThinking && (
+                        {showInternal && !isThinking && !isActing && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                                 <div className="mt-2 p-4 bg-black/60 border border-white/5 rounded-2xl font-mono text-[10px] text-white/40 leading-relaxed italic whitespace-pre-wrap shadow-xl">
                                     {internalText}
@@ -169,6 +180,17 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                         )}
                     </AnimatePresence>
                 </div>
+            )}
+
+            {completedActions.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {completedActions.map((type, idx) => (
+                  <div key={idx} className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-sm">
+                    <ActivityIcon className="w-3 h-3" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">{getActionLabel(type)}</span>
+                  </div>
+                ))}
+              </div>
             )}
 
             {hasPublicContent && (
@@ -198,11 +220,13 @@ export function ChatInterface({
   onSendMessage, 
   isLoading, 
   isProcessing,
+  aiState,
   themeColor, 
   placeholder = "Communicate...",
   agentName,
   error,
   onRetry,
+  onClearHistory,
   isGuestTrial,
   quota,
   onQuotaExhausted,
@@ -215,6 +239,7 @@ export function ChatInterface({
   const [input, setInput] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [hasNewCompletion, setHasNewCompletion] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -236,10 +261,17 @@ export function ChatInterface({
     }
   }, []);
 
-  // Smart auto-scroll: only scroll if user is already near the bottom
+  // Smart auto-scroll: only scroll if user is already near the bottom OR it's a user message
   useEffect(() => {
-    if (isNearBottomRef.current) {
+    const lastMessage = messages[messages.length - 1];
+    const isUserMessage = lastMessage?.role === 'user';
+    
+    if (isUserMessage || isNearBottomRef.current) {
       scrollToBottom(messages.length <= 2 ? 'instant' : 'smooth');
+      setHasNewCompletion(false);
+    } else if (lastMessage?.role === 'assistant' || isLoading) {
+      // If we are scrolled up and AI is responding, flag for manual scroll
+      setHasNewCompletion(true);
     }
   }, [messages, isLoading, error, scrollToBottom]);
 
@@ -250,8 +282,13 @@ export function ChatInterface({
     const handleScroll = () => {
       const threshold = 150;
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      isNearBottomRef.current = distanceFromBottom < threshold;
+      const nearBottom = distanceFromBottom < threshold;
+      isNearBottomRef.current = nearBottom;
       setShowScrollButton(distanceFromBottom > threshold);
+      
+      if (nearBottom) {
+        setHasNewCompletion(false);
+      }
     };
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
@@ -284,13 +321,23 @@ export function ChatInterface({
   return (
     <div
       className={cn(
-        "flex-1 flex flex-col w-full mx-auto relative h-full min-h-0 max-w-5xl"
+        "flex-1 flex flex-col w-full mx-auto relative min-h-0 max-w-5xl"
       )}
     >
       {/* Header bar for session actions */}
-      {headerActions && (
-        <div className="shrink-0 flex justify-end px-6 py-3">
+      {(headerActions || onClearHistory) && (
+        <div className="shrink-0 flex justify-end px-6 py-3 border-b border-white/5">
           <div className="flex gap-3">
+            {onClearHistory && (
+              <button
+                onClick={onClearHistory}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 transition-all group"
+                title="Clear Session History"
+              >
+                <Trash2 className="w-3.5 h-3.5 group-hover:text-rose-400 transition-colors" />
+                <span className="text-[9px] font-black uppercase tracking-widest italic">Clear Link</span>
+              </button>
+            )}
             {headerActions}
           </div>
         </div>
@@ -333,7 +380,7 @@ export function ChatInterface({
                         />
                     </div>
                 ) : (
-                    <div className="flex flex-col max-w-[75%] items-end">
+                    <div className="flex flex-col max-w-[75%] w-fit items-end">
                         <div className={cn("p-5 border backdrop-blur-3xl transition-all", theme.userBubble, theme.glow)}>
                             <div className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap">{messageContentToString(msg.content)}</div>
                             <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-3">
@@ -365,7 +412,9 @@ export function ChatInterface({
             </div>
             <div className={cn("px-6 py-4 border backdrop-blur-3xl flex items-center gap-3", theme.bubble)}>
               <span className="italic text-[10px] uppercase font-black tracking-[0.3em] text-white/50">
-                {agentName} is thinking
+                {aiState?.isActing 
+                  ? `${getActionLabel(aiState.currentActionType || 'action')}...` 
+                  : (aiState?.isThinking ? 'Processing Neural Signals...' : `${agentName} is thinking`)}
               </span>
               <span className="flex gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce [animation-delay:0ms]" />
@@ -380,19 +429,27 @@ export function ChatInterface({
       </div>
 
       <AnimatePresence>
-        {showScrollButton && (
+        {(showScrollButton || hasNewCompletion) && (
           <motion.button
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            onClick={() => { scrollToBottom(); isNearBottomRef.current = true; }}
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            onClick={() => { scrollToBottom(); isNearBottomRef.current = true; setHasNewCompletion(false); }}
             className={cn(
-              "absolute bottom-36 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-black/80 backdrop-blur-xl text-white/60 hover:text-white hover:border-white/20 transition-all shadow-xl",
+              "absolute bottom-36 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-2.5 rounded-full border backdrop-blur-xl transition-all shadow-2xl",
+              hasNewCompletion 
+                ? "bg-white/10 border-white/20 text-white animate-pulse" 
+                : "bg-black/80 border-white/10 text-white/60 hover:text-white hover:border-white/20",
               theme.accent
             )}
           >
-            <ChevronDown className="w-4 h-4" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Latest</span>
+            <ChevronDown className={cn("w-4 h-4", hasNewCompletion && "animate-bounce")} />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] italic">
+              {hasNewCompletion ? "Agent Resonance Detected" : "Scroll to Latest"}
+            </span>
+            {hasNewCompletion && (
+              <div className={cn("w-1.5 h-1.5 rounded-full bg-current animate-ping")} />
+            )}
           </motion.button>
         )}
       </AnimatePresence>

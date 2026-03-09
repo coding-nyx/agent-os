@@ -22,14 +22,15 @@ export function RoutingSuggestion({ target, reason, onConfirm, onDismiss, visibl
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 8 }}
-          transition={{ duration: 0.2 }}
+          initial={{ opacity: 0, y: 12, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.95 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
           className={cn(
-            'flex items-center gap-3 px-4 py-3 rounded-xl',
-            'border border-white/10 bg-white/[0.03] backdrop-blur-xl',
-            'mx-4 mb-2'
+            'absolute bottom-[110%] left-4 right-4 z-[90]',
+            'flex items-center gap-3 px-4 py-3 rounded-2xl',
+            'border border-white/10 bg-black/40 backdrop-blur-3xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]',
+            'mx-0'
           )}
           role="alert"
         >

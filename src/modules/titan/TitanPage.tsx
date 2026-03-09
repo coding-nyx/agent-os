@@ -13,6 +13,7 @@ import { WorkoutSessionLogger } from './components/WorkoutSessionLogger';
 import { TitanOnboarding } from './onboarding/TitanOnboarding';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
+import { cn } from '@/lib/utils';
 import { TitanProfile, Routine, Exercise } from '@/lib/types';
 import { subscribeSomaProfile } from '@/modules/soma/services/soma-profile-service';
 import type { SomaProfile } from '@/modules/soma/types';
@@ -399,7 +400,10 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar pt-4 md:pt-6">
+        <div className={cn(
+          "flex-1 no-scrollbar pt-4 md:pt-6",
+          activeTab === 'diagnosis' ? "overflow-hidden flex flex-col min-h-0" : "overflow-y-auto"
+        )}>
           {renderTabContent()}
         </div>
       </div>

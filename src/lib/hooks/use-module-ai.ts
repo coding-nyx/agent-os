@@ -10,7 +10,8 @@ import { GlobalProjectionService } from '../services/global-projection-service';
 import { Spine } from '../spine/spine-event-bus';
 import { NexusHandoffService } from '../services/nexus-handoff-service';
 import { ActionHub } from '../actions/action-hub';
-import { useMemoryIntegration } from './useMemoryIntegration';
+import { getActionLabel } from '../actions/action-labels';
+import { useMemoryIntegration, MemoryContext } from './useMemoryIntegration';
 import { useConsolidation } from './useConsolidation';
 import { useHandoffProcessor } from './useHandoffProcessor';
 
@@ -70,10 +71,23 @@ export function useModuleAI({
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [aiState, setAIState] = useState<{
+    isThinking: boolean;
+    isActing: boolean;
+    currentActionType: string | null;
+  }>({
+    isThinking: false,
+    isActing: false,
+    currentActionType: null
+  });
   const [isHydrating, setIsHydrating] = useState(true);
   const [streamingText, setStreamingText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [quota, setQuota] = useState<GuestQuota>(GuestQuotaService.getQuota());
+  const [routingSuggestion, setRoutingSuggestion] = useState<{
+    target: import('@/lib/module-manifest').ModuleId;
+    reason?: string;
+  } | null>(null);
   const sessionStartRef = useRef<string>(new Date().toISOString());
   const lastRemoteSignatureRef = useRef<string | null>(null);
   const isProcessingRef = useRef(false);
@@ -116,6 +130,18 @@ export function useModuleAI({
     isGuest: !!isGuest,
     encryptionKey
   });
+
+  // Pre-warmed memory: fetched eagerly on session start so the first user
+  // message doesn't have to wait for a network round-trip.
+  const prewarmedMemoryRef = useRef<MemoryContext | null>(null);
+
+  const prewarmMemory = useCallback((seedQuery: string) => {
+    if (resolvedContextPolicy === 'doc-only' || isGuest || !user) return;
+    prewarmedMemoryRef.current = null;
+    retrieveMemoryContext(seedQuery).then((ctx) => {
+      prewarmedMemoryRef.current = ctx;
+    }).catch(() => { /* non-critical — handleSendMessage will fetch on miss */ });
+  }, [resolvedContextPolicy, isGuest, user, retrieveMemoryContext]);
 
   const { consolidateIfNeeded, resetConsolidation } = useConsolidation({
     moduleId,
@@ -281,14 +307,12 @@ export function useModuleAI({
       if (!mountedRef.current) return;
 
       if (routingResult.shouldDelegate) {
-        storeDelegation(routingResult.target!, content, routingResult.reason, routingResult.confidence);
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: `Routing this request to ${routingResult.target}. Open the module to continue.` }
-        ]);
-        isProcessingRef.current = false;
-        setIsProcessing(false);
-        return;
+        setRoutingSuggestion({
+          target: routingResult.target as import('@/lib/module-manifest').ModuleId,
+          reason: routingResult.reason
+        });
+        // Auto-dismiss after 10 seconds
+        setTimeout(() => setRoutingSuggestion(null), 10000);
       }
 
       if (messages.length === 0) {
@@ -307,15 +331,23 @@ export function useModuleAI({
       }
 
       try {
-        // --- Memory retrieval (delegated to useMemoryIntegration) ---
+        // --- Memory retrieval — use pre-warmed cache on first message, then fetch fresh ---
         const recentHistorySlice = messages
           .slice(-3)
           .map((msg) => `${msg.role}: ${contentToText(msg.content)}`)
           .join('\n');
         const memoryQuery = `${contentText}\n${recentHistorySlice}`;
-        const { recalledSessionsSummary, recalledFactsSummary } = resolvedContextPolicy === 'doc-only'
-          ? { recalledSessionsSummary: '', recalledFactsSummary: '' }
-          : await retrieveMemoryContext(memoryQuery);
+
+        let memoryResult: MemoryContext;
+        if (resolvedContextPolicy === 'doc-only') {
+          memoryResult = { recalledSessionsSummary: '', recalledFactsSummary: '' };
+        } else if (prewarmedMemoryRef.current) {
+          memoryResult = prewarmedMemoryRef.current;
+          prewarmedMemoryRef.current = null; // consume once
+        } else {
+          memoryResult = await retrieveMemoryContext(memoryQuery);
+        }
+        const { recalledSessionsSummary, recalledFactsSummary } = memoryResult;
 
         const finalSystemPrompt = PersonaFactory.generateSystemPrompt({
           moduleId,
@@ -348,9 +380,14 @@ export function useModuleAI({
           }),
           (chunk) => {
             setStreamingText((prev) => {
-              const next = prev + chunk;
+              const next = prev + chunk.delta;
               currentAssistantMessageBodyRef.current = next;
               return next;
+            });
+            setAIState({
+              isThinking: chunk.isThinking,
+              isActing: chunk.isActing,
+              currentActionType: chunk.currentActionType
             });
           },
           controller.signal
@@ -443,6 +480,18 @@ export function useModuleAI({
           if (onActionParsed) onActionParsed(type, payload);
         }
 
+        // Emit overall update event to trigger UI refresh across listeners
+        if (response.actions.length > 0) {
+          Spine.emit({
+            type: 'MODULE_PROFILE_UPDATED' as any,
+            source: moduleId,
+            domain: 'system',
+            data: { moduleId, actionCount: response.actions.length },
+            cascadeDepth: 0,
+            priority: 'info'
+          });
+        }
+
         const shouldUpdateGlobalSoul = persistencePolicy !== 'scout-research' && user && !isGuest && Object.keys(soulUpdates).length > 0;
 
         if (shouldUpdateGlobalSoul && user) {
@@ -462,9 +511,20 @@ export function useModuleAI({
         if (!mountedRef.current) return;
 
         const visibleAssistantText = response.publicText.trim();
+        let finalContent = response.fullText;
+        
+        // --- Silent Action Fallback ---
+        // If the AI performed actions but left the public response empty, generate a confirmation label
+        // and prepend it to the content so it renders as the public text.
+        if (!visibleAssistantText && response.actions.length > 0) {
+          const fallback = response.actions.map(a => getActionLabel(a.type)).join(', ') + '.';
+          finalContent = fallback + "\n\n" + response.fullText;
+        }
+
         // H-2: update localHistory directly instead of relying on setMessages updater
-        if (visibleAssistantText) {
-          localHistory = [...localHistory, { role: 'assistant', content: response.publicText } as Message].slice(-MAX_MESSAGES);
+        // We store the FULL text (including tags) so Action Chips and Internal Thoughts persist.
+        if (finalContent) {
+          localHistory = [...localHistory, { role: 'assistant', content: finalContent } as Message].slice(-MAX_MESSAGES);
           messagesRef.current = localHistory;
           setMessages(localHistory);
         }
@@ -513,6 +573,7 @@ export function useModuleAI({
       } finally {
         if (mountedRef.current) {
           setIsProcessing(false);
+          setAIState({ isThinking: false, isActing: false, currentActionType: null });
         }
         isProcessingRef.current = false;
       }
@@ -590,11 +651,15 @@ export function useModuleAI({
     messages,
     setMessages,
     isProcessing,
+    aiState,
     isHydrating,
     streamingText,
     error,
     quota,
+    routingSuggestion,
+    setRoutingSuggestion,
     handleSendMessage,
+    prewarmMemory,
     clearSession,
     summarizeSession
   };

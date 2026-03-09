@@ -2,6 +2,8 @@ export type SanitizedContent = {
   publicText: string;
   internalText: string | null;
   isThinking: boolean;
+  isActing: boolean;
+  currentActionType: string | null;
 };
 
 export type StripOptions = {
@@ -66,6 +68,11 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
     (normalized.includes('<thinking>') && !normalized.includes('</thinking>'))
   );
 
+  // Check if currently acting — <action type="..."> present but no </action> yet
+  const actionOpenMatch = normalized.match(/<action\s+type="([^"]+)">[\s\S]*$/i);
+  const isActing = actionOpenMatch !== null && !normalized.toLowerCase().includes('</action>', actionOpenMatch.index);
+  const currentActionType = actionOpenMatch ? actionOpenMatch[1] : null;
+
   // Combine all internal context
   const internalParts = [thoughtText, actionText, toolCallText, rawToolCallText].filter(Boolean);
   const internalText = internalParts.length > 0 ? internalParts.join('\n\n') : null;
@@ -99,7 +106,7 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
     // but we still want to collapse internal tags to a single space
   }
 
-  return { publicText, internalText, isThinking };
+  return { publicText, internalText, isThinking, isActing, currentActionType };
 }
 
 export function sanitizeJsonPayload(content: string): string {

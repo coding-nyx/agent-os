@@ -21,6 +21,7 @@ export interface ModelMetadata {
   isFree: boolean;
   isReasoning: boolean;
   supportsVision?: boolean;
+  supportsToolCalling?: boolean;
 }
 
 export interface CognitiveContext {
@@ -63,4 +64,11 @@ export interface StructuredResponse {
   internalThoughts: string | null;
   actions: ParsedAction[];
   isInterrupted: boolean;
+}
+
+export interface StreamChunk {
+  delta: string;
+  isThinking: boolean;
+  isActing: boolean;
+  currentActionType: string | null;
 }

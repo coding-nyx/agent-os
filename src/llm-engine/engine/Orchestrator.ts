@@ -1,11 +1,22 @@
 
 // v1.0.1 - Nexus Engine Core
 import { Message, ToolCall } from '../types';
-import { EngineConfig, OrchestratorState, StructuredResponse, ParsedAction } from './types';
+import { EngineConfig, OrchestratorState, StructuredResponse, ParsedAction, StreamChunk } from './types';
 import { sanitizeJsonPayload as nexusCleaner, stripInternalTags } from '../sanitize';
 import { isProviderControlOnly } from '../sanitize';
+import { ModelRegistry } from './ModelRegistry';
 
-const GUEST_MODEL = 'x-ai/grok-3-mini-beta';
+// Free model optimized for instruction-following and structured output (guest sessions)
+const GUEST_MODEL = 'google/gemini-2.0-flash-exp:free';
+
+// Priority-ordered list of free models with verified tool-calling / structured-output support.
+// Used for the action-correction re-prompt so we don't retry on the same model that failed.
+const ACTION_CAPABLE_FREE_MODELS = [
+  'google/gemini-2.0-flash-exp:free',
+  'deepseek/deepseek-chat:free',
+  'meta-llama/llama-4-scout:free',
+  'mistralai/mistral-small-3.1-24b-instruct:free',
+] as const;
 
 export class Orchestrator {
   private config: EngineConfig;
@@ -24,7 +35,7 @@ export class Orchestrator {
     this.state.activeModelId = enabled ? GUEST_MODEL : (this.config.preferredModelId || 'deepseek/deepseek-chat');
   }
 
-  async sendMessage(messages: Message[], onChunk?: (chunk: string) => void, signal?: AbortSignal): Promise<StructuredResponse> {
+  async sendMessage(messages: Message[], onChunk?: (chunk: StreamChunk) => void, signal?: AbortSignal): Promise<StructuredResponse> {
     if (this.config.isMockMode) {
         return {
             fullText: "Neural link simulation active.",
@@ -93,7 +104,22 @@ export class Orchestrator {
           fullResponse = finalRaw.choices?.[0]?.message?.content || "Neural link established. System status: Optimal.";
       }
 
-      return this.finalizeResponse(fullResponse, interruptionControlSeen);
+      const structured = this.finalizeResponse(fullResponse, interruptionControlSeen);
+
+      // If the model described a state change but omitted the action tag, attempt
+      // a silent non-streaming correction re-prompt to recover the action data.
+      if (
+        structured.actions.length === 0 &&
+        !structured.isInterrupted &&
+        this.hasActionIntent(structured.publicText)
+      ) {
+        const recovered = await this.attemptActionCorrection(currentMessages, fullResponse, signal);
+        if (recovered.length > 0) {
+          structured.actions.push(...recovered);
+        }
+      }
+
+      return structured;
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') {
         throw e;
@@ -109,6 +135,89 @@ export class Orchestrator {
     }
   }
 
+  /**
+   * Returns the best free tool-calling model for correction re-prompts.
+   * The active model is explicitly excluded — if it supported structured output
+   * correctly, no correction would be needed in the first place.
+   * Falls back to the ACTION_CAPABLE_FREE_MODELS whitelist if the registry is empty.
+   */
+  private getActionCapableModel(): string {
+    const failedModel = this.state.activeModelId;
+    const candidates = ModelRegistry.getActionCapableFreeModels(ACTION_CAPABLE_FREE_MODELS)
+      .filter((id) => id !== failedModel);
+
+    return candidates[0] ?? ACTION_CAPABLE_FREE_MODELS[0];
+  }
+
+  /**
+   * Detects whether the model's response described performing a state mutation
+   * (routine creation, profile update, log entry, etc.) without emitting the
+   * required <action> tag.  Used to decide whether a correction re-prompt is
+   * warranted.
+   */
+  private hasActionIntent(text: string): boolean {
+    const lower = text.toLowerCase();
+    const patterns = [
+      // Creation / addition claims
+      /i'?(?:ve|ll)\s+(create|add|build|generate|set up|design|make)\b/,
+      /has been (created|added|saved|logged|recorded|updated|generated|built)/,
+      /added to your (dashboard|profile|plan|program|routine|schedule)/,
+      /your (routine|plan|program|split|schedule|profile|log|entry) has been/,
+      // Log / update claims
+      /i'?(?:ve|ll)\s+(log|record|update|track|save|commit|store)\b/,
+      /(routine|session|biomarker|sleep|cycle|clearance) (has been|was|is now) (logged|recorded|saved|created|updated|committed)/,
+    ];
+    return patterns.some((p) => p.test(lower));
+  }
+
+  /**
+   * Sends a silent non-streaming correction prompt asking the model to re-emit
+   * the action tag it described but omitted.  Returns any ParsedActions found
+   * in the correction response.
+   */
+  private async attemptActionCorrection(
+    conversationMessages: Message[],
+    priorAssistantText: string,
+    signal?: AbortSignal
+  ): Promise<ParsedAction[]> {
+    const correctionMessages: Message[] = [
+      ...conversationMessages,
+      { role: 'assistant', content: priorAssistantText },
+      {
+        role: 'user',
+        content:
+          'SYSTEM CORRECTION: Your previous response described a state change ' +
+          'but you did not emit the required <action type="...">...</action> tag. ' +
+          'The data has NOT been saved. Output ONLY the required ' +
+          '<action type="...">...</action> tag with the complete payload now. ' +
+          'Do not include any other text.',
+      },
+    ];
+
+    // Use a model with verified tool-calling / structured-output support for the correction
+    // so we don't retry on the same model that already failed to follow the format.
+    const correctionModel = this.getActionCapableModel();
+
+    try {
+      const raw = await this.executeRawRequest(correctionMessages, undefined, true, signal, correctionModel);
+      const content: string = raw.choices?.[0]?.message?.content || '';
+      if (!content.trim()) return [];
+
+      const correction = this.finalizeResponse(content, false);
+      if (correction.actions.length > 0) {
+        console.info(
+          `[Orchestrator] Action correction succeeded (${correctionModel}) — recovered ${correction.actions.length} action(s):`,
+          correction.actions.map((a) => a.type)
+        );
+      }
+      return correction.actions;
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') throw e;
+      console.warn('[Orchestrator] Action correction request failed:', e);
+      return [];
+    }
+  }
+
   private finalizeResponse(fullText: string, isInterrupted: boolean): StructuredResponse {
     const { publicText, internalText: internalThoughts } = stripInternalTags(fullText);
     
@@ -117,7 +226,7 @@ export class Orchestrator {
     // Normalize curly/smart quotes that some LLMs emit before parsing
     const normalized = fullText.replace(/[\u201C\u201D\u2018\u2019]/g, '"');
 
-    // Extract <action> tags — \s+ tolerates extra whitespace/newlines between tag name and attribute
+    // Extract well-formed <action type="...">...</action> tags
     const actionRegex = /<action\s+type="([^"]+)">([\s\S]*?)<\/action>/gi;
     let match;
     while ((match = actionRegex.exec(normalized)) !== null) {
@@ -132,6 +241,28 @@ export class Orchestrator {
           `[Orchestrator] Failed to parse action payload — type: "${match[1]}", raw: ${match[2].slice(0, 200)}`,
           e
         );
+      }
+    }
+
+    // Lenient fallback: catch degenerate formats emitted by weaker models, e.g.
+    //   <action>update_routine   or   <action type=update_routine>
+    // Only runs when the strict pass found nothing.
+    if (actions.length === 0) {
+      const lenientRegex = /<action(?:\s+type=)?["']?([a-z_]+)["']?(?:>|\s)/gi;
+      while ((match = lenientRegex.exec(normalized)) !== null) {
+        const actionType = match[1];
+        // Try to extract a JSON object that follows the tag on the same text
+        const afterTag = normalized.slice(match.index + match[0].length);
+        const jsonMatch = afterTag.match(/(\{[\s\S]*?\})/);
+        try {
+          const payload = jsonMatch ? JSON.parse(nexusCleaner(jsonMatch[1])) : {};
+          actions.push({ type: actionType, payload, raw: match[0] });
+          console.warn(`[Orchestrator] Recovered malformed action tag via lenient parser — type: "${actionType}"`);
+        } catch {
+          // Payload unparseable — push with empty payload so the handler can decide
+          actions.push({ type: actionType, payload: {}, raw: match[0] });
+          console.warn(`[Orchestrator] Recovered malformed action tag (no payload) — type: "${actionType}"`);
+        }
       }
     }
 
@@ -186,10 +317,10 @@ export class Orchestrator {
     throw lastError ?? new Error('Request failed after retries');
   }
 
-  private async executeRawRequest(messages: Message[], onChunk?: (chunk: string) => void, forceNoTools?: boolean, signal?: AbortSignal): Promise<any> {
+  private async executeRawRequest(messages: Message[], onChunk?: (chunk: StreamChunk) => void, forceNoTools?: boolean, signal?: AbortSignal, modelOverride?: string): Promise<any> {
     const url = 'https://openrouter.ai/api/v1/chat/completions';
     const body = JSON.stringify({
-      model: this.state.activeModelId,
+      model: modelOverride ?? this.state.activeModelId,
       messages: messages,
       stream: !!onChunk,
     });
@@ -232,7 +363,7 @@ export class Orchestrator {
       return { status: 'error', message: 'Native tool calls are not supported. Use <action> tags instead.' };
   }
 
-  private async readStream(response: Response, onChunk: (chunk: string) => void): Promise<{ fullText: string, toolCalls: ToolCall[], streamInterrupted: boolean }> {
+  private async readStream(response: Response, onChunk: (chunk: StreamChunk) => void): Promise<{ fullText: string, toolCalls: ToolCall[], streamInterrupted: boolean }> {
     const reader = response.body?.getReader();
     if (!reader) return { fullText: "", toolCalls: [], streamInterrupted: false };
     const decoder = new TextDecoder();
@@ -253,6 +384,7 @@ export class Orchestrator {
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed || trimmed === 'data: [DONE]') continue;
+          if (trimmed.startsWith(':')) continue; // SSE comment (e.g. ": OPENROUTER PROCESSING")
           if (trimmed.startsWith('data: ')) {
             try {
               const data = JSON.parse(trimmed.slice(6));
@@ -267,11 +399,20 @@ export class Orchestrator {
                   fullText += content;
 
                   // Delta emission logic: only emit NEW public text
-                  const { publicText: nextPublicTotal } = stripInternalTags(fullText, { retainSpacings: true });
-                  const delta = nextPublicTotal.slice(publicTextAccumulated.length);
+                  const sanitized = stripInternalTags(fullText, { retainSpacings: true });
+                  const delta = sanitized.publicText.slice(publicTextAccumulated.length);
+                  
+                  // ALWAYS emit a chunk if there's a state change or text delta
+                  // This ensures the UI sees thinking/acting states even without new text
+                  onChunk({
+                    delta,
+                    isThinking: sanitized.isThinking,
+                    isActing: sanitized.isActing,
+                    currentActionType: sanitized.currentActionType
+                  });
+
                   if (delta.length > 0) {
-                    onChunk(delta);
-                    publicTextAccumulated = nextPublicTotal;
+                    publicTextAccumulated = sanitized.publicText;
                   }
                 }
               }
@@ -310,11 +451,14 @@ export class Orchestrator {
             const content = choice?.delta?.content || '';
             if (content && !isProviderControlOnly(content)) {
               fullText += content;
-              const { publicText: nextPublicTotal } = stripInternalTags(fullText, { retainSpacings: true });
-              const delta = nextPublicTotal.slice(publicTextAccumulated.length);
-              if (delta.length > 0) {
-                onChunk(delta);
-              }
+              const sanitized = stripInternalTags(fullText, { retainSpacings: true });
+              const delta = sanitized.publicText.slice(publicTextAccumulated.length);
+              onChunk({
+                delta,
+                isThinking: sanitized.isThinking,
+                isActing: sanitized.isActing,
+                currentActionType: sanitized.currentActionType
+              });
             }
           } catch (e) {
             console.warn('SSE buffer drain parse error:', (e as Error).message);

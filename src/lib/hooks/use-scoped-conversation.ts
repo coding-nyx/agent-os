@@ -20,6 +20,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
 import type { Message, MessageContent } from '@/lib/types';
 import type { ConversationContext } from '@/llm-engine/types';
+import type { StreamChunk } from '@/llm-engine/engine/types';
 
 // ============================================================================
 // Types
@@ -197,9 +198,9 @@ export function useScopedConversation({
         const result = await streamMessage(
           content,
           context,
-          (chunk: string) => {
+          (chunk: StreamChunk) => {
             if (!mountedRef.current) return;
-            fullResponse += chunk;
+            fullResponse += chunk.delta;
             setStreamingText(fullResponse);
           },
           abortController.signal

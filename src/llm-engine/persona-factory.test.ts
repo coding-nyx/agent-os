@@ -9,7 +9,7 @@ function makeMockProfile(overrides: Partial<PersonaUserProfile> = {}): PersonaUs
     assignedSexAtBirth: 'male',
     agentPersonalityProvision: {
       orchestratorAlias: 'Nexus',
-      agentGenders: { orchestrator: 'female', agnes: 'female', titan: 'male', ledger: 'non-binary' },
+      agentGenders: { orchestrator: 'female', agnes: 'female', titan: 'non-binary', ledger: 'non-binary' },
     },
     ...overrides,
   };
@@ -18,7 +18,7 @@ function makeMockProfile(overrides: Partial<PersonaUserProfile> = {}): PersonaUs
 function makeMockSoul(overrides: Partial<PersonaGlobalProjection> = {}): PersonaGlobalProjection {
   return {
     displayNames: { agnes: 'Agnes', titan: 'Titan', orchestrator: 'Nexus' },
-    agentGenders: { agnes: 'female', titan: 'male', orchestrator: 'female' },
+    agentGenders: { agnes: 'female', titan: 'non-binary', orchestrator: 'female' },
     ...overrides,
   };
 }
@@ -69,14 +69,14 @@ describe('PersonaFactory.generateSystemPrompt', () => {
     expect(result).toContain('warm, empathetic');
   });
 
-  it('applies masculine tone for male gender', () => {
+  it('applies neutral tone for non-binary gender', () => {
     const result = PersonaFactory.generateSystemPrompt({
       moduleId: 'titan',
       baseRole,
       userProfile: makeMockProfile(),
       globalSoul: makeMockSoul(),
     });
-    expect(result).toContain('direct, stoic');
+    expect(result).toContain('balanced, inclusive');
   });
 
   it('adds biological context only for assignedSexAtBirth=female', () => {

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
@@ -6,11 +7,13 @@ import { useVault } from '@/lib/vault-context';
 import { AgnesOnboarding } from './onboarding/AgnesOnboarding';
 import { AGNES_PERSONA } from './personas';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield, ArrowRight } from 'lucide-react';
+import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { AnimatePresence, motion } from 'framer-motion';
 import { NexusChat } from '@/core/components/NexusChat';
+import { RoutingSuggestion } from '@/modules/orchestrator/components/RoutingSuggestion';
+import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { buildAgnesSessionPrompt } from './prompts/agnes-session-prompt';
 import { Agnes3DEnvironment } from './components/Agnes3DEnvironment';
 import { AgnesTelemetryHeader } from './components/AgnesTelemetryHeader';
@@ -30,50 +33,44 @@ import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
 
 type AgnesState = 'selecting' | 'session';
 
-function AgnesSidebar({ profile, agentAlias, isMobile = false }: { profile: TherapyIntakeProfile | null; agentAlias: string; isMobile?: boolean }) {
+function AgnesSidebar({ profile, agentAlias }: { profile: TherapyIntakeProfile | null; agentAlias: string }) {
+  const [collapsed, setCollapsed] = React.useState(false);
+
   return (
     <div className={cn(
-      "h-full flex gap-4",
-      isMobile ? "flex-col p-6 overflow-visible bg-black/40" : "p-6 pl-8 flex-row"
+      "h-full flex flex-col transition-[width] duration-300 overflow-hidden",
+      collapsed ? "w-10" : "w-72"
     )}>
-      {/* Combined Vertical Spine */}
-      {!isMobile && (
-        <div className="flex flex-col items-center py-8 gap-8 border-r border-white/5 pr-4 h-full relative shrink-0">
-          <div className="[writing-mode:vertical-lr] rotate-180 text-[10px] font-black uppercase tracking-[0.5em] text-indigo-400 opacity-40 whitespace-nowrap">
-            Neural_Synchronization_Active
-          </div>
-          <div className="flex-1 w-px bg-gradient-to-b from-indigo-500/20 via-white/5 to-rose-500/20" />
-          <div className="[writing-mode:vertical-lr] text-[10px] font-black uppercase tracking-[0.5em] text-rose-400 opacity-40 whitespace-nowrap">
-            Clinical_Support_Active
-          </div>
-        </div>
-      )}
-
-      <div className={cn(
-        "flex flex-col h-full",
-        isMobile ? "w-full" : "w-80"
-      )}>
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex flex-col surface-card !backdrop-blur-md h-full overflow-hidden border-white/10"
+      {/* Collapse toggle */}
+      <div className={cn("flex shrink-0 pt-4 px-3", collapsed ? "justify-center" : "justify-end")}>
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-white/20 hover:text-white/50 hover:bg-white/5 transition-all"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-8">
-            <AgnesPersonalitySidebar 
-              baseContext={profile?.baseContext} 
-              naked
-            />
-            
-            <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            
-            <AgnesTherapistCard 
-              baseContext={profile?.baseContext} 
-              agentAlias={agentAlias}
-              naked
-            />
-          </div>
-        </motion.div>
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
       </div>
+
+      {!collapsed && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="flex-1 overflow-y-auto no-scrollbar mx-3 my-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5 space-y-6"
+        >
+          <AgnesPersonalitySidebar
+            baseContext={profile?.baseContext}
+            naked
+          />
+          <div className="h-px w-full bg-white/[0.06]" />
+          <AgnesTherapistCard
+            baseContext={profile?.baseContext}
+            agentAlias={agentAlias}
+            naked
+          />
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -88,6 +85,7 @@ function AgnesContent({
   const { globalSoul } = useGlobalSoul();
   const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
+  const navigate = useNavigate();
   const isAccessible = isModuleAccessible('agnes');
 
   const [currentState, setCurrentState] = useState<AgnesState>('selecting');
@@ -112,10 +110,14 @@ function AgnesContent({
     messages,
     setMessages,
     isProcessing,
+    isHydrating,
     streamingText,
     error,
     quota,
+    routingSuggestion,
+    setRoutingSuggestion,
     handleSendMessage,
+    prewarmMemory,
     clearSession,
     summarizeSession
   } = useModuleAI({
@@ -124,12 +126,35 @@ function AgnesContent({
     encryptionKey
   });
 
+  const handleRouteConfirm = useCallback(() => {
+    if (!routingSuggestion) return;
+    const manifest = MODULE_MANIFEST[routingSuggestion.target];
+    if (manifest) {
+      navigate(manifest.route);
+    }
+    setRoutingSuggestion(null);
+  }, [routingSuggestion, navigate, setRoutingSuggestion]);
+
+  const handleRouteDismiss = useCallback(() => {
+    setRoutingSuggestion(null);
+  }, [setRoutingSuggestion]);
+
   const startSession = async (type: 'impromptu' | 'new' | 'continue') => {
     console.log('[Agnes] startSession called with:', type);
     
     if (type === 'continue') {
       setSessionStartedAt(Date.now());
       setCurrentState('session');
+      // Pre-warm memory so the first reply arrives without a retrieval delay
+      const ctx = profile?.baseContext;
+      if (ctx) {
+        const seedParts = [
+          typeof ctx.struggles !== 'undefined' && `struggles: ${Array.isArray(ctx.struggles) ? ctx.struggles.join(', ') : ctx.struggles}`,
+          typeof ctx.goals !== 'undefined' && `goals: ${Array.isArray(ctx.goals) ? ctx.goals.join(', ') : ctx.goals}`,
+          ctx.backgroundSummary || ctx.childhood
+        ].filter(Boolean).join('. ');
+        prewarmMemory(seedParts || 'therapy session');
+      }
       return;
     }
 
@@ -142,7 +167,18 @@ function AgnesContent({
     setSessionStartedAt(Date.now());
     setCurrentState('session');
 
-    // 3. Define greeting based on type
+    // 3. Kick off memory pre-warm in the background for non-impromptu sessions
+    if (type !== 'impromptu' && profile?.baseContext) {
+      const ctx = profile.baseContext;
+      const seedParts = [
+        typeof ctx.struggles !== 'undefined' && `struggles: ${Array.isArray(ctx.struggles) ? ctx.struggles.join(', ') : ctx.struggles}`,
+        typeof ctx.goals !== 'undefined' && `goals: ${Array.isArray(ctx.goals) ? ctx.goals.join(', ') : ctx.goals}`,
+        ctx.backgroundSummary || ctx.childhood
+      ].filter(Boolean).join('. ');
+      prewarmMemory(seedParts || 'therapy session');
+    }
+
+    // 4. Define greeting based on type
     const userName = (typeof profile?.baseContext?.identity === 'object' 
       ? profile?.baseContext?.identity?.name 
       : profile?.baseContext?.identity) || 'there';
@@ -379,28 +415,62 @@ function AgnesContent({
               exit={{ opacity: 0, x: -20 }}
               className="flex-1 flex flex-col min-h-0 relative z-10"
             >
-              <NexusChat
-                ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
-                agentName={sessionType === 'impromptu' ? 'Emergency Agent' : agentAlias}
-                themeColor="indigo"
-                placeholder="Communicate..."
-                authMode="agnes"
-                headerActions={
-                  <div className="flex items-center gap-4">
-                    <AgnesTelemetryHeader />
-                    <div className="h-6 w-px bg-white/5" />
-                    <NeuralButton 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={endSession} 
-                      loading={isSummarizing} 
-                      className="flex items-center gap-2 px-4 rounded-full border-white/5 hover:border-rose-500/20 hover:text-rose-400"
+              <div className="flex-1 flex flex-col min-h-0 relative">
+                <AnimatePresence mode="wait">
+                  {isHydrating ? (
+                    <motion.div
+                      key="hydrating"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex-1 flex flex-col items-center justify-center gap-4 text-white/30"
                     >
-                      <LogOut className="w-3 h-3" /> End
-                    </NeuralButton>
-                  </div>
-                }
-              />
+                      <div className="w-8 h-8 rounded-full border-2 border-indigo-500/40 border-t-indigo-400 animate-spin" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400/60">
+                        Synchronizing Neural Link
+                      </span>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="chat"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex-1 flex flex-col min-h-0"
+                    >
+                      <NexusChat
+                        ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
+                        agentName={sessionType === 'impromptu' ? 'Emergency Agent' : agentAlias}
+                        themeColor="indigo"
+                        placeholder="Communicate..."
+                        authMode="agnes"
+                        headerActions={
+                          <div className="flex items-center gap-4">
+                            <AgnesTelemetryHeader />
+                            <div className="h-6 w-px bg-white/5" />
+                            <NeuralButton 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={endSession} 
+                              loading={isSummarizing} 
+                              className="flex items-center gap-2 px-4 rounded-full border-white/5 hover:border-rose-500/20 hover:text-rose-400"
+                            >
+                              <LogOut className="w-3 h-3" /> End
+                            </NeuralButton>
+                          </div>
+                        }
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <RoutingSuggestion
+                  target={routingSuggestion?.target || 'titan'}
+                  reason={routingSuggestion?.reason}
+                  onConfirm={handleRouteConfirm}
+                  onDismiss={handleRouteDismiss}
+                  visible={routingSuggestion !== null}
+                />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -500,9 +570,6 @@ export default function AgnesPage() {
       renderContent={AgnesContent}
       renderLeftRail={({ profile }) => (
         <AgnesSidebar profile={profile} agentAlias={agentAlias} />
-      )}
-      renderMobileFooter={({ profile }) => (
-        <AgnesSidebar profile={profile} agentAlias={agentAlias} isMobile />
       )}
     />
   );

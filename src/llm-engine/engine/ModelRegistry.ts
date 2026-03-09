@@ -11,6 +11,7 @@ interface OpenRouterModel {
     prompt: string;
     completion: string;
   };
+  supported_parameters?: string[];
 }
 
 export class ModelRegistry {
@@ -50,6 +51,7 @@ export class ModelRegistry {
     const isFree = id.includes(':free');
     const isReasoning = id.includes('r1') || id.includes('o1') || id.includes('reasoning') || id.includes('thinking');
     const supportsVision = id.includes('gpt-4o') || id.includes('claude-3') || id.includes('gemini');
+    const supportsToolCalling = Array.isArray(m.supported_parameters) && m.supported_parameters.includes('tools');
 
     let tier = ModelTier.B_ECONOMY;
     if (isReasoning && isFree) tier = ModelTier.S_REASONING;
@@ -65,12 +67,27 @@ export class ModelRegistry {
       tier,
       isFree,
       isReasoning,
-      supportsVision
+      supportsVision,
+      supportsToolCalling,
     };
   }
 
   static isVisionCapable(modelId: string): boolean {
     return modelId.includes('gpt-4o') || modelId.includes('claude-3') || modelId.includes('gemini');
+  }
+
+  /**
+   * Returns IDs of free models that explicitly support tool calling, ordered by
+   * context length (largest first).  Falls back to `fallback` when the registry
+   * hasn't been populated yet (early in session or no API key).
+   */
+  static getActionCapableFreeModels(fallback: readonly string[]): string[] {
+    const fromRegistry = this.models
+      .filter((m) => m.isFree && m.supportsToolCalling)
+      .sort((a, b) => b.context_length - a.context_length)
+      .map((m) => m.id);
+
+    return fromRegistry.length > 0 ? fromRegistry : [...fallback];
   }
 
   // TODO: getModelsByTier is currently unused outside ModelRegistry — consider removing if auto-scaling is not implemented

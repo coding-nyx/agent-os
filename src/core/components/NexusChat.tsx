@@ -12,6 +12,11 @@ interface NexusChatProps {
     ai: {
         messages: Message[];
         isProcessing: boolean;
+        aiState?: {
+            isThinking: boolean;
+            isActing: boolean;
+            currentActionType: string | null;
+        };
         streamingText: string;
         error: string | null;
         quota: GuestQuota | null;
@@ -21,6 +26,7 @@ interface NexusChatProps {
     themeColor: ModuleTheme;
     placeholder?: string;
     onActionParsed?: (type: string, payload: Record<string, unknown>) => void;
+    onClearHistory?: () => void;
     headerActions?: ReactNode;
     authMode?: AuthMode;
     showInternalSignals?: boolean;
@@ -35,6 +41,7 @@ export function NexusChat({
     themeColor, 
     placeholder, 
     onActionParsed, 
+    onClearHistory,
     headerActions,
     authMode = 'global',
     showInternalSignals = true,
@@ -45,7 +52,7 @@ export function NexusChat({
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
 
-    const { messages, isProcessing, streamingText, error, quota, handleSendMessage } = ai;
+    const { messages, isProcessing, aiState, streamingText, error, quota, handleSendMessage } = ai;
 
     // streamingText is now already cleaned by the Orchestrator delta logic
     const visibleStreamingText = streamingText.trim();
@@ -61,12 +68,14 @@ export function NexusChat({
         : messages;
 
     return (
-        <div className="flex-1 flex flex-col h-full min-h-0 relative">
+        <div className="flex-1 flex flex-col min-h-0 relative">
             <ChatInterface 
                 messages={renderedMessages}
                 onSendMessage={(content) => handleSendMessage(content, onActionParsed)}
+                onClearHistory={onClearHistory}
                 isLoading={isProcessing && !hasVisibleStream}
                 isProcessing={isProcessing}
+                aiState={aiState}
                 themeColor={themeColor}
                 agentName={agentName}
                 placeholder={placeholder}

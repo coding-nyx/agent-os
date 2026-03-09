@@ -51,6 +51,7 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
 - [ ] **Nexus-Link Bridge:** Secure terminal for remote system management.
 
 ## 8. Global AI & Systemic Enhancements
+- [ ] **Pending Completion Recovery (Chat Fallback):** Implement a resilient fallback for in-flight AI chat completions. When a completion is pending and the user closes or navigates away, persist the pending request state (message, context, module) to `localStorage` or Firestore. On next session load, detect the orphaned request, surface a recovery prompt to the user, and retry the completion. Covers: failed completions (network error, timeout) and mid-stream closes. Tracked state should include: `moduleId`, `userMessage`, `conversationHistory`, `timestamp`, and `status` (`pending` | `failed`). Recovery UI should appear as a non-blocking banner or toast on module re-entry.
 - [ ] **Scoped Conversations:** (NEW) Implement ephemeral, entity-specific chat modes across all modules to reduce context noise and improve AI focus.
 - [ ] **Dynamic Field System Expansion:** Enable custom field creation/deletion via chat globally, removing hardcoded category logic.
 - [ ] **Global Soul Writing Protocol (Architectural):** Implement the "Soul-Authority" protocol to ensure all chat-driven schema changes (field creation/deletion) are routed through the domain-authoritative agent for validation before being committed.

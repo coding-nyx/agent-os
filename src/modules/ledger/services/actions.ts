@@ -106,12 +106,23 @@ export function registerLedgerActions() {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
+      const mergeItems = (existing: any[], incoming: any[]) => {
+        if (!Array.isArray(incoming)) return existing;
+        const merged = [...existing];
+        incoming.forEach(item => {
+          const idx = merged.findIndex(e => e.label === item.label);
+          if (idx !== -1) merged[idx] = { ...merged[idx], ...item };
+          else merged.push({ id: crypto.randomUUID(), ...item });
+        });
+        return merged;
+      };
+
       const next: LedgerIntakeProfile = {
         ...profile,
         monthlyIncome: parseNumber(payload?.monthlyIncome, profile.monthlyIncome),
         currency: typeof payload?.currency === 'string' && payload.currency.trim() ? payload.currency : profile.currency,
-        fixedExpenses: Array.isArray(payload?.fixedExpenses) ? payload.fixedExpenses : profile.fixedExpenses,
-        variableExpenses: Array.isArray(payload?.variableExpenses) ? payload.variableExpenses : profile.variableExpenses,
+        fixedExpenses: mergeItems(profile.fixedExpenses, payload?.fixedExpenses as any[]),
+        variableExpenses: mergeItems(profile.variableExpenses, payload?.variableExpenses as any[]),
         debtItems: Array.isArray(payload?.debtItems) ? payload.debtItems : profile.debtItems,
         savingsGoals: Array.isArray(payload?.savingsGoals) ? payload.savingsGoals : profile.savingsGoals,
         updatedAt: new Date().toISOString()

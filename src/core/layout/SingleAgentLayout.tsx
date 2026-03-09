@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, MessageSquare, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { NexusChat } from '@/core/components/NexusChat';
 import { NeuralThemeColor } from '@/core/components/NeuralTabGroup';
+import { RoutingSuggestion } from '@/modules/orchestrator/components/RoutingSuggestion';
+import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import type { AuthMode } from '@/core/components/UnifiedAuthModal';
 
@@ -18,7 +21,10 @@ interface SingleAgentLayoutProps {
     streamingText: string;
     error: string | null;
     quota: GuestQuota | null;
+    routingSuggestion?: { target: ModuleId; reason?: string } | null;
+    setRoutingSuggestion?: (suggestion: { target: ModuleId; reason?: string } | null) => void;
     handleSendMessage: (content: MessageContent, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
+    clearSession: () => Promise<void>;
   };
   placeholder?: string;
   authMode?: AuthMode;
@@ -37,10 +43,24 @@ export function SingleAgentLayout({
   chatWidth = 'clamp(320px, 32vw, 520px)',
   mobileBreakpoint = 1024
 }: SingleAgentLayoutProps) {
+  const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < mobileBreakpoint : false
   );
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+
+  const handleRouteConfirm = useCallback(() => {
+    if (!ai.routingSuggestion) return;
+    const manifest = MODULE_MANIFEST[ai.routingSuggestion.target];
+    if (manifest) {
+      navigate(manifest.route);
+    }
+    ai.setRoutingSuggestion?.(null);
+  }, [ai.routingSuggestion, navigate, ai.setRoutingSuggestion]);
+
+  const handleRouteDismiss = useCallback(() => {
+    ai.setRoutingSuggestion?.(null);
+  }, [ai.setRoutingSuggestion]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -104,7 +124,7 @@ export function SingleAgentLayout({
 
       {/* ── Main Dashboard Content ── */}
       <div className="flex-1 min-w-0 h-full flex flex-col relative overflow-hidden bg-black/5">
-        <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
+        <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth flex flex-col">
           {children}
         </div>
       </div>
@@ -124,7 +144,7 @@ export function SingleAgentLayout({
             currentTheme.sidebarBorder
           )}
         >
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col relative">
             <NexusChat
               moduleId={moduleId}
               ai={ai}
@@ -133,6 +153,15 @@ export function SingleAgentLayout({
               placeholder={placeholder}
               authMode={authMode}
               showInternalSignals={false}
+              onClearHistory={ai.clearSession}
+            />
+            {/* Routing suggestion — inline below chat input */}
+            <RoutingSuggestion
+              target={ai.routingSuggestion?.target || 'agnes'}
+              reason={ai.routingSuggestion?.reason}
+              onConfirm={handleRouteConfirm}
+              onDismiss={handleRouteDismiss}
+              visible={ai.routingSuggestion !== undefined && ai.routingSuggestion !== null}
             />
           </div>
           
@@ -185,7 +214,7 @@ export function SingleAgentLayout({
                   <X size={18} />
                 </button>
               </div>
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 flex flex-col relative">
                 <NexusChat
                   moduleId={moduleId}
                   ai={ai}
@@ -194,6 +223,15 @@ export function SingleAgentLayout({
                   placeholder={placeholder}
                   authMode={authMode}
                   showInternalSignals={false}
+                  onClearHistory={ai.clearSession}
+                />
+                {/* Routing suggestion — inline below chat input */}
+                <RoutingSuggestion
+                  target={ai.routingSuggestion?.target || 'agnes'}
+                  reason={ai.routingSuggestion?.reason}
+                  onConfirm={handleRouteConfirm}
+                  onDismiss={handleRouteDismiss}
+                  visible={ai.routingSuggestion !== undefined && ai.routingSuggestion !== null}
                 />
               </div>
             </motion.div>

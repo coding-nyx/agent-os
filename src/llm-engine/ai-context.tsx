@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { Message, ConversationContext, MessageContent } from './types';
 import { CognitiveAgent } from './engine/CognitiveAgent';
-import { StructuredResponse } from './engine/types';
+import { StructuredResponse, StreamChunk } from './engine/types';
 
 export interface AIContextType {
   sendMessage: (
@@ -12,7 +12,7 @@ export interface AIContextType {
   streamMessage: (
     content: MessageContent,
     context: ConversationContext,
-    onChunk: (chunk: string) => void,
+    onChunk: (chunk: StreamChunk) => void,
     signal?: AbortSignal
   ) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
   isInitialized: boolean;
@@ -79,9 +79,9 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
       return result;
   }, [agent]);
 
-  const streamMessage = useCallback(async (content: MessageContent, context: ConversationContext, onChunk: (chunk: string) => void, signal?: AbortSignal) => {
+  const streamMessage = useCallback(async (content: MessageContent, context: ConversationContext, onChunk: (chunk: StreamChunk) => void, signal?: AbortSignal) => {
       if (!agent) throw new Error("Agent not initialized");
-      const safeChunk = (chunk: string) => {
+      const safeChunk = (chunk: StreamChunk) => {
         try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }
       };
       const result = await agent.chat(content, context, safeChunk, signal);

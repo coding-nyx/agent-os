@@ -157,7 +157,7 @@ export const GlobalProjectionService = {
       agentGenders: {
         orchestrator: 'female',
         agnes: 'female',
-        titan: 'female',
+        titan: 'non-binary',
         ledger: 'female',
         atlas: 'female',
         scout: 'female',

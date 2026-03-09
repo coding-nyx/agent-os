@@ -1,5 +1,5 @@
 import { Message, ConversationContext, MessageContent } from '../types';
-import { EngineConfig, CognitiveContext, StructuredResponse } from './types';
+import { EngineConfig, CognitiveContext, StructuredResponse, StreamChunk } from './types';
 import { Orchestrator } from './Orchestrator';
 import { MemoryManager } from './MemoryManager';
 import { ModelRegistry } from './ModelRegistry';
@@ -37,7 +37,7 @@ export class CognitiveAgent {
   async chat(
     userMessage: MessageContent,
     context: ConversationContext,
-    onChunk?: (chunk: string) => void,
+    onChunk?: (chunk: StreamChunk) => void,
     signal?: AbortSignal
   ): Promise<{ response: StructuredResponse, updatedHistory: Message[] }> {
     

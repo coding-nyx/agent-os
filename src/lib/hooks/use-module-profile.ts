@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../auth-context';
 import { useVault } from '../vault-context';
+import { useSpineEvent } from '../spine/spine-event-bus';
 
 export interface UseModuleProfileOptions<TProfile> {
   moduleId: string;
@@ -25,6 +26,15 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
   const [isLoading, setIsLoading] = useState(true);
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
   const [hasSyncedGuest, setHasSyncedGuest] = useState(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+
+  // Listen for external sync events (e.g. from useModuleAI actions)
+  useSpineEvent('MODULE_PROFILE_UPDATED' as any, useCallback((event) => {
+    if (event.data?.moduleId === moduleId) {
+      console.log(`[useModuleProfile] Refreshing ${moduleId} due to external sync event`);
+      setRefreshNonce(n => n + 1);
+    }
+  }, [moduleId]));
 
   // We use refs for these to avoid infinite loops if the caller provides unstable arrow functions
   const loadProfileRef = useRef(loadProfile);
@@ -86,7 +96,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       mounted = false;
       if (unsubscribe) unsubscribe();
     };
-  }, [user?.uid, isGuest, isUnlocked, getModuleKey, moduleId]); // Removed unstable callbacks from deps
+  }, [user?.uid, isGuest, isUnlocked, getModuleKey, moduleId, refreshNonce]); // Added refreshNonce
 
   useEffect(() => {
     if (!user || !isUnlocked || hasSyncedGuest || !syncGuestProfileRef.current) return;

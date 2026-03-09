@@ -65,10 +65,25 @@ export function registerTitanActions() {
       const current = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!current) return;
 
-      if (!payload?.routines) return;
+      if (!payload?.routines || !Array.isArray(payload.routines)) return;
+      
+      const newRoutines = normalizeRoutines(payload.routines as Routine[]);
+      const existingRoutines = current.routines || [];
+      
+      // Merge: replace existing weekdays if present, else append
+      const mergedRoutines = [...existingRoutines];
+      for (const nr of newRoutines) {
+        const idx = mergedRoutines.findIndex(r => r.weekday === nr.weekday);
+        if (idx !== -1) {
+          mergedRoutines[idx] = nr;
+        } else {
+          mergedRoutines.push(nr);
+        }
+      }
+
       const nextProfile: TitanProfile = {
         ...current,
-        routines: normalizeRoutines(payload.routines as Routine[]),
+        routines: mergedRoutines,
         updatedAt: new Date().toISOString()
       };
       await persistProfile(nextProfile, userId ?? null, encryptionKey ?? null);

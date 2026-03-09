@@ -7,6 +7,8 @@ import { NexusChat } from '@/core/components/NexusChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SCOUT_PERSONA } from './personas';
 import { ScoutDashboard } from './components/ScoutDashboard';
+import { RoutingSuggestion } from '@/modules/orchestrator/components/RoutingSuggestion';
+import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import {
   ScoutProfile,
   loadScoutProfile,
@@ -58,13 +60,37 @@ function ScoutResearchWindow({
   agentAlias: string;
   onActionParsed?: (type: string, payload: Record<string, unknown>) => void;
 }) {
-  const { messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage } = useModuleAI({
+  const navigate = useNavigate();
+  const { 
+    messages, 
+    setMessages, 
+    isProcessing, 
+    streamingText, 
+    error, 
+    quota, 
+    routingSuggestion,
+    setRoutingSuggestion,
+    handleSendMessage 
+  } = useModuleAI({
     moduleId: 'scout',
     systemPrompt: SCOUT_PERSONA,
     encryptionKey,
     sessionId: windowId, // Use windowId as session identifier
     persistencePolicy: 'scout-research'
   });
+
+  const handleRouteConfirm = useCallback(() => {
+    if (!routingSuggestion) return;
+    const manifest = MODULE_MANIFEST[routingSuggestion.target];
+    if (manifest) {
+      navigate(manifest.route);
+    }
+    setRoutingSuggestion(null);
+  }, [routingSuggestion, navigate, setRoutingSuggestion]);
+
+  const handleRouteDismiss = useCallback(() => {
+    setRoutingSuggestion(null);
+  }, [setRoutingSuggestion]);
 
   useEffect(() => {
     if (messages.length === 0 && !isProcessing && !streamingText) {
@@ -102,7 +128,7 @@ function ScoutResearchWindow({
         )}
       </div>
       
-      <div className="flex-1 min-h-0 pointer-events-auto">
+      <div className="flex-1 min-h-0 pointer-events-auto relative flex flex-col">
         <NexusChat
           moduleId="scout"
           ai={{ 
@@ -117,6 +143,14 @@ function ScoutResearchWindow({
           themeColor="lime"
           placeholder="Query research node..."
           showInternalSignals={false}
+        />
+        {/* Routing suggestion — inline below chat input */}
+        <RoutingSuggestion
+          target={routingSuggestion?.target || 'agnes'}
+          reason={routingSuggestion?.reason}
+          onConfirm={handleRouteConfirm}
+          onDismiss={handleRouteDismiss}
+          visible={isActive && routingSuggestion !== null}
         />
       </div>
     </div>

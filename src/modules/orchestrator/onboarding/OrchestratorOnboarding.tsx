@@ -58,7 +58,7 @@ const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
   agentGenders: {
     orchestrator: 'female',
     agnes: 'female',
-    titan: 'female',
+    titan: 'non-binary',
     soma: 'female',
     ledger: 'female',
     atlas: 'female',

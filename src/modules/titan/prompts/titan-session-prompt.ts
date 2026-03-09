@@ -347,6 +347,12 @@ export function buildTitanSessionPrompt(
 ): string {
   const mode = options.mode ?? 'training';
 
+  const formatProtocol = `[FORMAT PROTOCOL - MANDATORY]
+1. Start EVERY response with <thought>...</thought>
+2. ANY state change (routine update, biomarker log, sleep entry) MUST be wrapped in <action type="...">...</action>.
+3. If you do not emit an <action> tag, no data will be saved.
+4. Even when acting, provide a concise public summary after the action tag.`;
+
   const identity = `[IDENTITY]
 You are TITAN, the integrated fitness and biomedical advisor for AGNES.
 You have access to the user's structured profile and should tailor your responses accordingly.
@@ -363,9 +369,10 @@ You maintain a persistent neural link — you do NOT lose memory between session
 - Be clinical, direct, and data-driven. Ask concise follow-ups.
 - Proactively remember and respect the user's identity and history.
 - Emit state mutations only with <action type="...">...</action> tags.
+- Even when emitting an action, you MUST provide a concise public response summarizing your decision or the action taken for the user.
 - Do NOT output raw tool call envelopes.`;
 
-  return `${identity}\n\n${modeBlock}\n\n${profileContext}\n\n${guidelines}`.trim();
+  return `${formatProtocol}\n\n${identity}\n\n${modeBlock}\n\n${profileContext}\n\n${guidelines}`.trim();
 }
 
 // ============================================================================
@@ -473,6 +480,12 @@ function buildGeneralModePrompt(
     hormonalContext?: string | null;
   }
 ): string {
+  const formatProtocol = `[FORMAT PROTOCOL - MANDATORY]
+1. Start EVERY response with <thought>...</thought> (or <think> if reasoning)
+2. ANY state change (routine update, biomarker log, sleep entry) MUST be wrapped in <action type="...">...</action>.
+3. If you do not emit an <action> tag, no data will be saved.
+4. Even when acting, provide a concise public summary after the action tag.`;
+
   const recoveryBlock =
     options?.recoveryScore != null
       ? `\nRECOVERY SCORE: ${options.recoveryScore}/10${
@@ -528,13 +541,22 @@ and ask for confirmation before creating.
 - Start every response with <thought> to assess context before responding.
 - Be clinical, direct, and data-driven. Ask concise follow-ups.
 - Emit state mutations only with <action type="...">...</action> tags.
+- Even when emitting an action, you MUST provide a concise public response summarizing your decision or the action taken for the user.
 - Do NOT output raw tool call envelopes.
 - Factor in recovery score, injuries, and clearance restrictions when prescribing workouts.`.trim();
+
+  return `${formatProtocol}\n\n${prompt}`.trim();
 }
 
 // ── Routine Edit Mode ────────────────────────────────────────────────────────
 
 function buildRoutineEditModePrompt(alias: string, routine: Routine): string {
+  const formatProtocol = `[FORMAT PROTOCOL - MANDATORY]
+1. Start EVERY response with <thought>...</thought> (or <think> if reasoning)
+2. ANY state change (routine update) MUST be wrapped in <action type="...">...</action>.
+3. If you do not emit an <action> tag, no data will be saved.
+4. Even when acting, provide a concise public summary after the action tag.`;
+
   const exerciseList = routine.exercises
     .map(
       (ex, i) =>
@@ -571,6 +593,8 @@ not just the changed fields. The payload replaces the entire routine.
 - Maintain volume balance across the routine.
 - Do NOT suggest actions outside of routine editing.
 - Start every response with <thought>.`.trim();
+
+  return `${formatProtocol}\n\n${prompt}`.trim();
 }
 
 // ── Field CRUD Mode ──────────────────────────────────────────────────────────
@@ -579,6 +603,12 @@ function buildFieldCrudModePrompt(
   alias: string,
   currentExtensions: FieldDefinition[]
 ): string {
+  const formatProtocol = `[FORMAT PROTOCOL - MANDATORY]
+1. Start EVERY response with <thought>...</thought> (or <think> if reasoning)
+2. ANY state change (field creation/deletion) MUST be wrapped in <action type="...">...</action>.
+3. If you do not emit an <action> tag, no data will be saved.
+4. Even when acting, provide a concise public summary after the action tag.`;
+
   const extensionList =
     currentExtensions.length > 0
       ? currentExtensions
@@ -651,7 +681,10 @@ You are the semantic domain validator. When the user requests a new field:
 - Always include validation rules (minimum/maximum for numbers, enum for selects).
 - Always include metadata.category for dashboard grouping.
 - Start every response with <thought>.
+- Even when emitting an action, you MUST provide a concise public response summarizing your decision or the action taken for the user.
 - Do NOT discuss workout programming, nutrition advice, or recovery. Only field management.`.trim();
+
+  return `${formatProtocol}\n\n${prompt}`.trim();
 }
 
 // ── Biomarker Review Mode ────────────────────────────────────────────────────
@@ -660,6 +693,12 @@ function buildBiomarkerReviewModePrompt(
   alias: string,
   biomarkers: Record<string, unknown>
 ): string {
+  const formatProtocol = `[FORMAT PROTOCOL - MANDATORY]
+1. Start EVERY response with <thought>...</thought> (or <think> if reasoning)
+2. ANY state change (biomarker update) MUST be wrapped in <action type="...">...</action>.
+3. If you do not emit an <action> tag, no data will be saved.
+4. Even when acting, provide a concise public summary after the action tag.`;
+
   const biomarkerEntries = Object.entries(biomarkers);
   const biomarkerList =
     biomarkerEntries.length > 0
@@ -699,7 +738,10 @@ ${biomarkerList}
 - Never fabricate values — only record what the user explicitly provides.
 - For lab report imports, extract structured data from the user's text/file content.
 - Start every response with <thought>.
+- Even when emitting an action, you MUST provide a concise public response summarizing your decision or the action taken for the user.
 - Do NOT suggest workout changes, routine modifications, or field creation.`.trim();
+
+  return `${formatProtocol}\n\n${prompt}`.trim();
 }
 
 // ============================================================================
