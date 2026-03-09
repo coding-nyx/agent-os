@@ -1,8 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronRight, MessageSquare } from 'lucide-react';
 import { TitanDashboard } from './components/TitanReadiness';
-import { TitanDashboardTabs } from './components/TitanDashboardTabs';
 import { TitanDiagnosisPanel } from './components/TitanDiagnosisPanel';
 import { BiomarkerDashboard } from '@/modules/soma/components/BiomarkerDashboard';
 import { ClearancePanel } from '@/modules/soma/components/ClearancePanel';
@@ -18,11 +15,13 @@ import { buildTitanSessionPrompt } from './prompts/titan-session-prompt';
 import type { TitanSessionMode } from './prompts/titan-session-prompt';
 import { loadTitanProfile, saveTitanProfile, subscribeTitanProfile, syncGuestTitanProfileToUser } from './services/titan-profile-service';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { NexusChat } from '@/core/components/NexusChat';
-import { cn } from '@/lib/utils';
+import { SectionHeader } from '@/core/components/SectionHeader';
+import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
+import { Activity, TestTube2, ShieldCheck, FileText } from 'lucide-react';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
+import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { registerTitanActions } from './services/actions';
 import { registerSomaFieldActions } from '@/modules/soma/actions/soma-field-actions';
 import { useVault } from '@/lib/vault-context';
@@ -31,6 +30,8 @@ import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import type { ModuleId } from '@/lib/module-manifest';
 import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
+import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
+import { titanDiagnosisSpec } from './diagnosis/titan-diagnosis-spec';
 
 type TitanTab = 'training' | 'biomarkers' | 'recovery' | 'diagnosis';
 
@@ -41,20 +42,7 @@ Reference the user's CNS fatigue and biometric data when giving advice.`;
 
 registerTitanActions();
 registerSomaFieldActions();
-
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
-  );
-  useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    setIsMobile(mql.matches);
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
-  }, [breakpoint]);
-  return isMobile;
-}
+registerDiagnosisSpec(titanDiagnosisSpec);
 
 function resolveInitialTab(searchParams: URLSearchParams): TitanTab {
   const param = searchParams.get('tab');
@@ -69,14 +57,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const isLocked = !isModuleAccessible('titan');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const isMobile = useIsMobile();
-  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams));
-
-  // Collapse chat by default on mobile
-  useEffect(() => {
-    if (isMobile) setIsChatCollapsed(true);
-  }, [isMobile]);
 
   // Derive prompt mode from active tab
   const promptMode: TitanSessionMode = activeTab === 'biomarkers' || activeTab === 'recovery' || activeTab === 'diagnosis' ? 'medical' : 'training';
@@ -91,24 +72,16 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     });
   }, [profile, promptMode, globalSoul?.crossFunctionalState?.biological?.recoveryScore, globalSoul?.crossFunctionalState?.biological?.hormonalContext]);
 
-  const {
-    messages,
-    isProcessing,
-    streamingText,
-    error,
-    quota,
-    handleSendMessage,
-    setMessages
-  } = useModuleAI({
+  const ai = useModuleAI({
     moduleId: 'titan',
     systemPrompt,
     encryptionKey
   });
 
   useEffect(() => {
-    if (profile?.onboardingComplete && messages.length === 0 && !isProcessing && !streamingText) {
+    if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
       const hasRoutine = profile.routines && profile.routines.length > 0;
-      setMessages([
+      ai.setMessages([
         {
           role: 'assistant',
           content: hasRoutine
@@ -117,9 +90,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         }
       ]);
     }
-  }, [profile?.onboardingComplete, messages.length, isProcessing, streamingText, setMessages]);
-
-  const chatWidth = 'clamp(320px, 32vw, 520px)';
+  }, [profile?.onboardingComplete, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages, profile?.routines]);
 
   const handleCalibrate = useCallback(
     (metricKey: string) => {
@@ -153,21 +124,18 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         '\nIs this well-balanced? Any improvements for injury prevention or performance?'
       ].filter(Boolean).join('\n');
 
-      handleSendMessage(prompt);
-      if (isChatCollapsed) setIsChatCollapsed(false);
+      ai.handleSendMessage(prompt);
     },
-    [handleSendMessage, isChatCollapsed]
+    [ai.handleSendMessage]
   );
 
   const handleGeneratePlan = useCallback(() => {
-    handleSendMessage('Generate a personalized weekly training routine based on my profile, goals, and current recovery state.');
-    if (isChatCollapsed) setIsChatCollapsed(false);
-  }, [handleSendMessage, isChatCollapsed]);
+    ai.handleSendMessage('Generate a personalized weekly training routine based on my profile, goals, and current recovery state.');
+  }, [ai.handleSendMessage]);
 
   const handleImportRoutine = useCallback(() => {
-    handleSendMessage("I already have a training routine I'd like to log. Let me describe it to you.");
-    if (isChatCollapsed) setIsChatCollapsed(false);
-  }, [handleSendMessage, isChatCollapsed]);
+    ai.handleSendMessage("I already have a training routine I'd like to log. Let me describe it to you.");
+  }, [ai.handleSendMessage]);
 
   const handleImportLab = useCallback(() => {
     const input = document.createElement('input');
@@ -178,23 +146,30 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       if (!file) return;
       const text = await file.text();
       const sanitizedText = text.replace(/<action\b[^>]*>[\s\S]*?<\/action>/gi, '[STRIPPED_ACTION_TAG]');
-      await handleSendMessage(
+      await ai.handleSendMessage(
         `Lab import received: ${file.name}. Parse the content into structured biomarker records and lab summaries.\n\n---BEGIN LAB DATA---\n${sanitizedText}\n---END LAB DATA---`
       );
     };
     input.click();
-  }, [handleSendMessage]);
+  }, [ai.handleSendMessage]);
 
   const handleAnalyzeImage = useCallback(() => {
-    handleSendMessage('I want to analyze a medical image. Please guide me through the process.');
-  }, [handleSendMessage]);
+    ai.handleSendMessage('I want to analyze a medical image. Please guide me through the process.');
+  }, [ai.handleSendMessage]);
 
-  // Badge data for tabs
+  // Tab data
   const biomarkerCount = profile?.biomarkers?.length ?? 0;
   const latestClearance = profile?.clearances?.length
     ? [...profile.clearances].sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime())[0]
     : null;
   const clearanceStatus = latestClearance?.status ?? null;
+
+  const tabs: NeuralTabItem<TitanTab>[] = [
+    { id: 'training', label: 'Training', icon: Activity },
+    { id: 'biomarkers', label: 'Biomarkers', icon: TestTube2, badge: biomarkerCount || undefined },
+    { id: 'recovery', label: 'Recovery', icon: ShieldCheck, badge: clearanceStatus || undefined, badgeVariant: clearanceStatus === 'granted' ? 'success' : clearanceStatus === 'denied' ? 'error' : 'warning' },
+    { id: 'diagnosis', label: 'Diagnosis', icon: FileText },
+  ];
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -209,7 +184,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               onAnalyzeImage={handleAnalyzeImage}
             />
             {profile && (
-              <div className="px-6 pb-6">
+              <div className="px-8 pb-8 pt-4">
                 <CustomFieldManager
                   currentValues={profile?.nutrition || {}}
                   onSave={async (values) => {
@@ -228,7 +203,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               profile={profile}
               soul={globalSoul}
             />
-            <div className="px-6 pb-6">
+            <div className="px-8 pb-8 pt-4">
               <ClearancePanel
                 profile={profile}
                 soul={globalSoul}
@@ -239,7 +214,9 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         );
       case 'diagnosis':
         return (
-          <TitanDiagnosisPanel encryptionKey={encryptionKey} profile={profile} />
+          <div className="flex-1 flex flex-col min-h-0">
+            <TitanDiagnosisPanel encryptionKey={encryptionKey} profile={profile} />
+          </div>
         );
       default:
         return (
@@ -251,7 +228,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               onImportRoutine={handleImportRoutine}
             />
             {profile?.routines && profile.routines.length > 0 && (
-              <div className="px-6 pb-6">
+              <div className="px-8 pb-4 pt-4">
                 <RoutineProgress routines={profile.routines} />
               </div>
             )}
@@ -262,100 +239,38 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   };
 
   return (
-    <div className="h-full flex overflow-hidden relative">
-      {isChatCollapsed && (
-        <motion.button
-          initial={{ opacity: 0, x: 12 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={() => setIsChatCollapsed(false)}
-          className={cn(
-            'z-[70] flex items-center gap-2 bg-orange-600/20 border border-orange-500/20 rounded-full text-orange-400 font-black text-[9px] uppercase tracking-widest italic backdrop-blur-xl',
-            isMobile
-              ? 'fixed bottom-6 right-6 px-5 py-3 text-[11px]'
-              : 'absolute top-3 right-3 px-4 py-2'
-          )}
-        >
-          <MessageSquare className={isMobile ? 'w-4 h-4' : 'w-3 h-3'} />
-          Open Titan Link
-        </motion.button>
-      )}
-      <div className="flex-1 min-w-0 h-full overflow-y-auto no-scrollbar flex flex-col relative">
-        <div className="px-6 pt-4 pb-1">
-          <TitanDashboardTabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            biomarkerCount={biomarkerCount}
-            clearanceStatus={clearanceStatus}
+    <SingleAgentLayout
+      moduleId="titan"
+      agentName={agentAlias}
+      themeColor="orange"
+      ai={ai}
+      authMode="titan"
+      placeholder="Input training data or queries..."
+    >
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="px-8 pt-8 pb-4">
+           <SectionHeader
+            label="Performance Domain"
+            title="Titan Strategy & Readiness"
+            subtitle="Elite physical performance optimization and biometric clearance."
+            accentClassName="text-orange-400"
           />
         </div>
-        <div>{renderTabContent()}</div>
-      </div>
+        
+        <div className="px-8 pb-6 border-b border-white/5">
+          <NeuralTabGroup
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            themeColor="orange"
+          />
+        </div>
 
-      {/* Mobile: full-screen overlay sheet */}
-      {isMobile ? (
-        !isChatCollapsed && (
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-xl flex flex-col"
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-orange-500/10">
-              <span className="text-orange-400 font-black text-xs uppercase tracking-widest italic">
-                Titan Link
-              </span>
-              <button
-                onClick={() => setIsChatCollapsed(true)}
-                className="px-3 py-1.5 bg-orange-600/20 border border-orange-500/20 rounded-full text-orange-400 text-[9px] font-black uppercase tracking-widest backdrop-blur-xl hover:bg-orange-600/40 transition-all"
-              >
-                Close
-              </button>
-            </div>
-            <div className="flex-1 min-h-0">
-              <NexusChat
-                ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
-                agentName={agentAlias}
-                themeColor="orange"
-                placeholder="Input training data or queries..."
-                authMode="titan"
-              />
-            </div>
-          </motion.div>
-        )
-      ) : (
-        /* Desktop: clamp sidebar */
-        <motion.aside
-          initial={false}
-          animate={{
-            width: isChatCollapsed ? 0 : chatWidth,
-            opacity: isChatCollapsed ? 0 : 1
-          }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="h-full border-l border-white/5 bg-black/20 flex flex-col relative"
-        >
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            <NexusChat
-              ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
-              agentName={agentAlias}
-              themeColor="orange"
-              placeholder="Input training data or queries..."
-              authMode="titan"
-            />
-          </div>
-          {!isChatCollapsed && (
-            <button
-              onClick={() => setIsChatCollapsed(true)}
-              className={cn(
-                'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-[60] w-7 h-12 flex items-center justify-center bg-orange-600/20 border border-orange-500/20 text-orange-400 backdrop-blur-xl transition-all hover:bg-orange-600/40 rounded-l-xl'
-              )}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          )}
-        </motion.aside>
-      )}
-    </div>
+        <div className="flex-1 overflow-y-auto no-scrollbar pt-6">
+          {renderTabContent()}
+        </div>
+      </div>
+    </SingleAgentLayout>
   );
 }
 

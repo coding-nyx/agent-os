@@ -2,11 +2,14 @@ import { GlobalProjection, NeuralStateVectorPatch, SpineEventType, Message } fro
 import { ConversationContext } from '@/llm-engine/types';
 import { StructuredResponse } from '@/llm-engine/engine/types';
 
+export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual';
+
 export interface ActionContext {
   userId: string | undefined;
   isGuest: boolean;
   moduleId: string;
   payload: Record<string, unknown>;
+  persistencePolicy?: PersistencePolicy;
   encryptionKey?: CryptoKey | null;
   navigateTo?: (path: string) => void;
   getLatestNSV?: () => Record<string, unknown>;

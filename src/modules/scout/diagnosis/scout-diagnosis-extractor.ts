@@ -1,0 +1,61 @@
+import type { ExtractedDataBag, ExtractedDataItem } from '@/core/diagnosis/types';
+
+/**
+ * Maps Scout AI action payloads → ExtractedDataItems.
+ * Scout is read-only — items are for display/export only, never merged.
+ */
+export function extractScoutData(
+  actionType: string,
+  payload: Record<string, unknown>,
+  current: ExtractedDataBag,
+): ExtractedDataBag {
+  const now = new Date().toISOString();
+
+  switch (actionType) {
+    case 'extract_finding': {
+      const finding = typeof payload.finding === 'string' ? payload.finding : 'Finding';
+      const confidence = typeof payload.confidence === 'string' ? payload.confidence : 'medium';
+      const item: ExtractedDataItem = {
+        id: crypto.randomUUID(),
+        type: 'finding',
+        label: `${finding.slice(0, 80)}${finding.length > 80 ? '…' : ''} [${confidence}]`,
+        data: { ...payload },
+        source: 'diagnosis',
+        extractedAt: now,
+      };
+      return { ...current, items: [...current.items, item] };
+    }
+
+    case 'extract_citation': {
+      const authors = typeof payload.authors === 'string' ? payload.authors : 'Unknown';
+      const title = typeof payload.title === 'string' ? payload.title : 'Untitled';
+      const year = typeof payload.year === 'number' ? payload.year : '';
+      const item: ExtractedDataItem = {
+        id: crypto.randomUUID(),
+        type: 'citation',
+        label: `${authors}${year ? ` (${year})` : ''} — ${title.slice(0, 60)}`,
+        data: { ...payload },
+        source: 'diagnosis',
+        extractedAt: now,
+      };
+      return { ...current, items: [...current.items, item] };
+    }
+
+    case 'summarize_section': {
+      const section = typeof payload.section === 'string' ? payload.section : 'Section';
+      const summary = typeof payload.summary === 'string' ? payload.summary : '';
+      const item: ExtractedDataItem = {
+        id: crypto.randomUUID(),
+        type: 'summary',
+        label: `${section}: ${summary.slice(0, 80)}${summary.length > 80 ? '…' : ''}`,
+        data: { ...payload },
+        source: 'diagnosis',
+        extractedAt: now,
+      };
+      return { ...current, items: [...current.items, item] };
+    }
+
+    default:
+      return current;
+  }
+}

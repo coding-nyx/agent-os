@@ -6,7 +6,7 @@ import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import { DailyBriefSection } from './DailyBriefSection';
 import { SynthesisPanel } from './SynthesisPanel';
-import { ModuleHealthCards } from './ModuleHealthCards';
+import { ModuleHealthFAB } from './ModuleHealthFAB';
 import { CommandPalette } from './CommandPalette';
 import { RoutingSuggestion } from './RoutingSuggestion';
 
@@ -117,13 +117,13 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
           onConsultModule={handleConsultModule}
           onNavigate={(path) => navigate(path)}
         />
-
-        {/* Module Health Cards + Hub — single row */}
-        <ModuleHealthCards />
       </div>
 
-      {/* Chat area — fills remaining space */}
-      <div className="flex-1 min-h-0 flex flex-col">
+      {/* Chat area — fills remaining space; relative for FAB positioning */}
+      <div className="flex-1 min-h-0 flex flex-col relative">
+        {/* Module Health FAB — floats bottom-right inside chat area */}
+        <ModuleHealthFAB />
+
         <NexusChat
           ai={{
             ...ai,

@@ -14,6 +14,8 @@ import { useMemoryIntegration } from './useMemoryIntegration';
 import { useConsolidation } from './useConsolidation';
 import { useHandoffProcessor } from './useHandoffProcessor';
 
+export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual';
+
 interface UseModuleAIOptions {
   moduleId: string;
   systemPrompt: string;
@@ -21,6 +23,7 @@ interface UseModuleAIOptions {
   navigateTo?: (path: string) => void;
   sessionId?: string;
   contextPolicy?: ContextPolicy;
+  persistencePolicy?: PersistencePolicy;
 }
 
 const MEMORY_SECTION_CHAR_LIMIT = 1800;
@@ -39,7 +42,15 @@ function contentToText(content: MessageContent): string {
     .join(' ');
 }
 
-export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, navigateTo, sessionId, contextPolicy }: UseModuleAIOptions) {
+export function useModuleAI({ 
+  moduleId, 
+  systemPrompt: baseRole, 
+  encryptionKey, 
+  navigateTo, 
+  sessionId, 
+  contextPolicy,
+  persistencePolicy = 'auto'
+}: UseModuleAIOptions) {
   const { streamMessage, sendMessage } = useAI();
   const { enhanceContext, enhanceContextForModule, globalSoul } = useGlobalSoul();
   const { user, isGuest, profile } = useAuth();
@@ -169,7 +180,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
-  const flushActiveSession = useCallback(() => {
+  const flushActiveSession = useCallback((forceRemote = false) => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
@@ -184,7 +195,9 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
 
     if (currentMessages.length === 0) return;
 
-    if (user && !isGuest) {
+    const shouldSaveRemote = forceRemote || (persistencePolicy === 'auto' && user && !isGuest);
+
+    if (shouldSaveRemote && user) {
       const lastMessageAt = new Date().toISOString();
       lastRemoteSignatureRef.current = `${lastMessageAt}:${currentMessages.length}`;
       ModuleMemoryService.saveActiveSession(user.uid, {
@@ -207,7 +220,7 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
         savedAt: new Date().toISOString()
       }));
     } catch { /* sessionStorage full or unavailable */ }
-  }, [user, isGuest, moduleId, activeSessionId, resolvedContextPolicy]);
+  }, [user, isGuest, moduleId, activeSessionId, resolvedContextPolicy, persistencePolicy]);
 
   useEffect(() => {
     if (isHydrating || messages.length === 0) return;
@@ -218,11 +231,24 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
       hydratedFromRemoteRef.current = false;
       return;
     }
-    saveTimerRef.current = setTimeout(flushActiveSession, 1500);
+    
+    // For scout-research, we only save to remote on specific commit actions, but we keep local storage updated
+    if (persistencePolicy === 'scout-research') {
+       try {
+        sessionStorage.setItem(`nexus_session_${moduleId}_${activeSessionId}`, JSON.stringify({
+          history: messages,
+          startTime: sessionStartRef.current,
+          savedAt: new Date().toISOString()
+        }));
+      } catch { /* ignore */ }
+      return;
+    }
+
+    saveTimerRef.current = setTimeout(() => flushActiveSession(), 1500);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [isHydrating, messages, flushActiveSession]);
+  }, [isHydrating, messages, flushActiveSession, persistencePolicy, moduleId, activeSessionId]);
 
   // Flush pending saves on tab close
   useEffect(() => {
@@ -374,12 +400,19 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
             console.warn(`[SchemaGuard] Blocked unauthorized action "${type}" for module "${moduleId}"`);
             continue;
           }
+          
+          // Special handle for scout-research manual commit
+          if (type === 'commit_research' && moduleId === 'scout') {
+             flushActiveSession(true);
+             continue;
+          }
 
           await ActionHub.execute(moduleId, type, {
             userId: user?.uid,
             isGuest: !!isGuest,
             moduleId,
             payload,
+            persistencePolicy,
             encryptionKey,
             navigateTo,
             getLatestNSV: () => {
@@ -408,7 +441,9 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
           if (onActionParsed) onActionParsed(type, payload);
         }
 
-        if (user && !isGuest && Object.keys(soulUpdates).length > 0) {
+        const shouldUpdateGlobalSoul = persistencePolicy !== 'scout-research' && user && !isGuest && Object.keys(soulUpdates).length > 0;
+
+        if (shouldUpdateGlobalSoul && user) {
           await GlobalProjectionService.updateCrossFunctionalState(user.uid, soulUpdates);
 
           Spine.emit({
@@ -437,38 +472,14 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
 
         // Flush immediately after completion
         if (localHistory.length > 0) {
-          if (saveTimerRef.current) {
-            clearTimeout(saveTimerRef.current);
-            saveTimerRef.current = null;
-          }
-          if (user && !isGuest) {
-            const lastMessageAt = new Date().toISOString();
-            lastRemoteSignatureRef.current = `${lastMessageAt}:${localHistory.length}`;
-            ModuleMemoryService.saveActiveSession(user.uid, {
-              sessionId: activeSessionId,
-              moduleId,
-              startTime: sessionStartRef.current,
-              lastMessageAt,
-              history: localHistory,
-              tokenCount: 0,
-              isGuestTrial: false,
-              contextPolicy: resolvedContextPolicy
-            }).catch((e) => console.error('Failed to save completed message:', e));
-          }
-          try {
-            sessionStorage.setItem(`nexus_session_${moduleId}_${activeSessionId}`, JSON.stringify({
-              history: localHistory,
-              startTime: sessionStartRef.current,
-              savedAt: new Date().toISOString()
-            }));
-          } catch { /* sessionStorage full or unavailable */ }
+           flushActiveSession();
         }
 
         // --- Pending query result (delegated to useHandoffProcessor) ---
         handlePendingQueryResult(visibleAssistantText);
 
         // --- Consolidation (delegated to useConsolidation) ---
-        if (visibleAssistantText && user && !isGuest) {
+        if (visibleAssistantText && user && !isGuest && persistencePolicy === 'auto') {
           const consolidationResult = await consolidateIfNeeded(localHistory, sessionStartRef.current);
           if (consolidationResult) {
             setMessages(consolidationResult.trimmedHistory);
@@ -522,7 +533,9 @@ export function useModuleAI({ moduleId, systemPrompt: baseRole, encryptionKey, n
       handlePendingQueryResult,
       consolidateIfNeeded,
       activeSessionId,
-      resolvedContextPolicy
+      resolvedContextPolicy,
+      persistencePolicy,
+      flushActiveSession
     ]
   );
 

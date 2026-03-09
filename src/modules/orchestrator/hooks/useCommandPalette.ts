@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   Brain, Activity, ClipboardList, Zap,
   Search, Code, LayoutGrid, User, Compass,
-  MessageSquare, BarChart3, RefreshCw
+  MessageSquare, BarChart3, RefreshCw, Microscope
 } from 'lucide-react';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import { useVault } from '@/lib/vault-context';
+import { getAllDiagnosisSpecs } from '@/core/diagnosis/diagnosis-registry';
 
 export interface Command {
   id: string;
@@ -137,6 +138,23 @@ export function useCommandPalette(options?: {
         execute: () => { close(); },
       },
     ];
+
+    // Diagnosis commands — one per registered specialization
+    const diagnosisSpecs = getAllDiagnosisSpecs();
+    for (const spec of diagnosisSpecs) {
+      const manifest = MODULE_MANIFEST[spec.moduleId as ModuleId];
+      if (!manifest?.hasPage) continue;
+      systemCommands.push({
+        id: `sys:diagnosis:${spec.moduleId}`,
+        category: 'system',
+        label: `Start ${spec.label} (${manifest.title})`,
+        icon: Microscope,
+        execute: () => {
+          navigate(`${manifest.route}?tab=diagnosis`);
+          close();
+        },
+      });
+    }
 
     const aiCommands: Command[] = [];
     const consultModules: ModuleId[] = ['agnes', 'titan', 'ledger', 'atlas'];
