@@ -27,7 +27,7 @@
 
 ## Sprint Items
 1. **S1-001: NexusDataLayer interface + InMemory adapter**  
-   - Acceptance: CRUD + event emitters work in tests; no Firebase types leak into the interface.
+   - [x] Acceptance: CRUD + event emitters work in tests; no Firebase types leak into the interface.
    - Refs: Backlog line 6; Product Definition §12.4 #1, #3.
 
 2. **S1-002: Data layer wiring for shared contexts**  
@@ -36,7 +36,7 @@
    - Dependency: S1-001.
 
 3. **S1-003: Vault gating rules + episodic encryption hook**  
-   - Acceptance: Vault-gated collections/fields documented and tested; episodic writes encrypt with vault key and carry vault flag; casual browsing bypasses per policy.  
+   - [x] Acceptance: Vault-gated collections/fields documented and tested; episodic writes encrypt with vault key and carry vault flag; casual browsing bypasses per policy.  
    - Refs: Backlog line 10; Product Definition §8.
 
 4. **S1-004: Global Soul read API with NSV filters**  
@@ -92,5 +92,5 @@
     - Refs: Global AI.
 
 17. **S1-017: Systemic UI Consistency**
-    - Acceptance: Standardize `<EmptyState>` components and number/currency formatting across modules.
+    - [x] Acceptance: Standardize `<EmptyState>` components and number/currency formatting across modules.
     - Refs: Systemic Tech Debt.
