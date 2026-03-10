@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Plus, Search, Filter, Download, Upload, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -304,11 +305,11 @@ export function TransactionManager({
       <div className="grid grid-cols-3 gap-4">
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Total Income</div>
-          <div className="mt-2 text-2xl font-black text-emerald-400">{currency} {stats.totalIncome.toLocaleString()}</div>
+          <div className="mt-2 text-2xl font-black text-emerald-400">{formatCurrency(stats.totalIncome, currency)}</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Total Expenses</div>
-          <div className="mt-2 text-2xl font-black text-red-400">{currency} {stats.totalExpenses.toLocaleString()}</div>
+          <div className="mt-2 text-2xl font-black text-red-400">{formatCurrency(stats.totalExpenses, currency)}</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Net Cash Flow</div>
@@ -316,7 +317,7 @@ export function TransactionManager({
             "mt-2 text-2xl font-black",
             stats.netCashFlow >= 0 ? "text-cyan-400" : "text-amber-400"
           )}>
-            {currency} {stats.netCashFlow.toLocaleString()}
+            {formatCurrency(stats.netCashFlow, currency)}
           </div>
         </SurfaceCard>
       </div>
@@ -484,7 +485,7 @@ export function TransactionManager({
                       "px-4 py-3 text-right text-sm font-bold tabular-nums",
                       transaction.type === 'income' ? 'text-emerald-400' : 'text-red-400'
                     )}>
-                      {transaction.type === 'income' ? '+' : '-'}{currency} {transaction.amount.toLocaleString()}
+                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, currency)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">

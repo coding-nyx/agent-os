@@ -10,6 +10,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/core/components/EmptyState';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasTask } from '../services/atlas-profile-service';
 
@@ -108,26 +109,11 @@ export function FocusView({
   // ---- Empty state ----
   if (!activeTask) {
     return (
-      <div
-        className="relative h-full flex flex-col items-center justify-center p-8 bg-zinc-950"
-        role="region"
-        aria-label="Focus mode — no active task"
-      >
-        {/* Ambient glow */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          aria-hidden="true"
-          style={{
-            background:
-              'radial-gradient(circle at 50% 50%, rgba(52, 211, 153, 0.04), transparent 60%)',
-          }}
+      <div className="relative h-full flex flex-col items-center justify-center p-8 bg-zinc-950">
+        <EmptyState
+          title="No active task"
+          description="Select a task to enter focus mode"
         />
-        <div className="relative text-center space-y-3">
-          <p className="text-lg font-bold text-white/40">No active task</p>
-          <p className="text-sm text-white/20">
-            Select a task to enter focus mode
-          </p>
-        </div>
       </div>
     );
   }

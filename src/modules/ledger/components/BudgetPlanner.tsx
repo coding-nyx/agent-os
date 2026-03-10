@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import { PieChart, Sliders, Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -205,7 +206,7 @@ export function BudgetPlanner({
         {paths}
         <circle cx={centerX} cy={centerY} r={radius * 0.5} fill="rgba(0,0,0,0.8)" />
         <text x={centerX} y={centerY - 10} textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">
-          {stats.allocationPercent.toFixed(0)}%
+          {formatNumber(stats.allocationPercent, 0, 0)}%
         </text>
         <text x={centerX} y={centerY + 10} textAnchor="middle" fill="rgba(255,255,255,0.6)" fontSize="10">
           Allocated
@@ -220,12 +221,12 @@ export function BudgetPlanner({
       <div className="grid grid-cols-4 gap-4">
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Monthly Income</div>
-          <div className="mt-2 text-xl font-black text-white">{currency} {monthlyIncome.toLocaleString()}</div>
+          <div className="mt-2 text-xl font-black text-white">{formatCurrency(monthlyIncome, currency)}</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Allocated</div>
-          <div className="mt-2 text-xl font-black text-cyan-400">{currency} {stats.totalAllocated.toLocaleString()}</div>
-          <div className="text-[10px] text-white/50 mt-1">{stats.allocationPercent.toFixed(1)}%</div>
+          <div className="mt-2 text-xl font-black text-cyan-400">{formatCurrency(stats.totalAllocated, currency)}</div>
+          <div className="text-[10px] text-white/50 mt-1">{formatNumber(stats.allocationPercent, 1, 1)}%</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Spent</div>
@@ -233,9 +234,9 @@ export function BudgetPlanner({
             "mt-2 text-xl font-black",
             stats.spendingPercent > 100 ? "text-red-400" : "text-emerald-400"
           )}>
-            {currency} {stats.totalSpent.toLocaleString()}
+            {formatCurrency(stats.totalSpent, currency)}
           </div>
-          <div className="text-[10px] text-white/50 mt-1">{stats.spendingPercent.toFixed(1)}%</div>
+          <div className="text-[10px] text-white/50 mt-1">{formatNumber(stats.spendingPercent, 1, 1)}%</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Remaining</div>
@@ -243,7 +244,7 @@ export function BudgetPlanner({
             "mt-2 text-xl font-black",
             stats.remaining < 0 ? "text-amber-400" : "text-emerald-400"
           )}>
-            {currency} {stats.remaining.toLocaleString()}
+            {formatCurrency(stats.remaining, currency)}
           </div>
         </SurfaceCard>
       </div>
@@ -258,9 +259,9 @@ export function BudgetPlanner({
               <div className="space-y-1">
                 {overspendingCategories.map(cat => (
                   <div key={cat.id} className="text-xs text-white/70">
-                    <span className="font-medium">{cat.name}</span>: {currency} {cat.spent.toLocaleString()} / {currency} {cat.allocated.toLocaleString()}
+                    <span className="font-medium">{cat.name}</span>: {formatCurrency(cat.spent, currency)} / {formatCurrency(cat.allocated, currency)}
                     <span className="text-amber-400 ml-2">
-                      (+{currency} {(cat.spent - cat.allocated).toLocaleString()})
+                      (+{formatCurrency(cat.spent - cat.allocated, currency)})
                     </span>
                   </div>
                 ))}
@@ -357,7 +358,7 @@ export function BudgetPlanner({
                         "text-xs font-mono",
                         cat.spent > cat.allocated ? "text-red-400" : "text-white/70"
                       )}>
-                        {currency} {cat.spent.toLocaleString()} / {currency} {cat.allocated.toLocaleString()}
+                        {formatCurrency(cat.spent, currency)} / {formatCurrency(cat.allocated, currency)}
                       </span>
                       <button
                         onClick={() => handleOpenEditModal(cat)}
@@ -501,7 +502,7 @@ export function BudgetPlanner({
                     <div className="flex items-center gap-3">
                       <span className="text-cyan-400 font-mono">{percentage}%</span>
                       <span className="text-white/50 font-mono">
-                        {currency} {((monthlyIncome * percentage) / 100).toLocaleString()}
+                        {formatCurrency((monthlyIncome * percentage) / 100, currency)}
                       </span>
                     </div>
                   </div>

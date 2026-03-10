@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Moon, Plus, TrendingUp, TrendingDown, Minus, Brain, Clock, Zap, MessageSquare } from 'lucide-react';
 import type { SleepEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/core/components/EmptyState';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
@@ -156,23 +157,17 @@ export function SleepTracker({ sleepLog, onAnalyze }: SleepTrackerProps) {
 
         {/* Empty state */}
         {sleepLog?.length === 0 && (
-          <SurfaceCard className="p-6">
-            <div className="flex flex-col items-center text-center space-y-3 py-2">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                <Moon className="w-5 h-5 text-cyan-400" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-black italic uppercase tracking-tight text-white">No sleep data yet</p>
-                <p className="text-xs text-white/50 max-w-xs leading-relaxed">
-                  Track your sleep to unlock AI-powered recovery analysis. Titan uses sleep quality to calibrate your training intensity.
-                </p>
-              </div>
+          <EmptyState
+            title="No sleep data yet"
+            description="Track your sleep to unlock AI-powered recovery analysis. Titan uses sleep quality to calibrate your training intensity."
+            icon={Moon}
+            action={
               <NeuralButton onClick={() => setShowModal(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Log First Night
               </NeuralButton>
-            </div>
-          </SurfaceCard>
+            }
+          />
         )}
 
         {/* Stats row */}

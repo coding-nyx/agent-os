@@ -13,6 +13,7 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import {
   TrendingUp,
   TrendingDown,
@@ -97,7 +98,7 @@ function SavingsRing({
         {label}
       </p>
       <p className="text-[8px] text-white/30 text-center">
-        {currency} {targetAmount.toLocaleString()}
+        {formatCurrency(targetAmount, currency)}
       </p>
       <p className="text-[8px] text-cyan-400/70 text-center">
         {isFinite(monthsToGoal) ? `${monthsToGoal} mo` : '∞'}
@@ -167,7 +168,7 @@ function RoiBadge({ score }: { score: number }) {
 
   return (
     <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-black tabular-nums', color)}>
-      {score.toFixed(1)}
+      {formatNumber(score, 1, 1)}
     </span>
   );
 }
@@ -294,7 +295,7 @@ export function BehavioralInsightsPanel({
                 <div key={cat} className="flex items-center justify-between text-[9px]">
                   <span className="text-white/50">{label}</span>
                   <span className={cn('font-bold tabular-nums', accent)}>
-                    {currency} {total.toLocaleString(undefined, { maximumFractionDigits: 0 })} / mo
+                    {formatCurrency(total, currency)} / mo
                     <span className="text-white/20 ml-1">({items.length})</span>
                   </span>
                 </div>

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -158,7 +159,7 @@ export function CashFlowChart({ data, currency = 'USD', className }: CashFlowCha
               className="cursor-pointer hover:r-6 transition-all"
             >
               <title>
-                {point.month}: {currency} {point.incomeValue.toLocaleString()}
+                {point.month}: {formatCurrency(point.incomeValue, currency)}
               </title>
             </circle>
             <circle
@@ -169,7 +170,7 @@ export function CashFlowChart({ data, currency = 'USD', className }: CashFlowCha
               className="cursor-pointer hover:r-6 transition-all"
             >
               <title>
-                {point.month}: {currency} {point.expensesValue.toLocaleString()}
+                {point.month}: {formatCurrency(point.expensesValue, currency)}
               </title>
             </circle>
 
@@ -333,7 +334,7 @@ export function DebtPayoffTracker({ data, currency = 'USD', className }: DebtPay
                 className="cursor-pointer"
               >
                 <title>
-                  {point.month}: {currency} {point.balance.toLocaleString()}
+                  {point.month}: {formatCurrency(point.balance, currency)}
                 </title>
               </circle>
               
@@ -348,7 +349,7 @@ export function DebtPayoffTracker({ data, currency = 'USD', className }: DebtPay
                     fontWeight="bold"
                     textAnchor="middle"
                   >
-                    {currency} {(point.balance / 1000).toFixed(0)}k
+                    {formatCurrency(point.balance / 1000, currency)}
                   </text>
                   <text
                     x={x}

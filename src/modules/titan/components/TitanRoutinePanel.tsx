@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Routine, Weekday } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/core/components/EmptyState';
 import { getTodayWeekday } from '../utils';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralModal } from '@/core/components/NeuralModal';
@@ -69,19 +70,11 @@ export function TitanRoutinePanel({
     return (
       <>
         <div className="px-6 pt-3 pb-5 bg-black/40 border-b border-white/5 backdrop-blur-xl">
-          <SurfaceCard className="p-6">
-            <div className="flex flex-col items-center text-center space-y-4 py-2">
-              <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-                <Dumbbell className="w-5 h-5 text-orange-400" />
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-base font-black italic uppercase tracking-tight text-white">
-                  No Training Plan Yet
-                </h3>
-                <p className="text-xs text-white/50 max-w-sm leading-relaxed">
-                  Build your weekly routine manually, or let Titan generate one based on your goals and recovery state.
-                </p>
-              </div>
+          <EmptyState
+            title="No Training Plan Yet"
+            description="Build your weekly routine manually, or let Titan generate one based on your goals and recovery state."
+            icon={Dumbbell}
+            action={
               <div className="flex flex-col sm:flex-row items-center gap-3 pt-1 relative">
                 <NeuralButton onClick={handleOpenCreate}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -120,8 +113,8 @@ export function TitanRoutinePanel({
                   </div>
                 )}
               </div>
-            </div>
-          </SurfaceCard>
+            }
+          />
         </div>
 
         <RoutineBuilderModal

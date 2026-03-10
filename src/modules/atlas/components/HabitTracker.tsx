@@ -9,6 +9,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/core/components/EmptyState';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasHabit } from '../services/atlas-profile-service';
 
@@ -77,16 +78,12 @@ export function HabitTracker({
   // ---- Empty state ----
   if (habits.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center">
-        <Flame
-          className="w-8 h-8 text-white/15 mx-auto mb-2"
-          aria-hidden="true"
-        />
-        <p className="text-sm text-white/40">No habits yet</p>
-        <p className="text-xs text-white/20 mt-1">
-          Create a habit to start tracking streaks
-        </p>
-      </div>
+      <EmptyState
+        title="No habits yet"
+        description="Create a habit to start tracking streaks"
+        icon={Flame}
+        size="sm"
+      />
     );
   }
 

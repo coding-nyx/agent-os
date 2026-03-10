@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Target, TrendingUp, Plus, Edit2, Trash2, PartyPopper, Lightbulb } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -196,11 +197,11 @@ export function GoalTracker({
         </SurfaceCard>
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Total Progress</div>
-          <div className="mt-2 text-2xl font-black text-violet-400">{stats.overallProgress.toFixed(0)}%</div>
+          <div className="mt-2 text-2xl font-black text-violet-400">{formatNumber(stats.overallProgress, 0, 0)}%</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Monthly Saving</div>
-          <div className="mt-2 text-xl font-black text-white">{currency} {stats.totalMonthlyContribution.toLocaleString()}</div>
+          <div className="mt-2 text-xl font-black text-white">{formatCurrency(stats.totalMonthlyContribution, currency)}</div>
         </SurfaceCard>
       </div>
 
@@ -326,15 +327,15 @@ export function GoalTracker({
                   <div className="flex items-end justify-between">
                     <div>
                       <div className="text-2xl font-black text-white">
-                        {currency} {goal.currentAmount.toLocaleString()}
+                        {formatCurrency(goal.currentAmount, currency)}
                       </div>
                       <div className="text-xs text-white/50">
-                        of {currency} {goal.targetAmount.toLocaleString()}
+                        of {formatCurrency(goal.targetAmount, currency)}
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-black text-cyan-400">
-                        {progress.toFixed(0)}%
+                        {formatNumber(progress, 0, 0)}%
                       </div>
                       {!isAchieved && monthsToComplete !== null && (
                         <div className="text-[10px] text-white/50">
@@ -360,7 +361,7 @@ export function GoalTracker({
                       <div>
                         <span className="text-white/50">Monthly: </span>
                         <span className="text-cyan-400 font-mono">
-                          {currency} {goal.monthlyContribution.toLocaleString()}
+                          {formatCurrency(goal.monthlyContribution, currency)}
                         </span>
                       </div>
                     )}

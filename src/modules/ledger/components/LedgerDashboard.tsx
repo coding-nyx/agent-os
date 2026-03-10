@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon } from 'lucide-react';
 import * as Switch from '@radix-ui/react-switch';
 import { GlobalProjection } from '@/lib/types';
@@ -285,11 +286,11 @@ export function LedgerDashboard({
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-white">{debt.name}</span>
                       <span className="text-sm font-bold text-cyan-400">
-                        {profile?.currency} {debt.balance.toLocaleString()}
+                        {formatCurrency(debt.balance, profile?.currency)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-white/60">
-                      <span>Min Payment: {profile?.currency} {debt.minPayment.toLocaleString()}</span>
+                      <span>Min Payment: {formatCurrency(debt.minPayment, profile?.currency)}</span>
                       {debt.apr && <span>APR: {debt.apr}%</span>}
                     </div>
                   </div>

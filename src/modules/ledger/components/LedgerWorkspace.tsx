@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import { LayoutDashboard, Receipt, PieChart, Target, ListTodo, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LedgerIntakeProfile } from '../services/ledger-intake-service';

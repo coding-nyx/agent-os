@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronDown, Clock, ListTodo, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/core/components/EmptyState';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasGoal } from '../services/atlas-profile-service';
 
@@ -62,16 +63,12 @@ export function GoalProgress({
   // ---- Empty state ----
   if (goals.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center">
-        <Target
-          className="w-8 h-8 text-white/15 mx-auto mb-2"
-          aria-hidden="true"
-        />
-        <p className="text-sm text-white/40">No goals yet</p>
-        <p className="text-xs text-white/20 mt-1">
-          Create a goal to track your progress
-        </p>
-      </div>
+      <EmptyState
+        title="No goals yet"
+        description="Create a goal to track your progress"
+        icon={Target}
+        size="sm"
+      />
     );
   }
 
