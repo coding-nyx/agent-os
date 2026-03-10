@@ -7,6 +7,7 @@ import { stripInternalTags } from '@/llm-engine/sanitize';
 import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { PendingRequestState } from '@/lib/hooks/use-pending-recovery';
 
 interface NexusChatProps {
     ai: {
@@ -20,7 +21,9 @@ interface NexusChatProps {
         streamingText: string;
         error: string | null;
         quota: GuestQuota | null;
-        handleSendMessage: (content: MessageContent, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
+        handleSendMessage: (content: MessageContent, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => void;
+        pendingRequest?: PendingRequestState | null;
+        clearPendingRequest?: () => void;
     };
     agentName: string;
     themeColor: ModuleTheme;
@@ -52,7 +55,7 @@ export function NexusChat({
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
 
-    const { messages, isProcessing, aiState, streamingText, error, quota, handleSendMessage } = ai;
+    const { messages, isProcessing, aiState, streamingText, error, quota, handleSendMessage, pendingRequest, clearPendingRequest } = ai;
 
     // streamingText is now already cleaned by the Orchestrator delta logic
     const visibleStreamingText = streamingText.trim();
@@ -94,6 +97,17 @@ export function NexusChat({
                     </div>
                   ) : undefined
                 }
+                pendingRequest={pendingRequest}
+                onRecoverPendingRequest={() => {
+                  if (pendingRequest) {
+                    const content = typeof pendingRequest.userMessage === 'string'
+                      ? pendingRequest.userMessage
+                      : pendingRequest.userMessage.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
+                    clearPendingRequest?.();
+                    handleSendMessage(content, onActionParsed);
+                  }
+                }}
+                onDismissPendingRequest={() => clearPendingRequest?.()}
                 onRetry={() => {
                     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
                     if (lastUserMsg) {

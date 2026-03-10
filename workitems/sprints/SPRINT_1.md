@@ -1,6 +1,6 @@
-# SPRINT 1 — Migration Foundations + Cross-Domain Design
+# SPRINT 1 — Migration Foundations, Design UX & AI Resilience
 **Duration:** 1–2 weeks  
-**Objective:** Establish the migration substrate (data layer, vault gating, soul/spine contracts) and capture cross-domain design decisions (Atlas, Ledger, Orchestrator, Soma) to unblock implementation sprints.
+**Objective:** Establish the migration substrate (data layer, vault gating, soul/spine contracts), capture cross-domain design decisions, and implement critical UI/AI stability enhancements (Ghost UI, Fallback, Scoped Context).
 
 ## Goals
 - Decouple data access via `NexusDataLayer` with an in-memory adapter for offline/dev (Product Definition §12.4 #1–#4; Backlog §1, line 6).
@@ -8,18 +8,22 @@
 - Provide filtered Global Soul/NSV reads with ownership-aware selectors (Product Definition §§4.4, 4.5, 12.1).
 - Define Spine event schema and stubs for cascade-ready publish/subscribe (Product Definition §10.4; Backlog §1, line 7).
 - Produce design spikes for Atlas predictive service, Ledger behavioral analysis, Orchestrator conflict-resolution UI, and Soma identity decision (Product Definition §§11.3, 12.4).
+- Enhance UX through Ghost UI (NeuralDrafts), Vault top-level routing, and systemic UI standardization.
+- Improve LLM resilience with Pending Completion Recovery and Scoped Conversations.
 
 ## In Scope
 - Interfaces, adapters, stubs, and design documents; no production vendor cutover.
-- Vault gating rules and episodic memory encryption hook.
+- Vault gating rules, episodic memory encryption hook, and Vault safe-landing routing.
 - Read-only Global Soul/NSV surfaces with permission filters.
 - Spine event schema and contract tests.
 - Design artifacts for Atlas/Ledger/Orchestrator/Soma directions.
+- Ghost UI implementation and `<EmptyState>`/formatting standardization.
+- AI Chat fallback mechanisms and entity-specific chat modes.
 
 ## Out of Scope
 - Full module rewrites or production data migrations.
 - Advanced RAG/memory consolidation or dashboard polish.
-- New LLM engine features (engine remains a black box boundary).
+- New LLM engine features beyond scoped context and recovery.
 
 ## Sprint Items
 1. **S1-001: NexusDataLayer interface + InMemory adapter**  
@@ -71,10 +75,22 @@
     - Acceptance: Decision document (merge vs separate) with guardrails, data ownership, and migration implications; approved.  
     - Refs: Product Definition §11.3 (Soma gap); Product Definition §12.1.
 
-## Dependencies
-- S1-002 depends on S1-001. All other items can run in parallel.
+13. **S1-013: Ghost UI (NeuralDrafts) implementation**
+    - [x] Acceptance: Dashed-border approval flow for AI-proposed actions implemented to bridge autonomous AI action and user sovereignty.
+    - Refs: Core Platform.
 
-## Risks / Notes
-- Keep LLM engine untouched; treat it as an external boundary.
-- Avoid premature production data migrations; focus on interfaces, docs, and tests.
-- Enforce module isolation and NSV ownership in all new code/tests.
+14. **S1-014: Vault Access Refactor (Shell vs. Private)**
+    - Acceptance: Decouple Vault from page routing; top-level dashboards visible while Vault is locked.
+    - Refs: Vision Alignment.
+
+15. **S1-015: Pending Completion Recovery (Chat Fallback)**
+    - [x] Acceptance: Unfinished AI completions persist locally and prompt for recovery on next session load.
+    - Refs: Global AI.
+
+16. **S1-016: Scoped Conversations**
+    - Acceptance: Implement ephemeral, entity-specific chat modes to reduce context noise and token usage.
+    - Refs: Global AI.
+
+17. **S1-017: Systemic UI Consistency**
+    - Acceptance: Standardize `<EmptyState>` components and number/currency formatting across modules.
+    - Refs: Systemic Tech Debt.

@@ -4,7 +4,7 @@ import {
   Send, Bot, User, Loader2, Sparkles, Shield,
   Activity as ActivityIcon, Terminal, ChevronDown, Lock, Zap,
   ArrowRight, Plus, FileText, BarChart3, Image as ImageIcon, X,
-  Search, Calculator, BrainCircuit, Trash2, RefreshCw
+  Search, Calculator, BrainCircuit, Trash2, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
@@ -15,6 +15,7 @@ import { stripInternalTags } from '@/llm-engine/sanitize';
 import { NeuralButton } from './NeuralButton';
 import { EmptyState } from '@/core/components/EmptyState';
 import { getActionLabel } from '@/lib/actions/action-labels';
+import { PendingRequestState } from '@/lib/hooks/use-pending-recovery';
 
 // Helper to convert MessageContent to string for display
 function messageContentToString(content: MessageContent): string {
@@ -49,6 +50,9 @@ interface ChatInterfaceProps {
   renderMessageActions?: (message: Message, index: number) => React.ReactNode;
   moduleId?: string;
   headerActions?: React.ReactNode;
+  pendingRequest?: PendingRequestState | null;
+  onRecoverPendingRequest?: () => void;
+  onDismissPendingRequest?: () => void;
 }
 
 const THEMES = {
@@ -235,6 +239,9 @@ export function ChatInterface({
   renderMessageActions,
   moduleId,
   headerActions,
+  pendingRequest,
+  onRecoverPendingRequest,
+  onDismissPendingRequest,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -456,6 +463,46 @@ export function ChatInterface({
 
       {/* Input area pinned to bottom via flex layout */}
       <div className="shrink-0 px-6 pb-4 pt-2">
+        <AnimatePresence>
+          {pendingRequest && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: 10, height: 0 }}
+              className="mb-4 overflow-hidden"
+            >
+              <div className="flex flex-col gap-2 p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 backdrop-blur-md shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-amber-400">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-[11px] font-black uppercase tracking-widest">
+                      {pendingRequest.status === 'failed' ? 'Connection Failed' : 'Unfinished Signal Detected'}
+                    </span>
+                  </div>
+                  <button onClick={onDismissPendingRequest} className="text-amber-400/50 hover:text-amber-400">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-xs text-amber-400/80 italic leading-relaxed">
+                  A neural transmission was interrupted. Would you like to recover and retransmit the following message?
+                </p>
+                <div className="p-3 mt-1 rounded-lg bg-black/40 border border-white/5 text-sm text-white/70 italic font-medium truncate">
+                  "{messageContentToString(pendingRequest.userMessage)}"
+                </div>
+                <div className="flex justify-end gap-3 mt-2">
+                  <NeuralButton variant="ghost" size="sm" onClick={onDismissPendingRequest} className="text-amber-400 hover:bg-amber-400/10">
+                    Discard
+                  </NeuralButton>
+                  <NeuralButton variant="primary" size="sm" onClick={onRecoverPendingRequest} className="bg-amber-600 hover:bg-amber-500 text-white shadow-amber-500/20">
+                    <RefreshCw className="w-3.5 h-3.5 mr-2" />
+                    Retransmit
+                  </NeuralButton>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <AnimatePresence>
             {quota?.isHardLocked && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute inset-x-0 bottom-full mb-10 z-[100]">

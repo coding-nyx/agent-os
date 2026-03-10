@@ -2,24 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ModuleMemoryService } from './module-memory-service';
 import { EmbeddingService } from './embedding-service';
 import { encryptWithKey, decryptWithKey } from '../encryption';
-import { readDocOnce } from './firestore-once';
 
-const firestoreSpies = vi.hoisted(() => ({
-  doc: vi.fn((...args: unknown[]) => ({ path: args.join('/') })),
-  setDoc: vi.fn(),
-  deleteDoc: vi.fn(),
-  arrayUnion: (...values: unknown[]) => ({ arrayUnion: values }),
-  onSnapshot: vi.fn()
+const dataLayerSpies = vi.hoisted(() => ({
+  getDocument: vi.fn(),
+  setDocument: vi.fn(),
+  deleteDocument: vi.fn(),
+  updateDocument: vi.fn()
 }));
 
-vi.mock('firebase/firestore', () => firestoreSpies);
-
-vi.mock('../firebase', () => ({
-  getFirebase: vi.fn(() => ({ db: {} }))
-}));
-
-vi.mock('./firestore-once', () => ({
-  readDocOnce: vi.fn()
+vi.mock('../data-layer/provider', () => ({
+  getNexusDataLayer: vi.fn(() => dataLayerSpies)
 }));
 
 vi.mock('./embedding-service', () => ({
@@ -37,17 +29,17 @@ const encryptionKey = {} as CryptoKey;
 
 describe('ModuleMemoryService', () => {
   beforeEach(() => {
-    firestoreSpies.setDoc.mockReset();
-    firestoreSpies.deleteDoc.mockReset();
-    firestoreSpies.doc.mockClear();
-    (readDocOnce as unknown as vi.Mock).mockReset();
+    dataLayerSpies.getDocument.mockReset();
+    dataLayerSpies.setDocument.mockReset();
+    dataLayerSpies.deleteDocument.mockReset();
+    dataLayerSpies.updateDocument.mockReset();
     (EmbeddingService.embed as unknown as vi.Mock).mockClear();
     (encryptWithKey as unknown as vi.Mock).mockClear();
     (decryptWithKey as unknown as vi.Mock).mockClear();
   });
 
   it('skips commit when vault is required but no encryption key is present', async () => {
-    (readDocOnce as unknown as vi.Mock).mockResolvedValue({ exists: () => false });
+    dataLayerSpies.getDocument.mockResolvedValue(null);
 
     await ModuleMemoryService.commitSession(
       'user1',
@@ -63,24 +55,21 @@ describe('ModuleMemoryService', () => {
       'snapshot'
     );
 
-    expect(firestoreSpies.setDoc).not.toHaveBeenCalled();
+    expect(dataLayerSpies.setDocument).not.toHaveBeenCalled();
     expect(EmbeddingService.embed).not.toHaveBeenCalled();
   });
 
   it('encrypts payload and stamps vault metadata when a key is provided', async () => {
-    (readDocOnce as unknown as vi.Mock).mockResolvedValue({
-      exists: () => true,
-      data: () => ({
-        eventHistory: [{
-          id: 'prev',
-          timestamp: '2023-01-01',
-          summary: 'old',
-          keyInsights: [],
-          sentiment: 0,
-          tokenUsage: 0
-        }],
-        metadata: { foo: 'bar' }
-      })
+    dataLayerSpies.getDocument.mockResolvedValue({
+      eventHistory: [{
+        id: 'prev',
+        timestamp: '2023-01-01',
+        summary: 'old',
+        keyInsights: [],
+        sentiment: 0,
+        tokenUsage: 0
+      }],
+      metadata: { foo: 'bar' }
     });
 
     await ModuleMemoryService.commitSession(
@@ -99,8 +88,8 @@ describe('ModuleMemoryService', () => {
     );
 
     expect(encryptWithKey).toHaveBeenCalled();
-    expect(firestoreSpies.setDoc).toHaveBeenCalledTimes(1);
-    const [, payload] = firestoreSpies.setDoc.mock.calls[0];
+    expect(dataLayerSpies.setDocument).toHaveBeenCalledTimes(1);
+    const [, , payload] = dataLayerSpies.setDocument.mock.calls[0];
 
     expect(payload.encryptedPayload).toEqual({ ciphertext: expect.stringContaining('enc:'), iv: 'iv' });
     expect(payload.latestSnapshot).toBe('');
@@ -111,13 +100,10 @@ describe('ModuleMemoryService', () => {
   });
 
   it('returns vaultLocked envelope when encrypted but no key is available', async () => {
-    (readDocOnce as unknown as vi.Mock).mockResolvedValue({
-      exists: () => true,
-      data: () => ({
-        encryptedPayload: { ciphertext: 'enc', iv: 'iv' },
-        lastActive: '2024-01-01',
-        metadata: { foo: 'bar' }
-      })
+    dataLayerSpies.getDocument.mockResolvedValue({
+      encryptedPayload: { ciphertext: 'enc', iv: 'iv' },
+      lastActive: '2024-01-01',
+      metadata: { foo: 'bar' }
     });
 
     const envelope = await ModuleMemoryService.getEnvelope('user1', 'agnes', null);
@@ -140,13 +126,10 @@ describe('ModuleMemoryService', () => {
       })
     );
 
-    (readDocOnce as unknown as vi.Mock).mockResolvedValue({
-      exists: () => true,
-      data: () => ({
-        encryptedPayload: { ciphertext: 'enc', iv: 'iv' },
-        lastActive: '2024-02-02',
-        metadata: { foo: 'bar' }
-      })
+    dataLayerSpies.getDocument.mockResolvedValue({
+      encryptedPayload: { ciphertext: 'enc', iv: 'iv' },
+      lastActive: '2024-02-02',
+      metadata: { foo: 'bar' }
     });
 
     const envelope = await ModuleMemoryService.getEnvelope('user1', 'agnes', encryptionKey);

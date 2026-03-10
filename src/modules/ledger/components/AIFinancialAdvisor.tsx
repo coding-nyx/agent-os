@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -56,14 +57,14 @@ export function AIFinancialAdvisor({
       generatedInsights.push({
         type: 'warning',
         title: 'Low Savings Rate',
-        description: `Your savings rate is ${savingsRate.toFixed(1)}%. Financial experts recommend saving at least 20% of your income.`,
+        description: `Your savings rate is ${formatNumber(savingsRate, 1, 1)}%. Financial experts recommend saving at least 20% of your income.`,
         action: 'Increase monthly savings contribution'
       });
     } else if (savingsRate >= 20) {
       generatedInsights.push({
         type: 'positive',
         title: 'Strong Savings Rate',
-        description: `Excellent! You're saving ${savingsRate.toFixed(1)}% of your income. Keep up the great work.`,
+        description: `Excellent! You're saving ${formatNumber(savingsRate, 1, 1)}% of your income. Keep up the great work.`,
       });
     }
 
@@ -72,7 +73,7 @@ export function AIFinancialAdvisor({
       generatedInsights.push({
         type: 'warning',
         title: 'High Expense Ratio',
-        description: `${expenseRatio.toFixed(1)}% of your income goes to expenses. Consider reviewing and cutting non-essential costs.`,
+        description: `${formatNumber(expenseRatio, 1, 1)}% of your income goes to expenses. Consider reviewing and cutting non-essential costs.`,
         action: 'Review variable expenses'
       });
     }
@@ -82,7 +83,7 @@ export function AIFinancialAdvisor({
       generatedInsights.push({
         type: 'warning',
         title: 'High Debt Burden',
-        description: `Your debt is ${debtToIncome.toFixed(0)}% of your annual income. Prioritize debt payoff to reduce financial stress.`,
+        description: `Your debt is ${formatNumber(debtToIncome, 0, 0)}% of your annual income. Prioritize debt payoff to reduce financial stress.`,
         action: 'Create debt payoff plan'
       });
     } else if (debtTotal === 0) {

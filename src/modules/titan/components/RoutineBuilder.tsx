@@ -295,7 +295,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
         ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="exercises">
-              {(provided, snapshot) => (
+              {(provided: any, snapshot: any) => (
                 <div
                   {...provided.droppableProps}
                   ref={provided.innerRef}
@@ -306,7 +306,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                 >
                   {exercises.map((exercise, index) => (
                     <Draggable key={index} draggableId={`exercise-${index}`} index={index}>
-                      {(provided, snapshot) => (
+                      {(provided: any, snapshot: any) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}

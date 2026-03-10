@@ -14,6 +14,7 @@ import { getActionLabel } from '../actions/action-labels';
 import { useMemoryIntegration, MemoryContext } from './useMemoryIntegration';
 import { useConsolidation } from './useConsolidation';
 import { useHandoffProcessor } from './useHandoffProcessor';
+import { usePendingRecovery } from './use-pending-recovery';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual';
 
@@ -162,6 +163,8 @@ export function useModuleAI({
     sendMessage,
     mountedRef
   });
+
+  const { pendingRequest, savePendingRequest, clearPendingRequest, markPendingRequestFailed } = usePendingRecovery(moduleId);
 
   // Hydrate active session on mount + subscribe for cross-tab sync
   useEffect(() => {
@@ -325,6 +328,8 @@ export function useModuleAI({
           priority: 'info'
         });
       }
+
+      savePendingRequest(content);
 
       if (isGuest) {
         setQuota(GuestQuotaService.incrementTurn());
@@ -538,6 +543,8 @@ export function useModuleAI({
         if (localHistory.length > 0) {
            flushActiveSession();
         }
+        
+        clearPendingRequest();
 
         // --- Pending query result (delegated to useHandoffProcessor) ---
         handlePendingQueryResult(visibleAssistantText);
@@ -572,6 +579,7 @@ export function useModuleAI({
         if (mountedRef.current) {
           setError('The neural tunnel encountered an interference packet.');
         }
+        markPendingRequestFailed();
       } finally {
         if (mountedRef.current) {
           setIsProcessing(false);
@@ -663,6 +671,8 @@ export function useModuleAI({
     handleSendMessage,
     prewarmMemory,
     clearSession,
-    summarizeSession
+    summarizeSession,
+    pendingRequest,
+    clearPendingRequest
   };
 }
