@@ -101,8 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        const { ensureAuthReady } = await import('@/lib/firebase');
-        await ensureAuthReady();
         if (cancelled) return;
 
         if (profileUnsubRef.current) {
