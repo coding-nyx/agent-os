@@ -63,6 +63,7 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
 - [ ] **AI Validation Enhancements:** Implement batch field validation, learning feedback loops from user corrections, and module-specific validator fine-tuning.
 - [ ] **Data Portability v2:** Add persistent backup storage in Firestore, intelligent field-level merge strategies, and scheduled automatic exports.
 - [ ] **Systemic Tech Debt:**
+    - [ ] **Code Cleanup & Hygiene Pass:** Remove dead/duplicated code paths, normalize service/hook naming, tighten TypeScript surfaces, and prune stale TODOs/logging across active modules without changing product behavior.
     - [ ] Resolve conditional hook behavior in `TitanPage.tsx` greeting logic.
     - [ ] Fix tab panel `id` / `aria-controls` mismatch in `TitanPage.tsx`.
 
