@@ -9,10 +9,12 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
 - [x] **Enforce E2EE for Episodic Memory Sync (Plan B):** Refactor `ModuleMemoryService.commitSession` and module-specific handlers to require an `encryptionKey`. Ensure all episodic history snapshots are encrypted with the Vault master key before Firestore storage, preventing plaintext history leaks.
 
 ## 2. Therapy (Agnes)
+- [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Agnes module.
 - [ ] **Somatic Therapy:** (NEW) Bridge talk therapy with physical grounding. AI should suggest breathing/grounding exercises based on Spine-detected stress or heart rate spikes.
 - [ ] **Belief Graph Visualization:** An interactive 2D graph showing how user beliefs are evolving over time.
 
 ## 3. Physical (Titan - The Sovereign Module)
+- [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Titan and Soma modules.
 - [ ] **Physical Sovereign Architecture:** Consolidate *all* physical data into Titan as a single, comprehensive "Physical Soul."
     - [ ] **Layer 1: The Baseline (Clinical SoT):** Integration of labs, DNA, biomarkers, medical history, and passive biometrics (HRV, Sleep).
     - [ ] **Layer 2: The Activity (Performance):** Dynamic workout logs, PR tracking, routines, and RPE-based coaching.
@@ -24,6 +26,7 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
 - [ ] **Bug Fix: Biometric Charts:** Fix BarChart Y-axis tick deduplication and resolve dynamic Tailwind class purging in `RestPeriodCalculator` and `ClearanceStatus`.
 
 ## 4. Financial (Ledger)
+- [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Ledger module.
 - [ ] **Ledger Cross-Verification Engine (Active ROI):** Implement the intelligence to automatically correlate encrypted spending events with Spine-reported wellness shifts (stress spending, recovery ROI).
 - [ ] **Ledger Document Intelligence (Receipts/Invoices):** Expand the document parsing service to handle receipts and invoices with automated ledger entry and categorization.
 - [ ] **Ledger Debt & Savings Modeling:** Implement interactive modeling for debt payoff strategies and savings goal projections based on real-time cashflow.
@@ -31,6 +34,7 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
 - [ ] **Ledger Schema Hardening:** Remove keyword-based validation and move to LLM-driven semantic domain validation for custom fields.
 
 ## 5. Planning (Atlas)
+- [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Atlas module.
 - [ ] **Energy Wave Charting:** Visualizer for daily energy peaks/valleys to optimize task scheduling.
 - [ ] **Task Graph Architecture:** Complex task dependencies with energy-cost estimation.
 - [ ] **Interactive Planning Dashboard:** Implement entity selection (tasks, habits, goals) and scoped conversation panels for focused editing.
@@ -39,11 +43,13 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
 - [ ] **Mount Planning Components:** Wire `QuickAddForm`, `TodaysPlanCard`, `FocusView`, and `ViewSwitcher` into the Atlas dashboard.
 
 ## 6. Research & Knowledge (Scout)
+- [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Scout module.
 - [ ] **Scout Search Proxy Service:** (NEW) Implement/stabilize a separate Node.js or Cloudflare Worker proxy for Tavily search to securely handle API keys outside the browser bundle (currently running in direct-to-Tavily dev mode).
 - [ ] **Information Firewall (Pulse):** Active curation of news/trends to protect cognitive focus.
 - [ ] **Evidence Source Verification:** Fact-checking engine with citation reliability scores.
 
 ## 7. Execution (Forge)
+- [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Forge module.
 - [ ] **Life Ops Pivot (Executor Refinement):** Refocus Forge from a "Coding Tool" to a "Life Admin" executioner (email drafting, call execution, admin tasks). Note: Scheduling remains an Atlas-domain planning activity; Forge only initiates the execution.
 - [ ] **Nexus-Link Bridge:** Secure terminal for remote system management.
 
