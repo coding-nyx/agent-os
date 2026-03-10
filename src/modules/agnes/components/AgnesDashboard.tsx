@@ -21,7 +21,7 @@ export function AgnesDashboard({
 }) {
   const { globalSoul } = useGlobalSoul();
   const { user, isGuest } = useAuth();
-  const { isModuleAccessible, unlockVault } = useVault();
+  const { isModuleAccessible } = useVault();
   const locked = isLocked || !isModuleAccessible('agnes');
   const [graph, setGraph] = useState<BeliefGraph | null>(null);
 
@@ -30,7 +30,7 @@ export function AgnesDashboard({
       setGraph(null);
       return;
     }
-    return subscribeBeliefGraph(user.uid, (g) => setGraph(g), encryptionKey);
+    return subscribeBeliefGraph({ userId: user.uid, encryptionKey }, (g) => setGraph(g));
   }, [user, isGuest, encryptionKey]);
 
   const soul = globalSoul;
@@ -40,7 +40,6 @@ export function AgnesDashboard({
         moduleName="Agnes"
         moduleDescription="Emotional stability and psychological grounding."
         accentClassName="text-indigo-400"
-        onUnlock={() => unlockVault()}
       />
     );
   }
