@@ -84,7 +84,7 @@ describe('ModuleMemoryService', () => {
         tokenUsage: 10
       },
       'snapshot-text',
-      { encryptionKey }
+      { encryptionKey, facts: ['fact-1'] }
     );
 
     expect(encryptWithKey).toHaveBeenCalled();
@@ -97,6 +97,7 @@ describe('ModuleMemoryService', () => {
     expect(payload.metadata.vault.encrypted).toBe(true);
     expect(payload.metadata.vault.eventCount).toBe(2);
     expect(payload.metadata.foo).toBe('bar');
+    expect(payload.metadata.vault).toBeDefined();
   });
 
   it('returns vaultLocked envelope when encrypted but no key is available', async () => {

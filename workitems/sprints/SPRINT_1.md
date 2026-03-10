@@ -1,6 +1,12 @@
 # SPRINT 1 — Migration Foundations, Design UX & AI Resilience
 **Duration:** 1–2 weeks  
 **Objective:** Establish the migration substrate (data layer, vault gating, soul/spine contracts), capture cross-domain design decisions, and implement critical UI/AI stability enhancements (Ghost UI, Fallback, Scoped Context).
+**Status:** Closed — Completed (March 10, 2026)
+
+## Sprint Closeout
+- All Sprint 1 items (S1-001 through S1-017) are complete.
+- Remaining related platform work is tracked in `workitems/backlog/BACKLOG.md`.
+- Active execution has moved to `workitems/sprints/SPRINT_2.md`.
 
 ## Goals
 - Decouple data access via `NexusDataLayer` with an in-memory adapter for offline/dev (Product Definition §12.4 #1–#4; Backlog §1, line 6).
@@ -31,7 +37,7 @@
    - Refs: Backlog line 6; Product Definition §12.4 #1, #3.
 
 2. **S1-002: Data layer wiring for shared contexts**  
-   - Acceptance: Auth/Vault/GlobalSoul contexts consume `NexusDataLayer` via injected adapter; swapping adapters requires no code change.  
+   - [x] Acceptance: Auth/Vault/GlobalSoul contexts consume `NexusDataLayer` via injected adapter; swapping adapters requires no code change.  
    - Refs: Backlog line 6; Product Definition §12.4 #1.  
    - Dependency: S1-001.
 
@@ -40,39 +46,43 @@
    - Refs: Backlog line 10; Product Definition §8.
 
 4. **S1-004: Global Soul read API with NSV filters**  
-   - Acceptance: Modules get filtered snapshots per ownership matrix; selectors update on NSV changes; unauthorized dimensions are redacted.  
+   - [x] Acceptance: Modules get filtered snapshots per ownership matrix; selectors update on NSV changes; unauthorized dimensions are redacted.  
    - Refs: Product Definition §§4.4, 4.5, 12.1.
 
 5. **S1-005: Spine event schema + pub/sub stubs**  
-   - Acceptance: Spine events serialize to schema; missing required fields are rejected; mock publish reaches subscribers in tests.  
+   - [x] Acceptance: Spine events serialize to schema; missing required fields are rejected; mock publish reaches subscribers in tests.  
    - Refs: Backlog line 7; Product Definition §10.4.
 
 6. **S1-006: Module profile store alignment**  
-   - Acceptance: Module stores depend only on shared core types/local adapters; cross-module writes are blocked with validation.  
+   - [x] Acceptance: Module stores depend only on shared core types/local adapters; cross-module writes are blocked with validation.  
    - Refs: Product Definition §12.1.
 
 7. **S1-007: Migration map v1 (modules → data layer)**  
-   - Acceptance: Map lists current collections/fields to target `NexusDataLayer` entities per module with ownership noted; no cross-module overwrites.  
+   - [x] Acceptance: Map lists current collections/fields to target `NexusDataLayer` entities per module with ownership noted; no cross-module overwrites.  
    - Refs: Backlog line 6; Product Definition §12.3.
 
 8. **S1-008: Anti-pattern guardrails scan**  
-   - Acceptance: Lint/tests fail on cross-module writes, NSV bypass, or hardcoded schemas; actionable messages provided.  
+   - [x] Acceptance: Lint/tests fail on cross-module writes, NSV bypass, or hardcoded schemas; actionable messages provided.  
    - Refs: Product Definition §12.3; Backlog §8 (Systemic Tech Debt).
 
 9. **S1-009: Atlas predictive service design spike**  
-   - Acceptance: Design doc with state machine, signals (NSV, task graph, recovery), data needs, API surface, and success metrics; reviewed/approved.  
+   - [x] Acceptance: Design doc with state machine, signals (NSV, task graph, recovery), data needs, API surface, and success metrics; reviewed/approved.  
+   - Artifact: `docs/design/atlas-predictive-service.md`
    - Refs: Product Definition §11.3 (Atlas gap); Backlog §5 (Energy Wave/Task Graph).
 
 10. **S1-010: Ledger behavioral analysis design spike**  
-    - Acceptance: Design doc for spending-emotion correlation, data inputs (transactions, NSV emotional/biological), feature toggles, and ActionHub hooks; reviewed/approved.  
+    - [x] Acceptance: Design doc for spending-emotion correlation, data inputs (transactions, NSV emotional/biological), feature toggles, and ActionHub hooks; reviewed/approved.  
+    - Artifact: `docs/design/ledger-behavioral-analysis.md`
     - Refs: Product Definition §11.3 (Ledger gap); Backlog §4 (Automated Statement Therapy, Resonance ROI).
 
 11. **S1-011: Orchestrator conflict-resolution UI spec**  
-    - Acceptance: Wireframes + flow for conflict detection/resolution leveraging ActionHub outputs; includes scoped conversation UX and notification pattern; reviewed/approved.  
+    - [x] Acceptance: Wireframes + flow for conflict detection/resolution leveraging ActionHub outputs; includes scoped conversation UX and notification pattern; reviewed/approved.  
+    - Artifacts: `docs/design/orchestrator-conflict-ui.md`, `docs/design/orchestrator-conflict-resolution.md`
     - Refs: Product Definition §11.3 (Orchestrator gap); Backlog §8 (Scoped Conversations, Ghost UI).
 
 12. **S1-012: Soma identity decision note**  
-    - Acceptance: Decision document (merge vs separate) with guardrails, data ownership, and migration implications; approved.  
+    - [x] Acceptance: Decision document (merge vs separate) with guardrails, data ownership, and migration implications; approved.  
+    - Artifact: `docs/design/soma-identity-decision.md`
     - Refs: Product Definition §11.3 (Soma gap); Product Definition §12.1.
 
 13. **S1-013: Ghost UI (NeuralDrafts) implementation**

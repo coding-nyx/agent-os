@@ -1,6 +1,7 @@
 import { EpisodicMemoryService } from './episodic-memory-service';
 import { SemanticMemoryService } from './semantic-memory-service';
 import { ModuleMemoryEnvelope, SemanticFact, Message } from '../types';
+import { RagService } from './rag/rag-service';
 
 export class MemoryOrchestrator {
   static async retrieveContext(
@@ -10,8 +11,9 @@ export class MemoryOrchestrator {
     cachedEnvelopes: ModuleMemoryEnvelope[],
     episodicReady: boolean,
     semanticReady: boolean,
-    cachedFacts: SemanticFact[]
-  ): Promise<{ recalledSessionsSummary: string; recalledFactsSummary: string }> {
+    cachedFacts: SemanticFact[],
+    options: { requiresVault: boolean; encryptionKey?: CryptoKey | null }
+  ): Promise<{ recalledSessionsSummary: string; recalledFactsSummary: string; status: 'ok' | 'vault_blocked' }> {
     const relevantModuleIds = Array.from(new Set([moduleId, 'orchestrator']));
 
     const episodicPromise =
@@ -38,16 +40,25 @@ export class MemoryOrchestrator {
 
     const [sessions, facts] = await Promise.all([episodicPromise, semanticPromise]);
 
+    const ragResult = await RagService.retrieve({
+      moduleId,
+      query: memoryQuery,
+      encryptionKey: options.encryptionKey,
+      requiresVault: options.requiresVault
+    });
+
     const recalledSessionsSummary = sessions
       .map((session) => `- [${new Date(session.sessionDate).toLocaleDateString()}][${session.moduleId}] ${session.summary}`)
       .join('\n');
 
+    const ragFacts = ragResult.facts.map((fact) => `- [RAG] ${fact}`);
     const recalledFactsSummary = facts
       .slice(0, 5)
       .map((fact) => `- ${fact.fact} (confidence ${fact.confidence.toFixed(2)})`)
+      .concat(ragFacts)
       .join('\n');
 
-    return { recalledSessionsSummary, recalledFactsSummary };
+    return { recalledSessionsSummary, recalledFactsSummary, status: ragResult.status };
   }
 
   static parseInsightLines(raw: string): { summary: string; insights: string[] } {

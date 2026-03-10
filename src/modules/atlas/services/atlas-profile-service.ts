@@ -1,7 +1,5 @@
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { readDocOnce } from '@/lib/services/firestore-once';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import type {
   AtlasProfile,
@@ -139,13 +137,9 @@ export function createEmptyAtlasProfile(): AtlasProfile {
 
 export async function loadAtlasProfile({ userId, encryptionKey }: LoadContext): Promise<AtlasProfile | null> {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return null;
-
-    const snap = await readDocOnce(doc(db, 'atlas_profiles', userId));
-    if (!snap.exists()) return null;
-
-    const data = snap.data();
+    const dataLayer = getNexusDataLayer();
+    const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>('atlas_profiles', userId);
+    if (!data) return null;
     if (!data?.encryptedData || !data?.iv) return null;
 
     try {
@@ -165,18 +159,15 @@ export function subscribeAtlasProfile(
   onUpdate: (profile: AtlasProfile | null) => void
 ): () => void {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const ref = doc(db, 'atlas_profiles', userId);
-    const unsubscribe = onSnapshot(
-      ref,
-      async (snap) => {
-        if (!snap.exists()) {
+    const dataLayer = getNexusDataLayer();
+    const unsubscribe = dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
+      'atlas_profiles',
+      userId,
+      async (data) => {
+        if (!data) {
           onUpdate(null);
           return;
         }
-        const data = snap.data();
         if (!data?.encryptedData || !data?.iv) {
           onUpdate(null);
           return;
@@ -188,9 +179,6 @@ export function subscribeAtlasProfile(
           console.error('Failed to decrypt atlas profile:', error);
           onUpdate(null);
         }
-      },
-      (error) => {
-        console.error('Atlas profile subscription error:', error);
       }
     );
     return unsubscribe;
@@ -204,25 +192,19 @@ export async function saveAtlasProfile(profile: AtlasProfile, { userId, encrypti
   const normalized = normalizeAtlasProfile(profile);
 
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return;
-
+    const dataLayer = getNexusDataLayer();
     const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
     try {
-      await setDoc(
-        doc(db, 'atlas_profiles', userId),
-        {
-          encryptedData: encrypted.ciphertext,
-          iv: encrypted.iv,
-          salt: VAULT_SALT_MARKER,
-          metadata: {
-            onboardingComplete: normalized.onboardingComplete,
-            lastActive: new Date().toISOString(),
-            windows: normalized.recoveryWindows.length
-          }
-        },
-        { merge: true }
-      );
+      await dataLayer.setDocument('atlas_profiles', userId, {
+        encryptedData: encrypted.ciphertext,
+        iv: encrypted.iv,
+        salt: VAULT_SALT_MARKER,
+        metadata: {
+          onboardingComplete: normalized.onboardingComplete,
+          lastActive: new Date().toISOString(),
+          windows: normalized.recoveryWindows.length
+        }
+      });
     } catch (error) {
       console.error('[AtlasProfileService] Failed to save atlas profile:', error);
     }
@@ -245,10 +227,9 @@ export async function syncGuestAtlasProfileToUser({ userId, encryptionKey }: Loa
   const guestProfile = loadGuestAtlasProfile();
   if (!guestProfile) return false;
 
-  const { db } = getFirebase();
-  if (!db) return false;
-  const snap = await readDocOnce(doc(db, 'atlas_profiles', userId));
-  if (snap.exists() && snap.data()?.encryptedData) return false;
+  const dataLayer = getNexusDataLayer();
+  const existing = await dataLayer.getDocument<{ encryptedData?: string }>('atlas_profiles', userId);
+  if (existing?.encryptedData) return false;
 
   await saveAtlasProfile(guestProfile, { userId, encryptionKey });
   clearGuestAtlasProfile();

@@ -1,8 +1,8 @@
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
-import { readDocOnce } from '@/lib/services/firestore-once';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 
 const GUEST_FORGE_KEY = 'nexus_forge_profile_guest';
+const VAULT_SALT_MARKER = 'vault_salt_used';
 
 export interface ForgeExecutionRecord {
   id: string;
@@ -83,12 +83,22 @@ export function createEmptyForgeProfile(): ForgeProfile {
 
 export async function loadForgeProfile({ userId, encryptionKey }: LoadContext): Promise<ForgeProfile | null> {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return null;
+    const dataLayer = getNexusDataLayer();
+    const record = await dataLayer.getDocument<ForgeProfile & { encryptedData?: string; iv?: string }>('forge_sessions', userId);
+    if (!record) return null;
 
-    const snap = await readDocOnce(doc(db, 'forge_sessions', userId));
-    if (!snap.exists()) return null;
-    return normalizeForgeProfile(snap.data());
+    if (record.encryptedData && record.iv) {
+      try {
+        const decrypted = await decryptWithKey({ ciphertext: record.encryptedData, iv: record.iv }, encryptionKey);
+        return normalizeForgeProfile(JSON.parse(decrypted));
+      } catch (error) {
+        console.error('Failed to decrypt forge profile:', error);
+        return null;
+      }
+    }
+
+    // Backward compatibility for legacy unencrypted forge documents.
+    return normalizeForgeProfile(record);
   }
 
   return loadGuestForgeProfile();
@@ -99,21 +109,26 @@ export function subscribeForgeProfile(
   onUpdate: (profile: ForgeProfile | null) => void
 ): () => void {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const ref = doc(db, 'forge_sessions', userId);
-    const unsubscribe = onSnapshot(
-      ref,
-      (snap) => {
-        if (!snap.exists()) {
+    const dataLayer = getNexusDataLayer();
+    const unsubscribe = dataLayer.subscribeToDocument<ForgeProfile & { encryptedData?: string; iv?: string }>(
+      'forge_sessions',
+      userId,
+      async (record) => {
+        if (!record) {
           onUpdate(null);
           return;
         }
-        onUpdate(normalizeForgeProfile(snap.data()));
-      },
-      (error) => {
-        console.error('Forge profile subscription error:', error);
+        if (record.encryptedData && record.iv) {
+          try {
+            const decrypted = await decryptWithKey({ ciphertext: record.encryptedData, iv: record.iv }, encryptionKey);
+            onUpdate(normalizeForgeProfile(JSON.parse(decrypted)));
+          } catch (error) {
+            console.error('Failed to decrypt forge profile:', error);
+            onUpdate(null);
+          }
+          return;
+        }
+        onUpdate(normalizeForgeProfile(record));
       }
     );
     return unsubscribe;
@@ -124,25 +139,23 @@ export function subscribeForgeProfile(
 }
 
 export async function saveForgeProfile(profile: ForgeProfile, { userId, encryptionKey }: LoadContext): Promise<void> {
-  const normalized = normalizeForgeProfile(profile);
+  const normalized = normalizeForgeProfile({ ...profile, updatedAt: new Date().toISOString() });
 
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return;
+    const dataLayer = getNexusDataLayer();
     try {
-      await setDoc(
-        doc(db, 'forge_sessions', userId),
-        {
-          ...normalized,
-          metadata: {
-            onboardingComplete: normalized.onboardingComplete,
-            sessions: normalized.sessions.length,
-            queueDepth: normalized.commandQueue.length,
-            lastActive: new Date().toISOString()
-          }
-        },
-        { merge: true }
-      );
+      const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
+      await dataLayer.setDocument('forge_sessions', userId, {
+        encryptedData: encrypted.ciphertext,
+        iv: encrypted.iv,
+        salt: VAULT_SALT_MARKER,
+        metadata: {
+          onboardingComplete: normalized.onboardingComplete,
+          sessions: normalized.sessions.length,
+          queueDepth: normalized.commandQueue.length,
+          lastActive: new Date().toISOString()
+        }
+      });
     } catch (error) {
       console.error('[ForgeSessionService] Failed to save forge profile:', error);
     }
@@ -158,10 +171,9 @@ export async function syncGuestForgeProfileToUser({ userId, encryptionKey }: Loa
   const guestProfile = loadGuestForgeProfile();
   if (!guestProfile) return false;
 
-  const { db } = getFirebase();
-  if (!db) return false;
-  const snap = await readDocOnce(doc(db, 'forge_sessions', userId));
-  if (snap.exists()) return false;
+  const dataLayer = getNexusDataLayer();
+  const existing = await dataLayer.getDocument<{ encryptedData?: string }>('forge_sessions', userId);
+  if (existing) return false;
 
   await saveForgeProfile(guestProfile, { userId, encryptionKey });
   clearGuestForgeProfile();

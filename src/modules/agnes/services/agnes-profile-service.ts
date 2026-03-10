@@ -1,7 +1,5 @@
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { readDocOnce } from '@/lib/services/firestore-once';
 import type { TherapyIntakeProfile } from '@/lib/types';
 
 export type { TherapyIntakeProfile } from '@/lib/types';
@@ -41,13 +39,9 @@ function normalizeAgnesProfile(raw: unknown): TherapyIntakeProfile {
 
 export async function loadAgnesProfile({ userId, encryptionKey }: LoadContext): Promise<TherapyIntakeProfile | null> {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return null;
-
-    const snap = await readDocOnce(doc(db, 'agnes_profiles', userId));
-    if (!snap.exists()) return null;
-
-    const data = snap.data();
+    const dataLayer = getNexusDataLayer();
+    const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>('agnes_profiles', userId);
+    if (!data) return null;
     if (!data?.encryptedData || !data?.iv) return null;
 
     try {
@@ -67,18 +61,15 @@ export function subscribeAgnesProfile(
   onUpdate: (profile: TherapyIntakeProfile | null) => void
 ): () => void {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const ref = doc(db, 'agnes_profiles', userId);
-    const unsubscribe = onSnapshot(
-      ref,
-      async (snap) => {
-        if (!snap.exists()) {
+    const dataLayer = getNexusDataLayer();
+    const unsubscribe = dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
+      'agnes_profiles',
+      userId,
+      async (data) => {
+        if (!data) {
           onUpdate(null);
           return;
         }
-        const data = snap.data();
         if (!data?.encryptedData || !data?.iv) {
           onUpdate(null);
           return;
@@ -90,10 +81,6 @@ export function subscribeAgnesProfile(
           console.error('Failed to decrypt agnes profile:', e);
           onUpdate(null);
         }
-      },
-      (error) => {
-        console.warn('Agnes profile subscription delay or missing doc:', error);
-        onUpdate(null);
       }
     );
     return unsubscribe;
@@ -110,24 +97,18 @@ export async function saveAgnesProfile(
   const normalized = normalizeAgnesProfile({ ...profile, updatedAt: new Date().toISOString() });
 
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return;
-
+    const dataLayer = getNexusDataLayer();
     const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
     try {
-      await setDoc(
-        doc(db, 'agnes_profiles', userId),
-        {
-          encryptedData: encrypted.ciphertext,
-          iv: encrypted.iv,
-          salt: VAULT_SALT_MARKER,
-          metadata: {
-            onboardingComplete: normalized.onboardingComplete,
-            lastActive: new Date().toISOString()
-          }
-        },
-        { merge: true }
-      );
+      await dataLayer.setDocument('agnes_profiles', userId, {
+        encryptedData: encrypted.ciphertext,
+        iv: encrypted.iv,
+        salt: VAULT_SALT_MARKER,
+        metadata: {
+          onboardingComplete: normalized.onboardingComplete,
+          lastActive: new Date().toISOString()
+        }
+      });
     } catch (error) {
       console.error('[AgnesProfileService] Failed to save agnes profile:', error);
     }
@@ -166,11 +147,9 @@ export async function syncGuestAgnesProfileToUser({
   const guestProfile = loadGuestAgnesProfile();
   if (!guestProfile) return false;
 
-  const { db } = getFirebase();
-  if (!db) return false;
-
-  const snap = await readDocOnce(doc(db, 'agnes_profiles', userId));
-  if (snap.exists() && snap.data()?.encryptedData) return false;
+  const dataLayer = getNexusDataLayer();
+  const existing = await dataLayer.getDocument<{ encryptedData?: string }>('agnes_profiles', userId);
+  if (existing?.encryptedData) return false;
 
   await saveAgnesProfile(guestProfile, { userId, encryptionKey });
   clearGuestAgnesProfile();

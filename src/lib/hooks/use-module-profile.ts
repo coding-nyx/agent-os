@@ -16,6 +16,7 @@ export interface UseModuleProfileOptions<TProfile> {
 export function useModuleProfile<TProfile extends { onboardingComplete?: boolean }>({
   moduleId,
   loadProfile,
+  refreshProfile,
   saveProfile: saveProfileFn,
   subscribeProfile,
   syncGuestProfile
@@ -40,12 +41,14 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
 
   // We use refs for these to avoid infinite loops if the caller provides unstable arrow functions
   const loadProfileRef = useRef(loadProfile);
+  const refreshProfileRef = useRef(refreshProfile ?? loadProfile);
   const saveProfileRef = useRef(saveProfileFn);
   const subscribeProfileRef = useRef(subscribeProfile);
   const syncGuestProfileRef = useRef(syncGuestProfile);
 
   useEffect(() => {
     loadProfileRef.current = loadProfile;
+    refreshProfileRef.current = refreshProfile ?? loadProfile;
     saveProfileRef.current = saveProfileFn;
     subscribeProfileRef.current = subscribeProfile;
     syncGuestProfileRef.current = syncGuestProfile;
@@ -120,6 +123,27 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
     }
   }, [user?.uid, encryptionKey, moduleId]);
 
+  const reloadProfile = useCallback(async () => {
+    if (!user?.uid) {
+      setProfile(null);
+      setEncryptionKey(null);
+      setIsOnboarding(true);
+      return null;
+    }
+
+    const key = isUnlocked ? await getModuleKey(moduleId) : null;
+    setEncryptionKey(key);
+
+    const nextProfile = await refreshProfileRef.current({
+      userId: user.uid,
+      encryptionKey: key
+    });
+
+    setProfile(nextProfile);
+    setIsOnboarding(!nextProfile || !nextProfile.onboardingComplete);
+    return nextProfile;
+  }, [user?.uid, isUnlocked, getModuleKey, moduleId]);
+
   return {
     profile,
     setProfile,
@@ -128,5 +152,6 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
     isLoading,
     encryptionKey,
     persistProfile,
+    reloadProfile,
   };
 }

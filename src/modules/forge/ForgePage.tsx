@@ -85,11 +85,11 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
             : current.commandQueue.filter((queued) => queued !== session.command),
         updatedAt: new Date().toISOString()
       };
-      saveForgeProfile(next, { userId: user?.uid }).catch((saveError) => {
+      saveForgeProfile(next, { userId: user?.uid, encryptionKey }).catch((saveError) => {
         console.error('Failed to persist forge session:', saveError);
       });
     },
-    [user?.uid]
+    [user?.uid, encryptionKey]
   );
 
   const updateSession = useCallback(
@@ -112,11 +112,11 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
           : current.commandQueue,
         updatedAt: new Date().toISOString()
       };
-      saveForgeProfile(next, { userId: user?.uid }).catch((saveError) => {
+      saveForgeProfile(next, { userId: user?.uid, encryptionKey }).catch((saveError) => {
         console.error('Failed to persist forge session update:', saveError);
       });
     },
-    [user?.uid]
+    [user?.uid, encryptionKey]
   );
 
   const runCloudExecution = useCallback(
@@ -278,10 +278,11 @@ export default function ForgePage() {
       moduleId="forge"
       requireVault={false}
       profileOptions={{
-        loadProfile: (params) => loadForgeProfile({ userId: params.userId }),
-        subscribeProfile: (params, onUpdate) => subscribeForgeProfile({ userId: params.userId }, onUpdate),
-        refreshProfile: (params) => loadForgeProfile({ userId: params.userId }),
-        syncGuestProfile: (params) => syncGuestForgeProfileToUser({ userId: params.userId })
+        loadProfile: loadForgeProfile,
+        saveProfile: saveForgeProfile,
+        subscribeProfile: subscribeForgeProfile,
+        refreshProfile: loadForgeProfile,
+        syncGuestProfile: syncGuestForgeProfileToUser
       }}
       renderContent={ForgeContent}
     />

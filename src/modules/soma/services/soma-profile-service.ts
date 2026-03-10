@@ -3,10 +3,8 @@
 // Owns the `soma_profiles` Firestore collection with full E2EE.
 // Mirrors the patterns established in titan-profile-service.ts.
 
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { readDocOnce } from '@/lib/services/firestore-once';
 import type { SomaProfile } from '@/lib/types';
 
 const COLLECTION = 'soma_profiles';
@@ -80,8 +78,8 @@ export function normalizeSomaProfile(userId: string, raw: unknown): SomaProfile 
  * Placeholder for guest sync logic.
  */
 export async function syncGuestSomaProfileToUser({ userId, encryptionKey }: { userId: string; encryptionKey: CryptoKey }): Promise<boolean> {
-    if (!userId || !encryptionKey) return true;
-    return true;
+    if (!userId || !encryptionKey) return false;
+    return false;
 }
 
 /**
@@ -93,13 +91,9 @@ export async function loadSomaProfile(
 ): Promise<SomaProfile | null> {
   if (!userId || !encryptionKey) return null;
 
-  const { db } = getFirebase();
-  if (!db) return null;
-
-  const snap = await readDocOnce(doc(db, COLLECTION, userId));
-  if (!snap.exists()) return null;
-
-  const data = snap.data();
+  const dataLayer = getNexusDataLayer();
+  const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>(COLLECTION, userId);
+  if (!data) return null;
   if (!data?.encryptedData || !data?.iv) return null;
 
   try {
@@ -124,9 +118,7 @@ export async function saveSomaProfile(
 ): Promise<void> {
   if (!userId || !encryptionKey) return;
 
-  const { db } = getFirebase();
-  if (!db) return;
-
+  const dataLayer = getNexusDataLayer();
   const normalized = normalizeSomaProfile(userId, { ...profile, updatedAt: new Date().toISOString() });
 
   const serialised = JSON.stringify(normalized);
@@ -134,19 +126,15 @@ export async function saveSomaProfile(
   const encrypted = await encryptWithKey(serialised, encryptionKey);
 
   try {
-    await setDoc(
-      doc(db, COLLECTION, userId),
-      {
-        encryptedData: encrypted.ciphertext,
-        iv: encrypted.iv,
-        salt: VAULT_SALT_MARKER,
-        metadata: {
-          medicalOnboardingComplete: Boolean(profile.medicalOnboardingComplete),
-          lastActive: new Date().toISOString(),
-        },
+    await dataLayer.setDocument(COLLECTION, userId, {
+      encryptedData: encrypted.ciphertext,
+      iv: encrypted.iv,
+      salt: VAULT_SALT_MARKER,
+      metadata: {
+        medicalOnboardingComplete: Boolean(profile.medicalOnboardingComplete),
+        lastActive: new Date().toISOString(),
       },
-      { merge: true },
-    );
+    });
   } catch (error) {
     console.error('[SomaProfileService] Failed to save soma profile:', error);
   }
@@ -165,15 +153,12 @@ export function subscribeSomaProfile(
     return () => {};
   }
 
-  const { db } = getFirebase();
-  if (!db) return () => {};
-
-  const ref = doc(db, COLLECTION, userId);
-  return onSnapshot(
-    ref,
-    async (snap) => {
-      if (!snap.exists()) { onUpdate(null); return; }
-      const data = snap.data();
+  const dataLayer = getNexusDataLayer();
+  return dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
+    COLLECTION,
+    userId,
+    async (data) => {
+      if (!data) { onUpdate(null); return; }
       if (!data?.encryptedData || !data?.iv) { onUpdate(null); return; }
       try {
         const decrypted = await decryptWithKey(
@@ -185,10 +170,6 @@ export function subscribeSomaProfile(
         console.error('[SomaProfileService] Failed to decrypt soma profile:', e);
         onUpdate(null);
       }
-    },
-    (error) => {
-      console.warn('[SomaProfileService] Subscription error:', error);
-      onUpdate(null);
-    },
+    }
   );
 }

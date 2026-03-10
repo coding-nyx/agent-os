@@ -1,3 +1,8 @@
+/**
+ * App-facing LLM runtime entrypoint.
+ * See docs/architecture/llm-entrypoint-runtime.md for the boot chain,
+ * runtime modes, and extension boundaries.
+ */
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { Message, ConversationContext, MessageContent } from './types';
 import { CognitiveAgent } from './engine/CognitiveAgent';

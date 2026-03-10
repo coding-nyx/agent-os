@@ -1,7 +1,5 @@
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { readDocOnce } from '@/lib/services/firestore-once';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 
 const GUEST_SCOUT_KEY = 'nexus_scout_profile_guest';
@@ -162,12 +160,9 @@ export function createEmptyScoutProfile(): ScoutProfile {
 
 export async function loadScoutProfile({ userId, encryptionKey }: LoadContext): Promise<ScoutProfile | null> {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return null;
-    const snap = await readDocOnce(doc(db, 'scout_knowledge', userId));
-    if (!snap.exists()) return null;
-
-    const data = snap.data();
+    const dataLayer = getNexusDataLayer();
+    const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>('scout_knowledge', userId);
+    if (!data) return null;
     if (!data?.encryptedData || !data?.iv) return null;
 
     try {
@@ -187,18 +182,15 @@ export function subscribeScoutProfile(
   onUpdate: (profile: ScoutProfile | null) => void
 ): () => void {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const ref = doc(db, 'scout_knowledge', userId);
-    const unsubscribe = onSnapshot(
-      ref,
-      async (snap) => {
-        if (!snap.exists()) {
+    const dataLayer = getNexusDataLayer();
+    const unsubscribe = dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
+      'scout_knowledge',
+      userId,
+      async (data) => {
+        if (!data) {
           onUpdate(null);
           return;
         }
-        const data = snap.data();
         if (!data?.encryptedData || !data?.iv) {
           onUpdate(null);
           return;
@@ -210,9 +202,6 @@ export function subscribeScoutProfile(
           console.error('Failed to decrypt scout profile:', error);
           onUpdate(null);
         }
-      },
-      (error) => {
-        console.error('Scout profile subscription error:', error);
       }
     );
     return unsubscribe;
@@ -226,26 +215,20 @@ export async function saveScoutProfile(profile: ScoutProfile, { userId, encrypti
   const normalized = normalizeScoutProfile(profile);
 
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return;
-
+    const dataLayer = getNexusDataLayer();
     const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
     try {
-      await setDoc(
-        doc(db, 'scout_knowledge', userId),
-        {
-          encryptedData: encrypted.ciphertext,
-          iv: encrypted.iv,
-          salt: VAULT_SALT_MARKER,
-          metadata: {
-            onboardingComplete: normalized.onboardingComplete,
-            nodes: normalized.knowledgeNodes.length,
-            queue: normalized.verificationQueue.length,
-            lastActive: new Date().toISOString()
-          }
-        },
-        { merge: true }
-      );
+      await dataLayer.setDocument('scout_knowledge', userId, {
+        encryptedData: encrypted.ciphertext,
+        iv: encrypted.iv,
+        salt: VAULT_SALT_MARKER,
+        metadata: {
+          onboardingComplete: normalized.onboardingComplete,
+          nodes: normalized.knowledgeNodes.length,
+          queue: normalized.verificationQueue.length,
+          lastActive: new Date().toISOString()
+        }
+      });
     } catch (error) {
       console.error('[ScoutKnowledgeService] Failed to save scout profile:', error);
     }
@@ -271,10 +254,9 @@ export async function syncGuestScoutProfileToUser({ userId, encryptionKey }: Loa
   const guestProfile = loadGuestScoutProfile();
   if (!guestProfile) return false;
 
-  const { db } = getFirebase();
-  if (!db) return false;
-  const snap = await readDocOnce(doc(db, 'scout_knowledge', userId));
-  if (snap.exists() && snap.data()?.encryptedData) return false;
+  const dataLayer = getNexusDataLayer();
+  const existing = await dataLayer.getDocument<{ encryptedData?: string }>('scout_knowledge', userId);
+  if (existing?.encryptedData) return false;
 
   await saveScoutProfile(guestProfile, { userId, encryptionKey });
   clearGuestScoutProfile();

@@ -5,13 +5,12 @@
  * All sensitive data remains encrypted in export files.
  */
 
-import { doc, collection, getDocs, writeBatch } from 'firebase/firestore';
-import { getFirebase } from '../firebase';
-import { readDocOnce } from './firestore-once';
 import { EncryptedData, encryptWithKey, decryptWithKey } from '../encryption';
 import { MODULE_MANIFEST, ModuleId } from '../module-manifest';
 import { GlobalProjection, ModuleMemoryEnvelope } from '../types';
 import { Spine } from '../spine/spine-event-bus';
+import { getNexusDataLayer } from '../data-layer/provider';
+import { BatchOperation } from '../data-layer/index';
 
 // ============================================================================
 // Export Format Interfaces
@@ -133,8 +132,7 @@ export async function exportModuleData(
 ): Promise<ModuleExportData | null> {
   const { includeMemory = false } = options;
   
-  const { db } = getFirebase();
-  if (!db) throw new Error('Firebase not initialized');
+  const dataLayer = getNexusDataLayer();
 
   const collectionName = MODULE_COLLECTIONS[moduleId];
   if (!collectionName) {
@@ -144,15 +142,14 @@ export async function exportModuleData(
 
   try {
     // Fetch encrypted profile data
-    const profileRef = doc(db, collectionName, userId);
-    const profileSnap = await readDocOnce(profileRef);
+    const profileSnap = await dataLayer.getDocument(collectionName, userId);
     
-    if (!profileSnap.exists()) {
+    if (!profileSnap) {
       console.warn(`[DataTransfer] No profile found for ${moduleId}`);
       return null;
     }
 
-    const profileData = profileSnap.data();
+    const profileData = profileSnap as any;
     
     // Profile should already be encrypted in Firestore
     const profileExport: EncryptedData = {
@@ -164,11 +161,10 @@ export async function exportModuleData(
     // Optionally include memory envelope
     let memoryExport: ModuleExportData['memory'] | undefined;
     if (includeMemory) {
-      const memoryRef = doc(db, MODULE_MEMORY_COLLECTION, `${userId}_${moduleId}`);
-      const memorySnap = await readDocOnce(memoryRef);
+      const memorySnap = await dataLayer.getDocument(MODULE_MEMORY_COLLECTION, `${userId}_${moduleId}`);
       
-      if (memorySnap.exists()) {
-        const memoryData = memorySnap.data() as ModuleMemoryEnvelope & { encryptedPayload?: { ciphertext: string; iv: string } };
+      if (memorySnap) {
+        const memoryData = memorySnap as unknown as ModuleMemoryEnvelope & { encryptedPayload?: { ciphertext: string; iv: string } };
         if (memoryData.encryptedPayload) {
           if (encryptionKey) {
             try {
@@ -223,7 +219,7 @@ export async function exportModuleData(
           }
         } else {
           memoryExport = {
-            envelope: memoryData,
+            envelope: memoryData as unknown as ModuleMemoryEnvelope,
           };
         }
       }
@@ -255,8 +251,7 @@ export async function exportAllData(
   encryptionKey: CryptoKey,
   options: ExportOptions = {}
 ): Promise<DataExport> {
-  const { db } = getFirebase();
-  if (!db) throw new Error('Firebase not initialized');
+  const dataLayer = getNexusDataLayer();
 
   const modulesToExport = options.modules || Object.keys(MODULE_COLLECTIONS) as ModuleId[];
   const modules: Record<string, ModuleExportData> = {};
@@ -276,11 +271,10 @@ export async function exportAllData(
   // Export GlobalSoul
   let globalSoulExport: EncryptedData | undefined;
   try {
-    const globalSoulRef = doc(db, GLOBAL_SOUL_COLLECTION, userId);
-    const globalSoulSnap = await readDocOnce(globalSoulRef);
+    const globalSoulSnap = await dataLayer.getDocument(GLOBAL_SOUL_COLLECTION, userId);
     
-    if (globalSoulSnap.exists()) {
-      const soulData = globalSoulSnap.data();
+    if (globalSoulSnap) {
+      const soulData = globalSoulSnap;
       // Re-encrypt GlobalSoul for export
       const soulJson = JSON.stringify(soulData);
       const encrypted = await encryptWithKey(soulJson, encryptionKey);
@@ -297,11 +291,10 @@ export async function exportAllData(
   // Export Core Profile (metadata only, not sensitive)
   let coreProfileExport: EncryptedData | undefined;
   try {
-    const coreProfileRef = doc(db, CORE_PROFILE_COLLECTION, userId);
-    const coreProfileSnap = await readDocOnce(coreProfileRef);
+    const coreProfileSnap = await dataLayer.getDocument(CORE_PROFILE_COLLECTION, userId);
     
-    if (coreProfileSnap.exists()) {
-      const profileData = coreProfileSnap.data();
+    if (coreProfileSnap) {
+      const profileData = coreProfileSnap;
       const profileJson = JSON.stringify(profileData);
       const encrypted = await encryptWithKey(profileJson, encryptionKey);
       coreProfileExport = {
@@ -460,12 +453,7 @@ export async function previewImport(
     return preview;
   }
 
-  // Check for data conflicts
-  const { db } = getFirebase();
-  if (!db) {
-    preview.errors.push('Firebase not initialized');
-    return preview;
-  }
+  const dataLayer = getNexusDataLayer();
 
   // Check userId match
   if (importData.userId !== userId) {
@@ -480,10 +468,9 @@ export async function previewImport(
     if (!collectionName) continue;
 
     try {
-      const docRef = doc(db, collectionName, userId);
-      const docSnap = await readDocOnce(docRef);
+      const docSnap = await dataLayer.getDocument(collectionName, userId);
       
-      if (docSnap.exists()) {
+      if (docSnap) {
         preview.conflicts.push({
           moduleId,
           field: 'profile',
@@ -506,14 +493,12 @@ async function createBackup(
   userId: string,
   encryptionKey: CryptoKey
 ): Promise<string> {
-  const { db } = getFirebase();
-  if (!db) throw new Error('Firebase not initialized');
+  const dataLayer = getNexusDataLayer();
 
   const backupData = await exportAllData(userId, encryptionKey, { includeMemory: true });
   const backupId = `backup_${Date.now()}`;
   
-  const backupRef = doc(db, BACKUP_COLLECTION, `${userId}_${backupId}`);
-  await readDocOnce(backupRef); // Use readDocOnce pattern
+  await dataLayer.getDocument(BACKUP_COLLECTION, `${userId}_${backupId}`); // Use readDocOnce pattern
   
   // Store backup (in practice, you'd want to use a separate backup service)
   // For now, we'll just return the ID and the caller should handle storage
@@ -533,9 +518,7 @@ export async function importModuleData(
   options: ImportOptions = {}
 ): Promise<void> {
   const { dryRun = false, conflictResolution = 'replace' } = options;
-
-  const { db } = getFirebase();
-  if (!db) throw new Error('Firebase not initialized');
+  const dataLayer = getNexusDataLayer();
 
   if (dryRun) {
     console.log(`[DataTransfer] DRY RUN: Would import ${moduleId}`);
@@ -548,10 +531,9 @@ export async function importModuleData(
   }
 
   // Check for conflicts
-  const existingRef = doc(db, collectionName, userId);
-  const existingSnap = await readDocOnce(existingRef);
+  const existingSnap = await dataLayer.getDocument(collectionName, userId);
 
-  if (existingSnap.exists() && conflictResolution === 'skip') {
+  if (existingSnap && conflictResolution === 'skip') {
     console.log(`[DataTransfer] Skipping ${moduleId} - data already exists`);
     return;
   }
@@ -567,16 +549,15 @@ export async function importModuleData(
     },
   };
 
-  const batch = writeBatch(db);
-  batch.set(existingRef, profileData, { merge: conflictResolution === 'merge' });
+  const ops: BatchOperation[] = [];
+  ops.push({ type: 'set', collection: collectionName, id: userId, data: profileData });
 
   // Import memory if present
   if (moduleData.memory?.envelope) {
-    const memoryRef = doc(db, MODULE_MEMORY_COLLECTION, `${userId}_${moduleId}`);
-    batch.set(memoryRef, moduleData.memory.envelope, { merge: conflictResolution === 'merge' });
+    ops.push({ type: 'set', collection: MODULE_MEMORY_COLLECTION, id: `${userId}_${moduleId}`, data: moduleData.memory.envelope });
   }
 
-  await batch.commit();
+  await dataLayer.batchWrite(ops);
   console.log(`[DataTransfer] Imported ${moduleId}`);
 }
 
@@ -615,11 +596,7 @@ export async function importAllData(
     }
   }
 
-  const { db } = getFirebase();
-  if (!db) {
-    result.errors.push('Firebase not initialized');
-    return result;
-  }
+  const dataLayer = getNexusDataLayer();
 
   // Import modules
   for (const [moduleId, moduleData] of Object.entries(importData.modules)) {
@@ -639,12 +616,11 @@ export async function importAllData(
       const decrypted = await decryptWithKey(importData.globalSoul, encryptionKey);
       const soulData = JSON.parse(decrypted);
       
-      const globalSoulRef = doc(db, GLOBAL_SOUL_COLLECTION, userId);
-      await readDocOnce(globalSoulRef); // Firestore best practice
+      await dataLayer.getDocument(GLOBAL_SOUL_COLLECTION, userId); // Firestore best practice
       
-      const batch = writeBatch(db);
-      batch.set(globalSoulRef, soulData, { merge: options.conflictResolution === 'merge' });
-      await batch.commit();
+      const ops: BatchOperation[] = [];
+      ops.push({ type: 'set', collection: GLOBAL_SOUL_COLLECTION, id: userId, data: soulData });
+      await dataLayer.batchWrite(ops);
       
       console.log('[DataTransfer] Imported GlobalSoul');
     } catch (error) {
@@ -663,12 +639,11 @@ export async function importAllData(
       delete profileData.uid;
       delete profileData.email;
       
-      const coreProfileRef = doc(db, CORE_PROFILE_COLLECTION, userId);
-      await readDocOnce(coreProfileRef);
+      await dataLayer.getDocument(CORE_PROFILE_COLLECTION, userId);
       
-      const batch = writeBatch(db);
-      batch.set(coreProfileRef, profileData, { merge: true });
-      await batch.commit();
+      const ops: BatchOperation[] = [];
+      ops.push({ type: 'set', collection: CORE_PROFILE_COLLECTION, id: userId, data: profileData });
+      await dataLayer.batchWrite(ops);
       
       console.log('[DataTransfer] Imported Core Profile');
     } catch (error) {

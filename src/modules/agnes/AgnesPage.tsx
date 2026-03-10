@@ -252,7 +252,11 @@ function AgnesContent({
 
         const existing = await ModuleMemoryService.getEnvelope(user.uid, 'agnes', encryptionKey);
         if (!existing) {
-          await ModuleMemoryService.initializeEnvelope(user.uid, 'agnes');
+          if (!encryptionKey) {
+            console.warn('[Agnes] Skipping session merge: missing encryption key for vault-scoped module.');
+            return;
+          }
+          await ModuleMemoryService.initializeEnvelope(user.uid, 'agnes', encryptionKey);
         }
 
         await ModuleMemoryService.commitSession(

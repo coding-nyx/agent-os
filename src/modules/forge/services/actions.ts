@@ -9,13 +9,13 @@ import {
 
 let registered = false;
 
-async function loadProfile(userId?: string | null) {
-  return loadForgeProfile({ userId });
+async function loadProfile(userId?: string | null, encryptionKey?: CryptoKey | null) {
+  return loadForgeProfile({ userId, encryptionKey });
 }
 
-async function persistProfile(profile: ForgeProfile, userId?: string | null) {
+async function persistProfile(profile: ForgeProfile, userId?: string | null, encryptionKey?: CryptoKey | null) {
   profile.updatedAt = new Date().toISOString();
-  await saveForgeProfile(profile, { userId });
+  await saveForgeProfile(profile, { userId, encryptionKey });
 }
 
 function formatExecutionOutput(result: { logs?: string[]; result?: string; error?: string }): string {
@@ -29,8 +29,8 @@ export function registerForgeActions() {
   registered = true;
 
   ActionHub.registerMultiple('forge', {
-    execute_code: async ({ userId, payload }) => {
-      const profile = await loadProfile(userId ?? null);
+    execute_code: async ({ userId, payload, encryptionKey }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
       const code = typeof payload?.code === 'string' ? payload.code : '';
@@ -52,7 +52,7 @@ export function registerForgeActions() {
           ...profile,
           sessions: [errorSession, ...profile.sessions].slice(0, 300)
         };
-        await persistProfile(next, userId ?? null);
+        await persistProfile(next, userId ?? null, encryptionKey ?? null);
         return;
       }
 
@@ -69,7 +69,7 @@ export function registerForgeActions() {
         sessions: [runningSession, ...profile.sessions].slice(0, 300)
       };
 
-      await persistProfile(next, userId ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
 
       try {
         const response = await ForgeCloudExecutionService.executeCode(code.trim(), language);
@@ -94,7 +94,7 @@ export function registerForgeActions() {
           ...next,
           sessions: [updated, ...next.sessions.filter((entry) => entry.id !== sessionId)].slice(0, 300)
         };
-        await persistProfile(next, userId ?? null);
+        await persistProfile(next, userId ?? null, encryptionKey ?? null);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Cloud execution failed.';
         const updated: ForgeExecutionRecord = {
@@ -107,12 +107,12 @@ export function registerForgeActions() {
           ...next,
           sessions: [updated, ...next.sessions.filter((entry) => entry.id !== sessionId)].slice(0, 300)
         };
-        await persistProfile(next, userId ?? null);
+        await persistProfile(next, userId ?? null, encryptionKey ?? null);
       }
     },
 
-    nexus_link_command: async ({ userId, payload }) => {
-      const profile = await loadProfile(userId ?? null);
+    nexus_link_command: async ({ userId, payload, encryptionKey }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
       const command = typeof payload?.command === 'string' ? payload.command : 'command';
       const session: ForgeExecutionRecord = {
@@ -127,11 +127,11 @@ export function registerForgeActions() {
         ...profile,
         sessions: [session, ...profile.sessions].slice(0, 300)
       };
-      await persistProfile(next, userId ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
     },
 
-    read_file: async ({ userId, payload }) => {
-      const profile = await loadProfile(userId ?? null);
+    read_file: async ({ userId, payload, encryptionKey }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
       const command = `read_file:${typeof payload?.path === 'string' ? payload.path : 'unknown_path'}`;
       const session: ForgeExecutionRecord = {
@@ -145,11 +145,11 @@ export function registerForgeActions() {
         ...profile,
         sessions: [session, ...profile.sessions].slice(0, 300)
       };
-      await persistProfile(next, userId ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
     },
 
-    write_file: async ({ userId, payload }) => {
-      const profile = await loadProfile(userId ?? null);
+    write_file: async ({ userId, payload, encryptionKey }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
       const command = `write_file:${typeof payload?.path === 'string' ? payload.path : 'unknown_path'}`;
       const session: ForgeExecutionRecord = {
@@ -163,7 +163,7 @@ export function registerForgeActions() {
         ...profile,
         sessions: [session, ...profile.sessions].slice(0, 300)
       };
-      await persistProfile(next, userId ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
     }
   });
 }

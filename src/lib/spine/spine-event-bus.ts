@@ -149,10 +149,9 @@ class SpineEventBus {
       return;
     }
 
-    // Fallback: direct Firebase write (legacy path — used until full NexusDataLayer rollout).
-    const { db } = getFirebase();
-    if (!db) return;
-    await addDoc(collection(db, 'spine_events', this.uid, 'events'), event);
+    // If dataLayer is not injected, logEvent fails. This is desired behavior to prevent Firebase coupling.
+    // Log an error to indicate the missing dependency.
+    console.error('[SpineEventBus] NexusDataLayer not injected. Cannot log event.');
   }
 
   private validateAndNormalize(event: SpineEventPayload): SpineEventPayload & { cascadeDepth: number } {

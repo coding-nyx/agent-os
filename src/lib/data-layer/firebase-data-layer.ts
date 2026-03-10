@@ -12,6 +12,7 @@ import {
   updateDoc,
   where as fbWhere,
   setDoc,
+  writeBatch,
   Firestore,
   DocumentSnapshot,
   Query,
@@ -24,6 +25,7 @@ import {
   NexusQuery,
   NexusQueryFilter,
   NexusRecord,
+  BatchOperation,
 } from './index';
 
 type FirestoreQuery = Query | ReturnType<typeof collection>;
@@ -239,6 +241,30 @@ export class FirebaseDataLayer implements NexusDataLayer {
       return applyClientQuery(docs, query);
     }
     return docs;
+  }
+
+  async batchWrite(operations: BatchOperation[]): Promise<void> {
+    if (operations.length === 0) return;
+    
+    // Firestore batch limit is 500
+    const CHUNK_SIZE = 500;
+    for (let i = 0; i < operations.length; i += CHUNK_SIZE) {
+      const chunk = operations.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(this.db);
+      
+      chunk.forEach((op) => {
+        const ref = doc(this.db, op.collection, op.id);
+        if (op.type === 'set') {
+          batch.set(ref, omitId((op.data || {}) as Record<string, unknown>));
+        } else if (op.type === 'update') {
+          batch.update(ref, omitId((op.data || {}) as Record<string, unknown>));
+        } else if (op.type === 'delete') {
+          batch.delete(ref);
+        }
+      });
+      
+      await batch.commit();
+    }
   }
 
   subscribeToDocument<T>(

@@ -126,3 +126,31 @@ describe('Guardrails: hardcoded schema detection', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('Guardrails: module profile store alignment', () => {
+  const profileServicePaths = [
+    path.join(projectRoot, 'src', 'modules', 'agnes', 'services', 'agnes-profile-service.ts'),
+    path.join(projectRoot, 'src', 'modules', 'atlas', 'services', 'atlas-profile-service.ts'),
+    path.join(projectRoot, 'src', 'modules', 'ledger', 'services', 'ledger-intake-service.ts'),
+    path.join(projectRoot, 'src', 'modules', 'titan', 'services', 'titan-profile-service.ts'),
+    path.join(projectRoot, 'src', 'modules', 'soma', 'services', 'soma-profile-service.ts'),
+    path.join(projectRoot, 'src', 'modules', 'scout', 'services', 'scout-knowledge-service.ts'),
+    path.join(projectRoot, 'src', 'modules', 'forge', 'services', 'forge-session-service.ts'),
+  ];
+
+  it('keeps primary module profile stores on the NexusDataLayer boundary', () => {
+    const offenders: string[] = [];
+
+    profileServicePaths.forEach((file) => {
+      const content = fs.readFileSync(file, 'utf8');
+
+      if (/getFirebase|firebase\/firestore|readDocOnce/.test(content)) {
+        offenders.push(
+          `${file} bypasses NexusDataLayer for a primary module profile store. Use getNexusDataLayer instead.`
+        );
+      }
+    });
+
+    expect(offenders).toEqual([]);
+  });
+});

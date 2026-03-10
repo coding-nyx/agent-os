@@ -143,9 +143,17 @@ export const ModuleMemoryService = {
     return unsubscribe;
   },
 
-  async initializeEnvelope(uid: string, moduleId: string): Promise<ModuleMemoryEnvelope> {
+  async initializeEnvelope(uid: string, moduleId: string, encryptionKey?: CryptoKey | null): Promise<ModuleMemoryEnvelope> {
     if (!uid || !moduleId) throw new Error('Missing UID or Module ID');
     const dataLayer = getNexusDataLayer();
+    const manifestPolicy = MODULE_MANIFEST[moduleId as keyof typeof MODULE_MANIFEST]?.securityPolicy;
+    const requiresVault = manifestPolicy ? (manifestPolicy.mandatory || manifestPolicy.defaultLocked) : false;
+
+    // For vault-required modules, refuse to initialize without an encryption key to prevent plaintext envelopes.
+    if (requiresVault && !encryptionKey) {
+      console.warn(`[ModuleMemoryService] Vault key required for ${moduleId} envelope initialization. Skipping.`);
+      throw new Error('Vault key required for envelope initialization');
+    }
 
     const newEnvelope: ModuleMemoryEnvelope = {
       moduleId,
@@ -169,13 +177,14 @@ export const ModuleMemoryService = {
     moduleId: string,
     event: SessionEventSummary,
     snapshot: string,
-    options?: { encryptionKey?: CryptoKey | null }
+    options?: { encryptionKey?: CryptoKey | null; facts?: string[] }
   ): Promise<void> {
     if (!uid || !moduleId) return;
     const dataLayer = getNexusDataLayer();
 
     const now = new Date().toISOString();
     const encryptionKey = options?.encryptionKey || null;
+    const facts = options?.facts || [];
     const manifestPolicy = MODULE_MANIFEST[moduleId as keyof typeof MODULE_MANIFEST]?.securityPolicy;
     const requiresVault = manifestPolicy ? (manifestPolicy.mandatory || manifestPolicy.defaultLocked) : false;
 
@@ -216,7 +225,8 @@ export const ModuleMemoryService = {
         const encryptedPayload = await encryptWithKey(
           JSON.stringify({
             latestSnapshot: snapshot,
-            eventHistory: nextHistory
+            eventHistory: nextHistory,
+            facts
           }),
           encryptionKey
         );
@@ -247,7 +257,7 @@ export const ModuleMemoryService = {
 
     // Fallback (non-vault modules): read existing history, append, then write back
     try {
-      const existingDoc = await dataLayer.getDocument<{ eventHistory?: SessionEventSummary[] }>(
+      const existingDoc = await dataLayer.getDocument<{ eventHistory?: SessionEventSummary[]; metadata?: Record<string, unknown> }>(
         COLLECTION_PREFIX, docId
       );
       const existingHistory: SessionEventSummary[] = Array.isArray(existingDoc?.eventHistory)
@@ -257,6 +267,7 @@ export const ModuleMemoryService = {
         moduleId,
         eventHistory: [...existingHistory, embeddedEvent],
         latestSnapshot: snapshot,
+        metadata: { ...(existingDoc?.metadata || {}), facts },
         lastActive: now
       });
     } catch (error) {

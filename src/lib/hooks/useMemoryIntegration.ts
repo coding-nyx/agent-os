@@ -3,10 +3,12 @@ import type { ModuleMemoryEnvelope, SemanticFact } from '../types';
 import { ModuleMemoryService } from '../services/module-memory-service';
 import { SemanticMemoryService } from '../services/semantic-memory-service';
 import { MemoryOrchestrator } from '../services/memory-orchestrator';
+import { MODULE_MANIFEST } from '../module-manifest';
 
 export interface MemoryContext {
   recalledSessionsSummary: string;
   recalledFactsSummary: string;
+  status?: 'ok' | 'vault_blocked';
 }
 
 interface UseMemoryIntegrationOptions {
@@ -65,8 +67,11 @@ export function useMemoryIntegration({ moduleId, userId, isGuest, encryptionKey 
     memoryQuery: string
   ): Promise<MemoryContext> => {
     if (!userId || isGuest) {
-      return { recalledSessionsSummary: '', recalledFactsSummary: '' };
+      return { recalledSessionsSummary: '', recalledFactsSummary: '', status: 'ok' };
     }
+
+    const securityPolicy = MODULE_MANIFEST[moduleId as keyof typeof MODULE_MANIFEST]?.securityPolicy;
+    const requiresVault = securityPolicy ? (securityPolicy.mandatory || securityPolicy.defaultLocked) : false;
 
     const relevantModuleIds = Array.from(new Set([moduleId, 'orchestrator']));
     const cachedEnvelopes = relevantModuleIds
@@ -81,9 +86,10 @@ export function useMemoryIntegration({ moduleId, userId, isGuest, encryptionKey 
       cachedEnvelopes,
       episodicReady,
       semanticReadyRef.current,
-      semanticFactsRef.current
+      semanticFactsRef.current,
+      { requiresVault, encryptionKey }
     );
-  }, [moduleId, userId, isGuest]);
+  }, [moduleId, userId, isGuest, encryptionKey]);
 
   return { retrieveMemoryContext };
 }

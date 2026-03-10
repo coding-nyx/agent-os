@@ -34,6 +34,15 @@ export interface NexusQuery {
   limit?: number;
 }
 
+export type BatchOperationType = 'set' | 'update' | 'delete';
+
+export interface BatchOperation {
+  type: BatchOperationType;
+  collection: string;
+  id: NexusDocumentId;
+  data?: unknown; // Used for set/update
+}
+
 export type NexusDocumentListener<T> = (document: NexusRecord<T> | null) => void;
 export type NexusQueryListener<T> = (documents: NexusRecord<T>[]) => void;
 
@@ -58,6 +67,7 @@ export interface NexusDataLayer {
     listener: NexusDocumentListener<T>,
   ): NexusUnsubscribe;
   subscribeToQuery<T>(query: NexusQuery, listener: NexusQueryListener<T>): NexusUnsubscribe;
+  batchWrite(operations: BatchOperation[]): Promise<void>;
 }
 
 type AnyListener = NexusDocumentListener<any> | NexusQueryListener<any>;
@@ -162,6 +172,27 @@ export class InMemoryDataProvider implements NexusDataLayer {
     }
 
     return cloneValue(records);
+  }
+
+  async batchWrite(operations: BatchOperation[]): Promise<void> {
+    for (const op of operations) {
+      const { type, collection, id, data } = op;
+      if (type === 'set') {
+        const record = { ...(data as any), id };
+        this.ensureCollection(collection).set(id, cloneValue(record));
+        this.emitChanges(collection, id);
+      } else if (type === 'update') {
+        const current = this.ensureCollection(collection).get(id);
+        if (current) {
+          const updated = this.applyUpdates(current, data as any);
+          this.ensureCollection(collection).set(id, cloneValue(updated));
+          this.emitChanges(collection, id);
+        }
+      } else if (type === 'delete') {
+        this.ensureCollection(collection).delete(id);
+        this.emitChanges(collection, id);
+      }
+    }
   }
 
   subscribeToDocument<T>(

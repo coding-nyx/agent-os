@@ -16,6 +16,7 @@
  */
 
 import type {
+  BatchOperation,
   NexusDataLayer,
   NexusDocumentId,
   NexusDocumentListener,
@@ -146,6 +147,27 @@ export class InMemoryDataLayer implements NexusDataLayer {
   async deleteDocument(collection: string, id: NexusDocumentId): Promise<void> {
     this.ensureCollection(collection).delete(id);
     this.emitChanges(collection, id);
+  }
+
+  async batchWrite(operations: BatchOperation[]): Promise<void> {
+    for (const op of operations) {
+      const { type, collection, id, data } = op;
+      if (type === 'set') {
+        const record = { ...(data as any), id };
+        this.ensureCollection(collection).set(id, cloneValue(record));
+        this.emitChanges(collection, id);
+      } else if (type === 'update') {
+        const current = this.ensureCollection(collection).get(id);
+        if (current) {
+          const updated = this.applyUpdates(current, data as any);
+          this.ensureCollection(collection).set(id, cloneValue(updated));
+          this.emitChanges(collection, id);
+        }
+      } else if (type === 'delete') {
+        this.ensureCollection(collection).delete(id);
+        this.emitChanges(collection, id);
+      }
+    }
   }
 
   // ── Subscriptions ───────────────────────────────────────────────────────────

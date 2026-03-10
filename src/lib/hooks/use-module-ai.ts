@@ -1,3 +1,7 @@
+/**
+ * Main app-layer adapter between module UIs and the LLM runtime boundary.
+ * See docs/architecture/llm-entrypoint-runtime.md for the full message flow.
+ */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
 import { useGlobalSoul } from '../global-soul-context';
@@ -15,6 +19,7 @@ import { useMemoryIntegration, MemoryContext } from './useMemoryIntegration';
 import { useConsolidation } from './useConsolidation';
 import { useHandoffProcessor } from './useHandoffProcessor';
 import { usePendingRecovery } from './use-pending-recovery';
+import { MODULE_MANIFEST } from '../module-manifest';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual';
 
@@ -42,6 +47,11 @@ function contentToText(content: MessageContent): string {
     .filter((part) => part.type === 'text')
     .map((part) => (part as { type: 'text'; text: string }).text)
     .join(' ');
+}
+
+function buildPendingContextHash(moduleId: string, contextPolicy: ContextPolicy, content: MessageContent): string {
+  const text = contentToText(content).trim().slice(0, 512);
+  return `${moduleId}:${contextPolicy}:${text}`;
 }
 
 export function useModuleAI({ 
@@ -98,7 +108,8 @@ export function useModuleAI({
   const currentAssistantMessageBodyRef = useRef('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
-  const handleSendMessageRef = useRef<((content: MessageContent) => void) | null>(null);
+  const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean }) => void) | null>(null);
+  const recoveryReplayKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMessages([]);
@@ -164,7 +175,14 @@ export function useModuleAI({
     mountedRef
   });
 
-  const { pendingRequest, savePendingRequest, clearPendingRequest, markPendingRequestFailed } = usePendingRecovery(moduleId);
+  const {
+    pendingRequest,
+    savePendingRequest,
+    clearPendingRequest,
+    markPendingRequestFailed,
+    markPendingRequestBlocked,
+    markPendingRequestPending
+  } = usePendingRecovery(moduleId);
 
   // Hydrate active session on mount + subscribe for cross-tab sync
   useEffect(() => {
@@ -289,7 +307,11 @@ export function useModuleAI({
   }, [flushActiveSession]);
 
   const handleSendMessage = useCallback(
-    async (content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void) => {
+    async (
+      content: MessageContent,
+      onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void,
+      options?: { isRecoveryReplay?: boolean }
+    ) => {
       if (isProcessingRef.current) return;
       if (isGuest && quota.isHardLocked) return;
 
@@ -329,7 +351,10 @@ export function useModuleAI({
         });
       }
 
-      savePendingRequest(content);
+      if (!options?.isRecoveryReplay) {
+        const contextHash = buildPendingContextHash(moduleId, resolvedContextPolicy, content);
+        savePendingRequest(content, contextHash);
+      }
 
       if (isGuest) {
         setQuota(GuestQuotaService.incrementTurn());
@@ -352,7 +377,7 @@ export function useModuleAI({
         } else {
           memoryResult = await retrieveMemoryContext(memoryQuery);
         }
-        const { recalledSessionsSummary, recalledFactsSummary } = memoryResult;
+        const { recalledSessionsSummary, recalledFactsSummary, status: memoryStatus } = memoryResult;
 
         const finalSystemPrompt = PersonaFactory.generateSystemPrompt({
           moduleId,
@@ -370,6 +395,9 @@ export function useModuleAI({
           .join('\n\n');
 
         const cappedMemorySummary = trimToCharLimit(memorySummarySections, MEMORY_SECTION_CHAR_LIMIT);
+        const memoryContextFacts = recalledFactsSummary
+          ? recalledFactsSummary.split('\n').filter(Boolean)
+          : [];
 
         // C-1: create AbortController for this stream
         const controller = new AbortController();
@@ -379,8 +407,10 @@ export function useModuleAI({
           content,
           resolvedEnhanceContext({
             systemPrompt: finalSystemPrompt,
-            memoryContext: [],
-            summary: cappedMemorySummary || `Active session in ${moduleId}${resolvedContextPolicy === 'doc-only' ? ' (doc-only).' : '.'}`,
+            memoryContext: memoryContextFacts,
+            summary: memoryStatus === 'vault_blocked'
+              ? `Memory unavailable: vault locked for ${moduleId}.`
+              : cappedMemorySummary || `Active session in ${moduleId}${resolvedContextPolicy === 'doc-only' ? ' (doc-only).' : '.'}`,
             history: messages  // history before user message — CognitiveAgent adds user msg
           }),
           (chunk) => {
@@ -553,20 +583,20 @@ export function useModuleAI({
         if (visibleAssistantText && user && !isGuest && persistencePolicy === 'auto') {
           const consolidationResult = await consolidateIfNeeded(localHistory, sessionStartRef.current);
           if (consolidationResult) {
-            setMessages(consolidationResult.trimmedHistory);
-            messagesRef.current = consolidationResult.trimmedHistory;
+            const { trimmedHistory, lastMessageAt, metadata } = consolidationResult;
+            setMessages(trimmedHistory);
+            messagesRef.current = trimmedHistory;
             if (saveTimerRef.current) {
               clearTimeout(saveTimerRef.current);
               saveTimerRef.current = null;
             }
-            lastRemoteSignatureRef.current =
-              `${consolidationResult.lastMessageAt}:${consolidationResult.trimmedHistory.length}`;
+            lastRemoteSignatureRef.current = `${metadata.trigger}:${lastMessageAt}:${trimmedHistory.length}`;
             ModuleMemoryService.saveActiveSession(user.uid, {
               sessionId: activeSessionId,
               moduleId,
               startTime: sessionStartRef.current,
-              lastMessageAt: consolidationResult.lastMessageAt,
-              history: consolidationResult.trimmedHistory,
+              lastMessageAt,
+              history: trimmedHistory,
               tokenCount: 0,
               isGuestTrial: false,
               contextPolicy: resolvedContextPolicy
@@ -608,12 +638,62 @@ export function useModuleAI({
       activeSessionId,
       resolvedContextPolicy,
       persistencePolicy,
-      flushActiveSession
+      flushActiveSession,
+      moduleId,
+      savePendingRequest
     ]
   );
 
   // Keep ref in sync for handoff processor effect
   handleSendMessageRef.current = handleSendMessage;
+
+  useEffect(() => {
+    if (!pendingRequest || isHydrating || isProcessingRef.current || !handleSendMessageRef.current) return;
+    if (pendingRequest.status !== 'pending') return;
+
+    const replayKey = `${pendingRequest.timestamp}:${pendingRequest.attempts}`;
+    if (replayKey === recoveryReplayKeyRef.current) return;
+
+    const securityPolicy = MODULE_MANIFEST[moduleId as keyof typeof MODULE_MANIFEST]?.securityPolicy;
+    const requiresVault = securityPolicy ? (securityPolicy.mandatory || securityPolicy.defaultLocked) : false;
+
+    if (requiresVault && !encryptionKey) {
+      markPendingRequestBlocked();
+      setError('Pending request is blocked: unlock vault to recover.');
+      recoveryReplayKeyRef.current = replayKey;
+      return;
+    }
+
+    const expectedHash = buildPendingContextHash(moduleId, resolvedContextPolicy, pendingRequest.userMessage);
+    if (pendingRequest.contextHash && pendingRequest.contextHash !== expectedHash) {
+      markPendingRequestFailed(true);
+      setError('Pending request context changed and cannot be auto-recovered safely.');
+      recoveryReplayKeyRef.current = replayKey;
+      return;
+    }
+
+    markPendingRequestPending();
+    recoveryReplayKeyRef.current = replayKey;
+    handleSendMessageRef.current(pendingRequest.userMessage, undefined, { isRecoveryReplay: true });
+  }, [
+    pendingRequest,
+    isHydrating,
+    moduleId,
+    encryptionKey,
+    resolvedContextPolicy,
+    markPendingRequestBlocked,
+    markPendingRequestFailed,
+    markPendingRequestPending
+  ]);
+
+  useEffect(() => {
+    if (!pendingRequest || pendingRequest.status !== 'blocked') return;
+    const securityPolicy = MODULE_MANIFEST[moduleId as keyof typeof MODULE_MANIFEST]?.securityPolicy;
+    const requiresVault = securityPolicy ? (securityPolicy.mandatory || securityPolicy.defaultLocked) : false;
+    if (!requiresVault || encryptionKey) {
+      markPendingRequestPending();
+    }
+  }, [pendingRequest, moduleId, encryptionKey, markPendingRequestPending]);
 
   const clearSession = useCallback(async () => {
     // Cancel any pending debounced save so it cannot race with clearActiveSession

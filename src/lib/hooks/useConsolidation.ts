@@ -5,16 +5,18 @@ import type { StructuredResponse } from '@/llm-engine/engine/types';
 import { MemoryManager } from '@/llm-engine/engine/MemoryManager';
 import { MemoryOrchestrator } from '../services/memory-orchestrator';
 import { ModuleMemoryService } from '../services/module-memory-service';
-
-// ~60% of 128k window using real token counts
-const CONSOLIDATION_TOKEN_LIMIT = 40000;
-// Must be >= MemoryManager.CONTEXT_WINDOW_SIZE * 2 (currently 30)
-// to avoid trimming messages the engine still considers "active"
-const CONSOLIDATION_KEEP_COUNT = 30;
+import { SemanticMemoryService } from '../services/semantic-memory-service';
+import { MODULE_MANIFEST } from '../module-manifest';
 
 export interface ConsolidationResult {
   trimmedHistory: Message[];
   lastMessageAt: string;
+  metadata: {
+    trigger: 'token' | 'window';
+    tokenEstimate: number;
+    keptCount: number;
+    originalLength: number;
+  };
 }
 
 interface UseConsolidationOptions {
@@ -43,23 +45,28 @@ export function useConsolidation({
   const consolidationRef = useRef(false);
   const consolidationRetryRef = useRef(0);
 
-  /**
-   * Checks whether consolidation is needed and, if so, summarises old
-   * messages, commits the session snapshot to episodic memory, and returns
-   * the trimmed history.  The caller is responsible for updating local
-   * state and the active-session document (to keep signature ordering).
-   */
   const consolidateIfNeeded = useCallback(async (
     localHistory: Message[],
     sessionStartTime: string
   ): Promise<ConsolidationResult | null> => {
     if (!userId || isGuest) return null;
 
-    const tokenEstimate = MemoryManager.countTokens(
-      localHistory.map((m) => m.content).join(' ')
-    );
+    const securityPolicy = MODULE_MANIFEST[moduleId as keyof typeof MODULE_MANIFEST]?.securityPolicy;
+    const requiresVault = securityPolicy ? (securityPolicy.mandatory || securityPolicy.defaultLocked) : false;
+
+    // Hard guard: do not consolidate vault-scoped data without an encryption key.
+    if (requiresVault && !encryptionKey) {
+      console.warn('Consolidation skipped: missing encryption key for protected module.');
+      return null;
+    }
+
+    const tokenEstimate = localHistory.reduce((sum, msg) => sum + MemoryManager.getMessageTokens(msg), 0);
+    const tokenThreshold = MemoryManager.getConsolidationTokenThreshold();
+    const needsByToken = tokenEstimate >= tokenThreshold;
+    const needsByWindow = localHistory.length > MemoryManager.getConsolidationKeepCount();
+
     if (
-      tokenEstimate < CONSOLIDATION_TOKEN_LIMIT ||
+      (!needsByToken && !needsByWindow) ||
       consolidationRef.current ||
       consolidationRetryRef.current >= 3
     ) {
@@ -68,7 +75,6 @@ export function useConsolidation({
 
     consolidationRef.current = true;
     try {
-      // H-6: only send messages that are about to be pushed out of the window
       const toConsolidate = MemoryManager.getMessagesForConsolidation(localHistory);
       if (toConsolidate.length === 0) return null;
 
@@ -82,7 +88,6 @@ export function useConsolidation({
         })
       );
 
-      // M-1: guard post-unmount
       if (!mountedRef.current) return null;
 
       const parsed = MemoryOrchestrator.parseInsightLines(consolidation.fullText);
@@ -91,7 +96,7 @@ export function useConsolidation({
 
       const existing = await ModuleMemoryService.getEnvelope(userId, moduleId, encryptionKey);
       if (!existing) {
-        await ModuleMemoryService.initializeEnvelope(userId, moduleId);
+        await ModuleMemoryService.initializeEnvelope(userId, moduleId, encryptionKey);
       }
 
       await ModuleMemoryService.commitSession(
@@ -110,16 +115,35 @@ export function useConsolidation({
           consolidatedAt: new Date().toISOString(),
           history: localHistory
         }),
-        { encryptionKey }
+        { encryptionKey, facts: keyInsights }
       );
 
-      const trimmed = localHistory.slice(-CONSOLIDATION_KEEP_COUNT);
-      const lastMessageAt = new Date().toISOString();
+      // Emit semantic facts (best-effort; non-blocking)
+      if (keyInsights.length > 0) {
+        keyInsights.forEach((fact) => {
+          SemanticMemoryService.upsertFact(userId, {
+            moduleId,
+            fact,
+            confidence: 0.72
+          });
+        });
+      }
 
-      // Active-session save after trimming: the caller must set the
-      // remote signature *before* this fire-and-forget completes, so it
-      // is left to the caller to save the active session document.
-      return { trimmedHistory: trimmed, lastMessageAt };
+      const keepCount = MemoryManager.getConsolidationKeepCount();
+      const trimmed = localHistory.slice(-keepCount);
+      const lastMessageAt = new Date().toISOString();
+      const consolidationTrigger = needsByToken ? 'token' : 'window';
+
+      return {
+        trimmedHistory: trimmed,
+        lastMessageAt,
+        metadata: {
+          trigger: consolidationTrigger,
+          tokenEstimate,
+          keptCount: keepCount,
+          originalLength: localHistory.length
+        }
+      };
     } catch (e) {
       console.error('Failed to consolidate session:', e);
       consolidationRetryRef.current += 1;
