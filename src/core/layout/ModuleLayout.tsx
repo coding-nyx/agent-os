@@ -12,6 +12,7 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { ScopedChatPanel } from '@/core/components/field-management/ScopedChatPanel';
 
 interface ModuleLayoutProps {
   children: React.ReactNode;
@@ -172,6 +173,7 @@ export function ModuleLayout({
       </AnimatePresence>
 
       <main className="relative z-10 flex-1 flex w-full max-w-[100vw] overflow-x-hidden min-h-0">
+        {moduleId && <ScopedChatPanel moduleId={moduleId} themeColor={themeColor} />}
         <AnimatePresence mode="popLayout">
           {RenderLeftRail && isLeftRailVisible && (
             <motion.div 

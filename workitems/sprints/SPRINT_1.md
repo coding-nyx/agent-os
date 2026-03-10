@@ -88,7 +88,7 @@
     - Refs: Global AI.
 
 16. **S1-016: Scoped Conversations**
-    - Acceptance: Implement ephemeral, entity-specific chat modes to reduce context noise and token usage.
+    - [x] Acceptance: Implement ephemeral, entity-specific chat modes to reduce context noise and token usage.
     - Refs: Global AI.
 
 17. **S1-017: Systemic UI Consistency**
