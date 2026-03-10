@@ -7,7 +7,7 @@ import { StatCard } from '@/core/components/StatCard';
 import { EmptyState } from '@/core/components/EmptyState';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { ScoutEvidenceSources } from './ScoutEvidenceSources';
-import { PulseBubbleCanvas } from './PulseBubbleCanvas';
+import { SignalBubbleCanvas } from './SignalBubbleCanvas';
 
 export function ScoutDashboard({
   soul,
@@ -114,15 +114,15 @@ export function ScoutDashboard({
 
           {hasInterests && (
             <section className="space-y-3" aria-label="Interest momentum map">
-              <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic text-center">Interest Momentum Map</h4>
-              <PulseBubbleCanvas interests={interests} />
+              <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display text-center">Interest Momentum Map</h4>
+              <SignalBubbleCanvas interests={interests} />
             </section>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-8">
               <section className="space-y-3" aria-label="Research focus tracks">
-                <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Focus Tracks</h4>
+                <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">Focus Tracks</h4>
                 {hasFocus ? (
                   <div className="flex flex-wrap gap-2" role="list" aria-label="Active research topics">
                     {researchFocus.slice(0, 8).map((topic) => (
@@ -142,7 +142,7 @@ export function ScoutDashboard({
               </section>
 
               <section className="space-y-3" aria-label="Verification queue snapshot">
-                <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Queue Snapshot</h4>
+                <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">Queue Snapshot</h4>
                 {hasQueue ? (
                   queue.slice(0, 4).map((item) => (
                     <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
@@ -163,7 +163,7 @@ export function ScoutDashboard({
 
             <div className="space-y-8">
               <section className="space-y-3" aria-label="Trend briefings">
-                <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic text-fuchsia-400">Trend Briefings</h4>
+                <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display text-fuchsia-400">Trend Briefings</h4>
                 {(profile?.trendBriefs || []).slice(0, 3).map((brief, index) => (
                   <div key={index} className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/5 p-3 text-xs text-fuchsia-100/80">
                     {brief}
@@ -189,7 +189,7 @@ export function ScoutDashboard({
 
           {riskFlags.length > 0 && (
             <section className="space-y-3" aria-label="Risk flags and warnings">
-              <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">Risk Flags</h4>
+              <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">Risk Flags</h4>
               {riskFlags.map((flag, index) => (
                 <div key={index} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3" role="alert">
                   <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5" aria-hidden="true" />

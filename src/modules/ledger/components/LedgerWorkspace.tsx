@@ -16,6 +16,9 @@ interface LedgerWorkspaceProps {
   onAddField?: () => void;
   onDeleteField?: (fieldId: string) => void;
   disabled?: boolean;
+  /** Optional external control for the transaction modal */
+  isAddTransactionModalOpen?: boolean;
+  onAddTransactionModalOpenChange?: (open: boolean) => void;
 }
 
 type TabId = 'transactions' | 'budget' | 'goals' | 'fields';
@@ -34,7 +37,17 @@ interface ExtendedLedgerProfile extends LedgerIntakeProfile {
   financialGoals?: FinancialGoal[];
 }
 
-export function LedgerWorkspace({ profile, onUpdateProfile, extensionValues, onExtensionValueChange, onAddField, onDeleteField, disabled = false }: LedgerWorkspaceProps) {
+export function LedgerWorkspace({ 
+  profile, 
+  onUpdateProfile, 
+  extensionValues, 
+  onExtensionValueChange, 
+  onAddField, 
+  onDeleteField, 
+  disabled = false,
+  isAddTransactionModalOpen,
+  onAddTransactionModalOpenChange
+}: LedgerWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<TabId>('transactions');
 
   // Cast profile to extended type
@@ -286,6 +299,9 @@ export function LedgerWorkspace({ profile, onUpdateProfile, extensionValues, onE
             onImportCSV={handleImportCSV}
             onExportCSV={handleExportCSV}
             disabled={disabled}
+            isAddModalOpen={isAddTransactionModalOpen}
+            onAddModalOpenChange={onAddTransactionModalOpenChange}
+            showAddButton={onAddTransactionModalOpenChange === undefined}
           />
         )}
 

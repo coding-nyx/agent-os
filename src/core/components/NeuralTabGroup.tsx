@@ -188,7 +188,7 @@ export function NeuralTabGroup<T extends string = string>({
             onClick={() => onTabChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, tab.id)}
             className={cn(
-              'relative flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.1em] md:tracking-[0.15em] transition-all duration-500 whitespace-nowrap shrink-0',
+              'relative flex items-center gap-1.5 md:gap-2 px-3.5 md:px-4 py-2 md:py-2.5 rounded-xl text-[10px] md:text-[11px] font-bold uppercase tracking-[0.08em] md:tracking-[0.12em] transition-all duration-500 whitespace-nowrap shrink-0',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
               isActive ? theme.activeText : 'text-white/30 hover:text-white/60 hover:bg-white/[0.02]',
               isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'
@@ -217,17 +217,28 @@ export function NeuralTabGroup<T extends string = string>({
             {isActive && variant === 'pill' && (
               <motion.div
                 layoutId={`${layoutIdPrefix}-pill`}
-                className={cn("absolute inset-0 rounded-xl", theme.pillBg, theme.pillBorder)}
+                className={cn(
+                  "absolute inset-0 rounded-xl", 
+                  theme.pillBg, 
+                  theme.pillBorder,
+                  "shadow-[inset_0_0_12px_rgba(255,255,255,0.05)]" // Inner light gradient
+                )}
                 transition={
                   reducedMotion
                     ? { duration: 0 }
                     : { type: 'spring', stiffness: 500, damping: 35 }
                 }
-              />
+              >
+                {/* Glow effect matching the theme color */}
+                <div 
+                  className={cn("absolute inset-0 rounded-xl opacity-20 blur-md", theme.underline)} 
+                  style={{ filter: 'blur(12px)' }}
+                />
+              </motion.div>
             )}
 
-            {/* Active underline */}
-            {isActive && (variant === 'pill' || variant === 'underlined') && (
+            {/* Active underline - ONLY show if variant is 'underlined' to avoid double-line effect */}
+            {isActive && variant === 'underlined' && (
               <motion.div
                 layoutId={`${layoutIdPrefix}-underline`}
                 className={cn("absolute bottom-0 left-3 right-3 h-0.5 rounded-full", theme.underline)}

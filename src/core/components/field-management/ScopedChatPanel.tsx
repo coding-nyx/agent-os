@@ -76,7 +76,7 @@ Maintain a professional, high-fidelity tone. Be concise.
         animate={{ opacity: 1, x: 0, scale: 1 }}
         exit={{ opacity: 0, x: 100, scale: 0.95 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="absolute inset-y-4 right-4 w-96 z-50 flex flex-col"
+        className="absolute inset-y-4 right-4 w-96 z-[var(--z-overlay)] flex flex-col"
       >
         <div className={cn(
           "flex-1 flex flex-col overflow-hidden rounded-[2rem] border backdrop-blur-3xl shadow-2xl",
@@ -93,7 +93,7 @@ Maintain a professional, high-fidelity tone. Be concise.
                  selectedEntity.type === 'field' ? <Zap size={18} /> : <Activity size={18} />}
               </div>
               <div>
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 leading-none mb-1">
+                <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.1em] text-white/40 leading-none mb-1">
                   Scoped Analysis
                 </div>
                 <h3 className="text-sm font-bold text-white truncate max-w-[180px]">
@@ -113,7 +113,7 @@ Maintain a professional, high-fidelity tone. Be concise.
           {/* Context Banner */}
           <div className="px-6 py-3 bg-white/[0.02] border-b border-white/5 flex items-center gap-2">
             <Sparkles size={12} className="text-amber-400 animate-pulse" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-amber-400/80">
+            <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-amber-400/80">
               Neural Link Scoped to {selectedEntity.type}
             </span>
           </div>

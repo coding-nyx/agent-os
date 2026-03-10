@@ -79,7 +79,7 @@ export function VaultLockedShell({
 
         {/* Module identity */}
         <div className="space-y-1">
-          <h2 className={cn('text-lg font-black tracking-tighter uppercase italic', accentClassName)}>
+          <h2 className={cn('text-lg font-bold tracking-tighter uppercase font-display', accentClassName)}>
             {moduleName}
           </h2>
           <p className="text-xs text-white/40 leading-relaxed">{moduleDescription}</p>

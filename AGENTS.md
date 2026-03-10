@@ -13,8 +13,10 @@ AGNES is a Vite + React 19 SPA with:
 Primary routes currently wired in `src/App.tsx`:
 - `/` landing
 - `/orchestrator`, `/hub`, `/profile`
-- `/therapy`, `/trainer`, `/ledger`, `/soma`
-- `/atlas`, `/scout`, `/forge`, `/pulse`
+- `/agnes`, `/titan`, `/ledger`, `/soma`
+- `/atlas`, `/scout`, `/forge`
+
+`src/App.tsx` route declarations are the canonical source of truth for active module navigation.
 
 `bridge` is a manifest module (`src/lib/module-manifest.ts`) without a page route (`hasPage: false`).
 
@@ -82,8 +84,8 @@ Primary routes currently wired in `src/App.tsx`:
 - `src/lib/*`: platform services, contexts, type contracts, module manifest, actions hub, spine event bus.
 
 ### Module Domains (`src/modules/*`)
-- Core: `therapy`, `trainer`, `ledger`, `soma`
-- Extensions: `atlas`, `scout`, `forge`, `pulse`
+- Core: `agnes`, `titan`, `ledger`, `soma`
+- Extensions: `atlas`, `scout`, `forge`
 - Platform: `orchestrator`, `hub`, `landing`, `profile`
 - Shared scaffold: `src/modules/_shared/ModuleScaffoldPage.tsx`
 
@@ -129,8 +131,8 @@ Typical module package shape:
 ### 6) Persistence Surfaces
 - Firestore collections in active use include:
   - `users`, `vaults`, `global_souls`
-  - `therapist_profiles`, `ai_trainers`, `soma_profiles`, `ai_ledgers`
-  - `atlas_profiles`, `scout_knowledge`, `forge_sessions`, `pulse_profiles`
+  - `agnes_profiles`, `titan_profiles`, `soma_profiles`, `ledger_profiles`
+  - `atlas_profiles`, `scout_knowledge`, `forge_sessions`
   - `module_memory`, `active_sessions`, `spine_events`, `belief_graphs`, `bridge_config`
 
 ## Agent Execution Protocol

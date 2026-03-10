@@ -19,8 +19,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
 import type { Message, MessageContent } from '@/lib/types';
-import type { ConversationContext } from '@/llm-engine/types';
-import type { StreamChunk } from '@/llm-engine/engine/types';
+import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
+import type { StreamChunk } from '@/lib/ai-adapters/engine-types';
 
 // ============================================================================
 // Types

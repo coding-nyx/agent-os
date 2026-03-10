@@ -156,7 +156,7 @@ export function SystemCommandCenter() {
                           {purgeStep === 'CONFIRM' && (
                               <div className="space-y-6">
                                   <div className="space-y-2">
-                                      <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">Purge Protocol</h3>
+                                      <h3 className="text-xl font-bold uppercase tracking-tighter text-white font-display">Purge Protocol</h3>
                                       <p className="text-xs text-white/60 font-medium italic leading-relaxed px-4">This will permanently destroy all neural synchronization data across all modules. There is no restoration process.</p>
                                   </div>
                                   <div className="space-y-2">
@@ -169,7 +169,7 @@ export function SystemCommandCenter() {
                           {purgeStep === 'FINAL_WARNING' && (
                               <div className="space-y-6">
                                   <div className="space-y-2">
-                                      <h3 className="text-xl font-black italic uppercase tracking-tighter text-red-500">Neural Overwrite</h3>
+                                      <h3 className="text-xl font-bold uppercase tracking-tighter text-red-500 font-display">Neural Overwrite</h3>
                                       <p className="text-xs text-white/60 font-medium italic leading-relaxed px-4">Type CONFIRM to initialize atomic wipe. Your soul will be permanently detached from the nexus.</p>
                                   </div>
                                   <div className="space-y-3">
@@ -182,7 +182,7 @@ export function SystemCommandCenter() {
                           {purgeStep === 'DELETING' && (
                               <div className="space-y-4">
                                   <Zap className="w-8 h-8 text-white/60 mx-auto animate-spin" />
-                                  <p className="text-xs font-black uppercase tracking-[0.3em] text-white animate-pulse italic">Purging Nexus...</p>
+                                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-white animate-pulse font-display">Purging Nexus...</p>
                               </div>
                           )}
                       </motion.div>

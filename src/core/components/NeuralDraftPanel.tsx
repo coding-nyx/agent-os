@@ -78,12 +78,12 @@ export function NeuralDraftPanel() {
         initial={{ x: 420, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: 420, opacity: 0 }}
-        className="fixed top-24 right-6 z-[105] w-[360px] rounded-3xl border border-cyan-500/30 bg-[#05050a]/95 p-5 backdrop-blur-xl shadow-[0_0_40px_rgba(6,182,212,0.2)]"
+        className="fixed top-24 right-6 z-[var(--z-toast)] w-[360px] rounded-3xl border border-cyan-500/30 bg-[#05050a]/95 p-5 backdrop-blur-xl shadow-[0_0_40px_rgba(6,182,212,0.2)]"
         role="alert"
       >
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-300">Neural Draft</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-300 font-display">Neural Draft</h3>
             <p className="text-[10px] text-white/50 uppercase">{draft.source} {draft.target ? `-> ${draft.target}` : ''}</p>
           </div>
           <button

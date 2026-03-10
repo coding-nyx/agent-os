@@ -285,6 +285,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             profile={medicalProfile}
             soul={globalSoul}
             isLocked={isLocked}
+            themeColor="orange"
             onImportLab={handleImportLab}
             onAnalyzeImage={handleAnalyzeImage}
           />

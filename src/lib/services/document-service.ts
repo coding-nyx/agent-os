@@ -1,5 +1,4 @@
-import { collection, doc, deleteDoc, getDocs, onSnapshot, query, setDoc, where, orderBy } from 'firebase/firestore';
-import { getFirebase } from '../firebase';
+import { getNexusDataLayer } from '../data-layer/provider';
 import { encryptWithKey } from '../encryption';
 import type { DocumentRecord } from '../types';
 
@@ -18,8 +17,7 @@ export async function saveDocumentRecord(params: {
   text: string;
   encryptionKey: CryptoKey;
 }): Promise<DocumentRecord> {
-  const { db } = getFirebase();
-  if (!db) throw new Error('Firebase not initialized');
+  const dataLayer = getNexusDataLayer();
 
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -44,7 +42,7 @@ export async function saveDocumentRecord(params: {
     updatedAt: now
   };
 
-  await setDoc(doc(db, COLLECTION, id), record);
+  await dataLayer.setDocument(COLLECTION, id, record);
   return record;
 }
 
@@ -54,26 +52,19 @@ export function subscribeDocuments(
   threadId: string,
   onUpdate: (docs: DocumentRecord[]) => void
 ): () => void {
-  const { db } = getFirebase();
-  if (!db || !userId || !moduleId || !threadId) return () => {};
-
-  const q = query(
-    collection(db, COLLECTION),
-    where('userId', '==', userId),
-    where('moduleId', '==', moduleId),
-    where('threadId', '==', threadId),
-    orderBy('createdAt', 'desc')
-  );
-
-  return onSnapshot(
-    q,
-    (snap) => {
-      const docs = snap.docs.map((docSnap) => docSnap.data() as DocumentRecord);
-      onUpdate(docs);
+  if (!userId || !moduleId || !threadId) return () => {};
+  const dataLayer = getNexusDataLayer();
+  return dataLayer.subscribeToQuery<DocumentRecord>(
+    {
+      collection: COLLECTION,
+      where: [
+        { field: 'userId', op: '==', value: userId },
+        { field: 'moduleId', op: '==', value: moduleId },
+        { field: 'threadId', op: '==', value: threadId },
+      ],
+      orderBy: [{ field: 'createdAt', direction: 'desc' }],
     },
-    (error) => {
-      console.error('[DocumentService] Subscription error:', error);
-    }
+    onUpdate
   );
 }
 
@@ -83,20 +74,18 @@ export async function deleteDocumentsByThread(
   moduleId: string,
   threadId: string,
 ): Promise<number> {
-  const { db } = getFirebase();
-  if (!db) return 0;
-
-  const q = query(
-    collection(db, COLLECTION),
-    where('userId', '==', userId),
-    where('moduleId', '==', moduleId),
-    where('threadId', '==', threadId),
-  );
-
-  const snap = await getDocs(q);
+  const dataLayer = getNexusDataLayer();
+  const matches = await dataLayer.query<DocumentRecord>({
+    collection: COLLECTION,
+    where: [
+      { field: 'userId', op: '==', value: userId },
+      { field: 'moduleId', op: '==', value: moduleId },
+      { field: 'threadId', op: '==', value: threadId },
+    ]
+  });
   let deleted = 0;
-  for (const docSnap of snap.docs) {
-    await deleteDoc(doc(db, COLLECTION, docSnap.id));
+  for (const match of matches) {
+    await dataLayer.deleteDocument(COLLECTION, match.id);
     deleted++;
   }
   return deleted;

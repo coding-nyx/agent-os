@@ -105,7 +105,7 @@ export function CommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[var(--z-overlay)]"
             onClick={close}
           />
 
@@ -116,7 +116,7 @@ export function CommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule
             exit={{ opacity: 0, scale: 0.96, y: -20 }}
             transition={{ duration: 0.15 }}
             className={cn(
-              'fixed top-[20%] left-1/2 -translate-x-1/2 z-50',
+              'fixed top-[20%] left-1/2 -translate-x-1/2 z-[var(--z-modal)]',
               'w-full max-w-[520px] rounded-2xl',
               'border border-white/10 bg-[#0a0a0f]/95 backdrop-blur-3xl',
               'shadow-2xl shadow-black/50 overflow-hidden'
@@ -142,7 +142,7 @@ export function CommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule
               {Object.entries(grouped).map(([category, commands]) => (
                 <div key={category}>
                   <div className="px-4 pt-3 pb-1">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/30">
                       {CATEGORY_LABELS[category] || category}
                     </span>
                   </div>

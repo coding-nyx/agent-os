@@ -85,7 +85,9 @@ function AlertCard({ alert, ...handlers }: { alert: SynthesisAlert } & Omit<Synt
 
 export function SynthesisPanel({ onInjectChat, onConsultModule, onNavigate }: SynthesisPanelProps) {
   const { alerts, isAnalyzing } = useNexusSynthesis();
-  const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [isCollapsed, setIsCollapsed] = React.useState(
+    typeof window !== 'undefined' && window.innerWidth < 640
+  );
 
   if (alerts.length === 0 && !isAnalyzing) return null;
 
@@ -99,7 +101,7 @@ export function SynthesisPanel({ onInjectChat, onConsultModule, onNavigate }: Sy
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="flex items-center gap-2 w-full px-1 py-2 text-left"
       >
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-400">
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-violet-400">
           ⚡ Nexus Synthesis
         </span>
         <span className="text-[10px] text-white/30">

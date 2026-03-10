@@ -10,9 +10,8 @@
  * Rules:
  *   - A module may only write paths it owns according to NSV_OWNERSHIP.
  *   - The 'orchestrator' is a special super-authority: it may write any path.
- *   - Modules with an empty ownership list (forge, soma, documents, bridge, scout*)
+ *   - Modules with an empty ownership list (scout, forge, soma, bridge)
  *     cannot write any NSV fields directly.
- *   - Scout owns cognitive.researchLoad and cognitive.interestDiversity only.
  *
  * Examples:
  *   SoulAuthorityGuard.canWrite('agnes', 'emotional.traumaMarkers')  → true

@@ -4,7 +4,6 @@ import {
   Brain,
   ClipboardList,
   Code,
-  Database,
   HeartPulse,
   Radio,
   Search,
@@ -21,8 +20,7 @@ export const MODULE_IDS = [
   'atlas',
   'scout',
   'forge',
-  'bridge',
-  'documents'
+  'bridge'
 ] as const;
 
 export type ModuleId = (typeof MODULE_IDS)[number];
@@ -52,11 +50,24 @@ export interface ModuleManifestEntry {
   isCore: boolean;
   hasPage: boolean;
   securityPolicy: ModuleSecurityPolicy;
+  onboarding: ModuleOnboardingPolicy;
 }
 
 export interface ModuleSecurityPolicy {
   defaultLocked: boolean;
   mandatory: boolean;
+}
+
+export type ModuleOnboardingMode = 'required' | 'optional' | 'hybrid';
+
+export interface ModuleFastTrackPolicy {
+  enabled: boolean;
+  confidenceThreshold: number;
+}
+
+export interface ModuleOnboardingPolicy {
+  mode: ModuleOnboardingMode;
+  fastTrack: ModuleFastTrackPolicy;
 }
 
 export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
@@ -72,7 +83,8 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     chatTheme: 'cyan',
     isCore: true,
     hasPage: true,
-    securityPolicy: { defaultLocked: false, mandatory: false }
+    securityPolicy: { defaultLocked: false, mandatory: false },
+    onboarding: { mode: 'required', fastTrack: { enabled: false, confidenceThreshold: 0.75 } }
   },
   agnes: {
     id: 'agnes',
@@ -86,7 +98,8 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     icon: Brain,
     isCore: true,
     hasPage: true,
-    securityPolicy: { defaultLocked: true, mandatory: true }
+    securityPolicy: { defaultLocked: true, mandatory: true },
+    onboarding: { mode: 'required', fastTrack: { enabled: true, confidenceThreshold: 0.75 } }
   },
   titan: {
     id: 'titan',
@@ -100,7 +113,8 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     icon: Activity,
     isCore: true,
     hasPage: true,
-    securityPolicy: { defaultLocked: false, mandatory: false }
+    securityPolicy: { defaultLocked: false, mandatory: false },
+    onboarding: { mode: 'hybrid', fastTrack: { enabled: true, confidenceThreshold: 0.78 } }
   },
   soma: {
     id: 'soma',
@@ -114,7 +128,8 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     icon: HeartPulse,
     isCore: false,
     hasPage: false,
-    securityPolicy: { defaultLocked: true, mandatory: false }
+    securityPolicy: { defaultLocked: true, mandatory: false },
+    onboarding: { mode: 'optional', fastTrack: { enabled: false, confidenceThreshold: 0.75 } }
   },
   ledger: {
     id: 'ledger',
@@ -128,7 +143,8 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     icon: ClipboardList,
     isCore: true,
     hasPage: true,
-    securityPolicy: { defaultLocked: true, mandatory: false }
+    securityPolicy: { defaultLocked: true, mandatory: false },
+    onboarding: { mode: 'required', fastTrack: { enabled: true, confidenceThreshold: 0.75 } }
   },
   atlas: {
     id: 'atlas',
@@ -140,9 +156,10 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     themeColor: 'sky',
     chatTheme: 'sky',
     icon: Zap,
-    isCore: false,
+    isCore: true,
     hasPage: true,
-    securityPolicy: { defaultLocked: true, mandatory: false }
+    securityPolicy: { defaultLocked: true, mandatory: false },
+    onboarding: { mode: 'optional', fastTrack: { enabled: true, confidenceThreshold: 0.72 } }
   },
   scout: {
     id: 'scout',
@@ -156,7 +173,8 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     icon: Search,
     isCore: false,
     hasPage: true,
-    securityPolicy: { defaultLocked: true, mandatory: false }
+    securityPolicy: { defaultLocked: true, mandatory: false },
+    onboarding: { mode: 'optional', fastTrack: { enabled: false, confidenceThreshold: 0.72 } }
   },
   forge: {
     id: 'forge',
@@ -169,7 +187,8 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     icon: Code,
     isCore: false,
     hasPage: true,
-    securityPolicy: { defaultLocked: false, mandatory: false }
+    securityPolicy: { defaultLocked: false, mandatory: false },
+    onboarding: { mode: 'optional', fastTrack: { enabled: false, confidenceThreshold: 0.72 } }
   },
   bridge: {
     id: 'bridge',
@@ -182,20 +201,8 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     icon: Bell,
     isCore: false,
     hasPage: false,
-    securityPolicy: { defaultLocked: false, mandatory: false }
-  },
-  documents: {
-    id: 'documents',
-    route: '/documents',
-    title: 'Documents',
-    alias: 'Documents',
-    description: 'Document Intelligence Workspace',
-    colorHex: '#94A3B8',
-    themeColor: 'slate',
-    icon: Database,
-    isCore: false,
-    hasPage: true,
-    securityPolicy: { defaultLocked: true, mandatory: false }
+    securityPolicy: { defaultLocked: false, mandatory: false },
+    onboarding: { mode: 'optional', fastTrack: { enabled: false, confidenceThreshold: 0.75 } }
   }
 };
 

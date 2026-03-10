@@ -35,9 +35,9 @@ export function RoutineEditor({ routine, onUpdate }: RoutineEditorProps) {
 
   return (
     <SurfaceCard className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mb-6">
         <div>
-          <h3 className="text-lg font-black text-white/90">Weekly Routine Skeleton</h3>
+          <h3 className="text-lg font-bold font-display text-white/90">Weekly Routine Skeleton</h3>
           <p className="text-xs text-white/40">Define recurring time blocks for your week.</p>
         </div>
         <div className="flex gap-2">

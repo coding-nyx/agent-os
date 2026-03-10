@@ -1,5 +1,4 @@
-import { collection, query, where, orderBy, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
-import { getFirebase } from '../firebase';
+import { getNexusDataLayer } from '../data-layer/provider';
 import type { ChatThread, ContextPolicy } from '../types';
 
 const COLLECTION = 'chat_threads';
@@ -15,32 +14,23 @@ export const ChatThreadService = {
     onUpdate: (threads: ChatThread[]) => void
   ): () => void {
     if (!userId || !moduleId) return () => {};
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const q = query(
-      collection(db, COLLECTION),
-      where('userId', '==', userId),
-      where('moduleId', '==', moduleId),
-      where('archived', '==', false),
-      orderBy('lastMessageAt', 'desc')
-    );
-
-    return onSnapshot(
-      q,
-      (snap) => {
-        const items = snap.docs.map((docSnap) => docSnap.data() as ChatThread);
-        onUpdate(items);
+    const dataLayer = getNexusDataLayer();
+    return dataLayer.subscribeToQuery<ChatThread>(
+      {
+        collection: COLLECTION,
+        where: [
+          { field: 'userId', op: '==', value: userId },
+          { field: 'moduleId', op: '==', value: moduleId },
+          { field: 'archived', op: '==', value: false },
+        ],
+        orderBy: [{ field: 'lastMessageAt', direction: 'desc' }],
       },
-      (error) => {
-        console.error('[ChatThreadService] Subscription error:', error);
-      }
+      onUpdate
     );
   },
 
   async createThread(userId: string, moduleId: string, title: string, contextPolicy: ContextPolicy = 'base-context') {
-    const { db } = getFirebase();
-    if (!db) throw new Error('Firebase not initialized');
+    const dataLayer = getNexusDataLayer();
 
     const threadId = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -57,7 +47,7 @@ export const ChatThreadService = {
       lastMessageAt: now
     };
 
-    await setDoc(doc(db, COLLECTION, threadDocId(userId, moduleId, threadId)), thread);
+    await dataLayer.setDocument(COLLECTION, threadDocId(userId, moduleId, threadId), thread);
     return thread;
   },
 
@@ -67,24 +57,27 @@ export const ChatThreadService = {
     threadId: string,
     patch: Partial<Omit<ChatThread, 'id' | 'moduleId' | 'userId' | 'createdAt'>>
   ) {
-    const { db } = getFirebase();
-    if (!db) return;
-    const ref = doc(db, COLLECTION, threadDocId(userId, moduleId, threadId));
-    await updateDoc(ref, { ...patch, updatedAt: new Date().toISOString() });
+    const dataLayer = getNexusDataLayer();
+    await dataLayer.updateDocument(COLLECTION, threadDocId(userId, moduleId, threadId), {
+      ...patch,
+      updatedAt: new Date().toISOString()
+    });
   },
 
   async touchThread(userId: string, moduleId: string, threadId: string) {
-    const { db } = getFirebase();
-    if (!db) return;
+    const dataLayer = getNexusDataLayer();
     const now = new Date().toISOString();
-    const ref = doc(db, COLLECTION, threadDocId(userId, moduleId, threadId));
-    await updateDoc(ref, { lastMessageAt: now, updatedAt: now });
+    await dataLayer.updateDocument(COLLECTION, threadDocId(userId, moduleId, threadId), {
+      lastMessageAt: now,
+      updatedAt: now
+    });
   },
 
   async archiveThread(userId: string, moduleId: string, threadId: string) {
-    const { db } = getFirebase();
-    if (!db) return;
-    const ref = doc(db, COLLECTION, threadDocId(userId, moduleId, threadId));
-    await updateDoc(ref, { archived: true, updatedAt: new Date().toISOString() });
+    const dataLayer = getNexusDataLayer();
+    await dataLayer.updateDocument(COLLECTION, threadDocId(userId, moduleId, threadId), {
+      archived: true,
+      updatedAt: new Date().toISOString()
+    });
   }
 };

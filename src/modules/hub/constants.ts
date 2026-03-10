@@ -1,6 +1,6 @@
 export type StatusTone = 'good' | 'warn' | 'bad' | 'neutral';
 
-export const CORE_MODULES = ['agnes', 'titan', 'ledger'];
+export const CORE_MODULES = ['agnes', 'titan', 'ledger', 'atlas'];
 
 export const toneClass = (tone: StatusTone) => {
   switch (tone) {

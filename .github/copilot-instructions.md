@@ -1,73 +1,144 @@
-# GitHub Copilot Instructions - AGNES Project
+# GitHub Copilot Instructions — Nexus
 
-## Build & Dev Commands
+## Commands
 
 ```bash
-npm run dev        # Start Vite dev server (localhost:3000)
-npm run build      # tsc && vite build (outputs to out/)
-npm run lint       # ESLint
-npm run preview    # Preview production build
+npm run dev          # Vite dev server → http://localhost:5173
+npm run build        # tsc && vite build → out/
+npm run preview      # Serve production build locally
+npm run lint         # ESLint
+npm run test         # Vitest (unit tests)
+npx vitest run src/lib/encryption.test.ts   # Run a single test file
+npx playwright test e2e/landing.spec.ts     # Run a single E2E test
 ```
 
-No test framework is configured.
+Unit tests live in `src/**/*.test.{ts,tsx}` (jsdom env). E2E tests live in `e2e/` (Playwright, Chromium, requires dev server on `:5173`).
 
-## Architecture
+---
 
-AGNES is a **React 19 Vite SPA** — an AI wellness platform with modular AI agents (Therapy, Trainer, Ledger). Entry point: `index.html` → `src/main.tsx` → `src/App.tsx`.
+## Architecture Overview
 
-### Provider Hierarchy (App.tsx)
+Nexus is a React 19 + Vite SPA. Entry: `index.html` → `src/main.tsx` → `src/App.tsx`.
+
+### Provider Hierarchy (`src/App.tsx`)
 
 ```
-ThemeProvider → AuthProvider → VaultProvider → GlobalSoulProvider → AIProvider → Router
+ThemeProvider
+└── DataLayerProvider         (Firestore/InMemory abstraction — NexusDataLayer)
+    └── BrowserRouter
+        └── AuthProvider      (Firebase Auth + guest mode)
+            └── VaultProvider (E2EE key derivation — PBKDF2 + AES-GCM)
+                └── GlobalSoulProvider  (cross-module NSV state + context enhancement)
+                    └── AIWrapper
+                        └── AIProvider  (LLM engine — zero app-layer dependencies)
+                            └── AppErrorBoundary
+                                └── AIRuntimeGate  (blocks render until auth+AI ready)
+                                    └── <Routes>
 ```
 
-- **AuthProvider** (`src/lib/auth-context.tsx`): Firebase Auth + guest mode.
-- **VaultProvider** (`src/lib/vault-context.tsx`): E2EE vault using Web Crypto API (PBKDF2 + AES-GCM). Manages master key derivation, canary verification, and generic `checkModuleVault(collectionName)`. Has NO knowledge of specific modules.
-- **GlobalSoulProvider** (`src/lib/global-soul-context.tsx`): Owns GlobalSoul CRUD, cross-module insight synthesis, context enhancement (`enhanceContext()`), and tool call handling. Bridges auth/vault with cross-module state.
-- **AIProvider** (`src/llm-engine/ai-context.tsx`): Engine-only — initializes the LLM agent and exposes `sendMessage`/`streamMessage`. Has NO dependencies on auth, vault, or GlobalSoul. Receives `onToolCall` via props from `AIWrapper`.
+### The Four Runtime Systems
 
-### Module Isolation (Critical)
+**1. LLM Engine (`src/llm-engine/`) — treat as external black box**
+Internal pipeline: `CognitiveAgent → Orchestrator → ModelRegistry`. Zero imports from `src/lib/` or `src/modules/`. Interact only through:
+- `useAI()` → `{ sendMessage, streamMessage, isInitialized }`
+- `ConversationContext` → `{ systemPrompt, history, memoryContext, summary }`
+- In practice, modules never call `useAI()` directly — they use `useModuleAI()`.
 
-Each module in `src/modules/` (therapy, trainer, ledger, hub, landing) is a self-contained domain. **All module-specific logic, state, and UI must stay within its directory.** Cross-module data sharing goes through `GlobalSoulService` (`src/lib/services/global-soul-service.ts`), which synthesizes encrypted insights between modules (e.g., therapy emotional resilience ↔ trainer CNS fatigue).
+**2. Spine Event Bus (`src/lib/spine/`) — the nervous system**
+Decoupled pub/sub with cascade automation. Non-`info` events are persisted to `spine_events/{uid}/events`.
+```typescript
+// Publish
+Spine.publish({ type: 'VITAL_UPDATED', source: 'agnes', domain: 'B', priority: 'alert', data: { cnsFatigue: 0.8 } });
+// Subscribe
+const unsub = Spine.subscribe('VITAL_UPDATED', handler, { minPriority: 'alert' });
+// In React components
+useSpineEvent('HEALTH_CONTEXT_STALE', () => refreshGlobalSoul());
+```
+Cascade rules live in `src/lib/spine/cascade-rules.ts` — e.g., `BURNOUT_WARNING` → `REDUCE_TRAINING_LOAD`, `deadlinePressure ≥ 8` → `DEADLINE_CRUNCH`.
 
-Modules use `ModuleLayout` (`src/core/layout/ModuleLayout.tsx`) as their shell, which provides the themed header, exit transitions, and E2EE status display.
+**3. GlobalSoul / NSV (`src/lib/global-soul-context.tsx`) — the synthesized state**
+Aggregates the **NeuralStateVector** (NSV) across all modules. Domains: `biological`, `emotional`, `cognitive`, `planning`, `resource`. Each module owns specific NSV fields (Atlas → `planning.*`, Ledger → `resource.*`, Scout → `cognitive.interestDiversity`).
+- `enhanceContext(ctx)` — injects full NSV + compacted insights into AI system prompt (used by Orchestrator only)
+- `enhanceContextForModule(ctx, moduleId)` — injects permission-filtered NSV (used by all other modules)
+- `updateCrossFunctionalState(patch)` — merges NSV updates to `global_souls/{uid}`
 
-### LLM Engine (`src/llm-engine/`) — External API Service
+**4. ActionHub (`src/lib/actions/action-hub.ts`) — action execution registry**
+AI responses may include `{"action": "actionType", "payload": {...}}`. The hub routes these to registered handlers per module. Handlers receive `ActionContext` with `updateGlobalSoul`, `emitSpineEvent`, `delegateToModule`, `sendMessage`, `markProfileDirty`. Scout/Forge are NSV read-only; other modules have full write access.
 
-The engine is fully decoupled — it has **zero imports from `src/lib/` or `src/modules/`**. It has its own internal architecture (Agent → Orchestrator → MemoryManager → ModelRegistry) with adapter interfaces for storage and crypto. **Do not modify engine internals.** Interact only through:
-- `useAI()` hook — provides `sendMessage()`, `streamMessage()`, `isInitialized`
-- `ConversationContext` type — pass `systemPrompt`, `history`, `insights`, `summary`
-- Generic types: `Message`, `Persona`, `SessionSummary`, `LLMProvider`
+---
 
-Each module owns its own personas and domain types:
-- Therapy personas → `src/modules/therapy/personas.ts`
-- Trainer personas → `src/modules/trainer/prompts/ai-trainer-personas.ts`
-- Ledger personas → `src/modules/ledger/personas.ts`
-- Therapy-specific types → `src/modules/therapy/types.ts`
+## Module System
 
-Modules enhance their own context using `useGlobalSoul().enhanceContext()` before passing to `sendMessage`/`streamMessage`.
+### `useModuleAI` — the primary AI hook for all module pages
 
-### Encryption & Vault Pattern
+Defined in `src/lib/hooks/use-module-ai.ts`. Composes: `useAI` + `useGlobalSoul` + `useMemoryIntegration` + `useConsolidation` + `useHandoffProcessor` + `usePendingRecovery`.
 
-All sensitive user data (therapy profiles, trainer profiles, Global Soul) is E2EE'd client-side before reaching Firestore. The pattern is:
-1. User unlocks vault with password → `deriveKey()` → master `CryptoKey`
-2. Modules get keys via `getModuleKey(moduleName)`
-3. Data is encrypted/decrypted with `encryptWithKey()`/`decryptWithKey()` from `src/lib/encryption.ts`
-4. Firestore documents store `{ encryptedData, iv, metadata }` — metadata is unencrypted for querying
+```typescript
+const ai = useModuleAI({
+  moduleId: 'agnes',
+  systemPrompt: PERSONA.system_prompt,
+  encryptionKey: vaultKey,    // optional, for vault-locked modules
+  contextPolicy: 'prompted',  // 'doc-only' | 'base-context' | 'prompted'
+});
+// Returns: { messages, sendUserMessage, isProcessing, streamingText, routingSuggestion, quota }
+```
 
-### Data Layer
+### Standard Module File Shape
 
-- **Firebase**: Firestore for persistence, Firebase Auth for identity, Firebase Storage for assets. Config in `src/lib/firebase.ts`.
-- **Mock Mode**: When no API keys are configured, the app falls back to localStorage-based mock services.
-- **Session Persistence**: `SessionPersistenceService` saves in-progress chat history to survive page reloads.
+```
+src/modules/{name}/
+├── {Name}Page.tsx            # Route entry, loads profile, gates on onboarding
+├── components/               # All UI for this module
+├── onboarding/               # Multi-step onboarding component
+├── services/
+│   ├── {name}-profile-service.ts   # Firestore CRUD for this module's profile
+│   └── actions.ts                  # ActionHub registrations
+├── personas.ts               # Agent personality defaults
+├── prompts/                  # System prompt templates
+└── types.ts                  # Module-specific types
+```
+
+**Module IDs** (from `src/lib/module-manifest.ts`): `orchestrator`, `agnes`, `titan`, `soma`, `ledger`, `atlas`, `scout`, `forge`, `bridge`. `bridge` has no page route (`hasPage: false`).
+
+### Cross-Module Communication
+
+- **Spine**: fire-and-forget events, cascade automation
+- **NexusHandoffService** (`src/lib/services/nexus-handoff-service.ts`): session-storage-based delegation between modules (max 4000 chars, TTL 10 min). Use for `delegate` or `query/query_result` patterns.
+- **GlobalProjectionService** (`src/lib/services/global-projection-service.ts`): Firestore-backed NSV reads/writes.
+
+---
+
+## Encryption & Vault
+
+All sensitive data is E2EE'd client-side before Firestore. Firestore documents store `{ encryptedData, iv, metadata }` — only `metadata` is plaintext (for querying).
+
+```typescript
+// Pattern in module page components:
+const { getModuleKey } = useVault();
+const key = await getModuleKey('agnes');          // Derives module key from master key
+const encrypted = await encryptWithKey(data, key); // src/lib/encryption.ts
+const decrypted = await decryptWithKey(doc, key);
+```
+
+`VaultProvider` exposes `isModuleAccessible(moduleId)` — checked by `ModuleLayout` which auto-renders the unlock modal when needed. Vault security policy (mandatory vs. optional lock) is defined per module in `MODULE_MANIFEST`.
+
+---
+
+## Data Layer
+
+`DataLayerProvider` wraps a `NexusDataLayer` interface (Firestore in prod, InMemory for tests). Always access Firestore through this abstraction, never import Firebase SDK directly in module code.
+
+**Active Firestore collections:** `users`, `global_souls`, `vaults`, `chat_threads`, `documents`, `notebook_cells`, `derived_insights`, `{module}_profiles` (e.g., `atlas_profiles`), `spine_events/{uid}/events`.
+
+---
 
 ## Key Conventions
 
-- **Path alias**: `@/` maps to `src/` (configured in both `vite.config.ts` and `tsconfig.json`)
-- **UI components**: Shadcn UI (new-york style) with Radix primitives. Custom "Neural" components (`NeuralButton`, `NeuralInput`, `NeuralModal`, `GlassCard`) for the futuristic theme.
-- **Styling**: Dark-first design with glassmorphism, Framer Motion animations, and per-module theme colors (indigo=therapy, orange=trainer, cyan=global).
-- **Icons**: Lucide React exclusively.
-- **State**: Zustand for global stores, React Context for provider-scoped state, local `useState` for component state. Prefer local state unless cross-component sharing is needed.
-- **API keys**: Stored in `.env.local` or `localStorage`. Keys checked: `VITE_OPENROUTER_API_KEY`, `VITE_GROK_API_KEY`, `VITE_GOOGLE_API_KEY`.
-- **Deployment**: Firebase Hosting. Build output dir is `out/`. SPA rewrite rule sends all routes to `index.html`.
-- **TypeScript**: Strict mode enabled. Avoid `any` unless required for Web Crypto API compatibility (`as any` casts on `Uint8Array` → `ArrayBuffer`).
+- **Path alias**: `@/` → `src/`
+- **UI**: Shadcn UI (new-york style) + custom Neural components (`NeuralButton`, `NeuralInput`, `NeuralModal`, `GlassCard`). Icons: Lucide React only.
+- **Styling**: Dark-first, glassmorphism, Framer Motion. Per-module theme colors set via `ModuleLayout`'s `themeColor` prop. Module → color mapping in `MODULE_MANIFEST[id].themeColor`.
+- **State hierarchy**: local `useState` → React Context (provider-scoped) → Zustand (global stores). Don't reach for Zustand until cross-component sharing is required.
+- **TypeScript**: Strict mode. Only use `any` for Web Crypto API `Uint8Array → ArrayBuffer` casts.
+- **Vite chunking** (`vite.config.ts`): manual chunks for `gpt-tokenizer` (`vendor-gpt`), `pdfjs-dist` (`vendor-pdf`), rest of `node_modules` (`vendor`). Keep this deterministic — no overlapping substring rules.
+- **API keys**: `VITE_OPENROUTER_API_KEY`, `VITE_GROK_API_KEY`, `VITE_GOOGLE_API_KEY` in `.env.local`. App gracefully degrades to localStorage mock when unconfigured.
+- **Build output**: `out/`. Firebase Hosting rewrites all routes to `index.html` (SPA).

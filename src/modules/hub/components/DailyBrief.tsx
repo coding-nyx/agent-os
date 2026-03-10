@@ -86,7 +86,7 @@ function PillarCard({
           className={cn('w-2 h-2 rounded-full', TONE_DOT[tone])}
           aria-hidden="true"
         />
-        <span className={cn('text-lg font-black italic uppercase tracking-tight', TONE_TEXT[tone])}>
+        <span className={cn('text-lg font-bold uppercase tracking-tight font-display', TONE_TEXT[tone])}>
           {word}
         </span>
       </div>

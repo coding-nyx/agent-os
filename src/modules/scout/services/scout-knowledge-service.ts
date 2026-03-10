@@ -26,7 +26,7 @@ export interface InterestNode {
   lastSeenAt: string;
 }
 
-export interface PulseNewsBrief {
+export interface ScoutNewsBrief {
   topic: string;
   summary: string;
   source?: string;
@@ -39,7 +39,7 @@ export interface ScoutProfile {
   knowledgeNodes: ScoutKnowledgeNode[];
   interests: InterestNode[];
   trendBriefs: string[];
-  newsBriefs: PulseNewsBrief[];
+  newsBriefs: ScoutNewsBrief[];
   newsUpdatedAt?: string;
   verificationQueue: Array<{
     id: string;
@@ -122,7 +122,7 @@ function normalizeScoutProfile(raw: unknown): ScoutProfile {
             source: typeof entry?.source === 'string' ? entry.source : undefined,
             updatedAt: typeof entry?.updatedAt === 'string' ? entry.updatedAt : now
           }))
-          .filter((entry: PulseNewsBrief) => entry.summary)
+          .filter((entry: ScoutNewsBrief) => entry.summary)
       : [],
     newsUpdatedAt: typeof candidate.newsUpdatedAt === 'string' ? candidate.newsUpdatedAt : undefined,
     verificationQueue: Array.isArray(candidate.verificationQueue)

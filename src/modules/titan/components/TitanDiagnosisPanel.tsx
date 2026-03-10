@@ -6,6 +6,7 @@ import { DiagnosisToolbar } from '@/core/diagnosis/components/DiagnosisToolbar';
 import { DiagnosisMergeDialog } from '@/core/diagnosis/components/DiagnosisMergeDialog';
 import { DiagnosisSidebar } from '@/core/diagnosis/components/DiagnosisSidebar';
 import { NexusChat } from '@/core/components/NexusChat';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import type { TitanProfile } from '@/lib/types';
 import { Lock } from 'lucide-react';
 
@@ -116,13 +117,14 @@ export function TitanDiagnosisPanel({ encryptionKey, profile }: TitanDiagnosisPa
                 placeholder="Vault password"
                 className="flex-1 px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-orange-400/40"
               />
-              <button
+              <NeuralButton
+                size="sm"
+                themeColor="orange"
                 onClick={handleVaultUnlock}
                 disabled={isHandshaking}
-                className="px-3 py-1.5 rounded-xl border border-orange-400/30 bg-orange-500/15 text-[10px] font-black uppercase tracking-[0.15em] text-orange-200 hover:bg-orange-500/25 transition-colors disabled:opacity-40"
               >
                 Unlock
-              </button>
+              </NeuralButton>
             </div>
             {vaultError && (
               <p className="text-[10px] text-red-400 mt-1">{vaultError}</p>

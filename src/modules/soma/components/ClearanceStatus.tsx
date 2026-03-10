@@ -239,7 +239,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h3 className={cn(
-                  'text-2xl font-black italic uppercase tracking-tight',
+                  'text-2xl font-bold uppercase tracking-tight font-display',
                   currentStatus.textClass
                 )}>
                   {currentStatus.label}
@@ -250,7 +250,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
 
             {/* Requirements Met Summary */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-white/50">
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-white/50">
                 <span>Requirements Met</span>
                 <span className="tabular-nums">{metRequirements.length}/{requirements.length}</span>
               </div>
@@ -339,7 +339,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                     </div>
                     
                     <div className={cn(
-                      'px-2 py-0.5 rounded text-[10px] font-black tabular-nums',
+                      'px-2 py-0.5 rounded text-[10px] font-bold tabular-nums',
                       isMet 
                         ? 'bg-emerald-500/10 text-emerald-300' 
                         : 'bg-white/5 text-white/50'
@@ -360,7 +360,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
           <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
             <Brain className="w-4 h-4 text-orange-400" />
           </div>
-          <h3 className="text-sm font-black uppercase tracking-wide text-white/90">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-white/90 font-display">
             AI Recommendations
           </h3>
         </div>
@@ -369,7 +369,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
           {recommendations.map((rec, idx) => (
             <div key={idx} className="flex items-start gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/5">
               <div className="w-5 h-5 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="text-[9px] font-black text-orange-400">{idx + 1}</span>
+                <span className="text-[9px] font-bold text-orange-400">{idx + 1}</span>
               </div>
               <p className="text-xs text-white/70 leading-relaxed flex-1">
                 {rec}
@@ -382,7 +382,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
       {/* Historical Clearances */}
       {recentClearances.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">
             Recent Clearances
           </h3>
           

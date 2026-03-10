@@ -3,7 +3,7 @@
  * Features: Readiness Score, Vital Signs, Physical Assessments, AI Insights
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Activity, 
   Heart, 
@@ -115,7 +115,7 @@ interface SomaDashboardProps {
 
 const noop = () => {};
 
-export function SomaDashboard({
+export const SomaDashboard = React.memo(function SomaDashboard({
   soul,
   profile,
   isLocked = false,
@@ -125,6 +125,7 @@ export function SomaDashboard({
 }: SomaDashboardProps) {
   const [activeView, setActiveView] = useState<SomaView>('dashboard');
   const [showAIPanel, setShowAIPanel] = useState(false);
+  const toggleAIPanel = useCallback(() => setShowAIPanel(prev => !prev), []);
 
   // ---- Early returns for locked / no-soul states ----
   
@@ -285,12 +286,12 @@ export function SomaDashboard({
           <div className="flex items-center gap-3">
             <Activity className="w-6 h-6 text-cyan-400" />
             <div>
-              <h2 className="text-2xl font-black text-white tracking-tight">Physical Readiness</h2>
+              <h2 className="text-2xl font-bold text-white tracking-tight font-display">Physical Readiness</h2>
               <p className="text-sm text-white/60">Overall biometric health status</p>
             </div>
           </div>
           <button
-            onClick={() => setShowAIPanel(!showAIPanel)}
+            onClick={toggleAIPanel}
             className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
           >
             {showAIPanel ? 'Hide' : 'Show'} AI Insights
@@ -377,7 +378,7 @@ export function SomaDashboard({
         <div className="flex items-center gap-3 mb-6">
           <TrendingUp className="w-6 h-6 text-emerald-400" />
           <div>
-            <h2 className="text-xl font-black text-white tracking-tight">Physical Performance</h2>
+            <h2 className="text-xl font-bold text-white tracking-tight font-display">Physical Performance</h2>
             <p className="text-sm text-white/60">Strength, flexibility, and endurance metrics</p>
           </div>
         </div>
@@ -439,7 +440,7 @@ export function SomaDashboard({
         <div className="flex items-center gap-3 mb-6">
           <Stethoscope className="w-6 h-6 text-indigo-400" />
           <div>
-            <h2 className="text-xl font-black text-white tracking-tight">Medical Clearance</h2>
+            <h2 className="text-xl font-bold text-white tracking-tight font-display">Medical Clearance</h2>
             <p className="text-sm text-white/60">Health check status and upcoming appointments</p>
           </div>
         </div>
@@ -504,7 +505,7 @@ export function SomaDashboard({
           <div className="flex items-center gap-3 mb-6">
             <Heart className="w-6 h-6 text-cyan-400" />
             <div>
-              <h2 className="text-xl font-black text-white tracking-tight">Heart Rate Trend</h2>
+              <h2 className="text-xl font-bold text-white tracking-tight font-display">Heart Rate Trend</h2>
               <p className="text-sm text-white/60">Last 14 days</p>
             </div>
           </div>
@@ -523,7 +524,7 @@ export function SomaDashboard({
           <div className="flex items-center gap-3 mb-6">
             <BarChart3 className="w-6 h-6 text-purple-400" />
             <div>
-              <h2 className="text-xl font-black text-white tracking-tight">Weight Trend</h2>
+              <h2 className="text-xl font-bold text-white tracking-tight font-display">Weight Trend</h2>
               <p className="text-sm text-white/60">Last 30 days</p>
             </div>
           </div>
@@ -577,7 +578,7 @@ export function SomaDashboard({
         {/* Header with View Switcher */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-black text-white tracking-tight">
+            <h1 className="text-2xl font-bold text-white tracking-tight font-display">
               Soma
             </h1>
             <p className="text-sm text-white/60 mt-1">
@@ -599,4 +600,4 @@ export function SomaDashboard({
       </div>
     </div>
   );
-}
+});

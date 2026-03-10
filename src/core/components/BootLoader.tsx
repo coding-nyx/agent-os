@@ -34,7 +34,7 @@ export function BootLoader({ message = "ESTABLISHING NEURAL LINK..." }: BootLoad
         {/* Text Interface */}
         <div className="text-center">
           <motion.h2 
-            className="text-white font-black italic tracking-[0.3em] text-[10px] uppercase mb-2"
+            className="text-white font-bold tracking-[0.15em] text-[11px] uppercase mb-2 font-display"
             animate={{ opacity: [0.4, 1, 0.4] }}
             transition={{ duration: 2, repeat: Infinity }}
           >

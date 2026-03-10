@@ -107,7 +107,7 @@ export default function HubPage() {
 
   const cnsFatigue = globalSoul?.crossFunctionalState?.biological?.cnsFatigue;
   const emotionalResilience = globalSoul?.crossFunctionalState?.emotional?.emotionalResilience;
-  const coreModulesAccessible = ['agnes', 'titan', 'ledger'].every((id) => moduleAccess[id as ModuleId]);
+  const coreModulesAccessible = ['agnes', 'titan', 'ledger', 'atlas'].every((id) => moduleAccess[id as ModuleId]);
   const stabilityGauge = moduleAccess.titan && typeof cnsFatigue === 'number'
     ? Math.max(0, Math.min(100, 100 - cnsFatigue * 10)) : null;
   const resilienceGauge = moduleAccess.agnes && typeof emotionalResilience === 'number'

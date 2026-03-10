@@ -33,7 +33,7 @@ export function StatCard({
   return (
     <SurfaceCard className={cn('p-4 md:p-5 space-y-3', className)}>
       <div className="flex items-center justify-between min-w-0">
-        <span className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black italic truncate">
+        <span className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-semibold truncate">
           {isLocked ? 'SECURED' : label}
         </span>
         {!isLocked && delta && <span className={cn('text-[10px] font-semibold', accentClassName)}>{delta}</span>}

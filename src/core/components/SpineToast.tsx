@@ -120,7 +120,7 @@ export function SpineToastProvider() {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-[200] flex flex-col-reverse gap-2 max-w-[380px] pointer-events-none"
+      className="fixed bottom-6 right-6 z-[var(--z-toast)] flex flex-col-reverse gap-2 max-w-[380px] pointer-events-none"
       aria-label="Notifications"
     >
       <AnimatePresence>

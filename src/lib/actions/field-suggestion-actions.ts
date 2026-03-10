@@ -17,8 +17,8 @@ import { SchemaRegistry } from '@/lib/schema-registry';
 import { FieldDefinition, FieldType } from '@/lib/field-system/types';
 import { createFieldDefinition } from '@/lib/field-system/field-system';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import type { ConversationContext } from '@/llm-engine/types';
-import type { StructuredResponse } from '@/llm-engine/engine/types';
+import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
+import type { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 
 // ==================== Type Definitions ====================
 

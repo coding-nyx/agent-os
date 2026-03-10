@@ -22,7 +22,6 @@ import {
   Brain,
   ClipboardList,
   Code,
-  Database,
   HeartPulse,
   Search,
   Sparkles,
@@ -64,7 +63,6 @@ const MODULE_ICON_MAP: Record<ModuleId, LucideIcon> = {
   scout:        Search,
   forge:        Code,
   bridge:       Bell,
-  documents:    Database,
 };
 
 const MODULE_COLOUR_MAP: Record<ModuleId, string> = {
@@ -77,7 +75,6 @@ const MODULE_COLOUR_MAP: Record<ModuleId, string> = {
   scout:        'bg-sky-500/20 text-sky-300 ring-sky-500/30',
   forge:        'bg-fuchsia-500/20 text-fuchsia-300 ring-fuchsia-500/30',
   bridge:       'bg-slate-500/20 text-slate-300 ring-slate-500/30',
-  documents:    'bg-slate-500/20 text-slate-300 ring-slate-500/30',
 };
 
 // ---------------------------------------------------------------------------
@@ -108,14 +105,14 @@ interface SeverityBadgeProps {
 function SeverityBadge({ severity }: SeverityBadgeProps) {
   if (severity === 'block') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-rose-300 ring-1 ring-rose-500/40">
+      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-300 ring-1 ring-rose-500/40">
         <ShieldAlert className="h-3 w-3" aria-hidden />
         Blocked
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-300 ring-1 ring-amber-500/40">
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300 ring-1 ring-amber-500/40">
       <AlertTriangle className="h-3 w-3" aria-hidden />
       Warning
     </span>
@@ -329,7 +326,7 @@ export function ConflictResolutionOverlay() {
           transition={{ type: 'spring', stiffness: 320, damping: 32 }}
           className={cn(
             // Positioned at the bottom of the viewport, above other fixed UI
-            'fixed bottom-6 left-1/2 z-[90] w-full max-w-sm -translate-x-1/2 px-4',
+            'fixed bottom-6 left-1/2 z-[var(--z-toast)] w-full max-w-sm -translate-x-1/2 px-4',
             // On larger screens nudge left so it doesn't overlap the Spine rail
             'lg:right-16 lg:left-auto lg:translate-x-0',
           )}

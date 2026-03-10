@@ -92,11 +92,11 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
           {isOpen && (
             <>
               <Dialog.Overlay asChild forceMount>
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md" />
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[var(--z-modal)] bg-black/90 backdrop-blur-md" />
               </Dialog.Overlay>
 
               <Dialog.Content asChild forceMount aria-describedby={undefined}>
-                <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+                <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="fixed inset-0 z-[calc(var(--z-modal)+1)] flex items-center justify-center p-4 pointer-events-none">
                   <div className="relative w-full max-w-md max-h-[90vh] overflow-hidden rounded-card border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,1)] flex flex-col pointer-events-auto">
                     <Dialog.Close asChild>
                       <button className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors z-20"><X className="w-5 h-5" /></button>
@@ -108,8 +108,8 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                           <activeTheme.icon className={`w-7 h-7 ${activeTheme.color}`} />
                         </div>
                         <div className="flex-1">
-                          <Dialog.Title className="text-2xl font-black italic tracking-wider text-white uppercase leading-tight">{activeTheme.title}</Dialog.Title>
-                          <p className="text-white/50 text-[9px] uppercase font-black tracking-[0.3em] mt-1">
+                          <Dialog.Title className="text-2xl font-bold tracking-wider text-white uppercase leading-tight font-display">{activeTheme.title}</Dialog.Title>
+                          <p className="text-white/50 text-[10px] uppercase font-bold tracking-[0.12em] mt-1">
                               {view === 'VAULT_HANDSHAKE' ? (hasVault ? 'SECURE HANDSHAKE' : 'INITIALIZE VAULT') : view.replace('_', ' ')}
                           </p>
                         </div>
@@ -131,17 +131,17 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                             
                             <div className="relative py-4 flex items-center justify-center">
                                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5" /></div>
-                                <span className="relative px-4 bg-[#05050a] text-[8px] font-black text-white/40 uppercase tracking-[0.4em]">Handshake Required</span>
+                                <span className="relative px-4 bg-[#05050a] text-[9px] font-bold text-white/40 uppercase tracking-[0.15em]">Handshake Required</span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <button onClick={() => setView('LOGIN')} className="p-4 rounded-panel bg-white/[0.03] border border-white/5 hover:bg-white/5 transition-all text-center group">
                                     <Key className="w-5 h-5 text-white/40 mx-auto mb-2 group-hover:text-white transition-colors" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">Recognize</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 group-hover:text-white">Recognize</span>
                                 </button>
                                 <button onClick={() => setView('REGISTER')} className="p-4 rounded-panel bg-white/[0.03] border border-white/5 hover:bg-white/5 transition-all text-center group">
                                     <UserPlus className="w-5 h-5 text-white/40 mx-auto mb-2 group-hover:text-white transition-colors" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">Initialize</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 group-hover:text-white">Initialize</span>
                                 </button>
                             </div>
                           </motion.div>
@@ -153,7 +153,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                             <NeuralInput icon={<Lock className="w-4 h-4" />} type="password" placeholder="Account Password" value={password} onChange={(e) => setPassword(e.target.value)} />
                             {error && <p className="text-red-400 text-[10px] text-center font-bold uppercase">{error}</p>}
                             <NeuralButton type="submit" loading={loading} className="w-full">Authenticate Identity</NeuralButton>
-                            <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[9px] font-black text-white/40 hover:text-white uppercase tracking-widest transition-colors">Back to Portal</button>
+                            <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[10px] font-bold text-white/40 hover:text-white uppercase tracking-wider transition-colors">Back to Portal</button>
                           </motion.form>
                         )}
 
@@ -163,7 +163,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                             <NeuralInput icon={<Lock className="w-4 h-4" />} type="password" placeholder="Account Password" value={password} onChange={(e) => setPassword(e.target.value)} />
                             {error && <p className="text-red-400 text-[10px] text-center font-bold uppercase">{error}</p>}
                             <NeuralButton type="submit" loading={loading} className="w-full text-indigo-400">Create Identity</NeuralButton>
-                            <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[9px] font-black text-white/40 hover:text-white uppercase tracking-widest transition-colors">Back to Portal</button>
+                            <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[10px] font-bold text-white/40 hover:text-white uppercase tracking-wider transition-colors">Back to Portal</button>
                           </motion.form>
                         )}
 
@@ -171,15 +171,15 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                             <motion.div key="verify" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-8">
                                 <div className="w-20 h-20 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto shadow-2xl animate-pulse"><Mail className="w-8 h-8 text-blue-400" /></div>
                                 <div className="space-y-3">
-                                    <h3 className="text-xl font-black italic uppercase text-white">Handshake Pending</h3>
-                                    <p className="text-xs text-white/40 leading-relaxed italic px-4">Identification verified link sent to <span className="text-white">{user?.email}</span>. Click the link to unlock E2EE vault setup.</p>
+                                    <h3 className="text-xl font-bold uppercase text-white font-display">Handshake Pending</h3>
+                                    <p className="text-xs text-white/40 leading-relaxed px-4">Identification verified link sent to <span className="text-white">{user?.email}</span>. Click the link to unlock E2EE vault setup.</p>
                                     <div className="pt-2">
-                                        <p className="text-[9px] font-black text-amber-500/60 uppercase tracking-[0.2em] animate-pulse">! Check your spam/junk folder if signal is missing !</p>
+                                        <p className="text-[10px] font-bold text-amber-500/60 uppercase tracking-[0.12em] animate-pulse">! Check your spam/junk folder if signal is missing !</p>
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4">
-                                    <div className="flex items-center justify-center gap-3 text-blue-400/60 font-black text-[10px] uppercase tracking-[0.2em]"><Loader2 className="w-3 h-3 animate-spin" /> Waiting for signal...</div>
-                                    <button onClick={() => sendVerification()} className="text-[9px] uppercase font-black text-white/40 hover:text-white tracking-widest">Resend Signal</button>
+                                    <div className="flex items-center justify-center gap-3 text-blue-400/60 font-bold text-[10px] uppercase tracking-[0.12em]"><Loader2 className="w-3 h-3 animate-spin" /> Waiting for signal...</div>
+                                    <button onClick={() => sendVerification()} className="text-[10px] uppercase font-bold text-white/40 hover:text-white tracking-wider">Resend Signal</button>
                                 </div>
                             </motion.div>
                         )}
@@ -215,10 +215,10 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                                 <div className={cn("p-5 border rounded-card flex items-start gap-4 transition-colors", hasVault ? "bg-emerald-500/5 border-emerald-500/20" : "bg-cyan-500/5 border-cyan-500/20")}>
                                     {hasVault ? <Fingerprint className="w-6 h-6 text-emerald-400 shrink-0 mt-1" /> : <ShieldCheck className="w-6 h-6 text-cyan-400 shrink-0 mt-1" />}
                                     <div className="space-y-1">
-                                        <p className="text-xs text-white font-black uppercase italic tracking-tighter">
+                                        <p className="text-xs text-white font-bold uppercase tracking-tight">
                                             {hasVault ? 'NEURAL HANDSHAKE' : 'INITIALIZE MASTER VAULT'}
                                         </p>
-                                        <p className="text-[10px] text-white/40 leading-relaxed italic">
+                                        <p className="text-[10px] text-white/40 leading-relaxed">
                                             {hasVault 
                                                 ? 'Identify verified. Provide your Master Password to decrypt your soul.' 
                                                 : 'Define your Master Password to generate your permanent E2EE keys. Nexus cannot reset this.'}
@@ -241,9 +241,9 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                                 </NeuralButton>
 
                                 <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
-                                    <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[9px] font-black text-white/40 hover:text-white uppercase tracking-widest transition-colors">Back to Identity Portal</button>
+                                    <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[10px] font-bold text-white/40 hover:text-white uppercase tracking-wider transition-colors">Back to Identity Portal</button>
                                     
-                                    <button type="button" onClick={() => { logout(); reset(); }} className="w-full text-[9px] font-black text-red-400/40 hover:text-red-400 uppercase tracking-widest transition-colors italic">Terminate Identity Session</button>
+                                    <button type="button" onClick={() => { logout(); reset(); }} className="w-full text-[10px] font-bold text-red-400/40 hover:text-red-400 uppercase tracking-wider transition-colors">Terminate Identity Session</button>
                                 </div>
                             </motion.form>
                         )}

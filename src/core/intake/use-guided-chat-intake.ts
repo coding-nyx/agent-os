@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
-import { stripInternalTags, isProviderControlOnly } from '@/llm-engine/sanitize';
-import { Message, MessageContent } from '@/llm-engine/types';
+import { stripInternalTags, isProviderControlOnly } from '@/lib/ai-adapters/sanitize';
+import { Message, MessageContent } from '@/lib/ai-adapters/engine-types';
 import { GuidedChatSpec } from './types';
 
 interface UseGuidedChatIntakeOptions<TState> {

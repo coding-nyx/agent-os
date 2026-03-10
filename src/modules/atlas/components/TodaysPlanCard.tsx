@@ -44,7 +44,7 @@ function EnergyBudgetBar({ budget, max = 10 }: EnergyBudgetBarProps) {
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
           Energy remaining
         </span>
-        <span className={cn('text-sm font-black italic tabular-nums', labelColor)}>
+        <span className={cn('text-sm font-bold tabular-nums font-display', labelColor)}>
           {typeof budget === 'number' ? `${budget.toFixed(1)}` : '—'}/{max}
         </span>
       </div>
@@ -226,7 +226,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xs font-black uppercase tracking-[0.3em] text-sky-400 italic">
+          <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-sky-400 font-display">
             Today's Plan
           </h3>
           <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">
@@ -250,7 +250,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
             Energy
           </span>
-          <span className="text-lg font-black italic tabular-nums text-sky-300">
+          <span className="text-lg font-bold tabular-nums text-sky-300 font-display">
             {typeof cognitive?.energyBudget === 'number' ? cognitive.energyBudget.toFixed(1) : '—'}
           </span>
         </SurfaceCard>
@@ -258,7 +258,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
             Focus
           </span>
-          <span className="text-lg font-black italic tabular-nums text-sky-300">
+          <span className="text-lg font-bold tabular-nums text-sky-300 font-display">
             {typeof cognitive?.focusScore === 'number' ? cognitive.focusScore.toFixed(1) : '—'}
           </span>
         </SurfaceCard>
@@ -266,7 +266,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
             Load
           </span>
-          <span className="text-lg font-black italic tabular-nums text-sky-300">
+          <span className="text-lg font-bold tabular-nums text-sky-300 font-display">
             {typeof cognitive?.activeLoad === 'number' ? cognitive.activeLoad.toFixed(1) : '—'}
           </span>
         </SurfaceCard>
@@ -275,7 +275,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
       {/* Task List */}
       {tasks.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40 italic">
+          <h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40 font-display">
             Tasks
           </h4>
           {tasks.slice(0, 8).map(task => (
@@ -323,7 +323,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
 
       {/* Streaks (placeholder — needs AtlasProfile extension) */}
       <div className="space-y-2">
-        <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40 italic">
+        <h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40 font-display">
           Streaks
         </h4>
         <SurfaceCard className="p-3 space-y-2.5">

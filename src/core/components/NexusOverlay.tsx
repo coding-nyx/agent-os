@@ -7,6 +7,7 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { ORCHESTRATOR_PERSONA } from '@/modules/orchestrator/personas';
 import { NexusChat } from '@/core/components/NexusChat';
 import { NexusSubModulePanel } from '@/core/components/NexusSubModulePanel';
+import { useUIStore } from '@/lib/stores/ui-store';
 
 interface SubModuleState {
   moduleId: string;
@@ -55,38 +56,42 @@ export function NexusOverlay() {
     return location.pathname !== '/' && location.pathname !== '/orchestrator';
   }, [user, profile?.onboardingComplete, location.pathname]);
 
+  const isChatOverlayOpen = useUIStore((s) => s.isChatOverlayOpen);
+
   if (!isVisible) return null;
 
   return (
     <>
-      <motion.button
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileTap={{ scale: 0.94 }}
-        onHoverStart={() => setIsHovered(true)}
-        onHoverEnd={() => setIsHovered(false)}
-        onClick={() => setOpen(true)}
-        style={{
-          width: isHovered ? NEXUS_EXPANDED_WIDTH : NEXUS_COLLAPSED_WIDTH,
-          height: NEXUS_COLLAPSED_WIDTH,
-          minWidth: NEXUS_COLLAPSED_WIDTH,
-        }}
-        className="fixed bottom-4 right-4 z-[110] flex items-center justify-center rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] shadow-lg shadow-black/20 transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:border-white/[0.12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40"
-        aria-label="Open Nexus overlay"
-      >
-        <Sparkles className="w-5 h-5 text-white/35 shrink-0" />
-        {isHovered && (
-          <motion.span
-            initial={{ opacity: 0, width: 0 }}
-            animate={{ opacity: 1, width: 'auto' }}
-            exit={{ opacity: 0, width: 0 }}
-            transition={{ duration: 0.15 }}
-            className="ml-2 text-[9px] font-bold uppercase tracking-[0.2em] text-white/40 whitespace-nowrap overflow-hidden"
-          >
-            Consult Nexus
-          </motion.span>
-        )}
-      </motion.button>
+      {!isChatOverlayOpen && (
+        <motion.button
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileTap={{ scale: 0.94 }}
+          onHoverStart={() => setIsHovered(true)}
+          onHoverEnd={() => setIsHovered(false)}
+          onClick={() => setOpen(true)}
+          style={{
+            width: isHovered ? NEXUS_EXPANDED_WIDTH : NEXUS_COLLAPSED_WIDTH,
+            height: NEXUS_COLLAPSED_WIDTH,
+            minWidth: NEXUS_COLLAPSED_WIDTH,
+          }}
+          className="fixed bottom-4 left-4 z-[var(--z-fab)] flex items-center justify-center rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] shadow-lg shadow-black/20 transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:border-white/[0.12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40"
+          aria-label="Open Nexus overlay"
+        >
+          <Sparkles className="w-5 h-5 text-white/35 shrink-0" />
+          {isHovered && (
+            <motion.span
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: 'auto' }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.15 }}
+              className="ml-2 text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 whitespace-nowrap overflow-hidden"
+            >
+              Consult Nexus
+            </motion.span>
+          )}
+        </motion.button>
+      )}
 
       <AnimatePresence>
         {open && (
@@ -96,14 +101,14 @@ export function NexusOverlay() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => { setOpen(false); setSubModule(null); }}
-              className="fixed inset-0 z-[115] bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 z-[var(--z-overlay)] bg-black/60 backdrop-blur-sm"
             />
             <motion.aside
               initial={{ x: '100%', opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '100%', opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed inset-y-0 right-0 z-[120] w-full max-w-md border-l border-white/5 bg-black/40 backdrop-blur-[40px] flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)]"
+              className="fixed inset-y-0 right-0 z-[var(--z-modal)] w-full max-w-md border-l border-white/5 bg-black/40 backdrop-blur-[40px] flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)]"
             >
               <div className="p-6 md:p-8 pb-4 flex items-center justify-between border-b border-white/5 shrink-0">
                 <div className="flex items-center gap-4">
@@ -112,7 +117,7 @@ export function NexusOverlay() {
                     <Sparkles className="w-6 h-6 text-violet-400 relative z-10" />
                   </div>
                   <div>
-                    <h2 className="text-base font-black uppercase tracking-[0.3em] text-white">Nexus Proxy</h2>
+                    <h2 className="text-base font-bold uppercase tracking-[0.2em] text-white font-display">Nexus Proxy</h2>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                       <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Global_Access_Active</p>

@@ -37,5 +37,10 @@ remoteconfig.template.json
 # typescript
 *.tsbuildinfo
 
+# local development artifacts
+todos.db
+playwright-report/
+test-results/
+
 .gemini/
 gha-creds-*.json

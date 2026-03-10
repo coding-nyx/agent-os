@@ -1,5 +1,5 @@
-import { ConversationContext, Message } from '@/llm-engine/types';
-import { StructuredResponse, ParsedAction } from '@/llm-engine/engine/types';
+import { ConversationContext, Message } from '@/lib/ai-adapters/engine-types';
+import { StructuredResponse, ParsedAction } from '@/lib/ai-adapters/engine-types';
 
 export type IntakeThemeColor =
   | 'indigo'

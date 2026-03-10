@@ -1,6 +1,5 @@
-import { doc, setDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, onSnapshot } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
-import { type NexusDataLayer } from '../data-layer';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { type NexusDataLayer, type NexusQueryFilter } from '../data-layer';
 
 export interface DerivedInsight {
   id: string;
@@ -29,66 +28,46 @@ export const DerivedInsightsService = {
       isDismissed: false
     };
 
-    if (dataLayer) {
-      await dataLayer.setDocument(COLLECTION, `${userId}/insights/${id}`, fullInsight);
-      return;
-    }
-
-    const { db } = getFirebase();
-    if (!db) return;
-    
-    await setDoc(doc(db, COLLECTION, userId, 'insights', id), fullInsight);
+    const layer = dataLayer ?? getNexusDataLayer();
+    await layer.setDocument(`${COLLECTION}/${userId}/insights`, id, fullInsight);
   },
 
   /**
    * Fetch active (non-dismissed) insights for a module.
    */
-  async getActiveInsights(userId: string, moduleId?: string, _dataLayer?: NexusDataLayer): Promise<DerivedInsight[]> {
-    const { db } = getFirebase();
-    if (!db) return [];
-
-    let q = query(
-      collection(db, COLLECTION, userId, 'insights'),
-      where('isDismissed', '==', false),
-      orderBy('timestamp', 'desc'),
-      limit(10)
-    );
-
-    if (moduleId) {
-      q = query(q, where('moduleId', '==', moduleId));
-    }
-
-    const snap = await getDocs(q);
-    return snap.docs.map(d => d.data() as DerivedInsight);
+  async getActiveInsights(userId: string, moduleId?: string, dataLayer?: NexusDataLayer): Promise<DerivedInsight[]> {
+    const layer = dataLayer ?? getNexusDataLayer();
+    const where: NexusQueryFilter[] = [{ field: 'isDismissed', op: '==', value: false }];
+    if (moduleId) where.push({ field: 'moduleId', op: '==', value: moduleId });
+    return layer.query<DerivedInsight>({
+      collection: `${COLLECTION}/${userId}/insights`,
+      where,
+      orderBy: [{ field: 'timestamp', direction: 'desc' }],
+      limit: 10
+    });
   },
 
   /**
    * Subscribe to active insights.
    */
   subscribeToInsights(userId: string, callback: (insights: DerivedInsight[]) => void): () => void {
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const q = query(
-      collection(db, COLLECTION, userId, 'insights'),
-      where('isDismissed', '==', false),
-      orderBy('timestamp', 'desc'),
-      limit(20)
+    const layer = getNexusDataLayer();
+    return layer.subscribeToQuery<DerivedInsight>(
+      {
+        collection: `${COLLECTION}/${userId}/insights`,
+        where: [{ field: 'isDismissed', op: '==', value: false }],
+        orderBy: [{ field: 'timestamp', direction: 'desc' }],
+        limit: 20
+      },
+      callback
     );
-
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => d.data() as DerivedInsight));
-    });
   },
 
   /**
    * Dismiss an insight.
    */
   async dismissInsight(userId: string, insightId: string): Promise<void> {
-    const { db } = getFirebase();
-    if (!db) return;
-
-    const docRef = doc(db, COLLECTION, userId, 'insights', insightId);
-    await updateDoc(docRef, { isDismissed: true });
+    const layer = getNexusDataLayer();
+    await layer.updateDocument(`${COLLECTION}/${userId}/insights`, insightId, { isDismissed: true });
   }
 };

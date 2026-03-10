@@ -91,7 +91,6 @@ const MODULE_COLLECTIONS: Record<string, string> = {
   scout: 'scout_profiles',
   forge: 'forge_profiles',
   soma: 'soma_profiles',
-  pulse: 'pulse_profiles',
 };
 
 const GLOBAL_SOUL_COLLECTION = 'global_souls';

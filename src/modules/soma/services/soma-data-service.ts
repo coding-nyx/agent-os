@@ -5,10 +5,9 @@
 //
 // Singleton pattern (see SchemaRegistry for reference).
 
-import { doc, onSnapshot } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
 import { decryptWithKey } from '@/lib/encryption';
 import { Spine } from '@/lib/spine/spine-event-bus';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import {
   loadSomaProfile,
   saveSomaProfile,
@@ -254,20 +253,17 @@ class SomaDataServiceImpl {
     encryptionKey: CryptoKey,
     callback: (snapshot: SomaHealthSnapshot) => void,
   ): () => void {
-    const { db } = getFirebase();
-    if (!db || !userId) {
-      console.warn('[SomaDataService] Cannot subscribe: missing db or userId');
+    if (!userId) {
+      console.warn('[SomaDataService] Cannot subscribe: missing userId');
       return () => {};
     }
 
-    const docRef = doc(db, COLLECTION, userId);
-
-    const unsubscribe = onSnapshot(
-      docRef,
-      async (snap) => {
-        if (!snap.exists()) return;
-
-        const data = snap.data();
+    const dataLayer = getNexusDataLayer();
+    return dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
+      COLLECTION,
+      userId,
+      async (data) => {
+        if (!data) return;
         if (!data?.encryptedData || !data?.iv) return;
 
         try {
@@ -282,12 +278,7 @@ class SomaDataServiceImpl {
           console.error('[SomaDataService] Failed to decrypt snapshot update:', e);
         }
       },
-      (error) => {
-        console.warn('[SomaDataService] Subscription error:', error);
-      },
     );
-
-    return unsubscribe;
   }
 
   // --------------------------------------------------------------------------

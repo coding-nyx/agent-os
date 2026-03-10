@@ -269,11 +269,11 @@ export const DocumentContextInjectionService = {
    * Determine the most appropriate target module for a set of documents
    * based on their domain classification.
    *
-   * Returns the module ID with the strongest domain signal, or 'documents'
+   * Returns the module ID with the strongest domain signal, or 'scout'
    * if no clear routing target is detected.
    */
   inferTargetModule(documents: InjectedDocumentRecord[]): DocumentContextTargetModule {
-    if (!documents || documents.length === 0) return 'documents';
+    if (!documents || documents.length === 0) return 'scout';
 
     const domainCounts: Record<string, number> = {};
     for (const doc of documents) {
@@ -287,7 +287,7 @@ export const DocumentContextInjectionService = {
       case 'financial': return 'ledger';
       case 'research':  return 'scout';
       case 'medical':   return 'titan';
-      default:          return 'documents';
+      default:          return 'scout';
     }
   }
 } as const;

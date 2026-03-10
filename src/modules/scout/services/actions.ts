@@ -8,7 +8,7 @@ import {
   createEmptyScoutProfile
 } from './scout-knowledge-service';
 import { ScoutWebSearchService, ScoutWebResult } from './scout-web-search-service';
-import { generateNewsBriefs } from './pulse-news-service';
+import { generateNewsBriefs } from './scout-news-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
 
 let registered = false;

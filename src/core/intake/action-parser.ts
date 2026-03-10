@@ -1,4 +1,4 @@
-import { sanitizeJsonPayload } from '@/llm-engine/sanitize';
+import { sanitizeJsonPayload } from '@/lib/ai-adapters/sanitize';
 
 type ToolCallShape = {
   name?: unknown;

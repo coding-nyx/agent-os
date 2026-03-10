@@ -65,7 +65,7 @@ export function ForgeDashboard({
       </div>
 
       <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Execution Mode</h4>
+        <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Execution Mode</h4>
         {profile ? (
           <SurfaceCard className="p-4 text-xs text-rose-100/80">
             Environment: <span className="text-rose-300 font-bold">{(profile.environment || 'cloud').toUpperCase()}</span>
@@ -83,7 +83,7 @@ export function ForgeDashboard({
       </section>
 
       <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Recent Sessions</h4>
+        <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Recent Sessions</h4>
         {sessions.slice(0, 5).map((session) => (
           <div key={session.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs">
             <div className="text-white/80">{session.command}</div>

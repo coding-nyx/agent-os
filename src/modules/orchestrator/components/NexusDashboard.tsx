@@ -103,8 +103,8 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0">
-      {/* Daily Brief — above chat, collapsible */}
-      <div className="shrink-0 px-4 pt-3 pb-2 space-y-3">
+      {/* Daily Brief — above chat, collapsible, constrained on mobile */}
+      <div className="shrink-0 px-4 pt-3 pb-2 space-y-3 max-h-[40vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
         <DailyBriefSection
           collapsed={briefCollapsed}
           onToggleCollapse={() => setBriefCollapsed(!briefCollapsed)}

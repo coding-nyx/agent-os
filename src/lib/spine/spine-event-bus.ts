@@ -1,6 +1,4 @@
-import { addDoc, collection } from 'firebase/firestore';
 import { useEffect, useRef } from 'react';
-import { getFirebase } from '@/lib/firebase';
 import { SpineDomain, SpineEvent, SpineEventPayload, SpineEventPriority, SpineEventType } from '@/lib/types';
 import type { NexusDataLayer } from '@/lib/data-layer';
 

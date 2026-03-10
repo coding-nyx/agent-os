@@ -33,7 +33,7 @@ export function ProgressRow({
   return (
     <div className={cn('space-y-2', className)}>
       <div className="flex items-center justify-between text-xs text-white/60">
-        <span className="uppercase tracking-[0.2em] text-[9px] font-black italic">{isLocked ? 'SECURED' : label}</span>
+        <span className="uppercase tracking-[0.12em] text-[9px] font-semibold">{isLocked ? 'SECURED' : label}</span>
         {!showSkeleton && !isLocked && (
           <span className="text-[10px] text-white/40">
             {value}

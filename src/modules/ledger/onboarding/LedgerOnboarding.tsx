@@ -5,7 +5,7 @@ import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
 import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { StructuredResponse } from '@/llm-engine/engine/types';
+import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { useAuth } from '@/lib/auth-context';
 import { LedgerIntakeProfile, createEmptyLedgerProfile } from '../services/ledger-intake-service';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
@@ -14,6 +14,7 @@ import { mergeNSVPatch } from '@/lib/services/nsv-service';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 import type { NeuralStateVectorPatch } from '@/lib/types';
+import { useFastTrackValidation } from '@/lib/onboarding/fast-track-validation';
 
 interface LedgerOnboardingProps {
   initialProfile?: LedgerIntakeProfile | null;
@@ -118,11 +119,20 @@ export function LedgerOnboarding({
   const [fastDebt, setFastDebt] = useState('');
   const [fastSavingsGoal, setFastSavingsGoal] = useState('');
   const [fastHorizon, setFastHorizon] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [fastTrackError, setFastTrackError] = useState<string | null>(null);
+  const [isValidatingFastTrack, setIsValidatingFastTrack] = useState(false);
+  const { validateFastTrack } = useFastTrackValidation('ledger');
 
-  const handleFastTrack = () => {
+  const handleFastTrack = async () => {
     if (!fastCurrency.trim() || !fastIncome.trim()) return;
+    setFastTrackError(null);
+    setIsValidatingFastTrack(true);
     const income = Number.parseFloat(fastIncome);
-    if (!Number.isFinite(income) || income < 0) return;
+    if (!Number.isFinite(income) || income < 0) {
+      setFastTrackError('Fast-track validation failed. Provide a valid non-negative monthly income.');
+      setIsValidatingFastTrack(false);
+      return;
+    }
     const now = new Date().toISOString();
     const fixedExpenses = fastFixedExpenses.trim()
       ? fastFixedExpenses.split(',').map((s, i) => ({ id: `ft-fix-${i}`, label: s.trim(), amount: 0 })).filter(e => e.label)
@@ -153,6 +163,17 @@ export function LedgerOnboarding({
       createdAt: now,
       updatedAt: now
     };
+
+    const validation = await validateFastTrack(profile as unknown as Record<string, unknown>, {
+      requiredFields: ['currency', 'monthlyIncome', 'planningHorizon'],
+      objective: 'Confirm Ledger fast-track baseline is coherent enough to skip guided onboarding.'
+    });
+    setIsValidatingFastTrack(false);
+    if (!validation.accepted) {
+      setFastTrackError('Fast-track validation failed. Continue with guided onboarding for a safer financial baseline.');
+      return;
+    }
+
     onComplete(profile);
   };
 
@@ -383,16 +404,19 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
               <div className="flex justify-end">
                 <button
                   onClick={handleFastTrack}
-                  disabled={!fastCurrency.trim() || !fastIncome.trim()}
+                  disabled={!fastCurrency.trim() || !fastIncome.trim() || isValidatingFastTrack}
                   className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
                 >
-                  Execute
+                  {isValidatingFastTrack ? 'Validating...' : 'Execute'}
                 </button>
               </div>
             </div>
             <p className="text-[9px] text-white/40 uppercase tracking-tight">
               Bypass conversational intake. Requires currency and income.
             </p>
+            {fastTrackError && (
+              <p className="text-[10px] text-rose-300">{fastTrackError}</p>
+            )}
           </div>
         </div>
       }

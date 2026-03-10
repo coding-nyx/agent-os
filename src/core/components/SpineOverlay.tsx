@@ -40,7 +40,7 @@ export function SpineOverlay() {
 
   return (
     <motion.div
-      className="fixed inset-y-0 right-10 z-[80] pointer-events-none hidden lg:flex items-center"
+      className="fixed inset-y-0 right-10 z-[var(--z-overlay)] pointer-events-none hidden lg:flex items-center"
       animate={{ opacity: isHub ? 0 : 1 }}
       transition={{ duration: 0.6 }}
     >

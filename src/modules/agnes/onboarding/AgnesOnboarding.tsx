@@ -15,6 +15,7 @@ import { mergeNSVPatch } from '@/lib/services/nsv-service';
 import type { NeuralStateVectorPatch } from '@/lib/types';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
+import { useFastTrackValidation } from '@/lib/onboarding/fast-track-validation';
 
 interface AgnesOnboardingProps {
   initialBaseContext?: GlobalBaseIntakeContext;
@@ -135,11 +136,17 @@ export function AgnesOnboarding({ initialBaseContext, onComplete }: AgnesOnboard
   const [fastGoals, setFastGoals] = useState('');
   const [fastGender, setFastGender] = useState<'female' | 'male' | 'non-binary' | 'no-preference' | ''>('');
   const [fastTrauma, setFastTrauma] = useState('');
+  const [fastTrackError, setFastTrackError] = useState<string | null>(null);
+  const [isValidatingFastTrack, setIsValidatingFastTrack] = useState(false);
+  const { validateFastTrack } = useFastTrackValidation('agnes');
 
   const fastTrackReady = fastStyle && fastBackground.trim() && fastStruggles.trim() && fastGoals.trim();
 
-  const handleFastTrack = () => {
+  const handleFastTrack = async () => {
     if (!fastTrackReady) return;
+    setFastTrackError(null);
+    setIsValidatingFastTrack(true);
+
     const name = initialBaseContext?.name;
     const pronouns = initialBaseContext?.pronouns;
     const context: Partial<BaseContext> = {
@@ -154,6 +161,18 @@ export function AgnesOnboarding({ initialBaseContext, onComplete }: AgnesOnboard
       ...(typeof initialBaseContext?.typicalSleepHours === 'number' ? { typicalSleepHours: initialBaseContext.typicalSleepHours } : {}),
       integratedInsights: []
     };
+
+    const validation = await validateFastTrack(context as Record<string, unknown>, {
+      requiredFields: ['communicationStyle', 'backgroundSummary', 'struggles', 'goals'],
+      objective: 'Confirm Agnes fast-track has enough emotional baseline to skip guided onboarding.'
+    });
+
+    setIsValidatingFastTrack(false);
+    if (!validation.accepted) {
+      setFastTrackError('Fast-track validation failed. Continue with guided onboarding to complete intake safely.');
+      return;
+    }
+
     onComplete(context);
   };
   
@@ -372,16 +391,19 @@ ${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initial
               <div className="flex justify-end">
                 <button
                   onClick={handleFastTrack}
-                  disabled={!fastTrackReady}
+                  disabled={!fastTrackReady || isValidatingFastTrack}
                   className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
                 >
-                  Execute
+                  {isValidatingFastTrack ? 'Validating...' : 'Execute'}
                 </button>
               </div>
             </div>
             <p className="text-[9px] text-white/40 uppercase tracking-tight">
               Skip conversational intake. Fields marked * are required.
             </p>
+            {fastTrackError && (
+              <p className="text-[10px] text-rose-300">{fastTrackError}</p>
+            )}
           </div>
         </div>
       }

@@ -1,5 +1,5 @@
 
-import { Persona } from '@/llm-engine/types';
+import { Persona } from '@/lib/ai-adapters/engine-types';
 
 export const ORCHESTRATOR_PERSONA = `
 IDENTITY:
@@ -29,7 +29,7 @@ AVAILABLE ACTIONS:
 - update_global_identity: Synchronize name/pronoun/identity updates.
 - sync_personality_provision: Update agent aliases/gender/persona overlays.
 - delegate_to_module: Route the user to a specialist module for hands-on work.
-- query_module: Internally consult a module agent and receive their response. Payload: { "moduleId": "agnes|titan|ledger|atlas|scout|forge|pulse", "question": "your question" }
+- query_module: Internally consult a module agent and receive their response. Payload: { "moduleId": "agnes|titan|ledger|atlas|scout|forge", "question": "your question" }
 - search_memory: Retrieve prior session summaries and stable facts across modules.
 - broadcast_spine_event: Emit a system event to the spine bus.
 - sync_vitals: Update multiple NSV dimensions at once.

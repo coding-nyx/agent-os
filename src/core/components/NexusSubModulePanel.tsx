@@ -61,8 +61,8 @@ export function NexusSubModulePanel({ moduleId, initialContent, onBack, onNaviga
               </div>
             )}
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-white">{moduleName}</h3>
-              <p className="text-[8px] font-bold text-white/25 uppercase tracking-widest">Sub-Module Session</p>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white font-display">{moduleName}</h3>
+              <p className="text-[9px] font-semibold text-white/25 uppercase tracking-wider">Sub-Module Session</p>
             </div>
           </div>
         </div>

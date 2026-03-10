@@ -77,8 +77,8 @@ export function TitanDashboard({ soul, isLocked = false, onCalibrate }: TitanDas
   return (
     <div className="p-5 bg-black/40 border-b border-white/5 backdrop-blur-xl space-y-4">
       <div className="space-y-1">
-        <div className="text-[10px] font-black uppercase tracking-[0.3em] italic text-orange-400">Performance Coach</div>
-        <h2 className="text-xl font-black italic uppercase tracking-tight text-white">Today&apos;s Readiness</h2>
+        <div className="text-[10px] font-bold uppercase tracking-[0.12em] font-display text-orange-400">Performance Coach</div>
+        <h2 className="text-xl font-bold uppercase tracking-tight text-white font-display">Today&apos;s Readiness</h2>
         <p className="text-[11px] text-white/40 max-w-xl">CNS-aware training surfaced from biometrics, recovery load, and recent sessions.</p>
       </div>
 
@@ -116,22 +116,22 @@ export function TitanDashboard({ soul, isLocked = false, onCalibrate }: TitanDas
                   <Thermometer className="w-6 h-6 text-indigo-400" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 italic">Biological Context</h4>
-                  <p className="text-xs font-black italic uppercase text-white tracking-widest">Hormonal Synchronicity Active</p>
+                  <h4 className="text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-400 font-display">Biological Context</h4>
+                  <p className="text-xs font-bold uppercase text-white tracking-wider font-display">Hormonal Synchronicity Active</p>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-4">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest italic mb-1">Current State</span>
-                  <span className="text-[10px] font-black text-white/80 uppercase tracking-tighter italic">
+                  <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.12em] mb-1">Current State</span>
+                  <span className="text-[10px] font-semibold text-white/80 uppercase tracking-tighter">
                     {isLocked ? 'SECURED' : soul?.crossFunctionalState.hormonalContext || 'Awaiting data'}
                   </span>
                 </div>
                 <div className="w-px h-6 bg-white/5 self-center" />
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest italic mb-1">Metabolic Intensity</span>
-                  <span className="text-[10px] font-black text-white/80 uppercase tracking-tighter italic">Baseline Optimization</span>
+                  <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.12em] mb-1">Metabolic Intensity</span>
+                  <span className="text-[10px] font-semibold text-white/80 uppercase tracking-tighter">Baseline Optimization</span>
                 </div>
               </div>
 

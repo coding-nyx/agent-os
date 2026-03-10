@@ -240,7 +240,7 @@ export function AtlasAIPanel({
       >
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-purple-400" />
-          <h3 className="text-sm font-black text-white/90 uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-white/90 uppercase tracking-wider font-display">
             AI Insights
           </h3>
           {suggestions.length > 0 && (

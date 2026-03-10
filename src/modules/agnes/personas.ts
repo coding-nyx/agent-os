@@ -1,5 +1,5 @@
 
-import { Persona, Message } from '@/llm-engine/types';
+import { Persona, Message } from '@/lib/ai-adapters/engine-types';
 import { AgnesArchetype, GeneratedAgnes, BaseContext, Gender } from './types';
 
 // --- Legacy Static Personas (Keep for fallback/reference) ---

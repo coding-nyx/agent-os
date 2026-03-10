@@ -74,7 +74,7 @@ export function DiagnosisDocumentCard({
             {displayTitle}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white/50 bg-white/5 px-1.5 py-0.5 rounded">
+            <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 bg-white/5 px-1.5 py-0.5 rounded">
               {FILE_TYPE_LABELS[doc.fileType]}
             </span>
             {doc.pageCount != null && (
@@ -123,7 +123,7 @@ export function DiagnosisDocumentCard({
             e.stopPropagation();
             onReexamine();
           }}
-          className="mt-2 ml-8 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.15em] text-white/50 hover:text-white/70 transition-colors"
+          className="mt-2 ml-8 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 transition-colors"
         >
           <RotateCcw className="w-2.5 h-2.5" />
           Re-examine

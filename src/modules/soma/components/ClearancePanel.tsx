@@ -122,11 +122,11 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
       <SurfaceCard className={cn('p-6', recoveryBg(recoveryScore))}>
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 italic">
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
               Recovery Score
             </span>
             <div className="flex items-end gap-2">
-              <span className={cn('text-5xl font-black tabular-nums tracking-tight', recoveryColor(recoveryScore))}>
+              <span className={cn('text-5xl font-bold tabular-nums tracking-tight', recoveryColor(recoveryScore))}>
                 {typeof recoveryScore === 'number' ? recoveryScore.toFixed(1) : '—'}
               </span>
               <span className="text-sm text-white/30 mb-2">/10</span>
@@ -153,7 +153,7 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
         <SurfaceCard className="p-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 italic">
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
                 Hormonal Context
               </span>
               <p className="text-xs font-bold text-white/80 uppercase tracking-wider">
@@ -169,7 +169,7 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
 
       {/* Current Clearance Status */}
       <section className="space-y-3" aria-label="Clearance status">
-        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+        <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">
           Current Clearance
         </h4>
         {!latestClearance ? (
@@ -227,7 +227,7 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
 
       {/* Clearance History Timeline */}
       <section className="space-y-3" aria-label="Clearance history">
-        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+        <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">
           Clearance History
         </h4>
         {sortedClearances.length === 0 ? (

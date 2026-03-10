@@ -26,6 +26,10 @@ describe('MODULE_MANIFEST integrity', () => {
       expect(typeof entry.isCore).toBe('boolean');
       expect(typeof entry.hasPage).toBe('boolean');
       expect(entry.securityPolicy).toBeDefined();
+      expect(entry.onboarding).toBeDefined();
+      expect(['required', 'optional', 'hybrid']).toContain(entry.onboarding.mode);
+      expect(typeof entry.onboarding.fastTrack.enabled).toBe('boolean');
+      expect(typeof entry.onboarding.fastTrack.confidenceThreshold).toBe('number');
     }
   });
 
@@ -59,9 +63,9 @@ describe('buildDefaultVaultLocks', () => {
     expect(locks.agnes).toBe(true);
   });
 
-  it('soma is locked by default (defaultLocked)', () => {
+  it('soma is not included in default locks because it has no page route', () => {
     const locks = buildDefaultVaultLocks();
-    expect(locks.soma).toBe(true);
+    expect(locks).not.toHaveProperty('soma');
   });
 
   it('ledger is locked by default (defaultLocked)', () => {
@@ -74,8 +78,8 @@ describe('buildDefaultVaultLocks', () => {
     expect(locks.titan).toBe(false);
   });
 
-  it('atlas is unlocked by default', () => {
+  it('atlas is locked by default', () => {
     const locks = buildDefaultVaultLocks();
-    expect(locks.atlas).toBe(false);
+    expect(locks.atlas).toBe(true);
   });
 });

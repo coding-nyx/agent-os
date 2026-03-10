@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Calendar as CalendarIcon, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+import { useUIStore } from '@/lib/stores/ui-store';
 import type { AtlasProject } from '../services/atlas-profile-service';
 
 // ---------------------------------------------------------------------------
@@ -29,11 +30,20 @@ export interface GoalInput {
   deadline?: string;
 }
 
+import type { AtlasTask, AtlasHabit, AtlasGoal } from '../services/atlas-profile-service';
+
 interface QuickAddFormProps {
   projects: AtlasProject[];
-  onCreateTask: (task: TaskInput) => void;
-  onCreateHabit: (habit: HabitInput) => void;
-  onCreateGoal: (goal: GoalInput) => void;
+  onCreateTask: (task: Partial<AtlasTask>) => void;
+  onCreateHabit: (habit: Partial<AtlasHabit>) => void;
+  onCreateGoal: (goal: Partial<AtlasGoal>) => void;
+  /** Optional controlled open state */
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Whether to show the internal FAB trigger. Defaults to true. */
+  showFAB?: boolean;
+  /** Whether the FAB should be fluid (not fixed/absolute). Use for unified bars. */
+  isFluid?: boolean;
 }
 
 const TYPE_OPTIONS: { key: ItemType; label: string }[] = [
@@ -60,11 +70,21 @@ export function QuickAddForm({
   onCreateTask,
   onCreateHabit,
   onCreateGoal,
+  isOpen: controlledIsOpen,
+  onOpenChange,
+  showFAB = true,
+  isFluid = false,
 }: QuickAddFormProps) {
   const reducedMotion = useReducedMotion();
+  const isChatOverlayOpen = useUIStore((s) => s.isChatOverlayOpen);
 
   // ---- Open / close state ----
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const setIsOpen = (val: boolean) => {
+    if (onOpenChange) onOpenChange(val);
+    else setInternalIsOpen(val);
+  };
 
   // ---- Form state ----
   const [itemType, setItemType] = useState<ItemType>('task');
@@ -97,9 +117,11 @@ export function QuickAddForm({
     setDeadline('');
     setProjectId('');
     setItemType('task');
-    // Return focus to the FAB
-    setTimeout(() => fabRef.current?.focus(), 0);
-  }, []);
+    // Return focus to the FAB if we have one
+    if (showFAB) {
+        setTimeout(() => fabRef.current?.focus(), 0);
+    }
+  }, [showFAB]);
 
   // ---- Focus trap & Escape ----
   const handleKeyDown = useCallback(
@@ -176,23 +198,26 @@ export function QuickAddForm({
 
   return (
     <>
-      {/* ── Floating Action Button ── */}
-      <button
-        ref={fabRef}
-        onClick={() => setIsOpen(true)}
-        aria-label="Add new item"
-        aria-haspopup="dialog"
-        className={cn(
-          'fixed z-40 w-14 h-14 rounded-full flex items-center justify-center',
-          'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25',
-          'hover:bg-emerald-400 active:bg-emerald-600 transition-all',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900',
-          // Bottom-center on mobile, bottom-right on md+
-          'bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-8 md:translate-x-0 md:bottom-8'
-        )}
-      >
-        <Plus className="w-6 h-6" aria-hidden="true" />
-      </button>
+      {/* ── Floating Action Button — hidden when chat overlay covers screen or showFAB is false ── */}
+      {showFAB && !isChatOverlayOpen && (
+        <button
+          ref={fabRef}
+          onClick={() => setIsOpen(true)}
+          aria-label="Add new item"
+          aria-haspopup="dialog"
+          className={cn(
+            'z-[var(--z-fab)] rounded-full flex items-center justify-center',
+            'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25',
+            'hover:bg-emerald-400 active:bg-emerald-600 transition-all',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900',
+            isFluid 
+              ? 'w-12 h-12' 
+              : 'fixed w-14 h-14 bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-8 md:translate-x-0 md:bottom-8'
+          )}
+        >
+          <Plus className={isFluid ? "w-5 h-5" : "w-6 h-6"} aria-hidden="true" />
+        </button>
+      )}
 
       {/* ── Modal overlay + dialog ── */}
       <AnimatePresence>
@@ -204,7 +229,7 @@ export function QuickAddForm({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={reducedMotion ? { duration: 0 } : { duration: 0.2 }}
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 z-[var(--z-overlay)] bg-black/60 backdrop-blur-sm"
               onClick={close}
               aria-hidden="true"
             />
@@ -227,7 +252,7 @@ export function QuickAddForm({
               }
               onKeyDown={handleKeyDown}
               className={cn(
-                'fixed z-50 w-[calc(100%-2rem)] max-w-md',
+                'fixed z-[var(--z-modal)] w-[calc(100%-2rem)] max-w-md',
                 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
                 'rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-xl p-6',
                 'shadow-2xl shadow-black/40'
@@ -235,7 +260,7 @@ export function QuickAddForm({
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-emerald-400">
+                <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-emerald-400 font-display">
                   Quick Add
                 </h2>
                 <button

@@ -213,11 +213,11 @@ function CycleDetailModal({
         {/* Actions */}
         {cycle.status === 'active' && (
           <div className="flex gap-3 pt-2 border-t border-white/5">
-            <NeuralButton size="xl" className="flex-1" onClick={handleAdvancePhase}>
+            <NeuralButton size="xl" themeColor="orange" className="flex-1" onClick={handleAdvancePhase}>
               <RefreshCw className="w-4 h-4 mr-2" />
               {cycle.currentPhaseIndex + 1 < cycle.phases.length ? 'Next Phase' : 'Complete Cycle'}
             </NeuralButton>
-            <NeuralButton size="xl" variant="ghost" onClick={handleAnalyze}>
+            <NeuralButton size="xl" variant="ghost" themeColor="orange" onClick={handleAnalyze}>
               <MessageSquare className="w-4 h-4 mr-2" />
               Analyze
             </NeuralButton>
@@ -248,7 +248,7 @@ export function CycleManager({ cycles, onSubmitForApproval, className }: CycleMa
       <SurfaceCard className="p-5">
         <div className="flex items-center justify-between mb-4">
           <PanelLabel label="Cycle Tracker" metadata={active.length ? `${active.length} active` : 'no active cycles'} />
-          <NeuralButton size="sm" onClick={handleNewCycle}>
+          <NeuralButton size="sm" themeColor="orange" onClick={handleNewCycle}>
             <Plus className="w-3 h-3 mr-1.5" />
             New Cycle
           </NeuralButton>

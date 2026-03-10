@@ -1,8 +1,6 @@
-import { doc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { MemorySearchOptions, ModuleMemoryEnvelope, RetrievedMemory, SessionEventSummary } from '@/lib/types';
 import { cosineSimilarity, EmbeddingService } from './embedding-service';
-import { readDocOnce } from './firestore-once';
 
 function scoreEvent(event: SessionEventSummary, queryEmbedding: number[], recencyWeight: number): number {
   const eventEmbedding = event.embedding || [];
@@ -44,21 +42,20 @@ export const EpisodicMemoryService = {
     query: string,
     options: MemorySearchOptions
   ): Promise<RetrievedMemory[]> {
-    const { db } = getFirebase();
-    if (!db || !uid || !query.trim()) return [];
+    if (!uid || !query.trim()) return [];
 
     const topK = options.topK ?? 5;
     const recencyWeight = options.recencyWeight ?? 0.3;
     const queryEmbedding = await EmbeddingService.embed(query);
+    const dataLayer = getNexusDataLayer();
 
     const envelopes: ModuleMemoryEnvelope[] = [];
 
     await Promise.all(
       options.moduleIds.map(async (moduleId) => {
-        const ref = doc(db, 'module_memory', `${uid}_${moduleId}`);
-        const snap = await readDocOnce(ref);
-        if (!snap.exists()) return;
-        envelopes.push(snap.data() as ModuleMemoryEnvelope);
+        const envelope = await dataLayer.getDocument<ModuleMemoryEnvelope>('module_memory', `${uid}_${moduleId}`);
+        if (!envelope) return;
+        envelopes.push(envelope);
       })
     );
 

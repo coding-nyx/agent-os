@@ -34,20 +34,20 @@ export function AgnesTelemetryHeader() {
   ];
 
   return (
-    <div className="flex items-center gap-6 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 backdrop-blur-xl">
+    <div className="flex items-center gap-3 sm:gap-6 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/[0.03] border border-white/5 backdrop-blur-xl overflow-x-auto no-scrollbar">
       {metrics.map((m, i) => (
         <div key={i} className="flex items-center gap-2.5 group">
           <div className={`p-1.5 rounded-lg ${m.bg} ${m.color} transition-transform group-hover:scale-110`}>
             <m.icon className="w-3 h-3" />
           </div>
           <div className="flex flex-col">
-            <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white/30">{m.label}</span>
-            <span className="text-[10px] font-black text-white tabular-nums leading-none">
+            <span className="text-[8px] sm:text-[9px] font-semibold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-white/30">{m.label}</span>
+            <span className="text-[10px] sm:text-[11px] font-bold text-white tabular-nums leading-none">
                 {typeof m.value === 'number' ? `${m.value}/10` : m.value}
             </span>
           </div>
           {i < metrics.length - 1 && (
-            <div className="h-4 w-px bg-white/5 ml-2" />
+            <div className="h-3 sm:h-4 w-px bg-white/5 ml-1 sm:ml-2" />
           )}
         </div>
       ))}

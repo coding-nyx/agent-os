@@ -117,6 +117,7 @@ export function useHubLayout(modules: ModuleItem[]) {
     () => [
       new THREE.Vector3(0, 3.5, 1),       // Agnes (top)
       new THREE.Vector3(4, -2.5, 0.5),    // Titan (bottom right)
+      new THREE.Vector3(0, -5.5, -1),     // Atlas (bottom center)
       new THREE.Vector3(-4, -2.5, 0.5),   // Ledger (bottom left)
       new THREE.Vector3(0, 3.5, 1),       // Close loop back to Agnes
     ],
@@ -124,17 +125,17 @@ export function useHubLayout(modules: ModuleItem[]) {
   );
 
   const orchestratorNodes: OrchestratorNode[] = useMemo(() => {
-    // 3 core modules: equilateral triangle — Agnes at apex
+    // 4 core modules: diamond shape
     const corePositions: Record<string, { x: number; y: number }> = {
       agnes:   { x: 50, y: 18 },   // top center (primary agent)
       titan:   { x: 76, y: 68 },   // bottom right
       ledger:  { x: 24, y: 68 },   // bottom left
+      atlas:   { x: 50, y: 88 },   // bottom center
     };
     // Plugins: orbiting outside the core triangle
     const pluginPositions: Record<string, { x: number; y: number }> = {
       forge:   { x: 88, y: 50 },   // far right
       scout:   { x: 12, y: 50 },   // far left
-      atlas:   { x: 50, y: 88 },   // bottom center
     };
 
     return modules.map((module) => {

@@ -392,10 +392,15 @@ export function registerCoreActions() {
     }
   });
 
-  ActionHub.register('scout', 'update_research_load', async ({ payload, updateGlobalSoul }) => {
+  ActionHub.register('scout', 'update_research_load', async ({ payload, emitSpineEvent, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.researchLoad);
     if (typeof score === 'number') {
       await updateGlobalSoul({ cognitive: { researchLoad: score } });
+      emitSpineEvent('VITAL_UPDATED', {
+        source: 'scout',
+        action: 'update_research_load',
+        researchLoad: score,
+      });
     }
   });
 
@@ -428,10 +433,15 @@ export function registerCoreActions() {
     });
   });
 
-  ActionHub.register('scout', 'update_interest_diversity', async ({ payload, updateGlobalSoul }) => {
+  ActionHub.register('scout', 'update_interest_diversity', async ({ payload, emitSpineEvent, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.interestDiversity);
     if (typeof score === 'number') {
       await updateGlobalSoul({ cognitive: { interestDiversity: score } });
+      emitSpineEvent('VITAL_UPDATED', {
+        source: 'scout',
+        action: 'update_interest_diversity',
+        interestDiversity: score,
+      });
     }
   });
 

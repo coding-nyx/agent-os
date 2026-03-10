@@ -33,8 +33,9 @@ import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
 
 type AgnesState = 'selecting' | 'session';
 
-function AgnesSidebar({ profile, agentAlias }: { profile: TherapyIntakeProfile | null; agentAlias: string }) {
+const AgnesSidebar = React.memo(function AgnesSidebar({ profile, agentAlias }: { profile: TherapyIntakeProfile | null; agentAlias: string }) {
   const [collapsed, setCollapsed] = React.useState(false);
+  const toggleCollapsed = React.useCallback(() => setCollapsed(c => !c), []);
 
   return (
     <div className={cn(
@@ -44,7 +45,7 @@ function AgnesSidebar({ profile, agentAlias }: { profile: TherapyIntakeProfile |
       {/* Collapse toggle */}
       <div className={cn("flex shrink-0 pt-4 px-3", collapsed ? "justify-center" : "justify-end")}>
         <button
-          onClick={() => setCollapsed(c => !c)}
+          onClick={toggleCollapsed}
           className="w-7 h-7 rounded-lg flex items-center justify-center text-white/20 hover:text-white/50 hover:bg-white/5 transition-all"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
@@ -73,7 +74,7 @@ function AgnesSidebar({ profile, agentAlias }: { profile: TherapyIntakeProfile |
       )}
     </div>
   );
-}
+});
 
 interface AgnesContentProps extends ContentRenderProps<TherapyIntakeProfile> {}
 

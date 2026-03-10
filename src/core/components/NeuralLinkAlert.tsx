@@ -33,8 +33,8 @@ export function NeuralLinkAlert({ error, onRetry, type = 'generic' }: NeuralLink
         </div>
         
         <div className="space-y-1">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-400 italic">Neural Link Severed</h3>
-          <p className="text-white/60 text-xs font-medium leading-relaxed italic">{error}</p>
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-red-400 font-display">Neural Link Severed</h3>
+          <p className="text-white/60 text-xs font-medium leading-relaxed">{error}</p>
         </div>
 
         <button 
@@ -42,12 +42,12 @@ export function NeuralLinkAlert({ error, onRetry, type = 'generic' }: NeuralLink
           className="flex items-center gap-2 px-6 py-2.5 rounded-panel bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all group/btn"
         >
           <RefreshCw className="w-3.5 h-3.5 text-red-400 group-hover/btn:rotate-180 transition-transform duration-500" />
-          <span className="text-[9px] font-black uppercase tracking-widest text-red-400">Re-establish Handshake</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">Re-establish Handshake</span>
         </button>
       </div>
 
       <div className="mt-4 flex justify-center">
-        <span className="text-[7px] font-mono text-red-500/30 uppercase tracking-[0.4em]">Error_Code: 0xLINK_FAIL_TIMEOUT</span>
+        <span className="text-[8px] font-mono text-red-500/30 uppercase tracking-[0.2em]">Error_Code: 0xLINK_FAIL_TIMEOUT</span>
       </div>
     </motion.div>
   );

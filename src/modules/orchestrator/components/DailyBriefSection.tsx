@@ -94,7 +94,7 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
     >
       {/* Header row */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-black italic text-white tracking-tight">{greeting}</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight font-display">{greeting}</h2>
         {onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
@@ -137,7 +137,7 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
                   </div>
                   <div className="flex items-center gap-2">
                     <div className={cn('w-2 h-2 rounded-full', TONE_DOT[p.tone])} />
-                    <span className={cn('text-base font-black italic uppercase tracking-tight', TONE_TEXT[p.tone])}>
+                    <span className={cn('text-base font-bold uppercase tracking-tight font-display', TONE_TEXT[p.tone])}>
                       {p.word}
                     </span>
                   </div>

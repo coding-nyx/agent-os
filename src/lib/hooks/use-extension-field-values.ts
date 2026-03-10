@@ -16,8 +16,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { encryptWithKey, decryptWithKey } from '@/lib/encryption';
@@ -53,7 +52,7 @@ interface FirestoreFieldValues {
   encryptedValues?: { ciphertext: string; iv: string };
   /** Fallback: unencrypted values (used when no encryption key available) */
   plainValues?: Record<string, FieldValue>;
-  lastModified: unknown; // Firestore server timestamp
+  lastModified: string;
 }
 
 // ============================================================================
@@ -98,30 +97,16 @@ export function useExtensionFieldValues(
     setError(null);
 
     try {
-      const { db } = getFirebase();
-      if (!db) {
-        console.warn('[useExtensionFieldValues] Firebase not available');
-        setFieldValues({});
-        setIsLoading(false);
-        return;
-      }
-
-      const docRef = doc(
-        db,
-        'extension_field_values',
-        user.uid,
-        'modules',
+      const dataLayer = getNexusDataLayer();
+      const data = await dataLayer.getDocument<FirestoreFieldValues>(
+        `extension_field_values/${user.uid}/modules`,
         moduleId
       );
-      const docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) {
+      if (!data) {
         setFieldValues({});
         setIsLoading(false);
         return;
       }
-
-      const data = docSnap.data() as FirestoreFieldValues;
 
       // Try to decrypt
       if (data.encryptedValues) {
@@ -166,25 +151,13 @@ export function useExtensionFieldValues(
       if (!user?.uid) {
         throw new Error('User must be authenticated to save field values');
       }
-
-      const { db } = getFirebase();
-      if (!db) {
-        throw new Error('Firebase not available');
-      }
+      const dataLayer = getNexusDataLayer();
 
       const version = ++saveVersionRef.current;
 
-      const docRef = doc(
-        db,
-        'extension_field_values',
-        user.uid,
-        'modules',
-        moduleId
-      );
-
       const payload: FirestoreFieldValues = {
         moduleId,
-        lastModified: serverTimestamp(),
+        lastModified: new Date().toISOString(),
       };
 
       // Encrypt if possible
@@ -207,7 +180,7 @@ export function useExtensionFieldValues(
 
       // Only write if no newer save has been initiated
       if (version === saveVersionRef.current) {
-        await setDoc(docRef, payload);
+        await dataLayer.setDocument(`extension_field_values/${user.uid}/modules`, moduleId, payload);
       }
     },
     [user?.uid, moduleId, getEncryptionKey]

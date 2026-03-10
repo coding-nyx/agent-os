@@ -1,9 +1,9 @@
-import { createContext, useContext, useState, ReactNode, useRef, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useRef, useEffect, useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import { GlobalProjection, NeuralStateVectorPatch } from './types';
 import { useAuth } from './auth-context';
 import { GlobalProjectionService } from './services/global-projection-service';
-import { ConversationContext } from '@/llm-engine/types';
+import { ConversationContext } from '@/lib/ai-adapters/engine-types';
 import { formatNSVForPrompt, formatNSVForModulePrompt, formatNSVForAtlasPlanner, normalizeNSV } from './services/nsv-service';
 import { NSV_READ_PERMISSIONS, filterGlobalSoulForModule } from './services/nsv-ownership';
 import type { ModuleId } from './module-manifest';
@@ -188,11 +188,18 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
     return filterGlobalSoulForModule(useGlobalSoulStore.getState().globalSoul, moduleId);
   }, []);
 
+  const actionsValue = useMemo(() => ({
+    refreshGlobalSoul,
+    updateCrossFunctionalState,
+    updateTherapeuticBaseline,
+    enhanceContext,
+    enhanceContextForModule,
+    getFilteredSoulForModule,
+  }), [refreshGlobalSoul, updateCrossFunctionalState, updateTherapeuticBaseline,
+      enhanceContext, enhanceContextForModule, getFilteredSoulForModule]);
+
   return (
-    <GlobalSoulActionsContext.Provider value={{
-      refreshGlobalSoul, updateCrossFunctionalState,
-      updateTherapeuticBaseline, enhanceContext, enhanceContextForModule, getFilteredSoulForModule
-    }}>
+    <GlobalSoulActionsContext.Provider value={actionsValue}>
       {children}
     </GlobalSoulActionsContext.Provider>
   );

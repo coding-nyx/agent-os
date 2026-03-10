@@ -43,8 +43,7 @@ export function ModuleHealthFAB() {
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const shouldReduceMotion = useReducedMotion();
 
-  // +1 for Hub tile at the end
-  const totalTiles = modules.length + 1;
+  const totalTiles = modules.length;
 
   const alertCount = modules.filter(
     (m) => m.hasAlert || m.keyMetricTone === 'bad'
@@ -118,7 +117,7 @@ export function ModuleHealthFAB() {
     : { delay: i * 0.025, duration: 0.2 };
 
   return (
-    <div ref={containerRef} className="absolute bottom-4 right-4 z-40">
+    <div ref={containerRef} className="absolute bottom-4 left-4 z-[var(--z-fab)]">
       {/* ── Popover Grid ── */}
       <AnimatePresence>
         {isOpen && (
@@ -131,8 +130,8 @@ export function ModuleHealthFAB() {
             role="menu"
             aria-label="Module navigator"
             className={cn(
-              'absolute bottom-16 right-0',
-              'w-[280px] p-2.5 rounded-2xl',
+              'absolute bottom-16 left-0',
+              'w-[280px] max-w-[calc(100vw-2rem)] p-2.5 rounded-2xl',
               'bg-black/70 backdrop-blur-2xl',
               'border border-white/[0.08]',
               'shadow-xl shadow-black/60'
@@ -140,7 +139,7 @@ export function ModuleHealthFAB() {
           >
             {/* Header */}
             <div className="flex items-center justify-between px-1.5 pb-1.5 mb-1 border-b border-white/[0.04]">
-              <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/30">
+              <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/30">
                 Modules
               </span>
               <button
@@ -206,31 +205,6 @@ export function ModuleHealthFAB() {
                     );
                   })}
 
-              {/* Hub tile */}
-              {!isLoading && (
-                <motion.button
-                  ref={(el) => { tileRefs.current[modules.length] = el; }}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={tileTransition(modules.length)}
-                  role="menuitem"
-                  aria-label="Hub — 3D module graph"
-                  onClick={() => go('/hub')}
-                  onKeyDown={(e) => handleGridKeyDown(e, modules.length)}
-                  className={cn(
-                    'group flex flex-col items-center justify-center gap-1',
-                    'h-[56px] rounded-xl px-1',
-                    'transition-all duration-150',
-                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40',
-                    'hover:bg-indigo-500/[0.06] active:scale-95 cursor-pointer'
-                  )}
-                >
-                  <LayoutDashboard className="w-4 h-4 text-indigo-400/60 group-hover:text-indigo-400 transition-colors" />
-                  <span className="text-[8px] font-semibold text-indigo-300/40 group-hover:text-indigo-300/70 transition-colors">
-                    Hub
-                  </span>
-                </motion.button>
-              )}
             </div>
           </motion.div>
         )}

@@ -65,7 +65,7 @@ export function DiagnosisMergeDialog({
           initial={prefersReduced ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           onClick={onCancel}
         >
           <motion.div
@@ -97,7 +97,7 @@ export function DiagnosisMergeDialog({
               <div className="px-5 pb-2">
                 <button
                   onClick={toggleAll}
-                  className="text-[9px] font-black uppercase tracking-[0.15em] text-white/40 hover:text-white/60 transition-colors"
+                  className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40 hover:text-white/60 transition-colors"
                 >
                   {checkedIds.size === extractedData.items.length ? 'Deselect All' : 'Select All'}
                 </button>
@@ -108,7 +108,7 @@ export function DiagnosisMergeDialog({
             <div className="px-5 max-h-[50vh] overflow-y-auto space-y-3">
               {Array.from(grouped.entries()).map(([type, items]) => (
                 <div key={type}>
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/25 mb-1.5">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/25 mb-1.5">
                     {type.replace(/_/g, ' ')}
                   </p>
                   <div className="space-y-1">
@@ -147,7 +147,7 @@ export function DiagnosisMergeDialog({
                   </p>
                   <button
                     onClick={onDiscard}
-                    className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.15em] text-white/60 hover:text-white/80 transition-colors"
+                    className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/60 hover:text-white/80 transition-colors"
                   >
                     Done
                   </button>
@@ -156,7 +156,7 @@ export function DiagnosisMergeDialog({
                 <>
                   <button
                     onClick={onDiscard}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-400/20 bg-red-500/5 text-[10px] font-black uppercase tracking-[0.15em] text-red-300/60 hover:text-red-200 hover:bg-red-500/10 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-400/20 bg-red-500/5 text-[10px] font-bold uppercase tracking-[0.12em] text-red-300/60 hover:text-red-200 hover:bg-red-500/10 transition-colors"
                   >
                     <XCircle className="w-3.5 h-3.5" />
                     Discard All
@@ -164,7 +164,7 @@ export function DiagnosisMergeDialog({
                   <button
                     onClick={() => onMerge(Array.from(checkedIds))}
                     disabled={checkedCount === 0}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-[10px] font-black uppercase tracking-[0.15em] text-cyan-200 hover:bg-cyan-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-[10px] font-bold uppercase tracking-[0.12em] text-cyan-200 hover:bg-cyan-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Merge Selected ({checkedCount})

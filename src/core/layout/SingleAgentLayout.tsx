@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, MessageSquare, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +10,7 @@ import { RoutingSuggestion } from '@/modules/orchestrator/components/RoutingSugg
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import type { AuthMode } from '@/core/components/UnifiedAuthModal';
+import { useUIStore } from '@/lib/stores/ui-store';
 
 interface SingleAgentLayoutProps {
   moduleId: string;
@@ -30,6 +32,8 @@ interface SingleAgentLayoutProps {
   authMode?: AuthMode;
   chatWidth?: string;
   mobileBreakpoint?: number;
+  /** Optional secondary action button (e.g. FAB) to show next to chat trigger */
+  primaryAction?: React.ReactNode;
 }
 
 export function SingleAgentLayout({
@@ -41,13 +45,31 @@ export function SingleAgentLayout({
   placeholder = "Communicate with agent...",
   authMode,
   chatWidth = 'clamp(320px, 32vw, 520px)',
-  mobileBreakpoint = 1024
+  mobileBreakpoint = 1024,
+  primaryAction
 }: SingleAgentLayoutProps) {
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < mobileBreakpoint : false
   );
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+  const setChatOverlayOpen = useUIStore((s) => s.setChatOverlayOpen);
+  const setActiveLayout = useUIStore((s) => s.setActiveLayout);
+
+  // Sync overlay state to global store so NexusOverlay FAB hides
+  const isMobileChatOpen = isMobile && !isChatCollapsed;
+  useEffect(() => {
+    setChatOverlayOpen(isMobileChatOpen);
+    return () => setChatOverlayOpen(false);
+  }, [isMobileChatOpen, setChatOverlayOpen]);
+
+  // Sync layout mode for dynamic positioning
+  useEffect(() => {
+    if (isMobileChatOpen) setActiveLayout('overlay');
+    else if (!isMobile && !isChatCollapsed) setActiveLayout('split');
+    else setActiveLayout('full');
+    return () => setActiveLayout('full');
+  }, [isMobile, isChatCollapsed, isMobileChatOpen, setActiveLayout]);
 
   const handleRouteConfirm = useCallback(() => {
     if (!ai.routingSuggestion) return;
@@ -96,8 +118,40 @@ export function SingleAgentLayout({
 
   return (
     <div className="h-full flex overflow-hidden relative">
-      {/* ── Open Chat Floating Button ── */}
-      {isChatCollapsed && (
+      {/* ── Action Bar (Mobile) ── */}
+      {isMobile && isChatCollapsed && (
+        <div className="fixed bottom-6 left-4 right-4 flex gap-3 z-[var(--z-fab)]">
+          <motion.button
+            initial={{ opacity: 0, scale: 0.9, x: 20 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsChatCollapsed(false)}
+            className={cn(
+              'flex-1 flex items-center gap-3 border backdrop-blur-xl shadow-2xl transition-all duration-300',
+              currentTheme.btnBg,
+              currentTheme.btnBorder,
+              currentTheme.btnText,
+              'px-5 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.1em] justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)]'
+            )}
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span>Link {agentName}</span>
+            <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", 
+              themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
+            )} />
+          </motion.button>
+          
+          {primaryAction && (
+             <div className="shrink-0 flex items-center justify-center">
+                {primaryAction}
+             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Open Chat Floating Button (Desktop) ── */}
+      {!isMobile && isChatCollapsed && (
         <motion.button
           initial={{ opacity: 0, scale: 0.9, x: 20 }}
           animate={{ opacity: 1, scale: 1, x: 0 }}
@@ -105,16 +159,13 @@ export function SingleAgentLayout({
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsChatCollapsed(false)}
           className={cn(
-            'z-[70] flex items-center gap-3 border backdrop-blur-xl shadow-2xl transition-all duration-300',
+            'z-[var(--z-fab)] absolute top-6 right-6 flex items-center gap-3 border backdrop-blur-xl shadow-2xl transition-all duration-300 px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-[0.1em]',
             currentTheme.btnBg,
             currentTheme.btnBorder,
-            currentTheme.btnText,
-            isMobile
-              ? 'fixed bottom-8 right-8 px-6 py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] italic'
-              : 'absolute top-6 right-6 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] italic'
+            currentTheme.btnText
           )}
         >
-          <MessageSquare className={isMobile ? 'w-5 h-5' : 'w-4 h-4'} />
+          <MessageSquare className="w-4 h-4" />
           <span>Link {agentName}</span>
           <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", 
             themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
@@ -124,7 +175,10 @@ export function SingleAgentLayout({
 
       {/* ── Main Dashboard Content ── */}
       <div className="flex-1 min-w-0 h-full flex flex-col relative overflow-hidden bg-black/5">
-        <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth flex flex-col">
+        <div className={cn(
+          "flex-1 overflow-y-auto no-scrollbar scroll-smooth flex flex-col",
+          isMobile && isChatCollapsed && "pb-24"
+        )}>
           {children}
         </div>
       </div>
@@ -170,7 +224,7 @@ export function SingleAgentLayout({
             <button
               onClick={() => setIsChatCollapsed(true)}
               className={cn(
-                'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-[60] w-6 h-12 flex items-center justify-center border transition-all rounded-l-xl backdrop-blur-xl',
+                'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-[var(--z-fab)] w-6 h-12 flex items-center justify-center border transition-all rounded-l-xl backdrop-blur-xl',
                 currentTheme.btnBg,
                 currentTheme.btnBorder,
                 currentTheme.btnText
@@ -182,23 +236,24 @@ export function SingleAgentLayout({
         </motion.aside>
       )}
 
-      {/* ── Agent Overlay (Mobile) ── */}
-      {isMobile && (
+      {/* ── Agent Overlay (Mobile) — portaled to body to escape stacking context ── */}
+      {isMobile && createPortal(
         <AnimatePresence>
           {!isChatCollapsed && (
             <motion.div
+              key="mobile-chat-overlay"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed inset-0 z-[80] bg-[#020205] flex flex-col"
+              className="fixed inset-0 z-[var(--z-modal)] bg-[#020205] flex flex-col"
             >
-              <div className={cn("flex items-center justify-between px-6 py-4 border-b", currentTheme.sidebarBorder)}>
+              <div className={cn("flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b", currentTheme.sidebarBorder)}>
                 <div className="flex items-center gap-3">
                   <div className={cn("w-2 h-2 rounded-full animate-pulse", 
                     themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
                   )} />
-                  <span className={cn("font-black text-xs uppercase tracking-[0.3em] italic", currentTheme.btnText)}>
+                  <span className={cn("font-bold text-xs uppercase tracking-[0.12em] font-display", currentTheme.btnText)}>
                     {agentName} Resonance
                   </span>
                 </div>
@@ -236,7 +291,8 @@ export function SingleAgentLayout({
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
       )}
     </div>
   );

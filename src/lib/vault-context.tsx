@@ -43,10 +43,10 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       (localStorage.getItem(PERSISTENCE_KEY) as VaultPersistenceMode) || 'SESSION'
   );
 
-  const setPersistenceMode = (mode: VaultPersistenceMode) => {
+  const setPersistenceMode = useCallback((mode: VaultPersistenceMode) => {
       _setPersistenceMode(mode);
       localStorage.setItem(PERSISTENCE_KEY, mode);
-  };
+  }, []);
 
   const lockVault = useCallback(() => {
     masterKeyRef.current = null;
@@ -54,15 +54,15 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem(SESSION_PWD_KEY);
   }, []);
 
-  const setSessionPassword = (pwd: string) => {
+  const setSessionPassword = useCallback((pwd: string) => {
       if (persistenceMode !== 'STRICT') {
           sessionStorage.setItem(SESSION_PWD_KEY, pwd);
       }
-  };
+  }, [persistenceMode]);
 
-  const getSessionPassword = () => {
+  const getSessionPassword = useCallback(() => {
       return sessionStorage.getItem(SESSION_PWD_KEY);
-  };
+  }, []);
 
   const getModuleKey = useCallback(async (moduleName: string): Promise<CryptoKey | null> => {
     return masterKeyRef.current;
@@ -207,15 +207,32 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isUnlocked, user?.uid, isGuest]);
 
+  const computedIsLoading = useMemo(
+    () => isLoading || authLoading || isHandshaking,
+    [isLoading, authLoading, isHandshaking]
+  );
+
+  const contextValue = useMemo(() => ({
+    isUnlocked,
+    isLoading: computedIsLoading,
+    isHandshaking,
+    hasVault,
+    persistenceMode,
+    setPersistenceMode,
+    refreshVaultStatus,
+    unlockVault,
+    lockVault,
+    getModuleKey,
+    checkModuleVault,
+    isModuleAccessible,
+    setSessionPassword,
+    getSessionPassword,
+  }), [isUnlocked, computedIsLoading, isHandshaking, hasVault, persistenceMode,
+      setPersistenceMode, refreshVaultStatus, unlockVault, lockVault, getModuleKey,
+      checkModuleVault, isModuleAccessible, setSessionPassword, getSessionPassword]);
+
   return (
-    <VaultContext.Provider
-      value={{
-        isUnlocked, isLoading: isLoading || authLoading || isHandshaking, isHandshaking, hasVault,
-        persistenceMode, setPersistenceMode,
-        refreshVaultStatus, unlockVault, lockVault, getModuleKey, checkModuleVault, isModuleAccessible,
-        setSessionPassword, getSessionPassword
-      }}
-    >
+    <VaultContext.Provider value={contextValue}>
       {children}
     </VaultContext.Provider>
   );

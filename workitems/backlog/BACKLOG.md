@@ -2,13 +2,33 @@
 
 This backlog tracks the prioritized features, enhancements, and architectural shifts for the Nexus (AGNES) ecosystem.
 
-**Current Sprint:** `workitems/sprints/SPRINT_2.md` (Active as of March 10, 2026)  
-**Completed Sprint:** `workitems/sprints/SPRINT_3.md` (Closed March 10, 2026)
+**Current Sprint:** `None` (Sprint 7 planning queue)  
+**Completed Sprint:** `workitems/sprints/SPRINT_6.md` (Closed March 10, 2026)
+
+## Priority Order (Effective March 10, 2026)
+1. **P0 — Core/Spine completion and safety**
+   - [x] Data Layer Decoupling (remaining shared-runtime Firebase -> `NexusDataLayer` migration and provider parity guardrails).
+   - [x] Soma/Titan Data-Level Delegation (service handshake + Soma-sovereign biomarker/clearance writes).
+   - [x] Utility Guardrails (NSV Integrity for Scout/Forge read-only enforcement).
+2. **P1 — Cross-module reliability and orchestration**
+   - Atlas Failure Notification Loop (Spine-driven cross-module escalation).
+   - Dynamic Field System Expansion + Global Soul Writing Protocol.
+   - Document Intelligence Capability hardening as shared platform service.
+3. **P2 — Module feature expansion**
+   - Titan/Soma domain features (physical sovereign architecture, biomarkers, clearance workflow).
+   - Ledger intelligence tracks (cross-verification, document receipts/invoices, schema hardening).
+   - Atlas/Scout/Forge module refinement tracks.
+
+## Recommended Sprint 7 Scope
+- Completed on March 10, 2026 as immediate P0 execution:
+- Data Layer Decoupling (shared runtime migration slice + guardrails).
+- Soma/Titan Data-Level Delegation (write delegation + read-only Titan consumption path).
+- Utility Guardrails (ActionHub/runtime + static guardrails for Scout/Forge NSV read-only).
 
 ## 1. Core Platform & Spine
 - [ ] **Data Layer Decoupling (The AGNES Data Spine):** Implement a comprehensive architectural shift to make Nexus vendor-agnostic. Extract Firestore logic into a unified `NexusDataLayer` interface with dependency injection, refactor Cloud Functions to separate trigger logic from business logic, and implement a mock `InMemoryDataProvider` for offline development.
-- [ ] **Spine Cascade Rules (v2):** Implement deep-dive rules for burnout detection and automated energy wave flattening.
-- [ ] **Memory Consolidation (Tracked in Sprint 2):** Automatic RAG retrieval for past session context using Google GenAI embeddings. Execution is active in `workitems/sprints/SPRINT_2.md`; keep here for visibility until sprint close.
+- [x] **Spine Cascade Rules (v2):** Implement deep-dive rules for burnout detection and automated energy wave flattening. Completed in Sprint 6 with targeted test coverage.
+- [x] **Memory Consolidation (Tracked in Sprint 2):** Automatic RAG retrieval for past session context using Google GenAI embeddings. Sprint 2 carryover (`S2-006`) closed in Sprint 6 via web/native adapter contracts and retrieval guardrails.
 - [x] **Enforce E2EE for Episodic Memory Sync (Plan B):** Refactor `ModuleMemoryService.commitSession` and module-specific handlers to require an `encryptionKey`. Ensure all episodic history snapshots are encrypted with the Vault master key before Firestore storage, preventing plaintext history leaks.
 
 ## 2. Therapy (Agnes)
@@ -48,7 +68,7 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
 ## 6. Research & Knowledge (Scout)
 - [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Scout module.
 - [ ] **Scout Search Proxy Service:** (NEW) Implement/stabilize a separate Node.js or Cloudflare Worker proxy for Tavily search to securely handle API keys outside the browser bundle (currently running in direct-to-Tavily dev mode).
-- [ ] **Information Firewall (Pulse):** Active curation of news/trends to protect cognitive focus.
+- [ ] **Information Firewall (Signal):** Active curation of news/trends to protect cognitive focus.
 - [ ] **Evidence Source Verification:** Fact-checking engine with citation reliability scores.
 
 ## 7. Execution (Forge)
@@ -68,12 +88,52 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
     - [ ] Fix tab panel `id` / `aria-controls` mismatch in `TitanPage.tsx`.
 
 ## 9. Vision Alignment & Architectural Integrity
-- [ ] **Soma/Titan Data-Level Delegation (Architectural):** Refactor the Titan/Soma integration to use **Agent-to-Agent delegation** while maintaining UI unity.
-    - [ ] **Handshake:** Implement a service-level handshake where Titan delegates clinical reasoning and lab parsing to the Soma Agent.
-    - [ ] **Data Sovereignty:** Ensure all `biomarker` and `clearance` mutations are processed by the Soma Agent's validation logic before being committed to the `soma_profiles` collection.
-    - [ ] **Contract:** Titan becomes a "consumer" of Soma's readiness data (Read-Only) to adjust training recommendations without owning the medical state.
+- [x] **Dirty State Remediation — Route Truth Drift (Critical, tracked in Sprint 4):** Align all product/docs/contracts to runtime route truth in `src/App.tsx`.
+  - [x] Update `README.md` and `AGENTS.md` to treat app routes as canonical source of truth.
+  - [x] Remove stale public references to legacy route identities (`/therapy`, `/trainer`, `/pulse`) and unsupported claims (`/admin/login`).
+  - [x] Add explicit guidance that module identity is owned by route + manifest runtime contracts, not historical naming.
+  - **Acceptance:** Route map in docs matches `App.tsx` exactly and contains no dead route claims.
+
+- [x] **Dirty State Remediation — Pulse Full Decommission (Critical, tracked in Sprint 4):** Remove Pulse as a product/runtime concept.
+  - [x] Remove `/pulse` routing behavior and delegation references.
+  - [x] Remove Pulse from orchestrator persona payload examples and alias/gender defaults.
+  - [x] Remove Pulse from user-data registry and transfer/storage mappings.
+  - [x] Remove Pulse backlog/module taxonomy where it is represented as an active module identity.
+  - **Acceptance:** No runtime, manifest, type, or routing contract can resolve or delegate to `pulse`.
+
+- [x] **Dirty State Remediation — Documents Library Conversion (High, tracked in Sprint 4):** Convert Documents from standalone module/page into shared capability.
+  - [x] Remove standalone `/documents` page routing and module-manifest identity.
+  - [x] Replace cross-module `navigate('/documents')` handoff flows with in-module document-intelligence invocation.
+  - [x] Formalize shared document capability API/hook for upload, parse, persist, and AI prompt injection.
+  - [x] Preserve encrypted persistence + module-scoped context usage after migration.
+  - **Acceptance:** Ledger/Scout/Titan/Atlas can invoke document intelligence in-context without leaving their module.
+
+- [x] **Dirty State Remediation — Soma + Encryption Boundary ADR (High, tracked in Sprint 4):** Produce decision-complete architecture recommendation before implementation.
+  - [x] Decision Report: Soma identity model (absorbed UI vs sovereign routed module) with tradeoffs and migration plan.
+  - [x] ADR: Vault encryption model decision (single master key vs per-module key derivation), threat model impact, and rollout path.
+  - [x] Define explicit sequencing and rollback plan for whichever option is selected.
+  - **Acceptance:** Signed-off ADR and implementation blueprint committed; no ambiguous ownership remains for Soma identity or key strategy.
+
+- [x] **Dirty State Remediation — LLM Runtime Boundary Hardening (High, tracked in Sprint 4):** Re-enforce app/engine separation contract.
+  - [x] Remove direct app-layer imports of `llm-engine` internals (engine services/private helpers) outside approved interfaces.
+  - [x] Route app behavior through sanctioned boundaries (`useAI`, `AIProvider`, `useModuleAI`, app-layer adapters).
+  - [x] Add static conformance checks/tests to prevent future boundary leakage.
+  - **Acceptance:** No forbidden import paths remain from `src/llm-engine/*` internals in app-layer modules.
+
+- [x] **Dirty State Remediation — Onboarding Mode Separation + Fast-Track Validation (High, target Sprint 5):** Split onboarding orchestration by module requirement class and add LLM validation gating for fast-track flows.
+  - [x] Define module onboarding mode taxonomy and contracts: `required`, `optional`, `hybrid`.
+  - [x] Separate onboarding orchestration paths so modules can explicitly opt into one mode without route-level hacks.
+  - [x] Implement fast-track onboarding validation with LLM + schema guardrails (required fields, confidence threshold, fallback to full onboarding).
+  - [x] Add module capability flags and runtime checks to prevent accidental onboarding bypass for `required` modules.
+  - [x] Document migration plan for existing modules (`therapy`, `trainer`, `ledger`, `soma`, `atlas`, `scout`, `forge`) to declared onboarding modes.
+  - **Acceptance:** Each routed module declares one onboarding mode; fast-track can only complete when validation passes; fallback path is deterministic and test-covered.
+
+- [x] **Soma/Titan Data-Level Delegation (Architectural):** Refactor the Titan/Soma integration to use **Agent-to-Agent delegation** while maintaining UI unity.
+    - [x] **Handshake:** Implemented service-level delegation where Titan routes biomarker/clearance mutations to Soma-owned services.
+    - [x] **Data Sovereignty:** Biomarker and clearance mutations now commit through Soma paths into `soma_profiles`.
+    - [x] **Contract:** Titan now consumes Soma health snapshot for clearance decisions (read-only medical-state consumption).
 - [ ] **Atlas Failure Notification Loop:** Implement the Spine-driven notification system where Atlas alerts Agnes (emotional impact) or Titan (physical relevance) when user commitments fail.
-- [ ] **Utility Guardrails (NSV Integrity):** Audit the Scout and Forge action sets and services to ensure they strictly adhere to the "Read-Only" NSV contract, preventing soul-authority leakage.
+- [x] **Utility Guardrails (NSV Integrity):** Audited Scout/Forge action sets and enforced read-only NSV contract via ActionHub runtime guard + static anti-pattern guardrails + tests.
 
 ## 10. Icebox / Future Expansion (Scope Creep Guard)
 - [ ] **Medical Image Analysis:** Specialized review tool for MRI/X-Ray report summaries. (Moved from Titan to maintain focus)

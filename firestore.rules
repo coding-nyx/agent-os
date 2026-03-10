@@ -115,6 +115,11 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // RAG Embeddings (Android semantic search index)
+    match /rag_embeddings/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
     // Legacy Portfolio / Public Profiles (Titan Branding)
     match /titan_portfolios/{userId} {
       // Anyone can read public portfolios
@@ -128,6 +133,15 @@ service cloud.firestore {
       }
     }
     
+    // Custom Schema Extensions (user-defined field extensions per module)
+    match /custom_schemas/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /modules/{moduleId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
     // Platform Settings (Admin-only configurations)
     match /platform_settings/{document=**} {
       allow read: if true;

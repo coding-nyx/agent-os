@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Space Grotesk", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono", monospace;
 }
 
 @layer base {
@@ -60,6 +62,15 @@
     --space-lg: 1.5rem;
     --space-xl: 2rem;
 
+    /* ── Z-Index Layer Contract ── */
+    --z-base: 0;
+    --z-content: 10;
+    --z-header: 50;
+    --z-fab: 60;
+    --z-overlay: 70;
+    --z-modal: 80;
+    --z-toast: 90;
+
     --surface-card-border: rgba(255, 255, 255, 0.12);
     --surface-card-bg: rgba(255, 255, 255, 0.04);
     --surface-card-strong-bg: rgba(255, 255, 255, 0.06);
@@ -116,11 +127,27 @@
     border-color: var(--border);
     box-sizing: border-box;
   }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--void);
     color: var(--text-primary);
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
   }
 }
 
@@ -255,7 +282,7 @@
 
   .text-chip {
     font-size: 0.75rem;
-    letter-spacing: 0.32em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     font-weight: 700;
     line-height: 1;
@@ -263,11 +290,64 @@
 
   .text-chip-soft {
     font-size: 0.75rem;
-    letter-spacing: 0.32em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     font-weight: 600;
     line-height: 1;
     opacity: 0.75;
+  }
+
+  /* ── Surface Hierarchy ── */
+  .surface-1 {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .surface-2 {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .surface-3 {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* ── Typography Roles ── */
+  .text-label {
+    font-size: 0.5625rem; /* 9px */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    line-height: 1;
+  }
+  .text-heading-sm {
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+  }
+  .text-heading-md {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    line-height: 1.2;
+  }
+  .text-heading-lg {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+    line-height: 1.15;
   }
 }
 
@@ -365,6 +445,10 @@
 
   .rounded-button {
     border-radius: var(--radius-button);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
   }
 }
 

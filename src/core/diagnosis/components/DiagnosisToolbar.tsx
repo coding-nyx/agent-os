@@ -59,16 +59,16 @@ export function DiagnosisToolbar({
     <motion.div
       initial={prefersReduced ? false : { opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-white/8 bg-white/[0.02]"
+      className="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-white/8 bg-white/[0.02] overflow-x-auto no-scrollbar"
     >
-      {/* Label */}
-      <div className="flex items-center gap-2 mr-auto min-w-0">
+      {/* Label — hidden on mobile to give buttons room */}
+      <div className="hidden sm:flex items-center gap-2 mr-auto min-w-0">
         <Microscope className="w-4 h-4 text-white/40 flex-shrink-0" />
         <span className="text-[11px] font-semibold text-white/70 truncate">
           {spec.label}
         </span>
         {itemCount > 0 && (
-          <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white/40 bg-white/5 px-1.5 py-0.5 rounded">
+          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40 bg-white/5 px-1.5 py-0.5 rounded">
             {itemCount} extracted
           </span>
         )}
@@ -90,7 +90,7 @@ export function DiagnosisToolbar({
       {/* Context toggle */}
       <button
         onClick={togglePolicy}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-[0.15em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors shrink-0"
         title={
           contextPolicy === 'isolated'
             ? 'AI cannot see your base profile. Click to enable.'
@@ -105,7 +105,7 @@ export function DiagnosisToolbar({
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={isParsing}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-[0.15em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors disabled:opacity-40"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors disabled:opacity-40 shrink-0"
       >
         <FileUp className="w-3 h-3" />
         Upload
@@ -122,7 +122,7 @@ export function DiagnosisToolbar({
       {/* New */}
       <button
         onClick={onNew}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-[0.15em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors shrink-0"
       >
         <Plus className="w-3 h-3" />
         New
@@ -131,7 +131,7 @@ export function DiagnosisToolbar({
       {/* End */}
       <button
         onClick={onEnd}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-red-400/20 bg-red-500/5 text-[9px] font-black uppercase tracking-[0.15em] text-red-300/60 hover:text-red-200 hover:bg-red-500/10 transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-red-400/20 bg-red-500/5 text-[9px] font-bold uppercase tracking-[0.12em] text-red-300/60 hover:text-red-200 hover:bg-red-500/10 transition-colors shrink-0"
       >
         <Square className="w-3 h-3" />
         End

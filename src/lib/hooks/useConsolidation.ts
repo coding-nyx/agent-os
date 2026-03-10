@@ -1,8 +1,8 @@
 import { useRef, useCallback } from 'react';
 import type { Message } from '../types';
-import type { ConversationContext } from '@/llm-engine/types';
-import type { StructuredResponse } from '@/llm-engine/engine/types';
-import { MemoryManager } from '@/llm-engine/engine/MemoryManager';
+import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
+import type { StructuredResponse } from '@/lib/ai-adapters/engine-types';
+import { MemoryManager } from '@/lib/ai-adapters/memory-manager';
 import { MemoryOrchestrator } from '../services/memory-orchestrator';
 import { ModuleMemoryService } from '../services/module-memory-service';
 import { SemanticMemoryService } from '../services/semantic-memory-service';

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Plus, Search, Filter, Download, Upload, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -32,6 +32,11 @@ interface TransactionManagerProps {
   onImportCSV?: (file: File) => void;
   onExportCSV?: () => void;
   disabled?: boolean;
+  /** Optional external control for the add modal */
+  isAddModalOpen?: boolean;
+  onAddModalOpenChange?: (open: boolean) => void;
+  /** Whether to show the internal add button. Defaults to true. */
+  showAddButton?: boolean;
 }
 
 type SortField = 'date' | 'amount' | 'description' | 'category';
@@ -123,9 +128,18 @@ export function TransactionManager({
   onDeleteTransaction,
   onImportCSV,
   onExportCSV,
-  disabled = false
+  disabled = false,
+  isAddModalOpen: controlledIsAddModalOpen,
+  onAddModalOpenChange,
+  showAddButton = true
 }: TransactionManagerProps) {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [internalIsAddModalOpen, setInternalIsAddModalOpen] = useState(false);
+  const isAddModalOpen = controlledIsAddModalOpen !== undefined ? controlledIsAddModalOpen : internalIsAddModalOpen;
+  const setIsAddModalOpen = (val: boolean) => {
+    if (onAddModalOpenChange) onAddModalOpenChange(val);
+    else setInternalIsAddModalOpen(val);
+  };
+
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -134,6 +148,17 @@ export function TransactionManager({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Reset form when modal opens via external control
+  useEffect(() => {
+    if (isAddModalOpen && !editingTransaction && Object.keys(formValues).length === 0) {
+      setFormValues({
+        date: new Date().toISOString().split('T')[0],
+        type: 'expense',
+        recurring: false
+      });
+    }
+  }, [isAddModalOpen, editingTransaction]);
 
   // Update schema with dynamic categories
   const transactionSchema = useMemo(() => {
@@ -302,7 +327,7 @@ export function TransactionManager({
   return (
     <div className="space-y-6">
       {/* Stats Overview */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Total Income</div>
           <div className="mt-2 text-2xl font-black text-emerald-400">{formatCurrency(stats.totalIncome, currency)}</div>
@@ -386,16 +411,18 @@ export function TransactionManager({
                 Export
               </NeuralButton>
             )}
-            <NeuralButton
-              onClick={handleOpenAddModal}
-              variant="primary"
-              size="sm"
-              disabled={disabled}
-              className="bg-cyan-600 hover:bg-cyan-500"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Transaction
-            </NeuralButton>
+            {showAddButton && (
+              <NeuralButton
+                onClick={handleOpenAddModal}
+                variant="primary"
+                size="sm"
+                disabled={disabled}
+                className="bg-cyan-600 hover:bg-cyan-500"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Transaction
+              </NeuralButton>
+            )}
           </div>
         </div>
       </SurfaceCard>

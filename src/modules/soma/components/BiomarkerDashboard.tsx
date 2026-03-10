@@ -8,6 +8,7 @@ import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import { EmptyState } from '@/core/components/EmptyState';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
+import { NeuralButton, type NeuralButtonThemeColor } from '@/core/components/NeuralButton';
 import { BiomarkerCharts, VitalsDashboard } from './BiomarkerCharts';
 import { SchemaRegistry } from '@/lib/schema-registry';
 import type { FieldDefinition } from '@/lib/field-system/types';
@@ -27,6 +28,7 @@ interface BiomarkerDashboardProps {
   profile: TitanProfile | null;
   soul: GlobalProjection | null;
   isLocked?: boolean;
+  themeColor?: NeuralButtonThemeColor;
   onImportLab?: () => void;
   onAnalyzeImage?: () => void;
   onAddBiomarker?: () => void;
@@ -84,6 +86,7 @@ export function BiomarkerDashboard({
   profile,
   soul,
   isLocked = false,
+  themeColor = 'orange',
   onImportLab,
   onAnalyzeImage,
   onAddBiomarker,
@@ -206,7 +209,7 @@ export function BiomarkerDashboard({
       {/* Vitals Dashboard */}
       {biomarkers.length > 0 && (
         <section className="space-y-3" aria-label="Vital signs">
-          <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+          <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">
             Current Vitals
           </h4>
           <VitalsDashboard
@@ -221,7 +224,7 @@ export function BiomarkerDashboard({
       {/* Biomarker Trends */}
       {biomarkers.length > 0 && (
         <section className="space-y-3" aria-label="Biomarker trends">
-          <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+          <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">
             Biomarker Trends
           </h4>
           <BiomarkerCharts biomarkers={biomarkers} />
@@ -238,6 +241,14 @@ export function BiomarkerDashboard({
             title="No biomarker entries yet"
             description="Import lab results or add biomarkers via the Titan chat."
             className="bg-transparent border-white/10"
+            action={
+              <div className="flex gap-2">
+                <NeuralButton size="sm" themeColor={themeColor} onClick={onImportLab}>
+                  <FileText className="w-3.5 h-3.5 mr-1.5" />
+                  Import
+                </NeuralButton>
+              </div>
+            }
           />
         ) : (
           sortedBiomarkers.map((entry) => (
@@ -253,7 +264,7 @@ export function BiomarkerDashboard({
                     {formatRelativeTime(entry.recordedAt)}
                   </span>
                 </div>
-                <span className="font-black text-orange-300 tabular-nums shrink-0 ml-3 text-sm">
+                <span className="font-bold text-orange-300 tabular-nums shrink-0 ml-3 text-sm">
                   {entry.value}
                   {entry.unit ? ` ${entry.unit}` : ''}
                 </span>
@@ -271,6 +282,7 @@ export function BiomarkerDashboard({
         onSelectBiomarker={onSelectBiomarker}
         extensionCount={extensionFields.length}
         maxExtensions={SOMA_FIELD_LIMITS.maxExtensions}
+        themeColor={themeColor}
       />
 
       {/* Lab Summaries */}
@@ -334,7 +346,7 @@ export function BiomarkerDashboard({
 
       {/* Action Buttons */}
       <section className="space-y-3" aria-label="Lab actions">
-        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+        <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">
           Import &amp; Analysis
         </h4>
         <SurfaceCard className="p-4">
@@ -343,27 +355,29 @@ export function BiomarkerDashboard({
             but may require cleaning.
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <button
+            <NeuralButton
               onClick={onImportLab}
-              className="flex items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-300 cursor-pointer hover:bg-orange-500/15 transition-colors font-semibold"
+              themeColor={themeColor}
+              size="sm"
             >
               <FileText className="w-4 h-4" aria-hidden="true" />
-              Import Lab Report
-            </button>
-            <button
+              Import Lab
+            </NeuralButton>
+            <NeuralButton
               onClick={onAnalyzeImage}
-              className="flex items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-300 cursor-pointer hover:bg-orange-500/15 transition-colors font-semibold"
+              themeColor={themeColor}
+              size="sm"
             >
               <Camera className="w-4 h-4" aria-hidden="true" />
-              Analyze Medical Image
-            </button>
+              Analyze Image
+            </NeuralButton>
           </div>
         </SurfaceCard>
       </section>
 
       {/* Clinical Flags — aggregated from all sources */}
       <section className="space-y-3" aria-label="Clinical flags">
-        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+        <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">
           Clinical Flags
         </h4>
         {aggregatedFlags.length === 0 ? (
@@ -462,6 +476,7 @@ interface CustomBiomarkersSectionProps {
   onSelectBiomarker?: (fieldId: string) => void;
   extensionCount: number;
   maxExtensions: number;
+  themeColor?: NeuralButtonThemeColor;
 }
 
 function CustomBiomarkersSection({
@@ -471,11 +486,12 @@ function CustomBiomarkersSection({
   onSelectBiomarker,
   extensionCount,
   maxExtensions,
+  themeColor = 'orange',
 }: CustomBiomarkersSectionProps) {
   return (
     <section className="space-y-3" aria-label="Custom biomarkers">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+        <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">
           Custom Biomarkers
           {extensionCount > 0 && (
             <span className="ml-2 text-white/30 font-normal">
@@ -484,19 +500,15 @@ function CustomBiomarkersSection({
           )}
         </h4>
         {onAddBiomarker && (
-          <button
+          <NeuralButton
+            size="sm"
+            themeColor={themeColor}
             onClick={onAddBiomarker}
             disabled={!canAddMore}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all',
-              canAddMore
-                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 cursor-pointer'
-                : 'bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
-            )}
           >
-            <Plus className="w-3 h-3" aria-hidden="true" />
+            <Plus className="w-3 h-3 mr-1" aria-hidden="true" />
             Add Biomarker
-          </button>
+          </NeuralButton>
         )}
       </div>
 
@@ -612,7 +624,7 @@ function CustomBiomarkerCard({ field, onSelect }: CustomBiomarkerCardProps) {
 
         {/* Value display */}
         <div className="mt-2 flex items-end justify-between">
-          <span className={cn('text-lg font-black tabular-nums', statusStyle.text)}>
+          <span className={cn('text-lg font-bold tabular-nums', statusStyle.text)}>
             {field.defaultValue != null ? String(field.defaultValue) : '—'}
           </span>
           {unit && (

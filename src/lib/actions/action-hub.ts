@@ -1,6 +1,6 @@
 import { GlobalProjection, NeuralStateVectorPatch, SpineEventType, Message } from '../types';
-import { ConversationContext } from '@/llm-engine/types';
-import { StructuredResponse } from '@/llm-engine/engine/types';
+import { ConversationContext } from '@/lib/ai-adapters/engine-types';
+import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual';
 
@@ -18,9 +18,17 @@ export interface ActionContext {
   emitSpineEvent: (type: SpineEventType, payload: Record<string, unknown>) => void;
   updateGlobalSoul: (patch: NeuralStateVectorPatch) => Promise<void>;
   delegateToModule: (target: string, reason: string, content: string) => void;
+  /** Signal that this action modified the module profile document (not just NSV). */
+  markProfileDirty?: () => void;
 }
 
 export type ActionHandler = (context: ActionContext) => Promise<void> | void;
+
+const NSV_READ_ONLY_MODULES = new Set(['scout', 'forge']);
+
+const NSV_ALLOWED_WRITES: Record<string, string[]> = {
+  scout: ['cognitive'],
+};
 
 class ModuleActionHub {
   private registry = new Map<string, Map<string, ActionHandler>>();
@@ -52,12 +60,34 @@ class ModuleActionHub {
   }
 
   async execute(moduleId: string, actionType: string, context: ActionContext): Promise<boolean> {
+    const scopedContext: ActionContext = {
+      ...context,
+      updateGlobalSoul: async (patch) => {
+        if (NSV_READ_ONLY_MODULES.has(moduleId)) {
+          const allowed = NSV_ALLOWED_WRITES[moduleId] ?? [];
+          const patchKeys = Object.keys(patch);
+          const blocked = patchKeys.filter(k => !allowed.includes(k));
+          if (blocked.length > 0) {
+            console.warn(
+              `[ActionHub] Module "${moduleId}" is NSV read-only – ignored keys: ${blocked.join(', ')}`
+            );
+          }
+          const filtered = Object.fromEntries(
+            Object.entries(patch).filter(([k]) => allowed.includes(k))
+          );
+          if (Object.keys(filtered).length === 0) return;
+          return context.updateGlobalSoul(filtered as NeuralStateVectorPatch);
+        }
+        return context.updateGlobalSoul(patch);
+      },
+    };
+
     // 1. Check module's own handlers
     const moduleHandlers = this.registry.get(moduleId);
     if (moduleHandlers) {
       const handler = moduleHandlers.get(actionType);
       if (handler) {
-        await handler(context);
+        await handler(scopedContext);
         return true;
       }
     }
@@ -70,14 +100,14 @@ class ModuleActionHub {
         if (depHandlers) {
           const handler = depHandlers.get(actionType);
           if (handler) {
-            await handler(context);
+            await handler(scopedContext);
             return true;
           }
         }
       }
     }
 
-    // 3. Fallback to orchestrator
+    // 3. Fallback to orchestrator — orchestrator handlers are privileged
     const orchestratorHandlers = this.registry.get('orchestrator');
     if (orchestratorHandlers && orchestratorHandlers.has(actionType)) {
       await orchestratorHandlers.get(actionType)!(context);

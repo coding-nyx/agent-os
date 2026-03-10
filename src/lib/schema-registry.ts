@@ -10,8 +10,7 @@ import {
   FieldType,
 } from './field-system/types';
 import { validateFieldValue } from './field-system/field-system';
-import { getFirebase } from './firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { getNexusDataLayer } from './data-layer/provider';
 import { Spine } from './spine/spine-event-bus';
 
 /**
@@ -80,7 +79,7 @@ interface FirestoreCustomSchema {
   moduleId: string;
   extensionFields: FieldDefinition[];
   version: string;
-  lastModified: any; // Firestore timestamp
+  lastModified: string;
   encryptedData?: string;
 }
 
@@ -523,18 +522,14 @@ class SchemaRegistryService {
    * Load extensions from Firestore for a user
    */
   async loadExtensions(userId: string, moduleId: string): Promise<void> {
-    const { db } = getFirebase();
-    if (!db) {
-      console.warn('[SchemaRegistry] Firebase not available');
-      return;
-    }
-
     try {
-      const docRef = doc(db, 'custom_schemas', userId, 'modules', moduleId);
-      const docSnap = await getDoc(docRef);
+      const dataLayer = getNexusDataLayer();
+      const data = await dataLayer.getDocument<FirestoreCustomSchema>(
+        `custom_schemas/${userId}/modules`,
+        moduleId
+      );
 
-      if (docSnap.exists()) {
-        const data = docSnap.data() as FirestoreCustomSchema;
+      if (data) {
         this.extensionCache.set(moduleId, data.extensionFields || []);
         this.schemaCache.delete(moduleId); // Invalidate cache
         
@@ -556,11 +551,6 @@ class SchemaRegistryService {
    * Save extensions to Firestore for a user
    */
   async saveExtensions(userId: string, moduleId: string): Promise<void> {
-    const { db } = getFirebase();
-    if (!db) {
-      throw new Error('Firebase not available');
-    }
-
     const extensions = this.extensionCache.get(moduleId) || [];
     const definition = this.schemas.get(moduleId);
     
@@ -572,12 +562,12 @@ class SchemaRegistryService {
       moduleId,
       extensionFields: extensions,
       version: definition.version,
-      lastModified: serverTimestamp(),
+      lastModified: new Date().toISOString(),
     };
 
     try {
-      const docRef = doc(db, 'custom_schemas', userId, 'modules', moduleId);
-      await setDoc(docRef, data);
+      const dataLayer = getNexusDataLayer();
+      await dataLayer.setDocument(`custom_schemas/${userId}/modules`, moduleId, data);
       
       console.log(
         `[SchemaRegistry] Saved ${extensions.length} extensions for ${moduleId}`

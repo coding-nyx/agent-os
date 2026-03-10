@@ -3,7 +3,7 @@ import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
 import { GuidedChatSpec } from '@/core/intake/types';
-import { StructuredResponse } from '@/llm-engine/engine/types';
+import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useAuth } from '@/lib/auth-context';
@@ -16,6 +16,7 @@ import { GlobalProjectionService } from '@/lib/services/global-projection-servic
 import type { NeuralStateVectorPatch } from '@/lib/types';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
+import { useFastTrackValidation } from '@/lib/onboarding/fast-track-validation';
 
 interface AtlasOnboardingProps {
   initialProfile?: AtlasProfile | null;
@@ -121,9 +122,14 @@ export function AtlasOnboarding({
   const [fastPeakHours, setFastPeakHours] = useState('');
   const [fastCurrentLoad, setFastCurrentLoad] = useState<'low' | 'medium' | 'high'>('medium');
   const [fastPrimaryTask, setFastPrimaryTask] = useState('');
+  const [fastTrackError, setFastTrackError] = useState<string | null>(null);
+  const [isValidatingFastTrack, setIsValidatingFastTrack] = useState(false);
+  const { validateFastTrack } = useFastTrackValidation('atlas');
 
-  const handleFastTrack = () => {
+  const handleFastTrack = async () => {
     if (!fastPeakHours.trim()) return;
+    setFastTrackError(null);
+    setIsValidatingFastTrack(true);
     const now = new Date().toISOString();
     
     let activeLoad = 5;
@@ -157,6 +163,17 @@ export function AtlasOnboarding({
       createdAt: now,
       updatedAt: now
     };
+
+    const validation = await validateFastTrack(profile as unknown as Record<string, unknown>, {
+      requiredFields: ['energyWave.0.slot', 'summary'],
+      objective: 'Confirm Atlas fast-track has enough cognitive baseline data to skip guided intake.'
+    });
+    setIsValidatingFastTrack(false);
+    if (!validation.accepted) {
+      setFastTrackError('Fast-track validation failed. Continue guided onboarding to map your cognitive baseline.');
+      return;
+    }
+
     onComplete(profile);
   };
 
@@ -393,16 +410,19 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
               <div className="flex justify-end">
                 <button
                   onClick={handleFastTrack}
-                  disabled={!fastPeakHours.trim()}
+                  disabled={!fastPeakHours.trim() || isValidatingFastTrack}
                   className="bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
                 >
-                  Execute
+                  {isValidatingFastTrack ? 'Validating...' : 'Execute'}
                 </button>
               </div>
             </div>
             <p className="text-[9px] text-white/40 uppercase tracking-tight">
               Bypass conversational intake. Requires peak focus hours.
             </p>
+            {fastTrackError && (
+              <p className="text-[10px] text-rose-300">{fastTrackError}</p>
+            )}
           </div>
         </div>
       }

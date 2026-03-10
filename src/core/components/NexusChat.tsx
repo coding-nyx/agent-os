@@ -3,7 +3,7 @@ import { ChatInterface } from './ChatInterface';
 import { useAuth } from '@/lib/auth-context';
 import type { ModuleTheme } from '@/lib/module-manifest';
 import { UnifiedAuthModal, AuthMode } from './UnifiedAuthModal';
-import { stripInternalTags } from '@/llm-engine/sanitize';
+import { stripInternalTags } from '@/lib/ai-adapters/sanitize';
 import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/lib/stores/ui-store';
@@ -90,13 +90,7 @@ export function NexusChat({
                 renderCustomActions={renderCustomActions}
                 renderMessageActions={renderMessageActions}
                 moduleId={moduleId}
-                headerActions={
-                  headerActions ? (
-                    <div className="flex items-center gap-4">
-                        {headerActions}
-                    </div>
-                  ) : undefined
-                }
+                headerActions={headerActions}
                 pendingRequest={pendingRequest}
                 onRecoverPendingRequest={() => {
                   if (pendingRequest) {

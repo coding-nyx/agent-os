@@ -34,7 +34,6 @@ describe('Guardrails: cross-module writes', () => {
     atlas: ['atlas_profiles'],
     scout: ['scout_knowledge'],
     forge: ['forge_sessions'],
-    pulse: ['pulse_profiles'],
   };
 
   const allCollections = Array.from(
@@ -148,6 +147,107 @@ describe('Guardrails: module profile store alignment', () => {
         offenders.push(
           `${file} bypasses NexusDataLayer for a primary module profile store. Use getNexusDataLayer instead.`
         );
+      }
+    });
+
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('Guardrails: LLM runtime boundary imports', () => {
+  it('blocks app-layer imports of llm-engine internals outside approved adapters/interfaces', () => {
+    const offenders: string[] = [];
+    const rootsToScan = [
+      path.join(projectRoot, 'src', 'core'),
+      path.join(projectRoot, 'src', 'lib'),
+      path.join(projectRoot, 'src', 'modules'),
+    ];
+
+    const disallowedImportPatterns = [
+      /from\s+['"]@\/llm-engine\/sanitize['"]/g,
+      /from\s+['"]@\/llm-engine\/persona-factory['"]/g,
+      /from\s+['"]@\/llm-engine\/engine\/[^'"]+['"]/g,
+    ];
+
+    rootsToScan.forEach((root) => {
+      collectFiles(root).forEach((file) => {
+        if (file.includes(`${path.sep}lib${path.sep}ai-adapters${path.sep}`)) return;
+        if (file.includes('.test.')) return;
+
+        const content = fs.readFileSync(file, 'utf8');
+        if (disallowedImportPatterns.some((pattern) => pattern.test(content))) {
+          offenders.push(
+            `${file} imports llm-engine internals directly. Use src/lib/ai-adapters/* or useAI/AIProvider interfaces.`
+          );
+        }
+      });
+    });
+
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('Guardrails: shared runtime data-layer boundary', () => {
+  it('blocks direct Firebase SDK usage in shared runtime stores that must stay on NexusDataLayer', () => {
+    const offenders: string[] = [];
+    const runtimePaths = [
+      path.join(projectRoot, 'src', 'lib', 'schema-registry.ts'),
+      path.join(projectRoot, 'src', 'lib', 'hooks', 'use-extension-field-values.ts'),
+      path.join(projectRoot, 'src', 'lib', 'services', 'chat-thread-service.ts'),
+      path.join(projectRoot, 'src', 'lib', 'services', 'notebook-service.ts'),
+      path.join(projectRoot, 'src', 'lib', 'services', 'semantic-memory-service.ts'),
+      path.join(projectRoot, 'src', 'lib', 'services', 'document-service.ts'),
+      path.join(projectRoot, 'src', 'lib', 'services', 'derived-insights-service.ts'),
+      path.join(projectRoot, 'src', 'lib', 'services', 'episodic-memory-service.ts'),
+      path.join(projectRoot, 'src', 'modules', 'soma', 'services', 'soma-data-service.ts'),
+    ];
+
+    runtimePaths.forEach((file) => {
+      const content = fs.readFileSync(file, 'utf8');
+      if (/firebase\/firestore|getFirebase\(/.test(content)) {
+        offenders.push(`${file} bypasses NexusDataLayer. Use getNexusDataLayer() APIs.`);
+      }
+    });
+
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('Guardrails: Scout/Forge NSV read-only contract', () => {
+  it('blocks direct updateGlobalSoul wiring in Scout/Forge action registrations', () => {
+    const offenders: string[] = [];
+    const candidateFiles = [
+      path.join(projectRoot, 'src', 'lib', 'actions', 'core-handlers.ts'),
+      path.join(projectRoot, 'src', 'modules', 'scout', 'services', 'actions.ts'),
+      path.join(projectRoot, 'src', 'modules', 'forge', 'services', 'actions.ts'),
+    ];
+
+    candidateFiles.forEach((file) => {
+      const content = fs.readFileSync(file, 'utf8');
+      const markers = [
+        "ActionHub.register('scout'",
+        "ActionHub.register('forge'",
+        "ActionHub.registerMultiple('scout'",
+        "ActionHub.registerMultiple('forge'",
+      ];
+
+      markers.forEach((marker) => {
+        let idx = content.indexOf(marker);
+        while (idx !== -1) {
+          const window = content.slice(idx, idx + 220);
+          if (window.includes('updateGlobalSoul')) {
+            offenders.push(`${file} wires Scout/Forge actions to updateGlobalSoul. These modules are read-only for NSV.`);
+            break;
+          }
+          idx = content.indexOf(marker, idx + marker.length);
+        }
+      });
+
+      if (/ActionHub\.execute\('scout'[^)]*\)[^]*updateGlobalSoul/m.test(content)) {
+        offenders.push(`${file} executes Scout actions through updateGlobalSoul. These modules are read-only for NSV.`);
+      }
+      if (/ActionHub\.execute\('forge'[^)]*\)[^]*updateGlobalSoul/m.test(content)) {
+        offenders.push(`${file} executes Forge actions through updateGlobalSoul. These modules are read-only for NSV.`);
       }
     });
 

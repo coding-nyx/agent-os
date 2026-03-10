@@ -1,20 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { requiresModuleOnboarding, MODULES_REQUIRING_ONBOARDING } from './constants';
+import { MODULE_MANIFEST } from './module-manifest';
 
 describe('requiresModuleOnboarding', () => {
   it('returns true for modules requiring onboarding', () => {
+    expect(requiresModuleOnboarding('orchestrator')).toBe(true);
     expect(requiresModuleOnboarding('agnes')).toBe(true);
     expect(requiresModuleOnboarding('titan')).toBe(true);
-    expect(requiresModuleOnboarding('soma')).toBe(true);
     expect(requiresModuleOnboarding('ledger')).toBe(true);
   });
 
   it('returns false for modules not requiring onboarding', () => {
-    expect(requiresModuleOnboarding('orchestrator')).toBe(false);
     expect(requiresModuleOnboarding('atlas')).toBe(false);
     expect(requiresModuleOnboarding('scout')).toBe(false);
     expect(requiresModuleOnboarding('forge')).toBe(false);
-    expect(requiresModuleOnboarding('pulse')).toBe(false);
+    expect(requiresModuleOnboarding('soma')).toBe(false);
     expect(requiresModuleOnboarding('bridge')).toBe(false);
   });
 
@@ -23,7 +23,11 @@ describe('requiresModuleOnboarding', () => {
     expect(requiresModuleOnboarding('')).toBe(false);
   });
 
-  it('MODULES_REQUIRING_ONBOARDING set contains exactly 4 modules', () => {
-    expect(MODULES_REQUIRING_ONBOARDING.size).toBe(4);
+  it('MODULES_REQUIRING_ONBOARDING matches manifest non-optional routed modules', () => {
+    const expected = Object.values(MODULE_MANIFEST)
+      .filter((entry) => entry.hasPage && entry.onboarding.mode !== 'optional')
+      .map((entry) => entry.id)
+      .sort();
+    expect([...MODULES_REQUIRING_ONBOARDING].sort()).toEqual(expected);
   });
 });

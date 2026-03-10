@@ -3,7 +3,7 @@ export interface UserDataDeletionTarget {
   documentId: string;
 }
 
-const MODULE_IDS = ['orchestrator', 'agnes', 'titan', 'ledger', 'atlas', 'scout', 'forge', 'pulse'] as const;
+const MODULE_IDS = ['orchestrator', 'agnes', 'titan', 'ledger', 'atlas', 'scout', 'forge'] as const;
 
 const DIRECT_USER_COLLECTIONS = [
   'users',
@@ -16,7 +16,6 @@ const DIRECT_USER_COLLECTIONS = [
   'atlas_profiles',
   'scout_knowledge',
   'forge_sessions',
-  'pulse_profiles',
   'semantic_memory',
   'spine_events',
   'belief_graphs'

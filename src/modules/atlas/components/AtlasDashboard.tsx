@@ -12,7 +12,7 @@ import { ViewSwitcher } from './ViewSwitcher';
 import { TaskTimeline } from './TaskTimeline';
 import { WeekGrid } from './WeekGrid';
 import { FocusView } from './FocusView';
-import { QuickAddForm, type TaskInput, type HabitInput, type GoalInput } from './QuickAddForm';
+import { QuickAddForm } from './QuickAddForm';
 import { HabitTracker } from './HabitTracker';
 import { GoalProgress } from './GoalProgress';
 import { SectionHeader } from '@/core/components/SectionHeader';
@@ -144,26 +144,6 @@ export function AtlasDashboard({
     );
   }
 
-  // ---- QuickAddForm bridges (adapt specific input types → Partial<Domain>) ----
-
-  const handleCreateTask = (input: TaskInput) => {
-    onCreateTask({
-      title: input.title,
-      priority: input.priority,
-      energyCost: input.energyCost,
-      deadline: input.deadline,
-      projectId: input.projectId,
-    });
-  };
-
-  const handleCreateHabit = (input: HabitInput) => {
-    onCreateHabit({ title: input.title, energyCost: input.energyCost });
-  };
-
-  const handleCreateGoal = (input: GoalInput) => {
-    onCreateGoal({ title: input.title, deadline: input.deadline });
-  };
-
   // ---- Render ----
 
   return (
@@ -263,7 +243,7 @@ export function AtlasDashboard({
 
           {/* Energy wave chart */}
           <section className="space-y-3" aria-label="Energy wave visualization">
-            <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+            <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
               Energy Wave
             </h4>
             {energyWave.length > 0 ? (
@@ -283,7 +263,7 @@ export function AtlasDashboard({
 
           {/* Task timeline */}
           <section className="space-y-3">
-            <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+            <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
               Task Timeline
             </h4>
             <TaskTimeline
@@ -297,7 +277,7 @@ export function AtlasDashboard({
 
           {/* Habit tracker */}
           <section className="space-y-3">
-            <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+            <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
               Habits
             </h4>
             <HabitTracker
@@ -309,7 +289,7 @@ export function AtlasDashboard({
 
           {/* Goal progress */}
           <section className="space-y-3">
-            <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+            <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
               Goals
             </h4>
             <GoalProgress
@@ -321,7 +301,7 @@ export function AtlasDashboard({
 
           {/* Recovery windows */}
           <section className="space-y-3" aria-label="Recovery windows">
-            <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+            <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
               Recovery Windows
             </h4>
             {(profile?.recoveryWindows ?? []).slice(0, 3).map((window) => (
@@ -348,7 +328,7 @@ export function AtlasDashboard({
 
           {/* Risk flags */}
           <section className="space-y-3" aria-label="Cognitive risk flags">
-            <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+            <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
               Risk Flags
             </h4>
             {riskFlags.length === 0 ? (
@@ -390,7 +370,7 @@ export function AtlasDashboard({
           />
 
           <section className="space-y-3">
-            <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+            <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
               Goals
             </h4>
             <GoalProgress
@@ -422,9 +402,9 @@ export function AtlasDashboard({
       {/* ══════════════ QUICK-ADD FAB (always visible) ══════════════ */}
       <QuickAddForm
         projects={projects}
-        onCreateTask={handleCreateTask}
-        onCreateHabit={handleCreateHabit}
-        onCreateGoal={handleCreateGoal}
+        onCreateTask={onCreateTask}
+        onCreateHabit={onCreateHabit}
+        onCreateGoal={onCreateGoal}
       />
     </div>
   );

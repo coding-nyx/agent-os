@@ -42,7 +42,6 @@ import { GoalProgress } from './GoalProgress';
 import { HabitTracker } from './HabitTracker';
 import { FieldsTab } from './FieldsTab';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
-import { QuickAddForm } from './QuickAddForm';
 import { TodaysPlanCard } from './TodaysPlanCard';
 import { FocusView } from './FocusView';
 import { ViewSwitcher } from './ViewSwitcher';
@@ -56,6 +55,8 @@ interface EnhancedAtlasDashboardProps {
   isLocked?: boolean;
   activeTab?: AtlasTab;
   onTabChange?: (tab: AtlasTab) => void;
+  activeView?: AtlasView;
+  onViewChange?: (view: AtlasView) => void;
   onCompleteTask?: (taskId: string) => void;
   onCompleteHabit?: (habitId: string) => void;
   onUpdateGoalProgress?: (goalId: string, milestoneId: string) => void;
@@ -86,6 +87,8 @@ export function EnhancedAtlasDashboard({
   isLocked = false,
   activeTab = 'dashboard',
   onTabChange = noop,
+  activeView = 'today',
+  onViewChange = noop,
   onCompleteTask = noop,
   onCompleteHabit = noop,
   onUpdateGoalProgress = noop,
@@ -108,7 +111,6 @@ export function EnhancedAtlasDashboard({
 }: EnhancedAtlasDashboardProps) {
   const [isEditingIntention, setIsEditingIntention] = useState(false);
   const [intentionForm, setIntentionForm] = useState({ theme: '', focusDomain: '', energyTarget: 5 });
-  const [activeView, setActiveView] = useState<AtlasView>('today');
 
   const tabs: NeuralTabItem<AtlasTab>[] = [
     { id: 'dashboard', label: 'Dashboard', icon: CalendarRange },
@@ -177,7 +179,7 @@ export function EnhancedAtlasDashboard({
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             {/* ── Sub-view navigation: Today / Week / Focus ── */}
-            <ViewSwitcher activeView={activeView} onViewChange={setActiveView} />
+            <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />
 
             {/* ── Focus Mode (Zen / Pomodoro) ── */}
             {activeView === 'focus' && (
@@ -195,18 +197,6 @@ export function EnhancedAtlasDashboard({
               <TodaysPlanCard profile={profile} isLocked={isLocked} />
             )}
 
-            {/* ── Quick-add FAB (Today & Week views) ── */}
-            {activeView !== 'focus' && (
-              <div className="relative">
-                <QuickAddForm
-                  projects={profile?.projects ?? []}
-                  onCreateTask={(t) => onCreateTask(t)}
-                  onCreateHabit={(h) => onCreateHabit(h)}
-                  onCreateGoal={(g) => onCreateGoal(g)}
-                />
-              </div>
-            )}
-
             {/* ── Normal dashboard content (Today & Week views) ── */}
             {activeView !== 'focus' && (
               <div className="space-y-6">
@@ -214,7 +204,7 @@ export function EnhancedAtlasDashboard({
             {profile?.dailyIntentions && profile.dailyIntentions.length > 0 && (
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+                  <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
                     Today's Intent
                   </h4>
                   {!isEditingIntention && (
@@ -238,7 +228,7 @@ export function EnhancedAtlasDashboard({
                    {isEditingIntention ? (
                      <div className="space-y-4">
                         <div className="space-y-1">
-                          <label className="text-[10px] font-black text-sky-400 uppercase tracking-widest">Theme</label>
+                          <label className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Theme</label>
                           <input 
                             type="text" 
                             value={intentionForm.theme}
@@ -248,7 +238,7 @@ export function EnhancedAtlasDashboard({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <label className="text-[10px] font-black text-sky-400 uppercase tracking-widest">Focus Domain</label>
+                            <label className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Focus Domain</label>
                             <input 
                               type="text" 
                               value={intentionForm.focusDomain}
@@ -257,7 +247,7 @@ export function EnhancedAtlasDashboard({
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] font-black text-sky-400 uppercase tracking-widest">Energy Target</label>
+                            <label className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Energy Target</label>
                             <input 
                               type="number" 
                               value={intentionForm.energyTarget}
@@ -278,7 +268,7 @@ export function EnhancedAtlasDashboard({
                                onUpdateIntention(intentionForm);
                                setIsEditingIntention(false);
                              }}
-                             className="text-[10px] font-black bg-sky-500 text-white px-4 py-1 rounded-full hover:bg-sky-400 transition-colors"
+                             className="text-[10px] font-bold bg-sky-500 text-white px-4 py-1 rounded-full hover:bg-sky-400 transition-colors"
                            >
                              SAVE INTENT
                            </button>
@@ -289,13 +279,13 @@ export function EnhancedAtlasDashboard({
                       <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <Target className="w-4 h-4 text-sky-400" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-sky-400">Focus Domain</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400">Focus Domain</span>
                           </div>
                           <span className="text-[10px] text-white/30 font-bold uppercase tabular-nums">
                             {profile.dailyIntentions[0].date}
                           </span>
                       </div>
-                      <h3 className="text-xl font-black italic text-white/90 tracking-tight uppercase leading-tight">
+                      <h3 className="text-lg sm:text-xl font-bold text-white/90 tracking-tight uppercase leading-tight font-display">
                           {profile.dailyIntentions[0].theme}
                       </h3>
                       <div className="mt-4 flex items-center gap-4">
@@ -305,7 +295,7 @@ export function EnhancedAtlasDashboard({
                           </div>
                           <div className="flex items-center gap-1.5">
                             <Zap className="w-3 h-3 text-amber-400" />
-                            <span className="text-[10px] font-black text-white/30">Target: {profile.dailyIntentions[0].energyTarget}/10</span>
+                            <span className="text-[10px] font-bold text-white/30">Target: {profile.dailyIntentions[0].energyTarget}/10</span>
                           </div>
                       </div>
                      </>
@@ -355,7 +345,7 @@ export function EnhancedAtlasDashboard({
 
             {/* Energy wave chart */}
             <section className="space-y-3" aria-label="Energy wave visualization">
-              <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+              <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
                 48-Hour Energy Forecast
               </h4>
               {energyWave.length > 0 ? (
@@ -375,7 +365,7 @@ export function EnhancedAtlasDashboard({
 
             {/* Unified Timeline / Task timeline */}
             <section className="space-y-3">
-              <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+              <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
                 Daily Timeline
               </h4>
               <TaskTimeline
@@ -389,7 +379,7 @@ export function EnhancedAtlasDashboard({
 
             {/* Active habits snapshot */}
             <section className="space-y-3">
-              <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+              <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
                 Today's Habits
               </h4>
               <HabitTracker
@@ -401,7 +391,7 @@ export function EnhancedAtlasDashboard({
 
             {/* Active goals snapshot */}
             <section className="space-y-3">
-              <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+              <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
                 Active Goals
               </h4>
               <GoalProgress
@@ -419,7 +409,7 @@ export function EnhancedAtlasDashboard({
         {activeTab === 'backlog' && (
            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
-                  <h3 className="text-lg font-black text-white/90">Task Backlog</h3>
+                  <h3 className="text-lg font-bold font-display text-white/90">Task Backlog</h3>
                   <TaskManager
                     tasks={tasks}
                     projects={profile?.projects ?? []}
@@ -430,7 +420,7 @@ export function EnhancedAtlasDashboard({
                   />
               </div>
               <div className="space-y-4">
-                  <h3 className="text-lg font-black text-white/90">Active Goals</h3>
+                  <h3 className="text-lg font-bold font-display text-white/90">Active Goals</h3>
                   <GoalTracker
                     goals={goals}
                     tasks={tasks}
@@ -447,7 +437,7 @@ export function EnhancedAtlasDashboard({
         {activeTab === 'routines' && (
            <div className="space-y-8">
               <section className="space-y-3">
-                 <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+                 <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
                     Weekly Routine Skeleton
                  </h4>
                  {profile && (
@@ -459,7 +449,7 @@ export function EnhancedAtlasDashboard({
               </section>
               
               <section className="space-y-3">
-                  <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic">
+                  <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
                      Habit Builder
                   </h4>
                   <HabitBuilder
@@ -487,7 +477,7 @@ export function EnhancedAtlasDashboard({
         {/* ══════════════ REVIEW TAB ══════════════ */}
         {activeTab === 'review' && (
           <div className="space-y-6">
-            <h3 className="text-lg font-black text-white/90">Temporal Reviews</h3>
+            <h3 className="text-lg font-bold font-display text-white/90">Temporal Reviews</h3>
             {profile?.reviews && profile.reviews.length > 0 ? (
               <div className="space-y-4">
                 {profile.reviews.map((review: any) => (

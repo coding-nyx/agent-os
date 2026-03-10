@@ -52,8 +52,7 @@ const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
     ledger: 'Ledger',
     atlas: 'Atlas',
     scout: 'Scout',
-    forge: 'Forge',
-    pulse: 'Pulse'
+    forge: 'Forge'
   },
   agentGenders: {
     orchestrator: 'female',
@@ -63,8 +62,7 @@ const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
     ledger: 'female',
     atlas: 'female',
     scout: 'female',
-    forge: 'female',
-    pulse: 'female'
+    forge: 'female'
   },
   personaOverlays: {}
 };

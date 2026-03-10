@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import type { Message, MessageContent } from '../types';
-import type { ConversationContext } from '@/llm-engine/types';
-import type { StructuredResponse } from '@/llm-engine/engine/types';
+import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
+import type { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { NexusHandoffService } from '../services/nexus-handoff-service';
 import { NexusRoutingService } from '../services/nexus-routing-service';
 import { Spine } from '../spine/spine-event-bus';

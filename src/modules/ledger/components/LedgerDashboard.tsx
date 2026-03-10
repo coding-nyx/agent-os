@@ -318,7 +318,7 @@ export function LedgerDashboard({
       )}
 
       <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Statement Analysis</h4>
+        <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Statement Analysis</h4>
         <SurfaceCard className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -357,7 +357,7 @@ export function LedgerDashboard({
       </section>
 
       <section className="space-y-3">
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest italic">Risk Flags</h4>
+        <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Risk Flags</h4>
         {warnings.length === 0 ? (
           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-[10px] text-emerald-300">
             Resource profile is stable.

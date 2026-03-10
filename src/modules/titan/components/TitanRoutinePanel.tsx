@@ -76,14 +76,14 @@ export function TitanRoutinePanel({
             icon={Dumbbell}
             action={
               <div className="flex flex-col sm:flex-row items-center gap-3 pt-1 relative">
-                <NeuralButton onClick={handleOpenCreate}>
+                <NeuralButton themeColor="orange" onClick={handleOpenCreate}>
                   <Plus className="w-4 h-4 mr-2" />
                   Build Manually
                 </NeuralButton>
                 {onGeneratePlan && (
-                  <NeuralButton onClick={onGeneratePlan} variant="ghost">
+                  <NeuralButton themeColor="orange" onClick={onGeneratePlan} variant="ghost">
                     <MessageSquare className="w-4 h-4 mr-2" />
-                    Generate with AI
+                    AI Plan
                   </NeuralButton>
                 )}
                 {onImportRoutine && (
@@ -134,7 +134,7 @@ export function TitanRoutinePanel({
         <SurfaceCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <PanelLabel label="Weekly Plan" metadata={`${sorted.length} days`} />
-            <NeuralButton size="sm" onClick={handleOpenCreate}>
+            <NeuralButton size="sm" themeColor="orange" onClick={handleOpenCreate}>
               <Plus className="w-3 h-3 mr-1.5" />
               Add Day
             </NeuralButton>
@@ -297,6 +297,7 @@ export function TitanRoutinePanel({
               {onAnalyzeRoutine && (
                 <NeuralButton
                   size="xl"
+                  themeColor="orange"
                   className="flex-1"
                   onClick={() => {
                     onAnalyzeRoutine(selectedRoutine);
@@ -304,12 +305,13 @@ export function TitanRoutinePanel({
                   }}
                 >
                   <MessageSquare className="w-4 h-4 mr-2" />
-                  Analyze with Titan
+                  Analyze Protocol
                 </NeuralButton>
               )}
               <NeuralButton
                 size="xl"
                 variant="ghost"
+                themeColor="orange"
                 onClick={() => handleOpenEdit(selectedRoutine)}
               >
                 <Pencil className="w-4 h-4 mr-2" />

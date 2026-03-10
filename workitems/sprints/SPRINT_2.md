@@ -1,12 +1,12 @@
 # SPRINT 2 — Memory Consolidation & LLM Context Retrieval
 **Duration:** 1–2 weeks  
 **Objective:** Complete the existing consolidation and retrieval path so module chat can inject stable long-term context without breaking the `llm-engine` boundary.
-**Status:** Active — Started March 10, 2026
+**Status:** Completed — Closed in Sprint 6 on March 10, 2026
 
 ## Sprint Start
-- Sprint 2 is now the active sprint.
+- Sprint 2 started as the active sprint and was paused when Sprint 4 started.
 - Execution order is S2-001 -> S2-002 -> S2-003 -> S2-004 -> S2-005 -> S2-006.
-- Completed so far: S2-001 through S2-005.
+- Completed: S2-001 through S2-006.
 
 ## Goals
 - Operationalize memory consolidation on top of `useConsolidation`, `MemoryManager`, and `MemoryOrchestrator`.
@@ -41,12 +41,16 @@
    - [x] Acceptance: targeted tests cover consolidation, retrieval, interruption, and encrypted persistence; `npm run build` passes.
 
 6. **S2-006: RAG Adapter Implementation (Vault-Safe Retrieval)**
-   - [ ] Acceptance:
+   - [x] Acceptance:
      - Web adapter integrates with `useModuleAI` retrieval path, accepts `encryptionKey`, and refuses plaintext paths for vault-scoped modules.
      - Non-web/KMP/native adapter stubs defined with secure keyring usage and offline Spine event queueing; proxy support documented for provider keys.
      - Pending completion recovery replays retrievals deterministically via context hashes; vault-locked sessions skip injection and mark status without crashes.
      - Tests or contracts cover encrypted fact/summary storage and absence of plaintext writes for protected modules.
-   - Progress: web-side vault-safe adapter contract and retrieval integration are in place; remaining work is non-web/KMP stub coverage and explicit adapter selection strategy.
+   - Progress:
+     - Added runtime-selectable RAG adapter registry.
+     - Implemented `web` vault-safe adapter and `native` stub adapter contracts.
+     - Added tests for vault blocking, runtime selection, and adapter overrides.
+     - Pending recovery context-hash replay guard remains active in `use-module-ai`.
 
 ## Sprint Handoff
-- This sprint is still responsible for the memory consolidation and retrieval work described above, but parallel documentation and portability planning has launched in [SPRINT_3](SPRINT_3.md), which is tracking the LLM entrypoint story and migration guidance requested by the platform team.
+- Sprint scope is complete. Remaining portability follow-ups continue in [SPRINT_3](SPRINT_3.md) and the architecture backlog.

@@ -55,12 +55,12 @@ export function SystemPanel() {
           <div className="w-7 h-7 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
             <Activity className="w-3.5 h-3.5 text-violet-400" />
           </div>
-          <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
             Module Health
           </h3>
           <div className="ml-auto flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[9px] uppercase tracking-[0.2em] text-emerald-400 font-black">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-emerald-400 font-bold">
               Live
             </span>
           </div>
@@ -100,7 +100,7 @@ export function SystemPanel() {
                     className="w-1.5 h-1.5 rounded-full shrink-0"
                     style={{ backgroundColor: mod.colorHex, opacity: 0.85 }}
                   />
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-300">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-300">
                     Active
                   </span>
                 </div>
@@ -116,33 +116,33 @@ export function SystemPanel() {
           <div className="w-7 h-7 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
             <Info className="w-3.5 h-3.5 text-violet-400" />
           </div>
-          <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
             System Info
           </h3>
         </div>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-white/35 font-black">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-bold">
               App Version
             </span>
-            <span className="text-xs font-black text-violet-300 uppercase tracking-widest">
+            <span className="text-xs font-bold text-violet-300 uppercase tracking-wider">
               {APP_VERSION}
             </span>
           </div>
           <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-white/35 font-black">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-bold">
               Platform
             </span>
-            <span className="text-xs font-black text-white/50 uppercase tracking-widest">
+            <span className="text-xs font-bold text-white/50 uppercase tracking-wider">
               AGNES_OS
             </span>
           </div>
           <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-white/35 font-black">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-bold">
               Encryption
             </span>
-            <span className="text-xs font-black text-emerald-300 uppercase tracking-widest">
+            <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
               E2EE Active
             </span>
           </div>
@@ -151,7 +151,7 @@ export function SystemPanel() {
 
       {/* Sign out */}
       <GlassCard className="p-6">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40 mb-4">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 mb-4">
           Session
         </h3>
         <div className="flex items-center justify-between p-4 rounded-2xl bg-rose-950/20 border border-rose-500/10">
@@ -161,7 +161,7 @@ export function SystemPanel() {
             </div>
             <div>
               <p className="text-sm font-bold text-white/90">Sign Out</p>
-              <p className="text-[10px] text-white/35 uppercase tracking-widest font-bold">
+              <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold">
                 End this session
               </p>
             </div>

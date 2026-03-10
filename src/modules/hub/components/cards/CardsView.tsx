@@ -35,7 +35,7 @@ export const ModuleCard = React.memo(function ModuleCard({
           <Icon className={isPlugin ? "w-5 h-5" : "w-8 h-8"} style={{ color: isLocked ? '#666' : color }} />
         </div>
         <h3 className={cn(
-          "font-black tracking-[0.1em] text-white mb-3 uppercase italic transition-colors",
+          "font-bold tracking-[0.1em] text-white mb-3 uppercase font-display transition-colors",
           isPlugin ? "text-lg" : "text-2xl",
           !isLocked && "group-hover:text-white"
         )}>
@@ -54,7 +54,7 @@ export const ModuleCard = React.memo(function ModuleCard({
             <span className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-black">{stat.label}</span>
             <div className="flex items-center gap-3">
               <div className={cn("w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_currentColor]", toneClass(stat.tone))} />
-              <span className={cn("text-sm font-black italic tracking-widest", toneTextClass(stat.tone))}>
+              <span className={cn("text-sm font-bold tracking-widest font-display", toneTextClass(stat.tone))}>
                 {stat.display}
               </span>
             </div>

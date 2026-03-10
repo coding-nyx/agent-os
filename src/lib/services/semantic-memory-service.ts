@@ -1,5 +1,4 @@
-import { collection, doc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { SemanticFact } from '@/lib/types';
 
 function normalizeConfidence(confidence?: number): number {
@@ -9,18 +8,11 @@ function normalizeConfidence(confidence?: number): number {
 
 export const SemanticMemoryService = {
   async getFacts(uid: string, moduleIds: string[]): Promise<SemanticFact[]> {
-    const { db } = getFirebase();
-    if (!db || !uid || moduleIds.length === 0) return [];
+    if (!uid || moduleIds.length === 0) return [];
 
     try {
-      const snap = await getDocs(collection(db, 'semantic_memory', uid, 'facts'));
-      const facts = snap.docs.map((docSnap) => {
-        const data = docSnap.data() as Omit<SemanticFact, 'id'>;
-        return {
-          ...data,
-          id: docSnap.id
-        } as SemanticFact;
-      });
+      const dataLayer = getNexusDataLayer();
+      const facts = await dataLayer.listDocuments<Omit<SemanticFact, 'id'>>(`semantic_memory/${uid}/facts`);
 
       return facts
         .filter((fact) => moduleIds.includes(fact.moduleId))
@@ -33,50 +25,29 @@ export const SemanticMemoryService = {
   },
 
   subscribeFacts(uid: string, onUpdate: (facts: SemanticFact[]) => void): () => void {
-    const { db } = getFirebase();
-    if (!db || !uid) {
+    if (!uid) {
       onUpdate([]);
       return () => {};
     }
-
-    const ref = collection(db, 'semantic_memory', uid, 'facts');
-    const unsubscribe = onSnapshot(
-      ref,
-      (snap) => {
-        const facts = snap.docs.map((docSnap) => {
-          const data = docSnap.data() as Omit<SemanticFact, 'id'>;
-          return {
-            ...data,
-            id: docSnap.id
-          } as SemanticFact;
-        });
-        onUpdate(facts);
-      },
-      (error) => {
-        console.error('Semantic memory subscription error:', error);
-      }
+    const dataLayer = getNexusDataLayer();
+    return dataLayer.subscribeToQuery<Omit<SemanticFact, 'id'>>(
+      { collection: `semantic_memory/${uid}/facts` },
+      (facts) => onUpdate(facts as SemanticFact[])
     );
-
-    return unsubscribe;
   },
 
   async upsertFact(uid: string, fact: Omit<SemanticFact, 'id' | 'updatedAt'> & { id?: string }): Promise<void> {
-    const { db } = getFirebase();
-    if (!db || !uid || !fact.fact.trim()) return;
+    if (!uid || !fact.fact.trim()) return;
 
+    const dataLayer = getNexusDataLayer();
     const factId = fact.id || crypto.randomUUID();
-    const ref = doc(db, 'semantic_memory', uid, 'facts', factId);
     try {
-      await setDoc(
-        ref,
-        {
-          moduleId: fact.moduleId,
-          fact: fact.fact.trim(),
-          confidence: normalizeConfidence(fact.confidence),
-          updatedAt: new Date().toISOString()
-        },
-        { merge: true }
-      );
+      await dataLayer.setDocument(`semantic_memory/${uid}/facts`, factId, {
+        moduleId: fact.moduleId,
+        fact: fact.fact.trim(),
+        confidence: normalizeConfidence(fact.confidence),
+        updatedAt: new Date().toISOString()
+      });
     } catch (error) {
       console.error('[SemanticMemoryService] Failed to upsert fact:', error);
     }

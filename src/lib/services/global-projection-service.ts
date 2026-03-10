@@ -151,8 +151,7 @@ export const GlobalProjectionService = {
         ledger: 'Ledger',
         atlas: 'Atlas',
         scout: 'Scout',
-        forge: 'Forge',
-        pulse: 'Pulse'
+        forge: 'Forge'
       },
       agentGenders: {
         orchestrator: 'female',
@@ -161,8 +160,7 @@ export const GlobalProjectionService = {
         ledger: 'female',
         atlas: 'female',
         scout: 'female',
-        forge: 'female',
-        pulse: 'female'
+        forge: 'female'
       }
     };
 

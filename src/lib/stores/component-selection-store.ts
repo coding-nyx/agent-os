@@ -76,3 +76,9 @@ export const useComponentSelection = create<ComponentSelectionState>((set, get) 
     return current !== null && current.type === type && current.id === id;
   },
 }));
+
+// Fine-grained selector hooks — use these to avoid full-store subscriptions.
+export const useSelectedEntity = () => useComponentSelection(s => s.selectedEntity);
+export const useSelectEntity = () => useComponentSelection(s => s.select);
+export const useDeselectEntity = () => useComponentSelection(s => s.deselect);
+export const useIsEntitySelected = () => useComponentSelection(s => s.isSelected);

@@ -23,7 +23,6 @@ const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
     atlas: 'female',
     scout: 'female',
     forge: 'female',
-    pulse: 'female'
   },
   personaOverlays: {}
 };

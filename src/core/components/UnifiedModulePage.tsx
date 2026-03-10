@@ -66,6 +66,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   }, []);
 
   const manifest = MODULE_MANIFEST[moduleId];
+  const onboardingMode = manifest.onboarding.mode;
   const themeColor = manifest.themeColor;
   const title = manifest.title;
 
@@ -133,7 +134,27 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
     );
   }
 
-  if (isOnboarding && RenderOnboarding) {
+  if (isOnboarding && onboardingMode !== 'optional' && !RenderOnboarding) {
+    return (
+      <ModuleLayout title={`${title} Intake`} themeColor={themeColor} moduleId={moduleId}>
+        <div className="flex-1 flex items-center justify-center p-8">
+          <SurfaceCard variant="strong" className="w-full max-w-2xl p-8 space-y-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] italic text-rose-300">
+              Onboarding Contract Mismatch
+            </div>
+            <p className="text-sm text-white/70">
+              `{moduleId}` is configured as `{onboardingMode}` onboarding mode but no onboarding renderer was provided.
+            </p>
+            <p className="text-xs text-white/45">
+              Add `renderOnboarding` for required/hybrid modules or switch mode to optional in `module-manifest.ts`.
+            </p>
+          </SurfaceCard>
+        </div>
+      </ModuleLayout>
+    );
+  }
+
+  if (isOnboarding && onboardingMode !== 'optional' && RenderOnboarding) {
     return (
       <ModuleLayout title={`${title} Intake`} themeColor={themeColor} moduleId={moduleId}>
         <RenderOnboarding

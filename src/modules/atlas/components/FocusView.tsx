@@ -332,7 +332,7 @@ export function FocusView({
         onClick={onOpenChat}
         aria-label="Open chat with Atlas"
         className={cn(
-          'fixed bottom-6 right-6 z-40 w-12 h-12 rounded-full flex items-center justify-center',
+          'fixed bottom-6 right-6 z-[var(--z-fab)] w-12 h-12 rounded-full flex items-center justify-center',
           'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400',
           'hover:bg-emerald-500/30 active:bg-emerald-500/40 transition-all',
           'shadow-lg shadow-emerald-500/10',

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../auth-context';
 import { useVault } from '../vault-context';
 import { useSpineEvent } from '../spine/spine-event-bus';
+import { shouldGateModuleOnboarding } from '../onboarding/onboarding-policy';
 
 export interface UseModuleProfileOptions<TProfile> {
   moduleId: string;
@@ -30,6 +31,10 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
   const [hasSyncedGuest, setHasSyncedGuest] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const hasLoadedOnce = useRef(false);
+  const resolveOnboardingGate = useCallback((nextProfile: TProfile | null) => {
+    return shouldGateModuleOnboarding(moduleId, nextProfile);
+  }, [moduleId]);
 
   // Listen for external sync events (e.g. from useModuleAI actions)
   useSpineEvent('MODULE_PROFILE_UPDATED' as any, useCallback((event) => {
@@ -67,7 +72,11 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
         return;
       }
 
-      setIsLoading(true);
+      // Only show loading skeleton on initial mount, not on refresh-triggered re-inits.
+      // This prevents UnifiedModulePage from unmounting content components mid-session.
+      if (!hasLoadedOnce.current) {
+        setIsLoading(true);
+      }
       const key = isUnlocked ? await getModuleKey(moduleId) : null;
       if (!mounted) return;
       setEncryptionKey(key);
@@ -76,8 +85,9 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
         const unsub = subscribeProfileRef.current({ userId: user.uid, encryptionKey: key }, (nextProfile) => {
           if (!mounted) return;
           setProfile(nextProfile);
-          setIsOnboarding(!nextProfile || !nextProfile.onboardingComplete);
+          setIsOnboarding(resolveOnboardingGate(nextProfile));
           setIsLoading(false);
+          hasLoadedOnce.current = true;
         });
 
         if (!mounted) {
@@ -91,8 +101,9 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       const loadedProfile = await loadProfileRef.current({ userId: user.uid, encryptionKey: key });
       if (!mounted) return;
       setProfile(loadedProfile);
-      setIsOnboarding(!loadedProfile || !loadedProfile.onboardingComplete);
+      setIsOnboarding(resolveOnboardingGate(loadedProfile));
       setIsLoading(false);
+      hasLoadedOnce.current = true;
     };
 
     init();
@@ -101,7 +112,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       mounted = false;
       if (unsubscribe) unsubscribe();
     };
-  }, [user?.uid, isGuest, isUnlocked, getModuleKey, moduleId, refreshNonce]); // Added refreshNonce
+  }, [user?.uid, isGuest, isUnlocked, getModuleKey, moduleId, refreshNonce, resolveOnboardingGate]); // Added refreshNonce
 
   useEffect(() => {
     if (!user || !isUnlocked || hasSyncedGuest || !syncGuestProfileRef.current) return;
@@ -140,9 +151,9 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
     });
 
     setProfile(nextProfile);
-    setIsOnboarding(!nextProfile || !nextProfile.onboardingComplete);
+    setIsOnboarding(resolveOnboardingGate(nextProfile));
     return nextProfile;
-  }, [user?.uid, isUnlocked, getModuleKey, moduleId]);
+  }, [user?.uid, isUnlocked, getModuleKey, moduleId, resolveOnboardingGate]);
 
   return {
     profile,

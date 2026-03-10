@@ -2,14 +2,14 @@
  * Main app-layer adapter between module UIs and the LLM runtime boundary.
  * See docs/architecture/llm-entrypoint-runtime.md for the full message flow.
  */
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
 import { useGlobalSoul } from '../global-soul-context';
 import { useAuth } from '../auth-context';
 import { Message, MessageContent, GuestQuota, NeuralStateVectorPatch, SpineEventType, ContextPolicy } from '../types';
 import { GuestQuotaService } from '../services/guest-quota-service';
 import { ModuleMemoryService } from '../services/module-memory-service';
-import { PersonaFactory } from '@/llm-engine/persona-factory';
+import { PersonaFactory } from '@/lib/ai-adapters/persona-factory';
 import { GlobalProjectionService } from '../services/global-projection-service';
 import { Spine } from '../spine/spine-event-bus';
 import { NexusHandoffService } from '../services/nexus-handoff-service';
@@ -435,6 +435,7 @@ export function useModuleAI({
         // --- Action processing ---
         const allowedActions = ActionHub.getAllowedActions(moduleId);
         const soulUpdates: NeuralStateVectorPatch = {};
+        let profileDirty = false;
 
         const updateGlobalSoul = async (patch: NeuralStateVectorPatch) => {
             for (const key of Object.keys(patch)) {
@@ -509,7 +510,8 @@ export function useModuleAI({
               priority: 'info'
             }),
             updateGlobalSoul,
-            delegateToModule
+            delegateToModule,
+            markProfileDirty: () => { profileDirty = true; }
           });
 
           if (onActionParsed) onActionParsed(type, payload);
@@ -532,8 +534,10 @@ export function useModuleAI({
           });
         }
 
-        // Emit overall update event AFTER NSV is persisted to trigger UI refresh with stable state
-        if (response.actions.length > 0) {
+        // Only emit MODULE_PROFILE_UPDATED when an action handler explicitly marked the
+        // profile as dirty. NSV-only actions (e.g. update_emotional_resilience) propagate
+        // through VITAL_UPDATED and the GlobalSoul Firestore subscription instead.
+        if (profileDirty) {
           Spine.emit({
             type: 'MODULE_PROFILE_UPDATED' as any,
             source: moduleId,
@@ -737,7 +741,7 @@ export function useModuleAI({
     }
   }, [messages, sendMessage, resolvedEnhanceContext]);
 
-  return {
+  return useMemo(() => ({
     messages,
     setMessages,
     isProcessing,
@@ -753,6 +757,10 @@ export function useModuleAI({
     clearSession,
     summarizeSession,
     pendingRequest,
-    clearPendingRequest
-  };
+    clearPendingRequest,
+  }), [
+    messages, setMessages, isProcessing, aiState, isHydrating, streamingText,
+    error, quota, routingSuggestion, setRoutingSuggestion, handleSendMessage,
+    prewarmMemory, clearSession, summarizeSession, pendingRequest, clearPendingRequest,
+  ]);
 }

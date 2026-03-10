@@ -14,8 +14,8 @@ import {
 import { ActionContext } from './action-hub';
 import { SchemaRegistry, SchemaRegistryService } from '@/lib/schema-registry';
 import { FieldType } from '@/lib/field-system/types';
-import type { ConversationContext } from '@/llm-engine/types';
-import type { StructuredResponse } from '@/llm-engine/engine/types';
+import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
+import type { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 
 // ==================== Mocks ====================
 

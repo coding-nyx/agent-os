@@ -37,12 +37,12 @@ export function SpineSideRail() {
           className="w-48 rounded-2xl border border-white/10 bg-black/40 px-3 py-2"
         >
           <div className="flex items-center justify-between">
-            <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${DOMAIN_COLOR[event.domain]}`}>
+            <span className={`text-[10px] font-bold uppercase tracking-[0.12em] ${DOMAIN_COLOR[event.domain]}`}>
               {DOMAIN_TEXT[event.domain]}
             </span>
-            <span className="text-[8px] text-white/50 uppercase tracking-[0.2em]">{event.type}</span>
+            <span className="text-[9px] text-white/50 uppercase tracking-[0.12em]">{event.type}</span>
           </div>
-          <div className="mt-1 text-[9px] text-white/45 uppercase tracking-[0.2em]">
+          <div className="mt-1 text-[9px] text-white/45 uppercase tracking-[0.12em]">
             {event.source}
           </div>
         </div>

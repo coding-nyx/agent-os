@@ -1,6 +1,7 @@
 import type { ExtractedDataItem } from '@/core/diagnosis/types';
-import type { TitanProfile, BiomarkerRecord, LabSummaryRecord, ClearanceRecord, MedicalImageAnalysis } from '@/lib/types';
+import type { TitanProfile, LabSummaryRecord, MedicalImageAnalysis } from '@/lib/types';
 import { loadTitanProfile, saveTitanProfile } from '../services/titan-profile-service';
+import { SomaTitanDelegationService } from '@/lib/services/soma-titan-delegation-service';
 
 /**
  * Merges user-approved diagnosis items into TitanProfile.
@@ -22,18 +23,19 @@ export async function mergeTitanDiagnosisData(
   for (const item of items) {
     switch (item.type) {
       case 'biomarker': {
-        const record: BiomarkerRecord = {
-          id: item.id,
-          name: typeof item.data.name === 'string' ? item.data.name : 'biomarker',
-          value: item.data.value as number | string,
-          unit: typeof item.data.unit === 'string' ? item.data.unit : undefined,
-          source: typeof item.data.source === 'string' ? item.data.source : 'diagnosis',
-          recordedAt: item.extractedAt,
-        };
-        next = {
-          ...next,
-          biomarkers: [record, ...next.biomarkers].slice(0, 200),
-        };
+        await SomaTitanDelegationService.commitBiomarker({
+          userId,
+          encryptionKey,
+          payload: {
+            id: item.id,
+            name: item.data.name,
+            value: item.data.value,
+            unit: item.data.unit,
+            source: item.data.source ?? 'diagnosis',
+            recordedAt: item.extractedAt,
+          },
+          source: 'titan_diagnosis',
+        });
         break;
       }
 
@@ -53,19 +55,18 @@ export async function mergeTitanDiagnosisData(
       }
 
       case 'clearance': {
-        const clearance: ClearanceRecord = {
-          id: item.id,
-          activity: typeof item.data.activity === 'string' ? item.data.activity : 'activity',
-          status: (['granted', 'denied', 'conditional'] as const).includes(item.data.status as 'granted')
-            ? (item.data.status as ClearanceRecord['status'])
-            : 'conditional',
-          reason: typeof item.data.reason === 'string' ? item.data.reason : '',
-          issuedAt: item.extractedAt,
-        };
-        next = {
-          ...next,
-          clearances: [clearance, ...next.clearances].slice(0, 100),
-        };
+        await SomaTitanDelegationService.issueClearance({
+          userId,
+          encryptionKey,
+          payload: {
+            id: item.id,
+            activity: item.data.activity,
+            status: item.data.status,
+            reason: item.data.reason,
+            issuedAt: item.extractedAt,
+          },
+          source: 'titan_diagnosis',
+        });
         break;
       }
 

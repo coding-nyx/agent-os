@@ -1,12 +1,14 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import type { TitanProfile, Routine, BiomarkerRecord, ClearanceRecord, MedicalImageAnalysis, SleepEntry, CycleEntry, CyclePhase, WorkoutSession, ExerciseLog, ExerciseSet } from '@/lib/types';
+import type { TitanProfile, Routine, BiomarkerRecord, MedicalImageAnalysis, SleepEntry, CycleEntry, CyclePhase, WorkoutSession, ExerciseLog, ExerciseSet } from '@/lib/types';
 import { mergeTitanProfile, normalizeRoutines } from '../utils';
 import { normalizeTitanProfilePatch } from '../onboarding/intake-accumulator';
 import { loadTitanProfile, saveTitanProfile } from './titan-profile-service';
 import { ClearanceService } from '@/modules/soma/services/clearance-service';
+import { SomaDataService } from '@/modules/soma/services/soma-data-service';
 import { parseHealthReport, parseWorkoutLog, parseBiometricData } from '@/lib/actions/parsing-actions';
+import { SomaTitanDelegationService } from '@/lib/services/soma-titan-delegation-service';
 
 let registered = false;
 
@@ -92,25 +94,12 @@ export function registerTitanActions() {
     // ── Absorbed Soma actions ───────────────────────────────────────────
 
     commit_biomarker: async ({ userId, encryptionKey, payload }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
-      if (!profile) return;
-
-      const record: BiomarkerRecord = {
-        id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
-        name: typeof payload?.name === 'string' ? payload.name : 'biomarker',
-        value: parseNumericValue(payload?.value),
-        unit: typeof payload?.unit === 'string' ? payload.unit : undefined,
-        source: typeof payload?.source === 'string' ? payload.source : undefined,
-        recordedAt: typeof payload?.recordedAt === 'string' ? payload.recordedAt : new Date().toISOString()
-      };
-
-      const next: TitanProfile = {
-        ...profile,
-        biomarkers: [record, ...profile.biomarkers].slice(0, 200),
-        updatedAt: new Date().toISOString()
-      };
-
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await SomaTitanDelegationService.commitBiomarker({
+        userId,
+        encryptionKey,
+        payload,
+        source: 'titan_action',
+      });
     },
 
     parse_lab_report: async ({ userId, encryptionKey, payload }) => {
@@ -135,29 +124,15 @@ export function registerTitanActions() {
     },
 
     issue_clearance: async ({ userId, encryptionKey, payload }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
-      if (!profile) return;
+      const clearance = await SomaTitanDelegationService.issueClearance({
+        userId,
+        encryptionKey,
+        payload,
+        source: 'titan_action',
+      });
+      if (!clearance) return;
 
-      const clearance: ClearanceRecord = {
-        id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
-        activity: typeof payload?.activity === 'string' ? payload.activity : 'activity',
-        status:
-          payload?.status === 'granted' || payload?.status === 'denied' || payload?.status === 'conditional'
-            ? payload.status
-            : 'conditional',
-        reason: typeof payload?.reason === 'string' ? payload.reason : 'No reason provided.',
-        issuedAt: new Date().toISOString()
-      };
-
-      const next: TitanProfile = {
-        ...profile,
-        clearances: [clearance, ...profile.clearances].slice(0, 100),
-        updatedAt: new Date().toISOString()
-      };
-
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
-
-      /** @deprecated CLEARANCE_GRANTED / CLEARANCE_DENIED — kept for backward compat with cascade rules */
+      // Keep deprecated events for compatibility until all listeners consume SOMA_*.
       Spine.emit({
         type: clearance.status === 'granted' ? 'CLEARANCE_GRANTED' : 'CLEARANCE_DENIED',
         source: 'titan',
@@ -172,7 +147,6 @@ export function registerTitanActions() {
         priority: clearance.status === 'granted' ? 'info' : 'alert'
       });
 
-      // Emit BLOCK_HIGH_INTENSITY when clearance is denied (for Atlas cascade)
       if (clearance.status === 'denied') {
         Spine.emit({
           type: 'BLOCK_HIGH_INTENSITY',
@@ -251,7 +225,6 @@ export function registerTitanActions() {
 
       const next: TitanProfile = {
         ...profile,
-        biomarkers: [...newBiomarkers, ...profile.biomarkers].slice(0, 200),
         labSummaries: [...newLabSummaries, ...profile.labSummaries].slice(0, 50),
         medications: [...newMedications, ...profile.medications].slice(0, 100),
         allergies: [...newAllergies, ...profile.allergies].slice(0, 50),
@@ -260,6 +233,18 @@ export function registerTitanActions() {
       };
 
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      if (userId && encryptionKey) {
+        await Promise.all(
+          newBiomarkers.map((biomarker) =>
+            SomaTitanDelegationService.commitBiomarker({
+              userId,
+              encryptionKey,
+              payload: biomarker as unknown as Record<string, unknown>,
+              source: 'titan_action',
+            })
+          )
+        );
+      }
 
       // Emit MEDICAL_ALERT if severe flags found
       const severeFlags = analysis.clinicalFlags.filter(f => f.severity === 'severe');
@@ -322,9 +307,17 @@ export function registerTitanActions() {
       const bio = (nsv.biological ?? {}) as Record<string, unknown>;
       const recoveryScore = typeof bio.recoveryScore === 'number' ? bio.recoveryScore : null;
 
-      // Evaluate contraindications from profile
+      // Titan consumes Soma state (read-only) for medical clearance decisions.
+      const healthSnapshot =
+        userId && encryptionKey
+          ? await SomaDataService.getHealthSnapshot(userId, encryptionKey)
+          : null;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
-      const clearance = profile ? ClearanceService.evaluate(profile, activity) : null;
+      const clearance = healthSnapshot
+        ? ClearanceService.evaluate(healthSnapshot, activity)
+        : profile
+          ? ClearanceService.evaluate(profile, activity)
+          : null;
       const hasContraindication = clearance != null && clearance.status !== 'granted';
 
       if (hasContraindication || (recoveryScore !== null && recoveryScore < RECOVERY_THRESHOLD)) {

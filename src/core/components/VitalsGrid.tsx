@@ -83,12 +83,12 @@ export function VitalsGrid({ metrics, columns = 4, isLocked = false, onCalibrate
                                 ) : (
                                     <span
                                       className={cn(
-                                        "text-xl font-black italic tabular-nums",
+                                        "text-xl font-bold tabular-nums font-display",
                                         ghosted ? "text-white/50 blur-[0.3px]" : ""
                                       )}
                                     >
                                         {metric.value}
-                                        {metric.max && <span className="text-[10px] text-white/40 not-italic ml-1">/{metric.max}</span>}
+                                        {metric.max && <span className="text-[10px] text-white/40 ml-1">/{metric.max}</span>}
                                     </span>
                                 )}
                             </div>

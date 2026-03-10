@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
-import { StructuredResponse } from '@/llm-engine/engine/types';
-import { Message } from '@/llm-engine/types';
+import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
+import { Message } from '@/lib/ai-adapters/engine-types';
 import { 
   GuidedChatSpec, 
   GuidedChatResult, 

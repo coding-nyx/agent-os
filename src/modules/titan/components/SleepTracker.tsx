@@ -142,13 +142,14 @@ export function SleepTracker({ sleepLog, onAnalyze }: SleepTrackerProps) {
               <NeuralButton
                 size="sm"
                 variant="ghost"
+                themeColor="cyan"
                 onClick={() => onAnalyze(`Analyze my sleep trends from the last ${recent.length} nights and give me actionable recommendations to improve recovery and training performance.`)}
               >
                 <MessageSquare className="w-3 h-3 mr-1.5" />
-                Analyze Trends
+                Trends
               </NeuralButton>
             )}
-            <NeuralButton size="sm" onClick={() => setShowModal(true)}>
+            <NeuralButton size="sm" themeColor="cyan" onClick={() => setShowModal(true)}>
               <Plus className="w-3 h-3 mr-1.5" />
               Log Sleep
             </NeuralButton>
@@ -162,9 +163,9 @@ export function SleepTracker({ sleepLog, onAnalyze }: SleepTrackerProps) {
             description="Track your sleep to unlock AI-powered recovery analysis. Titan uses sleep quality to calibrate your training intensity."
             icon={Moon}
             action={
-              <NeuralButton onClick={() => setShowModal(true)}>
+              <NeuralButton themeColor="cyan" onClick={() => setShowModal(true)}>
                 <Plus className="w-4 h-4 mr-2" />
-                Log First Night
+                Log Sleep
               </NeuralButton>
             }
           />
@@ -427,10 +428,10 @@ export function SleepTracker({ sleepLog, onAnalyze }: SleepTrackerProps) {
           )}
 
           <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-            <NeuralButton variant="ghost" onClick={() => setShowModal(false)}>
+            <NeuralButton variant="ghost" themeColor="cyan" onClick={() => setShowModal(false)}>
               Cancel
             </NeuralButton>
-            <NeuralButton onClick={handleSave} disabled={!onAnalyze}>
+            <NeuralButton themeColor="cyan" onClick={handleSave} disabled={!onAnalyze}>
               <Moon className="w-4 h-4 mr-2" />
               Save & Analyze
             </NeuralButton>

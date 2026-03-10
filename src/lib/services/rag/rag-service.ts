@@ -1,29 +1,22 @@
-export interface RagRetrieveOptions {
-  moduleId: string;
-  query: string;
-  encryptionKey?: CryptoKey | null;
-  requiresVault: boolean;
-}
+import { ragAdapterRegistry } from './rag-adapter-registry';
+import type { RagAdapter, RagRetrieveOptions, RagRetrieveResult, RagRuntime } from './rag-adapter';
 
-export interface RagRetrieveResult {
-  facts: string[];
-  status: 'ok' | 'vault_blocked';
+export type { RagAdapter, RagRetrieveOptions, RagRetrieveResult, RagRuntime } from './rag-adapter';
+
+export interface RagServiceRetrieveOptions extends RagRetrieveOptions {
+  runtime?: RagRuntime;
 }
 
 /**
- * Placeholder RAG adapter that enforces vault/E2EE boundaries.
- * Provider-specific implementations can replace this while keeping the contract.
+ * Runtime-selected RAG entrypoint that preserves vault/E2EE guardrails.
  */
 export const RagService = {
-  async retrieve({ moduleId, query, encryptionKey, requiresVault }: RagRetrieveOptions): Promise<RagRetrieveResult> {
-    if (!query.trim()) return { facts: [], status: 'ok' };
+  registerAdapter(adapter: RagAdapter): void {
+    ragAdapterRegistry.register(adapter);
+  },
 
-    if (requiresVault && !encryptionKey) {
-      console.warn(`[RagService] Retrieval blocked: ${moduleId} requires vault key.`);
-      return { facts: [], status: 'vault_blocked' };
-    }
-
-    // TODO: plug in real provider (e.g., Google GenAI embeddings) via adapter registry
-    return { facts: [], status: 'ok' };
+  async retrieve({ runtime = 'web', ...options }: RagServiceRetrieveOptions): Promise<RagRetrieveResult> {
+    const adapter = ragAdapterRegistry.resolve(runtime);
+    return adapter.retrieve(options);
   }
 };

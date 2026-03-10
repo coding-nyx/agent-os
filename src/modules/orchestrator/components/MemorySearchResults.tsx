@@ -81,7 +81,7 @@ export function MemorySearchResults({ query, sessions, facts, isSearching }: Mem
       {/* Stable facts */}
       {facts.length > 0 && (
         <div className="px-4 py-3 border-t border-white/5">
-          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 block mb-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/30 block mb-2">
             Stable Facts
           </span>
           <div className="space-y-1">

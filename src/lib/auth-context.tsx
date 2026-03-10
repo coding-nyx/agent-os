@@ -56,17 +56,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, dataLayer]);
 
-  const initializeNewUser = async () => {
-      if (!user || !user.email) return;
-      setLoading(true);
-      try {
-          const newP = await CoreProfileService.initializeProfile(user.uid, user.email, dataLayer);
-          setProfile(newP);
-          await GlobalProjectionService.syncFromProfile(newP, dataLayer);
-      } finally {
-          setLoading(false);
-      }
-  };
 
   useEffect(() => {
     const hasGuestSession = sessionStorage.getItem(GUEST_SESSION_KEY) === 'true';
@@ -132,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user, isGuest, authService, dataLayer]);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
     try {
       await authService.login(email, password);
@@ -141,9 +130,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       throw error;
     }
-  };
+  }, [authService]);
 
-  const register = async (email: string, password: string): Promise<boolean> => {
+  const register = useCallback(async (email: string, password: string): Promise<boolean> => {
       setLoading(true);
       try {
           await authService.register(email, password);
@@ -152,14 +141,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
           throw error;
       }
-  };
+  }, [authService]);
 
   const enterGuestMode = useCallback(() => {
       setIsGuest(true);
       sessionStorage.setItem(GUEST_SESSION_KEY, 'true');
   }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);
     setProfile(null);
@@ -172,33 +161,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     });
     window.location.href = '/';
-  };
+  }, [authService]);
 
-  const reloadUser = async () => {
+  const reloadUser = useCallback(async () => {
       const updatedUser = await authService.reloadUser();
       setUser(updatedUser);
-  };
+  }, [authService]);
 
-  const sendVerification = async () => {
+  const sendVerification = useCallback(async () => {
       await authService.sendVerificationEmail();
-  };
+  }, [authService]);
+
+  const initializeNewUser = useCallback(async () => {
+      if (!user || !user.email) return;
+      setLoading(true);
+      try {
+          const newP = await CoreProfileService.initializeProfile(user.uid, user.email, dataLayer);
+          setProfile(newP);
+          await GlobalProjectionService.syncFromProfile(newP, dataLayer);
+      } finally {
+          setLoading(false);
+      }
+  }, [user, dataLayer]);
+
+  const isAuthenticated = useMemo(() => !!user || isGuest, [user, isGuest]);
+
+  const contextValue = useMemo(() => ({
+    isAuthenticated,
+    isGuest,
+    user,
+    profile,
+    login,
+    register,
+    logout,
+    enterGuestMode,
+    reloadUser,
+    sendVerification,
+    refreshProfile,
+    initializeNewUser,
+    loading,
+  }), [isAuthenticated, isGuest, user, profile, login, register, logout,
+      enterGuestMode, reloadUser, sendVerification, refreshProfile, initializeNewUser, loading]);
 
   return (
-    <AuthContext.Provider value={{ 
-        isAuthenticated: !!user || isGuest, 
-        isGuest,
-        user, 
-        profile,
-        login, 
-        register,
-        logout, 
-        enterGuestMode,
-        reloadUser,
-        sendVerification,
-        refreshProfile,
-        initializeNewUser,
-        loading
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

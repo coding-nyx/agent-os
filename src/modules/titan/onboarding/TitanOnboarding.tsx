@@ -6,7 +6,7 @@ import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
 import { cn } from '@/lib/utils';
 import { TitanProfile, TitanPrivacyLevel } from '@/lib/types';
-import { StructuredResponse } from '@/llm-engine/engine/types';
+import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { useAuth } from '@/lib/auth-context';
 import { buildTitanOnboardingPrompt } from '../prompts/titan-onboarding-prompt';
 import { mergeTitanProfile, normalizeRoutines } from '../utils';
@@ -28,6 +28,7 @@ import {
   normalizeTitanProfilePatch,
   toProfilePatchFromAccumulator
 } from './intake-accumulator';
+import { useFastTrackValidation } from '@/lib/onboarding/fast-track-validation';
 
 interface TitanOnboardingProps {
   onComplete: (profile: TitanProfile) => void;
@@ -184,9 +185,14 @@ export function TitanOnboarding({
   const [fastSupplements, setFastSupplements] = useState('');
   const [fastTrainingDays, setFastTrainingDays] = useState('');
   const [fastInjuries, setFastInjuries] = useState('');
+  const [fastTrackError, setFastTrackError] = useState<string | null>(null);
+  const [isValidatingFastTrack, setIsValidatingFastTrack] = useState(false);
+  const { validateFastTrack } = useFastTrackValidation('titan');
 
-  const handleFastTrack = () => {
+  const handleFastTrack = async () => {
     if (!fastGoal || !fastExperience) return;
+    setFastTrackError(null);
+    setIsValidatingFastTrack(true);
     const privacyLevel = (state?.privacyLevel ?? 'basic') as TitanPrivacyLevel;
     const now = new Date().toISOString();
     const supplements = fastSupplements.trim()
@@ -221,6 +227,17 @@ export function TitanOnboarding({
       medicalImageAnalyses: [],
       medicalSummary: '',
     };
+
+    const validation = await validateFastTrack(profile as unknown as Record<string, unknown>, {
+      requiredFields: ['history.goals', 'history.pastTraining', 'privacyLevel'],
+      objective: 'Confirm Titan fast-track includes enough training baseline for safe routine generation.'
+    });
+    setIsValidatingFastTrack(false);
+    if (!validation.accepted) {
+      setFastTrackError('Fast-track validation failed. Continue guided onboarding to complete your training baseline.');
+      return;
+    }
+
     onComplete(profile);
   };
 
@@ -853,12 +870,15 @@ export function TitanOnboarding({
                 <div className="flex justify-end">
                   <button
                     onClick={handleFastTrack}
-                    disabled={!fastGoal || !fastExperience}
+                    disabled={!fastGoal || !fastExperience || isValidatingFastTrack}
                     className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
                   >
-                    Execute
+                    {isValidatingFastTrack ? 'Validating...' : 'Execute'}
                   </button>
                 </div>
+                {fastTrackError && (
+                  <p className="text-[10px] text-rose-300">{fastTrackError}</p>
+                )}
               </div>
               <p className="text-[9px] text-white/40 uppercase tracking-tight">
                 Bypass conversational intake. Requires goal and experience level.

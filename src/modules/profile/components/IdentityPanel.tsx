@@ -82,7 +82,7 @@ export function IdentityPanel() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
           {/* Initials avatar */}
           <div
-            className="shrink-0 w-20 h-20 rounded-3xl flex items-center justify-center text-2xl font-black text-white uppercase tracking-tight select-none"
+            className="shrink-0 w-20 h-20 rounded-3xl flex items-center justify-center text-2xl font-bold text-white uppercase tracking-tight select-none"
             style={{
               background:
                 'linear-gradient(135deg, rgba(139,92,246,0.4) 0%, rgba(109,40,217,0.6) 100%)',
@@ -139,7 +139,7 @@ export function IdentityPanel() {
               </div>
             ) : (
               <div className="flex items-center gap-3 group">
-                <h2 className="text-2xl font-black italic tracking-tight text-white truncate">
+                <h2 className="text-2xl font-bold tracking-tight text-white truncate font-display">
                   {displayName || (
                     <span className="text-white/30">No name set</span>
                   )}
@@ -159,7 +159,7 @@ export function IdentityPanel() {
             {/* Account type badge */}
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] border ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-[0.12em] border ${
                   isGuest
                     ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
                     : 'bg-violet-500/10 border-violet-500/20 text-violet-300'
@@ -173,7 +173,7 @@ export function IdentityPanel() {
                 {accountType}
               </span>
               {profile?.onboardingComplete && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] border bg-emerald-500/10 border-emerald-500/20 text-emerald-300">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-[0.12em] border bg-emerald-500/10 border-emerald-500/20 text-emerald-300">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   Onboarded
                 </span>
@@ -185,7 +185,7 @@ export function IdentityPanel() {
 
       {/* Identity details */}
       <GlassCard className="p-6">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40 mb-5">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 mb-5">
           Account Details
         </h3>
         <div className="space-y-4">
@@ -195,7 +195,7 @@ export function IdentityPanel() {
               <Mail className="w-4 h-4 text-violet-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] uppercase tracking-[0.2em] text-white/35 font-black mb-0.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-bold mb-0.5">
                 Email
               </p>
               <p className="text-sm text-white/80 font-medium truncate">
@@ -215,7 +215,7 @@ export function IdentityPanel() {
               <Calendar className="w-4 h-4 text-violet-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] uppercase tracking-[0.2em] text-white/35 font-black mb-0.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-bold mb-0.5">
                 Member Since
               </p>
               <p className="text-sm text-white/80 font-medium">{memberSince}</p>

@@ -1,6 +1,6 @@
 # Nexus: Holistic AI Wellness Ecosystem
 
-**Nexus** (Artificial General Neural Ecosystem for Stability - AGNES) is a unified, multi-agent wellness platform featuring specialized AI agents (Therapy, Trainer, Ledger, etc.) with a futuristic, Wall-E and Eve-inspired aesthetic. It combines mental health support, physical optimization, cognitive planning, and financial stability into a single, cohesive "Global Soul," secured by client-side End-to-End Encryption (E2EE).
+**Nexus** (Artificial General Neural Ecosystem for Stability - AGNES) is a unified, multi-agent wellness platform featuring specialized AI agents (Agnes, Titan, Ledger, Atlas, Scout, Forge) with a futuristic, Wall-E and Eve-inspired aesthetic. It combines emotional support, physical optimization, cognitive planning, and financial stability into a single, cohesive "Global Soul," secured by client-side End-to-End Encryption (E2EE).
 
 For a detailed breakdown of the system architecture, product definition, and module functionalities, please see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -30,6 +30,5 @@ For a detailed breakdown of the system architecture, product definition, and mod
 - `npm run lint`: Run ESLint checks.
 - `npm run preview`: Preview the production build locally.
 
-## Admin Access
-- URL: `/admin/login`
-- Default Password: `admin123` (Configurable in system settings).
+## Route Truth
+Runtime routes in `src/App.tsx` are the source of truth for product navigation and module identity.

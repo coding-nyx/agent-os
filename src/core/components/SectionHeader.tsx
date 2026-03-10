@@ -22,9 +22,9 @@ export function SectionHeader({
     <div className={cn('flex items-start justify-between gap-4', className)}>
       <div className="space-y-1">
         {label && (
-          <div className={cn('text-[9px] font-black uppercase tracking-[0.35em] italic', accentClassName)}>{label}</div>
+          <div className={cn('text-[11px] font-semibold uppercase tracking-[0.15em] font-display', accentClassName)}>{label}</div>
         )}
-        <div className="text-2xl md:text-3xl font-black italic uppercase tracking-tight text-white">{title}</div>
+        <div className="text-2xl md:text-3xl font-bold uppercase tracking-tight text-white font-display">{title}</div>
         {subtitle && <p className="text-xs md:text-sm text-white/50 max-w-xl">{subtitle}</p>}
       </div>
       {action}

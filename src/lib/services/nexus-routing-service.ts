@@ -1,7 +1,7 @@
 import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
-import { sanitizeJsonPayload } from '@/llm-engine/sanitize';
-import { StructuredResponse } from '@/llm-engine/engine/types';
-import type { Message } from '@/llm-engine/types';
+import { sanitizeJsonPayload } from '@/lib/ai-adapters/sanitize';
+import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
+import type { Message } from '@/lib/ai-adapters/engine-types';
 
 type SendMessageFn = (content: string, context: { systemPrompt: string; insights: string[]; summary: string; history: Message[] }) => Promise<{ response: StructuredResponse }>;
 // Each entry has a `weight` per keyword. Compound phrases (multi-word) score higher and

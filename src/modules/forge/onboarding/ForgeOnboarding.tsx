@@ -3,7 +3,7 @@ import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
-import { StructuredResponse } from '@/llm-engine/engine/types';
+import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { ForgeProfile, createEmptyForgeProfile } from '../services/forge-session-service';
 

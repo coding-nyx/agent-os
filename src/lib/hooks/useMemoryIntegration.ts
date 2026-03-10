@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import type { ModuleMemoryEnvelope, SemanticFact } from '../types';
 import { ModuleMemoryService } from '../services/module-memory-service';
 import { SemanticMemoryService } from '../services/semantic-memory-service';
@@ -23,6 +23,13 @@ export function useMemoryIntegration({ moduleId, userId, isGuest, encryptionKey 
   const episodicReadyRef = useRef<Record<string, boolean>>({});
   const semanticFactsRef = useRef<SemanticFact[]>([]);
   const semanticReadyRef = useRef(false);
+  // Stabilize encryptionKey: only re-subscribe when the key identity actually changes
+  const encryptionKeyRef = useRef(encryptionKey);
+  const [encryptionKeyVersion, setEncryptionKeyVersion] = useState(0);
+  if (encryptionKeyRef.current !== encryptionKey) {
+    encryptionKeyRef.current = encryptionKey;
+    setEncryptionKeyVersion(v => v + 1);
+  }
 
   // Subscribe to episodic envelopes and semantic facts
   useEffect(() => {
@@ -39,7 +46,7 @@ export function useMemoryIntegration({ moduleId, userId, isGuest, encryptionKey 
       ModuleMemoryService.subscribeEnvelope(userId, id, (envelope) => {
         episodicEnvelopeRef.current[id] = envelope;
         episodicReadyRef.current[id] = true;
-      }, encryptionKey)
+      }, encryptionKeyRef.current)
     );
 
     const semanticUnsub = SemanticMemoryService.subscribeFacts(userId, (facts) => {
@@ -51,7 +58,7 @@ export function useMemoryIntegration({ moduleId, userId, isGuest, encryptionKey 
       unsubs.forEach((unsub) => unsub());
       semanticUnsub();
     };
-  }, [userId, isGuest, moduleId, encryptionKey]);
+  }, [userId, isGuest, moduleId, encryptionKeyVersion]);
 
   // Reset memory state on unmount
   useEffect(() => {
@@ -87,9 +94,9 @@ export function useMemoryIntegration({ moduleId, userId, isGuest, encryptionKey 
       episodicReady,
       semanticReadyRef.current,
       semanticFactsRef.current,
-      { requiresVault, encryptionKey }
+      { requiresVault, encryptionKey: encryptionKeyRef.current }
     );
-  }, [moduleId, userId, isGuest, encryptionKey]);
+  }, [moduleId, userId, isGuest]);
 
   return { retrieveMemoryContext };
 }

@@ -3,7 +3,7 @@
  * See docs/architecture/llm-entrypoint-runtime.md for the boot chain,
  * runtime modes, and extension boundaries.
  */
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Message, ConversationContext, MessageContent } from './types';
 import { CognitiveAgent } from './engine/CognitiveAgent';
 import { StructuredResponse, StreamChunk } from './engine/types';
@@ -93,8 +93,13 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
       return result;
   }, [agent]);
 
+  const aiContextValue = useMemo(
+    () => ({ sendMessage, streamMessage, isInitialized }),
+    [sendMessage, streamMessage, isInitialized]
+  );
+
   return (
-    <AIContext.Provider value={{ sendMessage, streamMessage, isInitialized }}>
+    <AIContext.Provider value={aiContextValue}>
       {children}
     </AIContext.Provider>
   );

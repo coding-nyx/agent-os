@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
@@ -14,9 +13,10 @@ import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { SectionHeader } from '@/core/components/SectionHeader';
-import { BarChart3, Camera, FileUp, FolderOpen, LayoutDashboard, Receipt, PieChart, Target, Database } from 'lucide-react';
+import { BarChart3, Camera, FileUp, FolderOpen, LayoutDashboard, Receipt, PieChart, Target, Database, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { analyzeImageWithVision } from '@/lib/services/vision-analysis-service';
-import { ModelRegistry } from '@/llm-engine/engine/ModelRegistry';
+import { ModelRegistry } from '@/lib/ai-adapters/model-registry';
 import {
   FinancialPlan,
   LedgerIntakeProfile,
@@ -29,9 +29,9 @@ import { LEDGER_PERSONA } from './personas';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { computeResonanceROI } from './services/resonance-roi-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { ledgerDiagnosisSpec } from './diagnosis/ledger-diagnosis-spec';
+import { useDocumentIntelligence } from '@/lib/hooks/use-document-intelligence';
 
 registerDiagnosisSpec(ledgerDiagnosisSpec);
 
@@ -70,11 +70,11 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
   const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('ledger');
-  const navigate = useNavigate();
 
   const agentAlias = globalSoul?.displayNames?.ledger || 'Ledger';
   const plannerBootstrappedRef = useRef(false);
   const [activeMainTab, setActiveMainTab] = useState<LedgerMainTab>('dashboard');
+  const [isAddTransactionModalOpen, setIsAddTransactionModalOpen] = useState(false);
 
   const ai = useModuleAI({
     moduleId: 'ledger',
@@ -90,16 +90,16 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   const handleOpenDocuments = useCallback(() => {
-    NexusHandoffService.store({
-      moduleId: 'documents',
-      type: 'delegate',
-      content: 'Open document intelligence for financial analysis.',
-      reason: 'ledger_document_notebook',
-      sourceModuleId: 'ledger',
-      createdAt: new Date().toISOString()
-    });
-    navigate('/documents');
-  }, [navigate]);
+    ai.handleSendMessage(
+      'Open embedded financial document intelligence mode. Ask me to upload a statement, receipt, or invoice for structured extraction.'
+    );
+  }, [ai]);
+
+  const { openDocumentPicker } = useDocumentIntelligence({
+    moduleId: 'ledger',
+    onPromptReady: (prompt) => ai.handleSendMessage(prompt),
+    onError: (message) => ai.handleSendMessage(`Document intake failed: ${message}`)
+  });
 
   const handleDocumentCapture = useCallback(
     async (dataUrl: string) => {
@@ -197,24 +197,6 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
     }
   }, [profile?.onboardingComplete, profile?.activePlanId, agentAlias, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages]);
 
-  const handleImportCsv = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.csv,.txt';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (re) => {
-          const text = re.target?.result as string;
-          ai.handleSendMessage(`CSV Import received: ${file.name}. Content: ${text || 'FILE_EMPTY'}`);
-        };
-        reader.readAsText(file);
-      }
-    };
-    input.click();
-  }, [ai]);
-
   const mainTabs: NeuralTabItem<LedgerMainTab>[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'workspace', label: 'Workspace', icon: Database },
@@ -228,6 +210,23 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
       ai={ai}
       authMode="ledger"
       placeholder="Ask for budgeting or savings optimization..."
+      primaryAction={
+        activeMainTab === 'workspace' && (
+          <button
+            onClick={() => setIsAddTransactionModalOpen(true)}
+            aria-label="Add transaction"
+            className={cn(
+              'z-[var(--z-fab)] rounded-full flex items-center justify-center',
+              'bg-cyan-600 text-white shadow-lg shadow-cyan-500/25',
+              'hover:bg-cyan-500 active:bg-cyan-700 transition-all',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900',
+              'w-12 h-12'
+            )}
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        )
+      }
     >
       <ImageCaptureModal
         isOpen={isCaptureModalOpen}
@@ -290,7 +289,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
           
           <div className="flex gap-2">
             <button onClick={() => setIsCaptureModalOpen(true)} className="p-1.5 md:p-2 rounded-xl bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-violet-400 transition-all"><Camera size={14} className="md:w-4 md:h-4" /></button>
-            <button onClick={handleImportCsv} className="p-1.5 md:p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-cyan-400 transition-all"><FileUp size={14} className="md:w-4 md:h-4" /></button>
+            <button onClick={openDocumentPicker} className="p-1.5 md:p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-cyan-400 transition-all"><FileUp size={14} className="md:w-4 md:h-4" /></button>
             <button onClick={handleOpenDocuments} className="p-1.5 md:p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/60 transition-all"><FolderOpen size={14} className="md:w-4 md:h-4" /></button>
           </div>
         </div>
@@ -314,6 +313,8 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
                   if (!profile) return;
                   persistUpdate({ ...profile, ...updates });
                 }}
+                isAddTransactionModalOpen={isAddTransactionModalOpen}
+                onAddTransactionModalOpenChange={setIsAddTransactionModalOpen}
               />
             </div>
           )}

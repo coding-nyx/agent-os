@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, Terminal } from 'lucide-react';
+import { ArrowLeft, Shield, Terminal, Grid3X3, Sparkles } from 'lucide-react';
 import { NeuralIntegrity } from '@/core/components/NeuralIntegrity';
 import { SyncTransition } from '@/core/components/SyncTransition';
 import { SystemCommandCenter } from '@/core/components/SystemCommandCenter';
@@ -49,7 +49,7 @@ function TelemetryTicker() {
                 key={log}
                 initial={{ opacity: 0, x: 5 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="text-[7px] font-mono text-white/40 tracking-widest"
+                className="text-[8px] font-mono text-white/40 tracking-wider"
             >
                 {log}
             </motion.span>
@@ -83,7 +83,7 @@ export function ModuleLayout({
   const finalizeExit = () => {
     setIsSyncing(false);
     if (onExit) onExit();
-    else navigate('/orchestrator');
+    else navigate('/hub');
   };
 
   const colors = {
@@ -115,7 +115,7 @@ export function ModuleLayout({
         moduleName={title} 
       />
 
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+      <div className="fixed inset-0 z-[var(--z-base)] pointer-events-none overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_45%)] opacity-40" />
         <div className="absolute inset-0 surface-grid opacity-[0.015]" />
         <div className={`absolute top-0 right-0 w-[820px] h-[820px] ${theme.glow} rounded-full blur-[170px] animate-pulse opacity-45`} />
@@ -129,7 +129,7 @@ export function ModuleLayout({
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
-            className="sticky top-0 z-[60] border-b border-white/5 bg-black/50 backdrop-blur-2xl px-4 md:px-8 py-3 md:py-4 flex items-center justify-between"
+            className="sticky top-0 z-[var(--z-header)] border-b border-white/5 bg-black/50 backdrop-blur-2xl px-4 md:px-8 py-3 md:py-4 flex items-center justify-between"
           >
             <div className="flex items-center gap-3 md:gap-6">
               {!hideBack && (
@@ -142,25 +142,46 @@ export function ModuleLayout({
                 </button>
               )}
               <div className="flex flex-col">
-                <h1 className={`text-sm sm:text-lg md:text-xl font-black italic tracking-[0.2em] sm:tracking-[0.3em] uppercase ${theme.accent} truncate max-w-[120px] sm:max-w-[150px] md:max-w-xs`}>{title}</h1>
+                <h1 className={`text-sm sm:text-lg md:text-xl font-bold tracking-[0.08em] sm:tracking-[0.15em] uppercase font-display ${theme.accent} truncate max-w-[160px] sm:max-w-[200px] md:max-w-xs`}>{title}</h1>
                 <div className="hidden sm:flex items-center gap-2">
                     <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[7px] font-bold text-white/40 uppercase tracking-[0.2em] italic truncate">Link Stable // Secure Tunnel</span>
+                    <span className="text-[9px] font-medium text-white/40 uppercase tracking-[0.1em] truncate font-mono">Link Stable // Secure Tunnel</span>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-4 md:gap-8">
               <TelemetryTicker />
+              {moduleId === 'orchestrator' ? (
+                <button
+                  type="button"
+                  onClick={() => navigate('/hub')}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 text-indigo-400 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
+                  aria-label="Open Hub"
+                >
+                  <Grid3X3 className="w-4 h-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest hidden lg:block">Hub</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => navigate('/orchestrator')}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-violet-400 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50 group"
+                  aria-label="Open Nexus"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest hidden lg:block">Nexus</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={openSecurityProtocol}
                 className="hidden lg:flex flex-col items-end text-left focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg px-2 py-1 hover:bg-white/5 transition-colors"
               >
-                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1 italic leading-none">Security Protocol</span>
+                <span className="text-[9px] font-semibold text-white/40 uppercase tracking-wider mb-1 leading-none">Security Protocol</span>
                 <div className="flex items-center gap-2">
                   <Shield className={`w-3 h-3 ${theme.accent}`} />
-                  <span className="text-[10px] font-bold text-white/60 tracking-tight leading-none uppercase">E2EE_Active</span>
+                  <span className="text-[10px] font-medium text-white/60 tracking-tight leading-none uppercase font-mono">E2EE_Active</span>
                 </div>
               </button>
               <div className="w-px h-8 bg-white/5 hidden md:block" />
@@ -172,7 +193,7 @@ export function ModuleLayout({
         )}
       </AnimatePresence>
 
-      <main className="relative z-10 flex-1 flex w-full max-w-[100vw] overflow-x-hidden min-h-0">
+      <main className="relative z-[var(--z-content)] flex-1 flex w-full max-w-[100vw] overflow-x-hidden min-h-0">
         {moduleId && <ScopedChatPanel moduleId={moduleId} themeColor={themeColor} />}
         <AnimatePresence mode="popLayout">
           {RenderLeftRail && isLeftRailVisible && (
@@ -182,7 +203,7 @@ export function ModuleLayout({
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -300, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="hidden lg:block shrink-0 h-full relative z-30"
+              className="hidden lg:block shrink-0 h-full relative z-[var(--z-content)]"
             >
               <RenderLeftRail />
             </motion.div>
@@ -207,8 +228,8 @@ export function ModuleLayout({
                         <div className={cn("w-3 h-3 rounded-full animate-ping", `bg-${themeColor}-500`)} />
                       </div>
                       <div className="space-y-3">
-                        <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white">Vault Sync Required</h3>
-                        <p className="text-sm text-white/40 leading-relaxed font-medium px-8">
+                        <h3 className="text-2xl sm:text-3xl font-bold uppercase tracking-tight text-white font-display">Vault Sync Required</h3>
+                        <p className="text-sm text-white/45 leading-relaxed font-medium px-4 sm:px-8">
                           This domain is end-to-end encrypted. Initialize a local handshake to decrypt your profile synchronization.
                         </p>
                       </div>
@@ -245,7 +266,7 @@ export function ModuleLayout({
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 300, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="hidden lg:block shrink-0 h-full relative z-30"
+              className="hidden lg:block shrink-0 h-full relative z-[var(--z-content)]"
             >
               <RenderRightRail />
             </motion.div>
@@ -253,7 +274,7 @@ export function ModuleLayout({
         </AnimatePresence>
       </main>
 
-      <footer className="h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent relative z-20 overflow-hidden">
+      <footer className="h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent relative z-[var(--z-content)] overflow-hidden">
         <div className={`w-32 h-full mx-auto ${theme.accent.replace('text-', 'bg-')} blur-md opacity-30`} />
       </footer>
     </div>

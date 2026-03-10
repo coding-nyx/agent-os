@@ -60,17 +60,17 @@ export function SecurityPanel() {
               />
             </div>
             <div>
-              <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-white font-display">
                 Vault Status
               </h3>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-white/35 font-bold">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
                 End-to-End Encrypted
               </p>
             </div>
           </div>
 
           <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] border ${vaultBadgeBg} ${vaultStateColor}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-[0.12em] border ${vaultBadgeBg} ${vaultStateColor}`}
           >
             <VaultIcon className="w-3 h-3" />
             {vaultStateLabel}
@@ -83,12 +83,12 @@ export function SecurityPanel() {
           <div className="rounded-2xl bg-black/30 border border-white/5 p-4 space-y-1.5">
             <div className="flex items-center gap-2 mb-2">
               <KeyRound className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-[9px] uppercase tracking-[0.2em] text-white/35 font-black">
+              <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
                 Key Derivation
               </span>
             </div>
             <p className="text-xs font-bold text-white/80">PBKDF2</p>
-            <p className="text-[9px] text-violet-300 font-black uppercase tracking-widest">
+            <p className="text-[10px] text-violet-300 font-bold uppercase tracking-wider">
               High Security
             </p>
           </div>
@@ -97,7 +97,7 @@ export function SecurityPanel() {
           <div className="rounded-2xl bg-black/30 border border-white/5 p-4 space-y-1.5">
             <div className="flex items-center gap-2 mb-2">
               <Database className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-[9px] uppercase tracking-[0.2em] text-white/35 font-black">
+              <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
                 Persistence
               </span>
             </div>
@@ -111,13 +111,13 @@ export function SecurityPanel() {
           <div className="rounded-2xl bg-black/30 border border-white/5 p-4 space-y-1.5">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-[9px] uppercase tracking-[0.2em] text-white/35 font-black">
+              <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
                 Module Access
               </span>
             </div>
             <p className="text-xs font-bold text-white/80">6 Modules</p>
             <p
-              className={`text-[9px] font-black uppercase tracking-widest ${
+              className={`text-[10px] font-bold uppercase tracking-wider ${
                 isUnlocked ? 'text-emerald-300' : 'text-amber-300'
               }`}
             >
@@ -129,7 +129,7 @@ export function SecurityPanel() {
 
       {/* Vault actions */}
       <GlassCard className="p-6">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40 mb-5">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 mb-5">
           Vault Actions
         </h3>
 
@@ -142,7 +142,7 @@ export function SecurityPanel() {
               </div>
               <div>
                 <p className="text-sm font-bold text-white/90">Lock Vault</p>
-                <p className="text-[10px] text-white/35 uppercase tracking-widest font-bold">
+                <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold">
                   Revoke session access
                 </p>
               </div>
@@ -167,7 +167,7 @@ export function SecurityPanel() {
               </div>
               <div>
                 <p className="text-sm font-bold text-white/60">Export Data</p>
-                <p className="text-[10px] text-white/25 uppercase tracking-widest font-bold">
+                <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">
                   Full profile archive
                 </p>
               </div>

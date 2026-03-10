@@ -27,7 +27,7 @@ export function RoutingSuggestion({ target, reason, onConfirm, onDismiss, visibl
           exit={{ opacity: 0, y: 12, scale: 0.95 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
           className={cn(
-            'absolute bottom-[110%] left-4 right-4 z-[90]',
+            'absolute bottom-[110%] left-4 right-4 z-[var(--z-toast)]',
             'flex items-center gap-3 px-4 py-3 rounded-2xl',
             'border border-white/10 bg-black/40 backdrop-blur-3xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]',
             'mx-0'

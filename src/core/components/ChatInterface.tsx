@@ -11,11 +11,12 @@ import rehypeSanitize from 'rehype-sanitize';
 import { cn } from '@/lib/utils';
 import { Message, GuestQuota, MessageContent } from '@/lib/types';
 import { NeuralLinkAlert } from './NeuralLinkAlert';
-import { stripInternalTags } from '@/llm-engine/sanitize';
+import { stripInternalTags } from '@/lib/ai-adapters/sanitize';
 import { NeuralButton } from './NeuralButton';
 import { EmptyState } from '@/core/components/EmptyState';
 import { getActionLabel } from '@/lib/actions/action-labels';
 import { PendingRequestState } from '@/lib/hooks/use-pending-recovery';
+import { DocumentMessageCard, parseDocumentMessage } from './DocumentMessageCard';
 
 // Helper to convert MessageContent to string for display
 function messageContentToString(content: MessageContent): string {
@@ -150,7 +151,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
     const completedActions = actionMatches.map(m => m[1]);
 
     return (
-        <div className="flex flex-col w-full max-w-[90%] items-start">
+        <div className="flex flex-col w-full max-w-[95%] sm:max-w-[85%] items-start">
             {(isThinking || isActing || (internalText && isLast)) && (
                 <div className="mb-3 w-full">
                     <button 
@@ -167,7 +168,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                             <Terminal className="w-3.5 h-3.5 text-white/20 group-hover:text-white/40" />
                         )}
                         <span className={cn(
-                            "text-[8px] font-black uppercase tracking-[0.3em] italic",
+                            "text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em]",
                             (isThinking || isActing) ? "text-indigo-400" : "text-white/20 group-hover:text-white/40"
                         )}>
                             {isThinking ? 'Processing Neural Signals...' : (isActing ? `${getActionLabel(currentActionType || 'action')}...` : 'View Internal Signals')}
@@ -177,7 +178,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                     <AnimatePresence>
                         {showInternal && !isThinking && !isActing && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                <div className="mt-2 p-4 bg-black/60 border border-white/5 rounded-2xl font-mono text-[10px] text-white/40 leading-relaxed italic whitespace-pre-wrap shadow-xl">
+                                <div className="mt-2 p-3 sm:p-4 bg-black/60 border border-white/5 rounded-xl sm:rounded-2xl font-mono text-[10px] sm:text-[11px] text-white/40 leading-relaxed whitespace-pre-wrap shadow-xl">
                                     {internalText}
                                 </div>
                             </motion.div>
@@ -187,18 +188,18 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
             )}
 
             {completedActions.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3">
                 {completedActions.map((type, idx) => (
-                  <div key={idx} className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-sm">
+                  <div key={idx} className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-sm">
                     <ActivityIcon className="w-3 h-3" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">{getActionLabel(type)}</span>
+                    <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider">{getActionLabel(type)}</span>
                   </div>
                 ))}
               </div>
             )}
 
             {hasPublicContent && (
-                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className={cn("p-5 border backdrop-blur-3xl transition-all", theme.bubble, theme.glow)}>
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className={cn("p-3.5 sm:p-5 border backdrop-blur-3xl transition-all", theme.bubble, theme.glow)}>
                     <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-strong:text-white prose-strong:font-black prose-p:text-white/90">
                         <ReactMarkdown
                           rehypePlugins={[rehypeSanitize]}
@@ -210,8 +211,8 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                         >{publicText}</ReactMarkdown>
                     </div>
                     <div className="mt-3 flex items-center justify-between opacity-30 border-t border-white/5 pt-3">
-                        <span className="text-[8px] font-black uppercase tracking-[0.3em] italic">{agentName}</span>
-                        <span className="text-[8px] font-mono uppercase italic tracking-widest">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.12em]">{agentName}</span>
+                        <span className="text-[9px] font-mono uppercase tracking-wider">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                 </motion.div>
             )}
@@ -331,26 +332,26 @@ export function ChatInterface({
         "flex-1 flex flex-col w-full mx-auto relative min-h-0 max-w-5xl"
       )}
     >
-      {/* Header bar for session actions */}
-      {(headerActions || onClearHistory) && (
-        <div className="shrink-0 flex justify-end px-6 py-3 border-b border-white/5">
-          <div className="flex gap-3">
-            {onClearHistory && (
-              <button
-                onClick={onClearHistory}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 transition-all group"
-                title="Clear Session History"
-              >
-                <Trash2 className="w-3.5 h-3.5 group-hover:text-rose-400 transition-colors" />
-                <span className="text-[9px] font-black uppercase tracking-widest italic">Clear Link</span>
-              </button>
-            )}
-            {headerActions}
-          </div>
+      {/* Header actions (full-width, e.g. DiagnosisToolbar) */}
+      {headerActions && (
+        <div className="shrink-0">{headerActions}</div>
+      )}
+
+      {/* Clear session button */}
+      {onClearHistory && (
+        <div className="shrink-0 flex justify-end px-3 sm:px-6 py-2 sm:py-3 border-b border-white/5">
+          <button
+            onClick={onClearHistory}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 transition-all group"
+            title="Clear Session History"
+          >
+            <Trash2 className="w-3.5 h-3.5 group-hover:text-rose-400 transition-colors" />
+            <span className="text-[9px] font-semibold uppercase tracking-wider">Clear Link</span>
+          </button>
         </div>
       )}
 
-      <div ref={scrollRef} role="log" aria-live="polite" aria-label="Conversation messages" className="flex-1 overflow-y-auto px-6 py-6 space-y-6 no-scrollbar scrollbar-ghost scroll-smooth min-h-0">
+      <div ref={scrollRef} role="log" aria-live="polite" aria-label="Conversation messages" className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 no-scrollbar scrollbar-ghost scroll-smooth min-h-0">
         {!hasMessages && !isLoading && !error && (
           <div className="h-full flex items-center justify-center">
             <EmptyState
@@ -387,14 +388,30 @@ export function ChatInterface({
                         />
                     </div>
                 ) : (
-                    <div className="flex flex-col max-w-[75%] w-fit items-end">
-                        <div className={cn("p-5 border backdrop-blur-3xl transition-all", theme.userBubble, theme.glow)}>
-                            <div className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap">{messageContentToString(msg.content)}</div>
-                            <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-3">
-                                <span className="text-[8px] font-mono uppercase italic tracking-widest">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    (() => {
+                      const textContent = messageContentToString(msg.content);
+                      const docParsed = parseDocumentMessage(textContent);
+                      if (docParsed) {
+                        return (
+                          <div className="flex flex-col max-w-[85%] w-fit items-end">
+                            <DocumentMessageCard doc={docParsed} themeAccent={theme.accent} />
+                            <div className="mt-1.5 opacity-30 px-1">
+                              <span className="text-[9px] font-mono uppercase tracking-wider text-white">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="flex flex-col max-w-[75%] w-fit items-end">
+                            <div className={cn("p-3.5 sm:p-5 border backdrop-blur-3xl transition-all", theme.userBubble, theme.glow)}>
+                                <div className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap break-words overflow-hidden">{textContent}</div>
+                                <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-3">
+                                    <span className="text-[9px] font-mono uppercase tracking-wider">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                      );
+                    })()
                 )}
                 {!isAI && (
                   <div className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center bg-black/60 shrink-0 mt-1 shadow-xl">
@@ -418,7 +435,7 @@ export function ChatInterface({
               <Loader2 className="w-5 h-5 animate-spin" />
             </div>
             <div className={cn("px-6 py-4 border backdrop-blur-3xl flex items-center gap-3", theme.bubble)}>
-              <span className="italic text-[10px] uppercase font-black tracking-[0.3em] text-white/50">
+              <span className="text-[10px] uppercase font-semibold tracking-[0.12em] text-white/50">
                 {aiState?.isActing 
                   ? `${getActionLabel(aiState.currentActionType || 'action')}...` 
                   : (aiState?.isThinking ? 'Processing Neural Signals...' : `${agentName} is thinking`)}
@@ -443,7 +460,7 @@ export function ChatInterface({
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             onClick={() => { scrollToBottom(); isNearBottomRef.current = true; setHasNewCompletion(false); }}
             className={cn(
-              "absolute bottom-36 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-2.5 rounded-full border backdrop-blur-xl transition-all shadow-2xl",
+              "absolute bottom-36 left-1/2 -translate-x-1/2 z-[var(--z-toast)] flex items-center gap-3 px-5 py-2.5 rounded-full border backdrop-blur-xl transition-all shadow-2xl",
               hasNewCompletion 
                 ? "bg-white/10 border-white/20 text-white animate-pulse" 
                 : "bg-black/80 border-white/10 text-white/60 hover:text-white hover:border-white/20",
@@ -451,7 +468,7 @@ export function ChatInterface({
             )}
           >
             <ChevronDown className={cn("w-4 h-4", hasNewCompletion && "animate-bounce")} />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] italic">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em]">
               {hasNewCompletion ? "Agent Resonance Detected" : "Scroll to Latest"}
             </span>
             {hasNewCompletion && (
@@ -462,7 +479,7 @@ export function ChatInterface({
       </AnimatePresence>
 
       {/* Input area pinned to bottom via flex layout */}
-      <div className="shrink-0 px-6 pb-4 pt-2">
+      <div className="shrink-0 px-3 sm:px-6 pb-3 sm:pb-4 pt-2">
         <AnimatePresence>
           {pendingRequest && (
             <motion.div
@@ -505,13 +522,13 @@ export function ChatInterface({
 
         <AnimatePresence>
             {quota?.isHardLocked && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute inset-x-0 bottom-full mb-10 z-[100]">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute inset-x-0 bottom-full mb-10 z-[var(--z-toast)]">
                     <div className="bg-[#05050a]/95 backdrop-blur-3xl border border-white/10 rounded-card-strong p-12 shadow-[0_0_80px_rgba(0,0,0,0.8)] text-center space-y-8">
                         <div className="w-20 h-20 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-6">
                             <Lock className="w-10 h-10 text-orange-400" />
                         </div>
                         <div className="space-y-3">
-                            <h3 className="text-3xl font-black italic uppercase text-white tracking-tighter">Neural Link Severed</h3>
+                            <h3 className="text-3xl font-bold font-display uppercase text-white tracking-tighter">Neural Link Severed</h3>
                             <p className="text-white/40 text-sm italic font-medium leading-relaxed px-12">Trial synchronization complete. Initialize a persistent soul-link to resume encrypted deep-work.</p>
                         </div>
                         <NeuralButton size="xl" className="w-full h-16 text-lg" onClick={onQuotaExhausted}>
@@ -535,15 +552,15 @@ export function ChatInterface({
                   <>
                     <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
                        <FileText className="w-6 h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
-                       <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Upload Doc</span>
+                       <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Upload Doc</span>
                     </button>
                     <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
                        <BarChart3 className="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform" />
-                       <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Data CSV</span>
+                       <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Data CSV</span>
                     </button>
                     <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
                        <Search className="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform" />
-                       <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Web Research</span>
+                       <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Web Research</span>
                     </button>
                   </>
                 )}
@@ -555,7 +572,7 @@ export function ChatInterface({
           <form onSubmit={handleSubmit} className={cn("relative group transition-all duration-700", quota?.isHardLocked && "blur-2xl opacity-10 pointer-events-none")}>
             <div className={cn("absolute inset-0 blur-[100px] opacity-0 group-focus-within:opacity-40 transition-opacity rounded-full", theme.bgGlow)} />
             <div className={cn(
-                "relative flex items-end bg-[#05050a]/60 border border-white/10 rounded-panel p-3 backdrop-blur-3xl group-focus-within:border-white/40 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.6)]",
+                "relative flex items-end bg-[#05050a]/60 border border-white/10 rounded-panel p-2 backdrop-blur-3xl group-focus-within:border-white/40 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.6)]",
                 (error || quota?.isHardLocked) && "opacity-20 grayscale pointer-events-none"
             )}>
               {(canUploadDocs || renderCustomActions) && (
@@ -563,11 +580,11 @@ export function ChatInterface({
                   type="button"
                   onClick={() => setIsDrawerOpen(!isDrawerOpen)}
                   className={cn(
-                    "w-14 h-14 rounded-panel flex items-center justify-center transition-all bg-white/5 border border-white/5 hover:bg-white/10 group/plus",
+                    "w-11 h-11 rounded-panel flex items-center justify-center transition-all bg-white/5 border border-white/5 hover:bg-white/10 group/plus",
                     isDrawerOpen && "bg-white/10 border-white/20 rotate-45"
                   )}
                 >
-                  <Plus className="w-6 h-6 text-white/40 group-hover/plus:text-white transition-colors" />
+                  <Plus className="w-5 h-5 text-white/40 group-hover/plus:text-white transition-colors" />
                 </button>
               )}
 
@@ -578,27 +595,27 @@ export function ChatInterface({
                 onKeyDown={handleKeyDown}
                 placeholder={error ? "Link severed..." : (quota?.isHardLocked ? "Trial Locked" : placeholder)} 
                 aria-label="Type your message"
-                className="flex-1 bg-transparent border-none outline-none px-8 py-4 text-base text-white placeholder:text-white/10 resize-none max-h-40 leading-relaxed" 
+                className="flex-1 bg-transparent border-none outline-none px-3 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base text-white placeholder:text-white/10 resize-none min-h-[44px] max-h-40 leading-relaxed" 
                 disabled={effectiveIsProcessing || !!error || quota?.isHardLocked}
                 rows={1}
               />
               
-              <button type="submit" aria-label="Send message" disabled={effectiveIsProcessing || !input.trim() || !!error || quota?.isHardLocked} className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl", theme.btn)}>
-                <Send className="w-6 h-6 text-white" />
+              <button type="submit" aria-label="Send message" disabled={effectiveIsProcessing || !input.trim() || !!error || quota?.isHardLocked} className={cn("w-11 h-11 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl", theme.btn)}>
+                <Send className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <div className="mt-4 flex justify-between items-center px-6 text-white">
+            <div className="mt-1.5 sm:mt-3 flex justify-between items-center px-2 sm:px-6 text-white">
               <div className="flex gap-8">
                   {isGuestTrial ? (
-                      <span className="text-[8px] font-black text-orange-400 uppercase tracking-[0.4em] flex items-center gap-2 italic">
+                      <span className="text-[9px] font-semibold text-orange-400 uppercase tracking-[0.12em] flex items-center gap-2">
                           <Zap className="w-3 h-3 animate-pulse" /> GUEST_QUOTA: {quota?.totalTurnsUsed} / {quota?.maxTurnsAllowed}
                       </span>
                   ) : (
-                      <span className="text-[8px] font-black text-white/15 uppercase tracking-[0.4em] flex items-center gap-2 italic"><Shield className="w-3 h-3" /> E2EE</span>
+                      <span className="text-[9px] font-semibold text-white/15 uppercase tracking-[0.12em] flex items-center gap-2"><Shield className="w-3 h-3" /> E2EE</span>
                   )}
               </div>
-              <span className="text-[8px] font-mono text-white/10 uppercase tracking-[0.3em] italic leading-none">{themeColor.toUpperCase()}_LINK</span>
+              <span className="text-[9px] font-mono text-white/10 uppercase tracking-[0.12em] italic leading-none">{themeColor.toUpperCase()}_LINK</span>
             </div>
           </form>
         </div>

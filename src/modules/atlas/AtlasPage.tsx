@@ -8,8 +8,12 @@ import { SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { ATLAS_PERSONA } from './personas';
 import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
+import { QuickAddForm } from './components/QuickAddForm';
 import {
   AtlasProfile,
+  AtlasTask,
+  AtlasHabit,
+  AtlasGoal,
   RecoveryWindow,
   loadAtlasProfile,
   saveAtlasProfile,
@@ -48,6 +52,8 @@ interface AtlasContentProps {
 function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updateCrossFunctionalState, isLocked }: AtlasContentProps) {
   const agentAlias = globalSoul?.displayNames?.atlas || 'Atlas';
   const [activeTab, setActiveTab] = useState<any>('dashboard');
+  const [activeView, setActiveView] = useState<any>('today');
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
 
   // AI Logic for Atlas
   const ai = useModuleAI({
@@ -156,28 +162,28 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
     }
   }, [profile?.habits, buildActionContext]);
 
-  const handleCreateTask = useCallback((task: Record<string, unknown>) => {
+  const handleCreateTask = useCallback((task: Partial<AtlasTask>) => {
     const now = new Date().toISOString();
     ActionHub.execute('atlas', 'create_task', buildActionContext({
       id: `task_${crypto.randomUUID()}`,
       status: 'queued',
-      priority: 3,
-      energyCost: 5,
       dependencies: [],
       createdAt: now,
       updatedAt: now,
+      priority: 3,
+      energyCost: 5,
       ...task
     }));
   }, [buildActionContext]);
 
-  const handleCreateHabit = useCallback((habit: Record<string, unknown>) => {
+  const handleCreateHabit = useCallback((habit: Partial<AtlasHabit>) => {
     ActionHub.execute('atlas', 'create_habit', buildActionContext({
       id: `habit_${crypto.randomUUID()}`,
       ...habit
     }));
   }, [buildActionContext]);
 
-  const handleCreateGoal = useCallback((goal: Record<string, unknown>) => {
+  const handleCreateGoal = useCallback((goal: Partial<AtlasGoal>) => {
     ActionHub.execute('atlas', 'create_goal', buildActionContext({
       id: `goal_${crypto.randomUUID()}`,
       ...goal
@@ -286,6 +292,19 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
       ai={ai}
       authMode="atlas"
       placeholder="Share task pressure or schedule constraints..."
+      primaryAction={
+        activeTab === 'dashboard' && activeView !== 'focus' && (
+          <QuickAddForm
+            projects={profile?.projects ?? []}
+            onCreateTask={handleCreateTask}
+            onCreateHabit={handleCreateHabit}
+            onCreateGoal={handleCreateGoal}
+            isOpen={isQuickAddOpen}
+            onOpenChange={setIsQuickAddOpen}
+            isFluid
+          />
+        )
+      }
     >
       <EnhancedAtlasDashboard
         soul={globalSoul}
@@ -293,6 +312,8 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
         isLocked={isLocked}
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        activeView={activeView}
+        onViewChange={setActiveView}
         onCompleteTask={handleCompleteTask}
         onCompleteHabit={handleCompleteHabit}
         onUpdateGoalProgress={handleUpdateGoalProgress}

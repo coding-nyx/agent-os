@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useConsolidation } from './useConsolidation';
-import { MemoryManager } from '@/llm-engine/engine/MemoryManager';
+import { MemoryManager } from '@/lib/ai-adapters/memory-manager';
 import { ModuleMemoryService } from '../services/module-memory-service';
 
 const mockSendMessage = vi.fn(async () => ({

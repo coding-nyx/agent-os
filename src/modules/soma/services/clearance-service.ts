@@ -1,4 +1,7 @@
 import type { TitanProfile, ClearanceRecord } from '@/lib/types';
+import type { SomaHealthSnapshot } from '@/modules/soma/types';
+
+type ClearanceSource = Pick<TitanProfile, 'knownConditions' | 'medications' | 'clearances'> | SomaHealthSnapshot;
 
 const CONTRAINDICATED_PATTERNS: Record<string, string[]> = {
   'high_intensity': ['cardiac', 'heart', 'hypertension', 'seizure', 'fracture'],
@@ -7,7 +10,7 @@ const CONTRAINDICATED_PATTERNS: Record<string, string[]> = {
   'flexibility': ['hypermobility', 'joint instability'],
 };
 
-function hasContraindication(conditions: string[], medications: string[], activity: string): string | null {
+function hasContraindication(conditions: readonly string[], medications: readonly string[], activity: string): string | null {
   const normalizedActivity = activity.toLowerCase().replace(/[_-]/g, ' ');
   const allTerms = [...conditions, ...medications].map(t => t.toLowerCase());
 
@@ -23,7 +26,7 @@ function hasContraindication(conditions: string[], medications: string[], activi
 }
 
 export class ClearanceService {
-  static evaluate(profile: TitanProfile, activity: string): ClearanceRecord {
+  static evaluate(profile: ClearanceSource, activity: string): ClearanceRecord {
     const contraindication = hasContraindication(
       profile.knownConditions ?? [],
       profile.medications ?? [],
@@ -67,12 +70,12 @@ export class ClearanceService {
     };
   }
 
-  static getLatestClearance(profile: TitanProfile): ClearanceRecord | null {
+  static getLatestClearance(profile: ClearanceSource): ClearanceRecord | null {
     const clearances = profile.clearances ?? [];
     return clearances.length > 0 ? clearances[0] : null;
   }
 
-  static isActivitySafe(profile: TitanProfile, activity: string): boolean {
+  static isActivitySafe(profile: ClearanceSource, activity: string): boolean {
     const result = ClearanceService.evaluate(profile, activity);
     return result.status === 'granted';
   }

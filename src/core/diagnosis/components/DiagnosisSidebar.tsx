@@ -81,7 +81,7 @@ export function DiagnosisSidebar({
   const hasDocuments = documents.length > 0;
 
   return (
-    <div className="w-64 shrink-0 border-r border-white/5 bg-white/[0.01] flex flex-col h-full min-h-0">
+    <div className="hidden lg:flex w-64 shrink-0 border-r border-white/5 bg-white/[0.01] flex-col h-full min-h-0">
       {/* Header */}
       <div className="shrink-0 px-4 pt-4 pb-3 border-b border-white/5">
         <div className="flex items-center gap-2">
@@ -92,7 +92,7 @@ export function DiagnosisSidebar({
         </div>
         <div className="flex items-center gap-1.5 mt-1.5">
           <span className={`w-1.5 h-1.5 rounded-full ${phase === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-white/20'}`} />
-          <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white/40">
+          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40">
             {phase === 'active' ? 'Active Session' : phase === 'reviewing' ? 'Reviewing' : 'Idle'}
           </span>
         </div>
@@ -103,7 +103,7 @@ export function DiagnosisSidebar({
         {/* Live Summary */}
         {hasSummary && (
           <div className="px-4 py-3 border-b border-white/5">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
+            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/30 mb-2">
               Analysis Progress
             </p>
             <div className="space-y-1.5">
@@ -128,7 +128,7 @@ export function DiagnosisSidebar({
         {/* Extracted Data Summary */}
         {hasExtracted && (
           <div className="px-4 py-3 border-b border-white/5">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
+            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/30 mb-2">
               Extracted Data
               <span className="ml-1.5 text-white/50 bg-white/5 px-1.5 py-0.5 rounded">
                 {extractedData.items.length}
@@ -182,7 +182,7 @@ export function DiagnosisSidebar({
         {/* Documents */}
         {hasDocuments && (
           <div className="px-3 py-3">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 px-1">
+            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/30 mb-2 px-1">
               Documents
             </p>
             <div className="space-y-2">
@@ -215,7 +215,7 @@ export function DiagnosisSidebar({
         <div className="shrink-0 p-3 border-t border-white/5">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-[0.15em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors"
           >
             <FileUp className="w-3 h-3" />
             Upload Document
