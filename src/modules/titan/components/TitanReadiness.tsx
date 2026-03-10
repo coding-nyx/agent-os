@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { VitalsGrid } from '@/core/components/VitalsGrid';
 import { StatCard } from '@/core/components/StatCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
 
 interface TitanDashboardProps {
@@ -22,14 +23,10 @@ export function TitanDashboard({ soul, isLocked = false, onCalibrate }: TitanDas
 
   if (isLocked) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Vault locked"
-          description="Unlock Titan to view readiness telemetry."
-          size="lg"
-          icon={Lock}
-        />
-      </div>
+      <VaultLockedShell
+        moduleName="Titan"
+        moduleDescription="Physical performance and structural development."
+      />
     );
   }
 

@@ -7,6 +7,7 @@ import { StatCard } from '@/core/components/StatCard';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import { EmptyState } from '@/core/components/EmptyState';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { BiomarkerCharts, VitalsDashboard } from './BiomarkerCharts';
 import { SchemaRegistry } from '@/lib/schema-registry';
 import type { FieldDefinition } from '@/lib/field-system/types';
@@ -90,14 +91,10 @@ export function BiomarkerDashboard({
 }: BiomarkerDashboardProps) {
   if (isLocked) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Vault locked"
-          description="Unlock Titan to view biomarkers and lab telemetry."
-          size="lg"
-          icon={Lock}
-        />
-      </div>
+      <VaultLockedShell
+        moduleName="Soma Labs"
+        moduleDescription="Clinical biomarkers and physiological readiness."
+      />
     );
   }
 

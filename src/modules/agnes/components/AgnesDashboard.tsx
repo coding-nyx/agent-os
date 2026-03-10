@@ -8,18 +8,21 @@ import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 
 export function AgnesDashboard({
+  isLocked = false,
   profile,
   encryptionKey
 }: {
+  isLocked?: boolean;
   profile: unknown;
   encryptionKey: CryptoKey | null;
 }) {
   const { globalSoul } = useGlobalSoul();
   const { user, isGuest } = useAuth();
-  const { isModuleAccessible } = useVault();
-  const isLocked = !isModuleAccessible('agnes');
+  const { isModuleAccessible, unlockVault } = useVault();
+  const locked = isLocked || !isModuleAccessible('agnes');
   const [graph, setGraph] = useState<BeliefGraph | null>(null);
 
   useEffect(() => {
@@ -27,23 +30,20 @@ export function AgnesDashboard({
       setGraph(null);
       return;
     }
-    return subscribeBeliefGraph({ userId: user.uid, encryptionKey }, setGraph);
-  }, [user?.uid, isGuest, encryptionKey]);
+    return subscribeBeliefGraph(user.uid, (g) => setGraph(g), encryptionKey);
+  }, [user, isGuest, encryptionKey]);
 
   const soul = globalSoul;
-  if (isLocked) {
+  if (locked) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Vault locked"
-          description="Unlock Agnes to view emotional telemetry."
-          size="lg"
-          icon={Lock}
-        />
-      </div>
+      <VaultLockedShell
+        moduleName="Agnes"
+        moduleDescription="Emotional stability and psychological grounding."
+        accentClassName="text-indigo-400"
+        onUnlock={() => unlockVault()}
+      />
     );
   }
-
   if (!soul) {
     return (
       <div className="h-full flex items-center justify-center p-8">

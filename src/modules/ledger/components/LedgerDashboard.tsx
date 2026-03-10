@@ -9,6 +9,7 @@ import { StatCard } from '@/core/components/StatCard';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { ProgressRow } from '@/core/components/ProgressRow';
 import { EmptyState } from '@/core/components/EmptyState';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
 import { CashFlowChart, DebtPayoffTracker } from './FinancialCharts';
 import { AIFinancialAdvisor } from './AIFinancialAdvisor';
@@ -32,14 +33,10 @@ export function LedgerDashboard({
   const [activeView, setActiveView] = useState<'overview' | 'cashflow' | 'debt'>('overview');
   if (isLocked) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Vault locked"
-          description="Unlock Ledger to view financial telemetry."
-          size="lg"
-          icon={Lock}
-        />
-      </div>
+      <VaultLockedShell
+        moduleName="Ledger"
+        moduleDescription="Financial analysis and encrypted transaction intelligence."
+      />
     );
   }
 

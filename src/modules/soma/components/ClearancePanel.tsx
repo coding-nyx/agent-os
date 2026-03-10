@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 
 // ---------------------------------------------------------------------------
 // ClearancePanel — Recovery tab for the merged Titan dashboard
@@ -80,14 +81,10 @@ const STATUS_CONFIG: Record<string, { icon: React.ComponentType<{ className?: st
 export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePanelProps) {
   if (isLocked) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Vault locked"
-          description="Unlock Titan to view recovery and clearance data."
-          size="lg"
-          icon={Lock}
-        />
-      </div>
+      <VaultLockedShell
+        moduleName="Soma Clearance"
+        moduleDescription="Medical clearance and physiological boundary management."
+      />
     );
   }
 

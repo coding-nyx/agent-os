@@ -19,6 +19,7 @@ import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
 
 type AtlasView = 'today' | 'week' | 'focus';
@@ -59,14 +60,10 @@ export function AtlasDashboard({
 
   if (isLocked) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Vault locked"
-          description="Unlock Atlas to view cognitive telemetry."
-          size="lg"
-          icon={Lock}
-        />
-      </div>
+      <VaultLockedShell
+        moduleName="Atlas"
+        moduleDescription="Energy mapping and goal architecture."
+      />
     );
   }
 

@@ -22,6 +22,7 @@ import { GlobalProjection } from '@/lib/types';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { StatCard } from '@/core/components/StatCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { TimeSeriesChart } from '@/core/components/viz/TimeSeriesChart';
 import { MetricCard } from '@/core/components/viz/MetricCard';
 import { ProgressRing } from '@/core/components/viz/ProgressRing';
@@ -129,14 +130,10 @@ export function SomaDashboard({
   
   if (isLocked) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Vault locked"
-          description="Unlock to view biometric data and physical readiness."
-          size="lg"
-          icon={Lock}
-        />
-      </div>
+      <VaultLockedShell
+        moduleName="Soma"
+        moduleDescription="Baseline biological profile and readiness."
+      />
     );
   }
 

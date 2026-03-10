@@ -80,7 +80,7 @@
     - Refs: Core Platform.
 
 14. **S1-014: Vault Access Refactor (Shell vs. Private)**
-    - Acceptance: Decouple Vault from page routing; top-level dashboards visible while Vault is locked.
+    - [x] Acceptance: Decouple Vault from page routing; top-level dashboards visible while Vault is locked.
     - Refs: Vision Alignment.
 
 15. **S1-015: Pending Completion Recovery (Chat Fallback)**

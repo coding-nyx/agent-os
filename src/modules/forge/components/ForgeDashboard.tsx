@@ -6,6 +6,7 @@ import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 
 export function ForgeDashboard({
   soul,
@@ -18,14 +19,10 @@ export function ForgeDashboard({
 }) {
   if (isLocked) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Vault locked"
-          description="Unlock Forge to view runtime telemetry."
-          size="lg"
-          icon={Lock}
-        />
-      </div>
+      <VaultLockedShell
+        moduleName="Forge"
+        moduleDescription="Runtime operations and habit implementation."
+      />
     );
   }
 

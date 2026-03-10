@@ -5,6 +5,7 @@ import { ScoutProfile } from '../services/scout-knowledge-service';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { ScoutEvidenceSources } from './ScoutEvidenceSources';
 import { PulseBubbleCanvas } from './PulseBubbleCanvas';
 
@@ -23,14 +24,10 @@ export function ScoutDashboard({
 }) {
   if (isLocked) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Vault locked"
-          description="Unlock Scout to view research telemetry."
-          size="lg"
-          icon={Lock}
-        />
-      </div>
+      <VaultLockedShell
+        moduleName="Scout"
+        moduleDescription="Secure external data exploration and evidence research."
+      />
     );
   }
 

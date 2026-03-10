@@ -27,6 +27,7 @@ import {
 } from '../services/atlas-profile-service';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { EmptyState } from '@/core/components/EmptyState';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { AtlasAIPanel } from './AtlasAIPanel';
 import { TaskManager } from './TaskManager';
 import { GoalTracker } from './GoalTracker';
@@ -119,14 +120,10 @@ export function EnhancedAtlasDashboard({
 
   if (isLocked) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Vault locked"
-          description="Unlock Atlas to view cognitive telemetry."
-          size="lg"
-          icon={Lock}
-        />
-      </div>
+      <VaultLockedShell
+        moduleName="Atlas"
+        moduleDescription="Energy mapping and goal architecture."
+      />
     );
   }
 
