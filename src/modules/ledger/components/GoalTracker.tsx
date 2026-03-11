@@ -9,6 +9,73 @@ import { ProgressRow } from '@/core/components/ProgressRow';
 import { cn } from '@/lib/utils';
 
 import { FinancialGoal, GoalMilestone } from '../services/ledger-intake-service';
+import {
+  computeSavingsProjection,
+  type SavingsProjection,
+} from '../services/ledger-aggregation-service';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Formats an ISO date string (YYYY-MM-DD) as a short month + year label,
+ * e.g. "2025-12-01" → "Dec 2025".  Uses explicit year/month extraction to
+ * avoid any timezone offset shifting the displayed month.
+ */
+function formatProjectionDate(isoDate: string): string {
+  const [year, month] = isoDate.split('-').map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString('en-US', {
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// SavingsProjectionCard — compact, inline projection summary
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders a one-to-two line projection summary below a goal's progress bar.
+ * Intentionally stateless and side-effect free.
+ */
+function SavingsProjectionCard({ projection }: { projection: SavingsProjection }) {
+  // ── Goal already complete ─────────────────────────────────────────────────
+  if (projection.monthsToTarget === 0) {
+    return (
+      <p className="text-xs text-emerald-400">✓ Goal reached!</p>
+    );
+  }
+
+  // ── No contribution set — cannot project ──────────────────────────────────
+  if (projection.monthsToTarget === null) {
+    return (
+      <p className="text-xs text-white/40">
+        Add monthly contribution to see projection
+      </p>
+    );
+  }
+
+  // ── Normal projection ─────────────────────────────────────────────────────
+  const completionLabel = projection.projectedCompletionDate
+    ? formatProjectionDate(projection.projectedCompletionDate)
+    : null;
+
+  return (
+    <div className="space-y-0.5">
+      <p className={cn('text-xs font-medium', projection.onTrack ? 'text-emerald-400' : 'text-amber-400')}>
+        {projection.onTrack
+          ? `On track to complete ${completionLabel ?? ''}`
+          : `Behind by ${Math.abs(projection.surplusOrDeficit).toFixed(0)}/mo`}
+      </p>
+      {completionLabel && (
+        <p className="text-xs text-white/60">
+          Est. completion: {completionLabel}
+        </p>
+      )}
+    </div>
+  );
+}
 
 interface GoalTrackerProps {
   goals: FinancialGoal[];
@@ -257,6 +324,7 @@ export function GoalTracker({
             const monthsToComplete = getMonthsToCompletion(goal);
             const completionDate = getCompletionDate(goal);
             const goalType = GOAL_TYPES.find(t => t.value === goal.type);
+            const projection = computeSavingsProjection(goal);
 
             return (
               <SurfaceCard key={goal.id} className={cn(
@@ -332,6 +400,9 @@ export function GoalTracker({
                     accentClassName={isAchieved ? "bg-emerald-500" : "bg-cyan-500"}
                     className="mb-0"
                   />
+
+                  {/* Savings projection summary */}
+                  <SavingsProjectionCard projection={projection} />
                 </div>
 
                 {/* Additional Info */}

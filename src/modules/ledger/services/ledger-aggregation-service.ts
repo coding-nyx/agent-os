@@ -1040,3 +1040,148 @@ export function evaluateAlerts(
 
   return alerts;
 }
+
+// ---------------------------------------------------------------------------
+// Savings Goal Projections
+// ---------------------------------------------------------------------------
+
+/**
+ * The result of projecting a single FinancialGoal forward in time.
+ *
+ * All date values are ISO-8601 strings (YYYY-MM-DD). `monthsToTarget` is
+ * `null` when a projection cannot be computed (e.g. no monthly contribution).
+ */
+export interface SavingsProjection {
+  /** The id of the goal this projection belongs to. */
+  goalId: string;
+  /**
+   * How many full months until the goal is reached at the current
+   * contribution rate.  `null` when `monthlyContribution <= 0`.
+   */
+  monthsToTarget: number | null;
+  /**
+   * ISO date string of the projected completion date, or `null` when a
+   * projection cannot be computed.
+   */
+  projectedCompletionDate: string | null;
+  /**
+   * `true` when the projection hits on or before `targetDate` (or when there
+   * is no `targetDate`).
+   */
+  onTrack: boolean;
+  /**
+   * The monthly contribution required to reach `targetAmount` exactly by
+   * `targetDate`.  Equal to `monthlyContribution` when no `targetDate` is set.
+   */
+  monthlyRequired: number;
+  /**
+   * `monthlyContribution - monthlyRequired`.  Positive means the user is
+   * contributing more than required (ahead of schedule); negative means they
+   * are falling short.
+   */
+  surplusOrDeficit: number;
+}
+
+/**
+ * Pure function — derives a {@link SavingsProjection} from a single
+ * {@link FinancialGoal}.  No side effects; creates only local Date objects.
+ *
+ * Complexity: O(1) — all arithmetic is constant-time.
+ *
+ * Edge-cases handled:
+ *  - `targetAmount <= 0` or `currentAmount >= targetAmount` → already complete.
+ *  - `monthlyContribution <= 0` → cannot project (returns null dates).
+ *  - `targetDate` in the past → `monthlyRequired` is clamped to `remaining`
+ *    (i.e. the full amount is needed immediately).
+ */
+export function computeSavingsProjection(goal: FinancialGoal): SavingsProjection {
+  const remaining = goal.targetAmount - goal.currentAmount;
+
+  // ── Already complete (covers targetAmount = 0 edge case) ──────────────────
+  if (remaining <= 0) {
+    return {
+      goalId: goal.id,
+      monthsToTarget: 0,
+      projectedCompletionDate: null,
+      onTrack: true,
+      monthlyRequired: 0,
+      surplusOrDeficit: 0,
+    };
+  }
+
+  // ── Helper: months between two Date objects (truncated, not rounded) ───────
+  function monthsBetween(from: Date, to: Date): number {
+    return (
+      (to.getFullYear() - from.getFullYear()) * 12 +
+      (to.getMonth() - from.getMonth())
+    );
+  }
+
+  // ── Cannot project without a positive contribution ────────────────────────
+  if (goal.monthlyContribution <= 0) {
+    let monthlyRequired = 0;
+
+    if (goal.targetDate) {
+      const now = new Date();
+      const target = new Date(goal.targetDate);
+      const monthsUntilTarget = monthsBetween(now, target);
+      // Guard against a past or same-month target date.
+      monthlyRequired = monthsUntilTarget > 0 ? remaining / monthsUntilTarget : remaining;
+    }
+    // When there is no targetDate, monthlyRequired stays 0 (matching
+    // monthlyContribution) so surplusOrDeficit is also 0.
+
+    return {
+      goalId: goal.id,
+      monthsToTarget: null,
+      projectedCompletionDate: null,
+      onTrack: false,
+      monthlyRequired,
+      surplusOrDeficit: goal.monthlyContribution - monthlyRequired,
+    };
+  }
+
+  // ── Normal projection path ─────────────────────────────────────────────────
+  const monthsToTarget = Math.ceil(remaining / goal.monthlyContribution);
+
+  // Build the projected completion date without mutating `now`.
+  const now = new Date();
+  const projected = new Date(
+    now.getFullYear(),
+    now.getMonth() + monthsToTarget,
+    now.getDate(),
+  );
+  // Normalise to an ISO date string (YYYY-MM-DD) — no time zone dependency.
+  const projectedCompletionDate = [
+    projected.getFullYear(),
+    String(projected.getMonth() + 1).padStart(2, '0'),
+    String(projected.getDate()).padStart(2, '0'),
+  ].join('-');
+
+  // ── On-track check and required-monthly calculation ───────────────────────
+  let onTrack = true;
+  let monthlyRequired: number;
+
+  if (goal.targetDate) {
+    // `<=` comparison works correctly on ISO date strings (lexicographic).
+    onTrack = projectedCompletionDate <= goal.targetDate;
+
+    const target = new Date(goal.targetDate);
+    const monthsUntilTargetDate = monthsBetween(now, target);
+    // Clamp to avoid division by zero or negative months.
+    monthlyRequired =
+      monthsUntilTargetDate > 0 ? remaining / monthsUntilTargetDate : remaining;
+  } else {
+    // No deadline → always on track; required equals current contribution.
+    monthlyRequired = goal.monthlyContribution;
+  }
+
+  return {
+    goalId: goal.id,
+    monthsToTarget,
+    projectedCompletionDate,
+    onTrack,
+    monthlyRequired,
+    surplusOrDeficit: goal.monthlyContribution - monthlyRequired,
+  };
+}

@@ -20,6 +20,11 @@ import { FieldType } from '@/lib/field-system/types';
 import { LEDGER_SCOPE_ACTIONS } from '@/modules/ledger/prompts/ledger-prompt-builder';
 import { getFrictionTier } from '@/modules/ledger/field-templates';
 import type { FrictionTier } from '@/modules/ledger/field-templates';
+import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
+import {
+  validateFieldValue,
+  LEDGER_VALIDATION_CONTEXT,
+} from '../services/ledger-field-validator';
 
 // ============================================================================
 // Spine Event Types
@@ -483,6 +488,106 @@ async function handleComputeResonanceROI(context: ActionContext): Promise<void> 
 }
 
 // ============================================================================
+// LLM sendMessage adapter
+// ============================================================================
+
+/**
+ * Converts the full ActionContext.sendMessage signature into the lightweight
+ * `(prompt: string) => Promise<string>` interface expected by the field
+ * validator.  Returns `undefined` when sendMessage is not available so the
+ * validator can fall back to keyword heuristics immediately.
+ */
+function buildSendMessageAdapter(
+  sendMessage: ActionContext['sendMessage'],
+): ((prompt: string) => Promise<string>) | undefined {
+  if (!sendMessage) return undefined;
+
+  return async (prompt: string): Promise<string> => {
+    const context: ConversationContext = {
+      systemPrompt:
+        'You are a financial data validator. Respond with valid JSON only. No markdown.',
+      memoryContext: [],
+      summary: '',
+      history: [],
+    };
+    const { response } = await sendMessage(prompt, context);
+    return response.fullText;
+  };
+}
+
+// ============================================================================
+// set_field_value handler
+// ============================================================================
+
+/**
+ * Handle set_field_value action — validates a custom field value via LLM
+ * semantic analysis (with keyword fallback) before accepting it.
+ *
+ * Payload shape:
+ *   { fieldId: string; value: string; fieldName?: string }
+ *
+ * On validation failure the action is silently dropped (consistent with how
+ * other handlers in this file behave on bad input) and a warning is logged.
+ * On success a FIELD_VALUE_UPDATED Spine event is emitted.
+ */
+async function handleSetFieldValue(context: ActionContext): Promise<void> {
+  const { payload, emitSpineEvent, sendMessage } = context;
+
+  const fieldId = String(payload.fieldId ?? payload.id ?? '');
+  const value = String(payload.value ?? '');
+  // Caller may provide fieldName as a hint; we prefer the registry name when
+  // the field is found so the validator works with the canonical label.
+  const hintName = String(payload.fieldName ?? payload.name ?? '');
+
+  if (!fieldId) {
+    console.warn('[Ledger] set_field_value: missing fieldId');
+    return;
+  }
+
+  // Resolve the canonical field name from the schema registry when possible.
+  const extensions = SchemaRegistry.getExtensions('ledger');
+  const fieldDef = extensions.find((f) => f.id === fieldId);
+  const fieldName = fieldDef?.name ?? hintName;
+
+  if (!fieldName) {
+    console.warn(
+      `[Ledger] set_field_value: field "${fieldId}" not found and no fieldName hint provided`,
+    );
+    return;
+  }
+
+  const sendMessageAdapter = buildSendMessageAdapter(sendMessage);
+  const result = await validateFieldValue(
+    fieldName,
+    value,
+    LEDGER_VALIDATION_CONTEXT,
+    sendMessageAdapter,
+  );
+
+  if (!result.valid) {
+    console.warn(
+      `[Ledger] set_field_value: validation failed for "${fieldName}": ${result.reason ?? 'invalid value'} (source: ${result.source})`,
+    );
+    return;
+  }
+
+  // Use LLM-corrected value if provided, otherwise keep the original.
+  const finalValue = result.correctedValue ?? value;
+
+  emitSpineEvent('FIELD_VALUE_UPDATED', {
+    moduleId: 'ledger',
+    fieldId,
+    fieldName,
+    value: finalValue,
+    validationSource: result.source,
+  });
+
+  console.log(
+    `[Ledger] Field value set: ${fieldId} = "${finalValue}" (validated via ${result.source})`,
+  );
+}
+
+// ============================================================================
 // Registration
 // ============================================================================
 
@@ -501,6 +606,7 @@ export function registerLedgerFieldActions(): void {
     suggest_field: handleSuggestField,
     create_field: handleCreateField,
     delete_field: handleDeleteField,
+    set_field_value: handleSetFieldValue,
     update_financial_friction: handleUpdateFinancialFriction,
     compute_resonance_roi: handleComputeResonanceROI,
   });

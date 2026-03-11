@@ -33,3 +33,6 @@ export { FieldsTab } from './FieldsTab';
 
 export { DebtStrategist } from './DebtStrategist';
 export type { DebtPayoffResult, DebtPayoffMonth } from '../services/ledger-aggregation-service';
+
+export { TaxTracker } from './TaxTracker';
+export type { TaxTrackerProps } from './TaxTracker';

@@ -159,6 +159,16 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   ATLAS_PREDICTIVE_ALERT: 'Predictive alert',
   ATLAS_STATE_CHANGED: 'System state changed',
   GOAL_MISSING_PROGRESS: 'Goal stalled',
+  // Ledger Cross-Verification / Cashflow Events (S2-L-004)
+  FINANCIAL_FRICTION_UPDATED: 'Financial friction updated',
+  BUDGET_ALERT: 'Budget alert',
+  OVERSPEND_DETECTED: 'Overspend detected',
+  DEBT_MILESTONE: 'Debt milestone',
+  SAVINGS_MILESTONE: 'Savings milestone',
+  INCOME_CHANGE: 'Income changed',
+  EXPENSE_SPIKE: 'Expense spike',
+  CASHFLOW_POSITIVE: 'Cashflow positive',
+  CASHFLOW_NEGATIVE: 'Cashflow negative',
 };
 
 // ---------------------------------------------------------------------------

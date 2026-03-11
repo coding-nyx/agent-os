@@ -5,7 +5,12 @@ import { useVault } from '@/lib/vault-context';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { LedgerDashboard } from './components/LedgerDashboard';
-import { LedgerWorkspace } from './components/LedgerWorkspace';
+import { TransactionManager } from './components/TransactionManager';
+import { BudgetPlanner } from './components/BudgetPlanner';
+import { GoalTracker } from './components/GoalTracker';
+import { DebtStrategist } from './components/DebtStrategist';
+import { FieldsTab } from './components/FieldsTab';
+import { TaxTracker } from './components/TaxTracker';
 import { LedgerOnboarding } from './onboarding/LedgerOnboarding';
 import { ImageCaptureModal } from '@/core/components/ImageCaptureModal';
 import { NeuralModal } from '@/core/components/NeuralModal';
@@ -13,18 +18,22 @@ import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { SectionHeader } from '@/core/components/SectionHeader';
-import { BarChart3, Camera, FileUp, FolderOpen, LayoutDashboard, Receipt, PieChart, Target, Database, Plus } from 'lucide-react';
+import { BarChart3, Camera, FileUp, FolderOpen, LayoutDashboard, ArrowLeftRight, PieChart, Target, Database, Plus, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { analyzeImageWithVision } from '@/lib/services/vision-analysis-service';
 import { ModelRegistry } from '@/lib/ai-adapters/model-registry';
 import {
   FinancialPlan,
   LedgerIntakeProfile,
+  Transaction,
+  BudgetCategory,
+  FinancialGoal,
   loadLedgerProfile,
   saveLedgerProfile,
   subscribeLedgerProfile,
   syncGuestLedgerProfileToUser
 } from './services/ledger-intake-service';
+import { computeBudgetActuals, matchCategoryToTransaction } from './services/ledger-aggregation-service';
 import { LEDGER_PERSONA } from './personas';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { computeResonanceROI } from './services/resonance-roi-service';
@@ -34,6 +43,7 @@ import { ledgerDiagnosisSpec } from './diagnosis/ledger-diagnosis-spec';
 import { useDocumentIntelligence } from '@/lib/hooks/use-document-intelligence';
 import { registerLedgerFieldActions, registerLedgerTransactionActions } from '@/modules/ledger/actions/ledger-field-actions';
 import { registerLedgerCascadeRules } from '@/lib/spine/cascade-rules';
+import { useLedgerCrossVerify } from './hooks/use-ledger-cross-verify';
 
 registerDiagnosisSpec(ledgerDiagnosisSpec);
 registerLedgerFieldActions();
@@ -68,7 +78,12 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
   };
 }
 
-type LedgerMainTab = 'dashboard' | 'workspace';
+type LedgerTab = 'overview' | 'transactions' | 'budget' | 'goals' | 'fields' | 'tax';
+
+/** Shape expected by handleApplyBudgetTemplate */
+interface BudgetTemplate {
+  allocations: Record<string, number>;
+}
 
 function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfile | null; encryptionKey: CryptoKey | null }) {
   const { globalSoul } = useGlobalSoul();
@@ -76,9 +91,12 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('ledger');
 
+  // Cross-verification: coherence checks + NSV sync + Spine events
+  const { coherenceReport } = useLedgerCrossVerify(profile);
+
   const agentAlias = globalSoul?.displayNames?.ledger || 'Ledger';
   const plannerBootstrappedRef = useRef(false);
-  const [activeMainTab, setActiveMainTab] = useState<LedgerMainTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<LedgerTab>('overview');
   const [isAddTransactionModalOpen, setIsAddTransactionModalOpen] = useState(false);
 
   const ai = useModuleAI({
@@ -155,6 +173,177 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
      });
   }, [user?.uid, encryptionKey]);
 
+  // ─── Derived data (lifted from LedgerWorkspace) ───────────────────────────
+
+  const transactions = useMemo(() => profile?.transactions ?? [], [profile?.transactions]);
+  const budgetCategories = useMemo(() => profile?.budgetCategories ?? [], [profile?.budgetCategories]);
+  const financialGoals = useMemo(() => profile?.financialGoals ?? [], [profile?.financialGoals]);
+
+  /** Unique transaction category labels sourced from profile expenses + defaults */
+  const categories = useMemo((): string[] => {
+    if (!profile) return ['Groceries', 'Utilities', 'Transportation', 'Entertainment', 'Healthcare', 'Other'];
+    const expenseCategories = [
+      ...profile.fixedExpenses.map(e => e.label),
+      ...profile.variableExpenses.map(e => e.label),
+    ];
+    const unique = Array.from(new Set(expenseCategories));
+    const defaults = ['Groceries', 'Utilities', 'Transportation', 'Entertainment', 'Healthcare', 'Other'];
+    defaults.forEach(cat => { if (!unique.includes(cat)) unique.push(cat); });
+    return unique;
+  }, [profile]);
+
+  /**
+   * Budget categories with per-category actual spend injected from transactions.
+   * O(n + b): single-pass accumulation then b-length map.
+   */
+  const budgetWithActuals = useMemo((): BudgetCategory[] => {
+    const performances = computeBudgetActuals(
+      profile?.transactions ?? [],
+      profile?.budgetCategories ?? [],
+    );
+    const actualById = new Map<string, number>(
+      performances.map((p) => [p.categoryId, p.actual]),
+    );
+    return budgetCategories.map((cat) => ({
+      ...cat,
+      spent: actualById.get(cat.id) ?? 0,
+    }));
+  }, [profile?.transactions, profile?.budgetCategories, budgetCategories]);
+
+  // ─── Transaction handlers ─────────────────────────────────────────────────
+
+  const handleAddTransaction = useCallback((transaction: Omit<Transaction, 'id'>) => {
+    const matchedId = matchCategoryToTransaction(
+      transaction.description,
+      transaction.category,
+      budgetCategories,
+    );
+    const newTransaction: Transaction = {
+      ...transaction,
+      id: crypto.randomUUID(),
+      budgetCategoryId: transaction.budgetCategoryId ?? matchedId,
+    };
+    if (!profile) return;
+    persistUpdate({ ...profile, transactions: [...transactions, newTransaction] });
+  }, [profile, transactions, budgetCategories, persistUpdate]);
+
+  const handleUpdateTransaction = useCallback((id: string, updates: Partial<Transaction>) => {
+    if (!profile) return;
+    persistUpdate({
+      ...profile,
+      transactions: transactions.map(t => t.id === id ? { ...t, ...updates } : t),
+    });
+  }, [profile, transactions, persistUpdate]);
+
+  const handleDeleteTransaction = useCallback((id: string) => {
+    if (!profile) return;
+    persistUpdate({ ...profile, transactions: transactions.filter(t => t.id !== id) });
+  }, [profile, transactions, persistUpdate]);
+
+  const handleImportCSV = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      const lines = content.split('\n').filter(line => line.trim());
+      const newTransactions: Transaction[] = [];
+      lines.slice(1).forEach(line => {
+        const [date, description, amount, type, category] = line.split(',').map(s => s.trim());
+        if (date && description && amount) {
+          newTransactions.push({
+            id: crypto.randomUUID(),
+            date,
+            description,
+            amount: parseFloat(amount),
+            type: (type?.toLowerCase() as 'income' | 'expense') || 'expense',
+            category: category || 'Other',
+          });
+        }
+      });
+      if (newTransactions.length > 0 && profile) {
+        persistUpdate({ ...profile, transactions: [...transactions, ...newTransactions] });
+      }
+    };
+    reader.readAsText(file);
+  }, [profile, transactions, persistUpdate]);
+
+  const handleExportCSV = useCallback(() => {
+    const csvContent = [
+      'Date,Description,Amount,Type,Category',
+      ...transactions.map(t => `${t.date},${t.description},${t.amount},${t.type},${t.category}`),
+    ].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [transactions]);
+
+  // ─── Budget handlers ──────────────────────────────────────────────────────
+
+  const handleUpdateBudgetCategory = useCallback((id: string, allocated: number) => {
+    if (!profile) return;
+    persistUpdate({
+      ...profile,
+      budgetCategories: budgetCategories.map(cat => cat.id === id ? { ...cat, allocated } : cat),
+    });
+  }, [profile, budgetCategories, persistUpdate]);
+
+  const handleAddBudgetCategory = useCallback((name: string, allocated: number) => {
+    if (!profile) return;
+    const newCategory: BudgetCategory = {
+      id: crypto.randomUUID(),
+      name,
+      allocated,
+      spent: 0,
+      color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+    };
+    persistUpdate({ ...profile, budgetCategories: [...budgetCategories, newCategory] });
+  }, [profile, budgetCategories, persistUpdate]);
+
+  const handleDeleteBudgetCategory = useCallback((id: string) => {
+    if (!profile) return;
+    persistUpdate({ ...profile, budgetCategories: budgetCategories.filter(cat => cat.id !== id) });
+  }, [profile, budgetCategories, persistUpdate]);
+
+  const handleApplyBudgetTemplate = useCallback((template: BudgetTemplate) => {
+    if (!profile) return;
+    const newCategories: BudgetCategory[] = Object.entries(template.allocations).map(([name, percentage]) => ({
+      id: crypto.randomUUID(),
+      name,
+      allocated: (profile.monthlyIncome * percentage) / 100,
+      spent: 0,
+      color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+    }));
+    persistUpdate({ ...profile, budgetCategories: newCategories });
+  }, [profile, persistUpdate]);
+
+  // ─── Goal handlers ────────────────────────────────────────────────────────
+
+  const handleAddGoal = useCallback((goal: Omit<FinancialGoal, 'id' | 'createdAt'>) => {
+    if (!profile) return;
+    const newGoal: FinancialGoal = {
+      ...goal,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    };
+    persistUpdate({ ...profile, financialGoals: [...financialGoals, newGoal] });
+  }, [profile, financialGoals, persistUpdate]);
+
+  const handleUpdateGoal = useCallback((id: string, updates: Partial<FinancialGoal>) => {
+    if (!profile) return;
+    persistUpdate({
+      ...profile,
+      financialGoals: financialGoals.map(g => g.id === id ? { ...g, ...updates } : g),
+    });
+  }, [profile, financialGoals, persistUpdate]);
+
+  const handleDeleteGoal = useCallback((id: string) => {
+    if (!profile) return;
+    persistUpdate({ ...profile, financialGoals: financialGoals.filter(g => g.id !== id) });
+  }, [profile, financialGoals, persistUpdate]);
+
   useEffect(() => {
     if (!profile || !profile.onboardingComplete || plannerBootstrappedRef.current) return;
     if (profile.activePlanId) return;
@@ -202,9 +391,13 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
     }
   }, [profile?.onboardingComplete, profile?.activePlanId, agentAlias, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages]);
 
-  const mainTabs: NeuralTabItem<LedgerMainTab>[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'workspace', label: 'Workspace', icon: Database },
+  const mainTabs: NeuralTabItem<LedgerTab>[] = [
+    { id: 'overview',     label: 'Overview',      icon: LayoutDashboard },
+    { id: 'transactions', label: 'Transactions',  icon: ArrowLeftRight },
+    { id: 'budget',       label: 'Budget',        icon: PieChart },
+    { id: 'goals',        label: 'Goals',         icon: Target },
+    { id: 'fields',       label: 'Fields',        icon: Database },
+    { id: 'tax',          label: 'Tax',           icon: Receipt },
   ];
 
   return (
@@ -216,7 +409,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
       authMode="ledger"
       placeholder="Ask for budgeting or savings optimization..."
       primaryAction={
-        activeMainTab === 'workspace' && (
+        activeTab === 'transactions' && (
           <button
             onClick={() => setIsAddTransactionModalOpen(true)}
             aria-label="Add transaction"
@@ -287,8 +480,8 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
         <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5 flex items-center justify-between">
           <NeuralTabGroup
             tabs={mainTabs}
-            activeTab={activeMainTab}
-            onTabChange={setActiveMainTab}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
             themeColor="cyan"
           />
           
@@ -300,28 +493,88 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar pt-4 md:pt-6 pb-20">
-          {activeMainTab === 'dashboard' ? (
-            <LedgerDashboard
-              soul={globalSoul}
-              profile={profile}
-              isLocked={isLocked}
-              onToggleDocumentAnalysis={async (enabled) => {
-                if (!profile) return;
-                persistUpdate({ ...profile, documentAnalysisEnabled: enabled });
-              }}
-            />
-          ) : (
-            <div className="px-4 md:px-8">
-              <LedgerWorkspace
-                profile={profile!}
-                onUpdateProfile={(updates) => {
+          {activeTab === 'overview' && (
+            <>
+              {coherenceReport && coherenceReport.issues.length > 0 && (
+                <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm">
+                  <span className="text-amber-400 font-medium">Data coherence: {coherenceReport.score}/100</span>
+                  <span className="text-white/60 ml-2">{coherenceReport.issues.length} issue(s) detected</span>
+                </div>
+              )}
+              <LedgerDashboard
+                soul={globalSoul}
+                profile={profile}
+                isLocked={isLocked}
+                onToggleDocumentAnalysis={async (enabled) => {
                   if (!profile) return;
-                  persistUpdate({ ...profile, ...updates });
+                  persistUpdate({ ...profile, documentAnalysisEnabled: enabled });
                 }}
-                isAddTransactionModalOpen={isAddTransactionModalOpen}
-                onAddTransactionModalOpenChange={setIsAddTransactionModalOpen}
+              />
+            </>
+          )}
+
+          {activeTab === 'transactions' && profile && (
+            <div className="px-4 md:px-8">
+              <TransactionManager
+                transactions={transactions}
+                categories={categories}
+                currency={profile.currency}
+                onAddTransaction={handleAddTransaction}
+                onUpdateTransaction={handleUpdateTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
+                onImportCSV={handleImportCSV}
+                onExportCSV={handleExportCSV}
+                isAddModalOpen={isAddTransactionModalOpen}
+                onAddModalOpenChange={setIsAddTransactionModalOpen}
+                showAddButton={false}
               />
             </div>
+          )}
+
+          {activeTab === 'budget' && profile && (
+            <div className="px-4 md:px-8">
+              <BudgetPlanner
+                categories={budgetWithActuals}
+                monthlyIncome={profile.monthlyIncome}
+                currency={profile.currency}
+                onUpdateCategory={handleUpdateBudgetCategory}
+                onAddCategory={handleAddBudgetCategory}
+                onDeleteCategory={handleDeleteBudgetCategory}
+                onApplyTemplate={handleApplyBudgetTemplate}
+              />
+            </div>
+          )}
+
+          {activeTab === 'goals' && profile && (
+            <div className="px-4 md:px-8 space-y-8">
+              <GoalTracker
+                goals={financialGoals}
+                currency={profile.currency}
+                onAddGoal={handleAddGoal}
+                onUpdateGoal={handleUpdateGoal}
+                onDeleteGoal={handleDeleteGoal}
+              />
+              <DebtStrategist
+                debtItems={profile.debtItems ?? []}
+                currency={profile.currency}
+              />
+            </div>
+          )}
+
+          {activeTab === 'fields' && profile && (
+            <div className="px-4 md:px-8">
+              <FieldsTab
+                currency={profile.currency}
+                extensionValues={{}}
+              />
+            </div>
+          )}
+
+          {activeTab === 'tax' && profile && (
+            <TaxTracker
+              profile={profile}
+              encryptionKey={encryptionKey ?? undefined}
+            />
           )}
         </div>
       </div>
