@@ -118,6 +118,75 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
 - [ ] **Nexus-Link Bridge:** Secure terminal for remote system management.
 
 ## 8. Global AI & Systemic Enhancements
+
+- [ ] **Contextual Inference Engine — Passive Cross-Module Data Sync ("True Intelligence"):**
+  Any AI agent in any module should detect when the user casually implies a data change in conversation and offer a non-intrusive reconciliation prompt — without the user ever opening a form.
+
+  **Examples of target behavior:**
+  | User says (in any module) | System detects | Cross-verifies against | Offer |
+  |---|---|---|---|
+  | "I've been working out 3 days this week" | `titan.weeklyWorkouts ≈ 3` | Titan profile `trainingDays` | "Update your training schedule to 3 days?" |
+  | "I just went for a hike" | `titan.workoutLogged` | Today's Titan activity log | "Log a hike for today in Titan?" |
+  | "I got fired last month" | `ledger.incomeChange, ledger.employmentStatus` | Income sources | "Update your income in Ledger?" |
+  | "I've been sleeping terribly" | `soma.sleepQuality ≈ low` | Soma sleep baseline | "Update sleep quality in Soma?" |
+  | "We just booked a holiday in May" | `atlas.upcomingEvent` | Atlas calendar/goals | "Add a May holiday to your Atlas plan?" |
+  | "I've been really anxious lately" | `agnes.emotionalState ≈ anxious` | Agnes emotional baseline | No popup — route to Agnes conversation silently |
+
+  **Architecture (detailed):**
+
+  **Layer 1 — Detection (AI action tag, cross-module)**
+  - Add a new action tag `detect_data_hint` available in ALL module system prompts:
+    ```xml
+    <action type="detect_data_hint">{"module":"titan","field":"weeklyWorkouts","inferredValue":3,"confidence":0.82,"rawQuote":"been working out 3 days","sentiment":"neutral"}</action>
+    ```
+  - The AI only emits this tag when confidence ≥ 0.75 AND the inferred value is concrete (a number, a date, a categorical state — not vague mood language)
+  - The tag is **silent** — it fires on the same message turn without changing the visible response
+  - Add to `SpineEventType`: `CONTEXT_HINT_DETECTED`
+  - Add to `allowedActions` for all modules (but NOT forge/scout which are NSV read-only — they can detect but not trigger updates)
+
+  **Layer 2 — Cross-Verification Service**
+  - New service: `src/lib/services/context-inference-service.ts`
+  - Function: `verifyHintAgainstProfile(hint: DataHint, userId: string): Promise<HintVerificationResult>`
+    - Reads the **target module's profile** directly (not NSV — NSV is too coarse for field-level comparison)
+    - Compares `inferredValue` against stored value using module-specific comparison rules:
+      - Numbers: flag if diff > 15% or > 1 unit for workout counts
+      - Strings/enums: flag if different category/state
+      - Dates: flag if > 7 days difference from stored
+    - Returns `{ isDiscrepant: boolean, currentValue: unknown, inferredValue: unknown, displayLabel: string }`
+  - Rate limiting: max 2 popups per module per session (tracked in `sessionStorage`)
+
+  **Layer 3 — Spine Event + Hook**
+  - On discrepancy confirmed: `Spine.publish({ type: 'CONTEXT_HINT_DETECTED', source: sourceModule, domain: 'C', priority: 'info', data: verificationResult })`
+  - New hook: `useCrossModuleHintListener()` in `src/lib/hooks/use-cross-module-hint-listener.ts`
+    - Subscribes to `CONTEXT_HINT_DETECTED` Spine events
+    - Manages queue of up to 2 pending hints (FIFO, deduplicated by `module+field`)
+    - Exposes `{ activeHint, dismissHint, confirmHint }`
+
+  **Layer 4 — Reconciliation UI (`DataSyncToast`)**
+  - New component: `src/core/components/DataSyncToast.tsx`
+  - Rendered inside `ModuleLayout` (so it's available everywhere)
+  - Visual design:
+    - Floating card pinned **above the chat input bar**, slides in from bottom (Framer Motion)
+    - Glass card style: `bg-white/5 border border-white/10 backdrop-blur-sm`
+    - Module-colored accent dot (uses `MODULE_MANIFEST[targetModule].themeColor`)
+    - Content: `"You mentioned [rawQuote]. [Module] shows [currentValue]. Update to [inferredValue]?"`
+    - Three actions: **[Update]** (primary) · **[Ignore]** (ghost) · **[Ask [Module]]** (routes to target module via NexusHandoffService)
+    - Auto-dismisses after **10 seconds** with a shrinking progress bar
+    - On [Update]: fires `ActionHub.dispatch(targetModule, 'update_field', { field, value: inferredValue })`
+
+  **Layer 5 — Emotional/Sensitive Routing Exception**
+  - Agnes-domain hints (emotional state, relationships, trauma) are NEVER shown as popups
+  - Instead: silently update `emotional.*` NSV fields via `updateCrossFunctionalState`
+  - If Agnes detects a major life event (fired, breakup, loss), it sends `DELEGATION_REQUEST` to Agnes module with context — NOT a data sync popup
+
+  **Modules affected:** Agnes, Titan, Soma, Ledger, Atlas (all 5 core modules)
+  **New Spine events:** `CONTEXT_HINT_DETECTED`, `CONTEXT_HINT_CONFIRMED`, `CONTEXT_HINT_DISMISSED`
+  **New action tags:** `detect_data_hint` (cross-module)
+  **New files:** `context-inference-service.ts`, `DataSyncToast.tsx`, `use-cross-module-hint-listener.ts`
+  **Modified files:** All 5 module system prompts + personas, `ModuleLayout.tsx`, `types.ts`, `state-display-config.ts`
+  **Acceptance:** A user saying "I've been working 3 days" in any chat surfaces a non-blocking sync offer within the same turn, and confirming it updates the relevant module profile without navigation.
+
+
 - [ ] **Debug Mode (Developer Overlay):** Add a "Debug Mode" toggle to the Profile view. When enabled, surfaces internal runtime state across the entire app with zero performance cost when off. → **Sprint 10 S10-004**
     - **Profile toggle:** Switch in ProfilePage (or collapsible "Developer" section); persisted to `localStorage` via `useDebugMode()` hook.
     - **Model badge:** Live pill in every chat header — `"⚡ Running on: claude-3-opus"` alternating with a `"↔ linkstable"` / connected indicator; reads from `AIProvider` context active model.
