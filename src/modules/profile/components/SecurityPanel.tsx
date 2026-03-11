@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Lock, Unlock, KeyRound, Database, Download, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Shield, Lock, Unlock, KeyRound, Database, Download, ChevronDown, ChevronRight, AlertTriangle, Loader2 } from 'lucide-react';
 import { useVault } from '@/lib/vault-context';
+import { useAuth } from '@/lib/auth-context';
 import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { exportUserData, downloadAsJSON } from '@/lib/services/data-export-service';
 
 const panelVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -11,8 +13,34 @@ const panelVariants = {
 };
 
 export function SecurityPanel() {
-  const { isUnlocked, hasVault, lockVault, persistenceMode } = useVault();
+  const { isUnlocked, hasVault, lockVault, persistenceMode, getModuleKey } = useVault();
+  const { user } = useAuth();
   const [vaultActionsExpanded, setVaultActionsExpanded] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = async () => {
+    if (!user?.uid || isExporting) return;
+
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      // getModuleKey returns the master CryptoKey when vault is unlocked,
+      // or null when locked — gracefully degrade to metadata-only export.
+      const key = await getModuleKey('agnes');
+      const vaultKey = key ?? undefined;
+
+      const bundle = await exportUserData(user.uid, vaultKey);
+      const isoDate = new Date().toISOString().slice(0, 10);
+      downloadAsJSON(bundle, `nexus-export-${isoDate}.json`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Export failed';
+      setExportError(message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const vaultStateLabel = isUnlocked
     ? 'Unlocked'
@@ -183,20 +211,34 @@ export function SecurityPanel() {
             </div>
 
             {/* Data export */}
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-black/30 border border-white/5 opacity-50">
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-black/30 border border-white/5">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                  <Download className="w-4 h-4 text-white/40" />
+                <div className="w-8 h-8 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                  <Download className="w-4 h-4 text-violet-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-white/60">Export Data</p>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">
-                    Full profile archive
+                  <p className="text-sm font-bold text-white/90">Export All Data</p>
+                  <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold">
+                    {isUnlocked ? 'Full decrypted archive' : 'Metadata-only (vault locked)'}
                   </p>
+                  {exportError && (
+                    <p className="text-[10px] text-rose-400 font-semibold mt-0.5">{exportError}</p>
+                  )}
                 </div>
               </div>
-              <NeuralButton size="sm" variant="secondary" disabled>
-                Coming Soon
+              <NeuralButton
+                size="sm"
+                variant="secondary"
+                onClick={handleExport}
+                disabled={isExporting || !user}
+                className="shrink-0"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                {isExporting ? 'Exporting…' : 'Export'}
               </NeuralButton>
             </div>
 

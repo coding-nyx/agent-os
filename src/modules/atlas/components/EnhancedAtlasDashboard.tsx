@@ -4,7 +4,7 @@
  * Reverted visual style to original dashboard sections while keeping unified logic.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { GlobalProjection } from '@/lib/types';
 import {
@@ -29,10 +29,11 @@ import {
   ScheduledTask,
 } from '../services/atlas-profile-service';
 import { MorningCheckIn, shouldShowMorningCheckIn } from './MorningCheckIn';
+import { EveningCheckIn, shouldShowEveningCheckIn } from './EveningCheckIn';
 import { PriorityInbox } from './PriorityInbox';
 import { WeekGrid } from './WeekGrid';
 import { WeeklyReviewModal } from './WeeklyReviewModal';
-import { AtlasPredictiveService } from '../services/atlas-predictive-service';
+import { AtlasStateDisplay } from '../services/atlas-predictive-service';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { EmptyState } from '@/core/components/EmptyState';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
@@ -94,6 +95,8 @@ interface EnhancedAtlasDashboardProps {
   preferenceMode?: 'conversational' | 'structured';
   /** S9-006: Toggle callback for preference mode */
   onTogglePreferenceMode?: () => void;
+  /** S9-001: Evaluated Atlas predictive state — sourced from useAtlasPredictiveState in AtlasPage. */
+  predictiveDisplay: AtlasStateDisplay;
 }
 
 const noop = () => {};
@@ -130,6 +133,7 @@ export function EnhancedAtlasDashboard({
   onReviewOpened = noop,
   preferenceMode = 'conversational',
   onTogglePreferenceMode = noop,
+  predictiveDisplay,
 }: EnhancedAtlasDashboardProps) {
   const [isEditingIntention, setIsEditingIntention] = useState(false);
   const [intentionForm, setIntentionForm] = useState({ theme: '', focusDomain: '', energyTarget: 5 });
@@ -139,7 +143,6 @@ export function EnhancedAtlasDashboard({
   const [morningDismissed, setMorningDismissed] = useState(false);
   const [selectedWeekDate, setSelectedWeekDate] = useState<string | undefined>(undefined);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const predictiveService = useMemo(() => new AtlasPredictiveService(), []);
 
   const tabs: NeuralTabItem<AtlasTab>[] = [
     { id: 'dashboard', label: 'Dashboard', icon: CalendarRange },
@@ -189,13 +192,23 @@ export function EnhancedAtlasDashboard({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* ── Header ── */}
-      <div className="px-4 md:px-8 pt-4 md:pt-8 pb-2 md:pb-4">
+      <div className="px-4 md:px-8 pt-4 md:pt-8 pb-2 md:pb-4 flex items-start justify-between gap-4">
         <SectionHeader
           label="Cognitive Domain"
           title="Atlas Energy & Planning"
           subtitle="Energy management, routines, and cross-module execution."
           accentClassName="text-sky-400"
         />
+        {/* S9-006: Preference mode toggle */}
+        <button
+          type="button"
+          onClick={onTogglePreferenceMode}
+          title={preferenceMode === 'structured' ? 'Switch to conversational mode' : 'Switch to structured mode'}
+          className="mt-1 shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-sky-300 transition-colors text-xs"
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">{preferenceMode === 'structured' ? 'Structured' : 'Conversational'}</span>
+        </button>
       </div>
 
       {/* ── Tab Navigation ── */}
@@ -203,7 +216,12 @@ export function EnhancedAtlasDashboard({
         <NeuralTabGroup
           tabs={tabs}
           activeTab={activeTab}
-          onTabChange={onTabChange}
+          onTabChange={(tab) => {
+            onTabChange(tab);
+            if (tab === 'review' && weeklyReviewPending) {
+              onReviewOpened();
+            }
+          }}
           themeColor="sky"
         />
       </div>
@@ -246,6 +264,13 @@ export function EnhancedAtlasDashboard({
                   onDeferTask={(id) => onUpdateTask(id, { status: 'deferred' as const })}
                   onSendMessage={onSendMessage}
                 />
+                {profile && shouldShowEveningCheckIn(user?.uid) && (
+                  <EveningCheckIn
+                    profile={profile}
+                    userId={user?.uid}
+                    onSendMessage={onSendMessage}
+                  />
+                )}
                 <TodaysPlanCard profile={profile} isLocked={isLocked} />
               </div>
             )}
@@ -624,7 +649,7 @@ export function EnhancedAtlasDashboard({
         soul={soul}
         energyWave={energyWave}
         scheduledTasks={profile?.scheduledTasks ?? []}
-        predictiveDisplay={predictiveService.getStateForDisplay()}
+        predictiveDisplay={predictiveDisplay}
       />
     </div>
   );

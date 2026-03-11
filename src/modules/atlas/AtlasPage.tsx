@@ -352,6 +352,15 @@ export default function AtlasPage() {
 
   const baseContext = useMemo(() => IntakeBaseContextService.buildForAtlas({ coreProfile }), [coreProfile]);
 
+  // ── Predictive evaluation on every Atlas page load ────────────────────────
+  // The hook owns the AtlasPredictiveService lifecycle: instantiates once, calls
+  // evaluate() whenever the NSV snapshot changes, and tears down on unmount.
+  // Spine ATLAS_STATE_CHANGED / ATLAS_PREDICTIVE_ALERT events are emitted
+  // internally by the service on each state transition.
+  const { display: predictiveDisplay } = useAtlasPredictiveState(
+    globalSoul?.crossFunctionalState ?? null
+  );
+
   return (
     <UnifiedModulePage<AtlasProfile>
       moduleId="atlas"
@@ -388,6 +397,7 @@ export default function AtlasPage() {
           globalSoul={globalSoul}
           updateCrossFunctionalState={updateCrossFunctionalState}
           isLocked={isLocked}
+          predictiveDisplay={predictiveDisplay}
         />
       )}
     />
