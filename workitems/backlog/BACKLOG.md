@@ -60,19 +60,15 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
     - [x] **Layer 2: The Activity (Performance):** Workout logs, PR tracking (Sprint 7), routines, RPE coaching.
     - [x] **Medical Clearance Handshake:** Soma issues; Titan enforces as banner in Training tab (Sprint 7 S7-002).
 - [ ] **Soma Tab Cleanup (Sprint 7 S7-002):** Remove Biomarkers/Sleep/Recovery/Diagnosis from Titan. 3-tab structure: Training | Progress | Cycles.
-- [ ] **Titan Fast Logging UX — Reduce Friction to Zero:** The current workout logging flow requires too many taps/fields. Titan should feel as fast as a paper log.
-    - **Problem:** Users must navigate to the Training tab, open a workout, fill exercise name + sets + reps + weight separately, then save. For daily users this is a high-friction loop that competes with dedicated apps (Strong, Hevy).
-    - **Desired behavior:** A single "Log" shortcut — either a floating action button on the Training tab or an AI-first flow where the user types/speaks "3x5 squat @ 100kg, 3x8 bench @ 80kg" and Titan parses and logs it in one shot.
-    - **Data verification layer:** After AI auto-parses the log entry, show a compact inline confirmation card (not a modal) — e.g. `"Squat 3×5 @ 100kg · Bench 3×8 @ 80kg — confirm?"` with a single [✓ Log it] button. No re-entry required.
-    - **Quick-fill from history:** Pre-populate weight and sets from the user's last logged session for the same exercise (zero typing for repeat sessions).
-    - **PR detection inline:** If the logged weight exceeds the stored e1RM, surface a subtle `"🏆 New PR"` badge inline — no separate flow.
-    - **Scope:**
-      - `QuickLogBar.tsx` — persistent input bar at bottom of Training tab (above nav), text input + mic icon
-      - `useWorkoutParser()` hook — LLM-powered or regex fallback: parses "3x5 squat @ 100kg" → `{ exercise, sets, reps, weight }[]`
-      - `LogConfirmCard.tsx` — inline (not modal) swipeable confirmation card
-      - Quick-fill from `PersonalRecord[]` — populate last session values on exercise match
-      - AI action tag: `log_workout_set` — so the AI chat can also log via conversation
-    - **Acceptance:** A returning user can log a full workout (3–4 exercises) in under 30 seconds without touching a form field.
+- [ ] **Titan Fast Logging UX — Reduce Friction to Zero:** The current workout logging flow requires too many taps/fields. Titan should feel as fast as a paper log. *(Complements AI Mode / Logbook Mode toggle, Sprint 7 S7-005)*
+    - **Problem:** Users must navigate to Training tab, open workout, fill exercise + sets + reps + weight separately, then save — too many steps for daily use.
+    - **QuickLogBar.tsx:** Persistent text input at the bottom of Training tab. User types "3x5 squat @ 100kg, 3x8 bench @ 80kg" → parsed instantly.
+    - **`useWorkoutParser()` hook:** LLM-powered with regex fallback — parses natural-language set descriptions into `{ exercise, sets, reps, weight }[]`.
+    - **`LogConfirmCard.tsx`:** Inline (never modal) swipeable confirmation card. Shows parsed entries, one-tap [✓ Log it] to commit.
+    - **Quick-fill from history:** Pre-populate weight/sets from user's last logged session for the same exercise — zero typing for repeat sessions. Source: `PersonalRecord[]`.
+    - **PR detection inline:** If logged weight exceeds stored e1RM, surface a subtle `"🏆 New PR"` badge inline — no separate flow.
+    - **AI action tag `log_workout_set`:** Chat sidebar can also log via conversation using the same confirmation path.
+    - **Acceptance:** A returning user logs a full workout (3–4 exercises) in under 30 seconds without touching a form field.
 
 
 - [ ] **Onboarding Simplification (Sprint 7 S7-007):** 3-question AI chat → instant plan. Remove medical phase from Titan onboarding.
@@ -109,6 +105,14 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
   - [ ] Recurrence engine — recurring tasks (`recurrenceRule?: 'daily'|'weekdays'|'weekly'|'monthly'`) auto-respawn on completion
   - [ ] Weekly review auto-trigger — Spine event on Sunday evening → `WEEKLY_REVIEW_DUE` → shows trigger badge on review tab
   - [ ] `generate_daily_schedule` AI action — missing from ActionHub entirely; takes today's tasks + energy budget and returns ordered schedule
+  - [ ] **Atlas Fast Entry — Natural Language Task & Habit Logging:** Atlas data input should be as fast as a thought. *(Sub-item of Sprint 9 Intelligent Loop)*
+      - **Problem:** Adding a task requires opening a form, filling title + priority + energy + deadline + tags separately. Habits require the same multi-field flow. For a planning tool used daily, this is too slow.
+      - **`QuickCaptureBar.tsx`:** Persistent input at top of Dashboard/Tasks tab. User types "call dentist Friday low energy" or "run every weekday morning" → AI or rule-based parser extracts `{ title, dueDate, energyCost, recurrence }`.
+      - **`useAtlasEntryParser()` hook:** Parses natural-language task/habit descriptions. Pattern rules first (dates, recurrence words like "every weekday", energy words like "quick/deep"), LLM fallback for ambiguous input.
+      - **`EntryConfirmChip.tsx`:** Inline confirmation chip (not modal) below the input bar showing parsed fields — e.g. `"📅 Friday · ⚡ Low · Call dentist"`. One tap [+ Add] commits, one tap [Edit] opens the full form pre-filled.
+      - **Pre-fill from context:** If user is in a goal context, auto-associate captured task with the active goal.
+      - **AI action tag `capture_task`:** Chat sidebar can also capture tasks/habits conversationally using the same confirm path.
+      - **Acceptance:** A user can add a task with deadline, energy level, and recurrence in a single natural-language line in under 10 seconds.
 - [ ] **Sprint 10 — Power User & Memory:** Historical data, advanced visualizations, velocity tracking.
   - [ ] Historical aggregate sub-collection: `atlas_profiles/{uid}/daily_snapshots/{date}` — task completion rate, drift score, habit streaks per day
   - [ ] Habit heatmap — GitHub-style annual contribution grid for each habit
@@ -116,6 +120,13 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
   - [ ] Time-block calendar view (hour-grid) — schedule blocks as draggable cells across the day
   - [ ] `executionVelocity` NSV auto-compute — derive from `completedAt` vs `scheduledSlot` deltas; write to `cognitive.executionVelocity` after each task completion
   - [ ] `preferenceMode: 'conversational' | 'structured'` toggle — structured mode shows form panels alongside chat
+  - [ ] **Atlas Verification & Data Review Layer:** Before any AI-driven write commits to the profile, surface a compact non-blocking review. *(Sub-item of Sprint 10 Power User & Memory)*
+      - **Problem:** When the AI infers task details, goal progress, or habit completions from conversation, writes happen silently — the user has no chance to catch misinterpretations without digging into the data.
+      - **`AtlasWriteConfirmToast.tsx`:** Reuses the same pattern as `DataSyncToast` (Sprint 10 S10-008 CIE) but Atlas-specific. Triggered on any AI-initiated `capture_task`, `update_goal_progress`, `mark_habit_complete` write.
+      - **Diff preview:** Shows what changed — e.g. `"Goal: Run a 5K · Progress 40% → 60%"` with [✓ Keep] / [✗ Undo] inline.
+      - **Undo window:** 8-second window before the write is finalized, allowing silent correction without disrupting flow.
+      - **Write audit log:** Each AI-driven write appended to a lightweight `atlas_write_log` in sessionStorage (not Firestore) — visible in Debug Mode thought panel.
+      - **Acceptance:** Every AI-initiated Atlas data change is visible and reversible within the same turn.
 - [ ] **Energy Wave Charting:** Visualizer for daily energy peaks/valleys to optimize task scheduling.
 - [ ] **Task Graph Architecture:** Complex task dependencies with energy-cost estimation.
 - [ ] **Atlas Failure Notification Loop:** Spine-driven cross-module escalation when Atlas detects missed workouts (→ Titan) or missed sessions (→ Agnes).
