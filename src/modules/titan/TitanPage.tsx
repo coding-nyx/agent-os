@@ -393,11 +393,12 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             )}
 
             {/* Soma health snapshot — deep-links to Soma module */}
-            <SomaSnapshotWidget
-              clearanceStatus={somaProfile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined ?? null}
-              lastBiomarkerDate={somaProfile?.biomarkers?.[0]?.recordedAt ?? null}
-              className="mx-4 md:mx-8 mb-2"
-            />
+            <div className="px-4 md:px-8 mb-2">
+              <SomaSnapshotWidget
+                clearanceStatus={somaProfile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined ?? null}
+                lastBiomarkerDate={somaProfile?.biomarkers?.[0]?.recordedAt ?? null}
+              />
+            </div>
 
             {/* Clearance warning banner — only shown when denied/pending */}
             <ClearanceBanner
@@ -525,7 +526,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           id={`tab-panel-${activeTab}`}
           aria-labelledby={`tab-${activeTab}`}
           className={cn(
-            "flex-1 overflow-y-auto no-scrollbar pt-4 md:pt-6"
+            "flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pt-4 md:pt-6"
           )}>
           {renderTabContent()}
         </div>
