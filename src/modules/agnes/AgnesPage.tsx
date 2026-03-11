@@ -141,8 +141,6 @@ function AgnesContent({
   }, [setRoutingSuggestion]);
 
   const startSession = async (type: 'impromptu' | 'new' | 'continue') => {
-    console.log('[Agnes] startSession called with:', type);
-    
     if (type === 'continue') {
       setSessionStartedAt(Date.now());
       setCurrentState('session');
@@ -218,7 +216,6 @@ function AgnesContent({
       }
     }
 
-    console.log('[Agnes] Initializing fresh session messages for:', type);
     setMessages([{ role: 'assistant', content: initialMsg }]);
   };
 

@@ -183,7 +183,9 @@ export function NeuralTabGroup<T extends string = string>({
           <button
             key={tab.id}
             role="tab"
+            id={`tab-${tab.id}`}
             aria-selected={isActive}
+            aria-controls={`tab-panel-${tab.id}`}
             tabIndex={isActive ? 0 : -1}
             onClick={() => onTabChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, tab.id)}

@@ -2,7 +2,7 @@
 
 **Duration:** 1–2 weeks  
 **Objective:** Complete all deferred Sprint 7 items and bring Titan to a fully usable, self-sufficient coaching tool. Primary outcomes: TrainingCalendar visible on first load, PRs persisting correctly, Logbook Mode unblocking power users, Exercise Library enabling intelligent tracking, and Cycles having auto-advance intelligence.  
-**Status:** In Progress  
+**Status:** COMPLETED  
 **Carries over from:** `workitems/sprints/SPRINT_7.md` (Deferred items)
 
 ---

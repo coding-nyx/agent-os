@@ -498,9 +498,13 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           />
         </div>
 
-        <div className={cn(
-          "flex-1 overflow-y-auto no-scrollbar pt-4 md:pt-6"
-        )}>
+        <div
+          role="tabpanel"
+          id={`tab-panel-${activeTab}`}
+          aria-labelledby={`tab-${activeTab}`}
+          className={cn(
+            "flex-1 overflow-y-auto no-scrollbar pt-4 md:pt-6"
+          )}>
           {renderTabContent()}
         </div>
       </div>

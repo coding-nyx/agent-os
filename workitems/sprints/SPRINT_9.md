@@ -2,6 +2,7 @@
 
 **Objective:** Give Atlas a voice. Move from a passive planning tool to a proactive daily co-pilot. Primary outcomes: morning brief fires automatically on first daily open, evening check-in surfaces at day's end, PredictiveService state machine runs on every profile load, recurring tasks auto-respawn, and the weekly review has a discoverable trigger.
 
+**Status:** IN PROGRESS
 **Follows from:** Sprint 8 Atlas bug fixes + AI-first foundation (MorningCheckIn, PriorityInbox, WeekGrid, WeeklyReviewModal all mounted and wired).
 
 **Strategic context:** See `docs/product/ATLAS_PRODUCT_STRATEGY_REVIEW.md` — "Sprint 9: Give Atlas a Voice" section.
