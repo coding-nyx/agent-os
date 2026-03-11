@@ -134,14 +134,42 @@
 
 ---
 
+### S10-008 — Contextual Inference Engine (P1)
+**Goal:** Any AI agent detects when the user casually implies a data change, cross-verifies against the target module's profile, and surfaces a non-blocking reconciliation toast — without the user opening a form.
+
+**Scope:**
+- Add `CONTEXT_HINT_DETECTED`, `CONTEXT_HINT_CONFIRMED`, `CONTEXT_HINT_DISMISSED` to `SpineEventType` + display labels
+- New action tag `detect_data_hint` (silent, available in all 5 core module system prompts + personas):
+  ```xml
+  <action type="detect_data_hint">{"module":"titan","field":"weeklyWorkouts","inferredValue":3,"confidence":0.82,"rawQuote":"been working out 3 days","sentiment":"neutral"}</action>
+  ```
+  Fires only when confidence ≥ 0.75 and value is concrete. Silent — does not alter the visible reply.
+- `src/lib/services/context-inference-service.ts`: `verifyHintAgainstProfile(hint, userId)` — reads target module profile, compares inferred vs stored value, returns `HintVerificationResult`. Rate-limited to 2 popups per module per session via `sessionStorage`.
+- `src/lib/hooks/use-cross-module-hint-listener.ts`: subscribes to `CONTEXT_HINT_DETECTED` Spine events; manages queue of ≤2 pending hints (FIFO, deduplicated by `module+field`); exposes `{ activeHint, dismissHint, confirmHint }`.
+- `src/core/components/DataSyncToast.tsx`: floating card above chat input (Framer Motion slide-up), module-accent dot, 3 actions (Update / Ignore / Ask [Module]), 10s auto-dismiss with progress bar. On confirm: dispatches `update_field` to target module's ActionHub.
+- Wire `DataSyncToast` into `ModuleLayout.tsx`
+- Agnes-domain hints (emotion, life events) never show a popup — silently update NSV `emotional.*` or fire `DELEGATION_REQUEST`
+- Scout/Forge: can emit `detect_data_hint` but cannot execute the write (read-only enforcement)
+- Register `detect_data_hint` handler in `ActionHub` — routes to `context-inference-service`
+
+**Acceptance criteria:**
+- "I've been working out 3 days" in any chat fires `detect_data_hint`, cross-verifies against Titan, and (if discrepant) surfaces the toast
+- Toast auto-dismisses at 10s; confirming updates the target profile
+- Agnes-path hints never show a popup
+- Scout/Forge write attempts are blocked at ActionHub
+- Build passes
+
+---
+
 ## Dependency Order
 
 ```
-S10-001 (Data Layer)  ──►  S10-003 (Doc Intelligence)
+S10-001 (Data Layer)    ──►  S10-003 (Doc Intelligence)
 S10-002 (Soul Protocol) ──►  S10-005 (AI Validation)
-S10-004 (Debug Mode)   — independent
-S10-006 (Portability)  — independent
-S10-007 (Tech Debt)    — independent
+S10-001 (Data Layer)    ──►  S10-008 (Contextual Inference)
+S10-004 (Debug Mode)    — independent
+S10-006 (Portability)   — independent
+S10-007 (Tech Debt)     — independent
 ```
 
 S10-001 should land first as it changes import patterns across the codebase.  
