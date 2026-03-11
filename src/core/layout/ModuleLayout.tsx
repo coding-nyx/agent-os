@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, Terminal, Grid3X3, Sparkles } from 'lucide-react';
-import { NeuralIntegrity } from '@/core/components/NeuralIntegrity';
+import { ArrowLeft, Shield, Terminal } from 'lucide-react';
+import { ModuleSwitcherPopover } from '@/core/components/ModuleSwitcherPopover';
 import { SyncTransition } from '@/core/components/SyncTransition';
 import { SystemCommandCenter } from '@/core/components/SystemCommandCenter';
 import { useVault } from '@/lib/vault-context';
@@ -14,6 +14,7 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { ScopedChatPanel } from '@/core/components/field-management/ScopedChatPanel';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
+import { ModelBadge } from '@/core/components/debug';
 import { NexusLogger } from '@/lib/nexus-logger';
 import { useCrossModuleHintListener } from '@/lib/hooks/use-cross-module-hint-listener';
 import { DataSyncToast } from '@/core/components/DataSyncToast';
@@ -196,39 +197,28 @@ export function ModuleLayout({
                 </button>
               )}
               <div className="flex flex-col">
-                <h1 className={`text-sm sm:text-lg md:text-xl font-bold tracking-[0.08em] sm:tracking-[0.15em] uppercase font-display ${theme.accent} truncate max-w-[160px] sm:max-w-[200px] md:max-w-xs`}>{title}</h1>
+                {/* Title row */}
+                <div className="flex items-center gap-2">
+                  <h1 className={`text-sm sm:text-lg md:text-xl font-bold tracking-[0.08em] sm:tracking-[0.15em] uppercase font-display ${theme.accent} truncate max-w-[160px] sm:max-w-[200px] md:max-w-xs`}>{title}</h1>
+                </div>
+                {/* Subtitle row — replaced by ModelBadge pill when debug mode is on */}
                 <div className="hidden sm:flex items-center gap-2">
                     <div className={`w-1 h-1 rounded-full animate-pulse ${debugMode ? 'bg-amber-400' : 'bg-emerald-500'}`} />
-                    <span className="text-[9px] font-medium text-white/40 uppercase tracking-[0.1em] truncate font-mono">
-                        {debugMode ? activeModel : 'Link Stable // Secure Tunnel'}
-                    </span>
+                    {debugMode ? (
+                      <ModelBadge debugMode={debugMode} />
+                    ) : (
+                      <span className="text-[9px] font-medium text-white/40 uppercase tracking-[0.1em] truncate font-mono">
+                          Link Stable // Secure Tunnel
+                      </span>
+                    )}
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-4 md:gap-8">
               <TelemetryTicker debugMode={debugMode} />
-              {moduleId === 'orchestrator' ? (
-                <button
-                  type="button"
-                  onClick={() => navigate('/hub')}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 text-indigo-400 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
-                  aria-label="Open Hub"
-                >
-                  <Grid3X3 className="w-4 h-4" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest hidden lg:block">Hub</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => navigate('/orchestrator')}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-violet-400 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50 group"
-                  aria-label="Open Nexus"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest hidden lg:block">Nexus</span>
-                </button>
-              )}
+              {/* Single unified nav button — Nexus + all modules */}
+              <ModuleSwitcherPopover currentModuleId={moduleId} />
               <button
                 type="button"
                 onClick={openSecurityProtocol}

@@ -240,6 +240,10 @@ export function registerAtlasActions() {
         updatedAt: now
       };
 
+      if (typeof payload?.recurrenceRule === 'string') {
+        newTask.recurrenceRule = payload.recurrenceRule as AtlasTask['recurrenceRule'];
+      }
+
       profile.tasks.push(newTask);
 
       if (newTask.projectId) {
@@ -329,6 +333,61 @@ export function registerAtlasActions() {
       task.updatedAt = now;
 
       unblockDependents(profile.tasks, task.id);
+
+      // Recurrence engine: auto-spawn next occurrence when recurrenceRule is set
+      if (task.recurrenceRule) {
+        const baseDate = task.scheduledSlot
+          ? new Date(task.scheduledSlot)
+          : new Date();
+
+        let nextDate: Date;
+        switch (task.recurrenceRule) {
+          case 'daily':
+            nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            break;
+          case 'weekdays': {
+            nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+              nextDate.setDate(nextDate.getDate() + 1);
+            }
+            break;
+          }
+          case 'weekly':
+            nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 7);
+            break;
+          case 'monthly':
+            nextDate = new Date(baseDate);
+            nextDate.setMonth(nextDate.getMonth() + 1);
+            break;
+          default:
+            nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+        }
+
+        const nextOccurrenceDate = nextDate.toISOString().slice(0, 10);
+        const spawnedTask: AtlasTask = {
+          id: crypto.randomUUID(),
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          energyCost: task.energyCost,
+          recurrenceRule: task.recurrenceRule,
+          tags: task.tags,
+          notes: task.notes,
+          dependencies: [...task.dependencies],
+          projectId: task.projectId,
+          goalId: task.goalId,
+          status: 'queued',
+          scheduledSlot: nextOccurrenceDate,
+          nextOccurrenceDate,
+          createdAt: now,
+          updatedAt: now
+        };
+        profile.tasks.push(spawnedTask);
+      }
 
       const doneTasks = profile.tasks.filter(t => t.status === 'done').length;
       const nonDeferred = profile.tasks.filter(t => t.status !== 'deferred').length;
@@ -1043,6 +1102,111 @@ export function registerAtlasActions() {
       }
 
       habit.updatedAt = now;
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    },
+
+    // === S9-002: Daily Schedule Generation ===
+
+    generate_daily_schedule: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      const date = typeof payload?.date === 'string' ? payload.date : new Date().toISOString().slice(0, 10);
+      const scheduledBlocks = Array.isArray(payload?.scheduledBlocks) ? payload.scheduledBlocks : [];
+      if (scheduledBlocks.length === 0) return;
+
+      const totalEnergyCost = typeof payload?.totalEnergyCost === 'number' ? payload.totalEnergyCost : 0;
+      let notes = typeof payload?.notes === 'string' ? payload.notes : undefined;
+
+      // Read energy budget from NSV for validation
+      let energyBudget = 8; // safe default
+      if (userId) {
+        const projection = await GlobalProjectionService.getProjection(userId).catch(() => null);
+        const budgetVal = projection?.crossFunctionalState?.cognitive?.energyBudget;
+        if (typeof budgetVal === 'number' && Number.isFinite(budgetVal)) {
+          energyBudget = budgetVal;
+        }
+      }
+
+      // Warn when energy cost exceeds budget — still proceed per spec
+      if (totalEnergyCost > energyBudget) {
+        const warning = `[ENERGY WARNING] totalEnergyCost ${totalEnergyCost} exceeds energyBudget ${energyBudget}.`;
+        console.warn('[Atlas generate_daily_schedule]', warning);
+        notes = notes ? `${notes}\n${warning}` : warning;
+      }
+
+      const now = new Date().toISOString();
+      const validCategories: ScheduledTask['category'][] = ['deep_work', 'admin', 'social', 'physical', 'creative', 'other'];
+
+      const newBlocks: ScheduledTask[] = (scheduledBlocks as Record<string, unknown>[]).map(block => {
+        const startTime = typeof block?.startTime === 'string' ? block.startTime : '09:00';
+        const endTime = typeof block?.endTime === 'string' ? block.endTime : '10:00';
+
+        // Derive duration in minutes from HH:mm range
+        const [startH = 9, startM = 0] = startTime.split(':').map(Number);
+        const [endH = 10, endM = 0] = endTime.split(':').map(Number);
+        const duration = Math.max(15, (endH * 60 + endM) - (startH * 60 + startM));
+
+        const typeStr = typeof block?.type === 'string' ? block.type : 'other';
+        const category: ScheduledTask['category'] = validCategories.includes(typeStr as ScheduledTask['category'])
+          ? (typeStr as ScheduledTask['category'])
+          : 'other';
+
+        const entry: ScheduledTask = {
+          id: `sched_${crypto.randomUUID()}`,
+          title: typeof block?.title === 'string' ? block.title : 'Scheduled Block',
+          energyCost: parseBoundedScore(block?.energyCost),
+          focusCost: 5,
+          scheduledAt: `${date}T${startTime}`,
+          duration,
+          category,
+          status: 'scheduled',
+          dependencies: typeof block?.taskId === 'string' ? [block.taskId] : undefined,
+          blockedBy: null,
+          createdAt: now
+        };
+        return entry;
+      });
+
+      // Replace all blocks for the same date, then append fresh blocks
+      profile.scheduledTasks = [
+        ...profile.scheduledTasks.filter(t => !t.scheduledAt.startsWith(date)),
+        ...newBlocks
+      ];
+
+      // Carry the warning forward into the profile notes field if applicable
+      if (notes && typeof notes === 'string') {
+        void notes; // already annotated above — suppress lint; payload notes are informational only
+      }
+
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+      emitSpineEvent('ROUTINE_UPDATED', {
+        date,
+        blockCount: scheduledBlocks.length
+      });
+    },
+
+    // === S9-004b: Set Task Recurrence ===
+
+    set_task_recurrence: async ({ userId, encryptionKey, payload }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const taskId = typeof payload?.id === 'string' ? payload.id : null;
+      if (!taskId) return;
+
+      const task = profile.tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      if (payload?.recurrenceRule === null) {
+        delete task.recurrenceRule;
+      } else if (typeof payload?.recurrenceRule === 'string') {
+        task.recurrenceRule = payload.recurrenceRule as AtlasTask['recurrenceRule'];
+      }
+
+      task.updatedAt = new Date().toISOString();
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
     }
   });

@@ -49,7 +49,7 @@ function resolveInitialTab(searchParams: URLSearchParams): TitanTab {
 
 function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null }) {
   const { globalSoul } = useGlobalSoul();
-  const { isModuleAccessible } = useVault();
+  const { isModuleAccessible, getModuleKey } = useVault();
   const { user } = useAuth();
   const isLocked = !isModuleAccessible('titan');
   const navigate = useNavigate();
@@ -57,12 +57,26 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams));
   const [calendarSelectedRoutine, setCalendarSelectedRoutine] = useState<Routine | null>(null);
   const [somaProfile, setSomaProfile] = useState<SomaProfile | null>(null);
+  const [somaEncryptionKey, setSomaEncryptionKey] = useState<CryptoKey | null>(null);
+
+  // Resolve the Soma module's own encryption key independently of the Titan
+  // key that TitanContent receives as a prop. Even though both currently
+  // resolve to the same master key, fetching it via getModuleKey('soma')
+  // keeps the subscription semantically correct and resilient to any future
+  // per-module key derivation.
+  useEffect(() => {
+    let cancelled = false;
+    getModuleKey('soma').then((key) => {
+      if (!cancelled) setSomaEncryptionKey(key);
+    });
+    return () => { cancelled = true; };
+  }, [getModuleKey]);
 
   useEffect(() => {
     if (!user?.uid) return;
-    const unsub = subscribeSomaProfile({ userId: user.uid, encryptionKey: encryptionKey ?? null }, setSomaProfile);
+    const unsub = subscribeSomaProfile({ userId: user.uid, encryptionKey: somaEncryptionKey }, setSomaProfile);
     return unsub;
-  }, [user?.uid, encryptionKey]);
+  }, [user?.uid, somaEncryptionKey]);
 
   // Derive prompt mode from active tab — always training now
   const agentAlias = globalSoul?.displayNames?.titan || 'Titan';

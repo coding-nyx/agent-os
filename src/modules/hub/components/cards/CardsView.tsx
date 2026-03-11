@@ -19,7 +19,7 @@ export const ModuleCard = React.memo(function ModuleCard({
         "group relative rounded-[32px] border transition-all text-left overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/50",
         isPlugin ? "p-6 w-[280px] shrink-0" : "p-8",
         isLocked
-          ? "bg-white/[0.04] border-white/10 opacity-40 hover:opacity-60"
+          ? "bg-white/[0.03] border-white/[0.07] opacity-60 hover:opacity-75"
           : "bg-black/60 backdrop-blur-3xl border-white/20 hover:border-white/30 hover:bg-white/[0.05] shadow-2xl"
       )}
     >
@@ -30,7 +30,7 @@ export const ModuleCard = React.memo(function ModuleCard({
         <div className={cn(
           "rounded-2xl border flex items-center justify-center transition-all shadow-inner",
           isPlugin ? "w-10 h-10 mb-4 bg-white/5 border-white/10" : "w-16 h-16 mb-6 bg-white/10 border-white/20 group-hover:scale-110 group-hover:rotate-3",
-          isLocked ? "bg-white/5 border-white/5" : ""
+          isLocked ? "bg-white/[0.06] border-white/[0.08]" : ""
         )}>
           <Icon className={isPlugin ? "w-5 h-5" : "w-8 h-8"} style={{ color: isLocked ? '#666' : color }} />
         </div>
@@ -62,7 +62,7 @@ export const ModuleCard = React.memo(function ModuleCard({
         )}
       </div>
       <div className="absolute top-0 right-0 p-8 opacity-[0.05] group-hover:opacity-[0.12] transition-opacity">
-        <Icon className={isPlugin ? "w-20 h-20" : "w-32 h-32"} style={{ color: isLocked ? '#333' : color }} />
+        <Icon className={isPlugin ? "w-20 h-20" : "w-32 h-32"} style={{ color: isLocked ? '#444' : color }} />
       </div>
     </motion.button>
   );
@@ -84,7 +84,7 @@ export function CardsView({ modules, moduleAccess, moduleStats, displayNames, on
       animate={{ opacity: 1, filter: 'blur(0px)' }}
       exit={{ opacity: 0, filter: 'blur(8px)' }}
       transition={{ duration: 0.5 }}
-      className="flex-1 pointer-events-auto overflow-y-auto no-scrollbar pt-28 px-6 pb-40 flex flex-col"
+      className="flex-1 pointer-events-auto overflow-y-auto no-scrollbar pt-4 px-6 pb-40 flex flex-col"
     >
       <div className="flex-1 flex flex-col justify-center max-w-[1200px] mx-auto w-full mb-20">
         {/* Daily Brief — Wellness at a Glance */}

@@ -2,7 +2,7 @@
 
 **Objective:** Give Atlas a voice. Move from a passive planning tool to a proactive daily co-pilot. Primary outcomes: morning brief fires automatically on first daily open, evening check-in surfaces at day's end, PredictiveService state machine runs on every profile load, recurring tasks auto-respawn, and the weekly review has a discoverable trigger.
 
-**Status:** IN PROGRESS
+**Status:** COMPLETED
 **Follows from:** Sprint 8 Atlas bug fixes + AI-first foundation (MorningCheckIn, PriorityInbox, WeekGrid, WeeklyReviewModal all mounted and wired).
 
 **Strategic context:** See `docs/product/ATLAS_PRODUCT_STRATEGY_REVIEW.md` — "Sprint 9: Give Atlas a Voice" section.
@@ -43,11 +43,11 @@
 - `WeeklyReviewModal` already accepts `predictiveDisplay: AtlasStateDisplay` — it will automatically show real data once wired
 
 **Acceptance Criteria:**
-- [ ] `AtlasPredictiveService` evaluation runs on every Atlas page load
-- [ ] State machine transitions (Normal/Compressed/Overloaded/Recovery) correctly evaluated from live NSV
-- [ ] `getStateForDisplay()` returns values derived from actual state, not hardcoded
-- [ ] Overloaded state emits `OVERLOAD_WARNING` to Spine
-- [ ] `WeeklyReviewModal` shows real predictive state when opened
+- [x] `AtlasPredictiveService` evaluation runs on every Atlas page load
+- [x] State machine transitions (Normal/Compressed/Overloaded/Recovery) correctly evaluated from live NSV
+- [x] `getStateForDisplay()` returns values derived from actual state, not hardcoded
+- [x] Overloaded state emits `OVERLOAD_WARNING` to Spine
+- [x] `WeeklyReviewModal` shows real predictive state when opened
 
 ---
 
@@ -80,11 +80,11 @@ The `generate_daily_schedule` action is referenced in Atlas personas and product
 - Add `generate_daily_schedule` to the allowed actions list for Atlas
 
 **Acceptance Criteria:**
-- [ ] Action registered in `actions.ts` and handled correctly
-- [ ] Energy budget validation — AI warned if proposed schedule exceeds NSV budget
-- [ ] Scheduled blocks persisted to `profile.scheduledTasks`
-- [ ] Spine `ROUTINE_UPDATED` event emitted after schedule write
-- [ ] Action documented in `personas.ts` thought block guidance
+- [x] Action registered in `actions.ts` and handled correctly
+- [x] Energy budget validation — AI warned if proposed schedule exceeds NSV budget
+- [x] Scheduled blocks persisted to `profile.scheduledTasks`
+- [x] Spine `ROUTINE_UPDATED` event emitted after schedule write
+- [x] Action documented in `personas.ts` thought block guidance
 
 ---
 
@@ -110,12 +110,12 @@ MorningCheckIn (built in Sprint 8) sets the day's intention. EveningCheckIn clos
 - Export: `EveningCheckIn` component + `shouldShowEveningCheckIn(userId?)` pure helper
 
 **Acceptance Criteria:**
-- [ ] Component file exists at correct path, TypeScript-clean
-- [ ] Shows only in the 17:00–23:59 time window
-- [ ] Dismisses for the day on both "Start Review" and "Skip Tonight"
-- [ ] "Start Review" sends structured prompt with today's tasks and habits
-- [ ] Mounted in `EnhancedAtlasDashboard` Today view below PriorityInbox
-- [ ] Matches Atlas sky glassmorphism visual language
+- [x] Component file exists at correct path, TypeScript-clean
+- [x] Shows only in the 17:00–23:59 time window
+- [x] Dismisses for the day on both "Start Review" and "Skip Tonight"
+- [x] "Start Review" sends structured prompt with today's tasks and habits
+- [x] Mounted in `EnhancedAtlasDashboard` Today view below PriorityInbox
+- [x] Matches Atlas sky glassmorphism visual language
 
 ---
 
@@ -133,12 +133,12 @@ Tasks can be one-off or recurring (stand-up meetings, weekly reports, daily chec
 - Update `create_task` action payload to accept optional `recurrenceRule`
 
 **Acceptance Criteria:**
-- [ ] `AtlasTask` type updated with `recurrenceRule` and `nextOccurrenceDate` optional fields
-- [ ] `complete_task` handler auto-respawns recurring tasks on completion
-- [ ] `set_task_recurrence` action registered and handled
-- [ ] Respawned task inherits title, priority, energyCost, recurrenceRule from parent
-- [ ] Respawned task gets a fresh `id` (UUID) and `status: 'queued'`
-- [ ] `create_task` accepts `recurrenceRule` in payload
+- [x] `AtlasTask` type updated with `recurrenceRule` and `nextOccurrenceDate` optional fields
+- [x] `complete_task` handler auto-respawns recurring tasks on completion
+- [x] `set_task_recurrence` action registered and handled
+- [x] Respawned task inherits title, priority, energyCost, recurrenceRule from parent
+- [x] Respawned task gets a fresh `id` (UUID) and `status: 'queued'`
+- [x] `create_task` accepts `recurrenceRule` in payload
 
 ---
 
@@ -156,11 +156,11 @@ WeeklyReviewModal is built and mounted (Sprint 8), but there is no proactive sig
 - Fallback: if no Sunday event fires (user didn't open Atlas on Sunday), show badge for 3 days after the week ends
 
 **Acceptance Criteria:**
-- [ ] Cascade rule added for Sunday 18:00–21:00 → `WEEKLY_REVIEW_DUE`
-- [ ] Atlas listens for `WEEKLY_REVIEW_DUE` and sets pending state
-- [ ] Pulsing badge appears on review tab when review is pending
-- [ ] Badge clears on review completion
-- [ ] 3-day grace fallback works for missed Sunday opens
+- [x] Cascade rule added for Sunday 18:00–21:00 → `WEEKLY_REVIEW_DUE`
+- [x] Atlas listens for `WEEKLY_REVIEW_DUE` and sets pending state
+- [x] Pulsing badge appears on review tab when review is pending
+- [x] Badge clears on review completion
+- [x] 3-day grace fallback works for missed Sunday opens
 
 ---
 
@@ -179,11 +179,11 @@ PM review identified that some users want form-based entry alongside AI chat. Th
 - **Important**: this is a preference, not a mode lock. User can switch at any time.
 
 **Acceptance Criteria:**
-- [ ] `preferenceMode` field on `AtlasProfile` with default `'conversational'`
-- [ ] Toggle accessible from dashboard header
-- [ ] Structured mode shows QuickAddForm as persistent sidebar panel
-- [ ] Conversational mode keeps QuickAddForm as modal (current behavior)
-- [ ] Preference persisted to Firestore
+- [x] `preferenceMode` field on `AtlasProfile` with default `'conversational'`
+- [x] Toggle accessible from dashboard header
+- [x] Structured mode shows QuickAddForm as persistent sidebar panel
+- [x] Conversational mode keeps QuickAddForm as modal (current behavior)
+- [x] Preference persisted to Firestore
 
 ---
 
@@ -198,10 +198,10 @@ PM review identified that some users want form-based entry alongside AI chat. Th
 ---
 
 ## Definition of Done
-- [ ] All P0 acceptance criteria pass
-- [ ] `npm run build` exits with zero errors
-- [ ] `AtlasPredictiveService.getStateForDisplay()` returns real values
-- [ ] `generate_daily_schedule` action successfully creates scheduled blocks
-- [ ] EveningCheckIn appears correctly in the 17:00–23:59 window
-- [ ] Recurring tasks auto-respawn on `complete_task`
-- [ ] `BACKLOG.md` Atlas Sprint 9 items updated to reflect completion
+- [x] All P0 acceptance criteria pass
+- [x] `npm run build` exits with zero errors
+- [x] `AtlasPredictiveService.getStateForDisplay()` returns real values
+- [x] `generate_daily_schedule` action successfully creates scheduled blocks
+- [x] EveningCheckIn appears correctly in the 17:00–23:59 window
+- [x] Recurring tasks auto-respawn on `complete_task`
+- [x] `BACKLOG.md` Atlas Sprint 9 items updated to reflect completion

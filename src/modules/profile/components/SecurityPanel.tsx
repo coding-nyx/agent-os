@@ -1,80 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Lock, Unlock, KeyRound, Database, Download, ChevronDown, ChevronRight, AlertTriangle, Loader2 } from 'lucide-react';
+import { Shield, Lock, Unlock, Download, ChevronDown, ChevronRight, AlertTriangle, Loader2, Skull } from 'lucide-react';
 import { useVault } from '@/lib/vault-context';
 import { useAuth } from '@/lib/auth-context';
 import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { exportUserData, downloadAsJSON } from '@/lib/services/data-export-service';
-import { MODULE_MANIFEST, buildDefaultVaultLocks, type ModuleId } from '@/lib/module-manifest';
-import { CoreProfileService } from '@/lib/services/core-profile-service';
-import { Spine } from '@/lib/spine/spine-event-bus';
+import { SoulTerminationService } from '@/lib/services/soul-termination-service';
 
 const panelVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
-// Modules that have a security policy and a dedicated page
-const securityModules = Object.entries(MODULE_MANIFEST)
-  .filter(([, m]) => m.hasPage && m.securityPolicy)
-  .map(([id, m]) => ({
-    id: id as ModuleId,
-    title: m.title,
-    icon: m.icon,
-    colorHex: m.colorHex,
-    securityPolicy: m.securityPolicy!,
-  }));
-
 export function SecurityPanel() {
   const { isUnlocked, hasVault, lockVault, persistenceMode, getModuleKey } = useVault();
-  const { user, isGuest, profile } = useAuth();
+  const { user, isGuest, logout } = useAuth();
   const [vaultActionsExpanded, setVaultActionsExpanded] = useState(false);
-  const [moduleSecurityExpanded, setModuleSecurityExpanded] = useState(false);
-  const [securityLocks, setSecurityLocks] = useState<Record<string, boolean>>({});
-  const [securitySaving, setSecuritySaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-
-  // Initialise lock state from profile preferences, enforcing mandatory locks
-  useEffect(() => {
-    const defaults = buildDefaultVaultLocks();
-    const overrides = profile?.securityPreferences?.vaultLocks ?? {};
-    const merged: Record<string, boolean> = { ...defaults, ...overrides };
-    securityModules.forEach((mod) => {
-      if (mod.securityPolicy.mandatory) merged[mod.id] = true;
-    });
-    setSecurityLocks(merged);
-  }, [profile?.securityPreferences]);
-
-  const handleSecurityToggle = useCallback(
-    async (moduleId: ModuleId) => {
-      if (!user || isGuest || !profile) return;
-      const mod = MODULE_MANIFEST[moduleId];
-      if (mod.securityPolicy?.mandatory) return;
-
-      const current = securityLocks[moduleId] ?? mod.securityPolicy?.defaultLocked ?? false;
-      const next = !current;
-      setSecurityLocks((prev) => ({ ...prev, [moduleId]: next }));
-      setSecuritySaving(true);
-      try {
-        await CoreProfileService.updateSecurityPreferences(user.uid, {
-          vaultLocks: { [moduleId]: next },
-        });
-        Spine.emit({
-          type: 'SECURITY_POLICY_UPDATED',
-          source: 'system',
-          domain: 'system',
-          data: { moduleId, locked: next },
-          cascadeDepth: 0,
-          priority: 'info',
-        });
-      } finally {
-        setSecuritySaving(false);
-      }
-    },
-    [user, isGuest, profile, securityLocks],
-  );
+  const [confirmTerminate, setConfirmTerminate] = useState(false);
+  const [isTerminating, setIsTerminating] = useState(false);
+  const [terminateError, setTerminateError] = useState<string | null>(null);
 
   const handleExport = async () => {
     if (!user?.uid || isExporting) return;
@@ -163,53 +110,17 @@ export function SecurityPanel() {
           </span>
         </div>
 
-        {/* Vault details grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Key derivation */}
-          <div className="rounded-2xl bg-black/30 border border-white/5 p-4 space-y-1.5">
-            <div className="flex items-center gap-2 mb-2">
-              <KeyRound className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
-                Key Derivation
-              </span>
-            </div>
-            <p className="text-xs font-bold text-white/80">PBKDF2</p>
-            <p className="text-[10px] text-violet-300 font-bold uppercase tracking-wider">
-              High Security
-            </p>
-          </div>
-
-          {/* Persistence mode */}
-          <div className="rounded-2xl bg-black/30 border border-white/5 p-4 space-y-1.5">
-            <div className="flex items-center gap-2 mb-2">
-              <Database className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
-                Persistence
-              </span>
-            </div>
-            <p className="text-xs font-bold text-white/80">{persistenceMode}</p>
-            <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest">
-              Session Mode
-            </p>
-          </div>
-
-          {/* Module access */}
-          <div className="rounded-2xl bg-black/30 border border-white/5 p-4 space-y-1.5">
-            <div className="flex items-center gap-2 mb-2">
-              <Shield className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
-                Module Access
-              </span>
-            </div>
-            <p className="text-xs font-bold text-white/80">6 Modules</p>
-            <p
-              className={`text-[10px] font-bold uppercase tracking-wider ${
-                isUnlocked ? 'text-emerald-300' : 'text-amber-300'
-              }`}
-            >
-              {isUnlocked ? 'Full Access' : 'Restricted'}
-            </p>
-          </div>
+        {/* Simplified vault info row */}
+        <div className="flex items-center gap-4 p-3 rounded-2xl bg-black/30 border border-white/5">
+          <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
+            Encryption
+          </span>
+          <span className="text-[10px] font-bold text-white/70">PBKDF2 + AES-GCM</span>
+          <span className="mx-1 text-white/15">·</span>
+          <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
+            Persistence
+          </span>
+          <span className="text-[10px] font-bold text-white/70">{persistenceMode}</span>
         </div>
       </GlassCard>
 
@@ -320,103 +231,95 @@ export function SecurityPanel() {
         )}
       </GlassCard>
 
-      {/* Module Security — collapsible */}
-      <GlassCard className="p-6">
-        <button
-          type="button"
-          onClick={() => setModuleSecurityExpanded((v) => !v)}
-          className="w-full flex items-center gap-3 text-left focus:outline-none focus:ring-1 focus:ring-violet-500/40 rounded-lg"
-          aria-expanded={moduleSecurityExpanded}
-          aria-label="Toggle Module Security"
-        >
-          <div className="w-7 h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-            <Lock className="w-3.5 h-3.5 text-emerald-400" />
+      {/* Danger Zone */}
+      <GlassCard className="p-6 border border-rose-500/20 bg-rose-500/5">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-7 h-7 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+            <Skull className="w-3.5 h-3.5 text-rose-400" />
           </div>
-          <div className="flex-1">
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
-              Module Security
+          <div>
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-rose-400">
+              Danger Zone
             </h3>
             <p className="text-[9px] text-white/25 uppercase tracking-wider font-semibold mt-0.5">
-              Lock · Open · Mandatory
+              Irreversible actions
             </p>
           </div>
-          {moduleSecurityExpanded ? (
-            <ChevronDown className="w-4 h-4 text-white/30" />
-          ) : (
-            <ChevronRight className="w-4 h-4 text-white/30" />
-          )}
-        </button>
+        </div>
 
-        {moduleSecurityExpanded && (
-          <div className="mt-4 space-y-2">
-            {(isGuest || !user || !profile) && (
-              <p className="text-[10px] text-white/40 italic mb-3">
-                Guest links cannot modify module security. Authenticate to persist preferences.
+        {!confirmTerminate ? (
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+            <div>
+              <p className="text-sm font-bold text-rose-300">Terminate Neural Soul</p>
+              <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold mt-0.5">
+                Permanently delete all data
               </p>
-            )}
-            {securityModules.map((mod) => {
-              const locked = securityLocks[mod.id] ?? mod.securityPolicy.defaultLocked;
-              const disabled = mod.securityPolicy.mandatory || isGuest || !user || !profile;
-              const Icon = mod.icon;
-              return (
-                <button
-                  key={mod.id}
-                  type="button"
-                  onClick={() => { void handleSecurityToggle(mod.id); }}
-                  disabled={disabled}
-                  className={[
-                    'w-full text-left p-3 rounded-2xl border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40',
-                    locked
-                      ? 'bg-emerald-500/10 border-emerald-500/30'
-                      : 'bg-white/[0.04] border-white/10 hover:border-white/20',
-                    disabled ? 'opacity-50 cursor-not-allowed' : '',
-                  ].join(' ')}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-xl border border-white/10 flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: `${mod.colorHex}1f` }}
-                      >
-                        <Icon className="w-4 h-4" style={{ color: mod.colorHex }} />
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-white/80">
-                          {mod.title}
-                          {mod.securityPolicy.mandatory && (
-                            <span className="ml-2 text-[9px] text-amber-400">MANDATORY</span>
-                          )}
-                        </div>
-                        <div className="text-[9px] text-white/40 uppercase tracking-[0.2em]">
-                          {locked ? 'LOCKED' : 'OPEN'}
-                        </div>
-                      </div>
-                    </div>
-                    {/* Toggle pill */}
-                    <div
-                      className={[
-                        'w-11 h-6 rounded-full border flex items-center px-1 transition-all',
-                        locked
-                          ? 'bg-emerald-500/20 border-emerald-500/40'
-                          : 'bg-white/5 border-white/10',
-                      ].join(' ')}
-                    >
-                      <div
-                        className={[
-                          'w-4 h-4 rounded-full transition-all',
-                          locked ? 'bg-emerald-400 translate-x-5' : 'bg-white/40 translate-x-0',
-                        ].join(' ')}
-                      />
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-            {securitySaving && (
-              <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 pt-1">
-                Saving security policy…
-              </p>
-            )}
+            </div>
+            <NeuralButton
+              size="sm"
+              variant="danger"
+              onClick={() => setConfirmTerminate(true)}
+              disabled={isGuest || !user}
+              className="shrink-0"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              TERMINATE NEURAL SOUL
+            </NeuralButton>
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-rose-300">Are you absolutely sure?</p>
+                <p className="text-[11px] text-white/60 mt-1">
+                  This permanently deletes all your data and cannot be undone.
+                </p>
+                {terminateError && (
+                  <p className="text-[10px] text-rose-400 font-semibold mt-1.5">{terminateError}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <NeuralButton
+                size="sm"
+                variant="danger"
+                onClick={async () => {
+                  if (!user?.uid) return;
+                  setIsTerminating(true);
+                  setTerminateError(null);
+                  try {
+                    await SoulTerminationService.terminateSoul(user.uid);
+                    await logout();
+                  } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : 'Termination failed';
+                    setTerminateError(message);
+                    setIsTerminating(false);
+                  }
+                }}
+                disabled={isTerminating}
+                className="shrink-0"
+              >
+                {isTerminating ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Skull className="w-3.5 h-3.5" />
+                )}
+                {isTerminating ? 'Terminating…' : 'YES, TERMINATE'}
+              </NeuralButton>
+              <NeuralButton
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setConfirmTerminate(false);
+                  setTerminateError(null);
+                }}
+                disabled={isTerminating}
+                className="shrink-0"
+              >
+                Cancel
+              </NeuralButton>
+            </div>
           </div>
         )}
       </GlassCard>

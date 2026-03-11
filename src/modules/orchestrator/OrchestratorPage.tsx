@@ -41,7 +41,7 @@ export default function OrchestratorPage() {
     if (!isGuest && user && !profile && !isSubmitting && (isUnlocked || !hasVault)) {
       initializeNewUser();
     }
-  }, [isGuest, user, profile, initializeNewUser, isSubmitting]);
+  }, [isGuest, user, profile, initializeNewUser, isSubmitting, isUnlocked, hasVault]);
 
   useEffect(() => {
     if (!isGuest && profile?.onboardingComplete) {

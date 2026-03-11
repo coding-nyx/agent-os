@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Shield, Settings } from 'lucide-react';
+import { User, Shield, Settings, DatabaseZap } from 'lucide-react';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { IdentityPanel } from './components/IdentityPanel';
 import { SecurityPanel } from './components/SecurityPanel';
 import { SystemPanel } from './components/SystemPanel';
+import { DataBackupPanel } from './components/DataBackupPanel';
 
-type TabId = 'identity' | 'security' | 'system';
+type TabId = 'identity' | 'security' | 'system' | 'data';
 
 const TABS: NeuralTabItem<TabId>[] = [
   { id: 'identity', label: 'Identity', icon: User },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'system', label: 'System', icon: Settings },
+  { id: 'data', label: 'Data & Backup', icon: DatabaseZap },
 ];
 
 const tabVariants = {
@@ -85,6 +87,17 @@ export default function ProfilePage() {
                   exit="exit"
                 >
                   <SystemPanel />
+                </motion.div>
+              )}
+              {activeTab === 'data' && (
+                <motion.div
+                  key="data"
+                  variants={tabVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                >
+                  <DataBackupPanel />
                 </motion.div>
               )}
             </AnimatePresence>

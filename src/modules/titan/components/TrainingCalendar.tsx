@@ -148,11 +148,11 @@ function DayColumn({ date, dayIndex, routine, session, onStartSession }: DayColu
   const dayLabel = DAY_LABELS[dayIndex];
 
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex flex-col items-center gap-1 sm:gap-1.5 min-w-0">
       {/* Day label */}
       <span
         className={cn(
-          'text-[9px] font-bold uppercase tracking-widest',
+          'text-[8px] sm:text-[9px] font-bold uppercase tracking-widest',
           isToday ? 'text-orange-400' : 'text-white/30',
         )}
       >
@@ -162,7 +162,7 @@ function DayColumn({ date, dayIndex, routine, session, onStartSession }: DayColu
       {/* Date number */}
       <div
         className={cn(
-          'w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold',
+          'w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold',
           isToday
             ? 'bg-orange-500 text-white'
             : 'text-white/40',
@@ -174,7 +174,7 @@ function DayColumn({ date, dayIndex, routine, session, onStartSession }: DayColu
       {/* Day card */}
       <div
         className={cn(
-          'w-full rounded-xl border p-2 flex flex-col gap-1 relative min-h-[80px]',
+          'w-full rounded-lg sm:rounded-xl border p-1 sm:p-2 flex flex-col gap-1 relative min-h-[70px] sm:min-h-[80px]',
           CARD_STYLES[status],
         )}
       >
@@ -185,15 +185,15 @@ function DayColumn({ date, dayIndex, routine, session, onStartSession }: DayColu
 
         {status === 'rest' ? (
           <>
-            <span className="text-[10px] font-semibold text-white/30 leading-tight">Rest</span>
-            <span className="text-[9px] text-white/20">—</span>
+            <span className="text-[9px] font-semibold text-white/30 leading-tight">Rest</span>
+            <span className="text-[8px] text-white/20 hidden sm:inline">—</span>
           </>
         ) : (
           <>
             {/* Routine name */}
             <span
               className={cn(
-                'text-[10px] font-semibold leading-tight pr-4 break-words',
+                'text-[9px] font-semibold leading-tight pr-3 break-words',
                 (status === 'completed' || status === 'today-done') && 'text-emerald-400',
                 status === 'missed' && 'text-rose-400',
                 status === 'today-pending' && 'text-orange-300',
@@ -206,13 +206,13 @@ function DayColumn({ date, dayIndex, routine, session, onStartSession }: DayColu
 
             {/* Sub-label */}
             {(status === 'completed' || status === 'today-done') && (
-              <span className="text-[9px] text-emerald-500/70">Completed</span>
+              <span className="text-[8px] text-emerald-500/70 hidden sm:inline">Completed</span>
             )}
             {status === 'missed' && (
-              <span className="text-[9px] text-rose-500/70">Missed</span>
+              <span className="text-[8px] text-rose-500/70 hidden sm:inline">Missed</span>
             )}
             {status === 'upcoming' && (
-              <span className="text-[9px] text-white/30">
+              <span className="text-[8px] text-white/30 hidden sm:inline">
                 {routine!.exercises.length} exercise{routine!.exercises.length !== 1 ? 's' : ''}
               </span>
             )}
@@ -282,8 +282,8 @@ export function TrainingCalendar({ profile, onStartSession }: TrainingCalendarPr
       </div>
 
       {/* 7-day grid */}
-      <div className="overflow-x-auto">
-        <div className="grid grid-cols-7 gap-1.5 min-w-[560px]">
+      <div className="w-full">
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5 w-full">
           {weekDays.map((date, i) => {
             const isoDate = toIsoDate(date);
             const weekdayKey = WEEKDAY_KEYS[i];

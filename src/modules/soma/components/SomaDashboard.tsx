@@ -7,7 +7,6 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Activity, 
   Heart, 
-  Droplet, 
   Thermometer, 
   TrendingUp,
   Calendar,
@@ -16,7 +15,8 @@ import {
   History,
   AlertCircle,
   CheckCircle2,
-  Lock
+  Lock,
+  Dumbbell
 } from 'lucide-react';
 import { GlobalProjection } from '@/lib/types';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -29,7 +29,7 @@ import { ProgressRing } from '@/core/components/viz/ProgressRing';
 import { DynamicFormBuilder } from '@/core/components/forms/DynamicFormBuilder';
 import { SOMA_CORE_SCHEMA } from '@/lib/schemas/soma-schema';
 import { cn } from '@/lib/utils';
-import { SomaViewSwitcher } from './SomaViewSwitcher';
+import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { VitalsEntryForm } from './VitalsEntryForm';
 import { PhysicalAssessmentForm } from './PhysicalAssessmentForm';
 import { BiometricHistory } from './BiometricHistory';
@@ -572,27 +572,44 @@ export const SomaDashboard = React.memo(function SomaDashboard({
     />
   );
 
-  return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        {/* Header with View Switcher */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight font-display">
-              Soma
-            </h1>
-            <p className="text-sm text-white/60 mt-1">
-              Physical readiness & biometric tracking
-            </p>
-          </div>
-          
-          <SomaViewSwitcher
-            activeView={activeView}
-            onViewChange={setActiveView}
-          />
-        </div>
+  const tabs: NeuralTabItem<SomaView>[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: Activity },
+    { id: 'vitals', label: 'Vitals', icon: Heart },
+    { id: 'assessments', label: 'Assessments', icon: Dumbbell },
+    { id: 'history', label: 'History', icon: History },
+  ];
 
-        {/* Content based on active view */}
+  return (
+    <div className="flex flex-col">
+      {/* Header */}
+      <div className="px-4 md:px-8 pt-6 pb-2 md:pb-4">
+        <h1 className="text-2xl font-bold text-white tracking-tight font-display">
+          Soma
+        </h1>
+        <p className="text-sm text-white/60 mt-1">
+          Physical readiness &amp; biometric tracking
+        </p>
+      </div>
+
+      {/* Tab bar */}
+      <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5">
+        <NeuralTabGroup<SomaView>
+          tabs={tabs}
+          activeTab={activeView}
+          onTabChange={setActiveView}
+          themeColor="cyan"
+          variant="pill"
+          layoutIdPrefix="soma-tab"
+        />
+      </div>
+
+      {/* Tab panel */}
+      <div
+        role="tabpanel"
+        id={`tab-panel-${activeView}`}
+        aria-labelledby={`tab-${activeView}`}
+        className="px-4 md:px-8 pt-4 md:pt-6 pb-8 space-y-6"
+      >
         {activeView === 'dashboard' && renderDashboard()}
         {activeView === 'vitals' && renderVitals()}
         {activeView === 'assessments' && renderAssessments()}

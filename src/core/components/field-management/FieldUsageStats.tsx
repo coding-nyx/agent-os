@@ -6,8 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, Calendar, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getFirebase } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { useDataLayer } from '@/lib/data-layer/provider';
 import { useAuth } from '@/lib/auth-context';
 
 export interface FieldUsageStatsProps {
@@ -26,6 +25,7 @@ interface UsageStats {
 
 export function FieldUsageStats({ moduleId, fieldId, className }: FieldUsageStatsProps) {
   const { user } = useAuth();
+  const dl = useDataLayer();
   const [stats, setStats] = useState<UsageStats>({
     totalRecords: 0,
     recordsWithValue: 0,
@@ -46,36 +46,32 @@ export function FieldUsageStats({ moduleId, fieldId, className }: FieldUsageStat
       }
 
       try {
-        const { db } = getFirebase();
-        if (!db) {
-          throw new Error('Firebase not initialized');
-        }
-
-        // Query records for this module
-        const recordsRef = collection(db, `users/${user.uid}/${moduleId}`);
-        const q = query(recordsRef);
-        const snapshot = await getDocs(q);
+        // Query all records for this module via the data layer abstraction
+        const records = await dl.query<Record<string, unknown>>({
+          collection: `users/${user.uid}/${moduleId}`,
+        });
 
         let recordsWithValue = 0;
         let lastUsed: number | null = null;
 
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          
-          // Check if field exists and has a value
-          if (fieldId in data && data[fieldId] !== null && data[fieldId] !== undefined) {
+        for (const record of records) {
+          // Check if field exists and has a non-null value
+          if (fieldId in record && record[fieldId] !== null && record[fieldId] !== undefined) {
             recordsWithValue++;
-            
+
             // Track last used timestamp
-            const timestamp = data.updatedAt || data.createdAt || Date.now();
+            const timestamp =
+              (record.updatedAt as number | undefined) ??
+              (record.createdAt as number | undefined) ??
+              Date.now();
             if (!lastUsed || timestamp > lastUsed) {
               lastUsed = timestamp;
             }
           }
-        });
+        }
 
         setStats({
-          totalRecords: snapshot.size,
+          totalRecords: records.length,
           recordsWithValue,
           lastUsed,
           isLoading: false,
@@ -92,7 +88,7 @@ export function FieldUsageStats({ moduleId, fieldId, className }: FieldUsageStat
     };
 
     loadStats();
-  }, [moduleId, fieldId, user?.uid]);
+  }, [moduleId, fieldId, user?.uid, dl]);
 
   if (stats.isLoading) {
     return (

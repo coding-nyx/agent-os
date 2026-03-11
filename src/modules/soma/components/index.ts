@@ -3,7 +3,6 @@
  */
 
 export { SomaDashboard } from './SomaDashboard';
-export { SomaViewSwitcher } from './SomaViewSwitcher';
 export { VitalsEntryForm } from './VitalsEntryForm';
 export { PhysicalAssessmentForm } from './PhysicalAssessmentForm';
 export { BiometricHistory } from './BiometricHistory';

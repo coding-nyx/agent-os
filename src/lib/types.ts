@@ -268,7 +268,9 @@ export type SpineEventType =
   | 'CONTEXT_HINT_CONFIRMED'
   | 'CONTEXT_HINT_DISMISSED'
   // Atlas Weekly Review (S9-005)
-  | 'WEEKLY_REVIEW_DUE';
+  | 'WEEKLY_REVIEW_DUE'
+  // Atlas Schedule Events (S9-002)
+  | 'ROUTINE_UPDATED';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'alert' | 'critical';
@@ -299,21 +301,23 @@ export interface SpineEvent {
 
 /**
  * Represents a cross-module request to write to a protected NSV field.
- * Saved to `pending_soul_writes/{uid}/{requestId}` and tracked via Spine events.
+ * Saved to `pending_soul_writes/{uid}/{id}` and tracked via Spine events.
  */
 export interface SoulWriteRequest {
-  requestId: string;
+  /** Unique request identifier — crypto.randomUUID() or nanoid(). */
+  id: string;
   /** Module ID that owns the target NSV domain (the authoritative agent). */
   moduleId: string;
-  /** Module ID of the module requesting the write. */
-  requestedBy: string;
-  /** Dot-notation NSV field path, e.g. "cognitive.energyBudget". */
+  /** Dot-notation NSV field path, e.g. "cognitive.focusScore". */
   field: string;
   value: unknown;
-  /** Human-readable justification for the write. */
+  /** Module ID of the module requesting the write. */
+  requestedBy: string;
+  /** Human-readable justification for the write, surfaced to the owning agent. */
   reason: string;
-  timestamp: number;
   status: 'pending' | 'approved' | 'rejected';
+  /** ISO 8601 creation timestamp. */
+  createdAt: string;
 }
 
 // --- Active Chat & Engine Types ---
@@ -862,6 +866,10 @@ export interface AtlasTask {
   actualEnergyCost?: number;
   tags?: string[];
   recurrenceRule?: string;
+  /** ISO date string ("YYYY-MM-DD") for which occurrence this task is scheduled */
+  scheduledSlot?: string;
+  /** ISO date string of the next recurrence after this task completes */
+  nextOccurrenceDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1062,40 +1070,6 @@ export interface HintVerificationResult {
   /** Human-readable representation of the stored state. E.g. "Titan shows: 5 days/week". */
   displayLabel: string;
   /** ActionHub action type to dispatch when the user confirms the update. */
-  confirmActionType: string;
-}
-
-// --- Contextual Inference Engine (S10-008) ---
-
-/**
- * A conversational hint detected by an AI agent suggesting that real-world
- * data mentioned by the user may differ from stored profile values.
- */
-export interface DataHint {
-  /** Unique ID for dedup / dismissal tracking. */
-  id: string;
-  /** Module whose profile data should be cross-checked. */
-  targetModule: string;
-  /** NSV / profile field name (e.g. "weeklyWorkouts"). */
-  field: string;
-  /** Value inferred from conversation. */
-  inferredValue: unknown;
-  /** 0–1 confidence from the LLM. Must be ≥ 0.75 to surface a popup. */
-  confidence: number;
-  /** Raw text snippet from the conversation that triggered this hint. */
-  rawQuote: string;
-  timestamp: number;
-}
-
-/**
- * Verification result produced by context-inference-service after comparing
- * the inferred value against the stored profile value.
- */
-export interface HintVerificationResult {
-  hint: DataHint;
-  isDiscrepant: boolean;
-  currentValue: unknown;
-  displayLabel: string;
   confirmActionType: string;
 }
 

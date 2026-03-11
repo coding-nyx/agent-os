@@ -1,44 +1,23 @@
 /**
  * Migration Service Tests
  * Tests for data migration functionality
+ *
+ * Uses InMemoryDataLayer injected via setNexusDataLayer() so that no Firebase
+ * SDK imports are needed — the data layer abstraction is the only integration
+ * point the service should ever touch.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MigrationServiceClass } from './migration-service';
 import type {
   MigrationPreview,
   MigrationResult,
   ModuleMigrationStatus,
 } from './migration-service';
+import { setNexusDataLayer } from '../data-layer/provider';
+import { InMemoryDataLayer } from '../data-layer/in-memory-data-layer';
 
-// Mock Firebase
-vi.mock('../firebase', () => ({
-  getFirebase: () => ({
-    db: {
-      // Mock Firestore instance
-    },
-  }),
-}));
-
-// Mock Firestore
-vi.mock('firebase/firestore', () => ({
-  doc: vi.fn((db: any, collection: string, id: string) => ({
-    path: `${collection}/${id}`,
-    collection,
-    id,
-  })),
-  getDoc: vi.fn(),
-  setDoc: vi.fn(),
-  writeBatch: vi.fn(() => ({
-    set: vi.fn(),
-    commit: vi.fn(),
-  })),
-  collection: vi.fn(),
-  getDocs: vi.fn(),
-  query: vi.fn(),
-  where: vi.fn(),
-  Timestamp: { now: () => ({ seconds: Date.now() / 1000 }) },
-}));
+// ─── Shared mocks (non-firebase) ─────────────────────────────────────────────
 
 // Mock Schema Registry
 vi.mock('../schema-registry', () => ({
@@ -55,50 +34,60 @@ vi.mock('../schema-registry', () => ({
   },
 }));
 
-// Mock encryption
+// Mock encryption (keeps tests deterministic — no crypto primitives needed)
 vi.mock('../encryption', () => ({
-  decryptWithKey: vi.fn((data: any, key: any) =>
-    Promise.resolve(JSON.stringify({ decrypted: true }))
+  decryptWithKey: vi.fn(() =>
+    Promise.resolve(JSON.stringify({ field1: 'value1', field2: 42, onboardingComplete: true })),
   ),
-  encryptWithKey: vi.fn((data: string, key: any) =>
-    Promise.resolve({
-      ciphertext: 'encrypted',
-      iv: 'iv',
-      salt: 'salt',
-    })
+  encryptWithKey: vi.fn(() =>
+    Promise.resolve({ ciphertext: 'encrypted', iv: 'iv', salt: 'salt' }),
   ),
 }));
 
-// Mock Spine
+// Mock Spine event bus
 vi.mock('../spine/spine-event-bus', () => ({
-  Spine: {
-    emit: vi.fn(),
-  },
+  Spine: { emit: vi.fn() },
 }));
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Legacy-format profile that has NOT been migrated yet. */
+const LEGACY_PROFILE = {
+  field1: 'value1',
+  field2: 42,
+  onboardingComplete: true,
+  createdAt: '2024-01-01',
+  updatedAt: '2024-01-01',
+} as const;
+
+/** New-format profile that has already been migrated. */
+const MIGRATED_PROFILE = {
+  schemaVersion: '1.0.0',
+  encryptionVersion: 2,
+  coreFields: [],
+  extensionFields: [],
+  fieldValues: {},
+} as const;
+
+// ─── Test suite ───────────────────────────────────────────────────────────────
 
 describe('MigrationService', () => {
   let service: MigrationServiceClass;
+  let dataLayer: InMemoryDataLayer;
 
   beforeEach(() => {
+    // Fresh in-memory store per test — no Firebase SDK required
+    dataLayer = new InMemoryDataLayer();
+    setNexusDataLayer(dataLayer);
     service = new MigrationServiceClass();
     vi.clearAllMocks();
   });
 
+  // ── previewMigration ──────────────────────────────────────────────────────
+
   describe('previewMigration', () => {
     it('should preview migration for a single module', async () => {
-      // Mock Firestore getDoc
-      const { getDoc } = await import('firebase/firestore');
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          // Legacy format
-          field1: 'value1',
-          field2: 42,
-          onboardingComplete: true,
-          createdAt: '2024-01-01',
-          updatedAt: '2024-01-01',
-        }),
-      } as any);
+      await dataLayer.setDocument('agnes_profiles', 'user123', LEGACY_PROFILE);
 
       const preview = await service.previewMigration('user123', 'therapy');
 
@@ -109,10 +98,7 @@ describe('MigrationService', () => {
     });
 
     it('should handle missing profiles gracefully', async () => {
-      const { getDoc } = await import('firebase/firestore');
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => false,
-      } as any);
+      // No document seeded — profile does not exist
 
       const preview = await service.previewMigration('user123', 'therapy');
 
@@ -121,16 +107,10 @@ describe('MigrationService', () => {
     });
 
     it('should detect legacy profiles needing migration', async () => {
-      const { getDoc } = await import('firebase/firestore');
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          field1: 'value1',
-          field2: 42,
-          customField: 'custom',
-          onboardingComplete: true,
-        }),
-      } as any);
+      await dataLayer.setDocument('agnes_profiles', 'user123', {
+        ...LEGACY_PROFILE,
+        customField: 'custom',
+      });
 
       const preview = await service.previewMigration('user123', 'therapy');
 
@@ -141,11 +121,7 @@ describe('MigrationService', () => {
     });
 
     it('should calculate estimated time', async () => {
-      const { getDoc } = await import('firebase/firestore');
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => true,
-        data: () => ({ field1: 'value1' }),
-      } as any);
+      await dataLayer.setDocument('agnes_profiles', 'user123', LEGACY_PROFILE);
 
       const preview = await service.previewMigration('user123', 'therapy');
 
@@ -153,16 +129,14 @@ describe('MigrationService', () => {
     });
   });
 
+  // ── needsMigration ────────────────────────────────────────────────────────
+
   describe('needsMigration', () => {
     it('should identify profiles needing migration', async () => {
-      const { getDoc } = await import('firebase/firestore');
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          field1: 'value1',
-          // Missing schemaVersion
-        }),
-      } as any);
+      await dataLayer.setDocument('agnes_profiles', 'user123', {
+        field1: 'value1',
+        // Missing schemaVersion → needs migration
+      });
 
       const statuses = await service.needsMigration('user123');
 
@@ -174,29 +148,20 @@ describe('MigrationService', () => {
     });
 
     it('should identify up-to-date profiles', async () => {
-      const { getDoc } = await import('firebase/firestore');
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          schemaVersion: '1.0.0',
-          encryptionVersion: 2,
-          coreFields: [],
-          extensionFields: [],
-          fieldValues: {},
-        }),
-      } as any);
+      await dataLayer.setDocument('agnes_profiles', 'user123', MIGRATED_PROFILE);
 
       const statuses = await service.needsMigration('user123');
 
       expect(statuses).toBeInstanceOf(Array);
-      // Should not show up if no migration needed
+      // Profile is already migrated — therapy module should not appear as needing migration
+      const therapyStatus = statuses.find((s) => s.moduleId === 'therapy');
+      if (therapyStatus) {
+        expect(therapyStatus.needsMigration).toBe(false);
+      }
     });
 
     it('should handle missing profiles', async () => {
-      const { getDoc } = await import('firebase/firestore');
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => false,
-      } as any);
+      // No documents seeded
 
       const statuses = await service.needsMigration('user123');
 
@@ -205,74 +170,55 @@ describe('MigrationService', () => {
     });
   });
 
+  // ── migrateUserData ───────────────────────────────────────────────────────
+
   describe('migrateUserData', () => {
     it('should migrate user data successfully', async () => {
-      const { getDoc, setDoc } = await import('firebase/firestore');
-
-      // Mock profile exists
-      vi.mocked(getDoc).mockImplementation((ref: any) => {
-        // Check if it's a profile or backup
-        if (ref.path && ref.path.includes('backup')) {
-          return Promise.resolve({ exists: () => false } as any);
-        }
-        return Promise.resolve({
-          exists: () => true,
-          data: () => ({
-            field1: 'value1',
-            field2: 42,
-            onboardingComplete: true,
-          }),
-        } as any);
-      });
+      await dataLayer.setDocument('agnes_profiles', 'user123', LEGACY_PROFILE);
 
       const mockKey = {} as CryptoKey;
-
       const result = await service.migrateUserData('user123', mockKey, 'therapy');
 
       expect(result).toBeDefined();
       expect(result.status).toBe('success');
       expect(result.profilesMigrated).toBeGreaterThan(0);
       expect(result.migrationId).toMatch(/^mig_/);
-      expect(setDoc).toHaveBeenCalled();
+
+      // The migration record must be persisted in the data layer
+      const migrationDocs = await dataLayer.query({ collection: 'migrations' });
+      expect(migrationDocs.length).toBeGreaterThan(0);
     });
 
     it('should create backup before migration', async () => {
-      const { getDoc, setDoc } = await import('firebase/firestore');
-
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => true,
-        data: () => ({ field1: 'value1' }),
-      } as any);
+      await dataLayer.setDocument('agnes_profiles', 'user123', LEGACY_PROFILE);
 
       const mockKey = {} as CryptoKey;
-
       const result = await service.migrateUserData('user123', mockKey, 'therapy');
 
       expect(result.backupId).toBeDefined();
       expect(result.backupId).toMatch(/^backup_/);
+
+      // Backup must be persisted in the data layer
+      const backups = await dataLayer.query({ collection: 'migration_backups' });
+      expect(backups.length).toBeGreaterThan(0);
     });
 
     it('should handle migration errors gracefully', async () => {
-      const { getDoc, setDoc } = await import('firebase/firestore');
-
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => true,
-        data: () => ({ field1: 'value1' }),
-      } as any);
-
-      // Reset setDoc first, then make it fail for profile writes only
-      vi.mocked(setDoc).mockReset();
-      vi.mocked(setDoc).mockImplementation((ref: any) => {
-        // Allow backup and migration record writes to succeed
-        if (ref.path && (ref.path.includes('backup') || ref.path.includes('migrations'))) {
-          return Promise.resolve();
-        }
-        // Fail profile writes
-        return Promise.reject(new Error('Write failed'));
+      // Pre-seed the profile via constructor (bypasses setDocument) so the spy
+      // does not interfere with the initial write.
+      const errorLayer = new InMemoryDataLayer({
+        agnes_profiles: [{ id: 'user123', ...LEGACY_PROFILE }],
       });
 
-      const mockKey = {} as CryptoKey;
+      // Make profile writes fail after seeding so we can exercise the error path
+      const originalSet = errorLayer.setDocument.bind(errorLayer);
+      vi.spyOn(errorLayer, 'setDocument').mockImplementation(async (col, id, data) => {
+        if (col === 'agnes_profiles') throw new Error('Write failed');
+        return originalSet(col, id, data);
+      });
+      setNexusDataLayer(errorLayer);
 
+      const mockKey = {} as CryptoKey;
       const result = await service.migrateUserData('user123', mockKey, 'therapy');
 
       expect(result.status).toBe('failed');
@@ -281,119 +227,77 @@ describe('MigrationService', () => {
     });
 
     it('should emit Spine event on completion', async () => {
-      const { getDoc, setDoc } = await import('firebase/firestore');
+      await dataLayer.setDocument('agnes_profiles', 'user123', LEGACY_PROFILE);
       const { Spine } = await import('../spine/spine-event-bus');
 
-      // Reset mocks
-      vi.mocked(setDoc).mockReset();
-      vi.mocked(setDoc).mockResolvedValue(undefined);
-
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => true,
-        data: () => ({ field1: 'value1' }),
-      } as any);
-
       const mockKey = {} as CryptoKey;
-
       await service.migrateUserData('user123', mockKey, 'therapy');
 
       expect(Spine.emit).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'SCHEMA_MIGRATED',
           source: 'migration-service',
-        })
+        }),
       );
     });
   });
 
+  // ── rollbackMigration ─────────────────────────────────────────────────────
+
   describe('rollbackMigration', () => {
     it('should rollback migration successfully', async () => {
-      const { getDoc, setDoc, writeBatch } = await import('firebase/firestore');
-
-      // Reset setDoc
-      vi.mocked(setDoc).mockReset();
-      vi.mocked(setDoc).mockResolvedValue(undefined);
-
-      const mockBatch = {
-        set: vi.fn(),
-        commit: vi.fn(),
-      };
-
-      vi.mocked(writeBatch).mockReturnValue(mockBatch as any);
-
-      // Mock migration record
-      vi.mocked(getDoc).mockImplementation((ref: any) => {
-        if (ref.path && ref.path.includes('migrations')) {
-          return Promise.resolve({
-            exists: () => true,
-            data: () => ({
-              migrationId: 'mig_123',
-              backupId: 'backup_123',
-            }),
-          } as any);
-        }
-        // Mock backup record
-        if (ref.path && ref.path.includes('backups')) {
-          return Promise.resolve({
-            exists: () => true,
-            data: () => ({
-              backupId: 'backup_123',
-              snapshots: {
-                therapy: { field1: 'original' },
-              },
-            }),
-          } as any);
-        }
-        return Promise.resolve({ exists: () => false } as any);
+      // Seed migration record and backup so rollback can locate them
+      await dataLayer.setDocument('migrations', 'mig_123', {
+        migrationId: 'mig_123',
+        backupId: 'backup_123',
+      });
+      await dataLayer.setDocument('migration_backups', 'backup_123', {
+        backupId: 'backup_123',
+        snapshots: { therapy: { field1: 'original' } },
       });
 
       const mockKey = {} as CryptoKey;
 
       await expect(
-        service.rollbackMigration('user123', 'mig_123', mockKey)
+        service.rollbackMigration('user123', 'mig_123', mockKey),
       ).resolves.not.toThrow();
 
-      expect(mockBatch.set).toHaveBeenCalled();
-      expect(mockBatch.commit).toHaveBeenCalled();
+      // Verify the restore was applied
+      const restoredProfile = await dataLayer.getDocument<any>('agnes_profiles', 'user123');
+      expect(restoredProfile).not.toBeNull();
+      expect(restoredProfile!.field1).toBe('original');
+
+      // Verify the migration record is marked as rolled back
+      const migRecord = await dataLayer.getDocument<any>('migrations', 'mig_123');
+      expect(migRecord!.rolledBack).toBe(true);
     });
 
     it('should throw error if migration not found', async () => {
-      const { getDoc } = await import('firebase/firestore');
-
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => false,
-      } as any);
+      // No migration record seeded
 
       const mockKey = {} as CryptoKey;
 
       await expect(
-        service.rollbackMigration('user123', 'mig_nonexistent', mockKey)
+        service.rollbackMigration('user123', 'mig_nonexistent', mockKey),
       ).rejects.toThrow('Migration mig_nonexistent not found');
     });
 
     it('should throw error if backup not found', async () => {
-      const { getDoc } = await import('firebase/firestore');
-
-      vi.mocked(getDoc).mockImplementation((ref: any) => {
-        if (ref.path && ref.path.includes('migrations')) {
-          return Promise.resolve({
-            exists: () => true,
-            data: () => ({
-              migrationId: 'mig_123',
-              backupId: 'backup_123',
-            }),
-          } as any);
-        }
-        return Promise.resolve({ exists: () => false } as any);
+      // Only migration record seeded — backup is missing
+      await dataLayer.setDocument('migrations', 'mig_123', {
+        migrationId: 'mig_123',
+        backupId: 'backup_123',
       });
 
       const mockKey = {} as CryptoKey;
 
       await expect(
-        service.rollbackMigration('user123', 'mig_123', mockKey)
+        service.rollbackMigration('user123', 'mig_123', mockKey),
       ).rejects.toThrow('Backup backup_123 not found');
     });
   });
+
+  // ── Profile Format Detection ──────────────────────────────────────────────
 
   describe('Profile Format Detection', () => {
     it('should detect legacy profile format', () => {
@@ -419,6 +323,8 @@ describe('MigrationService', () => {
       expect(format).toBe('new');
     });
   });
+
+  // ── Field Type Inference ──────────────────────────────────────────────────
 
   describe('Field Type Inference', () => {
     it('should infer text type', () => {
@@ -453,6 +359,8 @@ describe('MigrationService', () => {
     });
   });
 
+  // ── Field Name Humanization ───────────────────────────────────────────────
+
   describe('Field Name Humanization', () => {
     it('should humanize camelCase field names', () => {
       const humanized = (service as any).humanizeFieldName('myFieldName');
@@ -469,6 +377,8 @@ describe('MigrationService', () => {
       expect(humanized).toBe('Field Name');
     });
   });
+
+  // ── Custom Field Extraction ───────────────────────────────────────────────
 
   describe('Custom Field Extraction', () => {
     it('should extract custom fields not in core schema', () => {
@@ -511,6 +421,8 @@ describe('MigrationService', () => {
     });
   });
 
+  // ── Profile Snapshot Creation ─────────────────────────────────────────────
+
   describe('Profile Snapshot Creation', () => {
     it('should create snapshot for legacy profile', () => {
       const profile = {
@@ -547,6 +459,8 @@ describe('MigrationService', () => {
     });
   });
 
+  // ── Migration Validation ──────────────────────────────────────────────────
+
   describe('Migration Validation', () => {
     it('should validate migrated profile structure', async () => {
       const legacyProfile = {
@@ -565,10 +479,7 @@ describe('MigrationService', () => {
         metadata: {},
       };
 
-      const migrated = await (service as any).simulateMigration(
-        legacyProfile,
-        schema
-      );
+      const migrated = await (service as any).simulateMigration(legacyProfile, schema);
 
       expect(migrated.schemaVersion).toBe('1.0.0');
       expect(migrated.encryptionVersion).toBe(2);
@@ -579,3 +490,4 @@ describe('MigrationService', () => {
     });
   });
 });
+

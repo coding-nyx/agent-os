@@ -115,7 +115,7 @@ export default function HubPage() {
   const wellnessGauge = coreModulesAccessible ? globalSoul?.overallWellnessScore ?? null : null;
 
   return (
-    <ModuleLayout title="Neural Hub" themeColor="violet" hideBack={true}>
+    <ModuleLayout title="Neural Hub" themeColor="violet" hideBack={false} onExit={() => navigate('/orchestrator')}>
       <div className="flex-1 relative flex flex-col w-full h-full min-h-0 bg-[#020205]">
 
         {/* Breathing ambient background */}
@@ -136,10 +136,7 @@ export default function HubPage() {
           )}
         </AnimatePresence>
 
-        {/* View Switcher */}
-        <HubViewSwitcher viewMode={viewMode} setViewMode={setViewMode} hide3D={webglError} />
-
-        {/* 3D Canvas Background (lazy loaded) */}
+        {/* 3D Canvas Background (lazy loaded) — sits behind everything at z-0 */}
         <div
           className={cn(
             "absolute inset-0 z-0 transition-opacity duration-1000",
@@ -180,8 +177,14 @@ export default function HubPage() {
           )}
         </div>
 
-        {/* Content Layers */}
+        {/* Content Layers — flex column so the switcher sits above the scroll area in normal flow */}
         <div className="absolute inset-0 z-10 flex flex-col pointer-events-none">
+
+          {/* View Switcher — top of the flex column; no absolute positioning, never overlaps cards */}
+          <div className="relative z-[60] flex justify-center pt-4 pb-2 pointer-events-auto shrink-0">
+            <HubViewSwitcher viewMode={viewMode} setViewMode={setViewMode} hide3D={webglError} />
+          </div>
+
           <AnimatePresence mode="wait">
             {viewMode === 'CARDS' && (
               <CardsView

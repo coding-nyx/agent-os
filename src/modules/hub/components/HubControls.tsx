@@ -42,7 +42,7 @@ export function HubViewSwitcher({ viewMode, setViewMode, hide3D }: HubViewSwitch
     <div
       role="tablist"
       aria-label="Hub view modes"
-      className="absolute top-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-1 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 p-1.5 shadow-2xl pointer-events-auto"
+      className="flex items-center gap-1 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 p-1.5 shadow-2xl pointer-events-auto"
     >
       {views.map(({ mode, icon: ModeIcon, label, key }) => (
         <button
@@ -145,12 +145,12 @@ export function HubBottomDashboard({
           <div className="flex-1 flex items-center gap-4 px-6 py-3 bg-amber-500/5 rounded-[24px] border border-amber-500/10">
             <Lock className="w-5 h-5 text-amber-400 shrink-0" />
             <div className="flex-1">
-            <span className="text-chip text-amber-400 block mb-0.5">Vault Encrypted</span>
-            <p className="text-chip-soft text-white/60">
-              {lockedModules.length} module{lockedModules.length > 1 ? 's' : ''} locked. Initialize handshake to sync.
+            <span className="text-[11px] font-bold text-amber-400 tracking-[0.08em] block mb-0.5">Vault Encrypted</span>
+            <p className="text-[11px] text-white/60 leading-relaxed">
+              {lockedModules.length} module{lockedModules.length > 1 ? 's' : ''} locked — unlock to sync.
             </p>
             </div>
-            <NeuralButton size="sm" onClick={() => openAuth(primaryLockedModule ?? 'global')} className="bg-amber-600 hover:bg-amber-500 h-9 px-6 text-[10px]">
+            <NeuralButton size="sm" onClick={() => openAuth(primaryLockedModule ?? 'global')} className="bg-amber-600 hover:bg-amber-500 shrink-0">
               Sync Now
             </NeuralButton>
           </div>

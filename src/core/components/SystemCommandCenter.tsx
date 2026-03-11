@@ -8,6 +8,7 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { SoulTerminationService } from '@/lib/services/soul-termination-service';
 import { GlassCard } from './GlassCard';
 import { NeuralButton } from './NeuralButton';
+import { VaultPopoverPanel } from './VaultPopoverPanel';
 
 export function SystemCommandCenter() {
   const { user, isGuest, profile, logout, refreshProfile } = useAuth();
@@ -149,6 +150,10 @@ export function SystemCommandCenter() {
                         </div>
                         <p className="text-xs text-white/60 truncate italic">{user?.email || 'Temporary Session User'}</p>
                       </div>
+
+                      {/* Vault inline controls */}
+                      <div className="border-t border-white/5 my-1" />
+                      <VaultPopoverPanel />
 
                       {/* Actions */}
                       <div className="space-y-1">

@@ -1,14 +1,8 @@
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
+import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
+import { LoadContext } from '@/lib/types/encrypted-document';
 import { TitanProfile } from '@/lib/types';
 
 const GUEST_PROFILE_KEY = 'nexus_titan_profile_guest';
-const VAULT_SALT_MARKER = 'vault_salt_used';
-
-type LoadContext = {
-  userId?: string | null;
-  encryptionKey?: CryptoKey | null;
-};
 
 export function createEmptyTitanProfile(): TitanProfile {
   const now = new Date().toISOString();
@@ -72,120 +66,44 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
   };
 }
 
-export async function loadTitanProfile({ userId, encryptionKey }: LoadContext): Promise<TitanProfile | null> {
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>('titan_profiles', userId);
-    if (!data) return null;
-    if (!data.encryptedData || !data.iv) return null;
-    try {
-      const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-      return normalizeTitanProfile(JSON.parse(decrypted));
-    } catch (e) {
-      console.error('Failed to decrypt titan profile:', e);
-      return null;
-    }
-  }
+// ---------------------------------------------------------------------------
+// Factory instance — all encryption / decryption / guest logic lives here.
+// ---------------------------------------------------------------------------
 
-  return loadGuestTitanProfile();
-}
+const _service = createEncryptedProfileService<TitanProfile>({
+  collection: 'titan_profiles',
+  guestStorageKey: GUEST_PROFILE_KEY,
+  createEmpty: createEmptyTitanProfile,
+  normalize: normalizeTitanProfile,
+  metadataProjection: (p) => ({
+    onboardingComplete: p.onboardingComplete,
+    privacyLevel: p.privacyLevel,
+  }),
+});
 
-export function subscribeTitanProfile(
-  { userId, encryptionKey }: LoadContext,
-  onUpdate: (profile: TitanProfile | null) => void
-): () => void {
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const unsubscribe = dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
-      'titan_profiles',
-      userId,
-      async (data) => {
-        if (!data) {
-          onUpdate(null);
-          return;
-        }
-        if (!data.encryptedData || !data.iv) {
-          onUpdate(null);
-          return;
-        }
-        try {
-          const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-          onUpdate(normalizeTitanProfile(JSON.parse(decrypted)));
-        } catch (e) {
-          console.error('Failed to decrypt titan profile:', e);
-          onUpdate(null);
-        }
-      }
-    );
-    return unsubscribe;
-  }
+// ---------------------------------------------------------------------------
+// Public API — identical names to the original; zero callers need to change.
+// ---------------------------------------------------------------------------
 
-  onUpdate(loadGuestTitanProfile());
-  return () => {};
-}
+export const loadTitanProfile: (ctx: LoadContext) => Promise<TitanProfile | null> =
+  _service.load.bind(_service);
 
-export async function saveTitanProfile(
-  profile: TitanProfile,
-  { userId, encryptionKey }: LoadContext
-): Promise<void> {
-  const normalized = normalizeTitanProfile({ ...profile, updatedAt: new Date().toISOString() });
+export const saveTitanProfile: (profile: TitanProfile, ctx: LoadContext) => Promise<void> =
+  _service.save.bind(_service);
 
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
-    try {
-      await dataLayer.setDocument('titan_profiles', userId, {
-        encryptedData: encrypted.ciphertext,
-        iv: encrypted.iv,
-        salt: VAULT_SALT_MARKER,
-        metadata: {
-          onboardingComplete: normalized.onboardingComplete,
-          privacyLevel: normalized.privacyLevel,
-          lastActive: new Date().toISOString()
-        }
-      });
-    } catch (error) {
-      console.error('[TitanProfileService] Failed to save titan profile:', error);
-    }
-    return;
-  }
+export const subscribeTitanProfile: (
+  ctx: LoadContext,
+  onUpdate: (profile: TitanProfile | null) => void,
+) => () => void = _service.subscribe.bind(_service);
 
-  saveGuestTitanProfile(normalized);
-}
+export const syncGuestTitanProfileToUser: (ctx: LoadContext) => Promise<boolean> =
+  _service.syncGuestToUser.bind(_service);
 
-export async function syncGuestTitanProfileToUser(
-  { userId, encryptionKey }: LoadContext
-): Promise<boolean> {
-  if (!userId || !encryptionKey) return false;
-  const guestProfile = loadGuestTitanProfile();
-  if (!guestProfile) return false;
+export const loadGuestTitanProfile: () => TitanProfile | null =
+  _service.loadGuest.bind(_service);
 
-  const dataLayer = getNexusDataLayer();
-  const existing = await dataLayer.getDocument<{ encryptedData?: string }>('titan_profiles', userId);
-  if (existing?.encryptedData) {
-    return false;
-  }
+export const saveGuestTitanProfile: (profile: TitanProfile) => void =
+  _service.saveGuest.bind(_service);
 
-  await saveTitanProfile(guestProfile, { userId, encryptionKey });
-  clearGuestTitanProfile();
-  return true;
-}
-
-export function loadGuestTitanProfile(): TitanProfile | null {
-  const raw = localStorage.getItem(GUEST_PROFILE_KEY);
-  if (!raw) return null;
-  try {
-    return normalizeTitanProfile(JSON.parse(raw));
-  } catch (e) {
-    console.error('Failed to parse guest titan profile:', e);
-    return null;
-  }
-}
-
-export function saveGuestTitanProfile(profile: TitanProfile) {
-  localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile));
-}
-
-export function clearGuestTitanProfile() {
-  localStorage.removeItem(GUEST_PROFILE_KEY);
-}
+export const clearGuestTitanProfile: () => void =
+  _service.clearGuest.bind(_service);

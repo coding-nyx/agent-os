@@ -1,11 +1,24 @@
 # SPRINT 10 — Platform Core: Architecture Hardening & Developer Experience
 
-**Status:** IN PROGRESS  
+**Status:** COMPLETED  
 **Objective:** Harden the Nexus platform layer — vendor-agnostic data, authoritative soul writes, shared document intelligence, developer visibility, and a clean codebase. These items are prerequisites for all module teams; nothing scales cleanly until this layer is solid.
 
 **Follows from:** Sprint 9 (Atlas Intelligent Loop). Parallels any ongoing module work.
 
 **Strategic context:** See `workitems/backlog/BACKLOG.md` §1 (Core Platform & Spine) and §8 (Global AI & Systemic Enhancements).
+
+## Completion Status
+
+| Item | Status | Notes |
+|---|---|---|
+| S10-001 Data Layer Decoupling | ✅ Done | InMemoryDataLayer, 59-test suite, DI guard |
+| S10-002 Soul Write Protocol | ✅ Done | SoulWriteRequest, validateWith queue, Scout/Forge NSV read-only |
+| S10-003 Document Intelligence | ✅ Done | parseDocument service, useDocumentIntelligence hook, Ledger+Scout migrated |
+| S10-004 Debug Mode Overlay | ✅ Done | useDebugMode, ModelBadge, DebugThoughtPanel, SoulActivityTag |
+| S10-005 AI Validation Enhancements | ✅ Done | Batch validation, feedback loop, module-specific personas |
+| S10-006 Data Portability v2 | ✅ Done | Export/import JSON, DataBackupPanel in Profile |
+| S10-007 Tech Debt | ✅ Done | 25 console.logs removed, lint 0 errors, hooks/ARIA fixes |
+| S10-008 Contextual Inference Engine | ✅ Done | detect_data_hint, DataSyncToast, useCrossModuleHintListener, wired into ModuleLayout |
 
 ---
 

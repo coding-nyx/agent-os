@@ -12,8 +12,9 @@ export function useConnectivitySentinel() {
 
     const checkConnectivity = async () => {
       const results = await Promise.allSettled([
-        // Check Firestore connectivity (approximate)
-        fetch('https://firestore.googleapis.com/google.firestore.v1.Firestore/Write/channel', {
+        // Check Firestore connectivity via a lightweight DNS-resolvable endpoint
+        // (not the Write/channel WebSocket endpoint which always returns 400 to HEAD)
+        fetch('https://firestore.googleapis.com/', {
           method: 'HEAD',
           mode: 'no-cors',
           cache: 'no-store'

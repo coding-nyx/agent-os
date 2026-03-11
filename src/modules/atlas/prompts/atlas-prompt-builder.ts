@@ -87,12 +87,13 @@ export const ATLAS_ALLOWED_ACTIONS: Record<AtlasContextMode['kind'], string[]> =
   general: [
     // Task management
     'create_task', 'update_task', 'complete_task', 'move_task', 'prioritize', 'delete_task',
+    'set_task_recurrence',
     // Goal management
     'create_goal', 'update_goal', 'update_goal_progress', 'set_deadline', 'delete_goal',
     // Habit management
     'create_habit', 'update_habit', 'update_habit_streak', 'pause_habit', 'delete_habit',
     // Schedule management
-    'daily_plan', 'weekly_review', 'schedule_block',
+    'daily_plan', 'weekly_review', 'schedule_block', 'generate_daily_schedule',
     // Energy & recovery
     'update_energy_wave', 'create_recovery_window', 'flatten_schedule',
     // NSV sync (Atlas-owned fields only)
@@ -104,7 +105,7 @@ export const ATLAS_ALLOWED_ACTIONS: Record<AtlasContextMode['kind'], string[]> =
   ],
   'task-focus': [
     'update_task', 'complete_task', 'move_task', 'prioritize', 'set_deadline',
-    'create_task',
+    'create_task', 'set_task_recurrence',
   ],
   'habit-review': [
     'update_habit_streak', 'pause_habit', 'create_habit', 'update_habit',

@@ -1,11 +1,14 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
 import { Skeleton } from '@/core/components/Skeleton';
 import { GuestModePanel } from '@/core/components/GuestModePanel';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { useAuth } from '@/lib/auth-context';
+import { useVault } from '@/lib/vault-context';
 import { useModuleProfile, UseModuleProfileOptions } from '@/lib/hooks/use-module-profile';
 import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
 import { cn } from '@/lib/utils';
@@ -49,6 +52,8 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   renderMobileFooter
   }: UnifiedModulePageProps<TProfile>) {
   const { isGuest } = useAuth();
+  const { isModuleAccessible } = useVault();
+  const navigate = useNavigate();
   
   const [guestReady, setGuestReady] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -129,6 +134,21 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
             sessionStorage.setItem(`nexus_guest_module_${moduleId}`, 'true');
             setGuestReady(true);
           }}
+        />
+      </ModuleLayout>
+    );
+  }
+
+  // Vault gate — must come before onboarding so encrypted modules never
+  // accidentally render intake forms while the vault is locked.
+  if (!isGuest && requireVault && !isModuleAccessible(moduleId)) {
+    return (
+      <ModuleLayout title={title} themeColor={themeColor} moduleId={moduleId}>
+        <VaultLockedShell
+          moduleName={manifest.title}
+          moduleDescription={manifest.description}
+          accentClassName={`text-${themeColor}-400`}
+          onUnlock={() => navigate(`/vault-gate?returnTo=${encodeURIComponent(window.location.pathname)}`)}
         />
       </ModuleLayout>
     );

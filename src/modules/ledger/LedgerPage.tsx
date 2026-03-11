@@ -118,11 +118,52 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
     );
   }, [ai]);
 
-  const { openDocumentPicker } = useDocumentIntelligence({
-    moduleId: 'ledger',
-    onPromptReady: (prompt) => ai.handleSendMessage(prompt),
-    onError: (message) => ai.handleSendMessage(`Document intake failed: ${message}`)
-  });
+  const { parseDocument: parseDoc } = useDocumentIntelligence();
+
+  /**
+   * Receipt / financial document picker (S10-003 migration).
+   * Delegates text extraction and field parsing to the shared
+   * document-intelligence-service, then forwards the structured result to the
+   * Ledger AI agent as a formatted prompt.
+   */
+  const openDocumentPicker = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.png,.jpg,.jpeg,.webp,.txt';
+
+    input.onchange = async (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const result = await parseDoc(file, { domain: 'receipt', moduleId: 'ledger' });
+      input.value = '';
+
+      if (!result) {
+        ai.handleSendMessage('Document intake failed. Please try again with a PDF, image, or text file.');
+        return;
+      }
+
+      const fieldLines = Object.entries(result.fields)
+        .filter(([, v]) => v.length > 0)
+        .map(([k, v]) => `  ${k}: ${v}`)
+        .join('\n');
+
+      const prompt = [
+        'Financial document receipt parsed. Map this into budgeting, cashflow, categories, and anomalies.',
+        `File: ${file.name} | Type: ${result.type} | Confidence: ${(result.confidence * 100).toFixed(0)}%`,
+        fieldLines.length > 0 ? `Extracted fields:\n${fieldLines}` : null,
+        result.rawText.length > 0
+          ? `Full extracted text:\n${result.rawText.slice(0, 3000)}${result.rawText.length > 3000 ? '\n[truncated]' : ''}`
+          : 'No text could be extracted from this file.',
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
+      ai.handleSendMessage(prompt);
+    };
+
+    input.click();
+  }, [parseDoc, ai]);
 
   const handleDocumentCapture = useCallback(
     async (dataUrl: string) => {

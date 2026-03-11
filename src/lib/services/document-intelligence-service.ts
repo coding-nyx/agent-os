@@ -2,13 +2,15 @@
  * Document Intelligence Shared Library (S10-003)
  *
  * Platform-agnostic document parsing pipeline:
- *   PDF / image / text  →  raw text extraction  →  LLM field extraction  →  DocumentParseResult
+ *   PDF / image / text  →  raw text extraction  →  field extraction  →  DocumentParseResult
  *
  * Architecture notes:
  * - pdfjs-dist is loaded via dynamic import so the module can be tree-shaken when unused
  *   and gracefully degrades to '' if the import fails (e.g., worker unavailable).
  * - LLM integration is injected as a plain callback so this service has zero dependency
  *   on any AI provider or React context.
+ * - Regex-based field extraction runs when no sendMessage callback is provided.
+ * - Image files return empty rawText with confidence 0.3; full OCR is out of scope.
  * - No `any` — all pdfjs item types are narrowed via Record<string, unknown> guards.
  */
 
@@ -22,7 +24,6 @@ export type DocumentDomain =
   | 'receipt'
   | 'invoice'
   | 'lab_report'
-  | 'statement'
   | 'general';
 
 export interface DocumentParseHints {
@@ -34,24 +35,35 @@ export interface DocumentParseHints {
   locale?: string;
 }
 
-export interface DocumentField {
-  key: string;
-  value: string;
-  /** Extraction confidence, 0–1 */
-  confidence: number;
-}
-
 export interface DocumentParseResult {
-  domain: DocumentDomain;
+  /** Canonical domain classification. */
+  type: DocumentDomain;
+  /**
+   * Extracted key-value pairs.
+   *
+   * Regex path  → values are literal matched strings.
+   * LLM path    → values are model-extracted strings; may be empty when no
+   *               match found.  In both cases consumers should treat any
+   *               missing key as undefined rather than throw.
+   */
+  fields: Record<string, string>;
   rawText: string;
-  fields: DocumentField[];
-  /** Mean confidence across all fields, or 0 when fields is empty */
+  /** Mean field-extraction confidence, 0–1. */
   confidence: number;
+  // Extended metadata (beyond the minimum spec)
   pageCount: number;
   fileSizeBytes: number;
   /** ISO 8601 timestamp */
   parsedAt: string;
   moduleId: string;
+}
+
+// Internal type used only on the LLM path.
+interface DocumentField {
+  key: string;
+  value: string;
+  /** Per-field confidence, 0–1 */
+  confidence: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,9 +78,100 @@ const DOMAIN_FIELD_HINTS: Record<DocumentDomain, string[]> = {
   receipt: ['total', 'date', 'merchant', 'items[]', 'tax', 'currency'],
   invoice: ['invoice_number', 'due_date', 'vendor', 'line_items[]', 'subtotal', 'tax', 'total'],
   lab_report: ['test_name', 'result_value', 'reference_range', 'units', 'date', 'lab_name'],
-  statement: ['period_start', 'period_end', 'opening_balance', 'closing_balance', 'transactions[]'],
   general: ['title', 'date', 'author', 'key_points[]'],
 };
+
+// ---------------------------------------------------------------------------
+// Regex field extractors (primary path — no LLM required)
+// ---------------------------------------------------------------------------
+
+/** Shared ISO/US/EU date pattern. */
+const DATE_RE =
+  /(?:date|dated?|on)[:\s]*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})|([0-9]{4}-[0-9]{2}-[0-9]{2})/i;
+
+/** Monetary amount with optional symbol or code. */
+const MONEY_RE = /\$?([0-9]{1,3}(?:[,\s][0-9]{3})*(?:\.[0-9]{2})?)/;
+
+function first(re: RegExp, text: string, group = 1): string {
+  const m = re.exec(text);
+  if (!m) return '';
+  // Return first non-undefined capture group starting at `group`.
+  for (let i = group; i < m.length; i++) {
+    if (m[i] !== undefined && m[i].trim()) return m[i].trim();
+  }
+  return '';
+}
+
+function extractReceiptFields(text: string): Record<string, string> {
+  const totalRe = /(?:total|amount due|grand total|balance due|total amount)[:\s]*\$?\s*([0-9,]+\.[0-9]{2})/i;
+  const merchantRe = /^([A-Z][A-Za-z0-9 &'.,\-]{2,59})$/m;
+  const itemsRe = /^([A-Za-z][A-Za-z0-9 &'.\-]{1,39})\s{2,}\$?\s*([0-9]+\.[0-9]{2})$/gm;
+
+  const items: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = itemsRe.exec(text)) !== null) {
+    items.push(`${m[1].trim()}:${m[2].trim()}`);
+    if (items.length >= 10) break; // cap at 10 items
+  }
+
+  return {
+    total: first(totalRe, text),
+    date: first(DATE_RE, text),
+    merchant: first(merchantRe, text),
+    ...(items.length > 0 ? { items: items.join(', ') } : {}),
+  };
+}
+
+function extractInvoiceFields(text: string): Record<string, string> {
+  const invoiceNumRe = /invoice\s*(?:no\.?|number|#)[:\s]*([A-Za-z0-9\-]+)/i;
+  const dueDateRe = /(?:due\s*date|payment\s*due)[:\s]*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i;
+  const vendorRe = /(?:from|vendor|billed\s*by|seller)[:\s]*([A-Za-z][A-Za-z0-9 .,\-]{2,59})/i;
+  const amountRe = /(?:amount\s*due|total\s*due|balance\s*due|total)[:\s]*\$?\s*([0-9,]+\.[0-9]{2})/i;
+
+  return {
+    invoice_number: first(invoiceNumRe, text),
+    due_date: first(dueDateRe, text),
+    vendor: first(vendorRe, text),
+    amount: first(amountRe, text) || first(MONEY_RE, text),
+  };
+}
+
+function extractLabReportFields(text: string): Record<string, string> {
+  const testRe = /(?:test|examination|assay)[:\s]*([A-Za-z][A-Za-z0-9 \-()]{2,59})/i;
+  const valueRe = /(?:result|value|level)[:\s]*([0-9]+(?:\.[0-9]+)?)\s*([A-Za-z/%µ]+)?/i;
+  const rangeRe = /(?:reference\s*range|normal\s*range|ref\.?\s*range)[:\s]*([0-9.,\s\-–—]+(?:[A-Za-z/%µ]*))/i;
+
+  const valueMatch = valueRe.exec(text);
+
+  return {
+    test_name: first(testRe, text),
+    value: valueMatch ? (valueMatch[1] ?? '') : '',
+    unit: valueMatch ? (valueMatch[2] ?? '') : '',
+    reference_range: first(rangeRe, text),
+    date: first(DATE_RE, text),
+  };
+}
+
+function extractGeneralFields(text: string): Record<string, string> {
+  // Best-effort: first non-empty line as title, then date.
+  const firstLine = (text.split('\n').find((l) => l.trim().length > 3) ?? '').trim();
+  return {
+    title: firstLine.length > 100 ? firstLine.slice(0, 100) + '…' : firstLine,
+    date: first(DATE_RE, text),
+  };
+}
+
+function extractFieldsByRegex(
+  text: string,
+  domain: DocumentDomain,
+): Record<string, string> {
+  switch (domain) {
+    case 'receipt':    return extractReceiptFields(text);
+    case 'invoice':    return extractInvoiceFields(text);
+    case 'lab_report': return extractLabReportFields(text);
+    default:           return extractGeneralFields(text);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // File-type helpers
@@ -140,22 +243,14 @@ export async function extractTextFromPDF(file: File): Promise<string> {
 // ---------------------------------------------------------------------------
 
 /**
- * Converts an image File to a base64 data URL so the caller can pass it to
- * an LLM with vision capabilities for OCR.
- * Returns `''` for non-image files or on read errors.
+ * Images are out-of-scope for inline OCR.  Returns an empty string so callers
+ * receive a well-typed result with `confidence: 0.3`.
  *
- * Time complexity: O(N) where N = file size in bytes.
+ * Full OCR (Tesseract / Vision API) is available in `doc-ingest-service` when
+ * needed by higher-level orchestration.
  */
-export async function extractTextFromImage(file: File): Promise<string> {
-  if (!file.type.startsWith('image/')) return '';
-
-  return new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () =>
-      resolve(typeof reader.result === 'string' ? reader.result : '');
-    reader.onerror = () => resolve('');
-    reader.readAsDataURL(file);
-  });
+export async function extractTextFromImage(_file: File): Promise<string> {
+  return '';
 }
 
 // ---------------------------------------------------------------------------
@@ -255,18 +350,34 @@ export async function parseDocumentWithLLM(
 // ---------------------------------------------------------------------------
 
 /**
+ * Converts a DocumentField array (LLM output) to a flat Record<string, string>
+ * keyed by field name.  Later entries overwrite earlier entries for the same key.
+ *
+ * Time complexity: O(n) where n = number of extracted fields.
+ */
+function fieldsToRecord(fields: DocumentField[]): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const { key, value } of fields) {
+    result[key] = value;
+  }
+  return result;
+}
+
+/**
  * Full document intelligence pipeline:
  *
  * 1. Infer file type (PDF / image / plain text)
- * 2. Extract raw text via the appropriate extractor
- * 3. Optionally call `parseDocumentWithLLM` when `sendMessage` is provided
+ * 2. Extract raw text:
+ *    - PDF  → pdfjs-dist text extraction across all pages
+ *    - Image → empty string (confidence floor: 0.3; full OCR out of scope)
+ *    - Text  → file.text()
+ * 3. Extract fields:
+ *    - When `sendMessage` is provided AND rawText is non-empty → LLM path
+ *    - Otherwise → regex extraction keyed by domain hints
  * 4. Compute mean confidence across extracted fields
  * 5. Return a fully-typed `DocumentParseResult`
  *
- * When `sendMessage` is omitted or `rawText` is empty, fields are `[]` and
- * confidence is `0`.
- *
- * Time complexity: O(P × N) dominated by PDF extraction, O(F) for field parsing.
+ * Time complexity: O(P × N) dominated by PDF extraction, O(F) for field extraction.
  */
 export async function parseDocument(
   file: File,
@@ -276,36 +387,54 @@ export async function parseDocument(
   const fileType = inferFileType(file);
   let rawText = '';
   let pageCount = 1;
+  let imageConfidence = 1; // overridden for images
 
   if (fileType === 'pdf') {
     rawText = await extractTextFromPDF(file);
     pageCount = rawText.length > 0 ? rawText.split(PAGE_SEPARATOR).length : 0;
   } else if (fileType === 'image') {
-    rawText = await extractTextFromImage(file);
+    rawText = await extractTextFromImage(file); // always ''
     pageCount = 1;
+    imageConfidence = 0.3; // per spec: images use confidence floor
   } else {
     rawText = await file.text();
     pageCount = 1;
   }
 
   const base: DocumentParseResult = {
-    domain: hints.domain,
+    type: hints.domain,
     rawText,
-    fields: [],
-    confidence: 0,
+    fields: {},
+    confidence: fileType === 'image' ? 0.3 : 0,
     pageCount,
     fileSizeBytes: file.size,
     parsedAt: new Date().toISOString(),
     moduleId: hints.moduleId,
   };
 
-  if (!sendMessage || rawText.length === 0) return base;
+  if (fileType === 'image') {
+    // Images: regex cannot run on empty text; return with spec-mandated confidence.
+    return { ...base, confidence: imageConfidence };
+  }
 
-  const fields = await parseDocumentWithLLM(rawText, hints, sendMessage);
-  const confidence =
-    fields.length > 0
-      ? fields.reduce((sum, f) => sum + f.confidence, 0) / fields.length
-      : 0;
+  if (rawText.length === 0) return base;
 
-  return { ...base, fields, confidence };
+  // LLM path (when caller provides a message-sending function)
+  if (sendMessage) {
+    const llmFields = await parseDocumentWithLLM(rawText, hints, sendMessage);
+    if (llmFields.length > 0) {
+      const fields = fieldsToRecord(llmFields);
+      const confidence =
+        llmFields.reduce((sum, f) => sum + f.confidence, 0) / llmFields.length;
+      return { ...base, fields, confidence };
+    }
+  }
+
+  // Regex fallback path — always runs when LLM is unavailable or returns nothing.
+  const regexFields = extractFieldsByRegex(rawText, hints.domain);
+  const filled = Object.values(regexFields).filter((v) => v.length > 0).length;
+  const total = Object.keys(regexFields).length;
+  const regexConfidence = total > 0 ? filled / total : 0;
+
+  return { ...base, fields: regexFields, confidence: regexConfidence };
 }

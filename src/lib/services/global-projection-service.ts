@@ -264,17 +264,18 @@ export const GlobalProjectionService = {
         )
         .join(', ');
 
-      const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const requestId = crypto.randomUUID();
+      const createdAt = new Date().toISOString();
 
       const soulWriteRequest: SoulWriteRequest = {
-        requestId,
+        id: requestId,
         moduleId: validateWith,
-        requestedBy,
         field,
         value: updates,
+        requestedBy,
         reason,
-        timestamp: Date.now(),
         status: 'pending',
+        createdAt,
       };
 
       try {
@@ -320,7 +321,119 @@ export const GlobalProjectionService = {
     } catch (error) {
       console.error('[GlobalProjectionService] Failed to update cross-functional state:', error);
     }
-  }
+  },
+
+  /**
+   * Approves a pending SoulWriteRequest.
+   *
+   * 1. Reads the request from `pending_soul_writes/{userId}/{requestId}`.
+   * 2. Commits the NSV patch to the global soul.
+   * 3. Updates the request status to 'approved' in the store.
+   * 4. Emits `SOUL_WRITE_APPROVED` on the Spine.
+   *
+   * Throws if the request does not exist or is not in 'pending' state.
+   */
+  async approveSoulWrite(
+    requestId: string,
+    userId: string,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<void> {
+    if (!requestId || !userId) {
+      throw new Error('[GlobalProjectionService] approveSoulWrite: requestId and userId are required');
+    }
+
+    const request = await dataLayer.getDocument<SoulWriteRequest>(
+      `${SOUL_WRITE_COLLECTION}/${userId}`,
+      requestId,
+    );
+
+    if (!request) {
+      throw new Error(
+        `[GlobalProjectionService] approveSoulWrite: request "${requestId}" not found`,
+      );
+    }
+
+    if (request.status !== 'pending') {
+      throw new Error(
+        `[GlobalProjectionService] approveSoulWrite: request "${requestId}" is already "${request.status}"`,
+      );
+    }
+
+    // Commit the deferred NSV write — call the direct (non-validated) path.
+    await this.updateCrossFunctionalState(
+      userId,
+      request.value as NeuralStateVectorPatch,
+      dataLayer,
+      /* no validateWith — direct write */
+    );
+
+    // Persist the approval status.
+    const approved: SoulWriteRequest = { ...request, status: 'approved' };
+    await dataLayer.setDocument(
+      `${SOUL_WRITE_COLLECTION}/${userId}`,
+      requestId,
+      approved as unknown as Record<string, unknown>,
+    );
+
+    Spine.publish({
+      type: 'SOUL_WRITE_APPROVED',
+      source: request.moduleId,
+      domain: 'system',
+      priority: 'info',
+      data: approved as unknown as Record<string, unknown>,
+    });
+  },
+
+  /**
+   * Rejects a pending SoulWriteRequest.
+   *
+   * 1. Reads the request from `pending_soul_writes/{userId}/{requestId}`.
+   * 2. Updates the request status to 'rejected' — NSV is NOT modified.
+   * 3. Emits `SOUL_WRITE_REJECTED` on the Spine.
+   *
+   * Throws if the request does not exist or is not in 'pending' state.
+   */
+  async rejectSoulWrite(
+    requestId: string,
+    userId: string,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<void> {
+    if (!requestId || !userId) {
+      throw new Error('[GlobalProjectionService] rejectSoulWrite: requestId and userId are required');
+    }
+
+    const request = await dataLayer.getDocument<SoulWriteRequest>(
+      `${SOUL_WRITE_COLLECTION}/${userId}`,
+      requestId,
+    );
+
+    if (!request) {
+      throw new Error(
+        `[GlobalProjectionService] rejectSoulWrite: request "${requestId}" not found`,
+      );
+    }
+
+    if (request.status !== 'pending') {
+      throw new Error(
+        `[GlobalProjectionService] rejectSoulWrite: request "${requestId}" is already "${request.status}"`,
+      );
+    }
+
+    const rejected: SoulWriteRequest = { ...request, status: 'rejected' };
+    await dataLayer.setDocument(
+      `${SOUL_WRITE_COLLECTION}/${userId}`,
+      requestId,
+      rejected as unknown as Record<string, unknown>,
+    );
+
+    Spine.publish({
+      type: 'SOUL_WRITE_REJECTED',
+      source: request.moduleId,
+      domain: 'system',
+      priority: 'info',
+      data: rejected as unknown as Record<string, unknown>,
+    });
+  },
 };
 
 function applyPathValue(target: any, path: string, value: unknown) {

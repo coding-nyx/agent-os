@@ -1,63 +1,77 @@
-import { useCallback } from 'react';
-import { buildDocumentAnalysisPrompt, parseDocument, validateDocumentFile } from '@/lib/services/doc-ingest-service';
+/**
+ * useDocumentIntelligence (S10-003)
+ *
+ * React hook that wraps the document-intelligence-service pipeline and exposes
+ * reactive state so components can render loading / error / result feedback
+ * without managing their own async lifecycle.
+ *
+ * API:
+ *   const { parseDocument, isProcessing, lastResult, error } = useDocumentIntelligence();
+ *
+ * `parseDocument` mirrors the service signature but additionally:
+ *   - sets isProcessing true for the duration of the call
+ *   - stores the result in lastResult on success
+ *   - stores a human-readable message in error on failure
+ *   - resolves to null on failure so callers can check `if (result)` safely
+ */
 
-interface UseDocumentIntelligenceOptions {
-  moduleId: string;
-  onPromptReady: (prompt: string) => void;
-  onError?: (message: string) => void;
+import { useState, useCallback } from 'react';
+import {
+  parseDocument as parseDocumentService,
+  type DocumentParseHints,
+  type DocumentParseResult,
+} from '@/lib/services/document-intelligence-service';
+
+export type { DocumentParseHints, DocumentParseResult };
+
+export interface UseDocumentIntelligenceReturn {
+  parseDocument: (
+    file: File,
+    hints: DocumentParseHints,
+    sendMessage?: (prompt: string) => Promise<string>,
+  ) => Promise<DocumentParseResult | null>;
+  isProcessing: boolean;
+  lastResult: DocumentParseResult | null;
+  error: string | null;
 }
 
-function buildModulePrelude(moduleId: string): string {
-  switch (moduleId) {
-    case 'ledger':
-      return 'Financial document intelligence request. Parse and map this into budgeting, cashflow, categories, and anomalies.';
-    case 'scout':
-      return 'Research evidence intake request. Extract claims, sources, confidence, and citation-grade findings.';
-    case 'titan':
-      return 'Clinical document intake request. Extract biomarkers, ranges, and medically relevant trend signals.';
-    default:
-      return 'Document intelligence request. Extract key facts, summarize clearly, and provide source-grounded structure.';
-  }
-}
+/**
+ * Returns a stable `parseDocument` wrapper plus `isProcessing`, `lastResult`,
+ * and `error` reactive state.
+ *
+ * The hook is stateless with regard to auth or data layers — callers own the
+ * decision of what to do with `lastResult`.
+ */
+export function useDocumentIntelligence(): UseDocumentIntelligenceReturn {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [lastResult, setLastResult] = useState<DocumentParseResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-export function useDocumentIntelligence({
-  moduleId,
-  onPromptReady,
-  onError
-}: UseDocumentIntelligenceOptions) {
-  const openDocumentPicker = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf,.txt,.csv,.md,.markdown,.png,.jpg,.jpeg,.webp';
-
-    input.onchange = async (event) => {
-      const file = (event.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      const validation = validateDocumentFile(file);
-      if (!validation.valid) {
-        onError?.(validation.error || 'Unsupported document.');
-        return;
-      }
+  const parseDocument = useCallback(
+    async (
+      file: File,
+      hints: DocumentParseHints,
+      sendMessage?: (prompt: string) => Promise<string>,
+    ): Promise<DocumentParseResult | null> => {
+      setIsProcessing(true);
+      setError(null);
 
       try {
-        const parsed = await parseDocument(file);
-        const prompt = [
-          buildModulePrelude(moduleId),
-          buildDocumentAnalysisPrompt(parsed)
-        ].join('\n\n');
-        onPromptReady(prompt);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Document parsing failed.';
-        onError?.(message);
+        const result = await parseDocumentService(file, hints, sendMessage);
+        setLastResult(result);
+        return result;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Document parsing failed.';
+        setError(message);
+        return null;
       } finally {
-        input.value = '';
+        setIsProcessing(false);
       }
-    };
+    },
+    [],
+  );
 
-    input.click();
-  }, [moduleId, onPromptReady, onError]);
-
-  return { openDocumentPicker };
+  return { parseDocument, isProcessing, lastResult, error };
 }
 

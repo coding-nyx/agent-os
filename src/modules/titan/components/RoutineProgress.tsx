@@ -17,13 +17,14 @@ interface RoutineProgressProps {
   className?: string;
 }
 
-function extractReps(repsStr: string): number {
-  const match = repsStr.match(/\d+/);
+function extractReps(repsStr: string | number): number {
+  if (typeof repsStr === 'number') return repsStr;
+  const match = String(repsStr).match(/\d+/);
   return match ? parseInt(match[0]) : 10;
 }
 
 function plannedVolume(routine: Routine): number {
-  return routine.exercises.reduce((t, ex) => t + ex.sets * extractReps(ex.reps ?? ''), 0);
+  return routine.exercises.reduce((t, ex) => t + ex.sets * extractReps(ex.reps ?? 10), 0);
 }
 
 export function RoutineProgress({ routines, workoutSessions = [], className }: RoutineProgressProps) {

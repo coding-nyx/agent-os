@@ -576,7 +576,10 @@ export function registerCoreActions() {
   // -------------------------------------------------------------------------
   // Contextual Inference Engine — S10-008
   // -------------------------------------------------------------------------
-  ActionHub.register('*', 'detect_data_hint', async ({ payload }) => {
+  // Register under 'orchestrator' so it is resolved as the universal fallback
+  // for any module that dispatches detect_data_hint (Agnes, Titan, Atlas, etc.).
+  // The ActionHub.execute fallback chain always checks orchestrator last.
+  ActionHub.register('orchestrator', 'detect_data_hint', async ({ payload }) => {
     const hint = (payload as unknown) as DataHint | undefined;
     if (!hint || typeof hint !== 'object') return;
     if (typeof hint.confidence !== 'number' || hint.confidence < 0.75) return;

@@ -12,7 +12,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requireOnboarding = true }: ProtectedRouteProps) {
   const { isAuthenticated, isGuest, profile, loading: authLoading } = useAuth();
-  const { isLoading: vaultLoading } = useVault();
+  const { isLoading: vaultLoading, hasVault, isUnlocked, isHandshaking } = useVault();
   const { isLoading: soulLoading } = useGlobalSoul();
   
   const navigate = useNavigate();
@@ -28,13 +28,21 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
       return;
     }
 
+    // Vault gate — guests never get redirected here.
+    // isHandshaking covers the SESSION auto-unlock window so we don't
+    // flash-redirect when the vault is about to unlock automatically.
+    if (!isGuest && hasVault && !isUnlocked && !isHandshaking) {
+      navigate(`/vault-gate?returnTo=${encodeURIComponent(location.pathname)}`, { replace: true });
+      return;
+    }
+
     // Redirect authenticated users into orchestrator until their core profile is initialized and complete
     if (isAuthenticated && !isGuest && requireOnboarding && (!profile || !profile.onboardingComplete)) {
       if (location.pathname !== '/orchestrator') {
         navigate('/orchestrator', { replace: true });
       }
     }
-  }, [isEverythingLoading, isAuthenticated, isGuest, profile, navigate, location.pathname, requireOnboarding]);
+  }, [isEverythingLoading, isAuthenticated, isGuest, hasVault, isUnlocked, isHandshaking, profile, navigate, location.pathname, requireOnboarding]);
 
   if (isEverythingLoading) {
     return <BootLoader />;
@@ -42,6 +50,12 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
 
   if (!isAuthenticated && !isGuest) {
     return null; 
+  }
+
+  // Null guard while vault-gate redirect is in progress (avoids momentary
+  // flash of protected content before navigation completes).
+  if (!isGuest && hasVault && !isUnlocked && !isHandshaking) {
+    return null;
   }
 
   return <>{children}</>;

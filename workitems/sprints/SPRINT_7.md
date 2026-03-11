@@ -84,9 +84,9 @@ Critical path: S7-001 (Exercise model) must land before S7-004 (PR board).
 
 **Acceptance Criteria:**
 - [x] `Exercise` and `PersonalRecord` types defined in `src/lib/types.ts`
-- [ ] Exercise library JSON seeded with ≥50 canonical exercises covering compound lifts (squat, deadlift, bench, overhead press, row), common isolation movements, and basic cardio
+- [x] Exercise library JSON seeded with ≥50 canonical exercises covering compound lifts (squat, deadlift, bench, overhead press, row), common isolation movements, and basic cardio
 - [x] `TitanProfile.personalRecords: Record<string, PersonalRecord>` added and persists correctly
-- [ ] After logging a session with a new max weight×reps combination, a `PersonalRecord` entry is created/updated
+- [x] After logging a session with a new max weight×reps combination, a `PersonalRecord` entry is created/updated
 - [x] e1RM calculated using Epley formula and stored (implemented in WorkoutSessionLogger revamp)
 - [x] Backward-compatible: existing `WorkoutSession` records without `exerciseId` do not break
 
@@ -109,12 +109,12 @@ Critical path: S7-001 (Exercise model) must land before S7-004 (PR board).
 **Acceptance Criteria:**
 - [x] Titan tabs are exactly 3: Training, Progress, Cycles (agent-5 in progress)
 - [x] Biomarkers, Sleep, Recovery, Diagnosis tabs do not render in Titan (agent-5 in progress)
-- [ ] Training tab shows NSV readiness scores (sleep quality, recovery, CNS fatigue) as a compact widget
-- [ ] Training tab shows clearance status banner with correct status from Soma data service
-- [ ] "View Health Dashboard" link navigates to Soma module route
-- [ ] `log_sleep` AI action delegates to Soma service and still updates NSV `sleepQuality`
-- [ ] No console errors or broken references from removed tabs
-- [ ] `aria-controls` / tab panel `id` mismatches resolved (existing tech debt)
+- [x] Training tab shows NSV readiness scores (sleep quality, recovery, CNS fatigue) as a compact widget
+- [x] Training tab shows clearance status banner with correct status from Soma data service
+- [x] "View Health Dashboard" link navigates to Soma module route
+- [x] `log_sleep` AI action delegates to Soma service and still updates NSV `sleepQuality`
+- [x] No console errors or broken references from removed tabs
+- [x] `aria-controls` / tab panel `id` mismatches resolved (existing tech debt)
 
 ---
 
@@ -133,13 +133,13 @@ Critical path: S7-001 (Exercise model) must land before S7-004 (PR board).
 - Mount `TrainingCalendar` as the primary visual in the Training tab (above session logger)
 
 **Acceptance Criteria:**
-- [ ] 7-day calendar renders correctly for current week
-- [ ] Assigned training days show routine name from `profile.routines` matched by weekday
-- [ ] Past completed sessions show "✓ Completed" (matched by date in `profile.workoutSessions`)
-- [ ] Today's training day is visually highlighted
-- [ ] "Log Today's Workout" CTA opens the `WorkoutSessionLogger` for the current day's routine
-- [ ] Expanding a future day shows the planned exercise list (name, sets × reps)
-- [ ] Calendar is responsive on mobile screen widths
+- [x] 7-day calendar renders correctly for current week
+- [x] Assigned training days show routine name from `profile.routines` matched by weekday
+- [x] Past completed sessions show "✓ Completed" (matched by date in `profile.workoutSessions`)
+- [x] Today's training day is visually highlighted
+- [x] "Log Today's Workout" CTA opens the `WorkoutSessionLogger` for the current day's routine
+- [x] Expanding a future day shows the planned exercise list (name, sets × reps)
+- [x] Calendar is responsive on mobile screen widths
 
 ---
 
@@ -157,12 +157,12 @@ Critical path: S7-001 (Exercise model) must land before S7-004 (PR board).
 - ACWR indicator: compute acute (7-day) vs chronic (28-day) workload ratio from session volume; show traffic-light indicator (green < 1.3, yellow 1.3–1.5, red > 1.5)
 
 **Acceptance Criteria:**
-- [ ] Progress tab shows PR board with ≥1 exercise entry after first session is logged
-- [ ] e1RM sparkline shows correct trend for the last 90 days (or all data if < 90 days)
-- [ ] "PR" badge appears when most recent session for an exercise is the all-time best
-- [ ] ACWR is computed and displayed with correct color coding
-- [ ] Empty state renders correctly for new users with no sessions
-- [ ] Clicking an exercise in the PR board shows a detail view with full session history for that exercise
+- [x] Progress tab shows PR board with ≥1 exercise entry after first session is logged
+- [x] e1RM sparkline shows correct trend for the last 90 days (or all data if < 90 days)
+- [x] "PR" badge appears when most recent session for an exercise is the all-time best
+- [x] ACWR is computed and displayed with correct color coding
+- [x] Empty state renders correctly for new users with no sessions
+- [x] Clicking an exercise in the PR board shows a detail view with full session history for that exercise
 
 ---
 
@@ -178,12 +178,12 @@ Critical path: S7-001 (Exercise model) must land before S7-004 (PR board).
 - Add `update_titan_profile` preference field support for `preferenceMode`
 
 **Acceptance Criteria:**
-- [ ] Mode toggle renders in Titan settings with clear label: "Coach Mode" / "Logbook Mode"
-- [ ] Default mode for new users is "Coach Mode"
-- [ ] In Logbook Mode: form submission commits immediately without chat interaction
-- [ ] In Logbook Mode: AI advisory runs in background; banner appears if concern detected
-- [ ] In Coach Mode: existing AI-mediated flow unchanged
-- [ ] Mode preference persists across sessions
+- [x] Mode toggle renders in Titan settings with clear label: "Coach Mode" / "Logbook Mode"
+- [x] Default mode for new users is "Coach Mode"
+- [x] In Logbook Mode: form submission commits immediately without chat interaction
+- [x] In Logbook Mode: AI advisory runs in background; banner appears if concern detected
+- [x] In Coach Mode: existing AI-mediated flow unchanged
+- [x] Mode preference persists across sessions
 
 ---
 
@@ -202,12 +202,12 @@ Critical path: S7-001 (Exercise model) must land before S7-004 (PR board).
 - When `currentWeekNumber === deloadWeekNumber`: Titan AI automatically uses `recovery` mode persona variant and reduces intensity guidance
 
 **Acceptance Criteria:**
-- [ ] `CycleEntry` type updated with `linkedRoutineIds`, `deloadWeekNumber`, `progressionScheme` fields
-- [ ] `create_cycle` AI action accepts and stores new fields
-- [ ] Existing CycleEntry records without new fields remain valid (fields are optional)
-- [ ] `advance_cycle_phase` auto-advances when current date is past phase end date (checked on Titan load)
-- [ ] Titan AI system prompt includes active cycle context when a training cycle is active
-- [ ] Titan AI switches to recovery-mode guidance during designated deload weeks
+- [x] `CycleEntry` type updated with `linkedRoutineIds`, `deloadWeekNumber`, `progressionScheme` fields
+- [x] `create_cycle` AI action accepts and stores new fields
+- [x] Existing CycleEntry records without new fields remain valid (fields are optional)
+- [x] `advance_cycle_phase` auto-advances when current date is past phase end date (checked on Titan load)
+- [x] Titan AI system prompt includes active cycle context when a training cycle is active
+- [x] Titan AI switches to recovery-mode guidance during designated deload weeks
 
 ---
 
@@ -226,14 +226,14 @@ Critical path: S7-001 (Exercise model) must land before S7-004 (PR board).
 - Update onboarding complete criteria: `goal` + `availability` + `experienceLevel` set + first routine generated = complete
 
 **Acceptance Criteria:**
-- [ ] New users see AI chat as the default onboarding path
-- [ ] AI chat onboarding completes in ≤4 exchanges and generates a starter routine
-- [ ] "Skip to quick setup" link shows 3-field form alternative
-- [ ] Medical onboarding phase is absent from Titan onboarding flow
-- [ ] Starter routine is visible in Training tab immediately after onboarding completes
-- [ ] "Log first workout" CTA is immediately actionable after onboarding
-- [ ] Progressive prompts appear contextually: body weight prompt after Session 1 is logged, macro prompt after 7 days of use
-- [ ] Existing users who completed onboarding are not re-prompted
+- [x] New users see AI chat as the default onboarding path
+- [x] AI chat onboarding completes in ≤4 exchanges and generates a starter routine
+- [x] "Skip to quick setup" link shows 3-field form alternative
+- [x] Medical onboarding phase is absent from Titan onboarding flow
+- [x] Starter routine is visible in Training tab immediately after onboarding completes
+- [x] "Log first workout" CTA is immediately actionable after onboarding
+- [x] Progressive prompts appear contextually: body weight prompt after Session 1 is logged, macro prompt after 7 days of use
+- [x] Existing users who completed onboarding are not re-prompted
 
 ---
 
@@ -251,10 +251,10 @@ Critical path: S7-001 (Exercise model) must land before S7-004 (PR board).
 
 ## Definition of Done
 
-- [ ] All acceptance criteria for in-scope items pass
-- [ ] TypeScript builds with no new errors (`npm run build`)
-- [ ] No regressions in existing Titan functionality (workout logging, AI chat, Spine reactivity)
-- [ ] NSV readiness scores still display correctly after Sleep/Biomarkers tab removal
-- [ ] `soma-titan-delegation-service` tests pass
-- [ ] `TITAN_PRODUCT_STRATEGY_REVIEW.md` updated with any decisions made during sprint
-- [ ] `BACKLOG.md` Titan items updated to reflect sprint completion status
+- [x] All acceptance criteria for in-scope items pass
+- [x] TypeScript builds with no new errors (`npm run build`)
+- [x] No regressions in existing Titan functionality (workout logging, AI chat, Spine reactivity)
+- [x] NSV readiness scores still display correctly after Sleep/Biomarkers tab removal
+- [x] `soma-titan-delegation-service` tests pass
+- [x] `TITAN_PRODUCT_STRATEGY_REVIEW.md` updated with any decisions made during sprint
+- [x] `BACKLOG.md` Titan items updated to reflect sprint completion status

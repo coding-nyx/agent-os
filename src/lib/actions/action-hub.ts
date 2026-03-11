@@ -48,10 +48,6 @@ const NSV_WRITE_ACTION_TYPES = new Set([
   'COMMIT_NSV',
 ]);
 
-const NSV_ALLOWED_WRITES: Record<string, string[]> = {
-  scout: ['cognitive'],
-};
-
 class ModuleActionHub {
   private registry = new Map<string, Map<string, ActionHandler>>();
   private dependencies = new Map<string, Set<string>>();
@@ -93,19 +89,7 @@ class ModuleActionHub {
       ...context,
       updateGlobalSoul: async (patch) => {
         if (NSV_READ_ONLY_MODULES.has(moduleId)) {
-          const allowed = NSV_ALLOWED_WRITES[moduleId] ?? [];
-          const patchKeys = Object.keys(patch);
-          const blocked = patchKeys.filter(k => !allowed.includes(k));
-          if (blocked.length > 0) {
-            console.warn(
-              `[ActionHub] Module "${moduleId}" is NSV read-only – ignored keys: ${blocked.join(', ')}`
-            );
-          }
-          const filtered = Object.fromEntries(
-            Object.entries(patch).filter(([k]) => allowed.includes(k))
-          );
-          if (Object.keys(filtered).length === 0) return;
-          return context.updateGlobalSoul(filtered as NeuralStateVectorPatch);
+          throw new Error('Scout/Forge are NSV read-only');
         }
         return context.updateGlobalSoul(patch);
       },

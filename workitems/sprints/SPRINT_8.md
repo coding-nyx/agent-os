@@ -43,12 +43,12 @@
 - Mount in Training tab above TitanDashboard
 
 **Acceptance Criteria:**
-- [ ] Calendar renders for current week on Training tab load
-- [ ] Routine names display per weekday from `profile.routines`
-- [ ] Past sessions show correct Completed/Missed/Rest state
-- [ ] Today highlighted; "Log Workout" CTA opens `WorkoutSessionLogger` for today's routine
-- [ ] Week navigation works
-- [ ] Mobile responsive
+- [x] Calendar renders for current week on Training tab load
+- [x] Routine names display per weekday from `profile.routines`
+- [x] Past sessions show correct Completed/Missed/Rest state
+- [x] Today highlighted; "Log Workout" CTA opens `WorkoutSessionLogger` for today's routine
+- [x] Week navigation works
+- [x] Mobile responsive
 
 ---
 
@@ -63,10 +63,10 @@
 - Preference persists via `update_titan_profile` action
 
 **Acceptance Criteria:**
-- [ ] Toggle renders in Training tab header; persists to `TitanProfile.directWriteMode`
-- [ ] In Logbook Mode: session commits immediately without chat
-- [ ] Advisory banner appears when RPE ≥ 9 or volume spike detected
-- [ ] Banner is dismissible; does not reappear for same session
+- [x] Toggle renders in Training tab header; persists to `TitanProfile.directWriteMode`
+- [x] In Logbook Mode: session commits immediately without chat
+- [x] Advisory banner appears when RPE ≥ 9 or volume spike detected
+- [x] Banner is dismissible; does not reappear for same session
 
 ---
 
@@ -81,10 +81,10 @@
 - Used by `ProgressTab` to group PRs by muscle group
 
 **Acceptance Criteria:**
-- [ ] Library JSON contains ≥50 exercises covering all major compound lifts + common isolation movements
-- [ ] `matchExerciseName('Barbell Squat')` returns the canonical squat entry
-- [ ] `matchExerciseName('bench')` fuzzy-matches `Barbell Bench Press`
-- [ ] Unmatched names return `null` (not an error)
+- [x] Library JSON contains ≥50 exercises covering all major compound lifts + common isolation movements
+- [x] `matchExerciseName('Barbell Squat')` returns the canonical squat entry
+- [x] `matchExerciseName('bench')` fuzzy-matches `Barbell Bench Press`
+- [x] Unmatched names return `null` (not an error)
 
 ---
 
@@ -99,10 +99,10 @@
 - When `currentWeekNumber === deloadWeekNumber` in active cycle: add deload flag to prompt context
 
 **Acceptance Criteria:**
-- [ ] `CycleEntry` type updated with new optional fields; existing records unaffected
-- [ ] Stale cycle phases auto-advance on Titan page load (no AI required)
-- [ ] Active cycle name + phase injected into Titan AI system prompt
-- [ ] Deload week triggers deload guidance in AI prompt
+- [x] `CycleEntry` type updated with new optional fields; existing records unaffected
+- [x] Stale cycle phases auto-advance on Titan page load (no AI required)
+- [x] Active cycle name + phase injected into Titan AI system prompt
+- [x] Deload week triggers deload guidance in AI prompt
 
 ---
 
@@ -114,9 +114,9 @@
 - After `log_sleep` succeeds: auto-compute `sleepQuality` from `hoursSlept` and `quality` fields in payload; update `biological.sleepQuality` NSV
 
 **Acceptance Criteria:**
-- [ ] `cnsFatigue` NSV updates after each session log without needing AI `sync_vitals` action
-- [ ] `sleepQuality` NSV updates after each sleep log
-- [ ] `TitanReadiness` widget reflects updated values immediately
+- [x] `cnsFatigue` NSV updates after each session log without needing AI `sync_vitals` action
+- [x] `sleepQuality` NSV updates after each sleep log
+- [x] `TitanReadiness` widget reflects updated values immediately
 
 ---
 
@@ -129,9 +129,9 @@
 ---
 
 ## Definition of Done
-- [ ] All acceptance criteria for in-scope items pass
-- [ ] `npm run build` exits with zero errors
-- [ ] Training tab shows `TrainingCalendar` on first load
-- [ ] Session logging in Logbook Mode commits immediately without AI round-trip
-- [ ] PRs display correctly in Progress tab after first session is logged
-- [ ] `BACKLOG.md` Titan items updated to reflect sprint completion
+- [x] All acceptance criteria for in-scope items pass
+- [x] `npm run build` exits with zero errors
+- [x] Training tab shows `TrainingCalendar` on first load
+- [x] Session logging in Logbook Mode commits immediately without AI round-trip
+- [x] PRs display correctly in Progress tab after first session is logged
+- [x] `BACKLOG.md` Titan items updated to reflect sprint completion

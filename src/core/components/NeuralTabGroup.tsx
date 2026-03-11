@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
@@ -143,6 +143,11 @@ export function NeuralTabGroup<T extends string = string>({
   const reducedMotion = useReducedMotion();
   const theme = THEME_MAP[themeColor];
 
+  // Roving-tabindex pattern: we hold a ref to every rendered tab button so
+  // keyboard navigation can programmatically move focus to the newly-selected
+  // tab without relying on the browser's natural tab order.
+  const tabRefs = useRef<Map<T, HTMLButtonElement>>(new Map());
+
   const handleKeyDown = (e: React.KeyboardEvent, currentId: T) => {
     const currentIndex = tabs.findIndex((t) => t.id === currentId);
     let nextIndex = -1;
@@ -162,7 +167,11 @@ export function NeuralTabGroup<T extends string = string>({
     }
 
     if (nextIndex >= 0) {
-      onTabChange(tabs[nextIndex].id);
+      const nextId = tabs[nextIndex].id;
+      onTabChange(nextId);
+      // Shift DOM focus to the incoming tab button so screen readers announce
+      // the selection change and the roving tabindex stays coherent.
+      tabRefs.current.get(nextId)?.focus();
     }
   };
 
@@ -182,6 +191,10 @@ export function NeuralTabGroup<T extends string = string>({
         return (
           <button
             key={tab.id}
+            ref={(el) => {
+              if (el) tabRefs.current.set(tab.id, el);
+              else tabRefs.current.delete(tab.id);
+            }}
             role="tab"
             id={`tab-${tab.id}`}
             aria-selected={isActive}

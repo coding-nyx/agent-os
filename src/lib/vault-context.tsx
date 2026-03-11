@@ -22,6 +22,12 @@ interface VaultContextType {
   isModuleAccessible: (moduleId: ModuleId) => boolean;
   setSessionPassword: (password: string) => void;
   getSessionPassword: () => string | null;
+  /** true when vault exists, is locked, and no auto-unlock is in progress */
+  isVaultGateVisible: boolean;
+  vaultSetupNudgeSeen: boolean;
+  dismissVaultSetupNudge: () => void;
+  /** Placeholder — will be wired to UnifiedAuthModal VAULT_HANDSHAKE step */
+  initializeVault: () => void;
 }
 
 const VaultContext = createContext<VaultContextType | null>(null);
@@ -38,7 +44,13 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [hasVault, setHasVault] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isHandshaking, setIsHandshaking] = useState(false);
+  const [isHandshaking, setIsHandshaking] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const mode = (localStorage.getItem(PERSISTENCE_KEY) as VaultPersistenceMode) || 'SESSION';
+    if (mode === 'STRICT') return false;
+    const hasPwd = !!sessionStorage.getItem(SESSION_PWD_KEY);
+    return hasPwd;
+  });
   const [persistenceMode, _setPersistenceMode] = useState<VaultPersistenceMode>(
       (localStorage.getItem(PERSISTENCE_KEY) as VaultPersistenceMode) || 'SESSION'
   );
@@ -55,9 +67,9 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setSessionPassword = useCallback((pwd: string) => {
-      if (persistenceMode !== 'STRICT') {
-          sessionStorage.setItem(SESSION_PWD_KEY, pwd);
-      }
+    if (persistenceMode !== 'STRICT') {
+        sessionStorage.setItem(SESSION_PWD_KEY, pwd);
+    }
   }, [persistenceMode]);
 
   const getSessionPassword = useCallback(() => {
@@ -135,6 +147,8 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
                 const decrypted = await decryptWithKey(canary, key);
                 if (decrypted !== 'NEXUS') throw new Error("Invalid Vault Password.");
             } catch (e) {
+                // Re-throw with a stable sentinel so auto-unlock can distinguish
+                // a wrong password (permanent) from a transient error (retryable).
                 throw new Error("Invalid Vault Password.");
             }
         } else {
@@ -145,22 +159,48 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         masterKeyRef.current = key;
         setIsUnlocked(true);
         setSessionPassword(password);
-        await refreshVaultStatus();
+        // NOTE: do NOT call refreshVaultStatus() here — the Firestore subscription
+        // already drives hasVault + isLoading. A second call races with it and
+        // causes a spurious loading bounce.
     } finally {
         unlockInProgressRef.current = false;
         setIsHandshaking(false);
     }
-  }, [user, refreshVaultStatus, dataLayer]);
+  }, [user, dataLayer]);
+
+  // Keep a ref to the latest unlockVault so the auto-unlock effect never
+  // captures a stale closure (unlockVault closes over `user`, which is null
+  // on initial render; the effect deps don't include unlockVault directly).
+  const unlockVaultRef = useRef(unlockVault);
+  useEffect(() => { unlockVaultRef.current = unlockVault; });
 
   useEffect(() => {
-      const tryAutoUnlock = async () => {
-          const pwd = getSessionPassword();
-          if (pwd && user && !isUnlocked && !isHandshaking && persistenceMode !== 'STRICT') {
-              try { await unlockVault(pwd); } catch(e) { console.warn('Auto-unlock failed:', e); }
-          }
-      };
-      if (!isLoading && !authLoading) tryAutoUnlock();
-  }, [user?.uid, isLoading, authLoading, persistenceMode, isUnlocked, isHandshaking, unlockVault]);
+    if (isLoading || authLoading) return;
+
+    const pwd = getSessionPassword();
+
+    if (isUnlocked || !hasVault) { setIsHandshaking(false); return; }
+    if (persistenceMode === 'STRICT') { setIsHandshaking(false); return; }
+    if (!pwd || !user) { setIsHandshaking(false); return; }
+    if (unlockInProgressRef.current) return;
+
+    unlockVaultRef.current(pwd)
+      .catch((e: unknown) => {
+        const isWrongPassword = e instanceof Error && e.message === 'Invalid Vault Password.';
+        if (isWrongPassword) {
+          sessionStorage.removeItem(SESSION_PWD_KEY);
+        }
+        setIsHandshaking(false);
+      });
+
+    return () => {
+      // Reset the in-progress flag on cleanup so React Strict Mode's
+      // double-invocation (mount → unmount → remount) doesn't permanently
+      // block auto-unlock on the second mount.
+      unlockInProgressRef.current = false;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, isLoading, authLoading, persistenceMode, isUnlocked, hasVault]);
 
   const isModuleAccessible = useCallback((moduleId: ModuleId): boolean => {
     if (isGuest) return true;
@@ -174,31 +214,73 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     return isUnlocked;
   }, [isGuest, profile?.securityPreferences, isUnlocked]);
 
+  // ── Vault setup nudge ────────────────────────────────────────────────────
+  const [nudgeSeen, setNudgeSeen] = useState<boolean>(() =>
+    typeof window !== 'undefined'
+      ? localStorage.getItem('nexus_vault_nudge_seen') === 'true'
+      : false
+  );
+
+  const dismissVaultSetupNudge = useCallback(() => {
+    localStorage.setItem('nexus_vault_nudge_seen', 'true');
+    setNudgeSeen(true);
+  }, []);
+
+  const initializeVault = useCallback(() => {
+    // Placeholder — will be wired to UnifiedAuthModal VAULT_HANDSHAKE step.
+  }, []);
+
   useEffect(() => {
-    if (!user && !authLoading) lockVault();
-    if (!authLoading) void refreshVaultStatus();
-  }, [user?.uid, authLoading, lockVault, refreshVaultStatus]);
+    // Lock vault when user signs out
+    if (!user && !authLoading) {
+      lockVault();
+    }
+    // refreshVaultStatus is intentionally NOT called here — the subscription
+    // effect below already drives hasVault + isLoading. Calling it here too
+    // caused a race: subscription set isLoading=true AFTER the one-shot fetch
+    // already set isLoading=false, leaving the app stuck in loading.
+  }, [user?.uid, authLoading, lockVault]);
 
   useEffect(() => {
     if (!user?.uid || authLoading) {
-      if (!user) {
+      // Only finalize the "no user" state when auth has confirmed there is no user.
+      // During auth boot (user=null, authLoading=true) we must NOT set isLoading=false —
+      // that would leave isLoading=false while hasVault=false before the subscription
+      // even starts, causing the auto-unlock effect to prematurley clear isHandshaking
+      // and expose a vault gate flash when hasVault arrives from Firestore.
+      if (!user && !authLoading) {
         setHasVault(false);
         setIsLoading(false);
+        if (!sessionStorage.getItem(SESSION_PWD_KEY)) {
+          setIsHandshaking(false);
+        }
       }
       return () => {};
     }
 
     setIsLoading(true);
+
+    // Safety: if Firestore subscription never fires (offline, cold start, etc.)
+    // release the loading gate after 8 s so the app is never permanently stuck.
+    const safetyTimer = setTimeout(() => {
+      setIsLoading(false);
+      setIsHandshaking(false);
+    }, 8000);
+
     const unsubscribe = dataLayer.subscribeToDocument(
       VAULT_COLLECTION,
       user.uid,
       (record) => {
+        clearTimeout(safetyTimer);
         setHasVault(!!record);
         setIsLoading(false);
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      unsubscribe();
+    };
   }, [user?.uid, authLoading, dataLayer]);
 
   useEffect(() => {
@@ -211,6 +293,9 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     () => isLoading || authLoading || isHandshaking,
     [isLoading, authLoading, isHandshaking]
   );
+
+  // Derived: vault exists, is locked, and no auto-unlock is in flight
+  const isVaultGateVisible = hasVault && !isUnlocked && !isHandshaking;
 
   const contextValue = useMemo(() => ({
     isUnlocked,
@@ -227,9 +312,14 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     isModuleAccessible,
     setSessionPassword,
     getSessionPassword,
+    isVaultGateVisible,
+    vaultSetupNudgeSeen: nudgeSeen,
+    dismissVaultSetupNudge,
+    initializeVault,
   }), [isUnlocked, computedIsLoading, isHandshaking, hasVault, persistenceMode,
       setPersistenceMode, refreshVaultStatus, unlockVault, lockVault, getModuleKey,
-      checkModuleVault, isModuleAccessible, setSessionPassword, getSessionPassword]);
+      checkModuleVault, isModuleAccessible, setSessionPassword, getSessionPassword,
+      isVaultGateVisible, nudgeSeen, dismissVaultSetupNudge, initializeVault]);
 
   return (
     <VaultContext.Provider value={contextValue}>
@@ -238,8 +328,36 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Safe fallback returned when context is absent (e.g. during HMR re-mount).
+// Components see "still loading" state and render a spinner rather than crashing.
+const VAULT_LOADING_FALLBACK: VaultContextType = {
+  isUnlocked: false,
+  isLoading: true,
+  isHandshaking: false,
+  hasVault: false,
+  persistenceMode: 'SESSION',
+  setPersistenceMode: () => {},
+  refreshVaultStatus: async () => {},
+  unlockVault: async () => {},
+  lockVault: () => {},
+  getModuleKey: async () => null,
+  checkModuleVault: async () => false,
+  isModuleAccessible: () => true,
+  setSessionPassword: () => {},
+  getSessionPassword: () => null,
+  isVaultGateVisible: false,
+  vaultSetupNudgeSeen: false,
+  dismissVaultSetupNudge: () => {},
+  initializeVault: () => {},
+};
+
 export function useVault() {
   const context = useContext(VaultContext);
-  if (!context) throw new Error('useVault must be used within a VaultProvider');
+  if (!context) {
+    if (import.meta.env.DEV) {
+      console.error('[useVault] Called outside VaultProvider — returning loading fallback (HMR glitch?)');
+    }
+    return VAULT_LOADING_FALLBACK;
+  }
   return context;
 }
