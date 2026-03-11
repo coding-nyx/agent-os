@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { useAuth } from '@/lib/auth-context';
+import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { ORCHESTRATOR_PERSONA, ORCHESTRATOR_WELCOME } from './personas';
 import { useNavigate } from 'react-router-dom';
@@ -9,14 +11,17 @@ import { CoreUserProfile } from '@/lib/types';
 import { OrchestratorOnboarding } from './onboarding/OrchestratorOnboarding';
 import { GuestModePanel } from '@/core/components/GuestModePanel';
 import { NexusDashboard } from './components/NexusDashboard';
+import { VaultSetupNudge } from '@/core/components/VaultSetupNudge';
 
 type PageState = 'ONBOARDING' | 'DASHBOARD';
 
 export default function OrchestratorPage() {
   const { user, isGuest, profile, refreshProfile, initializeNewUser } = useAuth();
+  const { hasVault, isUnlocked, vaultSetupNudgeSeen, isLoading: vaultLoading } = useVault();
   const navigate = useNavigate();
   const [pageState, setPageState] = useState<PageState>('ONBOARDING');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showNudge, setShowNudge] = useState(false);
 
   const {
     messages,
@@ -33,7 +38,7 @@ export default function OrchestratorPage() {
   });
 
   useEffect(() => {
-    if (!isGuest && user && !profile && !isSubmitting) {
+    if (!isGuest && user && !profile && !isSubmitting && (isUnlocked || !hasVault)) {
       initializeNewUser();
     }
   }, [isGuest, user, profile, initializeNewUser, isSubmitting]);
@@ -46,6 +51,16 @@ export default function OrchestratorPage() {
       }
     }
   }, [isGuest, profile?.onboardingComplete, messages.length, profile?.preferredName, setMessages]);
+
+  // Show the one-time vault setup nudge once the page has settled.
+  // Conditions: authenticated user, no vault yet, nudge not previously dismissed.
+  useEffect(() => {
+    if (!isGuest && !hasVault && !vaultSetupNudgeSeen && !vaultLoading) {
+      // Small delay so it doesn't interrupt page load
+      const timer = setTimeout(() => setShowNudge(true), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [isGuest, hasVault, vaultSetupNudgeSeen, vaultLoading]);
 
   if (isGuest) {
     return (
@@ -86,6 +101,11 @@ export default function OrchestratorPage() {
           ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
           agentName={profile?.agentPersonalityProvision?.orchestratorAlias || 'Nexus'}
         />
+        <AnimatePresence>
+          {showNudge && (
+            <VaultSetupNudge onClose={() => setShowNudge(false)} />
+          )}
+        </AnimatePresence>
       </ModuleLayout>
     );
   }
@@ -93,6 +113,11 @@ export default function OrchestratorPage() {
   return (
     <ModuleLayout title="Nexus" themeColor="cyan" moduleId="orchestrator" hideBack>
       <OrchestratorOnboarding profile={profile} isSubmitting={isSubmitting} onComplete={handleComplete} />
+      <AnimatePresence>
+        {showNudge && (
+          <VaultSetupNudge onClose={() => setShowNudge(false)} />
+        )}
+      </AnimatePresence>
     </ModuleLayout>
   );
 }

@@ -14,10 +14,11 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
-import { TitanProfile, Routine, Exercise, WorkoutSession, PersonalRecord } from '@/lib/types';
+import { TitanProfile, Routine, Exercise, WorkoutSession, PersonalRecord, SomaProfile } from '@/lib/types';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { buildTitanSessionPrompt } from './prompts/titan-session-prompt';
 import { loadTitanProfile, saveTitanProfile, subscribeTitanProfile, syncGuestTitanProfileToUser } from './services/titan-profile-service';
+import { subscribeSomaProfile } from '../soma/services/soma-profile-service';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
@@ -55,6 +56,13 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams));
   const [calendarSelectedRoutine, setCalendarSelectedRoutine] = useState<Routine | null>(null);
+  const [somaProfile, setSomaProfile] = useState<SomaProfile | null>(null);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsub = subscribeSomaProfile({ userId: user.uid, encryptionKey: encryptionKey ?? null }, setSomaProfile);
+    return unsub;
+  }, [user?.uid, encryptionKey]);
 
   // Derive prompt mode from active tab — always training now
   const agentAlias = globalSoul?.displayNames?.titan || 'Titan';
@@ -372,14 +380,14 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
             {/* Soma health snapshot — deep-links to Soma module */}
             <SomaSnapshotWidget
-              clearanceStatus={profile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined}
-              lastBiomarkerDate={profile?.biomarkers?.[0]?.recordedAt}
+              clearanceStatus={somaProfile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined ?? null}
+              lastBiomarkerDate={somaProfile?.biomarkers?.[0]?.recordedAt ?? null}
               className="mx-4 md:mx-8 mb-2"
             />
 
             {/* Clearance warning banner — only shown when denied/pending */}
             <ClearanceBanner
-              status={profile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined}
+              status={somaProfile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined}
               className="mx-4 md:mx-8 mb-4"
             />
 

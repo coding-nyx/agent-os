@@ -8,6 +8,7 @@ import { AIProvider, useAI } from './llm-engine/ai-context';
 import { BootLoader } from './core/components/BootLoader';
 import { AppErrorBoundary } from './core/components/AppErrorBoundary';
 import { ProtectedRoute } from './core/components/ProtectedRoute';
+import { AppVaultGate } from './core/components/AppVaultGate';
 import { NexusOverlay } from './core/components/NexusOverlay';
 import { NeuralDraftPanel } from './core/components/NeuralDraftPanel';
 import { SpineOverlay } from './core/components/SpineOverlay';
@@ -25,7 +26,7 @@ const AgnesPage = lazy(() => import('./modules/agnes/AgnesPage'));
 const TitanPage = lazy(() => import('./modules/titan/TitanPage'));
 const LedgerPage = lazy(() => import('./modules/ledger/LedgerPage'));
 const OrchestratorPage = lazy(() => import('./modules/orchestrator/OrchestratorPage'));
-// Soma absorbed into Titan — SomaPage no longer used; /soma redirects to /titan?tab=biomarkers
+const SomaPage = lazy(() => import('./modules/soma/SomaPage'));
 const AtlasPage = lazy(() => import('./modules/atlas/AtlasPage'));
 const ScoutPage = lazy(() => import('./modules/scout/ScoutPage'));
 const ForgePage = lazy(() => import('./modules/forge/ForgePage'));
@@ -72,6 +73,9 @@ function AppContent() {
       <NexusRouteBanner />
       <Routes>
         <Route path="/" element={<LandingPage />} />
+
+        {/* Vault unlock gate — outside ProtectedRoute so it's always reachable */}
+        <Route path="/vault-gate" element={<AppVaultGate />} />
         
         <Route path="/orchestrator" element={
           <ProtectedRoute requireOnboarding={false}>
@@ -103,8 +107,11 @@ function AppContent() {
           </ProtectedRoute>
         } />
 
-        {/* Soma absorbed into Titan — redirect to biomarkers tab */}
-        <Route path="/soma" element={<Navigate to="/titan?tab=biomarkers" replace />} />
+        <Route path="/soma" element={
+          <ProtectedRoute>
+            <SomaPage />
+          </ProtectedRoute>
+        } />
 
         <Route path="/atlas" element={
           <ProtectedRoute>
