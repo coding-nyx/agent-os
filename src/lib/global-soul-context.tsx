@@ -131,7 +131,9 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
   const enhanceContext = useCallback((context: ConversationContext): ConversationContext => {
     if (!globalSoul) return context;
     const state = globalSoul?.crossFunctionalState;
+    // eslint-disable-next-line no-control-regex
     const safeName = (profile?.preferredName || 'Unknown').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 50);
+    // eslint-disable-next-line no-control-regex
     const safePronouns = (profile?.pronouns || 'They/Them').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 30);
     const safeInsights = (globalSoul?.compactedInsights || [])
       .map(i => i.slice(0, 200));
@@ -157,7 +159,9 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
     if (!globalSoul) return context;
 
     const state = globalSoul.crossFunctionalState;
+    // eslint-disable-next-line no-control-regex
     const safeName = (profile?.preferredName || 'Unknown').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 50);
+    // eslint-disable-next-line no-control-regex
     const safePronouns = (profile?.pronouns || 'They/Them').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 30);
     const safeInsights = (globalSoul?.compactedInsights || []).map(i => i.slice(0, 200));
 

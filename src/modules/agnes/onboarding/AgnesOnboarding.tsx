@@ -223,7 +223,7 @@ export function AgnesOnboarding({ initialBaseContext, onComplete }: AgnesOnboard
             }
         }
 
-        const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|my job is|occupation is)\s+([a-z][a-z0-9'\/&,\- ]{1,50})/i);
+        const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|my job is|occupation is)\s+([a-z][a-z0-9'/&,\- ]{1,50})/i);
         if (occupationMatch) patch.occupation = occupationMatch[1].trim();
 
         const sleepMatch = message.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:hours?|hrs?)\b/i);

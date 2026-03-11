@@ -1,6 +1,7 @@
 import { ActionHub } from './action-hub';
 import { Spine } from '../spine/spine-event-bus';
 import { SpineEventType, NeuralStateVectorPatch, NeuralStateVector } from '../types';
+import type { DataHint } from '../types';
 import { CoreProfileService } from '../services/core-profile-service';
 import { NexusRoutingService } from '../services/nexus-routing-service';
 import { EpisodicMemoryService } from '../services/episodic-memory-service';
@@ -570,5 +571,24 @@ export function registerCoreActions() {
     if (typeof score === 'number') {
       await updateGlobalSoul({ resource: { financialFriction: score } });
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // Contextual Inference Engine — S10-008
+  // -------------------------------------------------------------------------
+  ActionHub.register('*', 'detect_data_hint', async ({ payload }) => {
+    const hint = (payload as unknown) as DataHint | undefined;
+    if (!hint || typeof hint !== 'object') return;
+    if (typeof hint.confidence !== 'number' || hint.confidence < 0.75) return;
+    // Agnes emotional data: silently discard, no Spine event.
+    if (hint.targetModule === 'agnes') return;
+
+    Spine.publish({
+      type: 'CONTEXT_HINT_DETECTED',
+      source: hint.sourceModule ?? 'unknown',
+      domain: 'C',
+      priority: 'info',
+      data: hint as unknown as Record<string, unknown>,
+    });
   });
 }

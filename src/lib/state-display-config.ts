@@ -173,6 +173,10 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   SOUL_WRITE_REQUESTED: 'Soul write requested',
   SOUL_WRITE_APPROVED: 'Soul write approved',
   SOUL_WRITE_REJECTED: 'Soul write rejected',
+  // Contextual Inference Engine Events (S10-008)
+  CONTEXT_HINT_DETECTED: 'Cross-module hint detected',
+  CONTEXT_HINT_CONFIRMED: 'Data sync confirmed',
+  CONTEXT_HINT_DISMISSED: 'Sync hint dismissed',
 };
 
 // ---------------------------------------------------------------------------

@@ -37,14 +37,6 @@ export function LedgerDashboard({
   isLocked?: boolean;
 }) {
   const [activeView, setActiveView] = useState<'overview' | 'cashflow' | 'debt'>('overview');
-  if (isLocked) {
-    return (
-      <VaultLockedShell
-        moduleName="Ledger"
-        moduleDescription="Financial analysis and encrypted transaction intelligence."
-      />
-    );
-  }
 
   const hasSoul = Boolean(soul);
   const resource = soul?.crossFunctionalState?.resource || {};
@@ -166,6 +158,15 @@ export function LedgerDashboard({
     alerts.length > ALERT_COLLAPSE_THRESHOLD && !alertsExpanded
       ? alerts.slice(0, ALERT_COLLAPSE_THRESHOLD)
       : alerts;
+
+  if (isLocked) {
+    return (
+      <VaultLockedShell
+        moduleName="Ledger"
+        moduleDescription="Financial analysis and encrypted transaction intelligence."
+      />
+    );
+  }
 
   return (
     <div className="p-8 space-y-8">

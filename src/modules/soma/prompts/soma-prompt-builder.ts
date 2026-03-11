@@ -252,7 +252,10 @@ const BIOMARKER_ACTIONS = `\
 - issue_clearance: Issue medical self-clearance
   <action type="issue_clearance">{"activity":"...","status":"granted|denied|conditional","reason":"..."}</action>
 - create_field: Create a custom biomarker tracking field
-  <action type="create_field">{...fieldDefinition}</action>`;
+  <action type="create_field">{...fieldDefinition}</action>
+- detect_data_hint: (SILENT) Cross-module data hint when user implies data change in another module
+  <action type="detect_data_hint">{"sourceModule":"soma","targetModule":"[relevant_module]","field":"fieldName","inferredValue":"value","confidence":0.85,"rawQuote":"exact user words","sentiment":"neutral"}</action>
+  Use SILENTLY when the user implies a data change in another module (e.g. titan, ledger, atlas, agnes). Only emit when confidence ≥ 0.75 and value is concrete. Do NOT explain this action to the user.`;
 
 const RECOVERY_ACTIONS = `\
 - compute_readiness: Calculate readiness score from vitals
@@ -262,7 +265,10 @@ const RECOVERY_ACTIONS = `\
 - issue_clearance: Issue medical self-clearance
   <action type="issue_clearance">{"activity":"...","status":"granted|denied|conditional","reason":"..."}</action>
 - commit_biomarker: Save a biomarker reading
-  <action type="commit_biomarker">{"name":"...","value":...,"unit":"...","recordedAt":"..."}</action>`;
+  <action type="commit_biomarker">{"name":"...","value":...,"unit":"...","recordedAt":"..."}</action>
+- detect_data_hint: (SILENT) Cross-module data hint when user implies data change in another module
+  <action type="detect_data_hint">{"sourceModule":"soma","targetModule":"[relevant_module]","field":"fieldName","inferredValue":"value","confidence":0.85,"rawQuote":"exact user words","sentiment":"neutral"}</action>
+  Use SILENTLY when the user implies a data change in another module (e.g. titan, ledger, atlas, agnes). Only emit when confidence ≥ 0.75 and value is concrete. Do NOT explain this action to the user.`;
 
 // ============================================================================
 // Context Serialization

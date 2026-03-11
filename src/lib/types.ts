@@ -262,7 +262,11 @@ export type SpineEventType =
   // Soul Write Protocol Events (S10-002)
   | 'SOUL_WRITE_REQUESTED'
   | 'SOUL_WRITE_APPROVED'
-  | 'SOUL_WRITE_REJECTED';
+  | 'SOUL_WRITE_REJECTED'
+  // Contextual Inference Engine Events (S10-008)
+  | 'CONTEXT_HINT_DETECTED'
+  | 'CONTEXT_HINT_CONFIRMED'
+  | 'CONTEXT_HINT_DISMISSED';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'alert' | 'critical';
@@ -1014,3 +1018,80 @@ export interface GuestQuota {
 
 // --- Global Aliases for LLM Engine ---
 export type GlobalSoul = GlobalProjection;
+
+// ---------------------------------------------------------------------------
+// Contextual Inference Engine — S10-008
+// ---------------------------------------------------------------------------
+
+/**
+ * A cross-module data hint detected by an AI module while processing user input.
+ * Represents a passive signal that another module's profile data may need updating.
+ */
+export interface DataHint {
+  /** Module whose AI detected the hint (e.g. "agnes", "titan"). */
+  sourceModule: string;
+  /** Module that owns the referenced data field (e.g. "titan", "ledger"). */
+  targetModule: string;
+  /** Dot-notation field path within the target profile (e.g. "weeklyWorkouts"). */
+  field: string;
+  /** The value inferred from the user's message. */
+  inferredValue: unknown;
+  /** Confidence score from 0 (none) to 1 (certain). */
+  confidence: number;
+  /** The user's exact phrasing that triggered the inference. */
+  rawQuote: string;
+  /** Sentiment context around the hint. */
+  sentiment: 'neutral' | 'positive' | 'negative';
+}
+
+/**
+ * Result of verifying a DataHint against the current stored profile value.
+ * Drives the DataSyncToast UI decision.
+ */
+export interface HintVerificationResult {
+  hint: DataHint;
+  /** True when the inferred value meaningfully differs from the stored value. */
+  isDiscrepant: boolean;
+  /** Current stored value in the target profile (undefined when not set). */
+  currentValue: unknown;
+  /** Human-readable representation of the stored state. E.g. "Titan shows: 5 days/week". */
+  displayLabel: string;
+  /** ActionHub action type to dispatch when the user confirms the update. */
+  confirmActionType: string;
+}
+
+// --- Contextual Inference Engine (S10-008) ---
+
+/**
+ * A conversational hint detected by an AI agent suggesting that real-world
+ * data mentioned by the user may differ from stored profile values.
+ */
+export interface DataHint {
+  /** Unique ID for dedup / dismissal tracking. */
+  id: string;
+  /** Module whose profile data should be cross-checked. */
+  targetModule: string;
+  /** NSV / profile field name (e.g. "weeklyWorkouts"). */
+  field: string;
+  /** Value inferred from conversation. */
+  inferredValue: unknown;
+  /** 0–1 confidence from the LLM. Must be ≥ 0.75 to surface a popup. */
+  confidence: number;
+  /** Raw text snippet from the conversation that triggered this hint. */
+  rawQuote: string;
+  timestamp: number;
+}
+
+/**
+ * Verification result produced by context-inference-service after comparing
+ * the inferred value against the stored profile value.
+ */
+export interface HintVerificationResult {
+  hint: DataHint;
+  isDiscrepant: boolean;
+  currentValue: unknown;
+  displayLabel: string;
+  confirmActionType: string;
+}
+
+

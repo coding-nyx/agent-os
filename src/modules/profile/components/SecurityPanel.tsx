@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Lock, Unlock, KeyRound, Database, Download } from 'lucide-react';
+import { Shield, Lock, Unlock, KeyRound, Database, Download, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { useVault } from '@/lib/vault-context';
 import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -12,6 +12,7 @@ const panelVariants = {
 
 export function SecurityPanel() {
   const { isUnlocked, hasVault, lockVault, persistenceMode } = useVault();
+  const [vaultActionsExpanded, setVaultActionsExpanded] = useState(false);
 
   const vaultStateLabel = isUnlocked
     ? 'Unlocked'
@@ -127,56 +128,97 @@ export function SecurityPanel() {
         </div>
       </GlassCard>
 
-      {/* Vault actions */}
+      {/* Vault Actions — collapsible submenu */}
       <GlassCard className="p-6">
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 mb-5">
-          Vault Actions
-        </h3>
-
-        <div className="space-y-3">
-          {/* Lock vault */}
-          <div className="flex items-center justify-between p-4 rounded-2xl bg-black/30 border border-white/5">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                <Lock className="w-4 h-4 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white/90">Lock Vault</p>
-                <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold">
-                  Revoke session access
-                </p>
-              </div>
-            </div>
-            <NeuralButton
-              size="sm"
-              variant="danger"
-              onClick={lockVault}
-              disabled={!isUnlocked}
-              className="shrink-0"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              Lock
-            </NeuralButton>
+        <button
+          type="button"
+          onClick={() => setVaultActionsExpanded((v) => !v)}
+          className="w-full flex items-center gap-3 text-left focus:outline-none focus:ring-1 focus:ring-violet-500/40 rounded-lg"
+          aria-expanded={vaultActionsExpanded}
+          aria-label="Toggle Vault Actions"
+        >
+          <div className="w-7 h-7 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+            <Lock className="w-3.5 h-3.5 text-violet-400" />
           </div>
-
-          {/* Data export placeholder */}
-          <div className="flex items-center justify-between p-4 rounded-2xl bg-black/30 border border-white/5 opacity-50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                <Download className="w-4 h-4 text-white/40" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white/60">Export Data</p>
-                <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">
-                  Full profile archive
-                </p>
-              </div>
-            </div>
-            <NeuralButton size="sm" variant="secondary" disabled>
-              Coming Soon
-            </NeuralButton>
+          <div className="flex-1">
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+              Vault Actions
+            </h3>
+            <p className="text-[9px] text-white/25 uppercase tracking-wider font-semibold mt-0.5">
+              Lock · Export · Reset
+            </p>
           </div>
-        </div>
+          {vaultActionsExpanded ? (
+            <ChevronDown className="w-4 h-4 text-white/30" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-white/30" />
+          )}
+        </button>
+
+        {vaultActionsExpanded && (
+          <div className="mt-4 space-y-3">
+            {/* Lock vault */}
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-black/30 border border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <Lock className="w-4 h-4 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white/90">Lock Vault</p>
+                  <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold">
+                    Revoke session access
+                  </p>
+                </div>
+              </div>
+              <NeuralButton
+                size="sm"
+                variant="danger"
+                onClick={lockVault}
+                disabled={!isUnlocked}
+                className="shrink-0"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Lock
+              </NeuralButton>
+            </div>
+
+            {/* Data export */}
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-black/30 border border-white/5 opacity-50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                  <Download className="w-4 h-4 text-white/40" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white/60">Export Data</p>
+                  <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">
+                    Full profile archive
+                  </p>
+                </div>
+              </div>
+              <NeuralButton size="sm" variant="secondary" disabled>
+                Coming Soon
+              </NeuralButton>
+            </div>
+
+            {/* Reset vault — destructive, future */}
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-rose-950/10 border border-rose-500/10 opacity-40">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/15 flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-rose-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white/60">Reset Vault</p>
+                  <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">
+                    Wipe all encrypted data
+                  </p>
+                </div>
+              </div>
+              <NeuralButton size="sm" variant="danger" disabled>
+                Coming Soon
+              </NeuralButton>
+            </div>
+          </div>
+        )}
       </GlassCard>
     </motion.div>
   );

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { LogOut, Info, Activity, Code2, ChevronDown, ChevronRight } from 'lucide-react';
+import { LogOut, Info, Activity, Code2, Bug } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -39,7 +39,6 @@ const cardVariants = {
 export function SystemPanel() {
   const { logout } = useAuth();
   const { debugMode, toggleDebugMode } = useDebugMode();
-  const [developerExpanded, setDeveloperExpanded] = useState(false);
 
   const handleSignOut = () => {
     void logout();
@@ -152,88 +151,84 @@ export function SystemPanel() {
         </div>
       </GlassCard>
 
-      {/* Sign out */}
+      {/* Session + Debug Mode */}
       <GlassCard className="p-6">
         <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 mb-4">
           Session
         </h3>
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-rose-950/20 border border-rose-500/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-              <LogOut className="w-4 h-4 text-rose-400" />
+        <div className="space-y-3">
+          {/* Debug Mode — top-level quick toggle */}
+          <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                <Bug className="w-4 h-4 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white/90">Debug Mode</p>
+                <p className="text-[10px] text-white/40 mt-0.5">
+                  Action logs · Spine events · AI reasoning overlays
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-bold text-white/90">Sign Out</p>
-              <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold">
-                End this session
-              </p>
-            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={debugMode}
+              aria-label="Toggle Debug Mode"
+              onClick={toggleDebugMode}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:ring-offset-2 focus:ring-offset-black ${
+                debugMode
+                  ? 'bg-amber-500 border-amber-400'
+                  : 'bg-white/10 border-white/20'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg transform transition-transform duration-200 ease-in-out mt-0.5 ${
+                  debugMode ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
           </div>
-          <NeuralButton size="sm" variant="danger" onClick={handleSignOut}>
-            <LogOut className="w-3.5 h-3.5" />
-            Sign Out
-          </NeuralButton>
+          {debugMode && (
+            <p className="text-[9px] font-mono text-amber-400/60 px-1 uppercase tracking-wider">
+              ⚡ Debug active — console + overlays enabled across all modules
+            </p>
+          )}
+
+          {/* Sign out */}
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-rose-950/20 border border-rose-500/10">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                <LogOut className="w-4 h-4 text-rose-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white/90">Sign Out</p>
+                <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold">
+                  End this session
+                </p>
+              </div>
+            </div>
+            <NeuralButton size="sm" variant="danger" onClick={handleSignOut}>
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </NeuralButton>
+          </div>
         </div>
       </GlassCard>
 
-      {/* Developer section */}
+      {/* Developer — collapsible, for future dev tools */}
       <GlassCard className="p-6">
-        <button
-          type="button"
-          onClick={() => setDeveloperExpanded((v) => !v)}
-          className="w-full flex items-center gap-3 text-left focus:outline-none focus:ring-1 focus:ring-amber-500/40 rounded-lg"
-          aria-expanded={developerExpanded}
-          aria-label="Toggle Developer settings"
-        >
+        <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
             <Code2 className="w-3.5 h-3.5 text-amber-400" />
           </div>
           <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 flex-1">
             Developer
           </h3>
-          {developerExpanded ? (
-            <ChevronDown className="w-4 h-4 text-white/30" />
-          ) : (
-            <ChevronRight className="w-4 h-4 text-white/30" />
-          )}
-        </button>
-
-        {developerExpanded && (
-          <div className="mt-4 space-y-3">
-            <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white/90">Debug Mode</p>
-                <p className="text-[10px] text-white/40 mt-0.5 leading-relaxed">
-                  Shows AI reasoning, action tags, and Spine events across all chat interfaces
-                </p>
-              </div>
-              {/* Accessible toggle switch */}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={debugMode}
-                aria-label="Toggle Debug Mode"
-                onClick={toggleDebugMode}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:ring-offset-2 focus:ring-offset-black ${
-                  debugMode
-                    ? 'bg-amber-500 border-amber-400'
-                    : 'bg-white/10 border-white/20'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg transform transition-transform duration-200 ease-in-out mt-0.5 ${
-                    debugMode ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-            </div>
-            {debugMode && (
-              <p className="text-[9px] font-mono text-amber-400/60 px-1 uppercase tracking-wider">
-                ⚡ Debug mode active — overlay visible in all modules
-              </p>
-            )}
-          </div>
-        )}
+          <span className="text-[9px] uppercase tracking-[0.12em] text-white/20 font-bold">
+            More tools coming
+          </span>
+        </div>
       </GlassCard>
     </motion.div>
   );

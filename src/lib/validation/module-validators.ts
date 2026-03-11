@@ -270,7 +270,7 @@ export const agnesValidator: ModuleValidator = {
 export const titanValidator: ModuleValidator = {
   validate(field: string, value: any): ValidationResult {
     switch (field) {
-      case 'fitnessLevel':
+      case 'fitnessLevel': {
         const validLevels = ['beginner', 'intermediate', 'advanced', 'elite'];
         if (value && !validLevels.includes(value)) {
           return {
@@ -284,6 +284,7 @@ export const titanValidator: ModuleValidator = {
           };
         }
         break;
+      }
 
       case 'weeklyAvailability':
         if (value !== undefined && (typeof value !== 'number' || value < 1 || value > 7)) {
@@ -339,7 +340,7 @@ export const ledgerValidator: ModuleValidator = {
         }
         break;
 
-      case 'currency':
+      case 'currency': {
         // Common currency codes
         const validCurrencies = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF'];
         if (value && !validCurrencies.includes(value.toUpperCase())) {
@@ -354,6 +355,7 @@ export const ledgerValidator: ModuleValidator = {
           };
         }
         break;
+      }
 
       case 'category':
         if (value && typeof value !== 'string') {
@@ -440,7 +442,7 @@ export const somaValidator: ModuleValidator = {
 export const atlasValidator: ModuleValidator = {
   validate(field: string, value: any): ValidationResult {
     switch (field) {
-      case 'priority':
+      case 'priority': {
         const validPriorities = ['low', 'medium', 'high', 'urgent'];
         if (value && !validPriorities.includes(value.toLowerCase())) {
           return {
@@ -454,6 +456,7 @@ export const atlasValidator: ModuleValidator = {
           };
         }
         break;
+      }
 
       case 'deadline':
         if (value && isNaN(Date.parse(value))) {

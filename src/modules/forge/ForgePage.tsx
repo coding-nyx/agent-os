@@ -46,7 +46,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
 
   const agentAlias = globalSoul?.displayNames?.forge || 'Forge';
   const [editorLanguage, setEditorLanguage] = useState('javascript');
-  const [editorCode, setEditorCode] = useState('// Forge cloud runner\\nconsole.log(\"Forge online\");');
+  const [editorCode, setEditorCode] = useState('// Forge cloud runner\\nconsole.log("Forge online");');
   const [editorStatus, setEditorStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [editorOutput, setEditorOutput] = useState('');
 

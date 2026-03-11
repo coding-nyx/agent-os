@@ -139,7 +139,7 @@ export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: Or
             updates.pronouns = pronounsMatch[1].replace(/\s+/g, '/').toLowerCase();
         }
 
-        const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|occupation is|my job is)\s+([a-z][a-z0-9'\/&,\- ]{1,50})/i);
+        const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|occupation is|my job is)\s+([a-z][a-z0-9'/&,\- ]{1,50})/i);
         if (occupationMatch) {
             updates.occupation = occupationMatch[1].trim();
         }

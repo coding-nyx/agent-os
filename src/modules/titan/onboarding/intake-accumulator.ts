@@ -372,7 +372,7 @@ export function appendFromUserMessage(base: TitanIntakeAccumulator, message?: st
   const levelMatch = message.match(/\b(sedentary|lightly active|moderately active|active|very active|athlete)\b/i);
   if (levelMatch) next.activity.activityLevel = levelMatch[1].toLowerCase();
 
-  const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|my job is|occupation is)\s+([a-z][a-z0-9'\/&,\- ]{1,50})/i);
+  const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|my job is|occupation is)\s+([a-z][a-z0-9'/&,\- ]{1,50})/i);
   if (occupationMatch) next.activity.occupation = occupationMatch[1].trim();
 
   const yearsTrainingMatch = message.match(/\b(\d{1,2})\s*(?:years?|yrs?)\s*(?:of)?\s*training\b/i);

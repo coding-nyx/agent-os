@@ -67,7 +67,7 @@ export function ValidationPreview({ field, className }: ValidationPreviewProps) 
           break;
 
         case FieldType.NUMBER:
-        case FieldType.RANGE:
+        case FieldType.RANGE: {
           const numValue = parseFloat(value);
           if (isNaN(numValue)) {
             errors.push('Value must be a valid number');
@@ -86,6 +86,7 @@ export function ValidationPreview({ field, className }: ValidationPreviewProps) 
             }
           }
           break;
+        }
 
         case FieldType.SELECT:
           if (field.options) {
