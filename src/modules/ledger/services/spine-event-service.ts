@@ -56,7 +56,6 @@ export class SpineEventService {
       };
 
       await this.dataLayer.setDocument('ledger_events', eventWithId.id, eventWithId);
-      console.log(`[SpineEventService] Event logged: ${eventWithId.type}`);
     } catch (error) {
       console.error('[SpineEventService] Failed to log event:', error);
     }

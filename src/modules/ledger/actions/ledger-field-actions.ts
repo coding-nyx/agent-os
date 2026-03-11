@@ -315,10 +315,6 @@ async function handleSuggestField(context: ActionContext): Promise<void> {
     return;
   }
 
-  console.log(
-    `[Ledger] Field suggestion: "${description}" — purpose: ${purpose}`,
-  );
-
   // The suggestion is shown inline in chat via the response.
   // No Spine event needed — the UI renders the suggestion card from the action tag.
 }
@@ -389,7 +385,7 @@ async function handleCreateField(context: ActionContext): Promise<void> {
     fieldType: fieldDef.type,
   });
 
-  console.log(`[Ledger] Field created: ${fieldDef.id} (${fieldDef.name})`);
+
 }
 
 /**
@@ -421,7 +417,7 @@ async function handleDeleteField(context: ActionContext): Promise<void> {
     fieldName: field.name,
   });
 
-  console.log(`[Ledger] Field deleted: ${fieldId} (${field.name})`);
+
 }
 
 /**
@@ -454,7 +450,7 @@ async function handleUpdateFinancialFriction(context: ActionContext): Promise<vo
     tier,
   });
 
-  console.log(`[Ledger] Financial Friction updated: ${score}/10 (${tier})`);
+
 }
 
 /**
@@ -484,7 +480,7 @@ async function handleComputeResonanceROI(context: ActionContext): Promise<void> 
     newFriction: financialFriction,
   });
 
-  console.log(`[Ledger] Resonance ROI updated: ${resonanceROI}x, Friction: ${financialFriction}/10`);
+
 }
 
 // ============================================================================
@@ -582,9 +578,6 @@ async function handleSetFieldValue(context: ActionContext): Promise<void> {
     validationSource: result.source,
   });
 
-  console.log(
-    `[Ledger] Field value set: ${fieldId} = "${finalValue}" (validated via ${result.source})`,
-  );
 }
 
 // ============================================================================
@@ -611,7 +604,7 @@ export function registerLedgerFieldActions(): void {
     compute_resonance_roi: handleComputeResonanceROI,
   });
 
-  console.log('[Ledger] Field CRUD + financial metric actions registered');
+
 }
 
 // ---------------------------------------------------------------------------
@@ -653,5 +646,5 @@ export function registerLedgerTransactionActions(): void {
     detect_risk: handleDetectRisk
   });
 
-  console.log('[Ledger] Transaction + budget + goal actions registered');
+
 }

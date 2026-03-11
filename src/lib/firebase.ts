@@ -19,7 +19,6 @@ let storage: FirebaseStorage | undefined;
 export function getFirebase() {
   if (!app) {
     try {
-      console.log("[FIREBASE_INIT] Keys present:", !!firebaseConfig.apiKey, "Project:", firebaseConfig.projectId);
       // Check if config is valid
       if (!firebaseConfig.apiKey) {
         console.warn("Firebase API Key is missing. Firebase features will be disabled.");

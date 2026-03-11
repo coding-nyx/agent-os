@@ -60,7 +60,7 @@ export function registerLedgerCascadeRules(): void {
   const spine = (window as any).Spine;
   if (spine && spine.registerCascadeRules) {
     spine.registerCascadeRules(LEDGER_CASCADE_RULES);
-    console.log('[Ledger] Cascade rules registered');
+
   }
 }
 
@@ -123,6 +123,6 @@ export function registerAtlasCascadeRules(): void {
   const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
   if (spine?.registerCascadeRules) {
     spine.registerCascadeRules(ATLAS_CASCADE_RULES);
-    console.log('[Atlas] Cascade rules registered');
+
   }
 }

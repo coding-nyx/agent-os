@@ -121,9 +121,6 @@ class SchemaRegistryService {
     this.schemas.set(definition.moduleId, definition);
     this.schemaCache.delete(definition.moduleId); // Invalidate cache
     
-    console.log(
-      `[SchemaRegistry] Registered schema for ${definition.moduleId} v${definition.version}`
-    );
   }
 
   /**
@@ -512,10 +509,6 @@ class SchemaRegistryService {
       },
       cascadeDepth: 0,
     });
-
-    console.log(
-      `[SchemaRegistry] Migrated ${moduleId} schema from ${fromVersion} to ${toVersion}`
-    );
   }
 
   /**
@@ -533,9 +526,6 @@ class SchemaRegistryService {
         this.extensionCache.set(moduleId, data.extensionFields || []);
         this.schemaCache.delete(moduleId); // Invalidate cache
         
-        console.log(
-          `[SchemaRegistry] Loaded ${data.extensionFields?.length || 0} extensions for ${moduleId}`
-        );
       } else {
         // No custom schema, use empty extensions
         this.extensionCache.set(moduleId, []);
@@ -569,9 +559,6 @@ class SchemaRegistryService {
       const dataLayer = getNexusDataLayer();
       await dataLayer.setDocument(`custom_schemas/${userId}/modules`, moduleId, data);
       
-      console.log(
-        `[SchemaRegistry] Saved ${extensions.length} extensions for ${moduleId}`
-      );
     } catch (error) {
       console.error(`[SchemaRegistry] Failed to save extensions for ${moduleId}:`, error);
       throw error;

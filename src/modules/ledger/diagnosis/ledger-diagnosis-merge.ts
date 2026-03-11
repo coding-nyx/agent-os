@@ -10,7 +10,7 @@ export async function mergeLedgerDiagnosisData(
   items: ExtractedDataItem[],
   encryptionKey?: CryptoKey | null,
 ): Promise<void> {
-  // TODO: Implement once LedgerProfile has structured financial data fields.
+  // TODO(S10-007): Implement once LedgerProfile has structured financial data fields.
   // For now, log the merge intent so it's auditable.
   console.info(
     `[LedgerDiagnosisMerge] Would merge ${items.length} item(s) for user ${userId}:`,

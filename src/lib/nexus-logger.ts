@@ -82,7 +82,6 @@ class NexusLoggerSingleton {
   private applyOverride(): void {
     if (!this.initialized) return;
     SUPPRESSIBLE.forEach((lvl) => {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
       console[lvl] = this.debugMode ? this.orig[lvl] : () => {};
     });
   }

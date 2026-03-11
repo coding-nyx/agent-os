@@ -191,7 +191,7 @@ export function DailyBrief() {
     return DOMAIN_ORDER.map(domain => {
       const config = DOMAIN_PILLARS[domain];
       const { word, tone } = computePillarState(nsv, domain);
-      // TODO: trend requires historical comparison — default to 'unknown' for now
+      // TODO(S10-007): trend requires historical comparison — default to 'unknown' for now
       const trend: TrendDirection = 'unknown';
       return { domain, config, word, tone, trend };
     });

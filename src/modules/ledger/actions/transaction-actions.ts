@@ -120,7 +120,7 @@ async function handleCreateTransaction(context: ActionContext): Promise<void> {
   }
 });
 
-console.log(`[Ledger] Transaction created: ${transaction.id} (${transaction.type})`);
+
 }
 
 /**
@@ -169,7 +169,7 @@ async function handleUpdateTransaction(context: ActionContext): Promise<void> {
   }
 });
 
-console.log(`[Ledger] Transaction updated: ${transaction.id}`);
+
 }
 
 /**
@@ -207,7 +207,7 @@ async function handleDeleteTransaction(context: ActionContext): Promise<void> {
   }
 });
 
-console.log(`[Ledger] Transaction deleted: ${transactionId}`);
+
 }
 
 /**
@@ -254,7 +254,7 @@ async function handleCreateBudget(context: ActionContext): Promise<void> {
   }
 });
 
-console.log(`[Ledger] Budget created: ${budget.id} (${budget.name})`);
+
 }
 
 /**
@@ -291,7 +291,7 @@ async function handleModifyBudget(context: ActionContext): Promise<void> {
   }
 });
 
-console.log(`[Ledger] Budget modified: ${payload.budgetId || 'Unknown'}`);
+
 }
 
 /**
@@ -340,7 +340,7 @@ async function handleCreateGoal(context: ActionContext): Promise<void> {
   }
 });
 
-console.log(`[Ledger] Goal created: ${goal.id} (${goal.name})`);
+
 }
 
 /**
@@ -380,7 +380,7 @@ async function handleUpdateGoalProgress(context: ActionContext): Promise<void> {
   }
 });
 
-console.log(`[Ledger] Goal progress updated: ${payload.goalId || 'Unknown'} - ${percentComplete}%`);
+
 }
 
 /**
@@ -413,7 +413,7 @@ async function handleCompleteGoal(context: ActionContext): Promise<void> {
   }
 });
 
-console.log(`[Ledger] Goal completed: ${payload.goalId || 'Unknown'}`);
+
 }
 
 /**
@@ -452,7 +452,7 @@ async function handleFinancialHealthCheck(context: ActionContext): Promise<void>
   }
 });
 
-console.log(`[Ledger] Financial health check: ${healthScore}/10 (${healthStatus})`);
+
 }
 
 /**
@@ -480,7 +480,7 @@ async function handleDetectRisk(context: ActionContext): Promise<void> {
   }
 });
 
-console.log(`[Ledger] Risk detected: ${riskType}`);
+
 }
 
 // ============================================================================
@@ -510,5 +510,5 @@ export function registerLedgerTransactionActions(): void {
     detect_risk: handleDetectRisk
   });
 
-  console.log('[Ledger] Transaction + budget + goal actions registered');
+
 }

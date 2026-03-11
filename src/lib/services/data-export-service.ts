@@ -51,7 +51,6 @@ function isEncryptedProfile(value: unknown): value is EncryptedProfileShape {
  * when the vault is locked or decryption fails.
  */
 function safeMetadata(doc: EncryptedProfileShape): Record<string, unknown> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { encryptedData: _blob, ...rest } = doc;
   return rest;
 }

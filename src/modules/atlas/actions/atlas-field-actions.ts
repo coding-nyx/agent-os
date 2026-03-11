@@ -312,7 +312,7 @@ export function registerAtlasFieldActions(): void {
       // This action exists purely for action filtering and toast display.
       // The actual rendering is handled by the chat message parser
       // which detects <action type="suggest_field"> and shows an inline card.
-      console.log('[Atlas] suggest_field:', payload.name || 'unnamed field');
+
     },
 
     /**

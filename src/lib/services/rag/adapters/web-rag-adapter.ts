@@ -15,7 +15,7 @@ export const WebRagAdapter: RagAdapter = {
       return { facts: [], status: 'vault_blocked' };
     }
 
-    // TODO: plug in real provider (e.g., Google GenAI embeddings) through this adapter.
+    // TODO(S10-007): plug in real provider (e.g., Google GenAI embeddings) through this adapter.
     return { facts: [], status: 'ok' };
   }
 };
