@@ -38,7 +38,7 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
 - Utility Guardrails (ActionHub/runtime + static guardrails for Scout/Forge NSV read-only).
 
 ## 1. Core Platform & Spine
-- [ ] **Data Layer Decoupling (The AGNES Data Spine):** Implement a comprehensive architectural shift to make Nexus vendor-agnostic. Extract Firestore logic into a unified `NexusDataLayer` interface with dependency injection, refactor Cloud Functions to separate trigger logic from business logic, and implement a mock `InMemoryDataProvider` for offline development.
+- [ ] **Data Layer Decoupling (The AGNES Data Spine):** Implement a comprehensive architectural shift to make Nexus vendor-agnostic. Extract Firestore logic into a unified `NexusDataLayer` interface with dependency injection, refactor Cloud Functions to separate trigger logic from business logic, and implement a mock `InMemoryDataProvider` for offline development. → **Sprint 10 S10-001**
 - [x] **Spine Cascade Rules (v2):** Implement deep-dive rules for burnout detection and automated energy wave flattening. Completed in Sprint 6 with targeted test coverage.
 - [x] **Memory Consolidation (Tracked in Sprint 2):** Automatic RAG retrieval for past session context using Google GenAI embeddings. Sprint 2 carryover (`S2-006`) closed in Sprint 6 via web/native adapter contracts and retrieval guardrails.
 - [x] **Enforce E2EE for Episodic Memory Sync (Plan B):** Refactor `ModuleMemoryService.commitSession` and module-specific handlers to require an `encryptionKey`. Ensure all episodic history snapshots are encrypted with the Vault master key before Firestore storage, preventing plaintext history leaks.
@@ -118,19 +118,19 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
 - [ ] **Nexus-Link Bridge:** Secure terminal for remote system management.
 
 ## 8. Global AI & Systemic Enhancements
-- [ ] **Debug Mode (Developer Overlay):** Add a "Debug Mode" toggle to the Profile view. When enabled, surfaces internal runtime state across the entire app with zero performance cost when off.
+- [ ] **Debug Mode (Developer Overlay):** Add a "Debug Mode" toggle to the Profile view. When enabled, surfaces internal runtime state across the entire app with zero performance cost when off. → **Sprint 10 S10-004**
     - **Profile toggle:** Switch in ProfilePage (or collapsible "Developer" section); persisted to `localStorage` via `useDebugMode()` hook.
     - **Model badge:** Live pill in every chat header — `"⚡ Running on: claude-3-opus"` alternating with a `"↔ linkstable"` / connected indicator; reads from `AIProvider` context active model.
     - **Thought button:** Collapsible chip above every AI message bubble showing: (a) raw reasoning / scratchpad, (b) action tags extracted from message, (c) action tags dispatched to ActionHub, (d) side effects executed (`updateGlobalSoul`, `emitSpineEvent`, `markProfileDirty`, etc.). Requires optional `debugMeta` field on `ChatMessage` type populated by the LLM engine when debug is active.
     - **API call snippet:** First 500 chars of raw request body + HTTP status + latency (ms) inside the thought panel, sourced from a fetch interceptor in the model registry.
     - **Soul activity tag:** Pulsing `"Soul: active"` tag to the right of every module title; shows last Spine event type as a fading label (3 s TTL). Source: `useSpineEvent()` + NSV write timestamp tracking.
     - **Components to create:** `DebugThoughtPanel.tsx`, `ModelBadge.tsx`, `SoulActivityTag.tsx`. Amber/yellow accent palette to visually separate debug chrome from normal UI. All debug subtrees guarded by `if (!debugMode) return null` — zero render cost in production.
-- [ ] **Dynamic Field System Expansion:** Enable custom field creation/deletion via chat globally, removing hardcoded category logic.
-- [ ] **Global Soul Writing Protocol (Architectural):** Implement the "Soul-Authority" protocol to ensure all chat-driven schema changes (field creation/deletion) are routed through the domain-authoritative agent for validation before being committed.
-- [ ] **Document Intelligence Capability (Shared Library):** Formalize the Documents module as a shared service/plugin. Implement robust cross-document indexing and retrieval that core agents (Ledger, Soma, Atlas) can invoke to find historical context without creating a separate agent persona. (Platform-wide; Ledger’s receipts feature should reuse this where possible.)
-- [ ] **AI Validation Enhancements:** Implement batch field validation, learning feedback loops from user corrections, and module-specific validator fine-tuning.
-- [ ] **Data Portability v2:** Add persistent backup storage in Firestore, intelligent field-level merge strategies, and scheduled automatic exports.
-- [ ] **Systemic Tech Debt:**
+- [ ] **Dynamic Field System Expansion:** Enable custom field creation/deletion via chat globally, removing hardcoded category logic. → **Sprint 10 S10-002**
+- [ ] **Global Soul Writing Protocol (Architectural):** Implement the "Soul-Authority" protocol to ensure all chat-driven schema changes (field creation/deletion) are routed through the domain-authoritative agent for validation before being committed. → **Sprint 10 S10-002**
+- [ ] **Document Intelligence Capability (Shared Library):** Formalize the Documents module as a shared service/plugin. Implement robust cross-document indexing and retrieval that core agents (Ledger, Soma, Atlas) can invoke to find historical context without creating a separate agent persona. (Platform-wide; Ledger’s receipts feature should reuse this where possible.) → **Sprint 10 S10-003**
+- [ ] **AI Validation Enhancements:** Implement batch field validation, learning feedback loops from user corrections, and module-specific validator fine-tuning. → **Sprint 10 S10-005**
+- [ ] **Data Portability v2:** Add persistent backup storage in Firestore, intelligent field-level merge strategies, and scheduled automatic exports. → **Sprint 10 S10-006**
+- [ ] **Systemic Tech Debt:** → **Sprint 10 S10-007**
     - [ ] **Code Cleanup & Hygiene Pass:** Remove dead/duplicated code paths, normalize service/hook naming, tighten TypeScript surfaces, and prune stale TODOs/logging across active modules without changing product behavior.
     - [ ] Resolve conditional hook behavior in `TitanPage.tsx` greeting logic.
     - [ ] Fix tab panel `id` / `aria-controls` mismatch in `TitanPage.tsx`.

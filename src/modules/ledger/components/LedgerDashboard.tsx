@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon, Clock, Activity, FileText } from 'lucide-react';
+import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon, Clock, Activity, FileText, Info } from 'lucide-react';
 import * as Switch from '@radix-ui/react-switch';
 import { GlobalProjection } from '@/lib/types';
 import { LedgerIntakeProfile } from '../services/ledger-intake-service';
@@ -13,7 +14,8 @@ import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
 import { CashFlowChart, DebtPayoffTracker } from './FinancialCharts';
 import { SpendingTrendsChart } from './SpendingTrendsChart';
-import { computeDashboardMetrics, computeMonthlyTotals, computeBudgetActuals } from '../services/ledger-aggregation-service';
+import { computeDashboardMetrics, computeMonthlyTotals, computeBudgetActuals, evaluateAlerts } from '../services/ledger-aggregation-service';
+import type { LedgerAlert } from '../services/ledger-aggregation-service';
 import { AIFinancialAdvisor } from './AIFinancialAdvisor';
 import { spineEventService } from '../services/spine-event-service';
 import { LedgerSpineEventType } from '../actions/ledger-field-actions';
@@ -149,6 +151,22 @@ export function LedgerDashboard({
   // totalDebt is already computed above via useMemo.
   const totalSavings = monthlyBuffer !== null && monthlyBuffer > 0 ? monthlyBuffer * 3 : 0;
 
+  // Smart alert evaluation — pure derived state from existing memos.
+  // O(b + g) where b = budgetActuals.length, g = financialGoals.length.
+  const alerts = useMemo(
+    () => evaluateAlerts(profile, budgetActuals, metrics),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profile, budgetActuals, metrics],
+  );
+
+  // Collapse control: show summary pill when > 3 alerts.
+  const [alertsExpanded, setAlertsExpanded] = useState(false);
+  const ALERT_COLLAPSE_THRESHOLD = 3;
+  const visibleAlerts: LedgerAlert[] =
+    alerts.length > ALERT_COLLAPSE_THRESHOLD && !alertsExpanded
+      ? alerts.slice(0, ALERT_COLLAPSE_THRESHOLD)
+      : alerts;
+
   return (
     <div className="p-8 space-y-8">
       <SectionHeader
@@ -200,6 +218,96 @@ export function LedgerDashboard({
       {/* Overview View */}
       {activeView === 'overview' && (
         <>
+          {/* ── Smart Alert Banners ─────────────────────────────────────────── */}
+          <AnimatePresence initial={false}>
+            {alerts.length > 0 && (
+              <motion.section
+                key="alert-banners"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="space-y-2"
+                aria-label="Financial alerts"
+              >
+                <AnimatePresence initial={false}>
+                  {visibleAlerts.map((alert) => {
+                    const isDanger = alert.severity === 'danger';
+                    const isInfo   = alert.severity === 'info';
+                    return (
+                      <motion.div
+                        key={alert.id}
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -6 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className={cn(
+                          'flex items-start gap-3 px-4 py-2.5 rounded-lg border bg-white/5',
+                          isDanger
+                            ? 'border-red-500/30 border-l-2 border-l-red-500'
+                            : isInfo
+                              ? 'border-blue-500/30 border-l-2 border-l-blue-400'
+                              : 'border-amber-500/30 border-l-2 border-l-amber-400',
+                        )}
+                        role="alert"
+                      >
+                        {isDanger || alert.severity === 'warning' ? (
+                          <AlertTriangle
+                            className={cn(
+                              'w-4 h-4 mt-0.5 shrink-0',
+                              isDanger ? 'text-red-400' : 'text-amber-400',
+                            )}
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Info
+                            className="w-4 h-4 mt-0.5 shrink-0 text-blue-400"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={cn(
+                              'text-xs font-bold',
+                              isDanger
+                                ? 'text-red-300'
+                                : isInfo
+                                  ? 'text-blue-300'
+                                  : 'text-amber-300',
+                            )}
+                          >
+                            {alert.title}
+                          </p>
+                          <p className="text-[10px] text-white/60 mt-0.5 leading-relaxed">
+                            {alert.message}
+                          </p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+
+                {/* Collapse / expand pill when > ALERT_COLLAPSE_THRESHOLD alerts */}
+                {alerts.length > ALERT_COLLAPSE_THRESHOLD && (
+                  <button
+                    onClick={() => setAlertsExpanded((prev) => !prev)}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-[10px] font-bold text-white/50 uppercase tracking-wider"
+                    aria-expanded={alertsExpanded}
+                    aria-label={
+                      alertsExpanded
+                        ? 'Collapse alerts'
+                        : `Show all ${alerts.length} issues`
+                    }
+                  >
+                    {alertsExpanded
+                      ? 'Show less'
+                      : `${alerts.length} issues detected — show all`}
+                  </button>
+                )}
+              </motion.section>
+            )}
+          </AnimatePresence>
+
           <div className="grid grid-cols-2 gap-4">
             <StatCard
               label="Monthly Income"

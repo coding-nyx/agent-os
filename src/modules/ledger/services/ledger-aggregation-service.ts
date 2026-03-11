@@ -12,7 +12,7 @@
  * quadratic work regardless of category or month cardinality.
  */
 
-import type { DebtItem } from './ledger-intake-service';
+import type { DebtItem, FinancialGoal, LedgerIntakeProfile } from './ledger-intake-service';
 
 // ---------------------------------------------------------------------------
 // Local minimal interfaces (source-of-truth will move to ledger-intake-service)
@@ -877,4 +877,166 @@ export function matchCategoryToTransaction(
   }
 
   return undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Alert evaluation
+// ---------------------------------------------------------------------------
+
+export type AlertSeverity = 'warning' | 'danger' | 'info';
+export type AlertType =
+  | 'budget_80pct'
+  | 'budget_over'
+  | 'goal_stale'
+  | 'negative_cashflow'
+  | 'goal_near_complete';
+
+export interface LedgerAlert {
+  /** Deterministic stable key suitable for React `key` prop: `${type}_${entityId}`. */
+  id: string;
+  type: AlertType;
+  severity: AlertSeverity;
+  title: string;
+  message: string;
+  /** Budget category id or financial goal id — absent for cashflow alerts. */
+  entityId?: string;
+}
+
+/**
+ * Minimal currency formatter for use inside the pure aggregation layer.
+ * Avoids importing @/lib/utils so this module remains dependency-free
+ * beyond its existing service siblings.
+ *
+ * @param amount   - Numeric value to format.
+ * @param currency - ISO 4217 code, e.g. "USD".
+ */
+function formatAlertAmount(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+}
+
+/**
+ * Evaluates the current financial state and returns a list of actionable
+ * alert objects for display in the dashboard.
+ *
+ * Design notes
+ * ------------
+ * - **Pure**: no I/O, no mutations, no side effects.
+ * - **Deterministic IDs**: `id` is always `${type}_${entityId}` so React keys
+ *   remain stable across re-renders without needing UUID generation.
+ * - **Precedence rule**: `budget_over` takes precedence over `budget_80pct`
+ *   for the same category — only one alert is emitted per category.
+ *
+ * @param profile          - Full ledger profile supplying goals and currency.
+ * @param budgetWithActuals - Output of `computeBudgetActuals` for the current month.
+ * @param metrics           - Current-month income / expense / net figures.
+ * @returns Ordered alert list: budget alerts first, then cashflow, then goals.
+ *
+ * Time complexity: O(b + g) where b = budget categories, g = financial goals.
+ */
+export function evaluateAlerts(
+  profile: LedgerIntakeProfile | null | undefined,
+  budgetWithActuals: BudgetPerformance[],
+  metrics: {
+    currentMonthIncome: number;
+    currentMonthExpenses: number;
+    currentMonthNet: number;
+  },
+): LedgerAlert[] {
+  if (!profile) return [];
+
+  const alerts: LedgerAlert[] = [];
+  const currency = profile.currency ?? 'USD';
+
+  // --- Budget alerts (O(b)) ---
+  for (const category of budgetWithActuals) {
+    // Skip unallocated categories — no meaningful percentage to compute.
+    if (category.allocated <= 0) continue;
+
+    const spendPct = (category.actual / category.allocated) * 100;
+
+    if (category.actual > category.allocated) {
+      // budget_over: danger — takes precedence; do NOT also emit budget_80pct.
+      const overage = round2(category.actual - category.allocated);
+      alerts.push({
+        id: `budget_over_${category.categoryId}`,
+        type: 'budget_over',
+        severity: 'danger',
+        title: `${category.categoryName} Over Budget`,
+        message: `${category.categoryName} is over budget by ${formatAlertAmount(overage, currency)}`,
+        entityId: category.categoryId,
+      });
+    } else if (spendPct >= 80) {
+      // budget_80pct: warning — only when not already over.
+      const displayPct = Math.round(spendPct);
+      alerts.push({
+        id: `budget_80pct_${category.categoryId}`,
+        type: 'budget_80pct',
+        severity: 'warning',
+        title: `${category.categoryName} Approaching Limit`,
+        message: `${category.categoryName} is at ${displayPct}% of budget`,
+        entityId: category.categoryId,
+      });
+    }
+  }
+
+  // --- Cashflow alert (O(1)) ---
+  if (metrics.currentMonthNet < 0) {
+    const deficit = formatAlertAmount(Math.abs(metrics.currentMonthNet), currency);
+    alerts.push({
+      id: 'negative_cashflow_current',
+      type: 'negative_cashflow',
+      severity: 'danger',
+      title: 'Negative Cashflow',
+      message: `Spending exceeds income this month by ${deficit}`,
+    });
+  }
+
+  // --- Goal alerts (O(g)) ---
+  const goals: FinancialGoal[] = profile.financialGoals ?? [];
+  const now = Date.now();
+  const MS_PER_DAY = 86_400_000;
+
+  for (const goal of goals) {
+    if (goal.targetAmount <= 0) continue;
+
+    const fundedRatio = goal.currentAmount / goal.targetAmount;
+    const fundedPct = Math.round(fundedRatio * 100);
+
+    if (fundedRatio >= 0.9 && goal.currentAmount < goal.targetAmount) {
+      // goal_near_complete: info — 90 %+ funded but not yet complete.
+      alerts.push({
+        id: `goal_near_complete_${goal.id}`,
+        type: 'goal_near_complete',
+        severity: 'info',
+        title: `${goal.name} — Almost There!`,
+        message: `${goal.name} is 90%+ funded — finish line in sight!`,
+        entityId: goal.id,
+      });
+    } else if (goal.targetDate) {
+      // goal_stale: warning — deadline within 30 days AND < 90 % funded.
+      const daysLeft = Math.floor(
+        (new Date(goal.targetDate).getTime() - now) / MS_PER_DAY,
+      );
+      if (daysLeft >= 0 && daysLeft <= 30 && fundedRatio < 0.9) {
+        alerts.push({
+          id: `goal_stale_${goal.id}`,
+          type: 'goal_stale',
+          severity: 'warning',
+          title: `${goal.name} — Falling Behind`,
+          message: `${goal.name}: ${fundedPct}% funded with ${daysLeft} days left`,
+          entityId: goal.id,
+        });
+      }
+    }
+  }
+
+  return alerts;
 }
