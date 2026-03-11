@@ -312,6 +312,8 @@ export function useModuleAI({
     saveTimerRef.current = setTimeout(() => flushActiveSession(), 1500);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      // s18-005: flush on SPA unmount so last turns aren't lost on navigation
+      flushActiveSession();
     };
   }, [isHydrating, messages, flushActiveSession, persistencePolicy, moduleId, activeSessionId]);
 
@@ -762,15 +764,22 @@ export function useModuleAI({
     if (messages.length < 3) return 'Session was too brief for full synthesis.';
     try {
       const { response } = await sendMessage(
-        'Summarize this session in 2 supportive sentences focusing on key takeaways or health indicators.',
+        'Summarize this session in 2 supportive sentences focusing on key takeaways or health indicators. Do not include any XML tags, action tags, or technical markup — plain prose only.',
         resolvedEnhanceContext({
-          systemPrompt: 'You are an analytical supervisor.',
+          systemPrompt: 'You are an analytical supervisor. Respond with plain prose only — no XML, no action tags, no angle brackets.',
           memoryContext: [],
           summary: 'Summarizing.',
           history: messages
         })
       );
-      return response.publicText.trim();
+      // Strip any leaked action/detail XML tags from the summary
+      const clean = response.publicText
+        .replace(/<action[^>]*>[\s\S]*?<\/action>/gi, '')
+        .replace(/<detail[^>]*>[\s\S]*?<\/detail>/gi, '')
+        .replace(/<thought[^>]*>[\s\S]*?<\/thought>/gi, '')
+        .replace(/<[^>]+>/g, '')
+        .trim();
+      return clean || 'Session completed.';
     } catch (e) {
       return 'Session completed and data synchronized.';
     }

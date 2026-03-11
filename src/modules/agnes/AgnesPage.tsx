@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useGlobalSoul } from '@/lib/global-soul-context';
@@ -109,10 +109,7 @@ function AgnesContent({
   const [isClosingSession, setIsClosingSession] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
-
-  useEffect(() => {
-    setSessionActive?.(currentState === 'session');
-  }, [currentState, setSessionActive]);
+  const prevUserRef = useRef(user);
 
   const agentAlias = globalSoul?.displayNames?.agnes || 'Agnes';
 
@@ -148,6 +145,30 @@ function AgnesContent({
     persistencePolicy: isImpromptu ? 'ephemeral' : 'auto',
     sessionId: isImpromptu ? 'impromptu' : undefined
   });
+
+  useEffect(() => {
+    setSessionActive?.(currentState === 'session');
+  }, [currentState, setSessionActive]);
+
+  // s18-002: once hydration settles, auto-advance to session if messages already exist
+  // This prevents the picker rendering on reload and the user accidentally wiping their session
+  useEffect(() => {
+    if (!isHydrating && messages.length > 0 && currentState === 'selecting' && !sessionType) {
+      setSessionType('new');
+      setCurrentState('session');
+    }
+  }, [isHydrating, messages.length, currentState, sessionType]);
+
+  // s18-006: logout guard — clear local session state when user transitions to null
+  useEffect(() => {
+    if (prevUserRef.current && !user) {
+      clearSession();
+      setCurrentState('selecting');
+      setSessionType(null);
+      setSessionSummary(null);
+    }
+    prevUserRef.current = user;
+  }, [user, clearSession]);
 
   const handleRouteConfirm = useCallback(() => {
     if (!routingSuggestion) return;
@@ -331,6 +352,13 @@ function AgnesContent({
               exit={{ opacity: 0, scale: 1.05 }}
               className="min-h-full flex flex-col items-center justify-start p-4 min-[620px]:p-12 min-[620px]:justify-center max-w-5xl mx-auto w-full space-y-12 pb-20"
             >
+              {/* s18-002: show spinner while hydrating to prevent accidental clearSession click */}
+              {isHydrating ? (
+                <div className="flex flex-col items-center gap-4 text-white/30">
+                  <div className="w-8 h-8 rounded-full border-2 border-indigo-500/40 border-t-indigo-400 animate-spin" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400/60">Restoring Session</span>
+                </div>
+              ) : (
               <motion.div 
                 className="w-full bg-black/20 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-8 min-[620px]:p-16 shadow-2xl space-y-12"
                 initial={{ y: 20, opacity: 0 }}
@@ -429,6 +457,7 @@ function AgnesContent({
                   )}
                 </div>
               </motion.div>
+              )} {/* end isHydrating gate */}
             </motion.div>
           ) : (
             <motion.div 
