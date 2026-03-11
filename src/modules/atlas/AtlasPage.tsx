@@ -57,6 +57,27 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
   const [activeTab, setActiveTab] = useState<any>('dashboard');
   const [activeView, setActiveView] = useState<any>('today');
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [weeklyReviewPending, setWeeklyReviewPending] = useState<boolean>(false);
+
+  // On mount: check if a review is overdue without waiting for a Spine event.
+  useEffect(() => {
+    const stored = localStorage.getItem('atlas_last_weekly_review');
+    if (!stored) { setWeeklyReviewPending(true); return; }
+    const ts = new Date(stored).getTime();
+    if (Number.isNaN(ts) || Date.now() - ts > 7 * 24 * 60 * 60 * 1000) {
+      setWeeklyReviewPending(true);
+    }
+  }, []);
+
+  // React to WEEKLY_REVIEW_DUE Spine events fired by the cascade rule.
+  useSpineEvent('WEEKLY_REVIEW_DUE', () => {
+    setWeeklyReviewPending(true);
+  });
+
+  const handleReviewOpened = useCallback(() => {
+    setWeeklyReviewPending(false);
+    localStorage.setItem('atlas_last_weekly_review', new Date().toISOString());
+  }, []);
 
   // AI Logic for Atlas
   const ai = useModuleAI({

@@ -66,3 +66,63 @@ export function registerLedgerCascadeRules(): void {
 
 /** Alias — core cascade rules used by App-level registration. */
 export const CORE_CASCADE_RULES = LEDGER_CASCADE_RULES;
+
+// ---------------------------------------------------------------------------
+// Atlas Weekly Review Cascade Rule (S9-005)
+// ---------------------------------------------------------------------------
+
+/** Key used to persist the last weekly-review timestamp in localStorage. */
+const ATLAS_LAST_WEEKLY_REVIEW_KEY = 'atlas_last_weekly_review';
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Returns true when:
+ *   (a) It is Sunday between 18:00–21:59, OR
+ *   (b) No weekly review has been recorded in the last 7 days (fallback).
+ */
+function isWeeklyReviewDue(): boolean {
+  const now = new Date();
+  const isSundayEvening = now.getDay() === 0 && now.getHours() >= 18 && now.getHours() <= 21;
+  if (isSundayEvening) return true;
+
+  const lastReview = localStorage.getItem(ATLAS_LAST_WEEKLY_REVIEW_KEY);
+  if (!lastReview) return true;
+
+  const lastReviewTime = new Date(lastReview).getTime();
+  return Number.isNaN(lastReviewTime) ? true : Date.now() - lastReviewTime > SEVEN_DAYS_MS;
+}
+
+export const ATLAS_CASCADE_RULES: CascadeRule[] = [
+  {
+    id: 'atlas-weekly-review-due-session',
+    trigger: 'SESSION_STARTED' as SpineEventType,
+    condition: () => isWeeklyReviewDue(),
+    transform: (event) => ({
+      type: 'WEEKLY_REVIEW_DUE' as SpineEventType,
+      domain: 'C' as const,
+      source: event.source,
+      priority: 'info' as const,
+      data: { triggeredBy: 'SESSION_STARTED', timestamp: new Date().toISOString() }
+    })
+  },
+  {
+    id: 'atlas-weekly-review-due-state',
+    trigger: 'ATLAS_STATE_CHANGED' as SpineEventType,
+    condition: () => isWeeklyReviewDue(),
+    transform: (event) => ({
+      type: 'WEEKLY_REVIEW_DUE' as SpineEventType,
+      domain: 'C' as const,
+      source: event.source,
+      priority: 'info' as const,
+      data: { triggeredBy: 'ATLAS_STATE_CHANGED', timestamp: new Date().toISOString() }
+    })
+  }
+];
+
+export function registerAtlasCascadeRules(): void {
+  const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
+  if (spine?.registerCascadeRules) {
+    spine.registerCascadeRules(ATLAS_CASCADE_RULES);
+    console.log('[Atlas] Cascade rules registered');
+  }
+}
