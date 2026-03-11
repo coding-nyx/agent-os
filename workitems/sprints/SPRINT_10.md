@@ -1,6 +1,6 @@
 # SPRINT 10 — Platform Core: Architecture Hardening & Developer Experience
 
-**Status:** PLANNED  
+**Status:** IN PROGRESS  
 **Objective:** Harden the Nexus platform layer — vendor-agnostic data, authoritative soul writes, shared document intelligence, developer visibility, and a clean codebase. These items are prerequisites for all module teams; nothing scales cleanly until this layer is solid.
 
 **Follows from:** Sprint 9 (Atlas Intelligent Loop). Parallels any ongoing module work.

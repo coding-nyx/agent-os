@@ -169,6 +169,10 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   EXPENSE_SPIKE: 'Expense spike',
   CASHFLOW_POSITIVE: 'Cashflow positive',
   CASHFLOW_NEGATIVE: 'Cashflow negative',
+  // Soul Write Protocol Events (S10-002)
+  SOUL_WRITE_REQUESTED: 'Soul write requested',
+  SOUL_WRITE_APPROVED: 'Soul write approved',
+  SOUL_WRITE_REJECTED: 'Soul write rejected',
 };
 
 // ---------------------------------------------------------------------------

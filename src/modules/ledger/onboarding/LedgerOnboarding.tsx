@@ -211,7 +211,7 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
       }),
       onResponse: async (response, state) => {
         let nextProfile = { ...state.profile };
-        let nextBaseContext = { ...state.baseContext };
+        const nextBaseContext = { ...state.baseContext };
         let nextStep = state.stepProgress;
 
         const focusAction = [...response.actions].reverse().find((a) =>

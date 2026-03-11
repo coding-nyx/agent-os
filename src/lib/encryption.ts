@@ -38,7 +38,7 @@ export function uint8ArrayToBase64(buffer: ArrayBuffer | Uint8Array): string {
 }
 
 let worker: Worker | null = null;
-let callbackMap = new Map<number, { resolve: Function, reject: Function }>();
+const callbackMap = new Map<number, { resolve: Function, reject: Function }>();
 let messageId = 0;
 
 if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {

@@ -1,6 +1,6 @@
 # SPRINT 11 — Ledger Sprint 2: Intelligence & Shell Unification
 
-**Status:** IN PROGRESS  
+**Status:** COMPLETED  
 **Objective:** Elevate Ledger from a functional data tracker to an intelligent financial command centre. Unify the fragmented Dashboard/Workspace UX into a single coherent shell, complete the savings projection model, implement tax strategy tracking, and activate the cross-module intelligence layer that correlates spending with wellness.
 
 **Follows from:** Ledger Sprint 0 (build fixes, type model, aggregation service) + Ledger Sprint 1 (budget actuals, AI actions, debt strategist, smart alerts, spending trends, income sources, auto-categorization).

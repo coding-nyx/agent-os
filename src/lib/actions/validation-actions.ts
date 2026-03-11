@@ -120,33 +120,33 @@ async function loadUserContext(
   if (!userId || !encryptionKey) return null;
 
   try {
-    const { getFirebase } = await import('@/lib/firebase');
-    const { doc } = await import('firebase/firestore');
-    const { readDocOnce } = await import('@/lib/services/firestore-once');
+    const { getNexusDataLayer } = await import('@/lib/data-layer/provider');
     const { decryptWithKey } = await import('@/lib/encryption');
-    
-    const { db } = getFirebase();
-    if (!db) return null;
 
-    const docRef = doc(db, 'intake_profiles', `${userId}_${moduleId}`);
-    const snap = await readDocOnce(docRef);
-    
-    if (!snap.exists()) return null;
-    
-    const data = snap.data();
-    
+    const record = await getNexusDataLayer().getDocument<Record<string, unknown>>(
+      'intake_profiles',
+      `${userId}_${moduleId}`
+    );
+
+    if (!record) return null;
+
+    const data = record as Record<string, unknown>;
+
     // Decrypt if encrypted
     if (data?.encrypted && encryptionKey) {
       try {
-        const decrypted = await decryptWithKey(data.encrypted, encryptionKey);
+        const decrypted = await decryptWithKey(
+          data.encrypted as Parameters<typeof decryptWithKey>[0],
+          encryptionKey
+        );
         return JSON.parse(decrypted) as Record<string, unknown>;
       } catch (error) {
         console.error(`[AI Validation] Failed to decrypt profile:`, error);
         return null;
       }
     }
-    
-    return data as Record<string, unknown>;
+
+    return data;
   } catch (error) {
     console.error(`[AI Validation] Failed to load user context:`, error);
     return null;

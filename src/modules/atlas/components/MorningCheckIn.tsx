@@ -92,7 +92,7 @@ Please: (1) assess my capacity for today, (2) recommend my one non-negotiable fo
 // ---------------------------------------------------------------------------
 
 interface StatPillProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   icon: React.ComponentType<any>;
   label: string;
   value: number | string | undefined | null;

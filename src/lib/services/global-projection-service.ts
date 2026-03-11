@@ -1,10 +1,12 @@
-import { GlobalProjection, CoreUserProfile, NeuralStateVector, NeuralStateVectorPatch } from '../types';
+import { GlobalProjection, CoreUserProfile, NeuralStateVector, NeuralStateVectorPatch, SoulWriteRequest } from '../types';
 import { createDefaultNSV, normalizeNSV } from './nsv-service';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { getNexusDataLayer } from '../data-layer/provider';
 import { NexusDataLayer } from '../data-layer';
+import { Spine } from '../spine/spine-event-bus';
 
 const COLLECTION = 'global_souls';
+const SOUL_WRITE_COLLECTION = 'pending_soul_writes';
 
 function buildNSVUpdatePayload(updates: NeuralStateVectorPatch, timestamp: string): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
@@ -232,8 +234,74 @@ export const GlobalProjectionService = {
     uid: string,
     updates: NeuralStateVectorPatch,
     dataLayer: NexusDataLayer = getNexusDataLayer(),
+    soulWriteOptions?: {
+      /**
+       * Module ID of the domain-authoritative agent to route the write through.
+       * When provided the write is NOT committed immediately — instead a
+       * `SoulWriteRequest` is persisted to `pending_soul_writes/{uid}/{requestId}`
+       * and a `SOUL_WRITE_REQUESTED` Spine event is emitted for the owning agent
+       * to approve or reject.
+       */
+      validateWith?: string;
+      /** Human-readable justification for the write, surfaced to the owning agent. */
+      reason?: string;
+      /** Requesting module ID — defaults to 'system' when omitted. */
+      requestedBy?: string;
+    },
   ): Promise<void> {
     if (!uid) return;
+
+    // --- Validated (deferred) write path ---
+    if (soulWriteOptions?.validateWith) {
+      const { validateWith, reason = '', requestedBy = 'system' } = soulWriteOptions;
+
+      // Derive a compact dot-notation field description from the patch keys.
+      const field = Object.entries(updates)
+        .flatMap(([domain, domainUpdates]) =>
+          typeof domainUpdates === 'object' && domainUpdates !== null
+            ? Object.keys(domainUpdates as object).map((k) => `${domain}.${k}`)
+            : [`${domain}`],
+        )
+        .join(', ');
+
+      const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+      const soulWriteRequest: SoulWriteRequest = {
+        requestId,
+        moduleId: validateWith,
+        requestedBy,
+        field,
+        value: updates,
+        reason,
+        timestamp: Date.now(),
+        status: 'pending',
+      };
+
+      try {
+        // Persist the pending request for the owning agent to review.
+        await dataLayer.setDocument(
+          `${SOUL_WRITE_COLLECTION}/${uid}`,
+          requestId,
+          soulWriteRequest as unknown as Record<string, unknown>,
+        );
+
+        // Notify the Spine so the owning agent (validateWith) can act.
+        Spine.publish({
+          type: 'SOUL_WRITE_REQUESTED',
+          source: requestedBy,
+          domain: 'system',
+          priority: 'info',
+          data: soulWriteRequest as unknown as Record<string, unknown>,
+        });
+      } catch (error) {
+        console.error('[GlobalProjectionService] Failed to queue soul write request:', error);
+      }
+
+      // Do NOT commit the direct write — return and wait for approval.
+      return;
+    }
+
+    // --- Direct (immediate) write path — backwards-compatible ---
     const existing = await dataLayer.getDocument<GlobalProjection>(COLLECTION, uid);
     if (!existing) return;
 

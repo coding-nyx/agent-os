@@ -55,14 +55,14 @@ export function LedgerDashboard({
   // Total current debt from profile items (O(d) where d = number of debt items).
   const totalDebt = useMemo(
     () => (profile?.debtItems ?? []).reduce((sum, item) => sum + item.balance, 0),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [profile?.debtItems],
   );
 
   // All dashboard stat-card numbers derived from actual transactions.
   const metrics = useMemo(
     () => computeDashboardMetrics(profile?.transactions ?? [], totalDebt),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [profile?.transactions, totalDebt],
   );
 
@@ -102,7 +102,7 @@ export function LedgerDashboard({
         income: t.income,
         expenses: t.expenses,
       })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [profile?.transactions],
   );
 
@@ -110,7 +110,7 @@ export function LedgerDashboard({
   // current calendar month. O(n + b) where n = transactions, b = categories.
   const budgetActuals = useMemo(
     () => computeBudgetActuals(profile?.transactions ?? [], profile?.budgetCategories ?? []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [profile?.transactions, profile?.budgetCategories],
   );
 
@@ -129,7 +129,7 @@ export function LedgerDashboard({
         month: item.name,
         balance: item.balance,
       })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [profile?.debtItems],
   );
 
@@ -155,7 +155,7 @@ export function LedgerDashboard({
   // O(b + g) where b = budgetActuals.length, g = financialGoals.length.
   const alerts = useMemo(
     () => evaluateAlerts(profile, budgetActuals, metrics),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [profile, budgetActuals, metrics],
   );
 

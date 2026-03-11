@@ -17,6 +17,8 @@ import { EmptyState } from '@/core/components/EmptyState';
 import { getActionLabel } from '@/lib/actions/action-labels';
 import { PendingRequestState } from '@/lib/hooks/use-pending-recovery';
 import { DocumentMessageCard, parseDocumentMessage } from './DocumentMessageCard';
+import { useDebugMode } from '@/lib/hooks/use-debug-mode';
+import { DebugThoughtPanel } from '@/core/components/debug';
 
 // Helper to convert MessageContent to string for display
 function messageContentToString(content: MessageContent): string {
@@ -252,6 +254,7 @@ export function ChatInterface({
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isNearBottomRef = useRef(true);
+  const { debugMode } = useDebugMode();
   
   const effectiveIsProcessing = isProcessing !== undefined ? isProcessing : isLoading;
 
@@ -378,7 +381,8 @@ export function ChatInterface({
                   </div>
                 )}
                 {isAI ? (
-                    <div className="w-full flex justify-start">
+                    <div className="w-full flex flex-col items-start">
+                        <DebugThoughtPanel message={msg} debugMode={debugMode} />
                         <AIMessage
                           content={showInternalSignals ? messageContentToString(msg.content) : stripInternalTags(messageContentToString(msg.content)).publicText}
                           theme={theme}

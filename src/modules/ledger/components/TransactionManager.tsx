@@ -172,7 +172,7 @@ export function TransactionManager({
 
   // Filter and sort transactions
   const filteredTransactions = useMemo(() => {
-    let filtered = transactions.filter(t => {
+    const filtered = transactions.filter(t => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();

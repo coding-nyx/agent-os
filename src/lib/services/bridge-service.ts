@@ -14,9 +14,9 @@
  */
 
 import { getToken, onMessage, getMessaging } from 'firebase/messaging';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { SpineEvent, SpineEventType } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
@@ -219,7 +219,7 @@ class BridgeServiceClass {
 
     // Get FCM token
     try {
-      const { app, db } = getFirebase();
+      const { app } = getFirebase();
       if (!app) {
         console.warn('[Bridge] Firebase app not initialised — skipping FCM token.');
         return;
@@ -249,15 +249,15 @@ class BridgeServiceClass {
       console.log('[Bridge] FCM token acquired.');
 
       // Persist token to Firestore so Cloud Functions can target this device
-      if (db && this.userId && token) {
-        await setDoc(
-          doc(db, 'users', this.userId, 'fcm_tokens', 'primary'),
+      if (this.userId && token) {
+        await getNexusDataLayer().setDocument(
+          `users/${this.userId}/fcm_tokens`,
+          'primary',
           {
             token,
-            updatedAt: serverTimestamp(),
+            updatedAt: new Date().toISOString(),
             userAgent: navigator.userAgent,
-          },
-          { merge: true }
+          }
         );
         console.log('[Bridge] FCM token saved to Firestore.');
       }
@@ -350,7 +350,7 @@ class BridgeServiceClass {
 
   private showFallbackNotification(title: string, body: string): void {
     try {
-      // eslint-disable-next-line no-new
+       
       new Notification(title, {
         body,
         icon: NOTIFICATION_ICON,

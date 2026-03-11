@@ -336,7 +336,7 @@ export function TitanOnboarding({
 
         let nextProfile = { ...state.profile };
         let nextAccumulator = { ...state.accumulator };
-        let nextBaseContext = { ...state.baseContext };
+        const nextBaseContext = { ...state.baseContext };
         let assistantMessage: string | undefined;
 
         const profileUpdates = response.actions

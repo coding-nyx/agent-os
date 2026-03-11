@@ -10,19 +10,8 @@
  * - Validation after migration
  */
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  writeBatch,
-  query,
-  where,
-  Timestamp,
-  DocumentSnapshot,
-} from 'firebase/firestore';
-import { getFirebase } from '../firebase';
+import { getNexusDataLayer } from '../data-layer/provider';
+import type { BatchOperation } from '../data-layer/index';
 import { SchemaRegistry } from '../schema-registry';
 import { FieldSchema, FieldDefinition, FieldType } from '../field-system/types';
 import { decryptWithKey, encryptWithKey, EncryptedData } from '../encryption';
@@ -145,11 +134,7 @@ export class MigrationService {
     userId: string,
     moduleId?: string
   ): Promise<MigrationPreview> {
-    const { db } = getFirebase();
-    if (!db) {
-      throw new Error('Firebase not initialized');
-    }
-
+    const dl = getNexusDataLayer();
     const changes: MigrationChange[] = [];
     const warnings: string[] = [];
     let totalEstimatedTime = 0;
@@ -166,14 +151,13 @@ export class MigrationService {
           continue;
         }
 
-        const docRef = doc(db, collectionName, userId);
-        const docSnap = await getDoc(docRef);
+        const record = await dl.getDocument<Record<string, unknown>>(collectionName, userId);
 
-        if (!docSnap.exists()) {
+        if (!record) {
           continue; // No profile for this module
         }
 
-        const profileData = docSnap.data();
+        const profileData = record as Record<string, unknown>;
         const change = await this.analyzeProfile(modId, userId, profileData);
 
         if (change) {
@@ -203,11 +187,7 @@ export class MigrationService {
     encryptionKey: CryptoKey,
     moduleId?: string
   ): Promise<MigrationResult> {
-    const { db } = getFirebase();
-    if (!db) {
-      throw new Error('Firebase not initialized');
-    }
-
+    const dl = getNexusDataLayer();
     const migrationId = `mig_${Date.now()}_${userId}`;
     const startedAt = new Date().toISOString();
     const errors: MigrationError[] = [];
@@ -237,10 +217,9 @@ export class MigrationService {
             continue;
           }
 
-          const docRef = doc(db, collectionName, userId);
-          const docSnap = await getDoc(docRef);
+          const record = await dl.getDocument<Record<string, unknown>>(collectionName, userId);
 
-          if (!docSnap.exists()) {
+          if (!record) {
             continue; // No profile for this module
           }
 
@@ -248,7 +227,7 @@ export class MigrationService {
           await this.migrateProfile(
             userId,
             modId,
-            docSnap,
+            record as Record<string, unknown>,
             encryptionKey,
             migrationId
           );
@@ -319,68 +298,56 @@ export class MigrationService {
     migrationId: string,
     encryptionKey: CryptoKey
   ): Promise<void> {
-    const { db } = getFirebase();
-    if (!db) {
-      throw new Error('Firebase not initialized');
-    }
+    const dl = getNexusDataLayer();
 
     try {
       // 1. Get migration record
-      const migrationRef = doc(db, MIGRATION_COLLECTION, migrationId);
-      const migrationSnap = await getDoc(migrationRef);
+      const migrationRecord = await dl.getDocument<Record<string, unknown>>(
+        MIGRATION_COLLECTION,
+        migrationId
+      );
 
-      if (!migrationSnap.exists()) {
+      if (!migrationRecord) {
         throw new Error(`Migration ${migrationId} not found`);
       }
 
-      const migrationData = migrationSnap.data();
-      const backupId = migrationData.backupId;
+      const backupId = migrationRecord.backupId as string | undefined;
 
       if (!backupId) {
         throw new Error('No backup ID found in migration record');
       }
 
       // 2. Get backup
-      const backupRef = doc(db, BACKUP_COLLECTION, backupId);
-      const backupSnap = await getDoc(backupRef);
+      const backupRecord = await dl.getDocument<Record<string, unknown>>(
+        BACKUP_COLLECTION,
+        backupId
+      );
 
-      if (!backupSnap.exists()) {
+      if (!backupRecord) {
         throw new Error(`Backup ${backupId} not found`);
       }
 
-      const backupData = backupSnap.data();
+      const snapshots = (backupRecord.snapshots ?? {}) as Record<string, unknown>;
 
-      // 3. Restore from backup
-      const batch = writeBatch(db);
-      let operationCount = 0;
+      // 3. Restore from backup using batchWrite
+      const restoreOps: BatchOperation[] = [];
 
-      for (const [moduleId, snapshot] of Object.entries(backupData.snapshots || {})) {
+      for (const [moduleId, snapshot] of Object.entries(snapshots)) {
         const collectionName = MODULE_COLLECTIONS[moduleId];
         if (!collectionName) continue;
 
-        const docRef = doc(db, collectionName, userId);
-        batch.set(docRef, snapshot);
-        operationCount++;
-
-        if (operationCount >= BATCH_SIZE) {
-          await batch.commit();
-          operationCount = 0;
-        }
+        restoreOps.push({ type: 'set', collection: collectionName, id: userId, data: snapshot });
       }
 
-      if (operationCount > 0) {
-        await batch.commit();
+      if (restoreOps.length > 0) {
+        await dl.batchWrite(restoreOps);
       }
 
       // 4. Mark migration as rolled back
-      await setDoc(
-        migrationRef,
-        {
-          rolledBack: true,
-          rolledBackAt: new Date().toISOString(),
-        },
-        { merge: true }
-      );
+      await dl.updateDocument(MIGRATION_COLLECTION, migrationId, {
+        rolledBack: true,
+        rolledBackAt: new Date().toISOString(),
+      });
 
       console.log(`[MigrationService] Rolled back migration ${migrationId}`);
 
@@ -407,23 +374,18 @@ export class MigrationService {
    * Check if migration is needed for a user
    */
   async needsMigration(userId: string): Promise<ModuleMigrationStatus[]> {
-    const { db } = getFirebase();
-    if (!db) {
-      throw new Error('Firebase not initialized');
-    }
-
+    const dl = getNexusDataLayer();
     const statuses: ModuleMigrationStatus[] = [];
 
     for (const [moduleId, collectionName] of Object.entries(MODULE_COLLECTIONS)) {
       try {
-        const docRef = doc(db, collectionName, userId);
-        const docSnap = await getDoc(docRef);
+        const record = await dl.getDocument<Record<string, unknown>>(collectionName, userId);
 
-        if (!docSnap.exists()) {
+        if (!record) {
           continue; // No profile for this module
         }
 
-        const profileData = docSnap.data();
+        const profileData = record as Record<string, unknown>;
         const schema = SchemaRegistry.getSchema(moduleId);
 
         if (!schema) {
@@ -442,7 +404,7 @@ export class MigrationService {
         statuses.push({
           moduleId,
           needsMigration,
-          currentVersion: profileData.schemaVersion,
+          currentVersion: profileData.schemaVersion as string | undefined,
           targetVersion: schema.version,
           reason: needsMigration
             ? this.getMigrationReason(profileData, schema)
@@ -825,16 +787,10 @@ export class MigrationService {
   private async migrateProfile(
     userId: string,
     moduleId: string,
-    docSnap: DocumentSnapshot,
+    profileData: Record<string, unknown>,
     encryptionKey: CryptoKey,
     migrationId: string
   ): Promise<void> {
-    const { db } = getFirebase();
-    if (!db) {
-      throw new Error('Firebase not initialized');
-    }
-
-    const profileData = docSnap.data();
     if (!profileData) {
       throw new Error('No profile data found');
     }
@@ -851,10 +807,10 @@ export class MigrationService {
     if (isEncrypted) {
       try {
         const encrypted: EncryptedData = {
-          ciphertext: profileData.encryptedData,
-          iv: profileData.iv,
-          salt: profileData.salt,
-          version: profileData.encryptionVersion,
+          ciphertext: profileData.encryptedData as string,
+          iv: profileData.iv as string,
+          salt: profileData.salt as string,
+          version: profileData.encryptionVersion as number | undefined,
         };
         const decryptedJson = await decryptWithKey(encrypted, encryptionKey);
         decryptedData = JSON.parse(decryptedJson);
@@ -892,8 +848,7 @@ export class MigrationService {
 
     // Save migrated profile
     const collectionName = MODULE_COLLECTIONS[moduleId];
-    const docRef = doc(db, collectionName, userId);
-    await setDoc(docRef, finalData, { merge: true });
+    await getNexusDataLayer().setDocument(collectionName, userId, finalData);
 
     console.log(`[MigrationService] Migrated ${moduleId} profile for user ${userId}`);
   }
@@ -906,22 +861,17 @@ export class MigrationService {
     encryptionKey: CryptoKey,
     metadata: { reason: string; migrationId?: string }
   ): Promise<string> {
-    const { db } = getFirebase();
-    if (!db) {
-      throw new Error('Firebase not initialized');
-    }
-
+    const dl = getNexusDataLayer();
     const backupId = `backup_${Date.now()}_${userId}`;
-    const snapshots: Record<string, any> = {};
+    const snapshots: Record<string, unknown> = {};
 
     // Backup all module profiles
     for (const [moduleId, collectionName] of Object.entries(MODULE_COLLECTIONS)) {
       try {
-        const docRef = doc(db, collectionName, userId);
-        const docSnap = await getDoc(docRef);
+        const record = await dl.getDocument<Record<string, unknown>>(collectionName, userId);
 
-        if (docSnap.exists()) {
-          snapshots[moduleId] = docSnap.data();
+        if (record) {
+          snapshots[moduleId] = record;
         }
       } catch (error) {
         console.warn(`[MigrationService] Failed to backup ${moduleId}:`, error);
@@ -929,8 +879,7 @@ export class MigrationService {
     }
 
     // Save backup
-    const backupRef = doc(db, BACKUP_COLLECTION, backupId);
-    await setDoc(backupRef, {
+    await dl.setDocument(BACKUP_COLLECTION, backupId, {
       backupId,
       userId,
       createdAt: new Date().toISOString(),
@@ -944,7 +893,7 @@ export class MigrationService {
   }
 
   /**
-   * Record migration in Firestore
+   * Record migration in the data layer
    */
   private async recordMigration(
     migrationId: string,
@@ -956,13 +905,7 @@ export class MigrationService {
       errors: MigrationError[];
     }
   ): Promise<void> {
-    const { db } = getFirebase();
-    if (!db) {
-      throw new Error('Firebase not initialized');
-    }
-
-    const migrationRef = doc(db, MIGRATION_COLLECTION, migrationId);
-    await setDoc(migrationRef, {
+    await getNexusDataLayer().setDocument(MIGRATION_COLLECTION, migrationId, {
       migrationId,
       userId,
       createdAt: new Date().toISOString(),

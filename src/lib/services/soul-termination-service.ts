@@ -1,6 +1,5 @@
-import { deleteDoc, doc, collection, getDocs, writeBatch } from 'firebase/firestore';
-import type { Firestore } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import type { BatchOperation } from '@/lib/data-layer/index';
 import { getUserDataDeletionTargets } from './user-data-registry';
 
 const LOCAL_STORAGE_PREFIXES = ['nexus_', 'agnes_'];
@@ -21,18 +20,21 @@ function shouldRemoveLocalStorageKey(key: string): boolean {
   );
 }
 
-async function deleteSubcollection(db: Firestore, parentPath: string, subcollectionName: string): Promise<void> {
-  const subcollRef = collection(db, parentPath, subcollectionName);
-  const snapshot = await getDocs(subcollRef);
-  if (snapshot.empty) return;
+async function deleteSubcollection(collectionPath: string): Promise<void> {
+  const dl = getNexusDataLayer();
+  const docs = await dl.listDocuments(collectionPath);
+  if (docs.length === 0) return;
 
-  // Firestore batches support up to 500 operations
+  // NexusDataLayer.batchWrite supports up to 500 operations per call
   const BATCH_SIZE = 500;
-  for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
-    const batch = writeBatch(db);
-    const chunk = snapshot.docs.slice(i, i + BATCH_SIZE);
-    chunk.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
+  for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+    const chunk = docs.slice(i, i + BATCH_SIZE);
+    const operations: BatchOperation[] = chunk.map((d) => ({
+      type: 'delete' as const,
+      collection: collectionPath,
+      id: d.id,
+    }));
+    await dl.batchWrite(operations);
   }
 }
 
@@ -40,9 +42,7 @@ export const SoulTerminationService = {
   async purgeUserData(uid: string): Promise<void> {
     if (!uid) return;
 
-    const { db } = getFirebase();
-    if (!db) throw new Error('Firebase not initialized');
-
+    const dl = getNexusDataLayer();
     const targets = getUserDataDeletionTargets(uid);
     try {
       // 1. Delete known subcollections first (Firestore does NOT cascade-delete)
@@ -51,14 +51,14 @@ export const SoulTerminationService = {
         if (subcollections) {
           const parentPath = `${target.collection}/${target.documentId}`;
           await Promise.all(
-            subcollections.map((sub) => deleteSubcollection(db, parentPath, sub))
+            subcollections.map((sub) => deleteSubcollection(`${parentPath}/${sub}`))
           );
         }
       }
 
       // 2. Delete the parent documents
       await Promise.all(
-        targets.map((target) => deleteDoc(doc(db, target.collection, target.documentId)))
+        targets.map((target) => dl.deleteDocument(target.collection, target.documentId))
       );
     } catch (error) {
       console.error('[SoulTerminationService] Failed to purge user data:', error);

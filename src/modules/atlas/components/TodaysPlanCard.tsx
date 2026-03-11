@@ -249,7 +249,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           : h.currentStreak > 0; // streak exists but never logged → at risk
         return { habit: h, atRisk };
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [profile?.habits]);
 
   if (isLocked) return null;

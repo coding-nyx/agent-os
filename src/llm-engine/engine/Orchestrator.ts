@@ -46,7 +46,7 @@ export class Orchestrator {
         };
     }
 
-    let currentMessages = [...messages];
+    const currentMessages = [...messages];
     let toolCallCount = 0;
     const MAX_TOOL_CALLS = 5;
     let fullResponse = '';
@@ -370,7 +370,7 @@ export class Orchestrator {
     let fullText = '';
     let publicTextAccumulated = '';
     let buffer = '';
-    let toolCalls: ToolCall[] = [];
+    const toolCalls: ToolCall[] = [];
     let streamInterrupted = false;
     
     try {

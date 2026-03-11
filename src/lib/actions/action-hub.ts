@@ -26,6 +26,27 @@ export type ActionHandler = (context: ActionContext) => Promise<void> | void;
 
 const NSV_READ_ONLY_MODULES = new Set(['scout', 'forge']);
 
+/**
+ * Action types that constitute a direct NSV/soul write.
+ * Any module in NSV_READ_ONLY_MODULES that dispatches one of these
+ * action types will receive a hard throw — even before the handler runs.
+ * Extend this set as explicit soul-write action types are introduced.
+ */
+const NSV_WRITE_ACTION_TYPES = new Set([
+  'update_soul',
+  'write_soul',
+  'patch_nsv',
+  'update_nsv',
+  'commit_nsv',
+  'soul_write',
+  'nsv_write',
+  'UPDATE_SOUL',
+  'WRITE_SOUL',
+  'PATCH_NSV',
+  'UPDATE_NSV',
+  'COMMIT_NSV',
+]);
+
 const NSV_ALLOWED_WRITES: Record<string, string[]> = {
   scout: ['cognitive'],
 };
@@ -60,6 +81,13 @@ class ModuleActionHub {
   }
 
   async execute(moduleId: string, actionType: string, context: ActionContext): Promise<boolean> {
+    // Hard guard: read-only modules must never dispatch explicit NSV-write actions.
+    if (NSV_READ_ONLY_MODULES.has(moduleId) && NSV_WRITE_ACTION_TYPES.has(actionType)) {
+      throw new Error(
+        `[ActionHub] Module "${moduleId}" is NSV read-only — soul writes blocked`,
+      );
+    }
+
     const scopedContext: ActionContext = {
       ...context,
       updateGlobalSoul: async (patch) => {

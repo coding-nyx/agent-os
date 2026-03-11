@@ -111,7 +111,7 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
       }),
       onResponse: (response, state) => {
         let nextProfile = { ...state.profile };
-        let nextBaseContext = { ...state.baseContext };
+        const nextBaseContext = { ...state.baseContext };
         let nextStep = state.stepProgress;
 
         const profileUpdates = response.actions

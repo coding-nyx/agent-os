@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { ScopedChatPanel } from '@/core/components/field-management/ScopedChatPanel';
+import { useDebugMode } from '@/lib/hooks/use-debug-mode';
+import { ModelBadge, SoulActivityTag } from '@/core/components/debug';
 
 interface ModuleLayoutProps {
   children: React.ReactNode;
@@ -75,6 +77,7 @@ export function ModuleLayout({
   const { isModuleAccessible } = useVault();
   const reducedMotion = useReducedMotion();
   const { isLeftRailVisible, isRightRailVisible } = useUIStore();
+  const { debugMode } = useDebugMode();
 
   const handleExit = () => {
     setIsSyncing(true);
@@ -148,6 +151,8 @@ export function ModuleLayout({
                     <span className="text-[9px] font-medium text-white/40 uppercase tracking-[0.1em] truncate font-mono">Link Stable // Secure Tunnel</span>
                 </div>
               </div>
+              <ModelBadge debugMode={debugMode} />
+              <SoulActivityTag moduleTitle={title} debugMode={debugMode} />
             </div>
 
             <div className="flex items-center gap-4 md:gap-8">

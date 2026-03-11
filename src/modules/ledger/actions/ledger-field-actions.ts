@@ -619,7 +619,7 @@ export function registerLedgerFieldActions(): void {
 // Full implementations live in transaction-actions.ts; these stubs satisfy
 // the ActionHub registration below without creating a circular import.
 // ---------------------------------------------------------------------------
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 const handleCreateTransaction = async (_ctx: unknown): Promise<void> => {};
 const handleUpdateTransaction = async (_ctx: unknown): Promise<void> => {};
 const handleDeleteTransaction = async (_ctx: unknown): Promise<void> => {};
@@ -630,7 +630,7 @@ const handleUpdateGoalProgress = async (_ctx: unknown): Promise<void> => {};
 const handleCompleteGoal = async (_ctx: unknown): Promise<void> => {};
 const handleFinancialHealthCheck = async (_ctx: unknown): Promise<void> => {};
 const handleDetectRisk = async (_ctx: unknown): Promise<void> => {};
-/* eslint-enable @typescript-eslint/no-unused-vars */
+ 
 
 /**
  * Register Ledger transaction + budget + goal actions with ActionHub.

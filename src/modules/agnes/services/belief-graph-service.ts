@@ -1,7 +1,6 @@
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { readDocOnce } from '@/lib/services/firestore-once';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import type { NexusRecord } from '@/lib/data-layer';
 
 const VAULT_SALT_MARKER = 'vault_salt_used';
 
@@ -69,13 +68,14 @@ function normalizeGraph(raw: unknown): BeliefGraph {
 
 export async function loadBeliefGraph({ userId, encryptionKey }: LoadContext): Promise<BeliefGraph | null> {
   if (!userId || !encryptionKey) return null;
-  const { db } = getFirebase();
-  if (!db) return null;
 
-  const snap = await readDocOnce(doc(db, 'belief_graphs', userId));
-  if (!snap.exists()) return null;
+  const record = await getNexusDataLayer().getDocument<{ encryptedData: string; iv: string }>(
+    'belief_graphs',
+    userId,
+  );
+  if (!record) return null;
 
-  const data = snap.data();
+  const data = record;
   if (!data?.encryptedData || !data?.iv) return null;
 
   try {
@@ -92,18 +92,15 @@ export function subscribeBeliefGraph(
   onUpdate: (graph: BeliefGraph | null) => void
 ): () => void {
   if (userId && encryptionKey) {
-    const { db } = getFirebase();
-    if (!db) return () => {};
-
-    const ref = doc(db, 'belief_graphs', userId);
-    const unsubscribe = onSnapshot(
-      ref,
-      async (snap) => {
-        if (!snap.exists()) {
+    const unsubscribe = getNexusDataLayer().subscribeToDocument<{ encryptedData: string; iv: string }>(
+      'belief_graphs',
+      userId,
+      async (record: NexusRecord<{ encryptedData: string; iv: string }> | null) => {
+        if (!record) {
           onUpdate(null);
           return;
         }
-        const data = snap.data();
+        const data = record;
         if (!data?.encryptedData || !data?.iv) {
           onUpdate(null);
           return;
@@ -115,9 +112,6 @@ export function subscribeBeliefGraph(
           console.error('Failed to decrypt belief graph:', error);
           onUpdate(null);
         }
-      },
-      (error) => {
-        console.error('Belief graph subscription error:', error);
       }
     );
     return unsubscribe;
@@ -129,26 +123,20 @@ export function subscribeBeliefGraph(
 
 export async function saveBeliefGraph(graph: BeliefGraph, { userId, encryptionKey }: LoadContext): Promise<void> {
   if (!userId || !encryptionKey) return;
-  const { db } = getFirebase();
-  if (!db) return;
 
   const normalized = normalizeGraph(graph);
   const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
 
   try {
-    await setDoc(
-      doc(db, 'belief_graphs', userId),
-      {
-        encryptedData: encrypted.ciphertext,
-        iv: encrypted.iv,
-        salt: VAULT_SALT_MARKER,
-        metadata: {
-          nodes: normalized.nodes.length,
-          lastActive: new Date().toISOString()
-        }
-      },
-      { merge: true }
-    );
+    await getNexusDataLayer().setDocument('belief_graphs', userId, {
+      encryptedData: encrypted.ciphertext,
+      iv: encrypted.iv,
+      salt: VAULT_SALT_MARKER,
+      metadata: {
+        nodes: normalized.nodes.length,
+        lastActive: new Date().toISOString()
+      }
+    });
   } catch (error) {
     console.error('[BeliefGraphService] Failed to save belief graph:', error);
   }

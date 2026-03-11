@@ -60,7 +60,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
     ...profileOptions
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const stableSetSessionActive = useCallback((_active: boolean) => {
     // Focus mode removed — session active state managed locally by each module
   }, []);

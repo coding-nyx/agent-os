@@ -8,9 +8,7 @@
 import { ActionHub, ActionContext } from './action-hub';
 import { GlobalProjectionService } from '../services/global-projection-service';
 import { EpisodicMemoryService } from '../services/episodic-memory-service';
-import { doc, updateDoc } from 'firebase/firestore';
-import { getFirebase } from '../firebase';
-import { readDocOnce } from '../services/firestore-once';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey } from '../encryption';
 import { NeuralStateVector } from '../types';
 
@@ -71,29 +69,27 @@ async function loadModuleProfile(
   moduleId: string,
   encryptionKey: CryptoKey | null
 ): Promise<Record<string, unknown> | null> {
-  const { db } = getFirebase();
-  if (!db) return null;
-
   try {
-    const docRef = doc(db, 'intake_profiles', `${userId}_${moduleId}`);
-    const snap = await readDocOnce(docRef);
-    
-    if (!snap.exists()) return null;
-    
-    const data = snap.data();
-    
+    const record = await getNexusDataLayer().getDocument<Record<string, unknown>>(
+      'intake_profiles',
+      `${userId}_${moduleId}`
+    );
+    if (!record) return null;
+
+    const data = record as Record<string, unknown>;
+
     // Check if data is encrypted
     if (data?.encrypted && encryptionKey) {
       try {
-        const decrypted = await decryptWithKey(data.encrypted, encryptionKey);
+        const decrypted = await decryptWithKey(data.encrypted as Parameters<typeof decryptWithKey>[0], encryptionKey);
         return JSON.parse(decrypted) as Record<string, unknown>;
       } catch (error) {
         console.error(`[Analysis] Failed to decrypt ${moduleId} profile:`, error);
         return null;
       }
     }
-    
-    return data as Record<string, unknown>;
+
+    return data;
   } catch (error) {
     console.error(`[Analysis] Failed to load ${moduleId} profile:`, error);
     return null;
@@ -807,13 +803,11 @@ async function handleGenerateSummary(context: ActionContext): Promise<void> {
     // Store summary as compacted insight in GlobalSoul
     if (result.insights.length > 0) {
       try {
-        const { db } = getFirebase();
-        if (db && userId) {
+        if (userId) {
           const summaryText = result.insights[0].description;
           const currentInsights = globalSoul?.compactedInsights ?? [];
-          
-          const docRef = doc(db, 'global_souls', userId);
-          await updateDoc(docRef, {
+
+          await getNexusDataLayer().updateDocument('global_souls', userId, {
             compactedInsights: [
               `[${new Date().toLocaleDateString()}] ${summaryText}`,
               ...currentInsights.slice(0, 9) // Keep last 10 insights

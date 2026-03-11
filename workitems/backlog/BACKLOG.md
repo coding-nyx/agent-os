@@ -98,7 +98,7 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
   - [x] `MorningCheckIn.tsx` — new dismissible daily brief card with `shouldShowMorningCheckIn()` localStorage gate
   - [x] `PriorityInbox.tsx` — new top-3 task selector with energy-fit ranking
   - [x] `EnhancedAtlasDashboard.tsx` — WeekGrid mounted in week view, WeeklyReviewModal mounted + triggered, FocusView chat wired, MorningCheckIn + PriorityInbox integrated
-- [ ] **Sprint 9 — The Intelligent Loop:** Proactive check-ins, PredictiveService activation, recurrence engine.
+- [ ] **Atlas Sprint A — The Intelligent Loop (→ Global Sprint 12):** Proactive check-ins, PredictiveService activation, recurrence engine.
   - [ ] Morning brief auto-trigger (Spine MORNING_BRIEF event on daily first-open instead of user-initiated)
   - [ ] Evening check-in component (`EveningCheckIn.tsx`) — mirrors MorningCheckIn, triggers 19:00–22:00 window
   - [ ] `AtlasPredictiveService` state machine evaluation — Normal → Compressed → Overloaded → Recovery transitions currently typed but never run; wire evaluation on profile load
@@ -113,7 +113,7 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
       - **Pre-fill from context:** If user is in a goal context, auto-associate captured task with the active goal.
       - **AI action tag `capture_task`:** Chat sidebar can also capture tasks/habits conversationally using the same confirm path.
       - **Acceptance:** A user can add a task with deadline, energy level, and recurrence in a single natural-language line in under 10 seconds.
-- [ ] **Sprint 10 — Power User & Memory:** Historical data, advanced visualizations, velocity tracking.
+- [ ] **Atlas Sprint B — Power User & Memory (→ Global Sprint 13):** Historical data, advanced visualizations, velocity tracking.
   - [ ] Historical aggregate sub-collection: `atlas_profiles/{uid}/daily_snapshots/{date}` — task completion rate, drift score, habit streaks per day
   - [ ] Habit heatmap — GitHub-style annual contribution grid for each habit
   - [ ] Goal velocity chart — completion rate trend over rolling 30/90 days

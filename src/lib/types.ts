@@ -258,7 +258,11 @@ export type SpineEventType =
   // AI Validation Events
   | 'ai_validation_suggestion'
   | 'ai_contextual_validation'
-  | 'ai_error_explanation';
+  | 'ai_error_explanation'
+  // Soul Write Protocol Events (S10-002)
+  | 'SOUL_WRITE_REQUESTED'
+  | 'SOUL_WRITE_APPROVED'
+  | 'SOUL_WRITE_REJECTED';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'alert' | 'critical';
@@ -285,6 +289,27 @@ export interface SpineEvent {
   priority: SpineEventPriority;
 }
 
+// --- Soul Write Protocol (S10-002) ---
+
+/**
+ * Represents a cross-module request to write to a protected NSV field.
+ * Saved to `pending_soul_writes/{uid}/{requestId}` and tracked via Spine events.
+ */
+export interface SoulWriteRequest {
+  requestId: string;
+  /** Module ID that owns the target NSV domain (the authoritative agent). */
+  moduleId: string;
+  /** Module ID of the module requesting the write. */
+  requestedBy: string;
+  /** Dot-notation NSV field path, e.g. "cognitive.energyBudget". */
+  field: string;
+  value: unknown;
+  /** Human-readable justification for the write. */
+  reason: string;
+  timestamp: number;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
 // --- Active Chat & Engine Types ---
 
 export interface ToolCall {
@@ -302,12 +327,24 @@ export type MessageContentPart =
 
 export type MessageContent = string | MessageContentPart[];
 
+/** Metadata attached by the LLM runtime for debug-mode inspection. */
+export interface MessageDebugMeta {
+  reasoning?: string;
+  actionTagsExtracted?: Array<{ type: string; payload: unknown }>;
+  actionTagsDispatched?: string[];
+  actionsExecuted?: string[];
+  apiLatencyMs?: number;
+  apiRequestSnippet?: string;
+}
+
 export interface Message {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: MessageContent;
   timestamp?: string;
   tool_calls?: ToolCall[];
   tool_call_id?: string;
+  /** Optional debug metadata — populated only when debug instrumentation is active. */
+  debugMeta?: MessageDebugMeta;
 }
 
 export interface ActiveSessionState {
