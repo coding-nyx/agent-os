@@ -60,7 +60,21 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
     - [x] **Layer 2: The Activity (Performance):** Workout logs, PR tracking (Sprint 7), routines, RPE coaching.
     - [x] **Medical Clearance Handshake:** Soma issues; Titan enforces as banner in Training tab (Sprint 7 S7-002).
 - [ ] **Soma Tab Cleanup (Sprint 7 S7-002):** Remove Biomarkers/Sleep/Recovery/Diagnosis from Titan. 3-tab structure: Training | Progress | Cycles.
-- [ ] **AI Mode / Logbook Mode Toggle (Sprint 7 S7-005):** `preferenceMode: 'coach' | 'logbook'` resolves power-user friction.
+- [ ] **Titan Fast Logging UX — Reduce Friction to Zero:** The current workout logging flow requires too many taps/fields. Titan should feel as fast as a paper log.
+    - **Problem:** Users must navigate to the Training tab, open a workout, fill exercise name + sets + reps + weight separately, then save. For daily users this is a high-friction loop that competes with dedicated apps (Strong, Hevy).
+    - **Desired behavior:** A single "Log" shortcut — either a floating action button on the Training tab or an AI-first flow where the user types/speaks "3x5 squat @ 100kg, 3x8 bench @ 80kg" and Titan parses and logs it in one shot.
+    - **Data verification layer:** After AI auto-parses the log entry, show a compact inline confirmation card (not a modal) — e.g. `"Squat 3×5 @ 100kg · Bench 3×8 @ 80kg — confirm?"` with a single [✓ Log it] button. No re-entry required.
+    - **Quick-fill from history:** Pre-populate weight and sets from the user's last logged session for the same exercise (zero typing for repeat sessions).
+    - **PR detection inline:** If the logged weight exceeds the stored e1RM, surface a subtle `"🏆 New PR"` badge inline — no separate flow.
+    - **Scope:**
+      - `QuickLogBar.tsx` — persistent input bar at bottom of Training tab (above nav), text input + mic icon
+      - `useWorkoutParser()` hook — LLM-powered or regex fallback: parses "3x5 squat @ 100kg" → `{ exercise, sets, reps, weight }[]`
+      - `LogConfirmCard.tsx` — inline (not modal) swipeable confirmation card
+      - Quick-fill from `PersonalRecord[]` — populate last session values on exercise match
+      - AI action tag: `log_workout_set` — so the AI chat can also log via conversation
+    - **Acceptance:** A returning user can log a full workout (3–4 exercises) in under 30 seconds without touching a form field.
+
+
 - [ ] **Onboarding Simplification (Sprint 7 S7-007):** 3-question AI chat → instant plan. Remove medical phase from Titan onboarding.
 - [x] **Biomarker Analysis:** Delegated to Soma via `soma-titan-delegation-service`. Titan receives clearance output.
 - [x] **Soma Service Layer:** `soma-titan-delegation-service`, `soma-data-service`, `clearance-service` implemented.
