@@ -23,8 +23,13 @@ export { AIFinancialAdvisor } from './AIFinancialAdvisor';
 
 export { CashFlowChart, DebtPayoffTracker } from './FinancialCharts';
 
+export { SpendingTrendsChart } from './SpendingTrendsChart';
+
 export { LedgerDashboard } from './LedgerDashboard';
 
 export { LedgerWorkspace } from './LedgerWorkspace';
 
 export { FieldsTab } from './FieldsTab';
+
+export { DebtStrategist } from './DebtStrategist';
+export type { DebtPayoffResult, DebtPayoffMonth } from '../services/ledger-aggregation-service';

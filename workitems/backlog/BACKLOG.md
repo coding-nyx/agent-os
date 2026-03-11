@@ -118,6 +118,13 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
 - [ ] **Nexus-Link Bridge:** Secure terminal for remote system management.
 
 ## 8. Global AI & Systemic Enhancements
+- [ ] **Debug Mode (Developer Overlay):** Add a "Debug Mode" toggle to the Profile view. When enabled, surfaces internal runtime state across the entire app with zero performance cost when off.
+    - **Profile toggle:** Switch in ProfilePage (or collapsible "Developer" section); persisted to `localStorage` via `useDebugMode()` hook.
+    - **Model badge:** Live pill in every chat header — `"⚡ Running on: claude-3-opus"` alternating with a `"↔ linkstable"` / connected indicator; reads from `AIProvider` context active model.
+    - **Thought button:** Collapsible chip above every AI message bubble showing: (a) raw reasoning / scratchpad, (b) action tags extracted from message, (c) action tags dispatched to ActionHub, (d) side effects executed (`updateGlobalSoul`, `emitSpineEvent`, `markProfileDirty`, etc.). Requires optional `debugMeta` field on `ChatMessage` type populated by the LLM engine when debug is active.
+    - **API call snippet:** First 500 chars of raw request body + HTTP status + latency (ms) inside the thought panel, sourced from a fetch interceptor in the model registry.
+    - **Soul activity tag:** Pulsing `"Soul: active"` tag to the right of every module title; shows last Spine event type as a fading label (3 s TTL). Source: `useSpineEvent()` + NSV write timestamp tracking.
+    - **Components to create:** `DebugThoughtPanel.tsx`, `ModelBadge.tsx`, `SoulActivityTag.tsx`. Amber/yellow accent palette to visually separate debug chrome from normal UI. All debug subtrees guarded by `if (!debugMode) return null` — zero render cost in production.
 - [ ] **Dynamic Field System Expansion:** Enable custom field creation/deletion via chat globally, removing hardcoded category logic.
 - [ ] **Global Soul Writing Protocol (Architectural):** Implement the "Soul-Authority" protocol to ensure all chat-driven schema changes (field creation/deletion) are routed through the domain-authoritative agent for validation before being committed.
 - [ ] **Document Intelligence Capability (Shared Library):** Formalize the Documents module as a shared service/plugin. Implement robust cross-document indexing and retrieval that core agents (Ledger, Soma, Atlas) can invoke to find historical context without creating a separate agent persona. (Platform-wide; Ledger’s receipts feature should reuse this where possible.)

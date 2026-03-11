@@ -14,6 +14,8 @@ interface StatCardProps {
   isLocked?: boolean;
   isDerived?: boolean;
   className?: string;
+  /** Optional node rendered below the value — use for badges or secondary context. */
+  subLabel?: React.ReactNode;
 }
 
 export function StatCard({
@@ -26,7 +28,8 @@ export function StatCard({
   isEmpty = false,
   isLocked = false,
   isDerived = false,
-  className
+  className,
+  subLabel,
 }: StatCardProps) {
   const showSkeleton = isLoading || isEmpty || value === null || value === undefined;
 
@@ -48,17 +51,20 @@ export function StatCard({
           <Skeleton className="h-2 w-16 rounded-full opacity-60" />
         </div>
       ) : (
-        <div className="flex items-end gap-2 min-w-0">
-          <span
-            className={cn(
-              'text-2xl font-black tracking-tight text-white tabular-nums truncate',
-              isDerived ? 'text-white/50 blur-[0.3px]' : ''
-            )}
-          >
-            {value}
-          </span>
-          {suffix && <span className="text-[11px] text-white/40 mb-1 shrink-0">{suffix}</span>}
-        </div>
+        <>
+          <div className="flex items-end gap-2 min-w-0">
+            <span
+              className={cn(
+                'text-2xl font-black tracking-tight text-white tabular-nums truncate',
+                isDerived ? 'text-white/50 blur-[0.3px]' : ''
+              )}
+            >
+              {value}
+            </span>
+            {suffix && <span className="text-[11px] text-white/40 mb-1 shrink-0">{suffix}</span>}
+          </div>
+          {subLabel && <div>{subLabel}</div>}
+        </>
       )}
     </SurfaceCard>
   );

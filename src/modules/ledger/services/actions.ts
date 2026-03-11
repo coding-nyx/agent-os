@@ -10,6 +10,7 @@ import {
   saveLedgerProfile
 } from './ledger-intake-service';
 import { parseFinancialStatement } from '@/lib/actions/parsing-actions';
+import { matchCategoryToTransaction } from './ledger-aggregation-service';
 
 let registered = false;
 
@@ -235,18 +236,22 @@ export function registerLedgerActions() {
           ? payload.date.trim()
           : now.split('T')[0];
 
-      // Match to an existing BudgetCategory by name (case-insensitive).
+      // Match to an existing BudgetCategory using exact name or keyword map.
       const existingCategories: BudgetCategory[] = profile.budgetCategories ?? [];
-      const matchedCategory = categoryName
-        ? existingCategories.find(
-            (c) => c.name.toLowerCase() === categoryName.toLowerCase()
-          )
-        : undefined;
+      const descriptionForMatch =
+        typeof payload?.description === 'string' && payload.description.trim()
+          ? payload.description.trim()
+          : merchant;
+      const matchedCategoryId = matchCategoryToTransaction(
+        descriptionForMatch,
+        categoryName,
+        existingCategories,
+      );
 
       const budgetCategoryId: string | undefined =
         typeof payload?.budgetCategoryId === 'string'
           ? payload.budgetCategoryId
-          : matchedCategory?.id;
+          : matchedCategoryId;
 
       const transaction: Transaction = {
         id: crypto.randomUUID(),
@@ -254,7 +259,7 @@ export function registerLedgerActions() {
         description: merchant || categoryName || 'Transaction',
         amount,
         type: txType,
-        category: categoryName || matchedCategory?.name || 'Other',
+        category: categoryName || existingCategories.find((c) => c.id === budgetCategoryId)?.name || 'Other',
         budgetCategoryId,
         notes: note,
       };

@@ -12,6 +12,8 @@
  * quadratic work regardless of category or month cardinality.
  */
 
+import type { DebtItem } from './ledger-intake-service';
+
 // ---------------------------------------------------------------------------
 // Local minimal interfaces (source-of-truth will move to ledger-intake-service)
 // ---------------------------------------------------------------------------
@@ -434,6 +436,112 @@ export function computeDashboardMetrics(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Category trend (stacked bar chart data)
+// ---------------------------------------------------------------------------
+
+/**
+ * A single row in the stacked bar chart — one entry per calendar month.
+ * `month` holds the human-readable label (e.g. "Jan 2025"); every other key
+ * is a category name mapping to the total amount spent in that month.
+ * The mixed `number | string` value type satisfies the Recharts `dataKey`
+ * contract while keeping TypeScript strict-mode happy.
+ */
+export interface CategoryTrendMonth {
+  month: string;
+  [category: string]: number | string;
+}
+
+/**
+ * Aggregates expense transactions into a stacked bar chart dataset showing
+ * per-category spend across the last 6 calendar months.
+ *
+ * Algorithm
+ * ---------
+ * 1. Build an ordered 6-month window (oldest → newest).
+ * 2. Single-pass accumulation: for each expense transaction that falls inside
+ *    the window, add its amount to the relevant (month, category) bucket AND
+ *    to the category's all-time total.
+ * 3. Rank categories by all-time total spend; retain the top `topN`.
+ *    Everything else is collapsed into an "Other" bucket.
+ * 4. Build the final row array, zero-filling months with no data.
+ *
+ * @param transactions - Full transaction list (any date range).
+ * @param topN         - Maximum number of named categories to surface.
+ *                       Defaults to 5.
+ * @returns `data`       — Array of `CategoryTrendMonth` ordered oldest → newest.
+ *          `categories` — Ordered array of category names used as Recharts
+ *                         `dataKey` values (topN leaders + optional "Other").
+ *
+ * Time complexity: O(n + k log k) where n = transactions and k = unique
+ * categories. The sort is only over k, which is typically small.
+ */
+export function computeCategoryTrends(
+  transactions: Transaction[],
+  topN: number = 5,
+): { data: CategoryTrendMonth[]; categories: string[] } {
+  // Build the ordered 6-month window (oldest first).
+  const targetMonths: string[] = [];
+  for (let i = 5; i >= 0; i--) {
+    targetMonths.push(monthsAgo(i));
+  }
+
+  // Per-month category spend:  month → (category → amount).
+  const monthCategoryMap = new Map<string, Map<string, number>>();
+  for (const m of targetMonths) {
+    monthCategoryMap.set(m, new Map<string, number>());
+  }
+
+  // All-time spend per category across the entire 6-month window (for ranking).
+  const categoryTotalMap = new Map<string, number>();
+
+  // Single pass — O(n).
+  for (const tx of transactions) {
+    if (tx.type !== 'expense') continue;
+    const ym = toYearMonth(tx.date);
+    const monthMap = monthCategoryMap.get(ym);
+    if (!monthMap) continue; // Outside the 6-month window — skip.
+
+    const key = tx.category;
+    monthMap.set(key, round2((monthMap.get(key) ?? 0) + tx.amount));
+    categoryTotalMap.set(key, round2((categoryTotalMap.get(key) ?? 0) + tx.amount));
+  }
+
+  // Rank by total spend and select the top N — O(k log k).
+  const sorted = [...categoryTotalMap.entries()].sort((a, b) => b[1] - a[1]);
+  const topCategories = sorted.slice(0, topN).map(([cat]) => cat);
+  const hasOther = sorted.length > topN;
+  const topCategorySet = new Set(topCategories);
+  const categories: string[] = hasOther ? [...topCategories, 'Other'] : [...topCategories];
+
+  // Build the data array — O(m * k) where m = 6 and k = topN (both constants).
+  const data: CategoryTrendMonth[] = targetMonths.map((ym) => {
+    const row: CategoryTrendMonth = { month: formatMonthLabel(ym) };
+    const monthMap = monthCategoryMap.get(ym)!;
+
+    // Zero-fill all named categories so Recharts always receives a number.
+    for (const cat of topCategories) {
+      row[cat] = 0;
+    }
+    if (hasOther) {
+      row['Other'] = 0;
+    }
+
+    // Accumulate actual values.
+    for (const [cat, amount] of monthMap) {
+      if (topCategorySet.has(cat)) {
+        row[cat] = round2((row[cat] as number) + amount);
+      } else if (hasOther) {
+        row['Other'] = round2((row['Other'] as number) + amount);
+      }
+    }
+
+    return row;
+  });
+
+  return { data, categories };
+}
+
 /**
  * Compares the current month's expenses to the previous month and returns a
  * directional trend indicator.
@@ -473,4 +581,300 @@ export function getSpendingTrend(transactions: Transaction[]): SpendingTrend {
     currentMonth: currentMonthAmt,
     previousMonth: previousMonthAmt,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Debt Payoff Schedule — Avalanche & Snowball strategies
+// ---------------------------------------------------------------------------
+
+/**
+ * A single monthly snapshot produced by the debt payoff simulation.
+ */
+export interface DebtPayoffMonth {
+  /** 1-based month index (month 1 = first payment month). */
+  month: number;
+  /** Remaining total balance across all debts after this month's payments. */
+  totalBalance: number;
+  /** Cumulative interest paid through and including this month. */
+  totalInterestPaid: number;
+  /** Per-debt balances for this snapshot. */
+  debts: Array<{ id: string; name: string; balance: number }>;
+}
+
+/**
+ * Complete result of running a payoff simulation under one strategy.
+ */
+export interface DebtPayoffResult {
+  strategy: 'avalanche' | 'snowball';
+  /** Monthly snapshots ordered month 1 → payoff (capped at 360). */
+  months: DebtPayoffMonth[];
+  /** Total interest paid over the entire payoff period. */
+  totalInterestPaid: number;
+  /** Number of months until all debts reach zero. */
+  monthsToPayoff: number;
+  /**
+   * Interest saved compared to paying every debt at its minimum only.
+   * A positive value means this strategy saves money vs minimums-only.
+   */
+  interestSavedVsMinimum: number;
+}
+
+// ---------------------------------------------------------------------------
+// Private simulation helpers
+// ---------------------------------------------------------------------------
+
+/** Internal mutable representation of a debt during simulation. */
+interface SimDebt {
+  id: string;
+  name: string;
+  balance: number;
+  minPayment: number;
+  apr: number;
+}
+
+/**
+ * Runs a single payoff simulation.
+ *
+ * Algorithm (per month, up to MAX_MONTHS):
+ *  1. Accrue monthly interest on each active debt.
+ *  2. Apply minimum payments; any over-payment (balance < min) recycles back.
+ *  3. Apply the remaining budget (extra + recycled minimums) to the priority
+ *     debt first, then cascade to the next until exhausted.
+ *  4. Snapshot total balance and cumulative interest.
+ *
+ * The total monthly budget is fixed at: Σ(minPayments) + extraMonthlyPayment.
+ * As debts are retired, their freed minimums automatically join the extra pool
+ * because the budget stays constant while fewer minimums are needed.
+ *
+ * Time complexity: O(M × D) where M = months to payoff (≤ 360), D = debt count.
+ * Space complexity: O(M × D) for the monthly snapshot array.
+ */
+function runPayoffSimulation(
+  rawDebts: DebtItem[],
+  strategy: 'avalanche' | 'snowball',
+  extraMonthlyPayment: number,
+): { months: DebtPayoffMonth[]; totalInterestPaid: number } {
+  const MAX_MONTHS = 360;
+  // Centavo-level floor to avoid infinite tiny-balance loops.
+  const ZERO_THRESHOLD = 0.005;
+
+  const active = rawDebts
+    .filter((d) => d.balance > ZERO_THRESHOLD && d.minPayment >= 0 && d.apr >= 0)
+    .map<SimDebt>((d) => ({
+      id: d.id,
+      name: d.name,
+      balance: d.balance,
+      minPayment: Math.max(d.minPayment, 0),
+      apr: d.apr,
+    }));
+
+  if (active.length === 0) return { months: [], totalInterestPaid: 0 };
+
+  // Fixed monthly budget: original sum of minimums + extra.
+  const totalBudget = round2(
+    active.reduce((s, d) => s + d.minPayment, 0) + extraMonthlyPayment,
+  );
+
+  const paidOff = new Set<string>();
+  const months: DebtPayoffMonth[] = [];
+  let totalInterestPaid = 0;
+
+  for (let m = 1; m <= MAX_MONTHS; m++) {
+    const currentActive = active.filter((d) => !paidOff.has(d.id));
+    if (currentActive.length === 0) break;
+
+    // 1. Accrue monthly interest on each active debt.
+    for (const debt of currentActive) {
+      const interest = round2(debt.balance * (debt.apr / 100 / 12));
+      debt.balance = round2(debt.balance + interest);
+      totalInterestPaid = round2(totalInterestPaid + interest);
+    }
+
+    // 2. Apply minimum payments.
+    let remainingBudget = totalBudget;
+    for (const debt of currentActive) {
+      const payment = Math.min(debt.minPayment, debt.balance);
+      debt.balance = round2(Math.max(0, debt.balance - payment));
+      remainingBudget = round2(remainingBudget - payment);
+      if (debt.balance <= ZERO_THRESHOLD) {
+        debt.balance = 0;
+        paidOff.add(debt.id);
+      }
+    }
+
+    // 3. Apply remaining budget to priority debt(s) in strategy order.
+    if (remainingBudget > ZERO_THRESHOLD) {
+      const prioritized = active
+        .filter((d) => !paidOff.has(d.id))
+        .slice()
+        .sort((a, b) =>
+          strategy === 'avalanche'
+            ? b.apr - a.apr          // highest APR first
+            : a.balance - b.balance, // lowest balance first
+        );
+
+      for (const debt of prioritized) {
+        if (remainingBudget <= ZERO_THRESHOLD) break;
+        const payment = Math.min(remainingBudget, debt.balance);
+        debt.balance = round2(Math.max(0, debt.balance - payment));
+        remainingBudget = round2(remainingBudget - payment);
+        if (debt.balance <= ZERO_THRESHOLD) {
+          debt.balance = 0;
+          paidOff.add(debt.id);
+        }
+      }
+    }
+
+    // 4. Record monthly snapshot.
+    const totalBalance = round2(active.reduce((s, d) => s + d.balance, 0));
+    months.push({
+      month: m,
+      totalBalance,
+      totalInterestPaid: round2(totalInterestPaid),
+      debts: active.map((d) => ({ id: d.id, name: d.name, balance: d.balance })),
+    });
+
+    if (totalBalance <= ZERO_THRESHOLD) break;
+  }
+
+  return { months, totalInterestPaid: round2(totalInterestPaid) };
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Computes a month-by-month debt payoff schedule for a given strategy and
+ * optional extra monthly payment.
+ *
+ * @param debts               - Active debt items (zero-balance debts are ignored).
+ * @param strategy            - `'avalanche'` (highest APR first) or
+ *                              `'snowball'` (lowest balance first).
+ * @param extraMonthlyPayment - Additional amount applied beyond minimums each
+ *                              month. Defaults to 0.
+ * @returns DebtPayoffResult with monthly snapshots, totals, and a comparison
+ *          against paying minimums only.
+ *
+ * Time complexity: O(M × D) per call, O(1) auxiliary space beyond snapshots.
+ */
+export function computeDebtPayoffSchedule(
+  debts: DebtItem[],
+  strategy: 'avalanche' | 'snowball',
+  extraMonthlyPayment: number = 0,
+): DebtPayoffResult {
+  const activeDebts = debts.filter((d) => d.balance > 0);
+
+  const main = runPayoffSimulation(activeDebts, strategy, Math.max(extraMonthlyPayment, 0));
+  // Baseline: minimums only (strategy doesn't matter when extra = 0).
+  const minimumOnly = runPayoffSimulation(activeDebts, 'avalanche', 0);
+
+  return {
+    strategy,
+    months: main.months,
+    totalInterestPaid: main.totalInterestPaid,
+    monthsToPayoff: main.months.length,
+    interestSavedVsMinimum: round2(minimumOnly.totalInterestPaid - main.totalInterestPaid),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Keyword map for local auto-categorization (no LLM calls, no side effects)
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps canonical budget-category names to lowercase keyword fragments.
+ * Matching is purely positional (`.includes()`), case-insensitive, and
+ * evaluated in iteration order — the first matching key wins.
+ */
+const KEYWORD_MAP: Record<string, string[]> = {
+  'Food & Dining': [
+    'grocery', 'groceries', 'supermarket', 'restaurant', 'cafe', 'coffee',
+    'doordash', 'ubereats', 'grubhub', 'chipotle', 'mcdonald', 'subway',
+    'pizza', 'starbucks', 'whole foods', 'trader joe',
+  ],
+  'Transportation': [
+    'uber', 'lyft', 'gas', 'fuel', 'parking', 'toll', 'transit', 'metro',
+    'bus', 'train', 'airline', 'flight', 'car wash',
+  ],
+  'Entertainment': [
+    'netflix', 'spotify', 'hulu', 'disney', 'amazon prime', 'movie',
+    'cinema', 'concert', 'theater', 'gaming', 'steam',
+  ],
+  'Shopping': [
+    'amazon', 'walmart', 'target', 'costco', 'ebay', 'etsy', 'clothing',
+    'apparel', 'shoes', 'zara', 'h&m',
+  ],
+  'Health': [
+    'pharmacy', 'cvs', 'walgreens', 'doctor', 'hospital', 'clinic',
+    'dental', 'gym', 'fitness', 'yoga',
+  ],
+  'Utilities': [
+    'electric', 'gas bill', 'water', 'internet', 'phone', 'at&t',
+    'verizon', 'comcast', 'wifi',
+  ],
+  'Housing': [
+    'rent', 'mortgage', 'hoa', 'property', 'maintenance', 'repairs',
+    'airbnb', 'hotel',
+  ],
+  'Education': [
+    'tuition', 'student loan', 'course', 'udemy', 'coursera', 'books',
+    'school',
+  ],
+  'Insurance': ['insurance', 'geico', 'state farm', 'allstate', 'progressive'],
+  'Subscriptions': ['subscription', 'membership', 'annual fee', 'monthly fee'],
+};
+
+/**
+ * Matches a transaction to a budget category using two strategies:
+ *
+ * 1. **Exact name match** — case-insensitive comparison of the `category`
+ *    param against every `BudgetCategory.name`.
+ * 2. **Keyword map lookup** — scans the lowercase `description` for the first
+ *    keyword fragment defined in `KEYWORD_MAP`. If the associated map key
+ *    resolves to an existing `BudgetCategory` (name match), that category's
+ *    `id` is returned.
+ *
+ * This is a pure function: no I/O, no mutation, deterministic output.
+ *
+ * @param description - Transaction description or merchant name used for
+ *                      keyword scanning.
+ * @param category    - Free-form category label submitted with the transaction.
+ *                      Used for the exact-name match step.
+ * @param categories  - The user's current budget category list.
+ * @returns The matched `BudgetCategory.id`, or `undefined` when no match is
+ *          found or `categories` is empty.
+ *
+ * Time complexity: O(c + k) where c = categories.length and
+ * k = total keywords across all KEYWORD_MAP entries.
+ */
+export function matchCategoryToTransaction(
+  description: string,
+  category: string,
+  categories: BudgetCategory[],
+): string | undefined {
+  if (categories.length === 0) return undefined;
+
+  // Step 1: exact case-insensitive match on the supplied category label.
+  const trimmedCategory = category.trim();
+  if (trimmedCategory) {
+    const lowerCategory = trimmedCategory.toLowerCase();
+    const exact = categories.find((c) => c.name.toLowerCase() === lowerCategory);
+    if (exact) return exact.id;
+  }
+
+  // Step 2: keyword map lookup against the lowercased description.
+  const lowerDesc = description.toLowerCase();
+  for (const [mapKey, keywords] of Object.entries(KEYWORD_MAP)) {
+    const hasKeyword = keywords.some((kw) => lowerDesc.includes(kw));
+    if (!hasKeyword) continue;
+
+    // Only return an id when the matched map key has a corresponding category.
+    const budgetCategory = categories.find(
+      (c) => c.name.toLowerCase() === mapKey.toLowerCase(),
+    );
+    if (budgetCategory) return budgetCategory.id;
+  }
+
+  return undefined;
 }

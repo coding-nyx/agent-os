@@ -12,7 +12,8 @@ import { EmptyState } from '@/core/components/EmptyState';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
 import { CashFlowChart, DebtPayoffTracker } from './FinancialCharts';
-import { computeDashboardMetrics, computeMonthlyTotals } from '../services/ledger-aggregation-service';
+import { SpendingTrendsChart } from './SpendingTrendsChart';
+import { computeDashboardMetrics, computeMonthlyTotals, computeBudgetActuals } from '../services/ledger-aggregation-service';
 import { AIFinancialAdvisor } from './AIFinancialAdvisor';
 import { spineEventService } from '../services/spine-event-service';
 import { LedgerSpineEventType } from '../actions/ledger-field-actions';
@@ -101,6 +102,20 @@ export function LedgerDashboard({
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [profile?.transactions],
+  );
+
+  // Budget actuals: derive per-category spend from transaction history for the
+  // current calendar month. O(n + b) where n = transactions, b = categories.
+  const budgetActuals = useMemo(
+    () => computeBudgetActuals(profile?.transactions ?? [], profile?.budgetCategories ?? []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profile?.transactions, profile?.budgetCategories],
+  );
+
+  // Number of budget categories where actual spend exceeds the allocation.
+  const overBudgetCount = useMemo(
+    () => budgetActuals.filter((p) => p.actual > p.allocated).length,
+    [budgetActuals],
   );
 
   // Debt snapshot: each debt item becomes one data point.
@@ -342,6 +357,10 @@ export function LedgerDashboard({
           <CashFlowChart 
             data={cashFlowData} 
             currency={profile?.currency || 'USD'}
+          />
+          <SpendingTrendsChart
+            transactions={profile?.transactions ?? []}
+            currency={profile?.currency ?? 'USD'}
           />
           <div className="mt-6 space-y-3">
             <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">Financial Events</h4>
