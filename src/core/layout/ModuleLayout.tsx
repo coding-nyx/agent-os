@@ -15,6 +15,9 @@ import { useUIStore } from '@/lib/stores/ui-store';
 import { ScopedChatPanel } from '@/core/components/field-management/ScopedChatPanel';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
 import { ModelBadge, SoulActivityTag } from '@/core/components/debug';
+import { useCrossModuleHintListener } from '@/lib/hooks/use-cross-module-hint-listener';
+import { DataSyncToast } from '@/core/components/DataSyncToast';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 
 interface ModuleLayoutProps {
   children: React.ReactNode;
@@ -79,6 +82,9 @@ export function ModuleLayout({
   const { isLeftRailVisible, isRightRailVisible } = useUIStore();
   const { debugMode } = useDebugMode();
 
+  // Contextual Inference Engine — S10-008
+  const { activeHint, dismissHint, confirmHint } = useCrossModuleHintListener();
+
   const handleExit = () => {
     setIsSyncing(true);
   };
@@ -108,6 +114,21 @@ export function ModuleLayout({
 
   const openSecurityProtocol = () => {
     window.dispatchEvent(new CustomEvent('agnes:open-security-protocol'));
+  };
+
+  const handleAskModule = () => {
+    if (!activeHint) return;
+    const { targetModule, rawQuote } = activeHint.hint;
+    NexusHandoffService.store({
+      moduleId: targetModule,
+      type: 'query',
+      content: rawQuote,
+      reason: 'contextual-hint-inquiry',
+      sourceModuleId: moduleId,
+      createdAt: new Date().toISOString(),
+    });
+    dismissHint();
+    navigate(`/${targetModule}`);
   };
 
   return (
@@ -282,6 +303,18 @@ export function ModuleLayout({
       <footer className="h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent relative z-[var(--z-content)] overflow-hidden">
         <div className={`w-32 h-full mx-auto ${theme.accent.replace('text-', 'bg-')} blur-md opacity-30`} />
       </footer>
+
+      {/* Contextual Inference Engine — S10-008: cross-module data sync toast */}
+      <AnimatePresence>
+        {activeHint !== null && (
+          <DataSyncToast
+            hint={activeHint}
+            onConfirm={confirmHint}
+            onDismiss={dismissHint}
+            onAskModule={handleAskModule}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

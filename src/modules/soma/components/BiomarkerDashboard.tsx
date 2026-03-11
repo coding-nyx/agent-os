@@ -92,15 +92,6 @@ export function BiomarkerDashboard({
   onAddBiomarker,
   onSelectBiomarker,
 }: BiomarkerDashboardProps) {
-  if (isLocked) {
-    return (
-      <VaultLockedShell
-        moduleName="Soma Labs"
-        moduleDescription="Clinical biomarkers and physiological readiness."
-      />
-    );
-  }
-
   const biomarkers = profile?.biomarkers ?? [];
   const labSummaries = profile?.labSummaries ?? [];
 
@@ -156,6 +147,15 @@ export function BiomarkerDashboard({
   }, [labSummaries, profile?.medicalImageAnalyses]);
 
   const clinicalFlagCount = aggregatedFlags.length;
+
+  if (isLocked) {
+    return (
+      <VaultLockedShell
+        moduleName="Soma Labs"
+        moduleDescription="Clinical biomarkers and physiological readiness."
+      />
+    );
+  }
 
   return (
     <div

@@ -79,15 +79,6 @@ const STATUS_CONFIG: Record<string, { icon: React.ComponentType<{ className?: st
 // ---------------------------------------------------------------------------
 
 export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePanelProps) {
-  if (isLocked) {
-    return (
-      <VaultLockedShell
-        moduleName="Soma Clearance"
-        moduleDescription="Medical clearance and physiological boundary management."
-      />
-    );
-  }
-
   const bio = soul?.crossFunctionalState.biological;
   const recoveryScore = bio?.recoveryScore ?? null;
   const hormonalContext = bio?.hormonalContext ?? null;
@@ -103,6 +94,15 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
   );
 
   const latestClearance = sortedClearances[0] ?? null;
+
+  if (isLocked) {
+    return (
+      <VaultLockedShell
+        moduleName="Soma Clearance"
+        moduleDescription="Medical clearance and physiological boundary management."
+      />
+    );
+  }
 
   return (
     <div

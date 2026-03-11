@@ -127,29 +127,6 @@ export const SomaDashboard = React.memo(function SomaDashboard({
   const [showAIPanel, setShowAIPanel] = useState(false);
   const toggleAIPanel = useCallback(() => setShowAIPanel(prev => !prev), []);
 
-  // ---- Early returns for locked / no-soul states ----
-  
-  if (isLocked) {
-    return (
-      <VaultLockedShell
-        moduleName="Soma"
-        moduleDescription="Baseline biological profile and readiness."
-      />
-    );
-  }
-
-  if (!soul) {
-    return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="No biometric data"
-          description="Start tracking your physical readiness metrics."
-          size="lg"
-        />
-      </div>
-    );
-  }
-
   // ---- Calculate Readiness Score ----
   
   const readinessScore = useMemo(() => {
@@ -275,6 +252,29 @@ export const SomaDashboard = React.memo(function SomaDashboard({
     
     return insights;
   }, [profile, readinessScore]);
+
+  // ---- Early returns for locked / no-soul states ----
+
+  if (isLocked) {
+    return (
+      <VaultLockedShell
+        moduleName="Soma"
+        moduleDescription="Baseline biological profile and readiness."
+      />
+    );
+  }
+
+  if (!soul) {
+    return (
+      <div className="h-full flex items-center justify-center p-8">
+        <EmptyState
+          title="No biometric data"
+          description="Start tracking your physical readiness metrics."
+          size="lg"
+        />
+      </div>
+    );
+  }
 
   // ---- Render different views ----
   
