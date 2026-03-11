@@ -6,6 +6,8 @@ import { IntakeBaseContextService } from '@/lib/services/intake-base-context-ser
 import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import { SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
+import { useAtlasPredictiveState } from '@/lib/hooks/use-atlas-predictive-state';
+import type { AtlasStateDisplay } from './services/atlas-predictive-service';
 import { ATLAS_PERSONA } from './personas';
 import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
 import { QuickAddForm } from './components/QuickAddForm';
@@ -47,9 +49,10 @@ interface AtlasContentProps {
   globalSoul: ReturnType<typeof useGlobalSoul>['globalSoul'];
   updateCrossFunctionalState: ReturnType<typeof useGlobalSoul>['updateCrossFunctionalState'];
   isLocked: boolean;
+  predictiveDisplay: AtlasStateDisplay;
 }
 
-function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updateCrossFunctionalState, isLocked }: AtlasContentProps) {
+function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updateCrossFunctionalState, isLocked, predictiveDisplay }: AtlasContentProps) {
   const agentAlias = globalSoul?.displayNames?.atlas || 'Atlas';
   const [activeTab, setActiveTab] = useState<any>('dashboard');
   const [activeView, setActiveView] = useState<any>('today');
@@ -335,6 +338,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
         onAddField={handleAddField}
         onDeleteField={handleDeleteField}
         onSendMessage={ai.handleSendMessage}
+        predictiveDisplay={predictiveDisplay}
       />
     </SingleAgentLayout>
   );

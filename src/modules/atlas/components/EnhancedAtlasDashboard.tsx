@@ -16,7 +16,8 @@ import {
   Lock,
   History,
   Target,
-  Zap
+  Zap,
+  Settings2
 } from 'lucide-react';
 import {
   AtlasProfile,
@@ -85,6 +86,14 @@ interface EnhancedAtlasDashboardProps {
   onAddField?: () => void;
   onDeleteField?: (fieldId: string) => void;
   onSendMessage?: (message: string) => void;
+  /** S9-005: Weekly review pending indicator */
+  weeklyReviewPending?: boolean;
+  /** S9-005: Called when user opens the review tab */
+  onReviewOpened?: () => void;
+  /** S9-006: Preference mode for QuickAdd layout */
+  preferenceMode?: 'conversational' | 'structured';
+  /** S9-006: Toggle callback for preference mode */
+  onTogglePreferenceMode?: () => void;
 }
 
 const noop = () => {};
@@ -117,6 +126,10 @@ export function EnhancedAtlasDashboard({
   onAddField = noop,
   onDeleteField,
   onSendMessage = noop,
+  weeklyReviewPending = false,
+  onReviewOpened = noop,
+  preferenceMode = 'conversational',
+  onTogglePreferenceMode = noop,
 }: EnhancedAtlasDashboardProps) {
   const [isEditingIntention, setIsEditingIntention] = useState(false);
   const [intentionForm, setIntentionForm] = useState({ theme: '', focusDomain: '', energyTarget: 5 });
@@ -133,7 +146,13 @@ export function EnhancedAtlasDashboard({
     { id: 'backlog', label: 'Backlog', icon: Inbox, badge: profile?.tasks.filter(t => t.status === 'queued').length || undefined },
     { id: 'routines', label: 'Routines & Habits', icon: Clock },
     { id: 'fields', label: 'Fields', icon: SlidersHorizontal },
-    { id: 'review', label: 'Review', icon: GitCommitVertical },
+    {
+      id: 'review',
+      label: 'Review',
+      icon: GitCommitVertical,
+      badge: weeklyReviewPending ? '●' : undefined,
+      badgeVariant: weeklyReviewPending ? 'warning' : undefined,
+    },
   ];
 
   if (isLocked) {
