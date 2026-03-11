@@ -143,8 +143,8 @@ const THEMES = {
 
 type ThemeConfig = typeof THEMES[keyof typeof THEMES];
 
-const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean }) {
-    const { publicText, internalText, isThinking, isActing, currentActionType } = stripInternalTags(content);
+const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading, isAgnes }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean }) {
+    const { publicText, internalText, isThinking, isActing, currentActionType } = stripInternalTags(content, { retainSpacings: true });
     const [showInternal, setShowInternal] = useState(false);
     const hasPublicContent = publicText.length > 0;
 
@@ -201,8 +201,18 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
             )}
 
             {hasPublicContent && (
-                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className={cn("p-3.5 sm:p-5 border backdrop-blur-3xl transition-all", theme.bubble, theme.glow)}>
-                    <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-strong:text-white prose-strong:font-black prose-p:text-white/90">
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className={cn(
+                  "border backdrop-blur-3xl transition-all",
+                  isAgnes
+                    ? "p-5 sm:p-6 bg-gradient-to-br from-white/[0.04] to-indigo-500/[0.03] border-indigo-400/10 rounded-2xl rounded-tl-sm shadow-xl shadow-indigo-500/10"
+                    : cn("p-3.5 sm:p-5", theme.bubble, theme.glow)
+                )}>
+                    <div className={cn(
+                      "max-w-none",
+                      isAgnes
+                        ? "prose prose-invert prose-base agnes-prose prose-p:leading-[1.85] prose-p:text-white/90 prose-strong:text-white prose-strong:font-semibold prose-li:text-white/85 prose-li:leading-relaxed prose-blockquote:border-indigo-400/40 prose-blockquote:text-white/70 prose-blockquote:italic"
+                        : "prose prose-invert prose-sm prose-p:leading-relaxed prose-strong:text-white prose-strong:font-black prose-p:text-white/90"
+                    )}>
                         <ReactMarkdown
                           rehypePlugins={[rehypeSanitize]}
                           components={{
@@ -326,6 +336,7 @@ export function ChatInterface({
 
   const theme = THEMES[themeColor];
   const canUploadDocs = moduleId ? ['scout', 'forge', 'soma', 'ledger'].includes(moduleId) : false;
+  const isAgnes = moduleId === 'agnes';
 
   const hasMessages = messages.some((msg) => msg.role !== 'system');
 
@@ -337,7 +348,7 @@ export function ChatInterface({
     >
       {/* Header actions (full-width, e.g. DiagnosisToolbar) */}
       {headerActions && (
-        <div className="shrink-0">{headerActions}</div>
+        <div className="shrink-0 flex items-center justify-end px-3 sm:px-4 py-2">{headerActions}</div>
       )}
 
       {/* Clear session button */}
@@ -376,7 +387,13 @@ export function ChatInterface({
               <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
                 <div className={cn("flex gap-4 w-full", isAI ? "justify-start" : "justify-end")}>
                 {isAI && (
-                  <div className={cn("w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center bg-black/60 shrink-0 mt-1 shadow-xl transition-colors", theme.accent)}>
+                  <div className={cn(
+                    "shrink-0 mt-1 flex items-center justify-center transition-colors",
+                    isAgnes
+                      ? "w-10 h-10 rounded-2xl border border-indigo-400/20 bg-gradient-to-br from-indigo-900/60 to-violet-900/60 shadow-lg shadow-indigo-500/20"
+                      : "w-9 h-9 rounded-xl border border-white/10 bg-black/60 shadow-xl",
+                    theme.accent
+                  )}>
                     <Bot className="w-5 h-5" />
                   </div>
                 )}
@@ -389,6 +406,7 @@ export function ChatInterface({
                           agentName={agentName}
                           isLast={isLast}
                           isLoading={effectiveIsProcessing}
+                          isAgnes={isAgnes}
                         />
                     </div>
                 ) : (
@@ -407,9 +425,19 @@ export function ChatInterface({
                       }
                       return (
                         <div className="flex flex-col max-w-[75%] w-fit items-end">
-                            <div className={cn("p-3.5 sm:p-5 border backdrop-blur-3xl transition-all", theme.userBubble, theme.glow)}>
-                                <div className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap break-words overflow-hidden">{textContent}</div>
-                                <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-3">
+                            <div className={cn(
+                              "border backdrop-blur-3xl transition-all",
+                              isAgnes
+                                ? "p-4 sm:p-5 bg-gradient-to-br from-indigo-500/[0.12] to-violet-500/[0.08] border-indigo-400/20 rounded-2xl rounded-tr-sm shadow-lg shadow-indigo-500/10"
+                                : cn("p-3.5 sm:p-5", theme.userBubble, theme.glow)
+                            )}>
+                                <div className={cn(
+                                  "leading-relaxed break-words overflow-hidden",
+                                  isAgnes
+                                    ? "agnes-user-text text-white/95 whitespace-pre-wrap"
+                                    : "text-sm text-white/90 font-medium whitespace-pre-wrap"
+                                )}>{textContent}</div>
+                                <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-2">
                                     <span className="text-[9px] font-mono uppercase tracking-wider">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             </div>
@@ -418,8 +446,13 @@ export function ChatInterface({
                     })()
                 )}
                 {!isAI && (
-                  <div className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center bg-black/60 shrink-0 mt-1 shadow-xl">
-                    <User className="w-5 h-5 text-white/40" />
+                  <div className={cn(
+                    "shrink-0 mt-1 flex items-center justify-center",
+                    isAgnes
+                      ? "w-10 h-10 rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] shadow-lg"
+                      : "w-9 h-9 rounded-xl border border-white/10 bg-black/60 shadow-xl"
+                  )}>
+                    <User className={cn(isAgnes ? "w-5 h-5 text-white/60" : "w-5 h-5 text-white/40")} />
                   </div>
                 )}
                 </div>
@@ -609,7 +642,7 @@ export function ChatInterface({
               </button>
             </div>
 
-            <div className="mt-1.5 sm:mt-3 flex justify-between items-center px-2 sm:px-6 text-white">
+            <div className="mt-1 flex justify-between items-center px-2 sm:px-4 text-white">
               <div className="flex gap-8">
                   {isGuestTrial ? (
                       <span className="text-[9px] font-semibold text-orange-400 uppercase tracking-[0.12em] flex items-center gap-2">

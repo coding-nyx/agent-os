@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import { PieChart, Sliders, Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import { PieChart, Sliders, Plus, Edit2, Trash2, AlertCircle, ChevronDown } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { ProgressRow } from '@/core/components/ProgressRow';
 import { cn } from '@/lib/utils';
+import { TaxTracker } from './TaxTracker';
+import type { LedgerIntakeProfile } from '../services/ledger-intake-service';
 
 export interface BudgetCategory {
   id: string;
@@ -32,6 +34,9 @@ interface BudgetPlannerProps {
   onDeleteCategory: (id: string) => void;
   onApplyTemplate?: (template: BudgetTemplate) => void;
   disabled?: boolean;
+  /** TaxTracker props — passed through to the embedded Tax Overview sub-section */
+  taxTrackerProfile?: LedgerIntakeProfile;
+  taxEncryptionKey?: CryptoKey;
 }
 
 const BUDGET_TEMPLATES: BudgetTemplate[] = [
@@ -90,13 +95,16 @@ export function BudgetPlanner({
   onAddCategory,
   onDeleteCategory,
   onApplyTemplate,
-  disabled = false
+  disabled = false,
+  taxTrackerProfile,
+  taxEncryptionKey,
 }: BudgetPlannerProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<BudgetCategory | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryAmount, setNewCategoryAmount] = useState('');
+  const [isTaxOpen, setIsTaxOpen] = useState(false);
 
   // Calculate totals and percentages
   const stats = useMemo(() => {
@@ -389,6 +397,42 @@ export function BudgetPlanner({
           )}
         </SurfaceCard>
       </div>
+
+      {/* Tax Overview — collapsible sub-section */}
+      {taxTrackerProfile && (
+        <div className="rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm overflow-hidden">
+          <button
+            onClick={() => setIsTaxOpen((prev) => !prev)}
+            className={cn(
+              'w-full flex items-center justify-between px-5 py-4',
+              'text-sm font-bold text-white hover:bg-white/5 transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-inset',
+            )}
+            aria-expanded={isTaxOpen}
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-amber-400">&#9654;</span>
+              Tax Overview
+            </span>
+            <ChevronDown
+              size={16}
+              className={cn(
+                'text-white/50 transition-transform duration-200',
+                isTaxOpen && 'rotate-180',
+              )}
+            />
+          </button>
+
+          {isTaxOpen && (
+            <div className="border-t border-white/10">
+              <TaxTracker
+                profile={taxTrackerProfile}
+                encryptionKey={taxEncryptionKey}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add/Edit Category Modal */}
       <NeuralModal

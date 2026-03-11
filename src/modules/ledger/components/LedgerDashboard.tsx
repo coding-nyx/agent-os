@@ -17,7 +17,7 @@ import { SpendingTrendsChart } from './SpendingTrendsChart';
 import { computeDashboardMetrics, computeMonthlyTotals, computeBudgetActuals, evaluateAlerts } from '../services/ledger-aggregation-service';
 import type { LedgerAlert } from '../services/ledger-aggregation-service';
 import { AIFinancialAdvisor } from './AIFinancialAdvisor';
-import { spineEventService } from '../services/spine-event-service';
+import { spineEventService, LedgerEvent } from '../services/spine-event-service';
 import { LedgerSpineEventType } from '../actions/ledger-field-actions';
 import { cn } from '@/lib/utils';
 
@@ -126,7 +126,7 @@ export function LedgerDashboard({
   );
 
   // Recent events display
-  const [recentEvents, setRecentEvents] = useState<any[]>([]);
+  const [recentEvents, setRecentEvents] = useState<LedgerEvent[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
 
   useEffect(() => {
@@ -368,22 +368,27 @@ export function LedgerDashboard({
               />
             ) : (
               <div className="space-y-3">
-                {recentEvents.map((event) => (
-                  <div key={event.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{event.data.description || 'Transaction'}</p>
-                      <p className="text-xs text-white/60">
-                        {event.data.transactionType} - {formatCurrency(event.data.amount, profile?.currency)}
-                      </p>
+                {recentEvents.map((event) => {
+                  const desc = typeof event.data.description === 'string' ? event.data.description : 'Transaction';
+                  const txType = typeof event.data.transactionType === 'string' ? event.data.transactionType : '';
+                  const amount = typeof event.data.amount === 'number' ? event.data.amount : 0;
+                  return (
+                    <div key={event.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-white">{desc}</p>
+                        <p className="text-xs text-white/60">
+                          {txType} - {formatCurrency(amount, profile?.currency)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-cyan-400">
+                          {txType === 'income' ? '+' : '-'}{formatCurrency(amount, profile?.currency)}
+                        </p>
+                        <p className="text-xs text-white/40">{new Date(event.timestamp).toLocaleDateString()}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-cyan-400">
-                        {event.data.transactionType === 'income' ? '+' : '-'}{formatCurrency(event.data.amount, profile?.currency)}
-                      </p>
-                      <p className="text-xs text-white/40">{new Date(event.timestamp).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </SurfaceCard>

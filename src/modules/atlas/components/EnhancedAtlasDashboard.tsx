@@ -37,6 +37,7 @@ import { AtlasStateDisplay } from '../services/atlas-predictive-service';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { EmptyState } from '@/core/components/EmptyState';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
+import { cn } from '@/lib/utils';
 import { AtlasAIPanel } from './AtlasAIPanel';
 import { TaskManager } from './TaskManager';
 import { GoalTracker } from './GoalTracker';
@@ -49,12 +50,15 @@ import { StatCard } from '@/core/components/StatCard';
 import { TaskTimeline } from './TaskTimeline';
 import { GoalProgress } from './GoalProgress';
 import { HabitTracker } from './HabitTracker';
+import { GoalVelocityChart } from './GoalVelocityChart';
+import { HabitHeatmap } from './HabitHeatmap';
 import { FieldsTab } from './FieldsTab';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { TodaysPlanCard } from './TodaysPlanCard';
 import { FocusView } from './FocusView';
 import { ViewSwitcher } from './ViewSwitcher';
 import { QuickAddForm } from './QuickAddForm';
+import { QuickCaptureBar } from './QuickCaptureBar';
 
 type AtlasTab = 'dashboard' | 'backlog' | 'routines' | 'fields' | 'review';
 type AtlasView = 'today' | 'week' | 'focus';
@@ -92,6 +96,14 @@ interface EnhancedAtlasDashboardProps {
   weeklyReviewPending?: boolean;
   /** S9-005: Called when user opens the review tab */
   onReviewOpened?: () => void;
+  /** S9-007: Set true to force-show the morning brief card (from Spine event) */
+  morningBriefVisible?: boolean;
+  /** S9-007: Called when the morning brief card is dismissed from the parent */
+  onMorningBriefDismiss?: () => void;
+  /** S9-007: Set true to force-show the evening check-in card (from Spine event) */
+  eveningCheckinVisible?: boolean;
+  /** S9-007: Called when the evening check-in card is dismissed from the parent */
+  onEveningCheckinDismiss?: () => void;
   /** S9-006: Preference mode for QuickAdd layout */
   preferenceMode?: 'conversational' | 'structured';
   /** S9-006: Toggle callback for preference mode */
@@ -132,6 +144,10 @@ export function EnhancedAtlasDashboard({
   onSendMessage = noop,
   weeklyReviewPending = false,
   onReviewOpened = noop,
+  morningBriefVisible = false,
+  onMorningBriefDismiss = noop,
+  eveningCheckinVisible = false,
+  onEveningCheckinDismiss = noop,
   preferenceMode = 'conversational',
   onTogglePreferenceMode = noop,
   predictiveDisplay,
@@ -194,12 +210,30 @@ export function EnhancedAtlasDashboard({
     <div className="h-full flex flex-col overflow-hidden">
       {/* ── Header ── */}
       <div className="px-4 md:px-8 pt-4 md:pt-8 pb-2 md:pb-4 flex items-start justify-between gap-4">
-        <SectionHeader
-          label="Cognitive Domain"
-          title="Atlas Energy & Planning"
-          subtitle="Energy management, routines, and cross-module execution."
-          accentClassName="text-sky-400"
-        />
+        {/* S9-001: Title + predictive state badge */}
+        <div className="flex flex-col gap-1.5">
+          <SectionHeader
+            label="Cognitive Domain"
+            title="Atlas Energy & Planning"
+            subtitle="Energy management, routines, and cross-module execution."
+            accentClassName="text-sky-400"
+          />
+          <span
+            className={cn(
+              'self-start inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-white/10 bg-white/5',
+              predictiveDisplay.color
+            )}
+            title={predictiveDisplay.description}
+            aria-label={`Atlas state: ${predictiveDisplay.label}`}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: predictiveDisplay.hex }}
+              aria-hidden="true"
+            />
+            {predictiveDisplay.label}
+          </span>
+        </div>
         {/* S9-006: Preference mode toggle */}
         <button
           type="button"
@@ -251,6 +285,15 @@ export function EnhancedAtlasDashboard({
             {/* ── Sub-view navigation: Today / Week / Focus ── */}
             <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />
 
+            {/* ── Quick Capture Bar — always visible on Dashboard ── */}
+            {activeView !== 'focus' && (
+              <QuickCaptureBar
+                onAddTask={onCreateTask}
+                onAddHabit={onCreateHabit}
+                disabled={isLocked}
+              />
+            )}
+
             {/* ── Focus Mode (Zen / Pomodoro) ── */}
             {activeView === 'focus' && (
               <FocusView
@@ -265,12 +308,15 @@ export function EnhancedAtlasDashboard({
             {/* ── Today view: MorningCheckIn + PriorityInbox + TodaysPlanCard ── */}
             {activeView === 'today' && (
               <div className="space-y-4">
-                {!morningDismissed && shouldShowMorningCheckIn(user?.uid) && (
+                {(morningBriefVisible || (!morningDismissed && shouldShowMorningCheckIn(user?.uid))) && (
                   <MorningCheckIn
                     profile={profile}
                     soul={soul}
                     userId={user?.uid ?? null}
-                    onDismiss={() => setMorningDismissed(true)}
+                    onDismiss={() => {
+                      setMorningDismissed(true);
+                      onMorningBriefDismiss();
+                    }}
                     onSendMessage={onSendMessage}
                   />
                 )}
@@ -281,11 +327,11 @@ export function EnhancedAtlasDashboard({
                   onDeferTask={(id) => onUpdateTask(id, { status: 'deferred' as const })}
                   onSendMessage={onSendMessage}
                 />
-                {profile && shouldShowEveningCheckIn(user?.uid) && (
+                {(eveningCheckinVisible || shouldShowEveningCheckIn(user?.uid)) && profile && (
                   <EveningCheckIn
                     profile={profile}
                     userId={user?.uid}
-                    onSendMessage={onSendMessage}
+                    onDismiss={onEveningCheckinDismiss}
                   />
                 )}
                 <TodaysPlanCard profile={profile} isLocked={isLocked} />
@@ -505,6 +551,21 @@ export function EnhancedAtlasDashboard({
                 onUpdateProgress={onUpdateGoalProgress}
                 onExpandGoal={noop}
               />
+            </section>
+
+            {/* ── Sprint B: Velocity + Habit Heatmaps ── */}
+            <section className="space-y-4" aria-label="Sprint B insights">
+              <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
+                Insights
+              </h4>
+
+              {/* Goal Velocity chart — derived from completed tasks */}
+              <GoalVelocityChart tasks={profile?.tasks ?? []} />
+
+              {/* One heatmap per active habit */}
+              {habits.filter((h) => h.status === 'active').map((h) => (
+                <HabitHeatmap key={h.id} habit={h} />
+              ))}
             </section>
               </div>
             )}

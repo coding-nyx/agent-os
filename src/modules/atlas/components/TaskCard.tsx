@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Lock, Clock, Zap, ChevronDown, Link2 } from 'lucide-react';
+import { Check, Lock, Clock, Zap, ChevronDown, Link2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasTask } from '../services/atlas-profile-service';
@@ -170,6 +170,17 @@ export function TaskCard({
                 <Zap className="w-2.5 h-2.5" aria-hidden="true" />
                 {task.energyCost}
               </span>
+
+              {/* Recurrence indicator */}
+              {task.recurrenceRule && (
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-500/10 text-sky-400 text-[10px] font-bold"
+                  title={`Recurring: ${task.recurrenceRule}`}
+                  aria-label={`Recurring task, ${task.recurrenceRule}`}
+                >
+                  <RotateCcw className="w-2.5 h-2.5" aria-hidden="true" />
+                </span>
+              )}
 
               {/* Deadline badge */}
               {task.deadline && !isDone && (

@@ -79,5 +79,24 @@ export const ChatThreadService = {
       archived: true,
       updatedAt: new Date().toISOString()
     });
-  }
+  },
+
+  async deleteThread(userId: string, moduleId: string, threadId: string) {
+    const dataLayer = getNexusDataLayer();
+    await dataLayer.deleteDocument(COLLECTION, threadDocId(userId, moduleId, threadId));
+  },
+
+  async deleteAllThreadsForModule(userId: string, moduleId: string) {
+    const dataLayer = getNexusDataLayer();
+    const threads = await dataLayer.query<ChatThread>({
+      collection: COLLECTION,
+      where: [
+        { field: 'userId', op: '==', value: userId },
+        { field: 'moduleId', op: '==', value: moduleId },
+      ],
+    });
+    await Promise.all(
+      threads.map(t => dataLayer.deleteDocument(COLLECTION, threadDocId(userId, moduleId, t.id)))
+    );
+  },
 };

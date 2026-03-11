@@ -3,7 +3,7 @@ import { ConversationContext } from '@/lib/ai-adapters/engine-types';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { NexusLogger } from '@/lib/nexus-logger';
 
-export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual';
+export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual' | 'ephemeral';
 
 export interface ActionContext {
   userId: string | undefined;

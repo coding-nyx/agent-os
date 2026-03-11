@@ -8,6 +8,24 @@ const COLLECTION_PREFIX = 'module_memory';
 const ACTIVE_SESSION_COLLECTION = 'active_sessions';
 const VAULT_SALT_MARKER = 'vault_salt_used';
 
+// ---------------------------------------------------------------------------
+// Per-module write queue
+// Serialises commitSession calls for the same (uid, moduleId) pair.
+// The doc key is `${uid}_${moduleId}`, matching the Firestore document id,
+// so only writes that genuinely target the same document are serialised;
+// writes for different modules run concurrently without interference.
+// ---------------------------------------------------------------------------
+const _memoryWriteQueues = new Map<string, Promise<void>>();
+
+function enqueueMemoryWrite(queueKey: string, fn: () => Promise<void>): Promise<void> {
+  const prev = _memoryWriteQueues.get(queueKey) ?? Promise.resolve();
+  // Retry fn once if it (or any previous queued write) throws, so a transient
+  // failure does not permanently stall subsequent commits for this module.
+  const next = prev.then(fn).catch(() => fn());
+  _memoryWriteQueues.set(queueKey, next);
+  return next;
+}
+
 function getActiveSessionDocId(uid: string, moduleId: string, sessionId?: string) {
   if (sessionId && sessionId !== 'current') {
     return `${uid}_${moduleId}_${sessionId}`;
@@ -180,99 +198,110 @@ export const ModuleMemoryService = {
     options?: { encryptionKey?: CryptoKey | null; facts?: string[] }
   ): Promise<void> {
     if (!uid || !moduleId) return;
-    const dataLayer = getNexusDataLayer();
 
-    const now = new Date().toISOString();
-    const encryptionKey = options?.encryptionKey || null;
-    const facts = options?.facts || [];
-    const manifestPolicy = MODULE_MANIFEST[moduleId as keyof typeof MODULE_MANIFEST]?.securityPolicy;
-    const requiresVault = manifestPolicy ? (manifestPolicy.mandatory || manifestPolicy.defaultLocked) : false;
+    // Serialise writes for this (uid, moduleId) pair so that concurrent
+    // commitSession calls cannot race on the same document's eventHistory array.
+    // Each call reads the current history, appends, and writes back — this queue
+    // ensures those three steps are never interleaved with another caller's steps.
+    const queueKey = `${uid}_${moduleId}`;
+    return enqueueMemoryWrite(queueKey, async () => {
+      const dataLayer = getNexusDataLayer();
 
-    if (requiresVault && !encryptionKey) {
-      console.warn(`[ModuleMemoryService] Vault key required for ${moduleId} episodic write. Skipping persistence.`);
-      return;
-    }
+      const now = new Date().toISOString();
+      const encryptionKey = options?.encryptionKey || null;
+      const facts = options?.facts || [];
+      const manifestPolicy = MODULE_MANIFEST[moduleId as keyof typeof MODULE_MANIFEST]?.securityPolicy;
+      const requiresVault = manifestPolicy ? (manifestPolicy.mandatory || manifestPolicy.defaultLocked) : false;
 
-    const docId = `${uid}_${moduleId}`;
-    const embeddedEvent: SessionEventSummary = {
-      ...event,
-      embedding: event.embedding || await EmbeddingService.embed(`${event.summary}\n${event.keyInsights.join('\n')}`)
-    };
-
-    if (encryptionKey) {
-      try {
-        let existingMetadata: Record<string, unknown> = {};
-        let existingHistory: SessionEventSummary[] = [];
-        const existingDoc = await dataLayer.getDocument<ModuleMemoryEnvelope & { encryptedPayload?: { ciphertext: string; iv: string } }>(
-          COLLECTION_PREFIX, docId
-        );
-        if (existingDoc) {
-          existingMetadata = (existingDoc.metadata as Record<string, unknown>) || {};
-          if (existingDoc.encryptedPayload) {
-            try {
-              const decrypted = await decryptWithKey(existingDoc.encryptedPayload, encryptionKey);
-              const parsed = JSON.parse(decrypted) as Pick<ModuleMemoryEnvelope, 'eventHistory'>;
-              existingHistory = parsed.eventHistory || [];
-            } catch (error) {
-              console.warn('[ModuleMemoryService] Failed to decrypt existing envelope, starting new history:', error);
-            }
-          } else if (Array.isArray(existingDoc.eventHistory)) {
-            existingHistory = existingDoc.eventHistory;
-          }
-        }
-
-        const nextHistory = [...existingHistory, embeddedEvent];
-        const encryptedPayload = await encryptWithKey(
-          JSON.stringify({
-            latestSnapshot: snapshot,
-            eventHistory: nextHistory,
-            facts
-          }),
-          encryptionKey
-        );
-
-        await dataLayer.setDocument(COLLECTION_PREFIX, docId, {
-          moduleId,
-          lastActive: now,
-          // Do not persist plaintext event history when vault is available
-          latestSnapshot: '',
-          eventHistory: [],
-          encryptedPayload,
-          metadata: {
-            ...existingMetadata,
-            vault: {
-              encrypted: true,
-              salt: VAULT_SALT_MARKER,
-              eventCount: nextHistory.length,
-              updatedAt: now
-            }
-          }
-        });
-        return;
-      } catch (error) {
-        console.error('[ModuleMemoryService] Failed to commit encrypted session:', error);
+      if (requiresVault && !encryptionKey) {
+        console.warn(`[ModuleMemoryService] Vault key required for ${moduleId} episodic write. Skipping persistence.`);
         return;
       }
-    }
 
-    // Fallback (non-vault modules): read existing history, append, then write back
-    try {
-      const existingDoc = await dataLayer.getDocument<{ eventHistory?: SessionEventSummary[]; metadata?: Record<string, unknown> }>(
-        COLLECTION_PREFIX, docId
-      );
-      const existingHistory: SessionEventSummary[] = Array.isArray(existingDoc?.eventHistory)
-        ? existingDoc.eventHistory as SessionEventSummary[]
-        : [];
-      await dataLayer.setDocument(COLLECTION_PREFIX, docId, {
-        moduleId,
-        eventHistory: [...existingHistory, embeddedEvent],
-        latestSnapshot: snapshot,
-        metadata: { ...(existingDoc?.metadata || {}), facts },
-        lastActive: now
-      });
-    } catch (error) {
-      console.error('[ModuleMemoryService] Failed to commit session:', error);
-    }
+      const docId = `${uid}_${moduleId}`;
+      const embeddedEvent: SessionEventSummary = {
+        ...event,
+        embedding: event.embedding || await EmbeddingService.embed(`${event.summary}\n${event.keyInsights.join('\n')}`)
+      };
+
+      if (encryptionKey) {
+        try {
+          let existingMetadata: Record<string, unknown> = {};
+          let existingHistory: SessionEventSummary[] = [];
+          const existingDoc = await dataLayer.getDocument<ModuleMemoryEnvelope & { encryptedPayload?: { ciphertext: string; iv: string } }>(
+            COLLECTION_PREFIX, docId
+          );
+          if (existingDoc) {
+            existingMetadata = (existingDoc.metadata as Record<string, unknown>) || {};
+            if (existingDoc.encryptedPayload) {
+              try {
+                const decrypted = await decryptWithKey(existingDoc.encryptedPayload, encryptionKey);
+                const parsed = JSON.parse(decrypted) as Pick<ModuleMemoryEnvelope, 'eventHistory'>;
+                existingHistory = parsed.eventHistory || [];
+              } catch (error) {
+                console.warn('[ModuleMemoryService] Failed to decrypt existing envelope, starting new history:', error);
+              }
+            } else if (Array.isArray(existingDoc.eventHistory)) {
+              existingHistory = existingDoc.eventHistory;
+            }
+          }
+
+          const nextHistory = [...existingHistory, embeddedEvent];
+          const encryptedPayload = await encryptWithKey(
+            JSON.stringify({
+              latestSnapshot: snapshot,
+              eventHistory: nextHistory,
+              facts
+            }),
+            encryptionKey
+          );
+
+          await dataLayer.setDocument(COLLECTION_PREFIX, docId, {
+            moduleId,
+            lastActive: now,
+            // Do not persist plaintext event history when vault is available
+            latestSnapshot: '',
+            eventHistory: [],
+            encryptedPayload,
+            metadata: {
+              ...existingMetadata,
+              vault: {
+                encrypted: true,
+                salt: VAULT_SALT_MARKER,
+                eventCount: nextHistory.length,
+                updatedAt: now
+              }
+            }
+          });
+          return;
+        } catch (error) {
+          console.error('[ModuleMemoryService] Failed to commit encrypted session:', error);
+          // Re-throw so the queue's retry mechanism can attempt the write once more.
+          throw error;
+        }
+      }
+
+      // Fallback (non-vault modules): read existing history, append, then write back
+      try {
+        const existingDoc = await dataLayer.getDocument<{ eventHistory?: SessionEventSummary[]; metadata?: Record<string, unknown> }>(
+          COLLECTION_PREFIX, docId
+        );
+        const existingHistory: SessionEventSummary[] = Array.isArray(existingDoc?.eventHistory)
+          ? existingDoc.eventHistory as SessionEventSummary[]
+          : [];
+        await dataLayer.setDocument(COLLECTION_PREFIX, docId, {
+          moduleId,
+          eventHistory: [...existingHistory, embeddedEvent],
+          latestSnapshot: snapshot,
+          metadata: { ...(existingDoc?.metadata || {}), facts },
+          lastActive: now
+        });
+      } catch (error) {
+        console.error('[ModuleMemoryService] Failed to commit session:', error);
+        // Re-throw so the queue's retry mechanism can attempt the write once more.
+        throw error;
+      }
+    });
   },
 
   async saveActiveSession(uid: string, session: ActiveSessionState): Promise<void> {

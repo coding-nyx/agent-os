@@ -109,6 +109,28 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   return { publicText, internalText, isThinking, isActing, currentActionType };
 }
 
+/**
+ * Strips an incomplete XML/HTML tag from the END of a streaming chunk.
+ *
+ * When a chunk boundary falls inside a tag (e.g. the stream delivers `<`,
+ * `<th`, `<think`, or `<action type="fo`) before the closing `>` has
+ * arrived, the raw `<...` fragment must be withheld from the UI until the
+ * tag is complete. This prevents raw angle-bracket artefacts flickering
+ * during streaming.
+ *
+ * Only the trailing incomplete tag is removed; all complete tags and
+ * regular text content are left untouched.
+ *
+ * @example
+ *   stripPartialLeadingTag("Hello world <")        // "Hello world "
+ *   stripPartialLeadingTag("Hello world <br")      // "Hello world "
+ *   stripPartialLeadingTag("Hello world <br>")     // "Hello world <br>"  (complete — unchanged)
+ *   stripPartialLeadingTag("Hello world")          // "Hello world"       (no tag — unchanged)
+ */
+export function stripPartialLeadingTag(text: string): string {
+  return text.replace(/<[^>]*$/, '');
+}
+
 export function sanitizeJsonPayload(content: string): string {
   if (!content) return '';
   

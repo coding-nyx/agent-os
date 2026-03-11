@@ -148,6 +148,30 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Chat Threads (multi-turn conversation history)
+    match /chat_threads/{docId} {
+      allow read, write, delete: if isAuthenticated() && docId.matches('^' + request.auth.uid + '_.+$');
+    }
+
+    // Notebook Cells (Scout/document workspace)
+    match /notebook_cells/{docId} {
+      allow read, write, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Derived Insights (cross-module aggregated intelligence)
+    match /derived_insights/{userId} {
+      allow read, write: if isOwner(userId);
+      match /{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Bridge Config (cross-module coordination config)
+    match /bridge_config/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // Default deny all other documents
     match /{document=**} {
       allow read, write: if false;

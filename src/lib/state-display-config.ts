@@ -83,6 +83,7 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   SECURITY_POLICY_UPDATED: 'Security settings updated',
   FINANCIAL_STRESS: 'Financial stress flagged',
   MEDICAL_ALERT: 'Medical alert',
+  CRISIS_DETECTED: 'Crisis Detected',
   DRAFT_PROPOSED: 'Suggestion proposed',
   DRAFT_APPROVED: 'Suggestion approved',
   DRAFT_DISMISSED: 'Suggestion dismissed',
@@ -181,6 +182,12 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   WEEKLY_REVIEW_DUE: 'Weekly review due',
   // Atlas Schedule Events (S9-002)
   ROUTINE_UPDATED: 'Daily schedule updated',
+  // Agnes Somatic Support (S14-006)
+  SOMATIC_SUPPORT_REQUESTED: 'Somatic support triggered',
+  // Atlas Morning/Evening Intelligence Cadence (S9-007)
+  MORNING_BRIEF_DUE: 'Morning brief ready',
+  EVENING_CHECKIN_DUE: 'Evening check-in ready',
+  COMMITMENT_MISSED: 'Commitment Missed',
 };
 
 // ---------------------------------------------------------------------------

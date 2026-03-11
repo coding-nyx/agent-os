@@ -58,6 +58,9 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
   const [activeView, setActiveView] = useState<any>('today');
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [weeklyReviewPending, setWeeklyReviewPending] = useState<boolean>(false);
+  // S9-007: Morning / Evening intelligence cadence — driven by Spine events.
+  const [showMorningBrief, setShowMorningBrief] = useState(false);
+  const [showEveningCheckin, setShowEveningCheckin] = useState(false);
 
   // On mount: check if a review is overdue without waiting for a Spine event.
   useEffect(() => {
@@ -74,10 +77,46 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
     setWeeklyReviewPending(true);
   });
 
+  // S9-007: React to morning/evening cadence events from cascade rules.
+  useSpineEvent('MORNING_BRIEF_DUE', () => {
+    setShowMorningBrief(true);
+  });
+  useSpineEvent('EVENING_CHECKIN_DUE', () => {
+    setShowEveningCheckin(true);
+  });
+
   const handleReviewOpened = useCallback(() => {
     setWeeklyReviewPending(false);
     localStorage.setItem('atlas_last_weekly_review', new Date().toISOString());
   }, []);
+
+  // S9-008: Atlas Failure Notification Loop — emit COMMITMENT_MISSED once per
+  // calendar day when the profile contains tasks whose deadline has passed.
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const sessionKey = `atlas_commitment_checked_${today}`;
+    if (!sessionStorage.getItem(sessionKey) && profile?.tasks) {
+      const overdueTasks = profile.tasks.filter(
+        (t) =>
+          t.status !== 'done' &&
+          t.deadline !== undefined &&
+          t.deadline < today,
+      );
+      if (overdueTasks.length > 0) {
+        Spine.publish({
+          type: 'COMMITMENT_MISSED',
+          source: 'atlas',
+          domain: 'C',
+          priority: 'alert',
+          data: {
+            overdueCount: overdueTasks.length,
+            taskIds: overdueTasks.map((t) => t.id),
+          },
+        });
+        sessionStorage.setItem(sessionKey, '1');
+      }
+    }
+  }, [profile]);
 
   // AI Logic for Atlas
   const ai = useModuleAI({
@@ -362,6 +401,10 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
         predictiveDisplay={predictiveDisplay}
         weeklyReviewPending={weeklyReviewPending}
         onReviewOpened={handleReviewOpened}
+        morningBriefVisible={showMorningBrief}
+        onMorningBriefDismiss={() => setShowMorningBrief(false)}
+        eveningCheckinVisible={showEveningCheckin}
+        onEveningCheckinDismiss={() => setShowEveningCheckin(false)}
         preferenceMode={profile?.preferenceMode ?? 'conversational'}
         onTogglePreferenceMode={() => {
           if (!profile) return;

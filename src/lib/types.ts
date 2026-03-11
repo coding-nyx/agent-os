@@ -172,6 +172,7 @@ export type SpineEventType =
   | 'SECURITY_POLICY_UPDATED'
   | 'FINANCIAL_STRESS'
   | 'MEDICAL_ALERT'
+  | 'CRISIS_DETECTED'
   | 'DRAFT_PROPOSED'
   | 'DRAFT_APPROVED'
   | 'DRAFT_DISMISSED'
@@ -270,7 +271,14 @@ export type SpineEventType =
   // Atlas Weekly Review (S9-005)
   | 'WEEKLY_REVIEW_DUE'
   // Atlas Schedule Events (S9-002)
-  | 'ROUTINE_UPDATED';
+  | 'ROUTINE_UPDATED'
+  // Agnes Somatic Support (S14-006)
+  | 'SOMATIC_SUPPORT_REQUESTED'
+  // Atlas Morning/Evening Intelligence Cadence (S9-007)
+  | 'MORNING_BRIEF_DUE'
+  | 'EVENING_CHECKIN_DUE'
+  // Atlas Failure Notification Loop (S9-008)
+  | 'COMMITMENT_MISSED';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'alert' | 'critical';
@@ -639,6 +647,10 @@ export interface TitanProfile {
   workoutSessions?: WorkoutSession[];
   /** Personal records keyed by exercise name (lowercase). Auto-updated on session log. */
   personalRecords?: Record<string, PersonalRecord>;
+  /** Structured workout logs keyed to canonical exercise library IDs. */
+  workoutLogs?: TitanWorkoutLog[];
+  /** User's personal exercise library (defaults to the canonical set, extensible). */
+  exerciseLibrary?: TitanExerciseEntry[];
   /** Whether Direct Write Mode is enabled (bypasses AI gating for logging operations). */
   directWriteMode?: boolean;
   createdAt: string;
@@ -680,6 +692,51 @@ export interface Routine {
   timeframe?: string;
   status?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Titan exercise-library types (granular muscle groups, canonical exercise
+// identities). Prefixed with `Titan` to avoid collision with the routine
+// Exercise/MuscleGroup types defined below.
+// ---------------------------------------------------------------------------
+
+export type TitanMuscleGroup =
+  | 'chest' | 'back' | 'shoulders' | 'biceps' | 'triceps'
+  | 'forearms' | 'core' | 'glutes' | 'quads' | 'hamstrings'
+  | 'calves' | 'traps' | 'lats' | 'full_body' | 'cardio';
+
+export type TitanExerciseCategory = 'compound' | 'isolation' | 'cardio' | 'mobility';
+
+/** An entry in the canonical exercise library (distinct from Routine > Exercise). */
+export interface TitanExerciseEntry {
+  id: string;
+  name: string;
+  muscleGroups: TitanMuscleGroup[];
+  category: TitanExerciseCategory;
+  equipment: string[];
+  aliases?: string[];
+}
+
+/** A single logged set linked to a canonical exercise ID. */
+export interface TitanWorkoutSet {
+  exerciseId: string;
+  weight: number;
+  reps: number;
+  rir?: number;
+  notes?: string;
+}
+
+/** A dated workout log composed of one or more TitanWorkoutSets. */
+export interface TitanWorkoutLog {
+  id: string;
+  date: string;            // ISO YYYY-MM-DD
+  sets: TitanWorkoutSet[];
+  durationMinutes?: number;
+  notes?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Original (routine) muscle-group / exercise types — kept unchanged below.
+// ---------------------------------------------------------------------------
 
 export type MuscleGroup =
   | 'chest' | 'back' | 'shoulders' | 'quads' | 'hamstrings'
@@ -762,6 +819,7 @@ export interface BaseContext {
     tone?: string;
     traits?: string[];
   };
+  somaticEnabled?: boolean; // default true when absent
   childhood?: string;
   trauma?: string;
   history?: string;
@@ -915,6 +973,8 @@ export interface AtlasHabit {
   resumeDate?: string;
   metricValue?: number;
   logs?: { date: string; value: string | number; notes?: string }[];
+  /** Sprint-B: ISO date strings (YYYY-MM-DD) for each day the habit was marked complete */
+  completionLog?: string[];
   createdAt: string;
   updatedAt: string;
 }

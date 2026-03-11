@@ -108,13 +108,8 @@ const TRAINER_STEPS = [
   },
   {
     key: 'history',
-    label: 'History & Goals',
-    helperText: 'Capture injuries, past training, and measurable targets.'
-  },
-  {
-    key: 'sync',
-    label: 'Routine Sync',
-    helperText: 'Finalize the profile and lock routine-ready state.'
+    label: 'History, Goals & Routine Setup',
+    helperText: 'Capture injuries, past training, and measurable targets — then finalize the profile and lock routine-ready state.'
   }
 ] as const;
 

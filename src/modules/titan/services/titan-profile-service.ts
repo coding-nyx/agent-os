@@ -27,6 +27,9 @@ export function createEmptyTitanProfile(): TitanProfile {
     clearances: [],
     medicalImageAnalyses: [],
     medicalSummary: '',
+    // Exercise identity / workout log fields
+    workoutLogs: [],
+    exerciseLibrary: [],
   };
 }
 
@@ -62,6 +65,8 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
     medicalSummary: typeof (data as Record<string, unknown>).medicalSummary === 'string' ? (data as Record<string, unknown>).medicalSummary as string : '',
     medicalOnboardingComplete: data.medicalOnboardingComplete === true,
     personalRecords: data.personalRecords && typeof data.personalRecords === 'object' ? (data.personalRecords as TitanProfile['personalRecords']) : {},
+    workoutLogs: Array.isArray(data.workoutLogs) ? (data.workoutLogs as NonNullable<TitanProfile['workoutLogs']>).slice(0, 1000) : base.workoutLogs,
+    exerciseLibrary: Array.isArray(data.exerciseLibrary) ? (data.exerciseLibrary as NonNullable<TitanProfile['exerciseLibrary']>) : base.exerciseLibrary,
     directWriteMode: data.directWriteMode === true,
   };
 }

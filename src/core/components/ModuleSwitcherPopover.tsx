@@ -9,10 +9,9 @@ interface ModuleSwitcherPopoverProps {
   currentModuleId?: ModuleId | string;
 }
 
-// Modules shown in the popover: HUB_MODULE_ORDER + orchestrator (soma also has a page, include it)
-// Exclude bridge (hasPage: false)
+// Modules shown in the popover grid — orchestrator (Nexus) is handled
+// separately as the HOME button above, so exclude it here.
 const POPOVER_MODULE_IDS: ModuleId[] = [
-  'orchestrator',
   ...HUB_MODULE_ORDER,
   'soma',
 ];

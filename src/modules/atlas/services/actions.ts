@@ -1107,20 +1107,19 @@ export function registerAtlasActions() {
 
     // === S9-002: Daily Schedule Generation ===
 
-    generate_daily_schedule: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
+    generate_daily_schedule: async ({ userId, encryptionKey, payload, emitSpineEvent, pushAssistantMessage }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
-      const date = typeof payload?.date === 'string' ? payload.date : new Date().toISOString().slice(0, 10);
-      const scheduledBlocks = Array.isArray(payload?.scheduledBlocks) ? payload.scheduledBlocks : [];
-      if (scheduledBlocks.length === 0) return;
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      const targetDate = typeof payload?.targetDate === 'string' ? payload.targetDate : todayStr;
 
-      const totalEnergyCost = typeof payload?.totalEnergyCost === 'number' ? payload.totalEnergyCost : 0;
-      let notes = typeof payload?.notes === 'string' ? payload.notes : undefined;
-
-      // Read energy budget from NSV for validation
-      let energyBudget = 8; // safe default
-      if (userId) {
+      // Resolve energy budget: payload → NSV → safe default
+      let energyBudget = 8;
+      if (typeof payload?.energyBudget === 'number' && Number.isFinite(payload.energyBudget)) {
+        energyBudget = payload.energyBudget;
+      } else if (userId) {
         const projection = await GlobalProjectionService.getProjection(userId).catch(() => null);
         const budgetVal = projection?.crossFunctionalState?.cognitive?.energyBudget;
         if (typeof budgetVal === 'number' && Number.isFinite(budgetVal)) {
@@ -1128,63 +1127,117 @@ export function registerAtlasActions() {
         }
       }
 
-      // Warn when energy cost exceeds budget — still proceed per spec
-      if (totalEnergyCost > energyBudget) {
-        const warning = `[ENERGY WARNING] totalEnergyCost ${totalEnergyCost} exceeds energyBudget ${energyBudget}.`;
-        console.warn('[Atlas generate_daily_schedule]', warning);
-        notes = notes ? `${notes}\n${warning}` : warning;
-      }
+      const isLowEnergy = energyBudget < 5;
+      // "morning" = before noon on the target date (use today's wall-clock hour when
+      // scheduling today; treat other dates as if scheduling from start-of-day).
+      const isMorning = targetDate === todayStr ? today.getHours() < 12 : true;
+
+      // ── Step 1: Filter eligible tasks ───────────────────────────────────────
+      // Include queued/active tasks that are unscheduled, scheduled for today,
+      // overdue, or whose deadline falls on or before the target date.
+      const eligible = profile.tasks.filter(task => {
+        if (task.status !== 'queued' && task.status !== 'active') return false;
+        if (!task.scheduledSlot && !task.deadline) return true;
+        if (task.scheduledSlot && task.scheduledSlot <= targetDate) return true;
+        if (task.deadline && task.deadline.slice(0, 10) <= targetDate) return true;
+        return false;
+      });
+
+      // ── Step 2: Sort ─────────────────────────────────────────────────────────
+      // Overdue first → priority descending (5 = highest) →
+      // energyCost: descending when morning+budget OK (front-load heavy tasks),
+      //             ascending when low-energy (protect capacity).
+      const taskIsOverdue = (t: AtlasTask): boolean => {
+        if (t.deadline && t.deadline.slice(0, 10) < targetDate) return true;
+        if (t.scheduledSlot && t.scheduledSlot < targetDate) return true;
+        return false;
+      };
+
+      const sorted = [...eligible].sort((a, b) => {
+        const aDue = taskIsOverdue(a) ? 1 : 0;
+        const bDue = taskIsOverdue(b) ? 1 : 0;
+        if (aDue !== bDue) return bDue - aDue;                       // overdue first
+
+        const priorityDiff = b.priority - a.priority;                 // high priority first
+        if (priorityDiff !== 0) return priorityDiff;
+
+        // Front-load heavy tasks in the morning when energy is available;
+        // use ascending order when budget is low to protect remaining capacity.
+        return (!isLowEnergy && isMorning)
+          ? b.energyCost - a.energyCost   // heavy first
+          : a.energyCost - b.energyCost;  // light first
+      });
+
+      // ── Step 3: Build ScheduledTask blocks ───────────────────────────────────
+      const MAX_DAILY_TASKS = 8;
+      const capped = sorted.slice(0, MAX_DAILY_TASKS);
+
+      const deriveCategory = (cost: number): ScheduledTask['category'] => {
+        if (cost >= 8) return 'deep_work';
+        if (cost >= 5) return 'admin';
+        return 'other';
+      };
 
       const now = new Date().toISOString();
-      const validCategories: ScheduledTask['category'][] = ['deep_work', 'admin', 'social', 'physical', 'creative', 'other'];
+      const BREAK_MINUTES = 5;
+      let slotMinutes = 9 * 60; // scheduling starts at 09:00
 
-      const newBlocks: ScheduledTask[] = (scheduledBlocks as Record<string, unknown>[]).map(block => {
-        const startTime = typeof block?.startTime === 'string' ? block.startTime : '09:00';
-        const endTime = typeof block?.endTime === 'string' ? block.endTime : '10:00';
+      const newBlocks: ScheduledTask[] = capped.map(task => {
+        // Duration proportional to energy cost: min 15 min, ~12 min per energy point
+        const duration = Math.max(15, Math.round(task.energyCost * 12));
+        const h = Math.floor(slotMinutes / 60);
+        const m = slotMinutes % 60;
+        const startTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        slotMinutes += duration + BREAK_MINUTES;
 
-        // Derive duration in minutes from HH:mm range
-        const [startH = 9, startM = 0] = startTime.split(':').map(Number);
-        const [endH = 10, endM = 0] = endTime.split(':').map(Number);
-        const duration = Math.max(15, (endH * 60 + endM) - (startH * 60 + startM));
-
-        const typeStr = typeof block?.type === 'string' ? block.type : 'other';
-        const category: ScheduledTask['category'] = validCategories.includes(typeStr as ScheduledTask['category'])
-          ? (typeStr as ScheduledTask['category'])
-          : 'other';
-
-        const entry: ScheduledTask = {
+        return {
           id: `sched_${crypto.randomUUID()}`,
-          title: typeof block?.title === 'string' ? block.title : 'Scheduled Block',
-          energyCost: parseBoundedScore(block?.energyCost),
-          focusCost: 5,
-          scheduledAt: `${date}T${startTime}`,
+          title: task.title,
+          energyCost: task.energyCost,
+          focusCost: Math.max(1, Math.round(task.energyCost * 0.8)),
+          scheduledAt: `${targetDate}T${startTime}`,
           duration,
-          category,
-          status: 'scheduled',
-          dependencies: typeof block?.taskId === 'string' ? [block.taskId] : undefined,
+          category: deriveCategory(task.energyCost),
+          status: 'scheduled' as const,
+          dependencies: [task.id],
           blockedBy: null,
           createdAt: now
         };
-        return entry;
       });
 
-      // Replace all blocks for the same date, then append fresh blocks
+      // ── Step 4: Persist — replace existing blocks for this date ──────────────
       profile.scheduledTasks = [
-        ...profile.scheduledTasks.filter(t => !t.scheduledAt.startsWith(date)),
+        ...profile.scheduledTasks.filter(t => !t.scheduledAt.startsWith(targetDate)),
         ...newBlocks
       ];
 
-      // Carry the warning forward into the profile notes field if applicable
-      if (notes && typeof notes === 'string') {
-        void notes; // already annotated above — suppress lint; payload notes are informational only
-      }
-
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
 
+      // ── Step 5: Emit Spine events ─────────────────────────────────────────────
       emitSpineEvent('ROUTINE_UPDATED', {
-        date,
-        blockCount: scheduledBlocks.length
+        date: targetDate,
+        blockCount: newBlocks.length,
+        source: 'generate_daily_schedule'
       });
+
+      emitSpineEvent('ATLAS_STATE_CHANGED', {
+        reason: 'daily_schedule_generated',
+        taskCount: newBlocks.length,
+        date: targetDate
+      });
+
+      // ── Step 6: Push summary message ─────────────────────────────────────────
+      if (pushAssistantMessage && newBlocks.length > 0) {
+        const overdueCount = capped.filter(taskIsOverdue).length;
+        const overdueNote = overdueCount > 0 ? ` (${overdueCount} overdue)` : '';
+        const topPreviews = capped.slice(0, 3).map(t => `• ${t.title}`).join('\n');
+        const budgetNote = isLowEnergy ? ' Light tasks are front-loaded to protect your energy.' : '';
+        pushAssistantMessage(
+          `Your day is scheduled. ${newBlocks.length} task${newBlocks.length !== 1 ? 's' : ''}${overdueNote} queued for ${targetDate}.${budgetNote}\n\nTop priorities:\n${topPreviews}`
+        );
+      } else if (pushAssistantMessage && newBlocks.length === 0) {
+        pushAssistantMessage(`No active or queued tasks found for ${targetDate}. Your schedule is clear.`);
+      }
     },
 
     // === S9-004b: Set Task Recurrence ===

@@ -18,6 +18,7 @@ interface NexusDashboardProps {
     error: string | null;
     quota: GuestQuota | null;
     handleSendMessage: (content: MessageContent, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
+    clearSession: () => Promise<void>;
   };
   agentName: string;
 }
@@ -133,6 +134,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
           themeColor="indigo"
           placeholder="Ask Nexus anything — system command, cross-domain analysis, or module routing..."
           moduleId="orchestrator"
+          onClearHistory={ai.clearSession}
         />
 
         {/* Routing suggestion — inline below chat input */}

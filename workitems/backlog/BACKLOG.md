@@ -2,8 +2,9 @@
 
 This backlog tracks the prioritized features, enhancements, and architectural shifts for the Nexus (AGNES) ecosystem.
 
-**Current Sprint:** `None` (Sprint 7 planning queue)  
-**Completed Sprint:** `workitems/sprints/SPRINT_6.md` (Closed March 10, 2026)
+**Current Sprint:** `workitems/sprints/SPRINT_16.md` (PLANNED)
+**Completed Sprint:** `workitems/sprints/SPRINT_15.md` (Closed March 2026)  
+**Completed Sprint:** `workitems/sprints/SPRINT_14.md` (Closed March 11, 2026)
 
 ## Priority Order (Effective March 10, 2026)
 1. **P0 — Core/Spine completion and safety**

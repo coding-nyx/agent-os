@@ -23,7 +23,7 @@ import { MODULE_MANIFEST } from '../module-manifest';
 import { NexusLogger } from '@/lib/nexus-logger';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
 
-export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual';
+export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual' | 'ephemeral';
 
 interface UseModuleAIOptions {
   moduleId: string;
@@ -192,7 +192,20 @@ export function useModuleAI({
     let mounted = true;
     let unsubscribe: (() => void) | null = null;
 
-    if (user && !isGuest) {
+    if (persistencePolicy === 'ephemeral') {
+      // Ephemeral (impromptu) sessions: sessionStorage only, never Firestore
+      try {
+        const cached = sessionStorage.getItem(`nexus_session_${moduleId}_${activeSessionId}`);
+        if (cached && mounted) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.history?.length > 0) {
+            setMessages(parsed.history);
+            sessionStartRef.current = parsed.startTime || new Date().toISOString();
+          }
+        }
+      } catch { /* ignore parse errors */ }
+      setIsHydrating(false);
+    } else if (user && !isGuest) {
       unsubscribe = ModuleMemoryService.subscribeActiveSession(user.uid, moduleId, activeSessionId, (session) => {
         if (!mounted) return;
         if (session && session.history.length > 0) {
@@ -207,7 +220,7 @@ export function useModuleAI({
         setIsHydrating(false);
       });
     } else {
-      // Guest/impromptu: try restoring from sessionStorage
+      // Guest: try restoring from sessionStorage
       try {
         const cached = sessionStorage.getItem(`nexus_session_${moduleId}_${activeSessionId}`);
         if (cached && mounted) {
@@ -225,7 +238,7 @@ export function useModuleAI({
       mounted = false;
       if (unsubscribe) unsubscribe();
     };
-  }, [user, isGuest, moduleId, activeSessionId]);
+  }, [user, isGuest, moduleId, activeSessionId, persistencePolicy]);
 
   // Save active session to Firestore with debounce; guest sessions to sessionStorage
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -453,6 +466,7 @@ export function useModuleAI({
         };
 
         const delegateToModule = (target: string, reason: string, delegationContent: string) => {
+          if (persistencePolicy === 'ephemeral') return;
              NexusHandoffService.store({
                 moduleId: target,
                 type: 'delegate',
@@ -474,6 +488,9 @@ export function useModuleAI({
 
         for (const parsedAction of response.actions) {
           const { type, payload } = parsedAction;
+
+          // Ephemeral (impromptu) sessions produce zero side-effects
+          if (persistencePolicy === 'ephemeral') break;
 
           if (!allowedActions.includes(type)) {
             console.warn(`[SchemaGuard] Blocked unauthorized action "${type}" for module "${moduleId}"`);
@@ -523,7 +540,7 @@ export function useModuleAI({
 
         // CRITICAL FIX: Persist NSV updates BEFORE emitting MODULE_PROFILE_UPDATED
         // This ensures profile refresh happens with stable NSV state, preventing stale reads
-        const shouldUpdateGlobalSoul = persistencePolicy !== 'scout-research' && user && !isGuest && Object.keys(soulUpdates).length > 0;
+        const shouldUpdateGlobalSoul = persistencePolicy !== 'scout-research' && persistencePolicy !== 'ephemeral' && user && !isGuest && Object.keys(soulUpdates).length > 0;
 
         if (shouldUpdateGlobalSoul && user) {
           await GlobalProjectionService.updateCrossFunctionalState(user.uid, soulUpdates);
@@ -541,7 +558,7 @@ export function useModuleAI({
         // Only emit MODULE_PROFILE_UPDATED when an action handler explicitly marked the
         // profile as dirty. NSV-only actions (e.g. update_emotional_resilience) propagate
         // through VITAL_UPDATED and the GlobalSoul Firestore subscription instead.
-        if (profileDirty) {
+        if (profileDirty && persistencePolicy !== 'ephemeral') {
           Spine.emit({
             type: 'MODULE_PROFILE_UPDATED' as any,
             source: moduleId,

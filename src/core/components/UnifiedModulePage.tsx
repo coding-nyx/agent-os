@@ -32,7 +32,7 @@ interface UnifiedModulePageProps<TProfile extends { onboardingComplete?: boolean
   requireVault?: boolean;
   noContainer?: boolean;
   hideNavigation?: boolean;
-  renderLeftRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
+  renderLeftRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null; persistProfile: (profile: TProfile) => Promise<void> }) => React.ReactNode;
   renderRightRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
   renderMobileFooter?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
 }
@@ -294,7 +294,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         themeColor={themeColor} 
         moduleId={moduleId}
         hideNavigation={hideNavigation}
-        renderLeftRail={renderLeftRail ? () => renderLeftRail({ profile, encryptionKey }) : undefined}
+        renderLeftRail={renderLeftRail ? () => renderLeftRail({ profile, encryptionKey, persistProfile }) : undefined}
         renderRightRail={renderRightRail ? () => renderRightRail({ profile, encryptionKey }) : undefined}
         renderMobileFooter={renderMobileFooter ? () => renderMobileFooter({ profile, encryptionKey }) : undefined}
     >

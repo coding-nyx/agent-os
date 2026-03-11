@@ -119,10 +119,161 @@ export const ATLAS_CASCADE_RULES: CascadeRule[] = [
   }
 ];
 
+// ---------------------------------------------------------------------------
+// Agnes Somatic Support Cascade Rule (S14-006)
+// ---------------------------------------------------------------------------
+
+export const AGNES_CASCADE_RULES: CascadeRule[] = [
+  {
+    id: 'agnes-burnout-to-somatic-support',
+    trigger: 'BURNOUT_WARNING' as SpineEventType,
+    condition: (event) => event.type === 'BURNOUT_WARNING' && event.domain === 'B',
+    transform: (event) => ({
+      type: 'SOMATIC_SUPPORT_REQUESTED' as SpineEventType,
+      domain: 'E' as const,
+      source: 'spine-cascade',
+      priority: 'alert' as const,
+      data: {
+        triggeredBy: 'BURNOUT_WARNING',
+        cnsFatigue: event.data.cnsFatigue,
+        timestamp: new Date().toISOString()
+      }
+    })
+  }
+];
+
+export function registerAgnesCascadeRules(): void {
+  const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
+  if (spine?.registerCascadeRules) {
+    spine.registerCascadeRules(AGNES_CASCADE_RULES);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Atlas Morning / Evening Intelligence Cadence (S9-007)
+// ---------------------------------------------------------------------------
+
+/** localStorage key for the last morning brief acknowledgement. */
+const MORNING_BRIEF_KEY = 'atlas_last_morning_brief';
+
+/**
+ * Returns true when a morning brief has not yet been shown today.
+ * Compares the stored ISO date string to today's calendar date — once per day.
+ */
+function isMorningBriefDue(): boolean {
+  try {
+    const last = localStorage.getItem(MORNING_BRIEF_KEY);
+    if (!last) return true;
+    return new Date(last).toDateString() !== new Date().toDateString();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns true when the evening check-in should be offered.
+ * Conditions: local hour is between 19:00 (inclusive) and 22:00 (exclusive),
+ * and the check-in has not already been shown today.
+ */
+function isEveningCheckinDue(): boolean {
+  try {
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour < 19 || hour >= 22) return false;
+    const key = 'atlas_last_evening_checkin';
+    const last = localStorage.getItem(key);
+    if (!last) return true;
+    return new Date(last).toDateString() !== now.toDateString();
+  } catch {
+    return false;
+  }
+}
+
+export const ATLAS_MORNING_RULES: CascadeRule[] = [
+  {
+    id: 'atlas-morning-brief-session',
+    trigger: 'SESSION_STARTED' as SpineEventType,
+    condition: () => isMorningBriefDue(),
+    transform: (event) => ({
+      type: 'MORNING_BRIEF_DUE' as SpineEventType,
+      domain: 'C' as const,
+      source: event.source,
+      priority: 'info' as const,
+      data: { triggeredBy: 'SESSION_STARTED', timestamp: new Date().toISOString() }
+    })
+  },
+  {
+    id: 'atlas-evening-checkin-session',
+    trigger: 'SESSION_STARTED' as SpineEventType,
+    condition: () => isEveningCheckinDue(),
+    transform: (event) => ({
+      type: 'EVENING_CHECKIN_DUE' as SpineEventType,
+      domain: 'C' as const,
+      source: event.source,
+      priority: 'info' as const,
+      data: { triggeredBy: 'SESSION_STARTED', timestamp: new Date().toISOString() }
+    })
+  }
+];
+
 export function registerAtlasCascadeRules(): void {
   const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
   if (spine?.registerCascadeRules) {
     spine.registerCascadeRules(ATLAS_CASCADE_RULES);
+    spine.registerCascadeRules(ATLAS_MORNING_RULES);
+  }
+}
 
+// ---------------------------------------------------------------------------
+// Atlas Failure Notification Loop (S9-008)
+// ---------------------------------------------------------------------------
+
+/**
+ * Cascade rules fired when Atlas detects missed commitments or broken habit
+ * streaks, routing proactive check-in signals to Agnes and the somatic layer.
+ */
+export const ATLAS_FAILURE_RULES: CascadeRule[] = [
+  {
+    id: 'atlas-commitment-missed-to-routine-disrupted',
+    trigger: 'COMMITMENT_MISSED' as SpineEventType,
+    condition: () => true,
+    transform: (event) => ({
+      type: 'ROUTINE_UPDATED' as SpineEventType,
+      domain: 'C' as const,
+      source: event.source,
+      priority: 'alert' as const,
+      data: {
+        triggeredBy: 'COMMITMENT_MISSED',
+        overdueCount: event.data.overdueCount,
+        taskIds: event.data.taskIds,
+      },
+    }),
+  },
+  {
+    id: 'atlas-habit-streak-broken-to-somatic-support',
+    trigger: 'HABIT_STREAK_BROKEN' as SpineEventType,
+    // Only escalate when the broken streak was meaningful (≥ 3 days).
+    condition: (event) => {
+      const days = (event.data as Record<string, unknown>)?.streakDays;
+      return typeof days === 'number' && days >= 3;
+    },
+    transform: (event) => ({
+      type: 'SOMATIC_SUPPORT_REQUESTED' as SpineEventType,
+      domain: 'E' as const,
+      source: 'spine-cascade',
+      priority: 'alert' as const,
+      data: {
+        triggeredBy: 'HABIT_STREAK_BROKEN',
+        streakDays: event.data.streakDays,
+        timestamp: new Date().toISOString(),
+      },
+    }),
+  },
+];
+
+export function registerAtlasFailureRules(): void {
+  const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
+  if (spine?.registerCascadeRules) {
+    spine.registerCascadeRules(ATLAS_FAILURE_RULES);
   }
 }

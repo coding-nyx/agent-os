@@ -19,6 +19,7 @@ import { Agnes3DEnvironment } from './components/Agnes3DEnvironment';
 import { AgnesTelemetryHeader } from './components/AgnesTelemetryHeader';
 import { AgnesPersonalitySidebar } from './components/AgnesPersonalitySidebar';
 import { AgnesTherapistCard } from './components/AgnesTherapistCard';
+import { AgnesSettingsPanel } from './components/AgnesSettingsPanel';
 import {
   createEmptyAgnesProfile,
   loadAgnesProfile,
@@ -33,7 +34,15 @@ import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
 
 type AgnesState = 'selecting' | 'session';
 
-const AgnesSidebar = React.memo(function AgnesSidebar({ profile, agentAlias }: { profile: TherapyIntakeProfile | null; agentAlias: string }) {
+const AgnesSidebar = React.memo(function AgnesSidebar({
+  profile,
+  agentAlias,
+  onSave
+}: {
+  profile: TherapyIntakeProfile | null;
+  agentAlias: string;
+  onSave: (updated: TherapyIntakeProfile) => Promise<void>;
+}) {
   const [collapsed, setCollapsed] = React.useState(false);
   const toggleCollapsed = React.useCallback(() => setCollapsed(c => !c), []);
 
@@ -70,6 +79,11 @@ const AgnesSidebar = React.memo(function AgnesSidebar({ profile, agentAlias }: {
             agentAlias={agentAlias}
             naked
           />
+          <div className="h-px w-full bg-white/[0.06]" />
+          <AgnesSettingsPanel
+            profile={profile}
+            onSave={onSave}
+          />
         </motion.div>
       )}
     </div>
@@ -101,11 +115,16 @@ function AgnesContent({
   }, [currentState, setSessionActive]);
 
   const agentAlias = globalSoul?.displayNames?.agnes || 'Agnes';
-  
-  const systemPrompt = useMemo(
+
+  const isImpromptu = sessionType === 'impromptu';
+
+  const regularSystemPrompt = useMemo(
     () => buildAgnesSessionPrompt(AGNES_PERSONA, profile?.baseContext),
     [profile?.baseContext]
   );
+
+  // Impromptu uses bare persona — no profile context injected
+  const systemPrompt = isImpromptu ? AGNES_PERSONA : regularSystemPrompt;
 
   const {
     messages,
@@ -124,7 +143,10 @@ function AgnesContent({
   } = useModuleAI({
     moduleId: 'agnes',
     systemPrompt,
-    encryptionKey
+    encryptionKey,
+    contextPolicy: isImpromptu ? 'doc-only' : 'prompted',
+    persistencePolicy: isImpromptu ? 'ephemeral' : 'auto',
+    sessionId: isImpromptu ? 'impromptu' : undefined
   });
 
   const handleRouteConfirm = useCallback(() => {
@@ -144,7 +166,6 @@ function AgnesContent({
     if (type === 'continue') {
       setSessionStartedAt(Date.now());
       setCurrentState('session');
-      // Pre-warm memory so the first reply arrives without a retrieval delay
       const ctx = profile?.baseContext;
       if (ctx) {
         const seedParts = [
@@ -157,17 +178,29 @@ function AgnesContent({
       return;
     }
 
-    // Starting a fresh session (new or impromptu)
-    // 1. Clear any existing AI state/messages
+    if (type === 'impromptu') {
+      // Impromptu: do NOT clear the regular Firestore session (C-2 fix).
+      // sessionType change → isImpromptu → useModuleAI switches to sessionId='impromptu'
+      // with persistencePolicy='ephemeral', so messages and hydration are fully isolated.
+      setSessionType('impromptu');
+      setSessionStartedAt(Date.now());
+      setCurrentState('session');
+      const quickSupportGreetings = [
+        "I'm here. This is a private, off-the-record space — nothing is saved. What's going on right now?",
+        "Quick support active. I'm listening, and this stays between us. What do you need right now?",
+        "I've got you. This session is completely detached — no record kept. Tell me what's happening."
+      ];
+      setMessages([{ role: 'assistant', content: quickSupportGreetings[Math.floor(Math.random() * quickSupportGreetings.length)] }]);
+      return;
+    }
+
+    // Starting a new regular session — clear the previous one first
     await clearSession();
-    
-    // 2. Set the new state
-    setSessionType(type);
+    setSessionType('new');
     setSessionStartedAt(Date.now());
     setCurrentState('session');
 
-    // 3. Kick off memory pre-warm in the background for non-impromptu sessions
-    if (type !== 'impromptu' && profile?.baseContext) {
+    if (profile?.baseContext) {
       const ctx = profile.baseContext;
       const seedParts = [
         typeof ctx.struggles !== 'undefined' && `struggles: ${Array.isArray(ctx.struggles) ? ctx.struggles.join(', ') : ctx.struggles}`,
@@ -177,11 +210,9 @@ function AgnesContent({
       prewarmMemory(seedParts || 'therapy session');
     }
 
-    // 4. Define greeting based on type
     const userName = (typeof profile?.baseContext?.identity === 'object' 
       ? profile?.baseContext?.identity?.name 
       : profile?.baseContext?.identity) || 'there';
-
     const isFirstSession = !profile?.baseContext?.sessionCount || profile.baseContext.sessionCount === 0;
 
     const firstTimeGreetings = [
@@ -189,32 +220,16 @@ function AgnesContent({
       `Hello, I'm ${agentAlias}. It's a privilege to establish this link with you. How are you feeling today?`,
       `Hi there, I'm ${agentAlias}. Think of me as a mirror for your inner world. What's on your mind?`
     ];
-
     const returningGreetings = [
       `Hi ${userName}, it's good to see you again. Shall we pick up where we left off?`,
-      `Hello ${userName}, welcome back. I've been holding space for our next session. How has your journey been since we last spoke?`,
+      `Hello ${userName}, welcome back. How has your journey been since we last spoke?`,
       `Hi ${userName}, I'm glad you're back. How are you holding up today?`,
-      `Good to see you, ${userName}. I'm ready whenever you are. What's been surfacing for you lately?`
+      `Good to see you, ${userName}. What's been surfacing for you lately?`
     ];
 
-    const impromptuGreetings = [
-      "Emergency protocol engaged. I am a supportive, in-house neural agent. This session is detached from your primary encrypted context. How can I support you right now?",
-      "Support link active. I'm here for immediate recalibration. What's happening in this moment?",
-      "Priority link established. I'm here to listen and support you through this. Tell me what's on your mind."
-    ];
-
-    let initialMsg = "";
-    if (type === 'impromptu') {
-      initialMsg = impromptuGreetings[Math.floor(Math.random() * impromptuGreetings.length)];
-    } else if (isFirstSession || type === 'new') {
-      // If messages exist but it's marked 'new', it might be a manual restart, 
-      // but we use returning greetings if we have a session count > 0
-      if (!isFirstSession) {
-        initialMsg = returningGreetings[Math.floor(Math.random() * returningGreetings.length)];
-      } else {
-        initialMsg = firstTimeGreetings[Math.floor(Math.random() * firstTimeGreetings.length)];
-      }
-    }
+    const initialMsg = isFirstSession
+      ? firstTimeGreetings[Math.floor(Math.random() * firstTimeGreetings.length)]
+      : returningGreetings[Math.floor(Math.random() * returningGreetings.length)];
 
     setMessages([{ role: 'assistant', content: initialMsg }]);
   };
@@ -232,7 +247,13 @@ function AgnesContent({
   };
 
   const finalizeClose = async () => {
-    await clearSession();
+    if (isImpromptu) {
+      // Ephemeral session: only wipe sessionStorage, never touch Firestore
+      try { sessionStorage.removeItem('nexus_session_agnes_impromptu'); } catch { /* ignore */ }
+      setMessages([]);
+    } else {
+      await clearSession();
+    }
     setCurrentState('selecting');
     setSessionType(null);
     setSessionSummary(null);
@@ -345,8 +366,8 @@ function AgnesContent({
                     </div>
                     <div className="relative z-10">
                         <ShieldAlert className="w-10 h-10 text-orange-400 mb-6" />
-                        <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white">Impromptu</h3>
-                        <p className="text-xs text-white/40 leading-relaxed font-medium max-w-[200px]">Detached session for rapid emotional recalibration.</p>
+                        <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white">Quick Support</h3>
+                        <p className="text-xs text-white/40 leading-relaxed font-medium max-w-[200px]">Private, off-the-record support. Nothing is saved — no context, no trace.</p>
                         <div className="mt-6 flex items-center gap-2 text-orange-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
                             <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
                             <ArrowRight className="w-4 h-4" />
@@ -571,8 +592,8 @@ export default function AgnesPage() {
       }}
       renderOnboarding={AgnesOnboardingWrapper}
       renderContent={AgnesContent}
-      renderLeftRail={({ profile }) => (
-        <AgnesSidebar profile={profile} agentAlias={agentAlias} />
+      renderLeftRail={({ profile, persistProfile }) => (
+        <AgnesSidebar profile={profile} agentAlias={agentAlias} onSave={persistProfile} />
       )}
     />
   );

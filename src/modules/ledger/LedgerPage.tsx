@@ -10,15 +10,25 @@ import { BudgetPlanner } from './components/BudgetPlanner';
 import { GoalTracker } from './components/GoalTracker';
 import { DebtStrategist } from './components/DebtStrategist';
 import { FieldsTab } from './components/FieldsTab';
-import { TaxTracker } from './components/TaxTracker';
 import { LedgerOnboarding } from './onboarding/LedgerOnboarding';
 import { ImageCaptureModal } from '@/core/components/ImageCaptureModal';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
+
 import { SectionHeader } from '@/core/components/SectionHeader';
-import { BarChart3, Camera, FileUp, FolderOpen, LayoutDashboard, ArrowLeftRight, PieChart, Target, Database, Plus, Receipt } from 'lucide-react';
+import { Camera, FileUp, FolderOpen, Plus } from 'lucide-react';
+
+/** Deterministic color palette for budget categories — no Math.random(). */
+const BUDGET_CATEGORY_COLORS: readonly string[] = [
+  '#06b6d4', '#8b5cf6', '#10b981', '#f59e0b',
+  '#ef4444', '#3b82f6', '#ec4899', '#f97316',
+  '#84cc16', '#a78bfa',
+] as const;
+
+function pickBudgetColor(index: number): string {
+  return BUDGET_CATEGORY_COLORS[index % BUDGET_CATEGORY_COLORS.length];
+}
 import { cn } from '@/lib/utils';
 import { analyzeImageWithVision } from '@/lib/services/vision-analysis-service';
 import { ModelRegistry } from '@/lib/ai-adapters/model-registry';
@@ -78,7 +88,7 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
   };
 }
 
-type LedgerTab = 'overview' | 'transactions' | 'budget' | 'goals' | 'fields' | 'tax';
+type LedgerTab = 'overview' | 'budget' | 'goals' | 'transactions' | 'fields';
 
 /** Shape expected by handleApplyBudgetTemplate */
 interface BudgetTemplate {
@@ -338,7 +348,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
       name,
       allocated,
       spent: 0,
-      color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+      color: pickBudgetColor(budgetCategories.length),
     };
     persistUpdate({ ...profile, budgetCategories: [...budgetCategories, newCategory] });
   }, [profile, budgetCategories, persistUpdate]);
@@ -350,12 +360,12 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
 
   const handleApplyBudgetTemplate = useCallback((template: BudgetTemplate) => {
     if (!profile) return;
-    const newCategories: BudgetCategory[] = Object.entries(template.allocations).map(([name, percentage]) => ({
+    const newCategories: BudgetCategory[] = Object.entries(template.allocations).map(([name, percentage], idx) => ({
       id: crypto.randomUUID(),
       name,
       allocated: (profile.monthlyIncome * percentage) / 100,
       spent: 0,
-      color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+      color: pickBudgetColor(idx),
     }));
     persistUpdate({ ...profile, budgetCategories: newCategories });
   }, [profile, persistUpdate]);
@@ -432,14 +442,6 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
     }
   }, [profile?.onboardingComplete, profile?.activePlanId, agentAlias, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages]);
 
-  const mainTabs: NeuralTabItem<LedgerTab>[] = [
-    { id: 'overview',     label: 'Overview',      icon: LayoutDashboard },
-    { id: 'transactions', label: 'Transactions',  icon: ArrowLeftRight },
-    { id: 'budget',       label: 'Budget',        icon: PieChart },
-    { id: 'goals',        label: 'Goals',         icon: Target },
-    { id: 'fields',       label: 'Fields',        icon: Database },
-    { id: 'tax',          label: 'Tax',           icon: Receipt },
-  ];
 
   return (
     <SingleAgentLayout
@@ -518,15 +520,26 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
           />
         </div>
 
-        <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5 flex items-center justify-between">
-          <NeuralTabGroup
-            tabs={mainTabs}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            themeColor="cyan"
-          />
-          
-          <div className="flex gap-2">
+        <div className="flex items-center justify-between border-b border-white/10">
+          <div className="flex gap-1 px-4 md:px-8">
+            {(['overview', 'budget', 'goals', 'transactions', 'fields'] as const).map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setActiveTab(t)}
+                className={cn(
+                  "px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px",
+                  activeTab === t
+                    ? "border-emerald-400 text-emerald-400"
+                    : "border-transparent text-white/40 hover:text-white/70"
+                )}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2 px-4 md:px-8 pb-1">
             <button onClick={() => setIsCaptureModalOpen(true)} className="p-1.5 md:p-2 rounded-xl bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-violet-400 transition-all"><Camera size={14} className="md:w-4 md:h-4" /></button>
             <button onClick={openDocumentPicker} className="p-1.5 md:p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-cyan-400 transition-all"><FileUp size={14} className="md:w-4 md:h-4" /></button>
             <button onClick={handleOpenDocuments} className="p-1.5 md:p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/60 transition-all"><FolderOpen size={14} className="md:w-4 md:h-4" /></button>
@@ -609,13 +622,6 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
                 extensionValues={{}}
               />
             </div>
-          )}
-
-          {activeTab === 'tax' && profile && (
-            <TaxTracker
-              profile={profile}
-              encryptionKey={encryptionKey ?? undefined}
-            />
           )}
         </div>
       </div>

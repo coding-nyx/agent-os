@@ -30,7 +30,8 @@ export default function OrchestratorPage() {
     streamingText,
     error,
     quota,
-    handleSendMessage
+    handleSendMessage,
+    clearSession
   } = useModuleAI({
     moduleId: 'orchestrator',
     systemPrompt: ORCHESTRATOR_PERSONA,
@@ -98,7 +99,7 @@ export default function OrchestratorPage() {
     return (
       <ModuleLayout title="Nexus" themeColor="cyan" moduleId="orchestrator" hideBack>
         <NexusDashboard
-          ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
+          ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage, clearSession }}
           agentName={profile?.agentPersonalityProvision?.orchestratorAlias || 'Nexus'}
         />
         <AnimatePresence>

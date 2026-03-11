@@ -4,6 +4,7 @@ import {
   saveBeliefGraph,
 } from './belief-graph-service';
 import { loadAgnesProfile, saveAgnesProfile } from './agnes-profile-service';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 let registered = false;
 
@@ -68,5 +69,19 @@ export function registerAgnesActions() {
     };
 
     await saveAgnesProfile(next, { userId, encryptionKey });
+  });
+
+  ActionHub.register('agnes', 'crisis_flag', async ({ payload }) => {
+    Spine.publish({
+      type: 'CRISIS_DETECTED',
+      source: 'agnes',
+      domain: 'E',
+      priority: 'critical',
+      data: {
+        trigger: (payload as any)?.trigger || 'unknown',
+        severity: (payload as any)?.severity || 'high',
+        timestamp: new Date().toISOString()
+      }
+    });
   });
 }

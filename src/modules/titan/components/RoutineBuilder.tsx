@@ -140,7 +140,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
   const calculateVolume = useCallback(() => {
     return exercises.reduce((total, ex) => {
       // Try to extract numeric reps from strings like "8-10" or "10"
-      const repsMatch = ex.reps.match(/\d+/);
+      const repsMatch = String(ex.reps ?? 10).match(/\d+/);
       const reps = repsMatch ? parseInt(repsMatch[0]) : 10;
       return total + (ex.sets * reps);
     }, 0);

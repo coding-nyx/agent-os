@@ -21,6 +21,8 @@ export interface AIContextType {
     signal?: AbortSignal
   ) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
   isInitialized: boolean;
+  /** True when initialization timed out or failed; agent will be null. */
+  initFailed: boolean;
 }
 
 const AIContext = createContext<AIContextType | null>(null);
@@ -32,6 +34,7 @@ interface AIProviderProps {
 
 export function AIProvider({ children, guestMode }: AIProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
+  const [initFailed, setInitFailed] = useState(false);
   const [agent, setAgent] = useState<CognitiveAgent | null>(null);
   const initRef = useRef(false);
 
@@ -61,8 +64,10 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
     };
 
     const timer = setTimeout(() => {
-        console.warn("AIProvider: initialization timed out after 8s. Proceeding with limited functionality.");
-        setIsInitialized(true);
+        console.warn("AIProvider: initialization timed out after 8s. Running in degraded mode.");
+        // Do NOT set isInitialized — agent is still null here.
+        // Signal failure so the gate can render a degraded-mode banner instead of blocking.
+        setInitFailed(true);
     }, 8000);
 
     init().finally(() => clearTimeout(timer));
@@ -78,24 +83,44 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
     }
   }, [guestMode, agent]);
 
+  /** Empty StructuredResponse returned when the agent is unavailable (degraded mode). */
+  const degradedResponse = useCallback((context: ConversationContext) => ({
+    response: {
+      fullText: '',
+      publicText: '',
+      internalThoughts: null,
+      actions: [],
+      isInterrupted: false,
+    } satisfies StructuredResponse,
+    updatedHistory: context.history,
+  }), []);
+
   const sendMessage = useCallback(async (content: MessageContent, context: ConversationContext, signal?: AbortSignal) => {
-      if (!agent) throw new Error("Agent not initialized");
+      if (!agent) {
+        // Degraded mode: agent unavailable (timeout or missing API key). Return an empty
+        // response rather than throwing so callers don't need a separate error path.
+        console.warn('AIProvider.sendMessage: agent unavailable — returning empty degraded response.');
+        return degradedResponse(context);
+      }
       const result = await agent.chat(content, context, undefined, signal);
       return result;
-  }, [agent]);
+  }, [agent, degradedResponse]);
 
   const streamMessage = useCallback(async (content: MessageContent, context: ConversationContext, onChunk: (chunk: StreamChunk) => void, signal?: AbortSignal) => {
-      if (!agent) throw new Error("Agent not initialized");
+      if (!agent) {
+        console.warn('AIProvider.streamMessage: agent unavailable — returning empty degraded response.');
+        return degradedResponse(context);
+      }
       const safeChunk = (chunk: StreamChunk) => {
         try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }
       };
       const result = await agent.chat(content, context, safeChunk, signal);
       return result;
-  }, [agent]);
+  }, [agent, degradedResponse]);
 
   const aiContextValue = useMemo(
-    () => ({ sendMessage, streamMessage, isInitialized }),
-    [sendMessage, streamMessage, isInitialized]
+    () => ({ sendMessage, streamMessage, isInitialized, initFailed }),
+    [sendMessage, streamMessage, isInitialized, initFailed]
   );
 
   return (

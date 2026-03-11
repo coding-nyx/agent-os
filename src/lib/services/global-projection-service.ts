@@ -8,6 +8,24 @@ import { Spine } from '../spine/spine-event-bus';
 const COLLECTION = 'global_souls';
 const SOUL_WRITE_COLLECTION = 'pending_soul_writes';
 
+// ---------------------------------------------------------------------------
+// Per-UID write queue
+// Serialises all read-modify-write operations for a given user so that
+// concurrent callers updating DIFFERENT NSV domains cannot clobber each other.
+// ---------------------------------------------------------------------------
+const _projectionWriteQueues = new Map<string, Promise<void>>();
+
+function enqueueProjectionWrite(uid: string, fn: () => Promise<void>): Promise<void> {
+  const prev = _projectionWriteQueues.get(uid) ?? Promise.resolve();
+  // Chain the new write onto the tail of the queue.
+  // The `.catch(() => fn())` means: if prev rejected (or fn itself threw),
+  // attempt fn once more so a transient failure does not permanently block
+  // subsequent writes for this user.
+  const next = prev.then(fn).catch(() => fn());
+  _projectionWriteQueues.set(uid, next);
+  return next;
+}
+
 function buildNSVUpdatePayload(updates: NeuralStateVectorPatch, timestamp: string): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
 
@@ -303,24 +321,32 @@ export const GlobalProjectionService = {
     }
 
     // --- Direct (immediate) write path — backwards-compatible ---
-    const existing = await dataLayer.getDocument<GlobalProjection>(COLLECTION, uid);
-    if (!existing) return;
+    // Enqueue so that concurrent callers for the same uid are serialised:
+    // each read-then-write runs to completion before the next one starts,
+    // preventing a later getDocument from reading stale data and overwriting
+    // updates committed by a concurrent caller.
+    return enqueueProjectionWrite(uid, async () => {
+      const existing = await dataLayer.getDocument<GlobalProjection>(COLLECTION, uid);
+      if (!existing) return;
 
-    const updatePayload = buildNSVUpdatePayload(updates, new Date().toISOString());
-    if (Object.keys(updatePayload).length === 0) return;
+      const updatePayload = buildNSVUpdatePayload(updates, new Date().toISOString());
+      if (Object.keys(updatePayload).length === 0) return;
 
-    const next: GlobalProjection = { ...existing };
-    Object.entries(updatePayload).forEach(([path, value]) => {
-      applyPathValue(next, path, value);
+      const next: GlobalProjection = { ...existing };
+      Object.entries(updatePayload).forEach(([path, value]) => {
+        applyPathValue(next, path, value);
+      });
+      next.lastSync = new Date().toISOString();
+      next.crossFunctionalState = normalizeNSV(next.crossFunctionalState);
+
+      try {
+        await dataLayer.setDocument(COLLECTION, uid, next);
+      } catch (error) {
+        console.error('[GlobalProjectionService] Failed to update cross-functional state:', error);
+        // Re-throw so the queue's retry mechanism can attempt the write once more.
+        throw error;
+      }
     });
-    next.lastSync = new Date().toISOString();
-    next.crossFunctionalState = normalizeNSV(next.crossFunctionalState);
-
-    try {
-      await dataLayer.setDocument(COLLECTION, uid, next);
-    } catch (error) {
-      console.error('[GlobalProjectionService] Failed to update cross-functional state:', error);
-    }
   },
 
   /**

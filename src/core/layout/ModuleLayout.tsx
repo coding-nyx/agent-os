@@ -251,7 +251,7 @@ export function ModuleLayout({
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="hidden lg:block shrink-0 h-full relative z-[var(--z-content)]"
             >
-              <RenderLeftRail />
+              {RenderLeftRail()}
             </motion.div>
           )}
         </AnimatePresence>

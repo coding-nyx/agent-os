@@ -15,7 +15,7 @@ import { SpineOverlay } from './core/components/SpineOverlay';
 import { SpineToastProvider } from './core/components/SpineToast';
 import { NexusRouteBanner } from './core/components/NexusRouteBanner';
 import { Spine } from './lib/spine/spine-event-bus';
-import { CORE_CASCADE_RULES } from './lib/spine/cascade-rules';
+import { CORE_CASCADE_RULES, ATLAS_CASCADE_RULES, AGNES_CASCADE_RULES, ATLAS_FAILURE_RULES } from './lib/spine/cascade-rules';
 import { useEffect } from 'react';
 import { DataLayerProvider } from './lib/data-layer/provider';
 
@@ -42,6 +42,9 @@ function SpineRuntimeBootstrap() {
 
   useEffect(() => {
     Spine.registerCascadeRules(CORE_CASCADE_RULES);
+    Spine.registerCascadeRules(ATLAS_CASCADE_RULES);
+    Spine.registerCascadeRules(AGNES_CASCADE_RULES);
+    Spine.registerCascadeRules(ATLAS_FAILURE_RULES);
   }, []);
 
   useEffect(() => {
@@ -53,10 +56,24 @@ function SpineRuntimeBootstrap() {
 
 function AIRuntimeGate({ children }: { children: React.ReactNode }) {
   const { loading: authLoading } = useAuth();
-  const { isInitialized: aiReady } = useAI();
+  const { isInitialized: aiReady, initFailed } = useAI();
 
-  if (authLoading || !aiReady) {
-    return <BootLoader />;
+  if (authLoading) return <BootLoader />;
+
+  // Still initializing — wait with the boot screen.
+  if (!aiReady && !initFailed) return <BootLoader />;
+
+  // Initialization timed out / API keys missing — render app in degraded mode
+  // with a persistent banner so the user knows AI features are offline.
+  if (initFailed) {
+    return (
+      <>
+        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500/20 border-b border-amber-500/30 px-4 py-2 text-center text-xs text-amber-300">
+          AI assistant is unavailable — check your API key in Profile settings
+        </div>
+        {children}
+      </>
+    );
   }
 
   return <>{children}</>;

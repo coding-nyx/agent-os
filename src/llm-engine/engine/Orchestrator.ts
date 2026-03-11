@@ -2,7 +2,7 @@
 // v1.0.1 - Nexus Engine Core
 import { Message, ToolCall } from '../types';
 import { EngineConfig, OrchestratorState, StructuredResponse, ParsedAction, StreamChunk } from './types';
-import { sanitizeJsonPayload as nexusCleaner, stripInternalTags } from '../sanitize';
+import { sanitizeJsonPayload as nexusCleaner, stripInternalTags, stripPartialLeadingTag } from '../sanitize';
 import { isProviderControlOnly } from '../sanitize';
 import { ModelRegistry } from './ModelRegistry';
 
@@ -401,18 +401,24 @@ export class Orchestrator {
                   // Delta emission logic: only emit NEW public text
                   const sanitized = stripInternalTags(fullText, { retainSpacings: true });
                   const delta = sanitized.publicText.slice(publicTextAccumulated.length);
-                  
+
+                  // Withhold any partial XML/HTML tag at the chunk boundary (e.g. bare
+                  // '<', '<th', '<think') — it will be re-emitted once completed.
+                  const safeEmitDelta = stripPartialLeadingTag(delta);
+
                   // ALWAYS emit a chunk if there's a state change or text delta
                   // This ensures the UI sees thinking/acting states even without new text
                   onChunk({
-                    delta,
+                    delta: safeEmitDelta,
                     isThinking: sanitized.isThinking,
                     isActing: sanitized.isActing,
                     currentActionType: sanitized.currentActionType
                   });
 
-                  if (delta.length > 0) {
-                    publicTextAccumulated = sanitized.publicText;
+                  if (safeEmitDelta.length > 0) {
+                    // Advance the cursor only by what was actually emitted so the
+                    // withheld partial-tag prefix is re-included in the next delta.
+                    publicTextAccumulated += safeEmitDelta;
                   }
                 }
               }
