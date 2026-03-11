@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Moon, CheckCircle2, Flame, Dumbbell, X } from 'lucide-react';
+import { Moon, CheckCircle2, X, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AtlasProfile } from '../services/atlas-profile-service';
 
@@ -8,40 +8,39 @@ import type { AtlasProfile } from '../services/atlas-profile-service';
 // Types
 // ---------------------------------------------------------------------------
 
-export interface EveningCheckInProps {
-  /** Atlas profile used to compute today's completion stats. Nullable for safety. */
-  profile: AtlasProfile | null;
-  /** Optional user ID — used to scope the localStorage dismissal key. */
-  userId?: string | null;
-  /** Called after the user picks a mood or taps dismiss; caller owns persistence. */
-  onDismiss: () => void;
+export interface EveningCheckInSubmitData {
+  tasksCompleted: number;
+  totalTasks: number;
+  /** Energy level on a 1-5 scale. */
+  energyLevel: number;
+  /** Optional free-text blocker description. */
+  blockers: string;
+  date: string; // YYYY-MM-DD
 }
 
-/** The three mood options the user can select. */
-type DayMood = 'tough' | 'okay' | 'good';
+export interface EveningCheckInProps {
+  profile: AtlasProfile | null;
+  userId?: string | null;
+  /** Called on dismiss or submit. Receives submission data when user submits. */
+  onDismiss: (data?: EveningCheckInSubmitData) => void;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Returns today's date as YYYY-MM-DD in local time. */
 function todayISO(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-/** localStorage key scoped to user identity. */
+/** localStorage key matching the spec key pattern: nexus_evening_checkin_date. */
 function eveningKey(userId?: string | null): string {
-  return `atlas_last_evening_checkin_${userId ?? 'guest'}`;
+  return `nexus_evening_checkin_date_${userId ?? 'guest'}`;
 }
 
 /**
  * Returns true when the evening check-in should be shown.
- *
- * Conditions (both must hold):
- *   1. Local hour is ≥ 19 and < 22  (7 PM – 10 PM).
- *   2. The check-in has not yet been dismissed today.
- *
- * Pure function — safe to call outside React (e.g. in EnhancedAtlasDashboard guard).
+ * Conditions: local hour >= 19 and < 22, and not dismissed today.
  */
 export function shouldShowEveningCheckIn(userId?: string | null): boolean {
   try {
@@ -55,10 +54,9 @@ export function shouldShowEveningCheckIn(userId?: string | null): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Stat derivation helpers
+// Stat helpers
 // ---------------------------------------------------------------------------
 
-/** Count tasks marked done today. */
 function countTasksCompletedToday(profile: AtlasProfile | null): number {
   if (!profile) return 0;
   return profile.tasks.filter(
@@ -66,91 +64,65 @@ function countTasksCompletedToday(profile: AtlasProfile | null): number {
   ).length;
 }
 
-/** Count active habits that were logged today (lastCompleted is today). */
-function countHabitsLoggedToday(profile: AtlasProfile | null): number {
+function countTotalActiveTasks(profile: AtlasProfile | null): number {
   if (!profile) return 0;
-  return profile.habits.filter(
-    (h) => h.status === 'active' && h.lastCompleted?.startsWith(todayISO()),
-  ).length;
-}
-
-/**
- * Heuristic: did the user log a workout today?
- * Checks for any completed task today whose title contains fitness keywords,
- * or any active habit with a fitness keyword logged today.
- */
-function detectWorkoutToday(profile: AtlasProfile | null): boolean {
-  if (!profile) return false;
-  const KEYWORDS = /workout|gym|lift|run|train|cardio|swim|ride|yoga|hiit|squat|deadlift|bench/i;
-  const taskWorkout = profile.tasks.some(
-    (t) =>
-      t.status === 'done' &&
-      t.completedAt?.startsWith(todayISO()) &&
-      KEYWORDS.test(t.title),
-  );
-  if (taskWorkout) return true;
-  return profile.habits.some(
-    (h) =>
-      h.status === 'active' &&
-      h.lastCompleted?.startsWith(todayISO()) &&
-      KEYWORDS.test(h.title),
-  );
+  return profile.tasks.filter((t) => t.status !== 'deferred').length;
 }
 
 // ---------------------------------------------------------------------------
-// StatPill — small colourised metric badge
+// EnergySelector — 1-5 pill bar
 // ---------------------------------------------------------------------------
 
-interface StatPillProps {
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  label: string;
-  value: string;
-  accent: string;
+interface EnergySelectorProps {
+  value: number | null;
+  onChange: (v: number) => void;
 }
 
-function StatPill({ icon: Icon, label, value, accent }: StatPillProps) {
+const ENERGY_LABELS: Record<number, string> = {
+  1: 'Drained',
+  2: 'Low',
+  3: 'Okay',
+  4: 'Good',
+  5: 'High',
+};
+
+function energyColor(level: number): string {
+  if (level <= 2) return 'border-rose-500/60 bg-rose-500/20 text-rose-200';
+  if (level === 3) return 'border-amber-500/60 bg-amber-500/20 text-amber-200';
+  return 'border-emerald-500/60 bg-emerald-500/20 text-emerald-200';
+}
+
+function EnergySelector({ value, onChange }: EnergySelectorProps) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2 min-w-0">
-      <Icon className={cn('w-3.5 h-3.5 shrink-0', accent)} aria-hidden="true" />
-      <span className={cn('text-sm font-bold tabular-nums', accent)}>{value}</span>
-      <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30 truncate text-center">
-        {label}
-      </span>
+    <div className="space-y-1.5">
+      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30">
+        Energy Level
+      </p>
+      <div className="flex gap-1.5" role="group" aria-label="Energy level 1 to 5">
+        {[1, 2, 3, 4, 5].map((level) => (
+          <button
+            key={level}
+            onClick={() => onChange(level)}
+            aria-pressed={value === level}
+            aria-label={`Energy ${level}: ${ENERGY_LABELS[level]}`}
+            className={cn(
+              'flex-1 flex flex-col items-center gap-0.5 rounded-xl border px-2 py-2 transition-all',
+              'text-xs font-bold focus-visible:outline-none',
+              'focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2',
+              'focus-visible:ring-offset-transparent',
+              value === level
+                ? energyColor(level)
+                : 'border-white/10 bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/60',
+            )}
+          >
+            <span className="text-base leading-none tabular-nums">{level}</span>
+            <span className="text-[8px] uppercase tracking-[0.1em] truncate">
+              {ENERGY_LABELS[level]}
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// MoodButton
-// ---------------------------------------------------------------------------
-
-interface MoodButtonProps {
-  emoji: string;
-  label: string;
-  mood: DayMood;
-  selected: boolean;
-  onSelect: (mood: DayMood) => void;
-}
-
-function MoodButton({ emoji, label, mood, selected, onSelect }: MoodButtonProps) {
-  return (
-    <button
-      onClick={() => onSelect(mood)}
-      aria-pressed={selected}
-      aria-label={`Mood: ${label}`}
-      className={cn(
-        'flex flex-col items-center gap-1 rounded-xl border px-3 py-2 flex-1',
-        'text-xs font-bold transition-all focus-visible:outline-none',
-        'focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2',
-        'focus-visible:ring-offset-transparent',
-        selected
-          ? 'border-violet-500/60 bg-violet-500/20 text-violet-200'
-          : 'border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/[0.05] hover:text-white/70',
-      )}
-    >
-      <span className="text-lg leading-none" aria-hidden="true">{emoji}</span>
-      <span className="text-[9px] uppercase tracking-[0.15em]">{label}</span>
-    </button>
   );
 }
 
@@ -158,20 +130,12 @@ function MoodButton({ emoji, label, mood, selected, onSelect }: MoodButtonProps)
 // EveningCheckIn — Main export
 // ---------------------------------------------------------------------------
 
-const MOOD_OPTIONS: { emoji: string; label: string; mood: DayMood }[] = [
-  { emoji: '😤', label: 'Tough', mood: 'tough' },
-  { emoji: '😐', label: 'Okay',  mood: 'okay'  },
-  { emoji: '😊', label: 'Good',  mood: 'good'  },
-];
-
 export function EveningCheckIn({ profile, userId, onDismiss }: EveningCheckInProps) {
-  const [selectedMood, setSelectedMood] = useState<DayMood | null>(null);
-
-  // ── Derived stats ─────────────────────────────────────────────────────────
+  const [energyLevel, setEnergyLevel] = useState<number | null>(null);
+  const [blockers, setBlockers] = useState('');
 
   const tasksCompleted = countTasksCompletedToday(profile);
-  const habitsLogged   = countHabitsLoggedToday(profile);
-  const workoutToday   = detectWorkoutToday(profile);
+  const totalTasks     = countTotalActiveTasks(profile);
 
   const dateLabel = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
@@ -179,29 +143,21 @@ export function EveningCheckIn({ profile, userId, onDismiss }: EveningCheckInPro
     day: 'numeric',
   });
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
-  /** Persist the dismissal key so we don't show again today, then notify parent. */
-  function persistAndDismiss(mood?: DayMood) {
-    try {
-      localStorage.setItem(eveningKey(userId), todayISO());
-      if (mood) {
-        // Session-only mood preference — no Firestore write needed.
-        sessionStorage.setItem('atlas_evening_mood', mood);
-      }
-    } catch {
-      // Non-fatal; dismissal still propagates.
-    }
-    onDismiss();
+  function persistAndDismiss(data?: EveningCheckInSubmitData) {
+    try { localStorage.setItem(eveningKey(userId), todayISO()); } catch { /* non-fatal */ }
+    onDismiss(data);
   }
 
-  function handleMoodSelect(mood: DayMood) {
-    setSelectedMood(mood);
-    // Brief visual flash so the user sees the selection before the card closes.
-    setTimeout(() => persistAndDismiss(mood), 280);
+  function handleSubmit() {
+    if (!energyLevel) return;
+    persistAndDismiss({
+      tasksCompleted,
+      totalTasks,
+      energyLevel,
+      blockers: blockers.trim(),
+      date: todayISO(),
+    });
   }
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <AnimatePresence>
@@ -214,12 +170,12 @@ export function EveningCheckIn({ profile, userId, onDismiss }: EveningCheckInPro
         role="region"
         aria-label="Evening check-in"
       >
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Moon className="w-4 h-4 text-violet-400 shrink-0" aria-hidden="true" />
             <span className="text-sm font-bold text-white/90 tracking-wide truncate">
-              Evening Review
+              How did today go?
             </span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -236,46 +192,72 @@ export function EveningCheckIn({ profile, userId, onDismiss }: EveningCheckInPro
           </div>
         </div>
 
-        {/* ── Stats grid ── */}
-        <div className="grid grid-cols-3 gap-2" aria-label="Today's activity summary">
-          <StatPill
-            icon={CheckCircle2}
-            label="Tasks done"
-            value={String(tasksCompleted)}
-            accent={tasksCompleted > 0 ? 'text-emerald-300' : 'text-white/40'}
+        {/* Tasks completed stat */}
+        <div
+          className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2.5"
+          aria-label="Tasks completed today"
+        >
+          <CheckCircle2
+            className={cn(
+              'w-4 h-4 shrink-0',
+              tasksCompleted > 0 ? 'text-emerald-400' : 'text-white/30',
+            )}
+            aria-hidden="true"
           />
-          <StatPill
-            icon={Flame}
-            label="Habits logged"
-            value={String(habitsLogged)}
-            accent={habitsLogged > 0 ? 'text-amber-300' : 'text-white/40'}
-          />
-          <StatPill
-            icon={Dumbbell}
-            label="Workout"
-            value={workoutToday ? 'Yes' : '—'}
-            accent={workoutToday ? 'text-sky-300' : 'text-white/40'}
+          <span className="text-xs font-medium text-white/70">Tasks completed:</span>
+          <span
+            className={cn(
+              'text-sm font-bold tabular-nums ml-auto',
+              tasksCompleted > 0 ? 'text-emerald-300' : 'text-white/40',
+            )}
+          >
+            {tasksCompleted}/{totalTasks}
+          </span>
+        </div>
+
+        {/* Energy level selector (1-5) */}
+        <EnergySelector value={energyLevel} onChange={setEnergyLevel} />
+
+        {/* What blocked you today? */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="evening-blockers"
+            className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30 block"
+          >
+            What blocked you today?{' '}
+            <span className="text-white/20 normal-case">(optional)</span>
+          </label>
+          <textarea
+            id="evening-blockers"
+            value={blockers}
+            onChange={(e) => setBlockers(e.target.value)}
+            placeholder="Distractions, unclear priorities, low energy..."
+            rows={2}
+            className={cn(
+              'w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2',
+              'text-xs text-white/70 placeholder:text-white/25 resize-none',
+              'focus:outline-none focus:border-violet-500/40 focus:bg-white/[0.05] transition-colors',
+            )}
           />
         </div>
 
-        {/* ── Mood question ── */}
-        <div className="space-y-2">
-          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30">
-            How did the day feel?
-          </p>
-          <div className="flex gap-2" role="group" aria-label="Day mood selection">
-            {MOOD_OPTIONS.map(({ emoji, label, mood }) => (
-              <MoodButton
-                key={mood}
-                emoji={emoji}
-                label={label}
-                mood={mood}
-                selected={selectedMood === mood}
-                onSelect={handleMoodSelect}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Submit CTA */}
+        <button
+          onClick={handleSubmit}
+          disabled={!energyLevel}
+          className={cn(
+            'w-full flex items-center justify-center gap-2 rounded-xl',
+            'bg-violet-500/20 border border-violet-500/30 hover:bg-violet-500/30 text-violet-300',
+            'text-xs font-bold uppercase tracking-[0.15em] py-2.5 px-4 transition-colors',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400',
+            'focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+            'disabled:opacity-40 disabled:cursor-not-allowed',
+          )}
+          aria-label="Submit evening check-in"
+        >
+          <Send className="w-3.5 h-3.5" aria-hidden="true" />
+          Log Day
+        </button>
       </motion.div>
     </AnimatePresence>
   );

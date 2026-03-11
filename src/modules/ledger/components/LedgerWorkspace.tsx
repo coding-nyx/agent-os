@@ -2,13 +2,25 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { LayoutDashboard, Receipt, PieChart, Target, ListTodo, Database, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { LedgerIntakeProfile, Transaction, BudgetCategory, FinancialGoal } from '../services/ledger-intake-service';
+import { LedgerIntakeProfile, Transaction, BudgetCategory, FinancialGoal, SavingsGoal } from '../services/ledger-intake-service';
 import { computeBudgetActuals, matchCategoryToTransaction } from '../services/ledger-aggregation-service';
 import { TransactionManager } from './TransactionManager';
 import { BudgetPlanner } from './BudgetPlanner';
 import { GoalTracker } from './GoalTracker';
 import { FieldsTab } from './FieldsTab';
 import { DebtStrategist } from './DebtStrategist';
+
+/** Deterministic color palette for budget categories — never Math.random(). */
+const BUDGET_CATEGORY_COLORS: readonly string[] = [
+  '#06b6d4', '#8b5cf6', '#10b981', '#f59e0b',
+  '#ef4444', '#3b82f6', '#ec4899', '#f97316',
+  '#84cc16', '#a78bfa',
+] as const;
+
+function pickBudgetColor(index: number): string {
+  return BUDGET_CATEGORY_COLORS[index % BUDGET_CATEGORY_COLORS.length];
+}
+import { useGlobalSoul } from '@/lib/global-soul-context';
 
 interface LedgerWorkspaceProps {
   profile: LedgerIntakeProfile;
@@ -46,10 +58,38 @@ export function LedgerWorkspace({
 }: LedgerWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<TabId>('transactions');
 
+  // Read NSV stressLoad to determine debt strategy recommendation
+  const { globalSoul } = useGlobalSoul();
+  const stressLoad = globalSoul?.crossFunctionalState?.emotional?.stressLoad ?? 0;
+  const recommendSnowball = stressLoad > 7;
+
   // Initialize data with defaults
   const transactions = profile.transactions || [];
   const budgetCategories = profile.budgetCategories || [];
-  const financialGoals = profile.financialGoals || [];
+
+  // Merge legacy savingsGoals (SavingsGoal[]) into financialGoals (FinancialGoal[]) for
+  // backward compatibility with Firestore data that predates the consolidation.
+  const financialGoals: FinancialGoal[] = useMemo(() => {
+    const canonical: FinancialGoal[] = profile.financialGoals ?? [];
+    const canonicalIds = new Set(canonical.map((g) => g.id));
+
+    // Convert any SavingsGoal records not already present in financialGoals
+    const legacyMapped: FinancialGoal[] = (profile.savingsGoals ?? [])
+      .filter((sg: SavingsGoal) => !canonicalIds.has(sg.id))
+      .map((sg: SavingsGoal): FinancialGoal => ({
+        id: sg.id,
+        name: sg.name,
+        type: 'savings',
+        targetAmount: sg.targetAmount,
+        currentAmount: sg.currentAmount,
+        targetDate: sg.targetDate,
+        monthlyContribution: sg.monthlyContribution ?? 0,
+        priority: 'medium',
+        createdAt: new Date().toISOString(),
+      }));
+
+    return [...canonical, ...legacyMapped];
+  }, [profile.financialGoals, profile.savingsGoals]);
 
   // Extract unique categories from profile expenses
   const categories = useMemo(() => {
@@ -196,7 +236,7 @@ export function LedgerWorkspace({
       name,
       allocated,
       spent: 0,
-      color: `#${Math.floor(Math.random()*16777215).toString(16)}` // Random color
+      color: pickBudgetColor(budgetCategories.length),
     };
     
     onUpdateProfile({
@@ -213,12 +253,12 @@ export function LedgerWorkspace({
   }, [budgetCategories, onUpdateProfile]);
 
   const handleApplyBudgetTemplate = useCallback((template: any) => {
-    const newCategories: BudgetCategory[] = Object.entries(template.allocations).map(([name, percentage]) => ({
+    const newCategories: BudgetCategory[] = Object.entries(template.allocations).map(([name, percentage], idx) => ({
       id: crypto.randomUUID(),
       name,
       allocated: (profile.monthlyIncome * (percentage as number)) / 100,
       spent: 0,
-      color: `#${Math.floor(Math.random()*16777215).toString(16)}`
+      color: pickBudgetColor(idx),
     }));
     
     onUpdateProfile({
@@ -321,6 +361,11 @@ export function LedgerWorkspace({
             onUpdateGoal={handleUpdateGoal}
             onDeleteGoal={handleDeleteGoal}
             disabled={disabled}
+            monthlyIncome={profile.monthlyIncome}
+            totalMonthlyExpenses={
+              (profile.fixedExpenses ?? []).reduce((s, e) => s + e.amount, 0) +
+              (profile.variableExpenses ?? []).reduce((s, e) => s + e.amount, 0)
+            }
           />
         )}
 
@@ -328,6 +373,7 @@ export function LedgerWorkspace({
           <DebtStrategist
             debtItems={profile.debtItems ?? []}
             currency={profile.currency}
+            recommendSnowball={recommendSnowball}
           />
         )}
 

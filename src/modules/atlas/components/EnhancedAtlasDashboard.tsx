@@ -29,7 +29,7 @@ import {
   ScheduledTask,
 } from '../services/atlas-profile-service';
 import { MorningCheckIn, shouldShowMorningCheckIn } from './MorningCheckIn';
-import { EveningCheckIn, shouldShowEveningCheckIn } from './EveningCheckIn';
+import { EveningCheckIn, shouldShowEveningCheckIn, type EveningCheckInSubmitData } from './EveningCheckIn';
 import { PriorityInbox } from './PriorityInbox';
 import { WeekGrid } from './WeekGrid';
 import { WeeklyReviewModal } from './WeeklyReviewModal';
@@ -59,8 +59,10 @@ import { FocusView } from './FocusView';
 import { ViewSwitcher } from './ViewSwitcher';
 import { QuickAddForm } from './QuickAddForm';
 import { QuickCaptureBar } from './QuickCaptureBar';
+import { JournalTab } from './journal/JournalTab';
+import { BookOpen } from 'lucide-react';
 
-type AtlasTab = 'dashboard' | 'backlog' | 'routines' | 'fields' | 'review';
+type AtlasTab = 'dashboard' | 'backlog' | 'routines' | 'journal' | 'fields' | 'review';
 type AtlasView = 'today' | 'week' | 'focus';
 
 interface EnhancedAtlasDashboardProps {
@@ -92,6 +94,8 @@ interface EnhancedAtlasDashboardProps {
   onAddField?: () => void;
   onDeleteField?: (fieldId: string) => void;
   onSendMessage?: (message: string) => void;
+  /** Encryption key for vault-gated journal tab */
+  encryptionKey?: CryptoKey | null;
   /** S9-005: Weekly review pending indicator */
   weeklyReviewPending?: boolean;
   /** S9-005: Called when user opens the review tab */
@@ -103,7 +107,7 @@ interface EnhancedAtlasDashboardProps {
   /** S9-007: Set true to force-show the evening check-in card (from Spine event) */
   eveningCheckinVisible?: boolean;
   /** S9-007: Called when the evening check-in card is dismissed from the parent */
-  onEveningCheckinDismiss?: () => void;
+  onEveningCheckinDismiss?: (data?: EveningCheckInSubmitData) => void;
   /** S9-006: Preference mode for QuickAdd layout */
   preferenceMode?: 'conversational' | 'structured';
   /** S9-006: Toggle callback for preference mode */
@@ -142,6 +146,7 @@ export function EnhancedAtlasDashboard({
   onAddField = noop,
   onDeleteField,
   onSendMessage = noop,
+  encryptionKey = null,
   weeklyReviewPending = false,
   onReviewOpened = noop,
   morningBriefVisible = false,
@@ -165,6 +170,7 @@ export function EnhancedAtlasDashboard({
     { id: 'dashboard', label: 'Dashboard', icon: CalendarRange },
     { id: 'backlog', label: 'Backlog', icon: Inbox, badge: profile?.tasks.filter(t => t.status === 'queued').length || undefined },
     { id: 'routines', label: 'Routines & Habits', icon: Clock },
+    { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'fields', label: 'Fields', icon: SlidersHorizontal },
     {
       id: 'review',
@@ -318,6 +324,7 @@ export function EnhancedAtlasDashboard({
                       onMorningBriefDismiss();
                     }}
                     onSendMessage={onSendMessage}
+                    predictiveState={predictiveDisplay.state}
                   />
                 )}
                 <PriorityInbox
@@ -629,6 +636,17 @@ export function EnhancedAtlasDashboard({
                   />
               </section>
            </div>
+        )}
+
+        {/* ══════════════ JOURNAL TAB ══════════════ */}
+        {activeTab === 'journal' && (
+          <JournalTab
+            profile={profile}
+            userId={user?.uid ?? null}
+            encryptionKey={encryptionKey}
+            isLocked={isLocked}
+            onSendMessage={onSendMessage}
+          />
         )}
 
         {/* ══════════════ FIELDS TAB ══════════════ */}

@@ -13,12 +13,22 @@ export interface ForgeExecutionRecord {
   createdAt: string;
 }
 
+export interface ForgeArtifact {
+  id: string;
+  type: 'code' | 'email' | 'document' | 'checklist' | 'plan';
+  title: string;
+  content: string;
+  createdAt: string;
+  sessionId?: string;
+}
+
 export interface ForgeProfile {
   onboardingComplete: boolean;
   environment: 'local' | 'cloud' | 'hybrid';
   safetyMode: 'strict' | 'balanced';
   commandQueue: string[];
   sessions: ForgeExecutionRecord[];
+  artifacts: ForgeArtifact[];
   summary: string;
   createdAt: string;
   updatedAt: string;
@@ -61,6 +71,20 @@ function normalizeForgeProfile(raw: unknown): ForgeProfile {
           createdAt: typeof entry?.createdAt === 'string' ? entry.createdAt : now
         }))
       : [],
+    artifacts: Array.isArray(candidate.artifacts)
+      ? candidate.artifacts.map((entry: Record<string, unknown>, index: number) => ({
+          id: typeof entry?.id === 'string' ? entry.id : `artifact_${index}`,
+          type:
+            entry?.type === 'code' || entry?.type === 'email' || entry?.type === 'document' ||
+            entry?.type === 'checklist' || entry?.type === 'plan'
+              ? entry.type
+              : ('document' as const),
+          title: typeof entry?.title === 'string' ? entry.title : 'Untitled',
+          content: typeof entry?.content === 'string' ? entry.content : '',
+          createdAt: typeof entry?.createdAt === 'string' ? entry.createdAt : now,
+          sessionId: typeof entry?.sessionId === 'string' ? entry.sessionId : undefined
+        }))
+      : [],
     summary: typeof candidate.summary === 'string' ? candidate.summary : '',
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : now
@@ -75,6 +99,7 @@ export function createEmptyForgeProfile(): ForgeProfile {
     safetyMode: 'strict',
     commandQueue: [],
     sessions: [],
+    artifacts: [],
     summary: '',
     createdAt: now,
     updatedAt: now
@@ -197,4 +222,23 @@ export function saveGuestForgeProfile(profile: ForgeProfile): void {
 
 export function clearGuestForgeProfile(): void {
   localStorage.removeItem(GUEST_FORGE_KEY);
+}
+
+/**
+ * Appends a new artifact to the current ForgeProfile and persists it.
+ * Returns the updated profile.
+ */
+export async function saveArtifact(
+  artifact: ForgeArtifact,
+  context: { userId?: string | null; encryptionKey?: CryptoKey | null }
+): Promise<ForgeProfile | null> {
+  const current = await loadForgeProfile(context);
+  if (!current) return null;
+  const next: ForgeProfile = {
+    ...current,
+    artifacts: [artifact, ...current.artifacts].slice(0, 200),
+    updatedAt: new Date().toISOString()
+  };
+  await saveForgeProfile(next, context);
+  return next;
 }

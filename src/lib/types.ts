@@ -27,6 +27,8 @@ export interface AgentPersonalityProvision {
 
 export interface UserSecurityPreferences {
   vaultLocks: Record<string, boolean>;
+  /** Per-category data-sharing overrides keyed by categoryId → targetModuleId → enabled */
+  dataSharingOverrides?: Record<string, Record<string, boolean>>;
 }
 
 export interface CoreUserProfile {
@@ -99,6 +101,8 @@ export interface NeuralStateVector {
     streakHealth?: number | null;
     /** Urgency pressure from nearest deadlines (0-10). ≥8 triggers DEADLINE_CRUNCH cascade. */
     deadlinePressure?: number | null;
+    /** Consecutive days with a saved journal entry. */
+    reflectionStreak?: number;
   };
   resource: {
     financialFriction?: number | null;
@@ -278,7 +282,17 @@ export type SpineEventType =
   | 'MORNING_BRIEF_DUE'
   | 'EVENING_CHECKIN_DUE'
   // Atlas Failure Notification Loop (S9-008)
-  | 'COMMITMENT_MISSED';
+  | 'COMMITMENT_MISSED'
+  // Atlas Intelligent Loop (S19-atlas-01)
+  | 'MORNING_BRIEF'
+  | 'ATLAS_OVERLOAD_DETECTED'
+  // Agnes Somatic Sessions (S19-agnes-02)
+  | 'SOMATIC_SESSION_COMPLETE'
+  // Atlas Journal Events — Added by spine agent — deduplicated with schema agent
+  | 'JOURNAL_ENTRY_CREATED'
+  | 'JOURNAL_ENTRY_UPDATED'
+  // Atlas Habit Milestone Events
+  | 'HABIT_STREAK_MILESTONE';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'alert' | 'critical';
@@ -1057,10 +1071,53 @@ export interface AtlasProfile {
   habits: AtlasHabit[];
   routine: AtlasRoutine;
   reviews: TemporalReview[];
+  /** Daily evening check-in entries — fed into weekly review aggregation. */
+  dailyCheckIns?: DailyCheckInEntry[];
   preferences?: AtlasPreferences;
   preferenceMode?: 'conversational' | 'structured';
   createdAt: string;
   updatedAt: string;
+}
+
+/** One evening check-in submission, stored in the Atlas profile for weekly review. */
+export interface DailyCheckInEntry {
+  date: string;           // YYYY-MM-DD
+  tasksCompleted: number;
+  totalTasks: number;
+  energyLevel: number;    // 1–5
+  blockers: string;
+  loggedAt: string;       // ISO timestamp
+}
+
+// Atlas Journal
+
+export interface JournalHabitReflection {
+  habitId: string;
+  note: string;
+  felt: 'great' | 'okay' | 'struggled';
+}
+
+export interface JournalGoalReflection {
+  goalId: string;
+  note: string;
+}
+
+export interface JournalEntry {
+  id: string;               // YYYY-MM-DD (one per day, acts as doc ID)
+  date: string;             // YYYY-MM-DD
+  createdAt: string;        // ISO timestamp
+  updatedAt: string;        // ISO timestamp
+  morningIntent: string;    // Pre-filled from morning check-in AI brief
+  eveningReflection: string; // Pre-filled from evening check-in blockers
+  freeform: string;         // Open writing field
+  mood: number;             // 1–5 (1=rough, 5=great)
+  energyLevel: number;      // 1–5, synced from evening check-in
+  gratitude: string[];      // Up to 3 items
+  blockers: string;         // Synced from evening check-in
+  habitsReflection: JournalHabitReflection[];
+  goalsReflection: JournalGoalReflection[];
+  aiPromptUsed: string | null; // The AI prompt that was shown, if any
+  tags: string[];
 }
 
 // Soma
@@ -1081,6 +1138,31 @@ export interface SomaProfile {
   updatedAt: string;
   encryptedData?: string;
   iv?: string;
+  // --- Flat vitals (UI layer — filled by VitalsEntryForm, SomaDashboard) ---
+  restingHeartRate?: number;
+  bloodPressure?: string;
+  temperature?: number;
+  spo2?: number;
+  weight?: number;
+  height?: number;
+  bmi?: number;
+  bodyFatPercentage?: number;
+  muscleMass?: number;
+  vo2Max?: number;
+  strength?: number;
+  flexibility?: number;
+  endurance?: number;
+  dailySteps?: number;
+  activeMinutes?: number;
+  sleepHours?: number;
+  sleepQuality?: number;
+  hydrationLevel?: number;
+  energyLevel?: number;
+  stressPhysical?: number;
+  lastCheckup?: string;
+  nextCheckup?: string;
+  clearanceStatus?: 'cleared' | 'pending' | 'restricted';
+  readinessScore?: number;
 }
 
 export interface GuestQuota {

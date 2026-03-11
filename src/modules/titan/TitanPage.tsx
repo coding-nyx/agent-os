@@ -12,13 +12,17 @@ import { PRBoard } from './components/PRBoard';
 import { TrainingCalendar } from './components/TrainingCalendar';
 import { QuickLogDrawer } from './components/QuickLogDrawer';
 import type { QuickLogPayload } from './components/QuickLogDrawer';
+import { QuickLogBar } from './components/QuickLogBar';
+import { LogConfirmCard } from './components/LogConfirmCard';
+import { parseQuickLogInput, annotatePRs } from './utils/quick-log-parser';
+import type { ParsedEntry } from './utils/quick-log-parser';
 import { SleepTracker } from './components/SleepTracker';
 import { TitanOnboarding } from './onboarding/TitanOnboarding';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
-import { TitanProfile, Routine, Exercise, WorkoutSession, PersonalRecord, SomaProfile } from '@/lib/types';
+import { TitanProfile, Routine, Exercise, WorkoutSession, PersonalRecord, SomaProfile, ExerciseLog } from '@/lib/types';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { buildTitanSessionPrompt } from './prompts/titan-session-prompt';
 import { loadTitanProfile, saveTitanProfile, subscribeTitanProfile, syncGuestTitanProfileToUser } from './services/titan-profile-service';
@@ -67,6 +71,11 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   // ── Quick-log drawer ───────────────────────────────────────────────────────
   const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
   const [quickLogDate, setQuickLogDate] = useState<Date | null>(null);
+
+  // ── Fast Quick-Log bar (inline natural-language entry) ─────────────────────
+  const [quickLogBarInput, setQuickLogBarInput] = useState('');
+  const [pendingLogEntries, setPendingLogEntries] = useState<ParsedEntry[]>([]);
+  const [quickLogCommitError, setQuickLogCommitError] = useState<string | null>(null);
 
   /** Unique exercise names from session history + routines — fed to autocomplete. */
   const existingExercises = useMemo(() => {
@@ -323,6 +332,94 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     ai.handleSendMessage(prompt);
   }, [ai.handleSendMessage]);
 
+  // ── Fast Quick-Log bar handlers ────────────────────────────────────────────
+  const handleQuickLogBarSubmit = useCallback((input: string) => {
+    const result = parseQuickLogInput(input);
+    if (result.isEmpty) return;
+    // Pass empty array for PRs to avoid type mismatch between titan/types and lib/types PersonalRecord
+    const annotated = annotatePRs(result.entries, []);
+    setPendingLogEntries(annotated);
+  }, []);
+
+  const handleQuickLogBarCommit = useCallback(async () => {
+    if (!profile || !encryptionKey || !user || pendingLogEntries.length === 0) return;
+    setQuickLogCommitError(null);
+    try {
+      const now = new Date().toISOString();
+      const today = now.slice(0, 10);
+      const sessionId = `ql-fast-${Date.now()}`;
+
+      const exercises: ExerciseLog[] = pendingLogEntries.map(entry => ({
+        exerciseName: entry.exerciseName,
+        plannedSets: entry.sets,
+        plannedReps: entry.reps ? String(entry.reps) : '—',
+        sets: Array.from({ length: entry.sets }, (_, i) => ({
+          setNumber: i + 1,
+          weight: entry.weight ?? undefined,
+          repsCompleted: entry.reps ?? 0,
+          completed: true,
+        })),
+      }));
+
+      const totalVolume = exercises.reduce(
+        (total, ex) =>
+          total + ex.sets.reduce((st, s) =>
+            s.completed && s.weight ? st + s.weight * s.repsCompleted : st, 0),
+        0,
+      );
+
+      const session: WorkoutSession = {
+        id: sessionId,
+        routineId: 'quick-log',
+        routineName: 'Quick Log',
+        date: today,
+        startedAt: now,
+        completedAt: now,
+        exercises,
+        totalVolume: totalVolume > 0 ? Math.round(totalVolume) : undefined,
+        status: 'completed',
+      };
+
+      const updatedSessions = [session, ...(profile.workoutSessions ?? [])].slice(0, 500);
+      const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
+
+      for (const exLog of session.exercises) {
+        const key = exLog.exerciseName.toLowerCase().trim();
+        for (const s of exLog.sets) {
+          if (!s.completed || !s.weight || !s.repsCompleted) continue;
+          const e1RM = s.repsCompleted === 1
+            ? s.weight
+            : Math.round(s.weight * (1 + s.repsCompleted / 30));
+          const existing = updatedPRs[key];
+          if (!existing || e1RM > existing.e1RM) {
+            updatedPRs[key] = {
+              exerciseName: exLog.exerciseName,
+              maxWeight: s.weight,
+              repsAtMax: s.repsCompleted,
+              e1RM,
+              achievedDate: today,
+              sessionId,
+            };
+          }
+        }
+      }
+
+      const updated: TitanProfile = {
+        ...profile,
+        workoutSessions: updatedSessions,
+        personalRecords: updatedPRs,
+        updatedAt: now,
+      };
+
+      await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+      setPendingLogEntries([]);
+      setQuickLogBarInput('');
+    } catch (err) {
+      console.error('[QuickLogBar] commit failed:', err);
+      setQuickLogCommitError('Failed to save. Tap retry.');
+    }
+  }, [profile, encryptionKey, user, pendingLogEntries]);
+
   // Tab data
   const activeCycleCount = (profile?.cycles ?? []).filter(c => c.status === 'active').length;
 
@@ -355,6 +452,16 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             <CycleManager
               cycles={profile?.cycles ?? []}
               onSubmitForApproval={ai.handleSendMessage}
+            />
+          </div>
+        );
+
+      case 'sleep':
+        return (
+          <div className="px-4 md:px-8 pb-8 pt-4">
+            <SleepTracker
+              sleepLog={profile?.sleepLog ?? []}
+              onAnalyze={ai.handleSendMessage}
             />
           </div>
         );
@@ -516,6 +623,9 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                 />
               </div>
             )}
+
+            {/* Bottom padding so content isn't flush against the QuickLogBar */}
+            <div className="h-4" aria-hidden="true" />
           </>
         );
     }
@@ -572,6 +682,36 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           )}>
           {renderTabContent()}
         </div>
+
+        {/* Quick-log bar footer — constrained to left panel, not fixed to viewport */}
+        {activeTab === 'training' && (
+          <>
+            {/* Log confirm card — slides up after parse */}
+            <AnimatePresence>
+              {pendingLogEntries.length > 0 && (
+                <LogConfirmCard
+                  entries={pendingLogEntries}
+                  onCommit={handleQuickLogBarCommit}
+                  onEdit={() => {
+                    setPendingLogEntries([]);
+                  }}
+                  onDismiss={() => {
+                    setPendingLogEntries([]);
+                    setQuickLogCommitError(null);
+                  }}
+                  commitError={quickLogCommitError}
+                />
+              )}
+            </AnimatePresence>
+            <QuickLogBar
+              value={quickLogBarInput}
+              onChange={setQuickLogBarInput}
+              onSubmit={handleQuickLogBarSubmit}
+              recentSessions={profile?.workoutSessions ?? []}
+              disabled={pendingLogEntries.length > 0}
+            />
+          </>
+        )}
       </div>
       </SingleAgentLayout>
 

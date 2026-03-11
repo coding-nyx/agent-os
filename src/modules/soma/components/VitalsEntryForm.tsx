@@ -9,10 +9,8 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { SpineEventType } from '@/lib/types';
-import type { SomaProfile } from './SomaDashboard';
 
 interface VitalsEntryFormProps {
-  profile: SomaProfile | null;
   onSubmit: (vitals: {
     heartRate?: number;
     bloodPressure?: string;
@@ -22,7 +20,7 @@ interface VitalsEntryFormProps {
   }) => void;
 }
 
-export function VitalsEntryForm({ profile, onSubmit }: VitalsEntryFormProps) {
+export function VitalsEntryForm({ onSubmit }: VitalsEntryFormProps) {
   const [formData, setFormData] = useState({
     heartRate: '',
     bloodPressureSystolic: '',
@@ -154,11 +152,6 @@ export function VitalsEntryForm({ profile, onSubmit }: VitalsEntryFormProps) {
             {errors.heartRate && (
               <p className="text-xs text-red-400 mt-1">{errors.heartRate}</p>
             )}
-            {profile?.restingHeartRate && (
-              <p className="text-xs text-white/40 mt-1">
-                Last reading: {profile.restingHeartRate} bpm
-              </p>
-            )}
           </div>
 
           {/* Blood Pressure */}
@@ -193,11 +186,6 @@ export function VitalsEntryForm({ profile, onSubmit }: VitalsEntryFormProps) {
                 <p className="text-xs text-white/40 mt-1">Diastolic</p>
               </div>
             </div>
-            {profile?.bloodPressure && (
-              <p className="text-xs text-white/40 mt-1">
-                Last reading: {profile.bloodPressure}
-              </p>
-            )}
           </div>
 
           {/* Temperature */}
@@ -220,11 +208,6 @@ export function VitalsEntryForm({ profile, onSubmit }: VitalsEntryFormProps) {
             {errors.temperature && (
               <p className="text-xs text-red-400 mt-1">{errors.temperature}</p>
             )}
-            {profile?.temperature && (
-              <p className="text-xs text-white/40 mt-1">
-                Last reading: {profile.temperature}°C
-              </p>
-            )}
           </div>
 
           {/* SpO2 */}
@@ -246,11 +229,6 @@ export function VitalsEntryForm({ profile, onSubmit }: VitalsEntryFormProps) {
             {errors.spo2 && (
               <p className="text-xs text-red-400 mt-1">{errors.spo2}</p>
             )}
-            {profile?.spo2 && (
-              <p className="text-xs text-white/40 mt-1">
-                Last reading: {profile.spo2}%
-              </p>
-            )}
           </div>
 
           {/* Weight */}
@@ -268,11 +246,6 @@ export function VitalsEntryForm({ profile, onSubmit }: VitalsEntryFormProps) {
             />
             {errors.weight && (
               <p className="text-xs text-red-400 mt-1">{errors.weight}</p>
-            )}
-            {profile?.weight && (
-              <p className="text-xs text-white/40 mt-1">
-                Last reading: {profile.weight} kg
-              </p>
             )}
           </div>
 

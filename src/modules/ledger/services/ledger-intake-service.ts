@@ -20,6 +20,16 @@ export interface DebtItem {
   minPayment: number;
   apr: number;
   interestPaid?: number;
+  /** Debt category used for reporting and strategy hints. */
+  type?: 'credit_card' | 'student_loan' | 'mortgage' | 'auto' | 'medical' | 'personal';
+  /** Original principal at origination — used to calculate paydown progress. */
+  originalBalance?: number;
+  /** Day of the month the payment is due (1–31). */
+  dueDay?: number;
+  /** Whether the APR is variable (can change over time). */
+  isVariableRate?: boolean;
+  /** Stated minimum monthly payment (may differ from computed minPayment). */
+  minimumPayment?: number;
 }
 
 export interface SavingsGoal {

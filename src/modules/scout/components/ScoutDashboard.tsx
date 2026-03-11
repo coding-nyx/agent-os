@@ -170,16 +170,28 @@ export function ScoutDashboard({
                   </div>
                 ))}
                 {(profile?.newsBriefs || []).slice(0, 3).map((brief, index) => (
-                  <div key={`news-${index}`} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70 space-y-1">
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-fuchsia-300">{brief.topic}</div>
-                    <div className="text-[11px] text-white/60">{brief.summary}</div>
-                  </div>
+                  brief.isPlaceholder ? (
+                    <div
+                      key={`news-${index}`}
+                      className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-3 text-xs space-y-1"
+                      role="status"
+                      aria-label={`Placeholder briefing for ${brief.topic}`}
+                    >
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-amber-300/80">{brief.topic}</div>
+                      <div className="text-[11px] text-white/40 italic">{brief.summary}</div>
+                    </div>
+                  ) : (
+                    <div key={`news-${index}`} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70 space-y-1">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-fuchsia-300">{brief.topic}</div>
+                      <div className="text-[11px] text-white/60">{brief.summary}</div>
+                    </div>
+                  )
                 ))}
                 {!profile?.trendBriefs?.length && !profile?.newsBriefs?.length && (
                   <EmptyState
                     size="sm"
                     title="No briefs yet"
-                    description="Run a refresh to synthesize signals."
+                    description="Add research topics to see briefings here."
                     className="bg-transparent border-white/10"
                   />
                 )}

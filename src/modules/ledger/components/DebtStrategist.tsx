@@ -49,6 +49,8 @@ interface DebtStrategistProps {
   currency?: string;
   extraMonthlyPayment?: number;
   onExtraPaymentChange?: (amount: number) => void;
+  /** When true, recommend the Snowball strategy (lower balance first) based on NSV stressLoad. */
+  recommendSnowball?: boolean;
 }
 
 /** Chart data point: one row per month with both strategy balances. */
@@ -100,6 +102,14 @@ interface StrategySummaryCardProps {
   result: DebtPayoffResult;
   currency: string;
   isBetter: boolean;
+}
+
+/** Returns a human-readable debt-free date from monthsToPayoff. */
+function getDebtFreeDate(monthsToPayoff: number): string | null {
+  if (monthsToPayoff <= 0) return null;
+  const target = new Date();
+  target.setMonth(target.getMonth() + monthsToPayoff);
+  return target.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 function StrategySummaryCard({ result, currency, isBetter }: StrategySummaryCardProps) {
@@ -161,6 +171,22 @@ function StrategySummaryCard({ result, currency, isBetter }: StrategySummaryCard
           </span>
         </div>
 
+        {/* Debt-free date */}
+        {result.monthsToPayoff > 0 && (() => {
+          const debtFreeDate = getDebtFreeDate(result.monthsToPayoff);
+          return debtFreeDate ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white/50 text-xs">
+                <Clock className="w-3.5 h-3.5 opacity-0" />
+                <span>Debt-free by</span>
+              </div>
+              <span className={cn('font-semibold text-xs', isAvalanche ? 'text-cyan-300' : 'text-purple-300')}>
+                {debtFreeDate}
+              </span>
+            </div>
+          ) : null;
+        })()}
+
         {/* Total interest paid */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-white/50 text-xs">
@@ -214,6 +240,7 @@ export function DebtStrategist({
   currency = 'USD',
   extraMonthlyPayment: controlledExtra,
   onExtraPaymentChange,
+  recommendSnowball = false,
 }: DebtStrategistProps) {
   // Semi-controlled: internal state seeded from prop; reports changes upward.
   const [internalExtra, setInternalExtra] = useState<number>(controlledExtra ?? 0);
@@ -252,8 +279,13 @@ export function DebtStrategist({
     [debtItems, extra],
   );
 
-  // Avalanche always pays less (or equal) interest — mark it as "better".
-  const avalancheBetter = avalancheResult.totalInterestPaid <= snowballResult.totalInterestPaid;
+  // Determine which strategy to highlight as "Recommended".
+  // Avalanche is mathematically optimal (less interest), but when the user's
+  // stress load is high, Snowball provides quicker psychological wins.
+  // `recommendSnowball` is set by the caller based on NSV stressLoad > 7.
+  const avalancheBetter = recommendSnowball
+    ? false
+    : avalancheResult.totalInterestPaid <= snowballResult.totalInterestPaid;
 
   // Build merged chart data: one row per month, both balances present.
   // Cap at 60 months for readability; if both strategies finish earlier, use that.
@@ -286,6 +318,11 @@ export function DebtStrategist({
           <p className="text-white/40 text-xs mt-0.5">
             Compare avalanche vs snowball payoff strategies for your debts
           </p>
+          {recommendSnowball && (
+            <p className="text-amber-400/80 text-[11px] mt-1">
+              ⚡ High stress detected — Snowball wins recommended for quicker psychological relief
+            </p>
+          )}
         </div>
 
         {/* Extra monthly payment input */}

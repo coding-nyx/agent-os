@@ -7,7 +7,11 @@ import { useVault } from '@/lib/vault-context';
 import { AgnesOnboarding } from './onboarding/AgnesOnboarding';
 import { AGNES_PERSONA } from './personas';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield, ArrowRight, ChevronLeft, ChevronRight, Wind } from 'lucide-react';
+import { SomaticSessionPicker, type SomaticExerciseType } from './components/somatic/SomaticSessionPicker';
+import { BreathworkExercise } from './components/somatic/BreathworkExercise';
+import { GroundingExercise } from './components/somatic/GroundingExercise';
+import { Spine } from '@/lib/spine/spine-event-bus';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -32,7 +36,7 @@ import { IntakeBaseContextService } from '@/lib/services/intake-base-context-ser
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
 
-type AgnesState = 'selecting' | 'session';
+type AgnesState = 'selecting' | 'session' | 'somatic';
 
 const AgnesSidebar = React.memo(function AgnesSidebar({
   profile,
@@ -97,7 +101,7 @@ function AgnesContent({
   encryptionKey,
   setSessionActive
 }: AgnesContentProps) {
-  const { globalSoul } = useGlobalSoul();
+  const { globalSoul, updateCrossFunctionalState } = useGlobalSoul();
   const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
   const navigate = useNavigate();
@@ -110,6 +114,10 @@ function AgnesContent({
   const [sessionSummary, setSessionSummary] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
   const prevUserRef = useRef(user);
+
+  // Somatic session state
+  const [selectedSomaticExercise, setSelectedSomaticExercise] = useState<SomaticExerciseType | null>(null);
+  const somaticStartedAt = useRef<number>(0);
 
   const agentAlias = globalSoul?.displayNames?.agnes || 'Agnes';
 
@@ -334,6 +342,50 @@ function AgnesContent({
 
   const hasActiveSession = !isGuest && messages.length > 0;
 
+  // ── Somatic session handlers ──────────────────────────────────────────────
+
+  const handleOpenSomatic = useCallback(() => {
+    somaticStartedAt.current = Date.now();
+    setSelectedSomaticExercise(null);
+    setCurrentState('somatic');
+  }, []);
+
+  const handleSomaticSelect = useCallback((exercise: SomaticExerciseType) => {
+    somaticStartedAt.current = Date.now();
+    setSelectedSomaticExercise(exercise);
+  }, []);
+
+  const handleSomaticComplete = useCallback(async () => {
+    const durationSeconds = Math.round((Date.now() - somaticStartedAt.current) / 1000);
+    const exerciseType = selectedSomaticExercise ?? 'breathwork';
+
+    // Update NSV: reduce stress load, increase resilience
+    const emotional = globalSoul?.crossFunctionalState?.emotional;
+    await updateCrossFunctionalState({
+      emotional: {
+        stressLoad: Math.max(0, (emotional?.stressLoad ?? 5) - 1.5),
+        emotionalResilience: Math.min(10, (emotional?.emotionalResilience ?? 5) + 0.5),
+      },
+    });
+
+    // Emit Spine event
+    Spine.publish({
+      type: 'SOMATIC_SESSION_COMPLETE',
+      source: 'agnes',
+      domain: 'E',
+      priority: 'info',
+      data: { exerciseType, durationSeconds, completedFully: true },
+    });
+
+    setCurrentState('selecting');
+    setSelectedSomaticExercise(null);
+  }, [selectedSomaticExercise, globalSoul, updateCrossFunctionalState]);
+
+  const handleSomaticExit = useCallback(() => {
+    setCurrentState('selecting');
+    setSelectedSomaticExercise(null);
+  }, []);
+
   return (
     <div className="flex-1 flex min-h-0 relative p-0 min-[620px]:p-4 lg:p-6">
       <div className="absolute inset-0">
@@ -456,6 +508,38 @@ function AgnesContent({
                     )
                   )}
                 </div>
+
+                {/* Somatic Practice entry point — only shown when somaticEnabled */}
+                {profile?.baseContext?.somaticEnabled !== false && isAccessible && !isGuest && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                    whileHover={{ scale: 1.01, y: -2 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={handleOpenSomatic}
+                    className="group w-full mt-2 p-6 rounded-[2rem] bg-violet-500/[0.04] border border-violet-500/15 hover:bg-violet-500/[0.08] hover:border-violet-500/30 transition-all text-left relative overflow-hidden backdrop-blur-md"
+                  >
+                    <div className="absolute top-0 right-0 p-5 opacity-[0.06] group-hover:opacity-[0.1] transition-opacity pointer-events-none">
+                      <Wind className="w-14 h-18 text-violet-400" />
+                    </div>
+                    <div className="relative z-10 flex items-center gap-5">
+                      <Wind className="w-7 h-7 text-violet-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-black tracking-tighter uppercase italic text-white/80 mb-0.5">
+                          Somatic Practice
+                        </h3>
+                        <p className="text-[11px] text-white/30 font-medium">
+                          Breathwork &amp; grounding exercises · body-based regulation
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 text-violet-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-3 group-hover:translate-x-0 shrink-0">
+                        <span className="text-[9px] font-black uppercase tracking-widest">Begin</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </div>
+                    </div>
+                  </motion.button>
+                )}
               </motion.div>
               )} {/* end isHydrating gate */}
             </motion.div>

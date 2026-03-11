@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sunrise, Zap, Brain, Activity, X, Sparkles, Loader2 } from 'lucide-react';
+import { Sunrise, Zap, Brain, Activity, X, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AtlasProfile } from '../services/atlas-profile-service';
 import type { GlobalProjection } from '@/lib/types';
+import type { AtlasState } from '../services/atlas-predictive-service';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -15,6 +16,8 @@ export interface MorningCheckInProps {
   userId?: string | null;
   onDismiss: () => void;
   onSendMessage: (message: string) => void;
+  /** Current Atlas predictive state - adjusts header tone and brief prompt. */
+  predictiveState?: AtlasState | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -23,26 +26,27 @@ export interface MorningCheckInProps {
 
 const TWENTY_HOURS_MS = 20 * 60 * 60 * 1000;
 
-/** Returns today's date as YYYY-MM-DD in local time. */
 function todayISO(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-/** Returns the localStorage key scoped to the current user (or guest). */
 function briefKey(userId?: string | null): string {
   return `atlas_brief_date_${userId ?? 'guest'}`;
 }
 
 /**
  * Returns true when the morning check-in card should be shown.
- * Compares the stored dismissal date to today; shows when they differ.
+ * Conditions (both must hold):
+ *   1. Local hour is >= 5 and < 11  (05:00 - 11:00 window).
+ *   2. The check-in has not been dismissed today.
  */
 export function shouldShowMorningCheckIn(userId?: string | null): boolean {
   try {
+    const hour = new Date().getHours();
+    if (hour < 5 || hour >= 11) return false;
     const stored = localStorage.getItem(briefKey(userId));
     return stored !== todayISO();
   } catch {
-    // localStorage may be unavailable in some environments (e.g. SSR).
     return false;
   }
 }
@@ -54,6 +58,7 @@ export function shouldShowMorningCheckIn(userId?: string | null): boolean {
 function buildMorningBriefPrompt(
   profile: AtlasProfile | null,
   soul: GlobalProjection | null,
+  predictiveState?: AtlasState | null,
 ): string {
   const energyBudget = soul?.crossFunctionalState?.cognitive?.energyBudget;
   const focusScore = soul?.crossFunctionalState?.cognitive?.focusScore;
@@ -74,26 +79,34 @@ function buildMorningBriefPrompt(
   const activeHabits = profile?.habits?.filter((h) => h.status === 'active') ?? [];
   const atRiskHabits = activeHabits
     .filter((h) => {
-      if (!h.lastCompleted) return h.currentStreak > 0;
-      return Date.now() - new Date(h.lastCompleted).getTime() > TWENTY_HOURS_MS;
+      const lc = h.lastCompleted;
+      if (!lc) return h.currentStreak > 0;
+      return Date.now() - new Date(lc).getTime() > TWENTY_HOURS_MS;
     })
     .map((h) => h.title)
     .join(', ');
 
+  const stateNote = predictiveState === 'Overloaded'
+    ? '\nCRITICAL: Atlas state is OVERLOADED - prioritize recovery and deferral of non-essential tasks.'
+    : predictiveState === 'Recovery'
+    ? '\nCAUTION: Atlas state is RECOVERY - keep load minimal, protect energy reserves.'
+    : predictiveState === 'Compressed'
+    ? '\nNOTE: Atlas state is COMPRESSED - apply soft schedule compression and avoid new high-load commitments.'
+    : '';
+
   return `Good morning. Please give me my daily brief for today. 
-Context: Energy budget ${energyBudget ?? 'unknown'}/10, Focus score ${focusScore ?? 'unknown'}/10, CNS fatigue ${cnsFatigue ?? 'unknown'}/10, Emotional resilience ${emotionalResilience ?? 'unknown'}/10, Stress load ${stressLoad ?? 'unknown'}/10.
+Context: Energy budget ${energyBudget ?? 'unknown'}/10, Focus score ${focusScore ?? 'unknown'}/10, CNS fatigue ${cnsFatigue ?? 'unknown'}/10, Emotional resilience ${emotionalResilience ?? 'unknown'}/10, Stress load ${stressLoad ?? 'unknown'}/10.${stateNote}
 Active tasks (top priority): ${topTasks || 'none'}.
 Habits at risk today: ${atRiskHabits || 'none'}.
 Please: (1) assess my capacity for today, (2) recommend my one non-negotiable focus task, (3) flag any at-risk habits, (4) suggest any schedule adjustments based on my current state.`;
 }
 
 // ---------------------------------------------------------------------------
-// StatPill — small colourised metric badge
+// StatPill
 // ---------------------------------------------------------------------------
 
 interface StatPillProps {
-   
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   value: number | string | undefined | null;
 }
@@ -107,16 +120,12 @@ function statColor(value: number | string | undefined | null): string {
 }
 
 function StatPill({ icon: Icon, label, value }: StatPillProps) {
-  const display = value != null ? String(value) : '—';
+  const display = value != null ? String(value) : '\u2014';
   return (
     <div className="flex flex-col items-center gap-1 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2 min-w-0">
       <Icon className="w-3.5 h-3.5 text-white/40 shrink-0" aria-hidden="true" />
-      <span className={cn('text-sm font-bold tabular-nums', statColor(value))}>
-        {display}
-      </span>
-      <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30 truncate">
-        {label}
-      </span>
+      <span className={cn('text-sm font-bold tabular-nums', statColor(value))}>{display}</span>
+      <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30 truncate">{label}</span>
     </div>
   );
 }
@@ -135,14 +144,14 @@ function LoadingSkeleton() {
     >
       <Loader2 className="w-5 h-5 text-sky-400 animate-spin" aria-hidden="true" />
       <span className="text-xs font-bold text-white/50 animate-pulse tracking-wide">
-        Generating your brief…
+        Generating your brief\u2026
       </span>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// MorningCheckIn — Main export
+// MorningCheckIn - Main export
 // ---------------------------------------------------------------------------
 
 export function MorningCheckIn({
@@ -151,13 +160,12 @@ export function MorningCheckIn({
   userId,
   onDismiss,
   onSendMessage,
+  predictiveState,
 }: MorningCheckInProps) {
   const [isLoading, setIsLoading] = useState(false);
 
-  // Guard: don't render if already dismissed today.
+  // Guard: don't render outside the morning window or if already dismissed.
   if (!shouldShowMorningCheckIn(userId)) return null;
-
-  // ── Derived data ──────────────────────────────────────────────────────────
 
   const cognitive = soul?.crossFunctionalState?.cognitive;
   const emotional = soul?.crossFunctionalState?.emotional;
@@ -172,8 +180,9 @@ export function MorningCheckIn({
 
   const activeHabits = profile?.habits?.filter((h) => h.status === 'active') ?? [];
   const atRiskCount = activeHabits.filter((h) => {
-    if (!h.lastCompleted) return h.currentStreak > 0;
-    return Date.now() - new Date(h.lastCompleted).getTime() > TWENTY_HOURS_MS;
+    const lc = h.lastCompleted;
+    if (!lc) return h.currentStreak > 0;
+    return Date.now() - new Date(lc).getTime() > TWENTY_HOURS_MS;
   }).length;
 
   const dateLabel = new Date().toLocaleDateString('en-US', {
@@ -182,27 +191,45 @@ export function MorningCheckIn({
     day: 'numeric',
   });
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // Dynamic styling based on predictive state
+  const isElevated = predictiveState === 'Overloaded' || predictiveState === 'Recovery';
+  const isCompressed = predictiveState === 'Compressed';
+  const borderClass = isElevated
+    ? 'border-orange-500/20'
+    : isCompressed
+    ? 'border-amber-500/20'
+    : 'border-sky-500/20';
+  const bgClass = isElevated
+    ? 'bg-orange-500/5'
+    : isCompressed
+    ? 'bg-amber-500/5'
+    : 'bg-sky-500/5';
+  const iconClass = isElevated
+    ? 'text-orange-400'
+    : isCompressed
+    ? 'text-amber-400'
+    : 'text-sky-400';
+  const headerText =
+    predictiveState === 'Overloaded'
+      ? 'Overloaded \u2014 Light Day Recommended'
+      : predictiveState === 'Recovery'
+      ? 'Recovery Mode Active'
+      : predictiveState === 'Compressed'
+      ? 'Schedule Compressed'
+      : 'Good Morning';
 
   function handleDismiss() {
-    try {
-      localStorage.setItem(briefKey(userId), todayISO());
-    } catch {
-      // Ignore storage failures; dismissal still propagates to the parent.
-    }
+    try { localStorage.setItem(briefKey(userId), todayISO()); } catch { /* ignore */ }
     onDismiss();
   }
 
   async function handleGetBrief() {
     setIsLoading(true);
-    onSendMessage(buildMorningBriefPrompt(profile, soul));
-    // Brief delay to acknowledge the action before the parent takes over the UI.
+    onSendMessage(buildMorningBriefPrompt(profile, soul, predictiveState));
     await new Promise((resolve) => setTimeout(resolve, 300));
     setIsLoading(false);
     handleDismiss();
   }
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <AnimatePresence>
@@ -211,16 +238,20 @@ export function MorningCheckIn({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="rounded-2xl border border-sky-500/20 bg-sky-500/5 backdrop-blur-sm p-4 space-y-4"
+        className={cn('rounded-2xl border backdrop-blur-sm p-4 space-y-4', borderClass, bgClass)}
         role="region"
         aria-label="Morning check-in"
       >
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Sunrise className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
+            {isElevated ? (
+              <AlertTriangle className={cn('w-4 h-4 shrink-0', iconClass)} aria-hidden="true" />
+            ) : (
+              <Sunrise className={cn('w-4 h-4 shrink-0', iconClass)} aria-hidden="true" />
+            )}
             <span className="text-sm font-bold text-white/90 tracking-wide truncate">
-              Good Morning
+              {headerText}
             </span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -237,34 +268,17 @@ export function MorningCheckIn({
           </div>
         </div>
 
-        {/* ── Body (idle vs loading) ── */}
+        {/* Body */}
         {isLoading ? (
           <LoadingSkeleton />
         ) : (
           <>
-            {/* Quick context stats */}
-            <div
-              className="grid grid-cols-3 gap-2"
-              aria-label="Current state overview"
-            >
-              <StatPill
-                icon={Zap}
-                label="Energy"
-                value={cognitive?.energyBudget}
-              />
-              <StatPill
-                icon={Brain}
-                label="Focus"
-                value={cognitive?.focusScore}
-              />
-              <StatPill
-                icon={Activity}
-                label="Stress"
-                value={emotional?.stressLoad}
-              />
+            <div className="grid grid-cols-3 gap-2" aria-label="Current state overview">
+              <StatPill icon={Zap} label="Energy" value={cognitive?.energyBudget} />
+              <StatPill icon={Brain} label="Focus" value={cognitive?.focusScore} />
+              <StatPill icon={Activity} label="Stress" value={emotional?.stressLoad} />
             </div>
 
-            {/* Task preview */}
             {previewTasks.length > 0 && (
               <div className="space-y-1.5" aria-label="Top active tasks">
                 <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30">
@@ -291,24 +305,25 @@ export function MorningCheckIn({
               </div>
             )}
 
-            {/* At-risk habits callout */}
             {atRiskCount > 0 && (
               <p className="text-[10px] text-amber-300/80 font-medium">
-                ⚠{'\u00A0'}
+                {'\u26a0\u00A0'}
                 {atRiskCount} habit{atRiskCount !== 1 ? 's' : ''} at risk of breaking today
               </p>
             )}
 
-            {/* CTA */}
             <button
               onClick={handleGetBrief}
               className={cn(
                 'w-full flex items-center justify-center gap-2 rounded-xl',
-                'bg-sky-500/20 border border-sky-500/30 hover:bg-sky-500/30',
-                'text-sky-300 text-xs font-bold uppercase tracking-[0.15em]',
-                'py-2.5 px-4 transition-colors focus-visible:outline-none',
-                'focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2',
-                'focus-visible:ring-offset-transparent',
+                isElevated
+                  ? 'bg-orange-500/20 border border-orange-500/30 hover:bg-orange-500/30 text-orange-300'
+                  : isCompressed
+                  ? 'bg-amber-500/20 border border-amber-500/30 hover:bg-amber-500/30 text-amber-300'
+                  : 'bg-sky-500/20 border border-sky-500/30 hover:bg-sky-500/30 text-sky-300',
+                'text-xs font-bold uppercase tracking-[0.15em] py-2.5 px-4 transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400',
+                'focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
               )}
               aria-label="Get my daily brief from Atlas"
             >

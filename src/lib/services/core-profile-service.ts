@@ -38,9 +38,13 @@ const normalizeVaultLocks = (locks?: Record<string, boolean>): Record<string, bo
 };
 
 const normalizeSecurityPreferences = (prefs?: UserSecurityPreferences): UserSecurityPreferences => {
-  return {
+  const result: UserSecurityPreferences = {
     vaultLocks: normalizeVaultLocks(prefs?.vaultLocks)
   };
+  if (prefs?.dataSharingOverrides) {
+    result.dataSharingOverrides = prefs.dataSharingOverrides;
+  }
+  return result;
 };
 
 export const CoreProfileService = {

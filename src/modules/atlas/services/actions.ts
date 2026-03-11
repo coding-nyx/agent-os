@@ -1,5 +1,6 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import type { JournalEntry } from '@/lib/types';
 import {
   AtlasProfile,
   AtlasTask,
@@ -69,6 +70,82 @@ function overlapsRecoveryWindow(scheduledAt: string, duration: number, windows: 
     const wEnd = new Date(w.end).getTime();
     return blockStart < wEnd && blockEnd > wStart;
   });
+}
+
+// ---------------------------------------------------------------------------
+// Journal helpers
+// ---------------------------------------------------------------------------
+
+type JournalTone = 'grounding' | 'self-compassion' | 'perspective' | 'ambition' | 'reflective';
+
+/** Derive journaling tone from the NeuralStateVector. First-match wins. */
+function deriveNsvTone(nsv: Record<string, unknown> | null | undefined): JournalTone {
+  const emotional = nsv?.emotional as Record<string, unknown> | undefined;
+  const cognitive  = nsv?.cognitive  as Record<string, unknown> | undefined;
+  const biological = nsv?.biological as Record<string, unknown> | undefined;
+
+  // Prefer domain-namespaced fields; fall back to legacy top-level aliases.
+  const stressLoad: number =
+    typeof emotional?.stressLoad === 'number' ? emotional.stressLoad :
+    typeof nsv?.stressLoad       === 'number' ? (nsv.stressLoad as number) : 0;
+
+  const cnsFatigue: number =
+    typeof biological?.cnsFatigue === 'number' ? biological.cnsFatigue :
+    typeof nsv?.cnsFatigue        === 'number' ? (nsv.cnsFatigue as number) : 0;
+
+  const emotionalResilience: number =
+    typeof emotional?.emotionalResilience === 'number' ? emotional.emotionalResilience :
+    typeof nsv?.emotionalResilience       === 'number' ? (nsv.emotionalResilience as number) : 5;
+
+  const moodTrendRaw = emotional?.moodTrend ?? nsv?.moodTrend;
+  const moodTrend: number =
+    typeof moodTrendRaw === 'number' ? moodTrendRaw :
+    typeof moodTrendRaw === 'string' ? (parseFloat(moodTrendRaw) || 3) : 3;
+
+  const energyLevel: number =
+    typeof cognitive?.energyBudget === 'number' ? cognitive.energyBudget : 5;
+
+  const focusScore: number =
+    typeof cognitive?.focusScore === 'number' ? cognitive.focusScore : 5;
+
+  if (stressLoad >= 8 || cnsFatigue >= 0.75)         return 'grounding';
+  if (emotionalResilience <= 3)                       return 'self-compassion';
+  if (moodTrend <= 2 && stressLoad >= 6)             return 'perspective';
+  if (energyLevel >= 7 && focusScore >= 7)           return 'ambition';
+  return 'reflective';
+}
+
+const JOURNAL_PROMPTS: Record<JournalTone, string> = {
+  'grounding':        "Take a breath. What's one thing that felt manageable today, even if small?",
+  'self-compassion':  "What's something you'd tell a close friend who had a day like yours?",
+  'perspective':      "When you look back at today in a year, what will matter most?",
+  'ambition':         "You brought real energy today. What's the one thing you want to build on tomorrow?",
+  'reflective':       "What surprised you today — about your work, the world, or yourself?",
+};
+
+const JOURNAL_FORWARD: Record<JournalTone, string> = {
+  'grounding':       "Tomorrow doesn't need to be big — one small step is enough.",
+  'self-compassion': "You showed up today. That always counts for more than you think.",
+  'perspective':     "The things that feel urgent today rarely define tomorrow — keep your bigger picture in view.",
+  'ambition':        "That energy you brought today? Build on it — you're already in motion.",
+  'reflective':      "Reflection like this compounds over time. Keep going.",
+};
+
+const MOOD_LABELS = ['', 'rough', 'low', 'okay', 'good', 'great'] as const;
+
+const BLOCKER_STOP_WORDS = new Set([
+  'a','an','the','and','or','but','in','on','at','to','for','of','with','by',
+  'from','is','it','was','are','were','be','been','being','have','has','had',
+  'do','does','did','will','would','could','should','may','might','i','my','me',
+  'we','our','you','your','he','his','she','her','they','their','this','that',
+  'not','no','so','if','as','up','out','about','just','too','very','still',
+]);
+
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] as const;
+
+function dateToWeekday(dateStr: string): string {
+  // Use midday to avoid DST / UTC-offset shifts.
+  return DAY_NAMES[new Date(`${dateStr}T12:00:00`).getDay()];
 }
 
 export function registerAtlasActions() {
@@ -1261,6 +1338,185 @@ export function registerAtlasActions() {
 
       task.updatedAt = new Date().toISOString();
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
-    }
+    },
+
+    // === Journal Action Handlers ===
+
+    /**
+     * atlas_journal_generate_prompt
+     * Generate and push a reflective journaling prompt tuned to the user's
+     * current neural-state vector (or an explicitly supplied tone).
+     * Payload: { tone?: string; date?: string }
+     */
+    atlas_journal_generate_prompt: async ({ userId, pushAssistantMessage, payload }) => {
+      const VALID_TONES = new Set<JournalTone>([
+        'grounding', 'self-compassion', 'perspective', 'ambition', 'reflective',
+      ]);
+
+      let tone: JournalTone = 'reflective';
+
+      if (typeof payload?.tone === 'string' && VALID_TONES.has(payload.tone as JournalTone)) {
+        tone = payload.tone as JournalTone;
+      } else if (userId) {
+        const projection = await GlobalProjectionService.getProjection(userId).catch(() => null);
+        tone = deriveNsvTone(
+          projection?.crossFunctionalState as unknown as Record<string, unknown> | null
+        );
+      }
+
+      const prompt = JOURNAL_PROMPTS[tone];
+      if (pushAssistantMessage) pushAssistantMessage(prompt);
+    },
+
+    /**
+     * atlas_journal_synthesize_response
+     * Compose a warm, deterministic 2-3 sentence synthesis from the saved
+     * entry fields and push it as an assistant message.
+     * Payload: { entry: Partial<JournalEntry>; tone?: string }
+     */
+    atlas_journal_synthesize_response: async ({ userId, pushAssistantMessage, emitSpineEvent, payload }) => {
+      const VALID_TONES = new Set<JournalTone>([
+        'grounding', 'self-compassion', 'perspective', 'ambition', 'reflective',
+      ]);
+
+      const entry = (payload?.entry ?? {}) as Partial<JournalEntry>;
+
+      // Resolve tone
+      let tone: JournalTone = 'reflective';
+      if (typeof payload?.tone === 'string' && VALID_TONES.has(payload.tone as JournalTone)) {
+        tone = payload.tone as JournalTone;
+      } else if (userId) {
+        const projection = await GlobalProjectionService.getProjection(userId).catch(() => null);
+        tone = deriveNsvTone(
+          projection?.crossFunctionalState as unknown as Record<string, unknown> | null
+        );
+      }
+
+      // — Sentence 1: Acknowledge mood/energy ——————————————————————————————
+      const moodIdx = typeof entry.mood === 'number'
+        ? Math.max(1, Math.min(5, Math.round(entry.mood))) : 3;
+      const moodLabel = MOOD_LABELS[moodIdx];
+
+      let sentence1: string;
+      if (moodLabel !== 'okay') {
+        sentence1 = `A ${moodLabel} day — that's honest, and honesty here matters.`;
+      } else {
+        sentence1 = `A steady day — sometimes holding the line is the win.`;
+      }
+
+      // — Sentence 2: Reference freeform writing if present —————————————————
+      let sentence2 = '';
+      if (typeof entry.freeform === 'string' && entry.freeform.trim().length > 0) {
+        const snippet = entry.freeform.trim().slice(0, 60);
+        const ellipsis = entry.freeform.trim().length > 60 ? '...' : '';
+        sentence2 = ` You wrote: "${snippet}${ellipsis}" — there's real self-awareness in that.`;
+      } else if (typeof entry.morningIntent === 'string' && entry.morningIntent.trim().length > 0) {
+        sentence2 = ` You set out to: "${entry.morningIntent.trim().slice(0, 60)}" — that intention shaped the day.`;
+      }
+
+      // — Sentence 3: Forward-looking affirmation ————————————————————————————
+      const sentence3 = ` ${JOURNAL_FORWARD[tone]}`;
+
+      const response = `${sentence1}${sentence2}${sentence3}`;
+
+      if (pushAssistantMessage) pushAssistantMessage(response);
+
+      emitSpineEvent('JOURNAL_ENTRY_UPDATED', {
+        priority: 'info',
+        domain: 'C',
+        date: typeof entry.date === 'string' ? entry.date : new Date().toISOString().slice(0, 10),
+      });
+    },
+
+    /**
+     * atlas_journal_extract_insights
+     * Analyse pre-decrypted entries from the last 7 days and push a markdown
+     * week-in-review summary.
+     * Payload: { entries: Array<{ date: string; mood: number; energyLevel: number; blockers: string }> }
+     */
+    atlas_journal_extract_insights: async ({ pushAssistantMessage, emitSpineEvent, payload }) => {
+      type InsightEntry = { date: string; mood: number; energyLevel: number; blockers: string };
+
+      const rawEntries: unknown[] = Array.isArray(payload?.entries) ? payload.entries : [];
+
+      const entries: InsightEntry[] = rawEntries
+        .filter((e): e is Record<string, unknown> => typeof e === 'object' && e !== null)
+        .map(e => ({
+          date:         typeof e.date         === 'string' ? e.date         : '',
+          mood:         typeof e.mood         === 'number' ? Math.max(1, Math.min(5, e.mood))         : 3,
+          energyLevel:  typeof e.energyLevel  === 'number' ? Math.max(1, Math.min(5, e.energyLevel))  : 3,
+          blockers:     typeof e.blockers     === 'string' ? e.blockers     : '',
+        }))
+        .filter(e => e.date.length > 0);
+
+      if (entries.length === 0) {
+        if (pushAssistantMessage) {
+          pushAssistantMessage("No journal entries found to analyse for this week.");
+        }
+        return;
+      }
+
+      // — Average mood & energy ——————————————————————————————————————————————
+      const avgMood   = entries.reduce((s, e) => s + e.mood,        0) / entries.length;
+      const avgEnergy = entries.reduce((s, e) => s + e.energyLevel, 0) / entries.length;
+
+      // — Mood trend: first-half vs second-half average —————————————————————
+      const mid        = Math.ceil(entries.length / 2);
+      const firstHalf  = entries.slice(0, mid);
+      const secondHalf = entries.slice(mid);
+      const firstAvg  = firstHalf.reduce( (s, e) => s + e.mood, 0) / (firstHalf.length  || 1);
+      const secondAvg = secondHalf.reduce((s, e) => s + e.mood, 0) / (secondHalf.length || 1);
+      const trendDelta = secondAvg - firstAvg;
+      const trendLabel = trendDelta > 0.3 ? '📈 (trending up)'
+                       : trendDelta < -0.3 ? '📉 (trending down)'
+                       : '➡️ (stable)';
+
+      // — Best day (highest combined mood + energy score) ————————————————————
+      const bestEntry = entries.reduce((best, e) =>
+        (e.mood + e.energyLevel) > (best.mood + best.energyLevel) ? e : best
+      );
+      const bestDay = dateToWeekday(bestEntry.date);
+
+      // — Blocker word frequency (skip stop words, min 3 chars) —————————————
+      const wordFreq = new Map<string, number>();
+      for (const entry of entries) {
+        if (!entry.blockers.trim()) continue;
+        const words = entry.blockers
+          .toLowerCase()
+          .replace(/[^a-z0-9\s'-]/g, ' ')
+          .split(/\s+/)
+          .filter(w => w.length >= 3 && !BLOCKER_STOP_WORDS.has(w));
+        for (const word of words) {
+          wordFreq.set(word, (wordFreq.get(word) ?? 0) + 1);
+        }
+      }
+
+      const topBlockers = [...wordFreq.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([word]) => `"${word}"`);
+
+      const blockersLine = topBlockers.length > 0
+        ? `- Recurring blockers: ${topBlockers.join(', ')}`
+        : '- No recurring blockers identified';
+
+      // — Build markdown summary ——————————————————————————————————————————————
+      const summary = [
+        '**Your week in review:**',
+        `- Avg mood: ${avgMood.toFixed(1)}/5 ${trendLabel}`,
+        `- Avg energy: ${avgEnergy.toFixed(1)}/5`,
+        blockersLine,
+        `- Best day: ${bestDay} (mood ${bestEntry.mood}, energy ${bestEntry.energyLevel})`,
+      ].join('\n');
+
+      if (pushAssistantMessage) pushAssistantMessage(summary);
+
+      emitSpineEvent('JOURNAL_ENTRY_UPDATED', {
+        priority: 'info',
+        domain:   'C',
+        date:     new Date().toISOString().slice(0, 10),
+        source:   'atlas_journal_extract_insights',
+      });
+    },
   });
 }

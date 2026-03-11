@@ -12,4 +12,5 @@ export { BiomarkerCharts, VitalsDashboard } from './BiomarkerCharts';
 export { ClearancePanel } from './ClearancePanel';
 export { ClearanceStatus } from './ClearanceStatus';
 
-export type { SomaProfile, VitalReading, PhysicalAssessment, SomaView } from './SomaDashboard';
+export type { VitalReading, PhysicalAssessment, SomaView } from './SomaDashboard';
+export type { SomaProfile } from '../types';

@@ -157,14 +157,19 @@ export function registerAgnesCascadeRules(): void {
 const MORNING_BRIEF_KEY = 'atlas_last_morning_brief';
 
 /**
- * Returns true when a morning brief has not yet been shown today.
- * Compares the stored ISO date string to today's calendar date — once per day.
+ * Returns true when a morning brief should be shown.
+ * Conditions (both must hold):
+ *   1. Local hour is ≥ 5 and < 11  (05:00 – 11:00 window).
+ *   2. The brief has not yet been shown today (localStorage gate).
  */
 function isMorningBriefDue(): boolean {
   try {
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour < 5 || hour >= 11) return false;
     const last = localStorage.getItem(MORNING_BRIEF_KEY);
     if (!last) return true;
-    return new Date(last).toDateString() !== new Date().toDateString();
+    return new Date(last).toDateString() !== now.toDateString();
   } catch {
     return false;
   }
@@ -216,11 +221,43 @@ export const ATLAS_MORNING_RULES: CascadeRule[] = [
   }
 ];
 
+// ---------------------------------------------------------------------------
+// Atlas Journal Cascade Rules — reflection-streak milestone (Atlas journaling)
+// ---------------------------------------------------------------------------
+
+/**
+ * When a journal entry is created AND the user's reflection streak has reached
+ * 7 or more consecutive days, emit a HABIT_STREAK_MILESTONE event so the rest
+ * of the Spine ecosystem (badges, Agnes acknowledgements, etc.) can react.
+ */
+export const ATLAS_JOURNAL_RULES: CascadeRule[] = [
+  {
+    id: 'atlas-journal-reflection-streak-milestone',
+    trigger: 'JOURNAL_ENTRY_CREATED' as SpineEventType,
+    condition: (event) => {
+      const streak = (event.data as Record<string, unknown>)?.reflectionStreak;
+      return typeof streak === 'number' && streak >= 7;
+    },
+    transform: (event) => ({
+      type: 'HABIT_STREAK_MILESTONE' as SpineEventType,
+      domain: 'C' as const,
+      source: 'spine-cascade',
+      priority: 'info' as const,
+      data: {
+        source: 'atlas',
+        habitName: 'Daily Reflection',
+        streak: event.data.reflectionStreak,
+      },
+    }),
+  },
+];
+
 export function registerAtlasCascadeRules(): void {
   const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
   if (spine?.registerCascadeRules) {
     spine.registerCascadeRules(ATLAS_CASCADE_RULES);
     spine.registerCascadeRules(ATLAS_MORNING_RULES);
+    spine.registerCascadeRules(ATLAS_JOURNAL_RULES);
   }
 }
 

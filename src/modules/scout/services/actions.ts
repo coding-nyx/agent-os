@@ -327,21 +327,44 @@ export function registerScoutActions() {
       await persistProfile(next, context);
     },
 
-    update_interest_map: async (context) => {
+    // Handler key matches persona action type: update_research_interests
+    // (Previously registered as update_interest_map — renamed for consistency)
+    update_research_interests: async (context) => {
       const { userId, encryptionKey, payload } = context;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
       const next: ScoutProfile = { ...profile };
 
-      if (Array.isArray(payload?.interests)) {
-        const mapped: InterestNode[] = payload.interests.map((entry: Record<string, unknown>, index: number) => ({
-          id: typeof entry?.id === 'string' ? entry.id : `interest_${Date.now()}_${index}`,
-          topic: typeof entry?.topic === 'string' ? entry.topic : `Topic ${index + 1}`,
-          score: parseScore(entry?.score),
-          trend: entry?.trend === 'rising' || entry?.trend === 'cooling' ? entry.trend : 'steady',
-          lastSeenAt: new Date().toISOString()
-        }));
+      // Accept both 'threads' (persona format) and legacy 'interests' array
+      const rawItems: unknown[] | null =
+        Array.isArray(payload?.threads) ? payload.threads :
+        Array.isArray(payload?.interests) ? payload.interests :
+        null;
+
+      if (rawItems !== null) {
+        const mapped: InterestNode[] = rawItems.map((entry: unknown, index: number) => {
+          const e = entry as Record<string, unknown>;
+          // Persona sends: { id, title, relevanceScore, momentum }
+          // Legacy sends:  { id, topic, score, trend }
+          const topic =
+            typeof e?.title === 'string' ? e.title :
+            typeof e?.topic === 'string' ? e.topic :
+            `Topic ${index + 1}`;
+          const score =
+            typeof e?.relevanceScore === 'number' ? parseScore(e.relevanceScore) :
+            parseScore(e?.score);
+          const rawTrend = e?.momentum ?? e?.trend;
+          const trend: InterestNode['trend'] =
+            rawTrend === 'rising' || rawTrend === 'cooling' ? rawTrend : 'steady';
+          return {
+            id: typeof e?.id === 'string' ? e.id : `interest_${Date.now()}_${index}`,
+            topic,
+            score,
+            trend,
+            lastSeenAt: new Date().toISOString()
+          };
+        });
         next.interests = mapped;
       }
 
@@ -352,16 +375,36 @@ export function registerScoutActions() {
       await persistProfile(next, context);
     },
 
-    track_topic: async (context) => {
+    // Backward-compat alias so any existing stored sessions still work
+    update_interest_map: async (context) => {
+      await ActionHub.execute('scout', 'update_research_interests', context);
+    },
+
+    // Handler key matches persona action type: track_research_thread
+    // (Previously registered as track_topic — renamed for consistency)
+    track_research_thread: async (context) => {
       const { userId, encryptionKey, payload } = context;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
+      // Persona sends: { id, title, relevanceScore, momentum, summary, claimCount, lastActiveDate }
+      // Legacy sends:  { id, topic, score, trend }
+      const topic =
+        typeof payload?.title === 'string' ? payload.title :
+        typeof payload?.topic === 'string' ? payload.topic :
+        'Topic';
+      const score =
+        typeof payload?.relevanceScore === 'number' ? parseScore(payload.relevanceScore) :
+        parseScore(payload?.score);
+      const rawTrend = payload?.momentum ?? payload?.trend;
+      const trend: InterestNode['trend'] =
+        rawTrend === 'rising' || rawTrend === 'cooling' ? rawTrend : 'steady';
+
       const node: InterestNode = {
         id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
-        topic: typeof payload?.topic === 'string' ? payload.topic : 'Topic',
-        score: parseScore(payload?.score),
-        trend: payload?.trend === 'rising' || payload?.trend === 'cooling' ? payload.trend : 'steady',
+        topic,
+        score,
+        trend,
         lastSeenAt: new Date().toISOString()
       };
 
@@ -371,6 +414,11 @@ export function registerScoutActions() {
       };
 
       await persistProfile(next, context);
+    },
+
+    // Backward-compat alias
+    track_topic: async (context) => {
+      await ActionHub.execute('scout', 'track_research_thread', context);
     },
 
     synthesize_research_trends: async (context) => {

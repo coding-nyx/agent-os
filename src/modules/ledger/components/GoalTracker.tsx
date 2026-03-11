@@ -85,6 +85,13 @@ interface GoalTrackerProps {
   onDeleteGoal: (id: string) => void;
   onAISuggestions?: () => void;
   disabled?: boolean;
+  /**
+   * Monthly income from the user's profile.  Used to compute a monthly surplus
+   * estimate for goals that have no explicit `monthlyContribution` set.
+   */
+  monthlyIncome?: number;
+  /** Sum of all fixed + variable expenses. Used with `monthlyIncome` to derive surplus. */
+  totalMonthlyExpenses?: number;
 }
 
 const GOAL_TYPES = [
@@ -108,7 +115,9 @@ export function GoalTracker({
   onUpdateGoal,
   onDeleteGoal,
   onAISuggestions,
-  disabled = false
+  disabled = false,
+  monthlyIncome = 0,
+  totalMonthlyExpenses = 0,
 }: GoalTrackerProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<FinancialGoal | null>(null);
@@ -321,10 +330,19 @@ export function GoalTracker({
           {sortedGoals.map((goal) => {
             const progress = (goal.currentAmount / goal.targetAmount) * 100;
             const isAchieved = goal.currentAmount >= goal.targetAmount;
-            const monthsToComplete = getMonthsToCompletion(goal);
-            const completionDate = getCompletionDate(goal);
             const goalType = GOAL_TYPES.find(t => t.value === goal.type);
-            const projection = computeSavingsProjection(goal);
+
+            // Compute monthly surplus from profile income/expenses as a fallback
+            // for goals without an explicit monthly contribution.
+            const monthlySurplus = Math.max(0, monthlyIncome - totalMonthlyExpenses);
+            const effectiveGoal: FinancialGoal =
+              goal.monthlyContribution > 0
+                ? goal
+                : { ...goal, monthlyContribution: monthlySurplus };
+
+            const monthsToComplete = getMonthsToCompletion(effectiveGoal);
+            const completionDate = getCompletionDate(effectiveGoal);
+            const projection = computeSavingsProjection(effectiveGoal);
 
             return (
               <SurfaceCard key={goal.id} className={cn(

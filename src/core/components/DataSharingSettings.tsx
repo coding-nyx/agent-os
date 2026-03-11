@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Lock, AlertTriangle, Info, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -7,6 +7,8 @@ import { NSV_OWNERSHIP, type NSVMetricPath } from '@/lib/services/nsv-ownership'
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { SectionHeader } from '@/core/components/SectionHeader';
+import { useAuth } from '@/lib/auth-context';
+import { CoreProfileService } from '@/lib/services/core-profile-service';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -330,22 +332,32 @@ function DataCategoryCard({ category, moduleNames, onChange }: DataCategoryCardP
 
 export function DataSharingSettings() {
   const { globalSoul } = useGlobalSoul();
+  const { user, profile } = useAuth();
   const moduleNames = globalSoul?.displayNames ?? {};
 
   const categories = useMemo(() => buildDefaultCategories(moduleNames), [moduleNames]);
 
-  const [overrides, setOverrides] = useState<Record<string, Record<string, boolean>>>({});
+  const [overrides, setOverrides] = useState<Record<string, Record<string, boolean>>>(
+    () => profile?.securityPreferences?.dataSharingOverrides ?? {}
+  );
 
-  const handleToggle = (categoryId: string, targetModuleId: ModuleId, enabled: boolean) => {
-    setOverrides(prev => ({
-      ...prev,
-      [categoryId]: {
-        ...(prev[categoryId] || {}),
-        [targetModuleId]: enabled
+  const handleToggle = useCallback((categoryId: string, targetModuleId: ModuleId, enabled: boolean) => {
+    setOverrides(prev => {
+      const nextOverrides = {
+        ...prev,
+        [categoryId]: {
+          ...(prev[categoryId] || {}),
+          [targetModuleId]: enabled
+        }
+      };
+      if (user?.uid) {
+        CoreProfileService.updateSecurityPreferences(user.uid, {
+          dataSharingOverrides: nextOverrides
+        }).catch((err: unknown) => console.error('[DataSharingSettings] Failed to persist overrides:', err));
       }
-    }));
-    // TODO: Persist to CoreUserProfile.securityPreferences.dataSharingPolicy
-  };
+      return nextOverrides;
+    });
+  }, [user?.uid]);
 
   const resolvedCategories = categories.map(cat => ({
     ...cat,

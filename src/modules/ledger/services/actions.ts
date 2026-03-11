@@ -433,5 +433,152 @@ export function registerLedgerActions() {
 
       markProfileDirty?.();
     },
+
+    // ── Handler 4: run_debt_simulation ────────────────────────────────────────
+    /**
+     * Runs avalanche and snowball payoff simulations against the current debt
+     * list and pushes a formatted comparison as an assistant message.
+     *
+     * Payload fields (all optional):
+     *   - extraMonthlyPayment: number  — extra monthly budget beyond minimums
+     */
+    run_debt_simulation: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      const { computeDebtPayoffSchedule } = await import('./ledger-aggregation-service');
+
+      const debts = profile.debtItems ?? [];
+      if (debts.length === 0) {
+        pushAssistantMessage?.('No debt items found in your profile. Add debts via the Ledger to run a payoff simulation.');
+        return;
+      }
+
+      const extra = parseNumber(payload?.extraMonthlyPayment, 0);
+      const avalanche = computeDebtPayoffSchedule(debts, 'avalanche', extra);
+      const snowball = computeDebtPayoffSchedule(debts, 'snowball', extra);
+
+      const fmt = (n: number) =>
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: profile.currency ?? 'USD' }).format(n);
+
+      const fmtMonths = (m: number) =>
+        m === 0 ? 'already paid off' : m < 12 ? `${m} month${m !== 1 ? 's' : ''}` : `${Math.floor(m / 12)}y ${m % 12}mo`;
+
+      const debtFreeDate = (months: number) => {
+        if (months <= 0) return 'now';
+        const d = new Date();
+        d.setMonth(d.getMonth() + months);
+        return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      };
+
+      const totalBalance = debts.reduce((s, d) => s + d.balance, 0);
+
+      const lines = [
+        `## 💳 Debt Payoff Simulation`,
+        ``,
+        `**Total balance:** ${fmt(totalBalance)} across ${debts.length} debt${debts.length !== 1 ? 's' : ''}`,
+        extra > 0 ? `**Extra monthly payment applied:** ${fmt(extra)}` : '',
+        ``,
+        `### 🔵 Avalanche Strategy *(highest APR first)*`,
+        `- Payoff time: **${fmtMonths(avalanche.monthsToPayoff)}** (debt-free by **${debtFreeDate(avalanche.monthsToPayoff)}**)`,
+        `- Total interest paid: **${fmt(avalanche.totalInterestPaid)}**`,
+        `- Interest saved vs minimums-only: **${fmt(avalanche.interestSavedVsMinimum)}**`,
+        ``,
+        `### 🟣 Snowball Strategy *(lowest balance first)*`,
+        `- Payoff time: **${fmtMonths(snowball.monthsToPayoff)}** (debt-free by **${debtFreeDate(snowball.monthsToPayoff)}**)`,
+        `- Total interest paid: **${fmt(snowball.totalInterestPaid)}**`,
+        `- Interest saved vs minimums-only: **${fmt(snowball.interestSavedVsMinimum)}**`,
+        ``,
+        `### 📊 Recommendation`,
+        avalanche.totalInterestPaid <= snowball.totalInterestPaid
+          ? `**Avalanche** saves you **${fmt(snowball.totalInterestPaid - avalanche.totalInterestPaid)}** more in interest. Mathematically optimal if you can stay disciplined.`
+          : `Both strategies are equivalent — choose whichever keeps you motivated.`,
+      ].filter(Boolean).join('\n');
+
+      pushAssistantMessage?.(lines);
+    },
+
+    // ── Handler 5: project_savings_timeline ───────────────────────────────────
+    /**
+     * Projects the completion timeline for all active financial goals and
+     * pushes a formatted summary as an assistant message.
+     *
+     * Payload fields (all optional):
+     *   - goalId: string — limit projection to a single goal
+     */
+    project_savings_timeline: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      const { computeSavingsProjection } = await import('./ledger-aggregation-service');
+
+      const goals = profile.financialGoals ?? [];
+      const targetGoalId = typeof payload?.goalId === 'string' ? payload.goalId : null;
+
+      const activeGoals = goals.filter((g) => {
+        if (targetGoalId && g.id !== targetGoalId) return false;
+        return g.currentAmount < g.targetAmount;
+      });
+
+      if (activeGoals.length === 0) {
+        pushAssistantMessage?.(
+          targetGoalId
+            ? 'Goal not found or already completed.'
+            : 'No active savings goals found. Add goals via the Ledger to see projections.',
+        );
+        return;
+      }
+
+      const fmt = (n: number) =>
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: profile.currency ?? 'USD' }).format(n);
+
+      // Use income - expenses as a monthly surplus estimate for goals without a contribution
+      const totalExpenses =
+        (profile.fixedExpenses ?? []).reduce((s, e) => s + e.amount, 0) +
+        (profile.variableExpenses ?? []).reduce((s, e) => s + e.amount, 0);
+      const monthlySurplus = Math.max(0, profile.monthlyIncome - totalExpenses);
+
+      const goalLines = activeGoals.map((goal) => {
+        const effectiveGoal = goal.monthlyContribution > 0
+          ? goal
+          : { ...goal, monthlyContribution: monthlySurplus };
+        const proj = computeSavingsProjection(effectiveGoal);
+        const progress = goal.targetAmount > 0
+          ? Math.round((goal.currentAmount / goal.targetAmount) * 100)
+          : 0;
+
+        const completionNote =
+          proj.monthsToTarget === 0
+            ? '✅ Already completed!'
+            : proj.monthsToTarget === null
+            ? '⚠️ No monthly contribution set — cannot project'
+            : proj.projectedCompletionDate
+            ? `On track to complete in **${proj.monthsToTarget} month${proj.monthsToTarget !== 1 ? 's' : ''}** (${new Date(proj.projectedCompletionDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })})`
+            : '';
+
+        const statusEmoji = proj.onTrack ? '🟢' : '🟡';
+        const usingSurplus = goal.monthlyContribution <= 0 && monthlySurplus > 0;
+
+        return [
+          `**${goal.name}** — ${progress}% complete`,
+          `  ${fmt(goal.currentAmount)} / ${fmt(goal.targetAmount)}`,
+          goal.monthlyContribution > 0
+            ? `  Monthly contribution: ${fmt(goal.monthlyContribution)}`
+            : usingSurplus
+            ? `  Est. monthly surplus: ${fmt(monthlySurplus)} (income minus expenses)`
+            : '',
+          `  ${statusEmoji} ${completionNote}`,
+        ].filter(Boolean).join('\n');
+      });
+
+      const header = [
+        `## 🎯 Savings Goal Projections`,
+        ``,
+        `Monthly income: ${fmt(profile.monthlyIncome)} | Total expenses: ${fmt(totalExpenses)} | Surplus: ${fmt(Math.max(0, monthlySurplus))}`,
+        ``,
+      ].join('\n');
+
+      pushAssistantMessage?.(header + goalLines.join('\n\n'));
+    },
   });
 }

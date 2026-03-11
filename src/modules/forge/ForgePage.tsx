@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Code, Mail, FileText, ListChecks, LucideIcon } from 'lucide-react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
@@ -6,7 +7,7 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { cn } from '@/lib/utils';
-import { FORGE_PERSONA } from './personas';
+import { FORGE_PERSONA, FORGE_CODE_OVERLAY, FORGE_COMMS_OVERLAY, FORGE_DOCS_OVERLAY, FORGE_LIFE_OVERLAY } from './personas';
 import { ForgeDashboard } from './components/ForgeDashboard';
 import {
   ForgeExecutionRecord,
@@ -18,6 +19,15 @@ import {
 } from './services/forge-session-service';
 import { ForgeCloudExecutionService } from './services/forge-cloud-execution';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
+
+type ForgeMode = 'code' | 'comms' | 'docs' | 'life';
+
+const FORGE_MODES: { id: ForgeMode; label: string; icon: LucideIcon; overlay: string; switchPrompt: string }[] = [
+  { id: 'code',  label: 'Code',  icon: Code,       overlay: FORGE_CODE_OVERLAY,  switchPrompt: 'Switching to Code mode.' },
+  { id: 'comms', label: 'Comms', icon: Mail,        overlay: FORGE_COMMS_OVERLAY, switchPrompt: 'Switching to Comms mode.' },
+  { id: 'docs',  label: 'Docs',  icon: FileText,    overlay: FORGE_DOCS_OVERLAY,  switchPrompt: 'Switching to Docs mode.' },
+  { id: 'life',  label: 'Life',  icon: ListChecks,  overlay: FORGE_LIFE_OVERLAY,  switchPrompt: 'Switching to Life Ops mode.' },
+];
 
 function formatExecutionOutput(payload: { logs?: string[]; result?: string; error?: string }): string {
   const lines: string[] = [];
@@ -49,10 +59,14 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
   const [editorCode, setEditorCode] = useState('// Forge cloud runner\\nconsole.log("Forge online");');
   const [editorStatus, setEditorStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [editorOutput, setEditorOutput] = useState('');
+  const [selectedMode, setSelectedMode] = useState<ForgeMode>('code');
+
+  const activeOverlay = FORGE_MODES.find((m) => m.id === selectedMode)?.overlay ?? FORGE_CODE_OVERLAY;
+  const systemPrompt = `${FORGE_PERSONA}\n\n${activeOverlay}`;
 
   const { messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage } = useModuleAI({
     moduleId: 'forge',
-    systemPrompt: FORGE_PERSONA,
+    systemPrompt,
     encryptionKey
   });
 
@@ -194,10 +208,56 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
     setEditorStatus('idle');
   }, []);
 
+  /** Switch AI mode: update local state and append a context message to the conversation. */
+  const handleModeSwitch = useCallback(
+    (mode: ForgeMode) => {
+      if (mode === selectedMode) return;
+      setSelectedMode(mode);
+      const modeConfig = FORGE_MODES.find((m) => m.id === mode);
+      if (modeConfig) {
+        handleSendMessage(modeConfig.switchPrompt);
+      }
+    },
+    [selectedMode, handleSendMessage]
+  );
+
+  /** Called by dashboard mode-intro cards: send a starter prompt + switch mode. */
+  const handleModeSelect = useCallback(
+    (prompt: string) => {
+      handleSendMessage(prompt);
+    },
+    [handleSendMessage]
+  );
+
+  /** Mode pill selector — rendered inside the NexusChat header via headerActions. */
+  const modePillSelector = (
+    <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+      {FORGE_MODES.map((mode) => {
+        const Icon = mode.icon;
+        const isActive = selectedMode === mode.id;
+        return (
+          <button
+            key={mode.id}
+            onClick={() => handleModeSwitch(mode.id)}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-[0.15em] transition-all duration-150',
+              isActive
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+            )}
+          >
+            <Icon className="w-3 h-3" />
+            {mode.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="h-full flex flex-col md:flex-row overflow-hidden">
       <div className="w-full md:w-1/2 lg:w-[40%] h-1/2 md:h-full border-b md:border-b-0 md:border-r border-white/5 overflow-y-auto no-scrollbar">
-          <ForgeDashboard soul={globalSoul} profile={profile} isLocked={isLocked} />
+          <ForgeDashboard soul={globalSoul} profile={profile} isLocked={isLocked} onModeSelect={handleModeSelect} />
           <div className="px-8 pb-8">
             <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6 space-y-4">
               <div className="flex items-center justify-between">
@@ -266,6 +326,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
             agentName={agentAlias}
             themeColor="cyan"
             placeholder="Describe the implementation task, repository target, or command sequence..."
+            headerActions={modePillSelector}
           />
         </div>
       </div>

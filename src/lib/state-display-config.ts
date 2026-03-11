@@ -99,6 +99,7 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   TASK_COMPLETED: 'Task completed',
   DEADLINE_APPROACHING: 'Deadline approaching',
   HABIT_STREAK_BROKEN: 'Habit streak lost',
+  HABIT_STREAK_MILESTONE: 'Habit streak milestone reached',
   TEMPORAL_REVIEW_COMPLETE: 'Temporal review completed',
   DELEGATION_REQUEST: 'Module delegation requested',
   NSV_CALIBRATION_REQUEST: 'NSV calibration requested',
@@ -138,6 +139,9 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   ATLAS_FIELD_CREATED: 'Atlas field created',
   ATLAS_FIELD_DELETED: 'Atlas field deleted',
   ATLAS_FIELD_VALUE_UPDATED: 'Atlas field value updated',
+  // Atlas Journal Events (J-entries — alphabetical)
+  JOURNAL_ENTRY_CREATED: 'Journal entry created',
+  JOURNAL_ENTRY_UPDATED: 'Journal entry updated',
   // Titan Cycle Events
   CYCLE_STARTED: 'Cycle started',
   CYCLE_COMPLETED: 'Cycle completed',
@@ -159,6 +163,8 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   ATLAS_RECOVERY_SCHEDULED: 'Recovery scheduled',
   ATLAS_PREDICTIVE_ALERT: 'Predictive alert',
   ATLAS_STATE_CHANGED: 'System state changed',
+  ATLAS_OVERLOAD_DETECTED: 'Atlas overload detected',
+  MORNING_BRIEF: 'Morning brief',
   GOAL_MISSING_PROGRESS: 'Goal stalled',
   // Ledger Cross-Verification / Cashflow Events (S2-L-004)
   FINANCIAL_FRICTION_UPDATED: 'Financial friction updated',
@@ -188,6 +194,7 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   MORNING_BRIEF_DUE: 'Morning brief ready',
   EVENING_CHECKIN_DUE: 'Evening check-in ready',
   COMMITMENT_MISSED: 'Commitment Missed',
+  SOMATIC_SESSION_COMPLETE: 'Somatic session complete',
 };
 
 // ---------------------------------------------------------------------------

@@ -11,6 +11,7 @@ import type { AtlasStateDisplay } from './services/atlas-predictive-service';
 import { ATLAS_PERSONA } from './personas';
 import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
 import { QuickAddForm } from './components/QuickAddForm';
+import type { EveningCheckInSubmitData } from './components/EveningCheckIn';
 import {
   AtlasProfile,
   AtlasTask,
@@ -28,6 +29,12 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useSchemaRegistry } from '@/lib/hooks/use-schema-registry';
 import { AtlasOnboarding } from './onboarding/AtlasOnboarding';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
+import {
+  loadJournalEntry,
+  saveJournalEntry,
+  createEmptyJournalEntry,
+  mergeCheckInData,
+} from './services/journal-service';
 
 function buildRecoveryWindow(reason: string): RecoveryWindow {
   const now = Date.now();
@@ -72,7 +79,45 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
     }
   }, []);
 
-  // React to WEEKLY_REVIEW_DUE Spine events fired by the cascade rule.
+  // S19-atlas-01: On first Atlas open, directly publish MORNING_BRIEF_DUE if in 05:00-11:00 window.
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 5 || hour >= 11) return;
+    const briefDateKey = 'atlas_brief_date_' + (user?.uid ?? 'guest');
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem(briefDateKey);
+    if (stored !== today) {
+      Spine.publish({
+        type: 'MORNING_BRIEF_DUE',
+        source: 'atlas-page',
+        domain: 'C',
+        priority: 'info',
+        data: { triggeredBy: 'atlas_page_open', timestamp: new Date().toISOString() },
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // S19-atlas-01: On Sunday evening Atlas open, publish WEEKLY_REVIEW_DUE if not done this week.
+  useEffect(() => {
+    const now = new Date();
+    const isSundayEvening = now.getDay() === 0 && now.getHours() >= 18 && now.getHours() <= 21;
+    if (!isSundayEvening) return;
+    const stored = localStorage.getItem('atlas_last_weekly_review');
+    const isOverdue = !stored || Date.now() - new Date(stored).getTime() > 7 * 24 * 60 * 60 * 1000;
+    if (isOverdue) {
+      Spine.publish({
+        type: 'WEEKLY_REVIEW_DUE',
+        source: 'atlas-page',
+        domain: 'C',
+        priority: 'info',
+        data: { triggeredBy: 'atlas_page_open_sunday', timestamp: new Date().toISOString() },
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // React to WEEKLY_REVIEW_DUE Spine events fired by cascade rules or direct publish.
   useSpineEvent('WEEKLY_REVIEW_DUE', () => {
     setWeeklyReviewPending(true);
   });
@@ -308,6 +353,64 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
     ActionHub.execute('atlas', 'set_daily_intention', buildActionContext(updates));
   }, [buildActionContext]);
 
+  // S-journal-01: Morning brief dismiss — record today's date so JournalTab
+  // can pre-populate the morningIntent placeholder.
+  const handleMorningBriefDismiss = useCallback(() => {
+    setShowMorningBrief(false);
+    localStorage.setItem(
+      `atlas_morning_brief_shown_${user?.uid ?? 'guest'}`,
+      new Date().toISOString().split('T')[0],
+    );
+  }, [user?.uid]);
+
+  // S-journal-01: Evening check-in dismiss — persist atlas profile check-in
+  // AND fire-and-forget a journal entry pre-population.
+  const handleEveningCheckinDismiss = useCallback(
+    (data?: EveningCheckInSubmitData) => {
+      setShowEveningCheckin(false);
+
+      if (data && profile) {
+        // Persist daily check-in data for weekly review aggregation.
+        const next: AtlasProfile = {
+          ...profile,
+          dailyCheckIns: [
+            ...(profile.dailyCheckIns ?? []),
+            {
+              date: data.date,
+              tasksCompleted: data.tasksCompleted,
+              totalTasks: data.totalTasks,
+              energyLevel: data.energyLevel,
+              blockers: data.blockers,
+              loggedAt: new Date().toISOString(),
+            },
+          ].slice(-90), // keep last 90 days
+          updatedAt: new Date().toISOString(),
+        };
+        persistUpdate(next);
+      }
+
+      // Auto-populate today's journal entry (fire-and-forget).
+      if (data && encryptionKey && user?.uid) {
+        const uid = user.uid;
+        const today = new Date().toISOString().split('T')[0];
+        void (async () => {
+          try {
+            const existing = await loadJournalEntry(today, { userId: uid, encryptionKey });
+            const base = existing ?? createEmptyJournalEntry(today);
+            const updated = mergeCheckInData(base, {
+              energyLevel: data.energyLevel,
+              blockers: data.blockers,
+            });
+            await saveJournalEntry(updated, { userId: uid, encryptionKey });
+          } catch (err) {
+            console.error('[Atlas] Failed to auto-populate journal from evening check-in:', err);
+          }
+        })();
+      }
+    },
+    [profile, encryptionKey, user?.uid, persistUpdate],
+  );
+
   useSpineEvent('BURNOUT_WARNING', (event) => {
     if (!profile) return;
     const window = buildRecoveryWindow('burnout_warning');
@@ -398,13 +501,14 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
         onAddField={handleAddField}
         onDeleteField={handleDeleteField}
         onSendMessage={ai.handleSendMessage}
+        encryptionKey={encryptionKey}
         predictiveDisplay={predictiveDisplay}
         weeklyReviewPending={weeklyReviewPending}
         onReviewOpened={handleReviewOpened}
         morningBriefVisible={showMorningBrief}
-        onMorningBriefDismiss={() => setShowMorningBrief(false)}
+        onMorningBriefDismiss={handleMorningBriefDismiss}
         eveningCheckinVisible={showEveningCheckin}
-        onEveningCheckinDismiss={() => setShowEveningCheckin(false)}
+        onEveningCheckinDismiss={handleEveningCheckinDismiss}
         preferenceMode={profile?.preferenceMode ?? 'conversational'}
         onTogglePreferenceMode={() => {
           if (!profile) return;

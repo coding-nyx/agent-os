@@ -5,6 +5,9 @@ import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SCOUT_PERSONA } from './personas';
 import { ScoutDashboard } from './components/ScoutDashboard';
+import { ScoutUploadZone } from './components/ScoutUploadZone';
+import { buildDocumentAnalysisPrompt } from './services/scout-document-service';
+import type { DocumentParseResult } from './services/scout-document-service';
 import {
   ScoutProfile,
   loadScoutProfile,
@@ -22,7 +25,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
-import { useDocumentIntelligence } from '@/lib/hooks/use-document-intelligence';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { ScoutOnboarding } from './onboarding/ScoutOnboarding';
 
@@ -50,6 +52,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     { id: crypto.randomUUID(), title: 'Primary Research' }
   ]);
   const [activeWindowId, setActiveWindowId] = useState<string>(windows[0].id);
+  const [showUploadZone, setShowUploadZone] = useState(false);
 
   const ai = useModuleAI({
     moduleId: 'scout',
@@ -59,46 +62,11 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     persistencePolicy: 'scout-research'
   });
 
-  const { parseDocument: parseDoc } = useDocumentIntelligence();
-
-  const openDocumentPicker = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.csv';
-
-    input.onchange = async (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      const result = await parseDoc(file, { domain: 'general', moduleId: 'scout' });
-      input.value = '';
-
-      if (!result) {
-        ai.handleSendMessage('Document intake failed. Please try again.', onActionParsed);
-        return;
-      }
-
-      const fieldLines = Object.entries(result.fields)
-        .filter(([, v]) => v.length > 0)
-        .map(([k, v]) => `  ${k}: ${v}`)
-        .join('\n');
-
-      const prompt = [
-        'Research evidence intake request. Extract claims, sources, confidence, and citation-grade findings.',
-        `File: ${file.name} | Type: ${result.type} | Confidence: ${(result.confidence * 100).toFixed(0)}%`,
-        fieldLines.length > 0 ? `Extracted fields:\n${fieldLines}` : null,
-        result.rawText.length > 0
-          ? `Full extracted text:\n${result.rawText.slice(0, 3000)}${result.rawText.length > 3000 ? '\n[truncated]' : ''}`
-          : 'No text could be extracted from this file.',
-      ]
-        .filter(Boolean)
-        .join('\n\n');
-
-      ai.handleSendMessage(prompt, onActionParsed);
-    };
-
-    input.click();
-  }, [parseDoc, ai, onActionParsed]);
+  const handleUploadSubmit = useCallback((result: DocumentParseResult) => {
+    setShowUploadZone(false);
+    const prompt = buildDocumentAnalysisPrompt(result);
+    ai.handleSendMessage(prompt, onActionParsed);
+  }, [ai, onActionParsed]);
 
   const addWindow = useCallback(() => {
     const newWindow = { id: crypto.randomUUID(), title: 'New Thread' };
@@ -219,13 +187,56 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 </button>
 
                 <button
-                  onClick={openDocumentPicker}
+                  onClick={() => setShowUploadZone(true)}
                   className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/60 transition-all group"
                 >
                   <FileUp size={18} className="group-hover:-translate-y-1 transition-transform" />
                   <span className="text-xs font-black uppercase tracking-widest text-white/40">Evidence Vault</span>
                 </button>
               </div>
+
+              {/* Evidence Upload Zone Modal */}
+              <AnimatePresence>
+                {showUploadZone && (
+                  <motion.div
+                    key="upload-modal"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+                    onClick={(e) => { if (e.target === e.currentTarget) setShowUploadZone(false); }}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Upload evidence document"
+                  >
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      className="w-full max-w-lg bg-[#05050a] border border-white/10 rounded-3xl p-6 shadow-2xl"
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h2 className="text-sm font-black uppercase tracking-widest text-lime-300">Evidence Vault</h2>
+                          <p className="text-xs text-white/40 mt-1">Upload a document to extract research evidence</p>
+                        </div>
+                        <button
+                          onClick={() => setShowUploadZone(false)}
+                          className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+                          aria-label="Close upload zone"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                      <ScoutUploadZone
+                        onSubmit={handleUploadSubmit}
+                        onCancel={() => setShowUploadZone(false)}
+                      />
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ) : (
             <ScoutDashboard 

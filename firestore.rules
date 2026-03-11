@@ -36,6 +36,11 @@ service cloud.firestore {
       allow read, write, delete: if isAuthenticated() && docId.matches('^' + request.auth.uid + '_.+$');
     }
 
+    // Module profiles (Android module health)
+    match /module_profiles/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
     match /active_sessions/{docId} {
       // docId is uid_moduleId
       allow read, write, delete: if isAuthenticated() && docId.matches('^' + request.auth.uid + '_.+$');
@@ -64,6 +69,15 @@ service cloud.firestore {
     // Atlas (Cognitive Domain)
     match /atlas_profiles/{userId} {
       allow read, write: if isOwner(userId);
+    }
+
+    // Atlas Journal (E2EE private journal entries — separate collection for scalability)
+    match /atlas_journals/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /entries/{entryId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // Scout (Research Extension)
@@ -118,6 +132,11 @@ service cloud.firestore {
     // RAG Embeddings (Android semantic search index)
     match /rag_embeddings/{userId}/{document=**} {
       allow read, write: if isOwner(userId);
+    }
+
+    // RAG Chunks (semantic search documents)
+    match /rag_chunks/{docId} {
+      allow read, write: if isAuthenticated() && (resource.data.uid == request.auth.uid || request.resource.data.uid == request.auth.uid);
     }
 
     // Legacy Portfolio / Public Profiles (Titan Branding)

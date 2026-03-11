@@ -7,10 +7,10 @@ import { Dumbbell, Zap, TrendingUp } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
-import type { SomaProfile } from './SomaDashboard';
+import type { SomaProfile } from '../types';
 
 interface PhysicalAssessmentFormProps {
-  profile: SomaProfile | null;
+  profile?: SomaProfile | null;
   onSubmit: (assessment: {
     type: 'strength' | 'flexibility' | 'endurance' | 'general';
     score: number;
@@ -19,7 +19,7 @@ interface PhysicalAssessmentFormProps {
   }) => void;
 }
 
-export function PhysicalAssessmentForm({ profile, onSubmit }: PhysicalAssessmentFormProps) {
+export function PhysicalAssessmentForm({ profile: _profile, onSubmit }: PhysicalAssessmentFormProps) {
   const [assessmentType, setAssessmentType] = useState<'strength' | 'flexibility' | 'endurance' | 'general'>('general');
   const [score, setScore] = useState('');
   const [notes, setNotes] = useState('');

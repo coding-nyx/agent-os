@@ -44,6 +44,7 @@ export const titanAllowedActions = [
   'advance_cycle_phase',
   'complete_cycle',
   'log_workout_session',
+  'log_workout_set',
 ] as const;
 
 export function registerTitanActions() {
@@ -683,5 +684,91 @@ export function registerTitanActions() {
     parse_health_report: parseHealthReport,
     parse_workout_log: parseWorkoutLog,
     parse_biometric_data: parseBiometricData,
+
+    // ── Single-set quick log (AI action) ───────────────────────────────
+    /**
+     * Logs a single exercise set from an AI action payload.
+     * Payload shape: { exercise: string, sets: number, reps: number, weight?: number, unit?: 'kg'|'lbs' }
+     * Constructs a minimal WorkoutSession containing that one exercise, checks for PR,
+     * and pushes a confirmation or PR announcement via context.pushAssistantMessage().
+     */
+    log_workout_set: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+
+      const exerciseName = typeof payload?.exercise === 'string' ? payload.exercise.trim() : 'Exercise';
+      const sets = typeof payload?.sets === 'number' ? Math.max(1, payload.sets) : 1;
+      const reps = typeof payload?.reps === 'number' ? Math.max(1, payload.reps) : 1;
+      const weight = typeof payload?.weight === 'number' && payload.weight > 0 ? payload.weight : undefined;
+
+      const now = new Date().toISOString();
+      const today = now.slice(0, 10);
+      const sessionId = `ql-set-${Date.now()}`;
+
+      const exerciseSets: ExerciseSet[] = Array.from({ length: sets }, (_, i) => ({
+        setNumber: i + 1,
+        weight,
+        repsCompleted: reps,
+        completed: true,
+      }));
+
+      const session: WorkoutSession = {
+        id: sessionId,
+        routineId: 'quick-log',
+        routineName: 'Quick Log',
+        date: today,
+        startedAt: now,
+        completedAt: now,
+        exercises: [
+          {
+            exerciseName,
+            plannedSets: sets,
+            plannedReps: String(reps),
+            sets: exerciseSets,
+          },
+        ],
+        totalVolume: weight ? Math.round(weight * reps * sets) : undefined,
+        status: 'completed',
+      };
+
+      const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
+      const key = exerciseName.toLowerCase().trim();
+      let isNewPR = false;
+
+      if (weight && reps) {
+        const e1RM = reps === 1 ? weight : Math.round(weight * (1 + reps / 30));
+        const existing = updatedPRs[key];
+        if (!existing || e1RM > existing.e1RM) {
+          isNewPR = !existing; // true = first time, still a PR
+          updatedPRs[key] = {
+            exerciseName,
+            maxWeight: weight,
+            repsAtMax: reps,
+            e1RM,
+            achievedDate: today,
+            sessionId,
+          };
+          isNewPR = true;
+        }
+      }
+
+      const next: TitanProfile = {
+        ...profile,
+        workoutSessions: [session, ...(profile.workoutSessions ?? [])].slice(0, 365),
+        personalRecords: updatedPRs,
+        updatedAt: now,
+      };
+
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+
+      // Push feedback message to the AI chat
+      if (pushAssistantMessage) {
+        const weightStr = weight ? ` @ ${weight}kg` : '';
+        const prStr = isNewPR ? ' 🏆 **New PR!**' : '';
+        pushAssistantMessage(
+          `✅ Logged **${sets}×${reps} ${exerciseName}${weightStr}**.${prStr}`,
+        );
+      }
+    },
   });
 }

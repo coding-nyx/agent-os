@@ -31,6 +31,8 @@ export interface ScoutNewsBrief {
   summary: string;
   source?: string;
   updatedAt: string;
+  /** True when the entry is a placeholder shown because no search proxy is configured. */
+  isPlaceholder?: boolean;
 }
 
 export interface ScoutProfile {
@@ -145,7 +147,7 @@ function normalizeScoutProfile(raw: unknown): ScoutProfile {
 export function createEmptyScoutProfile(): ScoutProfile {
   const now = new Date().toISOString();
   return {
-    onboardingComplete: true,
+    onboardingComplete: false,
     researchFocus: [],
     knowledgeNodes: [],
     interests: [],
