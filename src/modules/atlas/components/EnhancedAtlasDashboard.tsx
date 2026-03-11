@@ -54,6 +54,7 @@ import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup'
 import { TodaysPlanCard } from './TodaysPlanCard';
 import { FocusView } from './FocusView';
 import { ViewSwitcher } from './ViewSwitcher';
+import { QuickAddForm } from './QuickAddForm';
 
 type AtlasTab = 'dashboard' | 'backlog' | 'routines' | 'fields' | 'review';
 type AtlasView = 'today' | 'week' | 'focus';
@@ -227,7 +228,23 @@ export function EnhancedAtlasDashboard({
       </div>
 
       {/* ── Tab Content ── */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-4 md:pt-6 space-y-6 no-scrollbar">
+      <div className="flex-1 overflow-hidden flex">
+        {/* S9-006: Structured mode — persistent sidebar QuickAdd panel */}
+        {preferenceMode === 'structured' && activeTab === 'dashboard' && (
+          <aside className="hidden md:flex shrink-0 w-72 border-r border-white/5 overflow-y-auto p-4 no-scrollbar">
+            <QuickAddForm
+              projects={profile?.projects ?? []}
+              onCreateTask={onCreateTask}
+              onCreateHabit={onCreateHabit}
+              onCreateGoal={onCreateGoal}
+              isOpen
+              onOpenChange={() => {}}
+              showFAB={false}
+              isFluid
+            />
+          </aside>
+        )}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-4 md:pt-6 space-y-6 no-scrollbar">
         {/* ══════════════ DASHBOARD TAB ══════════════ */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
@@ -640,6 +657,7 @@ export function EnhancedAtlasDashboard({
             )}
           </div>
         )}
+      </div>
       </div>
 
       {/* ── Weekly Review Modal ── */}

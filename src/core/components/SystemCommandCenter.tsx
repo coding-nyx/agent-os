@@ -6,12 +6,8 @@ import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { SoulTerminationService } from '@/lib/services/soul-termination-service';
-import { CoreProfileService } from '@/lib/services/core-profile-service';
-import { MODULE_MANIFEST, buildDefaultVaultLocks, ModuleId } from '@/lib/module-manifest';
-import { Spine } from '@/lib/spine/spine-event-bus';
 import { GlassCard } from './GlassCard';
 import { NeuralButton } from './NeuralButton';
-import { cn } from '@/lib/utils';
 
 export function SystemCommandCenter() {
   const { user, isGuest, profile, logout, refreshProfile } = useAuth();
@@ -21,31 +17,12 @@ export function SystemCommandCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [purgeStep, setPurgeStep] = useState<'IDLE' | 'CONFIRM' | 'FINAL_WARNING' | 'DELETING'>('IDLE');
-  const [securityLocks, setSecurityLocks] = useState<Record<string, boolean>>({});
-  const [securitySaving, setSecuritySaving] = useState(false);
 
   const identityLabel = isUnlocked ? 'SECURE_NODE' : isGuest ? 'GUEST_LINK' : 'PENDING_HANDSHAKE';
 
   const togglePersistence = () => {
       setPersistenceMode(persistenceMode === 'STRICT' ? 'SESSION' : 'STRICT');
   };
-
-  const securityModules = React.useMemo(
-    () => Object.values(MODULE_MANIFEST).filter((module) => module.hasPage && module.id !== 'bridge'),
-    []
-  );
-
-  React.useEffect(() => {
-    const defaults = buildDefaultVaultLocks();
-    const overrides = profile?.securityPreferences?.vaultLocks || {};
-    const merged = { ...defaults, ...overrides };
-    securityModules.forEach((module) => {
-      if (module.securityPolicy.mandatory) {
-        merged[module.id] = true;
-      }
-    });
-    setSecurityLocks(merged);
-  }, [profile?.securityPreferences, securityModules]);
 
   React.useEffect(() => {
     const handler = () => {
@@ -55,30 +32,6 @@ export function SystemCommandCenter() {
     window.addEventListener('agnes:open-security-protocol', handler as EventListener);
     return () => window.removeEventListener('agnes:open-security-protocol', handler as EventListener);
   }, []);
-
-  const handleSecurityToggle = async (moduleId: ModuleId) => {
-    if (!user || isGuest || !profile) return;
-    const module = MODULE_MANIFEST[moduleId];
-    if (module.securityPolicy.mandatory) return;
-
-    const current = securityLocks[moduleId] ?? module.securityPolicy.defaultLocked;
-    const next = !current;
-    setSecurityLocks((prev) => ({ ...prev, [moduleId]: next }));
-    setSecuritySaving(true);
-    try {
-      await CoreProfileService.updateSecurityPreferences(user.uid, { vaultLocks: { [moduleId]: next } });
-      Spine.emit({
-        type: 'SECURITY_POLICY_UPDATED',
-        source: 'system',
-        domain: 'system',
-        data: { moduleId, locked: next },
-        cascadeDepth: 0,
-        priority: 'info'
-      });
-    } finally {
-      setSecuritySaving(false);
-    }
-  };
 
   // Reset state when menu closes
   React.useEffect(() => {
@@ -275,66 +228,6 @@ export function SystemCommandCenter() {
                                     <p className="text-[10px] text-white/60 leading-relaxed">Vault reference survives page refresh. Purged when tab is closed.</p>
                                 </button>
                             </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <h3 className="text-xs font-black uppercase tracking-[0.3em] text-emerald-400 italic border-b border-emerald-500/20 pb-2">Neural Security Protocol</h3>
-                            {(isGuest || !user || !profile) && (
-                              <div className="text-[10px] text-white/40 italic">
-                                Guest links cannot modify module security. Authenticate to persist preferences.
-                              </div>
-                            )}
-                            <div className="space-y-2">
-                              {securityModules.map((module) => {
-                                const locked = securityLocks[module.id] ?? module.securityPolicy.defaultLocked;
-                                const disabled = module.securityPolicy.mandatory || isGuest || !user || !profile;
-                                const Icon = module.icon;
-                                return (
-                                  <button
-                                    key={module.id}
-                                    type="button"
-                                    onClick={() => handleSecurityToggle(module.id as ModuleId)}
-                                    disabled={disabled}
-                                    className={cn(
-                                      "w-full text-left p-3 rounded-2xl border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40",
-                                      locked ? "bg-emerald-500/10 border-emerald-500/30" : "bg-white/[0.04] border-white/10 hover:border-white/20",
-                                      disabled && "opacity-50 cursor-not-allowed"
-                                    )}
-                                  >
-                                    <div className="flex items-center justify-between gap-3">
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-xl border border-white/10 flex items-center justify-center" style={{ backgroundColor: `${module.colorHex}1f` }}>
-                                          <Icon className="w-4 h-4" style={{ color: module.colorHex }} />
-                                        </div>
-                                        <div>
-                                          <div className="text-[10px] font-black uppercase tracking-widest text-white/80">
-                                            {module.title}
-                                            {module.securityPolicy.mandatory && (
-                                              <span className="ml-2 text-[9px] text-amber-400">MANDATORY</span>
-                                            )}
-                                          </div>
-                                          <div className="text-[9px] text-white/40 uppercase tracking-[0.2em]">
-                                            {locked ? 'LOCKED' : 'OPEN'}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className={cn(
-                                        "w-11 h-6 rounded-full border flex items-center px-1 transition-all",
-                                        locked ? "bg-emerald-500/20 border-emerald-500/40" : "bg-white/5 border-white/10"
-                                      )}>
-                                        <div className={cn(
-                                          "w-4 h-4 rounded-full transition-all",
-                                          locked ? "bg-emerald-400 translate-x-5" : "bg-white/40 translate-x-0"
-                                        )} />
-                                      </div>
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            {securitySaving && (
-                              <div className="text-[9px] uppercase tracking-[0.3em] text-white/40">Saving security policy...</div>
-                            )}
                         </div>
 
                         <div className="pt-4 border-t border-white/10">

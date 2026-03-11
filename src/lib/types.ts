@@ -266,7 +266,9 @@ export type SpineEventType =
   // Contextual Inference Engine Events (S10-008)
   | 'CONTEXT_HINT_DETECTED'
   | 'CONTEXT_HINT_CONFIRMED'
-  | 'CONTEXT_HINT_DISMISSED';
+  | 'CONTEXT_HINT_DISMISSED'
+  // Atlas Weekly Review (S9-005)
+  | 'WEEKLY_REVIEW_DUE';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'alert' | 'critical';
@@ -339,6 +341,8 @@ export interface MessageDebugMeta {
   actionsExecuted?: string[];
   apiLatencyMs?: number;
   apiRequestSnippet?: string;
+  /** Spine event types fired during the turn this message was produced. */
+  spineEvents?: string[];
 }
 
 export interface Message {
@@ -986,6 +990,7 @@ export interface AtlasProfile {
   routine: AtlasRoutine;
   reviews: TemporalReview[];
   preferences?: AtlasPreferences;
+  preferenceMode?: 'conversational' | 'structured';
   createdAt: string;
   updatedAt: string;
 }

@@ -14,7 +14,7 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { ScopedChatPanel } from '@/core/components/field-management/ScopedChatPanel';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
-import { ModelBadge, SoulActivityTag } from '@/core/components/debug';
+import { NexusLogger } from '@/lib/nexus-logger';
 import { useCrossModuleHintListener } from '@/lib/hooks/use-cross-module-hint-listener';
 import { DataSyncToast } from '@/core/components/DataSyncToast';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
@@ -32,20 +32,36 @@ interface ModuleLayoutProps {
   renderMobileFooter?: () => React.ReactNode;
 }
 
-function TelemetryTicker() {
+interface TelemetryTickerProps {
+    debugMode: boolean;
+}
+
+function TelemetryTicker({ debugMode }: TelemetryTickerProps) {
     const [log, setLog] = useState('SYSTEM_IDLE');
-    const logs = [
+    const fakeLogs = [
         '0x772_PING_SENT...', 'ENCRYPTING_PACKET_0xAF9...', 'NEURAL_SYNC_STABLE',
         'MASTER_KEY_ACTIVE', 'E2EE_TUNNEL_STABLE', 'SOUL_SYNTH_ACTIVE',
         'BIOMETRIC_UDP_STREAM', 'SIGNAL_INTEGRITY_99.4%', 'RE-ROUTING_PACKET_0x441'
     ];
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setLog(logs[Math.floor(Math.random() * logs.length)]);
-        }, 3000);
-        return () => clearInterval(interval);
-    }, []);
+        if (!debugMode) {
+            // Fake ticker: random string every 3s
+            const interval = setInterval(() => {
+                setLog(fakeLogs[Math.floor(Math.random() * fakeLogs.length)]);
+            }, 3000);
+            return () => clearInterval(interval);
+        } else {
+            // Real Spine events: poll NexusLogger every 1s
+            const interval = setInterval(() => {
+                const recent = NexusLogger.getRecentSpineEvents(1);
+                const last = recent[recent.length - 1];
+                setLog(last ? `⚡ ${last.eventType}` : '⚡ SPINE_IDLE');
+            }, 1000);
+            return () => clearInterval(interval);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debugMode]);
 
     return (
         <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-lg hidden sm:flex">
@@ -81,6 +97,20 @@ export function ModuleLayout({
   const reducedMotion = useReducedMotion();
   const { isLeftRailVisible, isRightRailVisible } = useUIStore();
   const { debugMode } = useDebugMode();
+
+  // Reactive active-model reader for debug subtext (Change 1)
+  const [activeModel, setActiveModel] = useState<string>(
+    () => localStorage.getItem('preferred_model') ?? 'deepseek/deepseek-chat'
+  );
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'preferred_model') {
+        setActiveModel(e.newValue ?? 'deepseek/deepseek-chat');
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   // Contextual Inference Engine — S10-008
   const { activeHint, dismissHint, confirmHint } = useCrossModuleHintListener();
@@ -168,16 +198,16 @@ export function ModuleLayout({
               <div className="flex flex-col">
                 <h1 className={`text-sm sm:text-lg md:text-xl font-bold tracking-[0.08em] sm:tracking-[0.15em] uppercase font-display ${theme.accent} truncate max-w-[160px] sm:max-w-[200px] md:max-w-xs`}>{title}</h1>
                 <div className="hidden sm:flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[9px] font-medium text-white/40 uppercase tracking-[0.1em] truncate font-mono">Link Stable // Secure Tunnel</span>
+                    <div className={`w-1 h-1 rounded-full animate-pulse ${debugMode ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+                    <span className="text-[9px] font-medium text-white/40 uppercase tracking-[0.1em] truncate font-mono">
+                        {debugMode ? activeModel : 'Link Stable // Secure Tunnel'}
+                    </span>
                 </div>
               </div>
-              <ModelBadge debugMode={debugMode} />
-              <SoulActivityTag moduleTitle={title} debugMode={debugMode} />
             </div>
 
             <div className="flex items-center gap-4 md:gap-8">
-              <TelemetryTicker />
+              <TelemetryTicker debugMode={debugMode} />
               {moduleId === 'orchestrator' ? (
                 <button
                   type="button"

@@ -20,6 +20,8 @@ import { useConsolidation } from './useConsolidation';
 import { useHandoffProcessor } from './useHandoffProcessor';
 import { usePendingRecovery } from './use-pending-recovery';
 import { MODULE_MANIFEST } from '../module-manifest';
+import { NexusLogger } from '@/lib/nexus-logger';
+import { useDebugMode } from '@/lib/hooks/use-debug-mode';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual';
 
@@ -66,6 +68,7 @@ export function useModuleAI({
   const { streamMessage, sendMessage } = useAI();
   const { enhanceContext, enhanceContextForModule, globalSoul } = useGlobalSoul();
   const { user, isGuest, profile } = useAuth();
+  const { debugMode } = useDebugMode();
   const activeSessionId = sessionId ?? 'current';
   const resolvedContextPolicy: ContextPolicy = contextPolicy ?? 'base-context';
 
@@ -403,6 +406,7 @@ export function useModuleAI({
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
+        const sendStartTime = Date.now();
         const { response } = await streamMessage(
           content,
           resolvedEnhanceContext({
@@ -565,7 +569,21 @@ export function useModuleAI({
         // H-2: update localHistory directly instead of relying on setMessages updater
         // We store the FULL text (including tags) so Action Chips and Internal Thoughts persist.
         if (finalContent) {
-          localHistory = [...localHistory, { role: 'assistant', content: finalContent } as Message].slice(-MAX_MESSAGES);
+          const assistantMessage: Message = { role: 'assistant', content: finalContent };
+
+          // Populate debugMeta when debug mode is active
+          if (debugMode) {
+            const spineEventsSlice = NexusLogger.getRecentSpineEvents()
+              .filter((e) => e.timestamp >= sendStartTime)
+              .map((e) => e.eventType);
+            assistantMessage.debugMeta = {
+              actionTagsExtracted: response.actions.map((a) => ({ type: a.type, payload: a.payload })),
+              actionsExecuted: response.actions.map((a) => a.type),
+              spineEvents: spineEventsSlice,
+            };
+          }
+
+          localHistory = [...localHistory, assistantMessage].slice(-MAX_MESSAGES);
           messagesRef.current = localHistory;
           setMessages(localHistory);
         }

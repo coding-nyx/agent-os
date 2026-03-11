@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { SpineDomain, SpineEvent, SpineEventPayload, SpineEventPriority, SpineEventType } from '@/lib/types';
 import type { NexusDataLayer } from '@/lib/data-layer';
+import { NexusLogger } from '@/lib/nexus-logger';
 
 export interface CascadeRule {
   id: string;
@@ -86,6 +87,8 @@ class SpineEventBus {
       }
       reg.handler(event);
     });
+
+    NexusLogger.spine(event.type, event.source, event.data);
 
     this.recentEvents = [event, ...this.recentEvents].slice(0, 50);
 

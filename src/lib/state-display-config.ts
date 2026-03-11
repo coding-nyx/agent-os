@@ -177,6 +177,8 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   CONTEXT_HINT_DETECTED: 'Cross-module hint detected',
   CONTEXT_HINT_CONFIRMED: 'Data sync confirmed',
   CONTEXT_HINT_DISMISSED: 'Sync hint dismissed',
+  // Atlas Weekly Review (S9-005)
+  WEEKLY_REVIEW_DUE: 'Weekly review due',
 };
 
 // ---------------------------------------------------------------------------

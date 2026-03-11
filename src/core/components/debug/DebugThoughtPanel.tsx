@@ -8,21 +8,33 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Message } from '@/lib/types';
+import { DebugFlags } from '@/lib/hooks/use-debug-mode';
 import { cn } from '@/lib/utils';
+
+/** All flags default to true so existing call sites work without changes. */
+const ALL_ON: DebugFlags = {
+  thinking: true,
+  actionTags: true,
+  actionAsked: true,
+  dataUpdates: true,
+  actionUpdates: true,
+  spineEvents: true,
+};
 
 interface DebugThoughtPanelProps {
   message: Message;
   debugMode: boolean;
+  debugFlags?: DebugFlags;
 }
 
-export function DebugThoughtPanel({ message, debugMode }: DebugThoughtPanelProps) {
+export function DebugThoughtPanel({ message, debugMode, debugFlags }: DebugThoughtPanelProps) {
   if (!debugMode || !message.debugMeta) return null;
 
-  return <DebugThoughtPanelInner message={message} />;
+  return <DebugThoughtPanelInner message={message} flags={debugFlags ?? ALL_ON} />;
 }
 
 /** Inner component — only mounted when debugMode && debugMeta exist. */
-function DebugThoughtPanelInner({ message }: { message: Message }) {
+function DebugThoughtPanelInner({ message, flags }: { message: Message; flags: DebugFlags }) {
   const [expanded, setExpanded] = useState(false);
   const meta = message.debugMeta!;
 
@@ -61,7 +73,7 @@ function DebugThoughtPanelInner({ message }: { message: Message }) {
           >
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-3">
               {/* Reasoning */}
-              {meta.reasoning && (
+              {meta.reasoning && flags.thinking !== false && (
                 <DebugSection title="Reasoning">
                   <pre className="text-white/60 text-xs whitespace-pre-wrap break-words font-mono leading-relaxed">
                     {meta.reasoning}
@@ -70,7 +82,7 @@ function DebugThoughtPanelInner({ message }: { message: Message }) {
               )}
 
               {/* Action tags extracted */}
-              {meta.actionTagsExtracted && meta.actionTagsExtracted.length > 0 && (
+              {meta.actionTagsExtracted && meta.actionTagsExtracted.length > 0 && flags.actionTags !== false && (
                 <DebugSection title="Action tags extracted">
                   <ul className="space-y-0.5">
                     {meta.actionTagsExtracted.map((tag, i) => (
@@ -85,7 +97,7 @@ function DebugThoughtPanelInner({ message }: { message: Message }) {
               )}
 
               {/* Actions dispatched */}
-              {meta.actionTagsDispatched && meta.actionTagsDispatched.length > 0 && (
+              {meta.actionTagsDispatched && meta.actionTagsDispatched.length > 0 && flags.actionAsked !== false && (
                 <DebugSection title="Actions dispatched">
                   <ul className="space-y-0.5">
                     {meta.actionTagsDispatched.map((action, i) => (
@@ -98,7 +110,7 @@ function DebugThoughtPanelInner({ message }: { message: Message }) {
               )}
 
               {/* Actions executed */}
-              {meta.actionsExecuted && meta.actionsExecuted.length > 0 && (
+              {meta.actionsExecuted && meta.actionsExecuted.length > 0 && flags.actionUpdates !== false && (
                 <DebugSection title="Actions executed">
                   <ul className="space-y-0.5">
                     {meta.actionsExecuted.map((effect, i) => (
@@ -110,7 +122,7 @@ function DebugThoughtPanelInner({ message }: { message: Message }) {
                 </DebugSection>
               )}
 
-              {/* API diagnostics */}
+              {/* API diagnostics — always shown */}
               {(meta.apiLatencyMs !== undefined || meta.apiRequestSnippet) && (
                 <DebugSection title="API">
                   {meta.apiLatencyMs !== undefined && (
@@ -123,6 +135,19 @@ function DebugThoughtPanelInner({ message }: { message: Message }) {
                       {meta.apiRequestSnippet.slice(0, 500)}
                     </code>
                   )}
+                </DebugSection>
+              )}
+
+              {/* Spine events */}
+              {meta.spineEvents && meta.spineEvents.length > 0 && flags.spineEvents !== false && (
+                <DebugSection title="Spine events">
+                  <ul className="space-y-0.5">
+                    {meta.spineEvents.map((evt, i) => (
+                      <li key={i} className="text-xs font-mono text-emerald-400/80">
+                        {evt}
+                      </li>
+                    ))}
+                  </ul>
                 </DebugSection>
               )}
             </div>

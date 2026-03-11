@@ -1,6 +1,7 @@
 import { GlobalProjection, NeuralStateVectorPatch, SpineEventType, Message } from '../types';
 import { ConversationContext } from '@/lib/ai-adapters/engine-types';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
+import { NexusLogger } from '@/lib/nexus-logger';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual';
 
@@ -116,6 +117,7 @@ class ModuleActionHub {
       const handler = moduleHandlers.get(actionType);
       if (handler) {
         await handler(scopedContext);
+        NexusLogger.action(moduleId, actionType, context.payload);
         return true;
       }
     }
@@ -129,6 +131,7 @@ class ModuleActionHub {
           const handler = depHandlers.get(actionType);
           if (handler) {
             await handler(scopedContext);
+            NexusLogger.action(moduleId, actionType, context.payload);
             return true;
           }
         }
@@ -139,9 +142,11 @@ class ModuleActionHub {
     const orchestratorHandlers = this.registry.get('orchestrator');
     if (orchestratorHandlers && orchestratorHandlers.has(actionType)) {
       await orchestratorHandlers.get(actionType)!(context);
+      NexusLogger.action(moduleId, actionType, context.payload);
       return true;
     }
 
+    NexusLogger.warn('ActionHub', `No handler for "${actionType}" in module "${moduleId}"`);
     return false;
   }
 

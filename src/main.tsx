@@ -3,6 +3,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
+import { NexusLogger } from './lib/nexus-logger'
 import { registerCoreActions } from './lib/actions/core-handlers'
 import { registerAnalysisActions } from './lib/actions/analysis-actions'
 import { registerGlobalValidationActions } from './lib/actions/validation-actions'
@@ -22,6 +23,11 @@ import { registerTitanActions } from './modules/titan/services/actions'
 import { registerScoutActions } from './modules/scout/services/actions'
 import { registerForgeActions } from './modules/forge/services/actions'
 import { registerSomaFieldActions } from './modules/soma/actions/soma-field-actions'
+
+// Boot NexusLogger before anything else — console override must be in place before
+// any module code or React runs. Reads debug state from localStorage so it persists.
+const _debugOnBoot = localStorage.getItem('nexus_debug_mode') === 'true';
+NexusLogger.init(_debugOnBoot);
 
 // Initialize the central action registry for core NSV updates and orchestration
 registerCoreActions();
@@ -49,11 +55,13 @@ initializeSchemas();
 // to inject InMemoryDataLayer via setNexusDataLayer() before the Spine emits.
 Spine.setDataLayer(getNexusDataLayer());
 
-// Suppress THREE.Clock deprecation warning as it's internal to @react-three/fiber
-const oriWarn = console.warn;
-console.warn = (...args) => {
+// Filter out noisy THREE.Clock deprecation warnings from @react-three/fiber internals.
+// We patch console.warn AFTER NexusLogger.init() so the original method is already
+// snapshotted — this wrapper calls the (potentially overridden) console.warn.
+const _origWarn = console.warn.bind(console);
+console.warn = (...args: unknown[]) => {
   if (typeof args[0] === 'string' && args[0].includes('THREE.Clock') && args[0].includes('deprecated')) return;
-  oriWarn(...args);
+  _origWarn(...args);
 };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

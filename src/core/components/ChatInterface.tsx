@@ -254,7 +254,7 @@ export function ChatInterface({
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isNearBottomRef = useRef(true);
-  const { debugMode } = useDebugMode();
+  const { debugMode, debugFlags } = useDebugMode();
   
   const effectiveIsProcessing = isProcessing !== undefined ? isProcessing : isLoading;
 
@@ -382,7 +382,7 @@ export function ChatInterface({
                 )}
                 {isAI ? (
                     <div className="w-full flex flex-col items-start">
-                        <DebugThoughtPanel message={msg} debugMode={debugMode} />
+                        <DebugThoughtPanel message={msg} debugMode={debugMode} debugFlags={debugFlags} />
                         <AIMessage
                           content={showInternalSignals ? messageContentToString(msg.content) : stripInternalTags(messageContentToString(msg.content)).publicText}
                           theme={theme}

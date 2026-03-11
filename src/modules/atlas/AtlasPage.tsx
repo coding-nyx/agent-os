@@ -318,7 +318,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
       authMode="atlas"
       placeholder="Share task pressure or schedule constraints..."
       primaryAction={
-        activeTab === 'dashboard' && activeView !== 'focus' && (
+        activeTab === 'dashboard' && activeView !== 'focus' && profile?.preferenceMode !== 'structured' && (
           <QuickAddForm
             projects={profile?.projects ?? []}
             onCreateTask={handleCreateTask}
@@ -360,6 +360,18 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
         onDeleteField={handleDeleteField}
         onSendMessage={ai.handleSendMessage}
         predictiveDisplay={predictiveDisplay}
+        weeklyReviewPending={weeklyReviewPending}
+        onReviewOpened={handleReviewOpened}
+        preferenceMode={profile?.preferenceMode ?? 'conversational'}
+        onTogglePreferenceMode={() => {
+          if (!profile) return;
+          const next: AtlasProfile = {
+            ...profile,
+            preferenceMode: profile.preferenceMode === 'structured' ? 'conversational' : 'structured',
+            updatedAt: new Date().toISOString()
+          };
+          persistUpdate(next);
+        }}
       />
     </SingleAgentLayout>
   );

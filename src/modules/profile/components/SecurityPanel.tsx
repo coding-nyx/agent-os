@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Lock, Unlock, KeyRound, Database, Download, ChevronDown, ChevronRight, AlertTriangle, Loader2 } from 'lucide-react';
 import { useVault } from '@/lib/vault-context';
@@ -6,18 +6,75 @@ import { useAuth } from '@/lib/auth-context';
 import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { exportUserData, downloadAsJSON } from '@/lib/services/data-export-service';
+import { MODULE_MANIFEST, buildDefaultVaultLocks, type ModuleId } from '@/lib/module-manifest';
+import { CoreProfileService } from '@/lib/services/core-profile-service';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 const panelVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
+// Modules that have a security policy and a dedicated page
+const securityModules = Object.entries(MODULE_MANIFEST)
+  .filter(([, m]) => m.hasPage && m.securityPolicy)
+  .map(([id, m]) => ({
+    id: id as ModuleId,
+    title: m.title,
+    icon: m.icon,
+    colorHex: m.colorHex,
+    securityPolicy: m.securityPolicy!,
+  }));
+
 export function SecurityPanel() {
   const { isUnlocked, hasVault, lockVault, persistenceMode, getModuleKey } = useVault();
-  const { user } = useAuth();
+  const { user, isGuest, profile } = useAuth();
   const [vaultActionsExpanded, setVaultActionsExpanded] = useState(false);
+  const [moduleSecurityExpanded, setModuleSecurityExpanded] = useState(false);
+  const [securityLocks, setSecurityLocks] = useState<Record<string, boolean>>({});
+  const [securitySaving, setSecuritySaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  // Initialise lock state from profile preferences, enforcing mandatory locks
+  useEffect(() => {
+    const defaults = buildDefaultVaultLocks();
+    const overrides = profile?.securityPreferences?.vaultLocks ?? {};
+    const merged: Record<string, boolean> = { ...defaults, ...overrides };
+    securityModules.forEach((mod) => {
+      if (mod.securityPolicy.mandatory) merged[mod.id] = true;
+    });
+    setSecurityLocks(merged);
+  }, [profile?.securityPreferences]);
+
+  const handleSecurityToggle = useCallback(
+    async (moduleId: ModuleId) => {
+      if (!user || isGuest || !profile) return;
+      const mod = MODULE_MANIFEST[moduleId];
+      if (mod.securityPolicy?.mandatory) return;
+
+      const current = securityLocks[moduleId] ?? mod.securityPolicy?.defaultLocked ?? false;
+      const next = !current;
+      setSecurityLocks((prev) => ({ ...prev, [moduleId]: next }));
+      setSecuritySaving(true);
+      try {
+        await CoreProfileService.updateSecurityPreferences(user.uid, {
+          vaultLocks: { [moduleId]: next },
+        });
+        Spine.emit({
+          type: 'SECURITY_POLICY_UPDATED',
+          source: 'system',
+          domain: 'system',
+          data: { moduleId, locked: next },
+          cascadeDepth: 0,
+          priority: 'info',
+        });
+      } finally {
+        setSecuritySaving(false);
+      }
+    },
+    [user, isGuest, profile, securityLocks],
+  );
 
   const handleExport = async () => {
     if (!user?.uid || isExporting) return;
@@ -259,6 +316,107 @@ export function SecurityPanel() {
                 Coming Soon
               </NeuralButton>
             </div>
+          </div>
+        )}
+      </GlassCard>
+
+      {/* Module Security — collapsible */}
+      <GlassCard className="p-6">
+        <button
+          type="button"
+          onClick={() => setModuleSecurityExpanded((v) => !v)}
+          className="w-full flex items-center gap-3 text-left focus:outline-none focus:ring-1 focus:ring-violet-500/40 rounded-lg"
+          aria-expanded={moduleSecurityExpanded}
+          aria-label="Toggle Module Security"
+        >
+          <div className="w-7 h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+            <Lock className="w-3.5 h-3.5 text-emerald-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+              Module Security
+            </h3>
+            <p className="text-[9px] text-white/25 uppercase tracking-wider font-semibold mt-0.5">
+              Lock · Open · Mandatory
+            </p>
+          </div>
+          {moduleSecurityExpanded ? (
+            <ChevronDown className="w-4 h-4 text-white/30" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-white/30" />
+          )}
+        </button>
+
+        {moduleSecurityExpanded && (
+          <div className="mt-4 space-y-2">
+            {(isGuest || !user || !profile) && (
+              <p className="text-[10px] text-white/40 italic mb-3">
+                Guest links cannot modify module security. Authenticate to persist preferences.
+              </p>
+            )}
+            {securityModules.map((mod) => {
+              const locked = securityLocks[mod.id] ?? mod.securityPolicy.defaultLocked;
+              const disabled = mod.securityPolicy.mandatory || isGuest || !user || !profile;
+              const Icon = mod.icon;
+              return (
+                <button
+                  key={mod.id}
+                  type="button"
+                  onClick={() => { void handleSecurityToggle(mod.id); }}
+                  disabled={disabled}
+                  className={[
+                    'w-full text-left p-3 rounded-2xl border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40',
+                    locked
+                      ? 'bg-emerald-500/10 border-emerald-500/30'
+                      : 'bg-white/[0.04] border-white/10 hover:border-white/20',
+                    disabled ? 'opacity-50 cursor-not-allowed' : '',
+                  ].join(' ')}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-8 h-8 rounded-xl border border-white/10 flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: `${mod.colorHex}1f` }}
+                      >
+                        <Icon className="w-4 h-4" style={{ color: mod.colorHex }} />
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-white/80">
+                          {mod.title}
+                          {mod.securityPolicy.mandatory && (
+                            <span className="ml-2 text-[9px] text-amber-400">MANDATORY</span>
+                          )}
+                        </div>
+                        <div className="text-[9px] text-white/40 uppercase tracking-[0.2em]">
+                          {locked ? 'LOCKED' : 'OPEN'}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Toggle pill */}
+                    <div
+                      className={[
+                        'w-11 h-6 rounded-full border flex items-center px-1 transition-all',
+                        locked
+                          ? 'bg-emerald-500/20 border-emerald-500/40'
+                          : 'bg-white/5 border-white/10',
+                      ].join(' ')}
+                    >
+                      <div
+                        className={[
+                          'w-4 h-4 rounded-full transition-all',
+                          locked ? 'bg-emerald-400 translate-x-5' : 'bg-white/40 translate-x-0',
+                        ].join(' ')}
+                      />
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+            {securitySaving && (
+              <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 pt-1">
+                Saving security policy…
+              </p>
+            )}
           </div>
         )}
       </GlassCard>
