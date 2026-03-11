@@ -1,6 +1,7 @@
 import { SpineEvent, SpineEventType, SpineDomain, SpineEventPriority } from '@/lib/types';
 import { LedgerSpineEventType } from '@/modules/ledger/actions/ledger-field-actions';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import type { NexusQuery, NexusQueryFilter } from '@/lib/data-layer';
 
 export interface LedgerEvent extends SpineEvent {
   financialImpact?: {
@@ -73,21 +74,21 @@ export class SpineEventService {
     }
 
     try {
-      const query: any = {
-        type: 'collection',
-        name: 'ledger_events'
+      const where: NexusQueryFilter[] = [];
+      if (filter?.type) where.push({ field: 'type', op: '==', value: filter.type });
+      if (filter?.source) where.push({ field: 'source', op: '==', value: filter.source });
+      if (filter?.startDate) where.push({ field: 'timestamp', op: '>=', value: filter.startDate });
+      if (filter?.endDate) where.push({ field: 'timestamp', op: '<=', value: filter.endDate });
+
+      const query: NexusQuery = {
+        collection: 'ledger_events',
+        ...(where.length > 0 && { where }),
+        orderBy: [{ field: 'timestamp', direction: 'desc' }],
+        limit: 100,
       };
 
-      if (filter?.type) query.type = filter.type;
-      if (filter?.source) query.source = filter.source;
-      if (filter?.startDate || filter?.endDate) {
-        query.timestamp = {};
-        if (filter?.startDate) query.timestamp.$gte = filter.startDate;
-        if (filter?.endDate) query.timestamp.$lte = filter.endDate;
-      }
-
-      const events = await this.dataLayer.query(query);
-      return events as LedgerEvent[];
+      const records = await this.dataLayer.query<LedgerEvent>(query);
+      return records.map(r => r.data as unknown as LedgerEvent).filter(Boolean);
     } catch (error) {
       console.error('[SpineEventService] Failed to get events:', error);
       return [];

@@ -142,8 +142,8 @@ function buildGeneralMode(): PromptModeResult {
   const systemPrompt = `${LEDGER_BASE_IDENTITY}
 
 AVAILABLE ACTIONS:
-- <action type="create_financial_plan">{"title":"...","summary":"...","monthlyTarget":0,"allocation":{"essentials":60,"growth":25,"buffer":15},"tasks":["..."]}</action>
-  Use when the user needs a new or revised financial plan.
+- <action type="create_financial_plan">{"title":"Short title","summary":"One sentence.","monthlyTarget":0,"allocation":{"essentials":60,"growth":25,"buffer":15},"tasks":["Task one","Task two","Task three"]}</action>
+  IMPORTANT: Keep each task string under 60 characters. Use at most 4 tasks. No commas inside task strings.
 
 - <action type="update_budget_snapshot">{"monthlyIncome":0,"fixedExpenses":[],"variableExpenses":[],"debtItems":[],"savingsGoals":[]}</action>
   Use when the user provides updated income, expense, or debt information.

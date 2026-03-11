@@ -86,7 +86,8 @@ INTERACTION PROTOCOLS:
 - Always confirm major financial data extractions with the user before committing an action.
 
 ACTION TAGS:
-- <action type="create_financial_plan">{"title":"...","summary":"...","monthlyTarget":1200,"allocation":{"essentials":60,"growth":25,"buffer":15},"tasks":["..."]}</action>
+- <action type="create_financial_plan">{"title":"Short title","summary":"One sentence.","monthlyTarget":1200,"allocation":{"essentials":60,"growth":25,"buffer":15},"tasks":["Task one","Task two","Task three"]}</action>
+  IMPORTANT: Keep each task string under 60 characters. Use at most 4 tasks. No commas inside task strings.
 - <action type="update_budget_snapshot">{"monthlyIncome":0,"fixedExpenses":[],"variableExpenses":[],"debtItems":[],"savingsGoals":[]}</action>
 - <action type="update_financial_friction">{"score":0,"analysis":"..."}</action>
 - <action type="compute_resonance_roi">{"financialFriction":0,"resonanceROI":0.0}</action>
