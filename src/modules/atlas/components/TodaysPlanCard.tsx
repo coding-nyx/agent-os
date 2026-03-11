@@ -5,8 +5,7 @@ import { cn } from '@/lib/utils';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
-import { TrendArrow } from '@/core/components/TrendArrow';
-import type { AtlasProfile } from '../services/atlas-profile-service';
+import type { AtlasProfile, AtlasHabit } from '../services/atlas-profile-service';
 
 // ---------------------------------------------------------------------------
 // EnergyBudgetBar — visual depletion gauge
@@ -199,7 +198,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
   });
 
   // Task completion stats
-  const tasks = profile?.taskGraph ?? [];
+  const tasks = profile?.tasks ?? [];
   const completedTasks = tasks.filter(t => t.status === 'done');
   const totalTasks = tasks.length;
   const completionPct = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
@@ -212,6 +211,46 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
   const currentBudget = typeof cognitive?.energyBudget === 'number'
     ? cognitive.energyBudget
     : null;
+
+  // ---------------------------------------------------------------------------
+  // Habit streaks — derived from profile.habits
+  // ---------------------------------------------------------------------------
+
+  /** Returns the "at-risk" staleness threshold in milliseconds for a given frequency. */
+  function atRiskThresholdMs(frequency: AtlasHabit['frequency']): number {
+    switch (frequency) {
+      case 'weekends': return 44 * 60 * 60 * 1000;
+      case 'weekly':   return 144 * 60 * 60 * 1000;
+      case 'daily':
+      case 'weekdays':
+      case 'custom':
+      default:         return 20 * 60 * 60 * 1000;
+    }
+  }
+
+  const FREQUENCY_EMOJI: Record<AtlasHabit['frequency'], string> = {
+    daily:    '🔥',
+    weekdays: '⚡',
+    weekends: '🌿',
+    weekly:   '📅',
+    custom:   '⭐',
+  };
+
+  const streakHabits = useMemo(() => {
+    const now = Date.now();
+    return (profile?.habits ?? [])
+      .filter((h): h is AtlasHabit => h.status === 'active')
+      .sort((a, b) => b.currentStreak - a.currentStreak)
+      .slice(0, 5)
+      .map(h => {
+        const threshold = atRiskThresholdMs(h.frequency);
+        const atRisk = h.lastCompleted
+          ? now - new Date(h.lastCompleted).getTime() > threshold
+          : h.currentStreak > 0; // streak exists but never logged → at risk
+        return { habit: h, atRisk };
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.habits]);
 
   if (isLocked) return null;
 
@@ -321,16 +360,29 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
         </SurfaceCard>
       )}
 
-      {/* Streaks (placeholder — needs AtlasProfile extension) */}
+      {/* Streaks — driven by profile.habits */}
       <div className="space-y-2">
         <h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40 font-display">
           Streaks
         </h4>
         <SurfaceCard className="p-3 space-y-2.5">
-          {/* These would come from AtlasProfile.streaks when implemented */}
-          <p className="text-[10px] text-white/30 uppercase tracking-wider text-center py-2">
-            Streaks will appear as you build habits.
-          </p>
+          {streakHabits.length === 0 || streakHabits.every(({ habit }) => habit.currentStreak === 0) ? (
+            <p className="text-[10px] text-white/30 uppercase tracking-wider text-center py-2">
+              Build habits to see your streaks here.
+            </p>
+          ) : (
+            streakHabits
+              .filter(({ habit }) => habit.currentStreak > 0)
+              .map(({ habit, atRisk }) => (
+                <HabitStreakRow
+                  key={habit.id}
+                  name={habit.title}
+                  emoji={FREQUENCY_EMOJI[habit.frequency]}
+                  days={habit.currentStreak}
+                  atRisk={atRisk}
+                />
+              ))
+          )}
         </SurfaceCard>
       </div>
     </motion.section>

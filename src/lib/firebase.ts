@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, Firestore } from "firebase/firestore";
+import { getFirestore, Firestore, initializeFirestore } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 import { getStorage, FirebaseStorage } from "firebase/storage";
 
@@ -25,8 +25,13 @@ export function getFirebase() {
         console.warn("Firebase API Key is missing. Firebase features will be disabled.");
         return { app: null, db: null, auth: null, storage: null };
       }
-      app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-      db = getFirestore(app);
+      const isFirstInit = !getApps().length;
+      app = isFirstInit ? initializeApp(firebaseConfig) : getApp();
+      // experimentalAutoDetectLongPolling prevents 400 errors on the Write/channel
+      // by automatically falling back from WebSockets to HTTP long-polling when needed.
+      db = isFirstInit
+        ? initializeFirestore(app, { experimentalAutoDetectLongPolling: true })
+        : getFirestore(app);
       auth = getAuth(app);
       storage = getStorage(app);
     } catch (e) {

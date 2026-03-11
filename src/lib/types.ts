@@ -218,6 +218,16 @@ export type SpineEventType =
   | 'RESONANCE_ROI_UPDATED'
   | 'FINANCIAL_PLAN_CREATED'
   | 'DOCUMENT_ANALYZED'
+  // Ledger Transaction / Budget / Goal / Risk Events
+  | 'TRANSACTION_CREATED'
+  | 'TRANSACTION_UPDATED'
+  | 'TRANSACTION_DELETED'
+  | 'BUDGET_CREATED'
+  | 'BUDGET_MODIFIED'
+  | 'GOAL_CREATED'
+  | 'GOAL_COMPLETED'
+  | 'FINANCIAL_HEALTH_CHECK'
+  | 'RISK_DETECTED'
   // Soma Spine Events
   | 'SOMA_BIOMARKER_COMMITTED'
   | 'SOMA_READINESS_UPDATED'
@@ -416,6 +426,8 @@ export interface TitanNutrition {
   [key: string]: unknown;
 }
 
+export type EquipmentType = 'barbell' | 'dumbbells' | 'cables' | 'kettlebells' | 'bodyweight' | 'machines' | 'bands' | 'trx';
+
 export interface TitanActivity {
   activityLevel?: string;
   workoutsPerWeek?: number;
@@ -424,6 +436,10 @@ export interface TitanActivity {
   occupation?: string;
   baselineWeight?: number;
   baselineHeight?: number;
+  /** Equipment available to the user. Drives safe exercise substitutions. */
+  equipment?: EquipmentType[];
+  /** Preferred weight unit for session logging. */
+  preferredWeightUnit?: 'kg' | 'lbs';
   [key: string]: unknown;
 }
 
@@ -453,7 +469,7 @@ export interface SleepEntry {
   recordedAt: string;
 }
 
-export type CycleType = 'supplement' | 'workout' | 'hormonal' | 'nutrition' | 'recovery' | 'custom';
+export type CycleType = 'workout' | 'recovery' | 'custom';
 
 export interface CyclePhase {
   id: string;
@@ -481,6 +497,20 @@ export interface CycleEntry {
   cycleLength?: number;
   /** For hormonal cycles: date of last period */
   lastPeriodDate?: string;
+  /** Routine IDs this training cycle is linked to. */
+  linkedRoutineIds?: string[];
+  /**
+   * For workout mesocycles: the week number within the current phase that is
+   * designated as a deload week (1-based). When the computed current week
+   * matches this value the system injects a deload-week warning into the
+   * Titan session prompt.
+   */
+  deloadWeekNumber?: number;
+  /**
+   * Progression scheme description used to populate the session prompt context.
+   * e.g. "linear", "double-progression", "RPE-based", "undulating periodisation"
+   */
+  progressionScheme?: 'linear' | 'wave' | 'block' | 'undulating';
   createdAt: string;
   updatedAt: string;
 }
@@ -491,6 +521,10 @@ export interface ExerciseSet {
   repsCompleted: number;
   completed: boolean;
   notes?: string;
+  /** Set-level RPE (1–10). More precise than session-level RPE. */
+  rpe?: number;
+  /** Reps in reserve — modern auto-regulation standard. */
+  rir?: number;
 }
 
 export interface ExerciseLog {
@@ -517,6 +551,21 @@ export interface WorkoutSession {
   status: 'completed' | 'partial' | 'abandoned';
 }
 
+/** Personal record for a single exercise. */
+export interface PersonalRecord {
+  exerciseName: string;
+  /** Best weight lifted for a completed set (any rep range). */
+  maxWeight: number;
+  /** Reps performed at maxWeight. */
+  repsAtMax: number;
+  /** Estimated 1-rep max using Epley formula: weight × (1 + reps/30). */
+  e1RM: number;
+  /** Date of the PR (ISO YYYY-MM-DD). */
+  achievedDate: string;
+  /** Session ID where PR was set. */
+  sessionId: string;
+}
+
 export interface TitanProfile {
   onboardingComplete: boolean;
   privacyLevel: TitanPrivacyLevel;
@@ -529,6 +578,10 @@ export interface TitanProfile {
   sleepLog?: SleepEntry[];
   cycles?: CycleEntry[];
   workoutSessions?: WorkoutSession[];
+  /** Personal records keyed by exercise name (lowercase). Auto-updated on session log. */
+  personalRecords?: Record<string, PersonalRecord>;
+  /** Whether Direct Write Mode is enabled (bypasses AI gating for logging operations). */
+  directWriteMode?: boolean;
   createdAt: string;
   updatedAt: string;
   traits?: string[];
@@ -569,11 +622,25 @@ export interface Routine {
   status?: string;
 }
 
+export type MuscleGroup =
+  | 'chest' | 'back' | 'shoulders' | 'quads' | 'hamstrings'
+  | 'glutes' | 'arms' | 'core' | 'calves' | 'fullbody';
+
 export interface Exercise {
   name: string;
   sets: number;
   reps: string;
   notes?: string;
+  /** Target RPE for the exercise (1–10). Optional — used by AI to auto-regulate load. */
+  targetRPE?: number;
+  /** Tempo scheme, e.g. "3-1-1-0" (eccentric-pause-concentric-top). */
+  tempoScheme?: string;
+  /** Target rest between sets in seconds. Drives live rest timer in session logger. */
+  restSeconds?: number;
+  /** Equipment required for this exercise. */
+  equipment?: 'barbell' | 'dumbbell' | 'cable' | 'kettlebell' | 'bodyweight' | 'machine' | 'band' | 'other';
+  /** Primary muscle groups trained. Used for frequency analytics. */
+  muscleGroups?: MuscleGroup[];
 }
 
 export interface HealthDataLog {

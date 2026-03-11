@@ -5,7 +5,7 @@
 
 import React, { useState, useCallback } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { RefreshCw, Plus, CheckCircle, PauseCircle, ChevronRight, MessageSquare, Beaker, Dumbbell, Heart, Apple, Zap, Settings } from 'lucide-react';
+import { RefreshCw, Plus, CheckCircle, PauseCircle, ChevronRight, MessageSquare, Dumbbell, Zap, Settings } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -20,13 +20,14 @@ interface CycleManagerProps {
   className?: string;
 }
 
-const CYCLE_TYPE_META: Record<CycleType, { label: string; icon: LucideIcon; color: string }> = {
-  supplement: { label: 'Supplement', icon: Beaker, color: 'text-orange-400' },
-  workout:    { label: 'Workout',    icon: Dumbbell, color: 'text-blue-400' },
-  hormonal:   { label: 'Hormonal',  icon: Heart, color: 'text-rose-400' },
-  nutrition:  { label: 'Nutrition', icon: Apple, color: 'text-green-400' },
-  recovery:   { label: 'Recovery',  icon: Zap, color: 'text-purple-400' },
-  custom:     { label: 'Custom',    icon: Settings, color: 'text-white/60' },
+/**
+ * Only training-domain cycle types belong in Titan.
+ * `supplement`, `hormonal`, and `nutrition` live in Soma.
+ */
+const CYCLE_TYPE_META: Partial<Record<CycleType, { label: string; icon: LucideIcon; color: string }>> & Record<'workout' | 'recovery' | 'custom', { label: string; icon: LucideIcon; color: string }> = {
+  workout:  { label: 'Workout',  icon: Dumbbell, color: 'text-blue-400' },
+  recovery: { label: 'Recovery', icon: Zap,      color: 'text-purple-400' },
+  custom:   { label: 'Custom',   icon: Settings,  color: 'text-white/60' },
 };
 
 const STATUS_ICON: Record<CycleEntry['status'], LucideIcon> = {
@@ -236,8 +237,8 @@ export function CycleManager({ cycles, onSubmitForApproval, className }: CycleMa
 
   const handleNewCycle = useCallback(() => {
     const prompt = [
-      "I want to set up a new custom cycle. Please help me create one.",
-      "Ask me: What type of cycle (supplement, workout periodization, nutrition, recovery, hormonal, or custom)?",
+      "I want to set up a new training cycle. Please help me create one.",
+      "Ask me: What type of cycle (workout periodization, recovery block, or custom)?",
       "Then build the phases with me and use the create_cycle action to commit it.",
     ].join('\n');
     onSubmitForApproval(prompt);
@@ -257,7 +258,7 @@ export function CycleManager({ cycles, onSubmitForApproval, className }: CycleMa
         {cycles.length === 0 ? (
           <div className="text-center py-6 space-y-3">
             <p className="text-xs text-white/40 italic">
-              No cycles configured. Track creatine loading, workout blocks, or hormonal cycles.
+              No cycles configured. Track workout periodization blocks, deload weeks, or recovery cycles.
             </p>
             <button
               type="button"

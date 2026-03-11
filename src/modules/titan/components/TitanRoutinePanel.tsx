@@ -9,7 +9,7 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import { RoutineBuilder } from './RoutineBuilder';
 import { RestPeriodCalculator } from './RestPeriodCalculator';
-import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus, Pencil, MoreVertical } from 'lucide-react';
+import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus, Pencil, MoreVertical, Play } from 'lucide-react';
 
 interface TitanRoutinePanelProps {
   routines: Routine[];
@@ -18,6 +18,8 @@ interface TitanRoutinePanelProps {
   onImportRoutine?: () => void;
   /** Sends the routine to Titan AI for validation before it is committed. */
   onSubmitForApproval?: (routine: Routine) => void;
+  /** Called when the user wants to log a session for a routine. */
+  onStartSession?: (routine: Routine) => void;
 }
 
 const WEEKDAY_ORDER: Weekday[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -28,6 +30,7 @@ export function TitanRoutinePanel({
   onGeneratePlan,
   onImportRoutine,
   onSubmitForApproval,
+  onStartSession,
 }: TitanRoutinePanelProps) {
   const today = getTodayWeekday();
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
@@ -160,6 +163,16 @@ export function TitanRoutinePanel({
                 </button>
                 <div className="flex items-center gap-1">
                   <span className="text-white/40 mr-1">{routine.exercises.length} ex</span>
+                  {onStartSession && (
+                    <NeuralButton
+                      size="sm"
+                      onClick={() => onStartSession(routine)}
+                      className="shrink-0"
+                    >
+                      <Play className="w-3 h-3 mr-1.5" />
+                      Log Session
+                    </NeuralButton>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleOpenEdit(routine)}

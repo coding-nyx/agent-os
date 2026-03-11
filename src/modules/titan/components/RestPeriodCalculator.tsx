@@ -173,14 +173,6 @@ export function RestPeriodCalculator({
     [selectedType, selectedIntensity]
   );
 
-  const cnsImpactColor = {
-    low: 'emerald',
-    moderate: 'amber',
-    high: 'rose',
-  };
-
-  const cnsColor = cnsImpactColor[recommendation.cnsImpact];
-
   return (
     <SurfaceCard className={cn('p-5 space-y-4', className)}>
       <div className="flex items-center gap-3">
@@ -277,7 +269,9 @@ export function RestPeriodCalculator({
           </span>
           <div className={cn(
             'px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5',
-            `bg-${cnsColor}-500/10 border border-${cnsColor}-500/20 text-${cnsColor}-300`
+            recommendation.cnsImpact === 'low'      && 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300',
+            recommendation.cnsImpact === 'moderate' && 'bg-amber-500/10  border border-amber-500/20  text-amber-300',
+            recommendation.cnsImpact === 'high'     && 'bg-rose-500/10   border border-rose-500/20   text-rose-300',
           )}>
             <Brain className="w-3 h-3" />
             {recommendation.cnsImpact}

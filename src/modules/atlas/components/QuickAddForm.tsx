@@ -23,6 +23,8 @@ export interface TaskInput {
 export interface HabitInput {
   title: string;
   energyCost: number;
+  frequency: 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'custom';
+  minimumViableVersion?: string;
 }
 
 export interface GoalInput {
@@ -93,6 +95,8 @@ export function QuickAddForm({
   const [energyCost, setEnergyCost] = useState(5);
   const [deadline, setDeadline] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [frequency, setFrequency] = useState<'daily' | 'weekdays' | 'weekends' | 'weekly' | 'custom'>('daily');
+  const [minimumViableVersion, setMinimumViableVersion] = useState('');
 
   // ---- Refs ----
   const modalRef = useRef<HTMLDivElement>(null);
@@ -116,6 +120,8 @@ export function QuickAddForm({
     setEnergyCost(5);
     setDeadline('');
     setProjectId('');
+    setFrequency('daily');
+    setMinimumViableVersion('');
     setItemType('task');
     // Return focus to the FAB if we have one
     if (showFAB) {
@@ -173,7 +179,12 @@ export function QuickAddForm({
           });
           break;
         case 'habit':
-          onCreateHabit({ title: trimmed, energyCost });
+          onCreateHabit({
+            title: trimmed,
+            energyCost,
+            frequency,
+            minimumViableVersion: minimumViableVersion.trim() || undefined,
+          });
           break;
         case 'goal':
           onCreateGoal({ title: trimmed, deadline: deadline || undefined });
@@ -189,6 +200,8 @@ export function QuickAddForm({
       energyCost,
       deadline,
       projectId,
+      frequency,
+      minimumViableVersion,
       onCreateTask,
       onCreateHabit,
       onCreateGoal,
@@ -461,6 +474,59 @@ export function QuickAddForm({
                         </option>
                       ))}
                     </select>
+                  </div>
+                )}
+
+                {/* ── Frequency selector (habits only) ── */}
+                {itemType === 'habit' && (
+                  <fieldset>
+                    <legend className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
+                      Frequency
+                    </legend>
+                    <div className="grid grid-cols-5 gap-1">
+                      {(['daily', 'weekdays', 'weekends', 'weekly', 'custom'] as const).map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setFrequency(f)}
+                          aria-pressed={frequency === f}
+                          className={cn(
+                            'py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all capitalize',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
+                            frequency === f
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                              : 'text-white/30 hover:text-white/50 border border-white/5'
+                          )}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
+
+                {/* ── Minimum viable version (habits only) ── */}
+                {itemType === 'habit' && (
+                  <div>
+                    <label
+                      htmlFor="quick-add-mvv"
+                      className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-2"
+                    >
+                      Minimum for a bad day (optional)
+                    </label>
+                    <input
+                      id="quick-add-mvv"
+                      type="text"
+                      value={minimumViableVersion}
+                      onChange={(e) => setMinimumViableVersion(e.target.value)}
+                      placeholder="e.g. 5 mins, 3 sentences…"
+                      className={cn(
+                        'w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]',
+                        'text-sm text-white/90 placeholder:text-white/20',
+                        'focus:outline-none focus:border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/20',
+                        'transition-colors'
+                      )}
+                    />
                   </div>
                 )}
 

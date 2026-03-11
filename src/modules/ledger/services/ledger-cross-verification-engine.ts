@@ -14,6 +14,7 @@
 
 import { BudgetLineItem, LedgerIntakeProfile, TaxCategory } from './ledger-intake-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import { computeFinancialFriction } from './resonance-roi-service';
 
 // Re-export for consumers that want the type from the engine file.
 export type { TaxCategory };
@@ -332,9 +333,9 @@ export function projectSavingsGoal(goal: SavingsGoalInput): SavingsProjection {
 // ─── Financial friction emit ──────────────────────────────────────────────────
 
 /**
- * Checks whether total variable spend exceeds the implicit variable budget
- * (50 % of monthly income) by more than 20 %, and if so emits a
- * `resource.financialFriction` NSV update through GlobalProjectionService.
+ * Computes `financialFriction` via the canonical formula in
+ * `resonance-roi-service` and emits the result to
+ * `nsv.resource.financialFriction` through GlobalProjectionService.
  *
  * This is the ONLY cross-module side-effect in this engine — everything else
  * is pure computation.
@@ -348,16 +349,8 @@ export async function checkAndEmitFinancialFriction(
 ): Promise<void> {
   if (!uid || !profile || profile.monthlyIncome <= 0) return;
 
-  // Heuristic budget: variable expenses should be ≤ 50 % of income
-  const variableBudget = profile.monthlyIncome * 0.5;
-  const totalVariable = profile.variableExpenses.reduce((s, e) => s + e.amount, 0);
-  const overBudgetRatio = variableBudget > 0 ? totalVariable / variableBudget : 0;
-
-  // Only emit when >20 % over budget
-  if (overBudgetRatio <= 1.2) return;
-
-  // Scale: 20 % over → 6, 50 % over → 8, 100 %+ over → 10
-  const frictionScore = Math.min(10, Math.round(4 + (overBudgetRatio - 1) * 6));
+  // Delegate to the single canonical friction formula (returns 0-1)
+  const frictionScore = Math.round(computeFinancialFriction(profile) * 10);
 
   try {
     await GlobalProjectionService.updateCrossFunctionalState(

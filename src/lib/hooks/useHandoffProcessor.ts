@@ -86,7 +86,15 @@ export function useHandoffProcessor({
       };
     }
 
+    // No actionable routing signal — skip LLM call entirely.
+    // If fast path defaulted to orchestrator (no keywords) or matched the current module,
+    // the answer is always shouldDelegate: false. Avoid a costly 10s LLM timeout.
+    if (fastDecision.target === 'orchestrator' || fastDecision.target === moduleId) {
+      return { shouldDelegate: false };
+    }
+
     // 2. SLOW PATH: LLM-based classification with relaxed timeout
+    // Reached only when fast path found a different module but confidence < 0.7.
     try {
       const routingAbort = new AbortController();
       const { response: routeResp } = await Promise.race([

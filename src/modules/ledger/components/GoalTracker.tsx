@@ -8,27 +8,7 @@ import { NeuralModal } from '@/core/components/NeuralModal';
 import { ProgressRow } from '@/core/components/ProgressRow';
 import { cn } from '@/lib/utils';
 
-export interface FinancialGoal {
-  id: string;
-  name: string;
-  type: 'savings' | 'debt_payoff' | 'investment' | 'purchase' | 'other';
-  targetAmount: number;
-  currentAmount: number;
-  targetDate?: string;
-  monthlyContribution: number;
-  priority: 'low' | 'medium' | 'high';
-  notes?: string;
-  milestones?: GoalMilestone[];
-  createdAt: string;
-}
-
-export interface GoalMilestone {
-  id: string;
-  amount: number;
-  label: string;
-  achieved: boolean;
-  achievedAt?: string;
-}
+import { FinancialGoal, GoalMilestone } from '../services/ledger-intake-service';
 
 interface GoalTrackerProps {
   goals: FinancialGoal[];

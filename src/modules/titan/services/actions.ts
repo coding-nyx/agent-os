@@ -1,7 +1,7 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import type { TitanProfile, Routine, BiomarkerRecord, MedicalImageAnalysis, SleepEntry, CycleEntry, CyclePhase, WorkoutSession, ExerciseLog, ExerciseSet } from '@/lib/types';
+import type { TitanProfile, Routine, BiomarkerRecord, MedicalImageAnalysis, SleepEntry, CycleEntry, CyclePhase, CycleType, WorkoutSession, ExerciseLog, ExerciseSet, PersonalRecord } from '@/lib/types';
 import { mergeTitanProfile, normalizeRoutines } from '../utils';
 import { normalizeTitanProfilePatch } from '../onboarding/intake-accumulator';
 import { loadTitanProfile, saveTitanProfile } from './titan-profile-service';
@@ -377,11 +377,22 @@ export function registerTitanActions() {
 
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
 
-      // Sync quality score to NSV so all modules see the updated sleep state
+      // Auto-update sleepQuality NSV after sleep log.
+      // Combines a hours-optimality score (peak at 8.25 h) with the
+      // user's self-reported quality rating. Both are normalised to 0–10
+      // and averaged so neither factor dominates alone.
       if (userId) {
-        await GlobalProjectionService.updateCrossFunctionalState(userId, {
-          biological: { sleepQuality: entry.quality },
-        }).catch((e) => console.error('log_sleep NSV sync failed:', e));
+        // hoursScore: 10 at 8.25 h, falls linearly outside the 7.5–9 h window.
+        const hoursScore = entry.durationHours >= 7.5
+          ? Math.min(10, Math.max(0, 10 - Math.abs(entry.durationHours - 8.25)))
+          : Math.min(10, Math.max(0, entry.durationHours * (10 / 7.5)));
+        // qualityScore: already clamped to [0, 10] by the entry normalisation above.
+        const qualityScore = entry.quality;
+        const sleepQuality = Math.round(((hoursScore + qualityScore) / 2) * 10) / 10;
+
+        GlobalProjectionService.updateCrossFunctionalState(userId, {
+          biological: { sleepQuality },
+        }).catch((e) => console.error('sleepQuality NSV update failed:', e));
       }
     },
 
@@ -415,12 +426,9 @@ export function registerTitanActions() {
       const cycle: CycleEntry = {
         id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
         name: typeof payload?.name === 'string' ? payload.name : 'Custom Cycle',
-        type:
-          payload?.type === 'supplement' || payload?.type === 'workout' ||
-          payload?.type === 'hormonal' || payload?.type === 'nutrition' ||
-          payload?.type === 'recovery' || payload?.type === 'custom'
-            ? payload.type
-            : 'custom',
+        type: (['workout', 'recovery', 'custom'] as const).includes(payload?.type as CycleType)
+          ? payload.type as CycleType
+          : 'workout',
         description: typeof payload?.description === 'string' ? payload.description : undefined,
         startDate: typeof payload?.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.startDate) ? payload.startDate : now.slice(0, 10),
         endDate: typeof payload?.endDate === 'string' ? payload.endDate : undefined,
@@ -431,6 +439,15 @@ export function registerTitanActions() {
         notes: typeof payload?.notes === 'string' ? payload.notes : undefined,
         cycleLength: typeof payload?.cycleLength === 'number' ? payload.cycleLength : undefined,
         lastPeriodDate: typeof payload?.lastPeriodDate === 'string' ? payload.lastPeriodDate : undefined,
+        linkedRoutineIds: Array.isArray(payload?.linkedRoutineIds)
+          ? (payload.linkedRoutineIds as unknown[]).filter((id): id is string => typeof id === 'string')
+          : undefined,
+        deloadWeekNumber: typeof payload?.deloadWeekNumber === 'number' && payload.deloadWeekNumber > 0
+          ? payload.deloadWeekNumber
+          : undefined,
+        progressionScheme: (['linear', 'wave', 'block', 'undulating'] as const).includes((payload?.progressionScheme ?? 'linear') as 'linear' | 'wave' | 'block' | 'undulating')
+          ? payload.progressionScheme as CycleEntry['progressionScheme']
+          : undefined,
         createdAt: now,
         updatedAt: now,
       };
@@ -565,9 +582,34 @@ export function registerTitanActions() {
             : 'completed'),
       };
 
+      // Compute updated personal records from this session
+      const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
+      const sessionDate = session.date;
+      for (const exLog of session.exercises) {
+        const key = exLog.exerciseName.toLowerCase().trim();
+        for (const s of exLog.sets) {
+          if (!s.completed || !s.weight || !s.repsCompleted) continue;
+          const e1RM = s.repsCompleted === 1
+            ? s.weight
+            : Math.round(s.weight * (1 + s.repsCompleted / 30));
+          const existing = updatedPRs[key];
+          if (!existing || e1RM > existing.e1RM) {
+            updatedPRs[key] = {
+              exerciseName: exLog.exerciseName,
+              maxWeight: s.weight,
+              repsAtMax: s.repsCompleted,
+              e1RM,
+              achievedDate: sessionDate,
+              sessionId: session.id,
+            };
+          }
+        }
+      }
+
       const next: TitanProfile = {
         ...profile,
         workoutSessions: [session, ...(profile.workoutSessions ?? [])].slice(0, 365),
+        personalRecords: updatedPRs,
         updatedAt: new Date().toISOString(),
       };
 
@@ -601,6 +643,38 @@ export function registerTitanActions() {
             biological: { recoveryScore: Math.max(0, Math.min(10, currentRecovery + recoveryImpact)) },
           }).catch((e) => console.error('log_workout_session NSV sync failed:', e));
         }
+      }
+
+      // Auto-update cnsFatigue NSV after session.
+      // rawFatigue is an RPE-weighted value (0–10) with a volume component
+      // that saturates at 4 points (≥20 000 kg total volume). The final
+      // value is the higher of the time-decayed existing fatigue and the
+      // newly computed value, then written back atomically.
+      if (userId) {
+        const sessionRPE = session.rpe ?? 6;
+        const volumeLoad = session.totalVolume ?? 0;
+        const rawFatigue = Math.min(10, sessionRPE * 0.6 + Math.min(4, volumeLoad / 5000));
+
+        const nsvForFatigue = getLatestNSV?.() ?? {};
+        const bioForFatigue = (nsvForFatigue.biological ?? {}) as Record<string, unknown>;
+        const existingFatigue = typeof bioForFatigue.cnsFatigue === 'number' ? bioForFatigue.cnsFatigue : 0;
+
+        // Exponential decay: cnsFatigue halves every 48 h since last session.
+        const now = Date.now();
+        const lastSessionTimestamp = typeof bioForFatigue.lastSessionTimestamp === 'number'
+          ? bioForFatigue.lastSessionTimestamp
+          : undefined;
+        const hoursElapsed = lastSessionTimestamp != null
+          ? (now - lastSessionTimestamp) / (1000 * 60 * 60)
+          : 48;
+        const decayedExisting = existingFatigue * Math.pow(0.5, hoursElapsed / 48);
+        const newFatigue = Math.max(decayedExisting, rawFatigue);
+
+        GlobalProjectionService.updateCrossFunctionalState(userId, {
+          biological: {
+            cnsFatigue: Math.round(newFatigue * 10) / 10,
+          },
+        }).catch(e => console.error('cnsFatigue NSV update failed:', e));
       }
     },
 

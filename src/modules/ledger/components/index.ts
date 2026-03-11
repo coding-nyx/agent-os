@@ -17,7 +17,7 @@ export { BudgetPlanner } from './BudgetPlanner';
 export type { BudgetCategory, BudgetTemplate } from './BudgetPlanner';
 
 export { GoalTracker } from './GoalTracker';
-export type { FinancialGoal, GoalMilestone } from './GoalTracker';
+export type { FinancialGoal, GoalMilestone } from '../services/ledger-intake-service';
 
 export { AIFinancialAdvisor } from './AIFinancialAdvisor';
 

@@ -32,8 +32,13 @@ import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { ledgerDiagnosisSpec } from './diagnosis/ledger-diagnosis-spec';
 import { useDocumentIntelligence } from '@/lib/hooks/use-document-intelligence';
+import { registerLedgerFieldActions, registerLedgerTransactionActions } from '@/modules/ledger/actions/ledger-field-actions';
+import { registerLedgerCascadeRules } from '@/lib/spine/cascade-rules';
 
 registerDiagnosisSpec(ledgerDiagnosisSpec);
+registerLedgerFieldActions();
+registerLedgerTransactionActions();
+registerLedgerCascadeRules();
 
 function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
   const totalFixed = profile.fixedExpenses.reduce((sum, item) => sum + item.amount, 0);

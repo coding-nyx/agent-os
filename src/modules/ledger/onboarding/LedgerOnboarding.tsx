@@ -141,10 +141,10 @@ export function LedgerOnboarding({
       ? fastVariableExpenses.split(',').map((s, i) => ({ id: `ft-var-${i}`, label: s.trim(), amount: 0 })).filter(e => e.label)
       : [];
     const debtItems = fastDebt.trim()
-      ? fastDebt.split(',').map((s, i) => ({ id: `ft-debt-${i}`, name: s.trim(), balance: 0, minPayment: 0 })).filter(d => d.name)
+      ? fastDebt.split(',').map((s, i) => ({ id: `ft-debt-${i}`, name: s.trim(), balance: 0, minPayment: 0, apr: 0 })).filter(d => d.name)
       : [];
     const savingsGoals = fastSavingsGoal.trim()
-      ? fastSavingsGoal.split(',').map((s, i) => ({ id: `ft-sav-${i}`, name: s.trim(), targetAmount: 0 })).filter(g => g.name)
+      ? fastSavingsGoal.split(',').map((s, i) => ({ id: `ft-sav-${i}`, name: s.trim(), targetAmount: 0, currentAmount: 0, monthlyContribution: 0, priority: 'medium' as const })).filter(g => g.name)
       : [];
     const profile: LedgerIntakeProfile = {
       onboardingComplete: true,

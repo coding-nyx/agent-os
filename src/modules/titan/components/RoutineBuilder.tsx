@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { 
   Dumbbell, 
   Plus, 
-  X, 
   GripVertical, 
   Save, 
   Copy, 
@@ -21,7 +21,6 @@ import type { Routine, Exercise, Weekday } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
-import { NeuralModal } from '@/core/components/NeuralModal';
 
 interface RoutineBuilderProps {
   routine?: Routine;
@@ -81,6 +80,8 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
   const [exercises, setExercises] = useState<Exercise[]>(routine?.exercises || []);
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [exercisesError, setExercisesError] = useState<string | null>(null);
 
   const categories = ['All', ...new Set(EXERCISE_TEMPLATES.map(t => t.category))];
 
@@ -119,9 +120,9 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
     setExercises([...exercises, newExercise]);
   }, [exercises]);
 
-  const updateExercise = useCallback((index: number, field: keyof Exercise, value: string | number) => {
+  const updateExercise = useCallback((index: number, partial: Partial<Exercise>) => {
     const updated = [...exercises];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ...updated[index], ...partial };
     setExercises(updated);
   }, [exercises]);
 
@@ -146,12 +147,14 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
   }, [exercises]);
 
   const handleSave = useCallback(() => {
+    setNameError(null);
+    setExercisesError(null);
     if (!name.trim()) {
-      alert('Please provide a routine name');
+      setNameError('Routine name is required');
       return;
     }
     if (exercises.length === 0) {
-      alert('Please add at least one exercise');
+      setExercisesError('Add at least one exercise before saving');
       return;
     }
 
@@ -182,10 +185,14 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
           <input
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => { setName(e.target.value); if (nameError) setNameError(null); }}
             placeholder="e.g. Upper Body Push"
-            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 focus:bg-white/[0.07] transition-all"
+            className={cn(
+              'w-full px-4 py-2.5 bg-white/5 border rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:bg-white/[0.07] transition-all',
+              nameError ? 'border-rose-500/50 focus:border-rose-500/70' : 'border-white/10 focus:border-orange-500/50'
+            )}
           />
+          {nameError && <p className="text-xs text-rose-400 mt-1">{nameError}</p>}
         </div>
 
         <div className="space-y-2">
@@ -263,7 +270,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
             <NeuralButton
               size="sm"
               variant="ghost"
-              onClick={() => setShowTemplateLibrary(true)}
+              onClick={() => setShowTemplateLibrary(prev => !prev)}
             >
               <FileText className="w-3 h-3 mr-1.5" />
               Template Library
@@ -277,6 +284,8 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
             </NeuralButton>
           </div>
         </div>
+
+        {exercisesError && <p className="text-xs text-rose-400 -mt-1">{exercisesError}</p>}
 
         {exercises.length === 0 ? (
           <SurfaceCard className="p-8">
@@ -336,7 +345,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                               <input
                                 type="text"
                                 value={exercise.name}
-                                onChange={(e) => updateExercise(index, 'name', e.target.value)}
+                                onChange={(e) => updateExercise(index, { name: e.target.value })}
                                 placeholder="Exercise name"
                                 className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm font-bold text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 transition-all"
                               />
@@ -350,7 +359,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                                     type="number"
                                     min="1"
                                     value={exercise.sets}
-                                    onChange={(e) => updateExercise(index, 'sets', parseInt(e.target.value) || 1)}
+                                    onChange={(e) => updateExercise(index, { sets: parseInt(e.target.value) || 1 })}
                                     className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
                                   />
                                 </div>
@@ -362,16 +371,46 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                                   <input
                                     type="text"
                                     value={exercise.reps}
-                                    onChange={(e) => updateExercise(index, 'reps', e.target.value)}
+                                    onChange={(e) => updateExercise(index, { reps: e.target.value })}
                                     placeholder="e.g. 8-10"
                                     className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 transition-all"
                                   />
                                 </div>
                               </div>
 
+                              {/* RPE + Rest — compact inline row */}
+                              <div className="flex items-end gap-3">
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[9px] text-white/40 uppercase tracking-wider">RPE</label>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={10}
+                                    step={0.5}
+                                    placeholder="–"
+                                    value={exercise.targetRPE ?? ''}
+                                    onChange={e => updateExercise(index, { targetRPE: parseFloat(e.target.value) || undefined })}
+                                    className="w-14 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white text-center placeholder:text-white/30 focus:outline-none focus:border-orange-500/40 transition-colors"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[9px] text-white/40 uppercase tracking-wider">Rest (s)</label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={600}
+                                    step={15}
+                                    placeholder="–"
+                                    value={exercise.restSeconds ?? ''}
+                                    onChange={e => updateExercise(index, { restSeconds: parseInt(e.target.value) || undefined })}
+                                    className="w-16 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white text-center placeholder:text-white/30 focus:outline-none focus:border-orange-500/40 transition-colors"
+                                  />
+                                </div>
+                              </div>
+
                               <textarea
                                 value={exercise.notes || ''}
-                                onChange={(e) => updateExercise(index, 'notes', e.target.value)}
+                              onChange={(e) => updateExercise(index, { notes: e.target.value })}
                                 placeholder="Notes (tempo, rest period, form cues...)"
                                 rows={2}
                                 className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] text-white/70 placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 transition-all resize-none"
@@ -426,62 +465,63 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
         </NeuralButton>
       </div>
 
-      {/* Template Library Modal */}
-      <NeuralModal
-        isOpen={showTemplateLibrary}
-        onClose={() => setShowTemplateLibrary(false)}
-        title="Exercise Template Library"
-        subtitle="Select exercises to add to your routine"
-        icon={FileText}
-        themeColor="orange"
-        maxWidth="2xl"
-      >
-        <div className="space-y-4">
-          {/* Category Filter */}
-          <div className="flex flex-wrap gap-2">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={cn(
-                  'px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all',
-                  selectedCategory === cat
-                    ? 'bg-orange-500/20 border border-orange-500/30 text-orange-300'
-                    : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
-                )}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+      {/* Template Library — inline expandable section */}
+      <AnimatePresence>
+        {showTemplateLibrary && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="border border-white/10 rounded-xl bg-white/[0.03] p-4 space-y-3">
+              {/* Category Filter */}
+              <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={cn(
+                      'px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all',
+                      selectedCategory === cat
+                        ? 'bg-orange-500/20 border border-orange-500/30 text-orange-300'
+                        : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                    )}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
 
-          {/* Template Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto pr-2">
-            {filteredTemplates.map((template, idx) => (
-              <button
-                key={idx}
-                onClick={() => addExerciseFromTemplate(template)}
-                className="p-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-orange-500/10 hover:border-orange-500/30 transition-all text-left group"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <span className="text-sm font-bold text-white/90 group-hover:text-orange-300 transition-colors">
-                    {template.name}
-                  </span>
-                  <Plus className="w-3.5 h-3.5 text-white/30 group-hover:text-orange-400 transition-colors" />
-                </div>
-                <div className="flex items-center gap-3 text-[10px] text-white/50">
-                  <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 uppercase tracking-wider">
-                    {template.category}
-                  </span>
-                  <span className="font-black tabular-nums">
-                    {template.defaultSets} × {template.defaultReps}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </NeuralModal>
+              {/* Template Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-2">
+                {filteredTemplates.map((template, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => addExerciseFromTemplate(template)}
+                    className="p-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-orange-500/10 hover:border-orange-500/30 transition-all text-left group"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-sm font-bold text-white/90 group-hover:text-orange-300 transition-colors">
+                        {template.name}
+                      </span>
+                      <Plus className="w-3.5 h-3.5 text-white/30 group-hover:text-orange-400 transition-colors" />
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] text-white/50">
+                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 uppercase tracking-wider">
+                        {template.category}
+                      </span>
+                      <span className="font-black tabular-nums">
+                        {template.defaultSets} × {template.defaultReps}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -15,9 +15,21 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
    - Dynamic Field System Expansion + Global Soul Writing Protocol.
    - Document Intelligence Capability hardening as shared platform service.
 3. **P2 — Module feature expansion**
-   - Titan/Soma domain features (physical sovereign architecture, biomarkers, clearance workflow).
+   - **Titan/Soma domain features** — Sprint 7 planned. See `workitems/sprints/SPRINT_7.md` and `docs/product/TITAN_PRODUCT_STRATEGY_REVIEW.md` for full scope.
    - Ledger intelligence tracks (cross-verification, document receipts/invoices, schema hardening).
    - Atlas/Scout/Forge module refinement tracks.
+
+## Recommended Sprint 7 Scope (Titan Module Review & Refinement)
+**PM Review Completed.** Full strategy document at `docs/product/TITAN_PRODUCT_STRATEGY_REVIEW.md`.
+
+Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
+- **S7-001 (P0):** Exercise identity data model — Exercise library + PersonalRecord + e1RM tracking
+- **S7-002 (P0):** Soma tab cleanup — remove Biomarkers/Sleep/Recovery/Diagnosis from Titan; 3-tab structure
+- **S7-003 (P0):** Training calendar — 7-day week view in Training tab
+- **S7-004 (P1):** PR board — top exercises + e1RM sparklines in Progress tab
+- **S7-005 (P1):** AI Mode / Logbook Mode toggle — resolves power-user friction
+- **S7-006 (P1):** Mesocycle data model upgrade — link routines to cycles, deload week, auto-advance phases
+- **S7-007 (P1):** Onboarding simplification — 3-question AI chat → instant plan; remove medical phase from Titan
 
 ## Recommended Sprint 7 Scope
 - Completed on March 10, 2026 as immediate P0 execution:
@@ -37,19 +49,28 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
 - [ ] **Belief Graph Visualization:** An interactive 2D graph showing how user beliefs are evolving over time.
 
 ## 3. Physical (Titan - The Sovereign Module)
-- [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Titan and Soma modules.
-- [ ] **Physical Sovereign Architecture:** Consolidate *all* physical data into Titan as a single, comprehensive "Physical Soul."
-    - [ ] **Layer 1: The Baseline (Clinical SoT):** Integration of labs, DNA, biomarkers, medical history, and passive biometrics (HRV, Sleep).
-    - [ ] **Layer 2: The Activity (Performance):** Dynamic workout logs, PR tracking, routines, and RPE-based coaching.
-    - [ ] **Medical Clearance Handshake:** Implementation of a gatekeeping system where "Baseline" metrics (recovery, iron levels, sleep) automatically grant or deny "Activity" permissions.
-- [ ] **Biomarker Analysis:** (NEW) Automated parsing of PDF/Image lab reports with structured commit to the Physical Soul.
-- [ ] **Soma Service Layer:** Implement specialized services for biomarkers, readiness computation, and clearance management.
-- [ ] **Medical Clearance Workflow:** Implement the PAR-Q self-assessment questionnaire and clearance issuance system in the Recovery tab.
-- [ ] **Routine Builder Integration:** Mount the existing `RoutineBuilder` component in the UI and wire it to profile persistence.
-- [ ] **Bug Fix: Biometric Charts:** Fix BarChart Y-axis tick deduplication and resolve dynamic Tailwind class purging in `RestPeriodCalculator` and `ClearanceStatus`.
+- [x] **Module Review & Refinement (PM Strategy Review):** Full product strategy analysis completed. See `docs/product/TITAN_PRODUCT_STRATEGY_REVIEW.md`. Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`.
+  - Key decisions: Remove Biomarkers/Sleep/Recovery/Diagnosis tabs from Titan (scope creep). Soma boundary defined. Exercise identity data model required (P0 blocker). Training calendar + PR board = critical missing features. Onboarding simplified to 3-question AI chat. Mesocycle data model upgraded.
+- [ ] **Physical Sovereign Architecture:** Consolidate *all physical performance data* into Titan. Soma remains the medical/health authority. See boundary definition in `docs/product/TITAN_PRODUCT_STRATEGY_REVIEW.md` Section 5 and 11.
+    - [ ] **Exercise Identity (Sprint 7 S7-001):** Canonical `Exercise` entity, `PersonalRecord[]`, e1RM calculation, exercise library seed.
+    - [ ] **Training Calendar (Sprint 7 S7-003):** 7-day week view in Training tab.
+    - [ ] **PR Board (Sprint 7 S7-004):** Top exercises + e1RM sparklines in Progress tab.
+    - [ ] **Mesocycle Data Model (Sprint 7 S7-006):** Link routines to cycles, deload week, auto-advance phases.
+    - [x] **Layer 1: The Baseline (Clinical SoT):** Soma owns. Titan reads via NSV + soma-data-service. Boundary defined.
+    - [x] **Layer 2: The Activity (Performance):** Workout logs, PR tracking (Sprint 7), routines, RPE coaching.
+    - [x] **Medical Clearance Handshake:** Soma issues; Titan enforces as banner in Training tab (Sprint 7 S7-002).
+- [ ] **Soma Tab Cleanup (Sprint 7 S7-002):** Remove Biomarkers/Sleep/Recovery/Diagnosis from Titan. 3-tab structure: Training | Progress | Cycles.
+- [ ] **AI Mode / Logbook Mode Toggle (Sprint 7 S7-005):** `preferenceMode: 'coach' | 'logbook'` resolves power-user friction.
+- [ ] **Onboarding Simplification (Sprint 7 S7-007):** 3-question AI chat → instant plan. Remove medical phase from Titan onboarding.
+- [x] **Biomarker Analysis:** Delegated to Soma via `soma-titan-delegation-service`. Titan receives clearance output.
+- [x] **Soma Service Layer:** `soma-titan-delegation-service`, `soma-data-service`, `clearance-service` implemented.
+- [ ] **Routine Builder Integration:** Mount existing `RoutineBuilder` and wire to profile persistence (Sprint 7).
+- [ ] **Custom Fields in LLM Context:** Active custom field values must be injected into session prompt (Sprint 7 P2).
 
 ## 4. Financial (Ledger)
-- [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Ledger module.
+- [x] **Module Review & Refinement (Design Audit):** Comprehensive UX/UI audit of the Ledger module completed. Full report at `workitems/LEDGER_DESIGN_CRITIQUE.md`. Key findings: 4× duplicate "Recent Transactions" JSX block in `LedgerDashboard.tsx`, `Math.random()` used in Cash Flow chart data, hardcoded fake financial events, `useMemo` containing a profile-mutating side effect in `LedgerWorkspace.tsx`, core data structures (`transactions`, `budgetCategories`, `financialGoals`) stored via `as any` cast outside `LedgerIntakeProfile` type, fast-track form creates zero-amount expense records, random hex color generation for budget categories, and hardcoded "Quick Wins" in `AIFinancialAdvisor`. Full accessibility audit included (missing ARIA tablist/tab roles, icon-only buttons without aria-labels, silent form validation failures). Tax UX design spec included. Top 10 priority changes documented with effort/impact matrix. `todos: design-agent → done`.
+- [x] **Module Review & Refinement (PM Strategy Review):** Full product strategy analysis completed. See `docs/product/LEDGER_PRODUCT_STRATEGY_REVIEW.md`. `todos: product-manager-agent → done`.
+  - Key decisions: Dashboard charts confirmed as 100% mock data (P0 blocker). `SavingsGoal.currentAmount` type mismatch confirmed (P0 bug). `monthlyIncome: number` must migrate to `IncomeSource[]` for multi-income users. AI autonomous write actions (`add_transaction`, `update_goal_progress`, `set_budget_actual`) are the critical unlock for dual-mode product promise. New `ledger-aggregation-service.ts` required before any dashboard or budget feature work. Tax tagging, debt avalanche/snowball, smart alerts, and spending trend charts are P1. Retirement planning, investment portfolio, and direct tax filing explicitly descoped. 5 user stories cover casual → power user range. MoSCoW table with 8 Must-Haves, 8 Should-Haves, 9 Could-Haves, 9 Won't-Haves defined. 4-sprint execution plan grounded in `INSTRUCTIONS.md` priority order (structure before features).
 - [ ] **Ledger Cross-Verification Engine (Active ROI):** Implement the intelligence to automatically correlate encrypted spending events with Spine-reported wellness shifts (stress spending, recovery ROI).
 - [ ] **Ledger Document Intelligence (Receipts/Invoices):** Expand the document parsing service to handle receipts and invoices with automated ledger entry and categorization. (Module-scoped; complements the shared Document Intelligence Capability in §8.)
 - [ ] **Ledger Debt & Savings Modeling:** Implement interactive modeling for debt payoff strategies and savings goal projections based on real-time cashflow.
@@ -57,13 +78,33 @@ This backlog tracks the prioritized features, enhancements, and architectural sh
 - [ ] **Ledger Schema Hardening:** Remove keyword-based validation and move to LLM-driven semantic domain validation for custom fields.
 
 ## 5. Planning (Atlas)
-- [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Atlas module.
+- [x] **Module Review & Refinement (Design Audit):** Comprehensive UX/UI audit of the Atlas module completed. Full report at `docs/design/ATLAS_DESIGN_AUDIT.md`. Key findings: TodaysPlanCard wired to wrong property (`taskGraph` vs `tasks`), FocusView chat button receives `noop`, `handleAddField` is a console.log stub, WeeklyReviewModal never triggered from UI, Week view renders identical content to Today view, and no first-day post-onboarding experience. Top 10 ranked design recommendations documented with specific file targets and code-level guidance. `todos: atlas-design → done`.
+- [x] **Module Review & Refinement (PM Strategy Review):** Full product strategy analysis completed. See `docs/product/ATLAS_PRODUCT_STRATEGY_REVIEW.md`. `todos: atlas-pm → done`.
+  - Key decisions: Atlas defaults to `conversational` preferenceMode (AI-first philosophy confirmed). Predictive Service is highest-value unbuilt feature (P0 blocker for core thesis). 15 missing user stories written and prioritized. External calendar sync, team features, and gamification explicitly rejected as anti-features.
+- [x] **Sprint 8 Bug Fixes + AI-First Foundation:** Six confirmed production bugs fixed. Two new AI-first components built. See `workitems/sprints/SPRINT_9.md` (Atlas Sprint 8 items carried as SPRINT_9).
+  - [x] `TodaysPlanCard` — reads `profile.tasks` (not `taskGraph`); live habit streak display with `atRiskThresholdMs()`
+  - [x] `QuickAddForm` — habit frequency selector (daily/weekdays/weekends/weekly/custom) + minimumViableVersion field
+  - [x] `handleAddField` in `AtlasPage.tsx` — wired to `ai.handleSendMessage(...)` (was `console.log` stub)
+  - [x] `MorningCheckIn.tsx` — new dismissible daily brief card with `shouldShowMorningCheckIn()` localStorage gate
+  - [x] `PriorityInbox.tsx` — new top-3 task selector with energy-fit ranking
+  - [x] `EnhancedAtlasDashboard.tsx` — WeekGrid mounted in week view, WeeklyReviewModal mounted + triggered, FocusView chat wired, MorningCheckIn + PriorityInbox integrated
+- [ ] **Sprint 9 — The Intelligent Loop:** Proactive check-ins, PredictiveService activation, recurrence engine.
+  - [ ] Morning brief auto-trigger (Spine MORNING_BRIEF event on daily first-open instead of user-initiated)
+  - [ ] Evening check-in component (`EveningCheckIn.tsx`) — mirrors MorningCheckIn, triggers 19:00–22:00 window
+  - [ ] `AtlasPredictiveService` state machine evaluation — Normal → Compressed → Overloaded → Recovery transitions currently typed but never run; wire evaluation on profile load
+  - [ ] Recurrence engine — recurring tasks (`recurrenceRule?: 'daily'|'weekdays'|'weekly'|'monthly'`) auto-respawn on completion
+  - [ ] Weekly review auto-trigger — Spine event on Sunday evening → `WEEKLY_REVIEW_DUE` → shows trigger badge on review tab
+  - [ ] `generate_daily_schedule` AI action — missing from ActionHub entirely; takes today's tasks + energy budget and returns ordered schedule
+- [ ] **Sprint 10 — Power User & Memory:** Historical data, advanced visualizations, velocity tracking.
+  - [ ] Historical aggregate sub-collection: `atlas_profiles/{uid}/daily_snapshots/{date}` — task completion rate, drift score, habit streaks per day
+  - [ ] Habit heatmap — GitHub-style annual contribution grid for each habit
+  - [ ] Goal velocity chart — completion rate trend over rolling 30/90 days
+  - [ ] Time-block calendar view (hour-grid) — schedule blocks as draggable cells across the day
+  - [ ] `executionVelocity` NSV auto-compute — derive from `completedAt` vs `scheduledSlot` deltas; write to `cognitive.executionVelocity` after each task completion
+  - [ ] `preferenceMode: 'conversational' | 'structured'` toggle — structured mode shows form panels alongside chat
 - [ ] **Energy Wave Charting:** Visualizer for daily energy peaks/valleys to optimize task scheduling.
 - [ ] **Task Graph Architecture:** Complex task dependencies with energy-cost estimation.
-- [ ] **Interactive Planning Dashboard:** Implement entity selection (tasks, habits, goals) and scoped conversation panels for focused editing.
-- [ ] **Weekly Review Flow:** Implement a guided multi-step modal for reviewing task completion, habit streaks, and goal progress.
-- [ ] **Energy Wave Enhancements:** Overlay scheduled tasks and recovery windows on the energy wave chart.
-- [ ] **Mount Planning Components:** Wire `QuickAddForm`, `TodaysPlanCard`, `FocusView`, and `ViewSwitcher` into the Atlas dashboard.
+- [ ] **Atlas Failure Notification Loop:** Spine-driven cross-module escalation when Atlas detects missed workouts (→ Titan) or missed sessions (→ Agnes).
 
 ## 6. Research & Knowledge (Scout)
 - [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Scout module.

@@ -140,6 +140,16 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   // Titan Cycle Events
   CYCLE_STARTED: 'Cycle started',
   CYCLE_COMPLETED: 'Cycle completed',
+  // Ledger Transaction / Budget / Goal / Risk Events
+  TRANSACTION_CREATED: 'Transaction created',
+  TRANSACTION_UPDATED: 'Transaction updated',
+  TRANSACTION_DELETED: 'Transaction deleted',
+  BUDGET_CREATED: 'Budget created',
+  BUDGET_MODIFIED: 'Budget modified',
+  GOAL_CREATED: 'Goal created',
+  GOAL_COMPLETED: 'Goal achieved',
+  FINANCIAL_HEALTH_CHECK: 'Financial health checked',
+  RISK_DETECTED: 'Financial risk detected',
   // Titan Workout Events
   WORKOUT_COMPLETED: 'Workout session logged',
   SPENDING_DETECTED: 'Spending detected',

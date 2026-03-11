@@ -247,6 +247,41 @@ Hormonal Context: ${options.hormonalContext || 'Not available'}
 ${options.recoveryScore != null && options.recoveryScore <= 3 ? '⚠ LOW RECOVERY DETECTED: Before prescribing high-intensity work, emit a clearance check:\n<action type="self_clearance_check">{"activity":"high_intensity","recoveryScore":' + options.recoveryScore + '}</action>\nIf recovery is critically low, recommend deload or active recovery instead.' : ''}`;
   }
 
+  // ── Active mesocycle context ──────────────────────────────────────────
+  // Find a workout-type cycle that is currently active. If one exists, surface
+  // the current phase, week number, progression scheme, and deload-week flag
+  // so Titan can tailor its coaching without the user having to re-state context.
+  const activeCycle = profile.cycles?.find(c => c.status === 'active' && c.type === 'workout');
+  let activeCycleBlock = '';
+  if (activeCycle) {
+    const currentPhase = activeCycle.phases[activeCycle.currentPhaseIndex];
+    const phaseStart = new Date(activeCycle.currentPhaseStartDate);
+    const today = new Date();
+    // Week number within the current phase (1-based, floors partial weeks).
+    const currentWeekNumber = Math.floor(
+      (today.getTime() - phaseStart.getTime()) / (7 * 24 * 60 * 60 * 1000)
+    ) + 1;
+    const isDeloadWeek =
+      activeCycle.deloadWeekNumber != null &&
+      currentWeekNumber === activeCycle.deloadWeekNumber;
+
+    const cycleLines: string[] = [
+      `Active Mesocycle: ${activeCycle.name}`,
+      `Phase: ${currentPhase?.name ?? `Phase ${activeCycle.currentPhaseIndex + 1}`}`,
+      `Week: ${currentWeekNumber}`,
+    ];
+    if (activeCycle.progressionScheme) {
+      cycleLines.push(`Progression: ${activeCycle.progressionScheme}`);
+    }
+    if (isDeloadWeek) {
+      cycleLines.push('⚠️ DELOAD WEEK — reduce intensity and volume by 40–50%, prioritize recovery');
+    }
+
+    activeCycleBlock = `
+ACTIVE MESOCYCLE CONTEXT:
+${cycleLines.join('\n')}`;
+  }
+
   const hasClearances = profile.clearances?.length > 0;
   let clearanceNote = '';
   if (hasClearances) {
@@ -262,7 +297,7 @@ You MUST respect these clearance restrictions when programming workouts.`;
   return `
 [MODE: TRAINING]
 You are in fitness coaching mode. Focus on workout planning, exercise guidance, nutrition optimization, and recovery management.
-${recoveryBlock}${clearanceNote}
+${recoveryBlock}${clearanceNote}${activeCycleBlock}
 
 [AVAILABLE ACTIONS]
 - Update profile: <action type="update_titan_profile">{...partialProfile}</action>
@@ -351,7 +386,10 @@ export function buildTitanSessionPrompt(
 1. Start EVERY response with <thought>...</thought>
 2. ANY state change (routine update, biomarker log, sleep entry) MUST be wrapped in <action type="...">...</action>.
 3. If you do not emit an <action> tag, no data will be saved.
-4. Even when acting, provide a concise public summary after the action tag.`;
+4. Even when acting, provide a concise public summary after the action tag.
+5. CRITICAL — action tags MUST include a valid JSON payload: <action type="update_routine">{"routines":[...]}</action>
+   An action tag with no JSON body (e.g. <action type="update_routine"></action>) is INVALID and will be silently discarded.
+   Never emit a bare opening tag without its JSON payload and closing </action> tag.`;
 
   const identity = `[IDENTITY]
 You are TITAN, the integrated fitness and biomedical advisor for AGNES.
@@ -484,7 +522,10 @@ function buildGeneralModePrompt(
 1. Start EVERY response with <thought>...</thought> (or <think> if reasoning)
 2. ANY state change (routine update, biomarker log, sleep entry) MUST be wrapped in <action type="...">...</action>.
 3. If you do not emit an <action> tag, no data will be saved.
-4. Even when acting, provide a concise public summary after the action tag.`;
+4. Even when acting, provide a concise public summary after the action tag.
+5. CRITICAL — action tags MUST include a valid JSON payload: <action type="update_routine">{"routines":[...]}</action>
+   An action tag with no JSON body (e.g. <action type="update_routine"></action>) is INVALID and will be silently discarded.
+   Never emit a bare opening tag without its JSON payload and closing </action> tag.`;
 
   const recoveryBlock =
     options?.recoveryScore != null

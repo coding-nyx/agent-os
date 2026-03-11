@@ -1,30 +1,27 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { TitanDashboard } from './components/TitanReadiness';
-import { TitanDiagnosisPanel } from './components/TitanDiagnosisPanel';
-import { BiomarkerDashboard } from '@/modules/soma/components/BiomarkerDashboard';
-import { ClearancePanel } from '@/modules/soma/components/ClearancePanel';
 import { TitanRoutinePanel } from './components/TitanRoutinePanel';
-import { ClearanceStatus } from '@/modules/soma/components/ClearanceStatus';
 import { CustomFieldManager } from './components/CustomFieldManager';
 import { RoutineProgress } from './components/RoutineProgress';
-import { SleepTracker } from './components/SleepTracker';
 import { CycleManager } from './components/CycleManager';
 import { WorkoutSessionLogger } from './components/WorkoutSessionLogger';
+import { SomaSnapshotWidget } from './components/SomaSnapshotWidget';
+import { ClearanceBanner } from './components/ClearanceBanner';
+import { ProgressTab } from './components/ProgressTab';
+import { TrainingCalendar } from './components/TrainingCalendar';
 import { TitanOnboarding } from './onboarding/TitanOnboarding';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
-import { TitanProfile, Routine, Exercise } from '@/lib/types';
-import { subscribeSomaProfile } from '@/modules/soma/services/soma-profile-service';
-import type { SomaProfile } from '@/modules/soma/types';
+import { AnimatePresence, motion } from 'framer-motion';
+import { TitanProfile, Routine, Exercise, WorkoutSession, PersonalRecord } from '@/lib/types';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { buildTitanSessionPrompt } from './prompts/titan-session-prompt';
-import type { TitanSessionMode } from './prompts/titan-session-prompt';
 import { loadTitanProfile, saveTitanProfile, subscribeTitanProfile, syncGuestTitanProfileToUser } from './services/titan-profile-service';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
-import { Activity, TestTube2, ShieldCheck, FileText, Moon, RefreshCw } from 'lucide-react';
+import { Activity, BarChart3, RefreshCw, Zap, X } from 'lucide-react';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
@@ -39,70 +36,53 @@ import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { titanDiagnosisSpec } from './diagnosis/titan-diagnosis-spec';
 import { TITAN_PERSONA } from './personas';
 
-type TitanTab = 'training' | 'biomarkers' | 'recovery' | 'sleep' | 'cycles' | 'diagnosis';
+type TitanTab = 'training' | 'progress' | 'cycles';
 
 registerDiagnosisSpec(titanDiagnosisSpec);
 
 function resolveInitialTab(searchParams: URLSearchParams): TitanTab {
   const param = searchParams.get('tab');
-  if (param === 'biomarkers' || param === 'recovery' || param === 'training' || param === 'diagnosis' || param === 'sleep' || param === 'cycles') return param;
+  if (param === 'training' || param === 'progress' || param === 'cycles') return param;
   return 'training';
 }
 
 function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null }) {
   const { globalSoul } = useGlobalSoul();
-  const { user } = useAuth();
   const { isModuleAccessible } = useVault();
+  const { user } = useAuth();
   const isLocked = !isModuleAccessible('titan');
   const navigate = useNavigate();
-
-  // Phase 5 — load SomaProfile for biomarker/recovery tabs (source of truth)
-  const [somaProfile, setSomaProfile] = useState<SomaProfile | null>(null);
-  useEffect(() => {
-    if (!user || !encryptionKey) return;
-    return subscribeSomaProfile({ userId: user.uid, encryptionKey }, setSomaProfile);
-  }, [user, encryptionKey]);
-
-  useEffect(() => {
-    if (!encryptionKey) setSomaProfile(null);
-  }, [encryptionKey]);
-
-  // Merged profile for biomarker/recovery tabs: prefer SomaProfile data if available
-  const medicalProfile = useMemo((): TitanProfile | null => {
-    if (!profile) return null;
-    if (!somaProfile) return profile;
-    return {
-      ...profile,
-      knownConditions: somaProfile.knownConditions.length ? somaProfile.knownConditions : profile.knownConditions,
-      medications: somaProfile.medications.length ? somaProfile.medications : profile.medications,
-      allergies: somaProfile.allergies.length ? somaProfile.allergies : profile.allergies,
-      biomarkers: somaProfile.biomarkers.length ? somaProfile.biomarkers : profile.biomarkers,
-      labSummaries: somaProfile.labSummaries.length ? somaProfile.labSummaries : profile.labSummaries,
-      clearances: somaProfile.clearances.length ? somaProfile.clearances : profile.clearances,
-      medicalSummary: somaProfile.medicalSummary || profile.medicalSummary,
-    };
-  }, [profile, somaProfile]);
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams));
+  const [calendarSelectedRoutine, setCalendarSelectedRoutine] = useState<Routine | null>(null);
 
-  // Derive prompt mode from active tab
-  const promptMode: TitanSessionMode = activeTab === 'biomarkers' || activeTab === 'recovery' || activeTab === 'diagnosis' ? 'medical' : 'training';
-
+  // Derive prompt mode from active tab — always training now
   const agentAlias = globalSoul?.displayNames?.titan || 'Titan';
   const systemPrompt = useMemo(() => {
     if (!profile) return TITAN_PERSONA;
     return buildTitanSessionPrompt(profile, {
-      mode: promptMode,
+      mode: 'training',
       recoveryScore: globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null,
       hormonalContext: globalSoul?.crossFunctionalState?.biological?.hormonalContext ?? null,
     });
-  }, [profile, promptMode, globalSoul?.crossFunctionalState?.biological?.recoveryScore, globalSoul?.crossFunctionalState?.biological?.hormonalContext]);
+  }, [profile, globalSoul?.crossFunctionalState?.biological?.recoveryScore, globalSoul?.crossFunctionalState?.biological?.hormonalContext]);
 
   const ai = useModuleAI({
     moduleId: 'titan',
     systemPrompt,
     encryptionKey
   });
+
+  // ── Direct Write (Logbook) Mode ────────────────────────────────────────────
+  // Bypasses AI validation for session logging; persists directly to Firestore.
+  const directWrite = profile?.directWriteMode ?? false;
+  const [advisoryBanner, setAdvisoryBanner] = useState<string | null>(null);
+
+  const handleToggleDirectWrite = useCallback(async () => {
+    if (!profile || !encryptionKey || !user) return;
+    const updated: TitanProfile = { ...profile, directWriteMode: !directWrite, updatedAt: new Date().toISOString() };
+    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+  }, [profile, directWrite, encryptionKey, user]);
 
   // Phase 6 — Agnes→Titan reactive Spine: auto-suggest deload on high stress events
   // Use a Set so COMPOUND_STRESS and BURNOUT_WARNING deduplicate independently
@@ -128,6 +108,63 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       'Agnes has detected a burnout warning signal. Please reduce training volume immediately and suggest a 3–5 day active recovery protocol based on my current state.'
     );
   }, [profile?.onboardingComplete, ai.handleSendMessage]));
+
+  // ── Cycle auto-advance on load ───────────────────────────────────────
+  // Guard ref: prevents a concurrent or double-invoke save if the profile
+  // subscription fires before the first save resolves.
+  const isAutoAdvancingRef = useRef(false);
+
+  useEffect(() => {
+    // Prevent concurrent saves from multiple rapid subscription updates.
+    if (isAutoAdvancingRef.current) return;
+    if (!profile?.cycles?.length || !user || !encryptionKey) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    let needsUpdate = false;
+
+    const updatedCycles = profile.cycles.map(cycle => {
+      if (cycle.status !== 'active') return cycle;
+      const currentPhase = cycle.phases[cycle.currentPhaseIndex];
+      if (!currentPhase?.durationDays) return cycle;
+
+      const phaseStart = new Date(cycle.currentPhaseStartDate);
+      const phaseEnd = new Date(phaseStart);
+      phaseEnd.setDate(phaseStart.getDate() + currentPhase.durationDays);
+      const phaseEndISO = phaseEnd.toISOString().slice(0, 10);
+
+      if (today > phaseEndISO) {
+        needsUpdate = true;
+        const now = new Date().toISOString();
+        const nextPhaseIndex = cycle.currentPhaseIndex + 1;
+        if (nextPhaseIndex >= cycle.phases.length) {
+          return { ...cycle, status: 'completed' as const, updatedAt: now };
+        }
+        return {
+          ...cycle,
+          currentPhaseIndex: nextPhaseIndex,
+          currentPhaseStartDate: today,
+          updatedAt: now,
+        };
+      }
+      return cycle;
+    });
+
+    // Nothing stale — no write needed, avoids any re-render churn.
+    if (!needsUpdate) return;
+
+    isAutoAdvancingRef.current = true;
+    const updated: TitanProfile = {
+      ...profile,
+      cycles: updatedCycles,
+      updatedAt: new Date().toISOString(),
+    };
+    saveTitanProfile(updated, { userId: user.uid, encryptionKey })
+      .catch(e => console.error('cycle auto-advance failed:', e))
+      .finally(() => { isAutoAdvancingRef.current = false; });
+  // Depend on the cycles array identity (not the whole profile) so we only
+  // re-run when cycle data actually changes, not on every profile mutation.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.cycles, user, encryptionKey]);
 
   useEffect(() => {
     if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
@@ -218,26 +255,6 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     ai.handleSendMessage(prompt);
   }, [profile?.routines, ai.handleSendMessage]);
 
-  const handleImportLab = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf,.txt,.csv';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const text = await file.text();
-      const sanitizedText = text.replace(/<action\b[^>]*>[\s\S]*?<\/action>/gi, '[STRIPPED_ACTION_TAG]');
-      await ai.handleSendMessage(
-        `Lab import received: ${file.name}. Parse the content into structured biomarker records and lab summaries.\n\n---BEGIN LAB DATA---\n${sanitizedText}\n---END LAB DATA---`
-      );
-    };
-    input.click();
-  }, [ai.handleSendMessage]);
-
-  const handleAnalyzeImage = useCallback(() => {
-    ai.handleSendMessage('I want to analyze a medical image. Please guide me through the process.');
-  }, [ai.handleSendMessage]);
-
   // Send custom tracking field values to Titan AI for validation before commit.
   // The AI checks relevance to goals/nutrition/cycle context then emits update_titan_profile.
   const handleSubmitCustomFieldsForApproval = useCallback((
@@ -260,53 +277,24 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   }, [ai.handleSendMessage]);
 
   // Tab data
-  const biomarkerCount = profile?.biomarkers?.length ?? 0;
-  const latestClearance = profile?.clearances?.length
-    ? [...profile.clearances].sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime())[0]
-    : null;
-  const clearanceStatus = latestClearance?.status ?? null;
-  const sleepCount = profile?.sleepLog?.length ?? 0;
   const activeCycleCount = (profile?.cycles ?? []).filter(c => c.status === 'active').length;
 
   const tabs: NeuralTabItem<TitanTab>[] = [
     { id: 'training', label: 'Training', icon: Activity },
-    { id: 'biomarkers', label: 'Biomarkers', icon: TestTube2, badge: biomarkerCount || undefined },
-    { id: 'recovery', label: 'Recovery', icon: ShieldCheck, badge: clearanceStatus || undefined, badgeVariant: clearanceStatus === 'granted' ? 'success' : clearanceStatus === 'denied' ? 'error' : 'warning' },
-    { id: 'sleep', label: 'Sleep', icon: Moon, badge: sleepCount || undefined },
+    { id: 'progress', label: 'Progress', icon: BarChart3, badge: (profile?.personalRecords ? Object.keys(profile.personalRecords).length : undefined) },
     { id: 'cycles', label: 'Cycles', icon: RefreshCw, badge: activeCycleCount || undefined },
-    { id: 'diagnosis', label: 'Diagnosis', icon: FileText },
   ];
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'biomarkers':
+      case 'progress':
         return (
-          <BiomarkerDashboard
-            profile={medicalProfile}
-            soul={globalSoul}
-            isLocked={isLocked}
-            themeColor="orange"
-            onImportLab={handleImportLab}
-            onAnalyzeImage={handleAnalyzeImage}
-          />
-        );
-
-      case 'recovery':
-        return (
-          <>
-            <ClearanceStatus profile={medicalProfile} soul={globalSoul} />
-            <div className="px-8 pb-8 pt-4">
-              <ClearancePanel profile={medicalProfile} soul={globalSoul} isLocked={isLocked} />
-            </div>
-          </>
-        );
-
-      case 'sleep':
-        return (
-          <SleepTracker
-            sleepLog={profile?.sleepLog ?? []}
-            onAnalyze={ai.handleSendMessage}
-          />
+          <div className="px-4 md:px-8 pb-8 pt-4">
+            <ProgressTab
+              profile={profile}
+              encryptionKey={encryptionKey}
+            />
+          </div>
         );
 
       case 'cycles':
@@ -319,16 +307,82 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           </div>
         );
 
-      case 'diagnosis':
-        return (
-          <div className="flex-1 flex flex-col min-h-0">
-            <TitanDiagnosisPanel encryptionKey={encryptionKey} profile={profile} />
-          </div>
-        );
-
       default: // training
         return (
           <>
+            {/* Advisory banner — surfaced after high-RPE direct-write sessions */}
+            <AnimatePresence>
+              {advisoryBanner && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mx-4 md:mx-8 mb-3 flex items-start justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20"
+                >
+                  <p className="text-xs text-amber-300">{advisoryBanner}</p>
+                  <button type="button" onClick={() => setAdvisoryBanner(null)} className="ml-3 text-white/30 hover:text-white/60">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* 7-day calendar — primary training view */}
+            <div className="px-4 md:px-8 pb-4 pt-2">
+              <TrainingCalendar
+                profile={profile}
+                onStartSession={(routine) => {
+                  setCalendarSelectedRoutine(routine);
+                }}
+              />
+            </div>
+
+            {/* Quick session logger for calendar-selected routine */}
+            {calendarSelectedRoutine && (
+              <div className="px-8 pb-4 pt-0">
+                <WorkoutSessionLogger
+                  routines={[calendarSelectedRoutine]}
+                  recentSessions={profile?.workoutSessions ?? []}
+                  onSubmitSession={ai.handleSendMessage}
+                  directWriteMode={directWrite}
+                  onDirectCommit={async (session) => {
+                    if (!profile || !encryptionKey || !user) return;
+                    const updatedSessions = [session, ...(profile.workoutSessions ?? [])].slice(0, 500);
+                    const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
+                    for (const exLog of session.exercises) {
+                      const key = exLog.exerciseName.toLowerCase().trim();
+                      for (const s of exLog.sets) {
+                        if (!s.completed || !s.weight || !s.repsCompleted) continue;
+                        const e1RM = s.repsCompleted === 1 ? s.weight : Math.round(s.weight * (1 + s.repsCompleted / 30));
+                        const existing = updatedPRs[key];
+                        if (!existing || e1RM > existing.e1RM) {
+                          updatedPRs[key] = { exerciseName: exLog.exerciseName, maxWeight: s.weight, repsAtMax: s.repsCompleted, e1RM, achievedDate: session.date, sessionId: session.id };
+                        }
+                      }
+                    }
+                    const updated: TitanProfile = { ...profile, workoutSessions: updatedSessions, personalRecords: updatedPRs, updatedAt: new Date().toISOString() };
+                    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+                    if (session.rpe != null && session.rpe >= 9) {
+                      setAdvisoryBanner(`High RPE (${session.rpe}) detected — consider scheduling a deload day tomorrow.`);
+                    }
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Soma health snapshot — deep-links to Soma module */}
+            <SomaSnapshotWidget
+              clearanceStatus={profile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined}
+              lastBiomarkerDate={profile?.biomarkers?.[0]?.recordedAt}
+              className="mx-4 md:mx-8 mb-2"
+            />
+
+            {/* Clearance warning banner — only shown when denied/pending */}
+            <ClearanceBanner
+              status={profile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined}
+              className="mx-4 md:mx-8 mb-4"
+            />
+
             {/* Readiness first — sets daily training context */}
             <TitanDashboard soul={globalSoul} isLocked={isLocked} onCalibrate={handleCalibrate} />
 
@@ -348,6 +402,28 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                   routines={profile.routines}
                   recentSessions={profile?.workoutSessions ?? []}
                   onSubmitSession={ai.handleSendMessage}
+                  directWriteMode={directWrite}
+                  onDirectCommit={async (session) => {
+                    if (!profile || !encryptionKey || !user) return;
+                    const updatedSessions = [session, ...(profile.workoutSessions ?? [])].slice(0, 500);
+                    const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
+                    for (const exLog of session.exercises) {
+                      const key = exLog.exerciseName.toLowerCase().trim();
+                      for (const s of exLog.sets) {
+                        if (!s.completed || !s.weight || !s.repsCompleted) continue;
+                        const e1RM = s.repsCompleted === 1 ? s.weight : Math.round(s.weight * (1 + s.repsCompleted / 30));
+                        const existing = updatedPRs[key];
+                        if (!existing || e1RM > existing.e1RM) {
+                          updatedPRs[key] = { exerciseName: exLog.exerciseName, maxWeight: s.weight, repsAtMax: s.repsCompleted, e1RM, achievedDate: session.date, sessionId: session.id };
+                        }
+                      }
+                    }
+                    const updated: TitanProfile = { ...profile, workoutSessions: updatedSessions, personalRecords: updatedPRs, updatedAt: new Date().toISOString() };
+                    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+                    if (session.rpe != null && session.rpe >= 9) {
+                      setAdvisoryBanner(`High RPE (${session.rpe}) detected — consider scheduling a deload day tomorrow.`);
+                    }
+                  }}
                 />
               </div>
             )}
@@ -384,12 +460,33 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     >
       <div className="flex flex-col h-full overflow-hidden">
         <div className="px-4 md:px-8 pt-4 md:pt-8 pb-2 md:pb-4">
-          <SectionHeader
-            label="Performance Domain"
-            title="Titan Strategy & Readiness"
-            subtitle="Elite physical performance optimization and biometric clearance."
-            accentClassName="text-orange-400"
-          />
+          <div className="flex items-start justify-between gap-3">
+            <SectionHeader
+              label="Performance Domain"
+              title="Titan Strategy & Readiness"
+              subtitle="Elite physical performance optimization and biometric clearance."
+              accentClassName="text-orange-400"
+            />
+            {/* Direct Write / Logbook Mode toggle */}
+            <div className="flex items-center gap-2 text-xs mt-1 shrink-0">
+              <span className="text-white/40">{directWrite ? 'Logbook' : 'Coach'}</span>
+              <button
+                type="button"
+                onClick={handleToggleDirectWrite}
+                className={cn(
+                  'relative w-10 h-5 rounded-full transition-colors duration-200',
+                  directWrite ? 'bg-orange-500/70' : 'bg-white/20'
+                )}
+                title={directWrite ? 'Logbook Mode: sessions save instantly' : 'Coach Mode: AI reviews your sessions'}
+              >
+                <span className={cn(
+                  'absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-200',
+                  directWrite ? 'translate-x-5' : 'translate-x-0.5'
+                )} />
+              </button>
+              <Zap className={cn('w-3 h-3 transition-colors', directWrite ? 'text-orange-400' : 'text-white/30')} />
+            </div>
+          </div>
         </div>
 
         <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5">
@@ -402,8 +499,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         </div>
 
         <div className={cn(
-          "flex-1 no-scrollbar pt-4 md:pt-6",
-          activeTab === 'diagnosis' ? "overflow-hidden flex flex-col min-h-0" : "overflow-y-auto"
+          "flex-1 overflow-y-auto no-scrollbar pt-4 md:pt-6"
         )}>
           {renderTabContent()}
         </div>

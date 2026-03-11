@@ -1,0 +1,552 @@
+[
+  {
+    "id": "barbell-squat",
+    "name": "Barbell Squat",
+    "aliases": ["squat", "back squat", "bb squat", "low bar squat", "high bar squat"],
+    "category": "compound",
+    "primaryMuscles": ["quadriceps", "glutes"],
+    "secondaryMuscles": ["hamstrings", "core", "adductors", "spinal erectors"],
+    "equipment": ["barbell", "rack"],
+    "movementPattern": "squat"
+  },
+  {
+    "id": "front-squat",
+    "name": "Front Squat",
+    "aliases": ["front squat", "barbell front squat"],
+    "category": "compound",
+    "primaryMuscles": ["quadriceps", "glutes"],
+    "secondaryMuscles": ["core", "upper back", "hamstrings"],
+    "equipment": ["barbell", "rack"],
+    "movementPattern": "squat"
+  },
+  {
+    "id": "leg-press",
+    "name": "Leg Press",
+    "aliases": ["leg press machine", "seated leg press", "45 degree leg press"],
+    "category": "compound",
+    "primaryMuscles": ["quadriceps", "glutes"],
+    "secondaryMuscles": ["hamstrings", "adductors"],
+    "equipment": ["leg press machine"],
+    "movementPattern": "squat"
+  },
+  {
+    "id": "romanian-deadlift",
+    "name": "Romanian Deadlift",
+    "aliases": ["rdl", "romanian dl", "stiff leg deadlift", "straight leg deadlift"],
+    "category": "compound",
+    "primaryMuscles": ["hamstrings", "glutes"],
+    "secondaryMuscles": ["spinal erectors", "adductors", "core"],
+    "equipment": ["barbell"],
+    "movementPattern": "hinge"
+  },
+  {
+    "id": "conventional-deadlift",
+    "name": "Conventional Deadlift",
+    "aliases": ["deadlift", "barbell deadlift", "conventional dl"],
+    "category": "compound",
+    "primaryMuscles": ["hamstrings", "glutes", "spinal erectors"],
+    "secondaryMuscles": ["quadriceps", "traps", "core", "lats"],
+    "equipment": ["barbell"],
+    "movementPattern": "hinge"
+  },
+  {
+    "id": "sumo-deadlift",
+    "name": "Sumo Deadlift",
+    "aliases": ["sumo dl", "wide stance deadlift"],
+    "category": "compound",
+    "primaryMuscles": ["glutes", "adductors", "hamstrings"],
+    "secondaryMuscles": ["quadriceps", "spinal erectors", "traps", "core"],
+    "equipment": ["barbell"],
+    "movementPattern": "hinge"
+  },
+  {
+    "id": "hip-thrust",
+    "name": "Hip Thrust",
+    "aliases": ["barbell hip thrust", "bb hip thrust", "glute bridge barbell"],
+    "category": "compound",
+    "primaryMuscles": ["glutes"],
+    "secondaryMuscles": ["hamstrings", "core", "quadriceps"],
+    "equipment": ["barbell", "bench"],
+    "movementPattern": "hinge"
+  },
+  {
+    "id": "bulgarian-split-squat",
+    "name": "Bulgarian Split Squat",
+    "aliases": ["bss", "rear-foot elevated split squat", "rfess", "split squat"],
+    "category": "compound",
+    "primaryMuscles": ["quadriceps", "glutes"],
+    "secondaryMuscles": ["hamstrings", "core", "adductors"],
+    "equipment": ["dumbbell", "bench"],
+    "movementPattern": "squat"
+  },
+  {
+    "id": "lunge",
+    "name": "Lunge",
+    "aliases": ["walking lunge", "stationary lunge", "forward lunge", "reverse lunge"],
+    "category": "compound",
+    "primaryMuscles": ["quadriceps", "glutes"],
+    "secondaryMuscles": ["hamstrings", "core", "adductors"],
+    "equipment": ["dumbbell", "bodyweight"],
+    "movementPattern": "squat"
+  },
+  {
+    "id": "step-up",
+    "name": "Step Up",
+    "aliases": ["box step up", "dumbbell step up", "weighted step up"],
+    "category": "compound",
+    "primaryMuscles": ["quadriceps", "glutes"],
+    "secondaryMuscles": ["hamstrings", "core"],
+    "equipment": ["dumbbell", "box", "bench"],
+    "movementPattern": "squat"
+  },
+  {
+    "id": "goblet-squat",
+    "name": "Goblet Squat",
+    "aliases": ["goblet squat", "db goblet squat", "kettlebell goblet squat"],
+    "category": "compound",
+    "primaryMuscles": ["quadriceps", "glutes"],
+    "secondaryMuscles": ["core", "hamstrings", "adductors"],
+    "equipment": ["dumbbell", "kettlebell"],
+    "movementPattern": "squat"
+  },
+  {
+    "id": "good-morning",
+    "name": "Good Morning",
+    "aliases": ["barbell good morning", "good morning exercise"],
+    "category": "compound",
+    "primaryMuscles": ["hamstrings", "spinal erectors"],
+    "secondaryMuscles": ["glutes", "core"],
+    "equipment": ["barbell"],
+    "movementPattern": "hinge"
+  },
+  {
+    "id": "barbell-bench-press",
+    "name": "Barbell Bench Press",
+    "aliases": ["bench press", "flat bench", "bb bench press", "chest press"],
+    "category": "compound",
+    "primaryMuscles": ["pectorals"],
+    "secondaryMuscles": ["triceps", "anterior deltoid"],
+    "equipment": ["barbell", "bench", "rack"],
+    "movementPattern": "push"
+  },
+  {
+    "id": "dumbbell-bench-press",
+    "name": "Dumbbell Bench Press",
+    "aliases": ["db bench press", "dumbbell chest press", "flat db press"],
+    "category": "compound",
+    "primaryMuscles": ["pectorals"],
+    "secondaryMuscles": ["triceps", "anterior deltoid"],
+    "equipment": ["dumbbell", "bench"],
+    "movementPattern": "push"
+  },
+  {
+    "id": "incline-bench-press",
+    "name": "Incline Bench Press",
+    "aliases": ["incline press", "incline barbell press", "incline bb press"],
+    "category": "compound",
+    "primaryMuscles": ["pectorals", "anterior deltoid"],
+    "secondaryMuscles": ["triceps"],
+    "equipment": ["barbell", "incline bench", "rack"],
+    "movementPattern": "push"
+  },
+  {
+    "id": "overhead-press",
+    "name": "Overhead Press",
+    "aliases": ["ohp", "military press", "barbell overhead press", "standing press", "strict press"],
+    "category": "compound",
+    "primaryMuscles": ["deltoids"],
+    "secondaryMuscles": ["triceps", "traps", "core"],
+    "equipment": ["barbell"],
+    "movementPattern": "push"
+  },
+  {
+    "id": "dumbbell-shoulder-press",
+    "name": "Dumbbell Shoulder Press",
+    "aliases": ["db shoulder press", "seated db press", "arnold press", "shoulder press"],
+    "category": "compound",
+    "primaryMuscles": ["deltoids"],
+    "secondaryMuscles": ["triceps", "traps"],
+    "equipment": ["dumbbell"],
+    "movementPattern": "push"
+  },
+  {
+    "id": "push-up",
+    "name": "Push Up",
+    "aliases": ["pushup", "press up", "bodyweight push up", "standard push up"],
+    "category": "compound",
+    "primaryMuscles": ["pectorals"],
+    "secondaryMuscles": ["triceps", "anterior deltoid", "core"],
+    "equipment": ["bodyweight"],
+    "movementPattern": "push"
+  },
+  {
+    "id": "dips",
+    "name": "Dips",
+    "aliases": ["parallel bar dips", "chest dips", "tricep dips", "weighted dips"],
+    "category": "compound",
+    "primaryMuscles": ["pectorals", "triceps"],
+    "secondaryMuscles": ["anterior deltoid", "core"],
+    "equipment": ["dip bars", "bodyweight"],
+    "movementPattern": "push"
+  },
+  {
+    "id": "pull-up",
+    "name": "Pull Up",
+    "aliases": ["pull-up", "overhand pull up", "pronated pull up", "weighted pull up"],
+    "category": "compound",
+    "primaryMuscles": ["lats", "biceps"],
+    "secondaryMuscles": ["rhomboids", "rear deltoid", "core", "brachialis"],
+    "equipment": ["pull-up bar", "bodyweight"],
+    "movementPattern": "pull"
+  },
+  {
+    "id": "chin-up",
+    "name": "Chin Up",
+    "aliases": ["chin-up", "underhand pull up", "supinated pull up", "weighted chin up"],
+    "category": "compound",
+    "primaryMuscles": ["lats", "biceps"],
+    "secondaryMuscles": ["rhomboids", "rear deltoid", "core"],
+    "equipment": ["pull-up bar", "bodyweight"],
+    "movementPattern": "pull"
+  },
+  {
+    "id": "barbell-row",
+    "name": "Barbell Row",
+    "aliases": ["bent over row", "bb row", "barbell bent over row", "pendlay row"],
+    "category": "compound",
+    "primaryMuscles": ["lats", "rhomboids"],
+    "secondaryMuscles": ["biceps", "rear deltoid", "traps", "spinal erectors"],
+    "equipment": ["barbell"],
+    "movementPattern": "pull"
+  },
+  {
+    "id": "dumbbell-row",
+    "name": "Dumbbell Row",
+    "aliases": ["db row", "one-arm row", "single arm row", "dumbbell bent over row"],
+    "category": "compound",
+    "primaryMuscles": ["lats", "rhomboids"],
+    "secondaryMuscles": ["biceps", "rear deltoid", "traps"],
+    "equipment": ["dumbbell", "bench"],
+    "movementPattern": "pull"
+  },
+  {
+    "id": "cable-row",
+    "name": "Cable Row",
+    "aliases": ["seated cable row", "cable seated row", "low row", "seated row"],
+    "category": "compound",
+    "primaryMuscles": ["lats", "rhomboids"],
+    "secondaryMuscles": ["biceps", "rear deltoid", "traps"],
+    "equipment": ["cable machine"],
+    "movementPattern": "pull"
+  },
+  {
+    "id": "lat-pulldown",
+    "name": "Lat Pulldown",
+    "aliases": ["cable pulldown", "wide grip pulldown", "close grip pulldown", "pulldown"],
+    "category": "compound",
+    "primaryMuscles": ["lats"],
+    "secondaryMuscles": ["biceps", "rhomboids", "rear deltoid"],
+    "equipment": ["cable machine"],
+    "movementPattern": "pull"
+  },
+  {
+    "id": "face-pull",
+    "name": "Face Pull",
+    "aliases": ["cable face pull", "rope face pull"],
+    "category": "compound",
+    "primaryMuscles": ["rear deltoid", "rhomboids"],
+    "secondaryMuscles": ["traps", "rotator cuff", "biceps"],
+    "equipment": ["cable machine", "rope attachment"],
+    "movementPattern": "pull"
+  },
+  {
+    "id": "bicep-curl",
+    "name": "Bicep Curl",
+    "aliases": ["barbell curl", "bb curl", "standing curl", "biceps curl"],
+    "category": "isolation",
+    "primaryMuscles": ["biceps"],
+    "secondaryMuscles": ["brachialis", "brachioradialis"],
+    "equipment": ["barbell", "dumbbell"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "hammer-curl",
+    "name": "Hammer Curl",
+    "aliases": ["neutral grip curl", "db hammer curl"],
+    "category": "isolation",
+    "primaryMuscles": ["brachialis", "brachioradialis"],
+    "secondaryMuscles": ["biceps"],
+    "equipment": ["dumbbell"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "tricep-pushdown",
+    "name": "Tricep Pushdown",
+    "aliases": ["cable pushdown", "rope pushdown", "triceps pushdown", "tricep rope pushdown"],
+    "category": "isolation",
+    "primaryMuscles": ["triceps"],
+    "secondaryMuscles": [],
+    "equipment": ["cable machine"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "skull-crusher",
+    "name": "Skull Crusher",
+    "aliases": ["lying tricep extension", "ez bar skull crusher", "french press lying", "tricep extension"],
+    "category": "isolation",
+    "primaryMuscles": ["triceps"],
+    "secondaryMuscles": [],
+    "equipment": ["barbell", "ez-bar", "bench"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "lateral-raise",
+    "name": "Lateral Raise",
+    "aliases": ["db lateral raise", "side raise", "side lateral raise", "dumbbell lateral raise"],
+    "category": "isolation",
+    "primaryMuscles": ["lateral deltoid"],
+    "secondaryMuscles": ["traps"],
+    "equipment": ["dumbbell"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "rear-delt-fly",
+    "name": "Rear Delt Fly",
+    "aliases": ["rear delt raise", "reverse fly", "bent over fly", "pec deck reverse"],
+    "category": "isolation",
+    "primaryMuscles": ["rear deltoid"],
+    "secondaryMuscles": ["rhomboids", "traps"],
+    "equipment": ["dumbbell", "cable machine"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "leg-curl",
+    "name": "Leg Curl",
+    "aliases": ["hamstring curl", "lying leg curl", "seated leg curl", "machine leg curl"],
+    "category": "isolation",
+    "primaryMuscles": ["hamstrings"],
+    "secondaryMuscles": ["glutes"],
+    "equipment": ["leg curl machine"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "leg-extension",
+    "name": "Leg Extension",
+    "aliases": ["quad extension", "machine leg extension", "knee extension"],
+    "category": "isolation",
+    "primaryMuscles": ["quadriceps"],
+    "secondaryMuscles": [],
+    "equipment": ["leg extension machine"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "calf-raise",
+    "name": "Calf Raise",
+    "aliases": ["standing calf raise", "seated calf raise", "machine calf raise"],
+    "category": "isolation",
+    "primaryMuscles": ["gastrocnemius", "soleus"],
+    "secondaryMuscles": [],
+    "equipment": ["bodyweight", "calf raise machine", "dumbbell"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "cable-fly",
+    "name": "Cable Fly",
+    "aliases": ["cable crossover", "cable flye", "standing cable fly", "high cable fly", "low cable fly"],
+    "category": "isolation",
+    "primaryMuscles": ["pectorals"],
+    "secondaryMuscles": ["anterior deltoid"],
+    "equipment": ["cable machine"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "chest-fly",
+    "name": "Chest Fly",
+    "aliases": ["dumbbell fly", "db fly", "pec deck fly", "machine fly", "dumbbell flye"],
+    "category": "isolation",
+    "primaryMuscles": ["pectorals"],
+    "secondaryMuscles": ["anterior deltoid"],
+    "equipment": ["dumbbell", "bench"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "incline-dumbbell-curl",
+    "name": "Incline Dumbbell Curl",
+    "aliases": ["incline curl", "incline db curl", "incline bicep curl"],
+    "category": "isolation",
+    "primaryMuscles": ["biceps"],
+    "secondaryMuscles": ["brachialis"],
+    "equipment": ["dumbbell", "incline bench"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "plank",
+    "name": "Plank",
+    "aliases": ["front plank", "prone plank", "plank hold"],
+    "category": "compound",
+    "primaryMuscles": ["core"],
+    "secondaryMuscles": ["anterior deltoid", "glutes", "quadriceps"],
+    "equipment": ["bodyweight"],
+    "movementPattern": "carry"
+  },
+  {
+    "id": "crunch",
+    "name": "Crunch",
+    "aliases": ["abdominal crunch", "ab crunch", "floor crunch"],
+    "category": "isolation",
+    "primaryMuscles": ["rectus abdominis"],
+    "secondaryMuscles": ["obliques"],
+    "equipment": ["bodyweight"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "russian-twist",
+    "name": "Russian Twist",
+    "aliases": ["seated twist", "oblique twist", "medicine ball twist"],
+    "category": "isolation",
+    "primaryMuscles": ["obliques"],
+    "secondaryMuscles": ["rectus abdominis", "hip flexors"],
+    "equipment": ["bodyweight", "medicine ball", "dumbbell"],
+    "movementPattern": "rotation"
+  },
+  {
+    "id": "dead-bug",
+    "name": "Dead Bug",
+    "aliases": ["dead bug exercise", "lying dead bug"],
+    "category": "compound",
+    "primaryMuscles": ["core", "transverse abdominis"],
+    "secondaryMuscles": ["hip flexors", "spinal erectors"],
+    "equipment": ["bodyweight"],
+    "movementPattern": "carry"
+  },
+  {
+    "id": "ab-wheel-rollout",
+    "name": "Ab Wheel Rollout",
+    "aliases": ["ab roller", "ab wheel", "rollout", "ab rollout"],
+    "category": "compound",
+    "primaryMuscles": ["core", "rectus abdominis"],
+    "secondaryMuscles": ["lats", "triceps", "hip flexors"],
+    "equipment": ["ab wheel"],
+    "movementPattern": "carry"
+  },
+  {
+    "id": "hanging-leg-raise",
+    "name": "Hanging Leg Raise",
+    "aliases": ["hanging knee raise", "hanging ab raise", "leg raise bar"],
+    "category": "isolation",
+    "primaryMuscles": ["rectus abdominis", "hip flexors"],
+    "secondaryMuscles": ["obliques", "core"],
+    "equipment": ["pull-up bar"],
+    "movementPattern": "isolation"
+  },
+  {
+    "id": "running",
+    "name": "Running",
+    "aliases": ["run", "jogging", "jog", "sprint", "treadmill running"],
+    "category": "cardio",
+    "primaryMuscles": ["quadriceps", "hamstrings", "glutes", "calves"],
+    "secondaryMuscles": ["core", "hip flexors"],
+    "equipment": ["none", "treadmill"],
+    "movementPattern": "cardio"
+  },
+  {
+    "id": "cycling",
+    "name": "Cycling",
+    "aliases": ["bike", "bicycle", "stationary bike", "spin bike", "indoor cycling"],
+    "category": "cardio",
+    "primaryMuscles": ["quadriceps", "glutes", "hamstrings"],
+    "secondaryMuscles": ["calves", "core"],
+    "equipment": ["bicycle", "stationary bike"],
+    "movementPattern": "cardio"
+  },
+  {
+    "id": "rowing-machine",
+    "name": "Rowing Machine",
+    "aliases": ["erg", "ergometer", "concept2", "indoor rowing", "rowing"],
+    "category": "cardio",
+    "primaryMuscles": ["lats", "rhomboids", "hamstrings", "glutes"],
+    "secondaryMuscles": ["biceps", "core", "quadriceps"],
+    "equipment": ["rowing machine"],
+    "movementPattern": "cardio"
+  },
+  {
+    "id": "jump-rope",
+    "name": "Jump Rope",
+    "aliases": ["skipping rope", "skipping", "jump rope skipping", "double unders"],
+    "category": "cardio",
+    "primaryMuscles": ["calves", "core"],
+    "secondaryMuscles": ["shoulders", "forearms", "quadriceps"],
+    "equipment": ["jump rope"],
+    "movementPattern": "cardio"
+  },
+  {
+    "id": "burpee",
+    "name": "Burpee",
+    "aliases": ["burpees", "squat thrust", "full body burpee"],
+    "category": "cardio",
+    "primaryMuscles": ["full body"],
+    "secondaryMuscles": ["core", "pectorals", "quadriceps", "glutes"],
+    "equipment": ["bodyweight"],
+    "movementPattern": "cardio"
+  },
+  {
+    "id": "power-clean",
+    "name": "Power Clean",
+    "aliases": ["clean", "barbell clean", "pc"],
+    "category": "olympic",
+    "primaryMuscles": ["glutes", "hamstrings", "quadriceps", "traps"],
+    "secondaryMuscles": ["core", "spinal erectors", "forearms"],
+    "equipment": ["barbell"],
+    "movementPattern": "hinge"
+  },
+  {
+    "id": "hang-clean",
+    "name": "Hang Clean",
+    "aliases": ["hang power clean", "barbell hang clean"],
+    "category": "olympic",
+    "primaryMuscles": ["glutes", "hamstrings", "traps"],
+    "secondaryMuscles": ["core", "quadriceps", "forearms"],
+    "equipment": ["barbell"],
+    "movementPattern": "hinge"
+  },
+  {
+    "id": "snatch",
+    "name": "Snatch",
+    "aliases": ["barbell snatch", "power snatch", "hang snatch"],
+    "category": "olympic",
+    "primaryMuscles": ["glutes", "hamstrings", "traps", "deltoids"],
+    "secondaryMuscles": ["core", "quadriceps", "spinal erectors"],
+    "equipment": ["barbell"],
+    "movementPattern": "hinge"
+  },
+  {
+    "id": "box-jump",
+    "name": "Box Jump",
+    "aliases": ["plyo box jump", "plyometric box jump", "jump box"],
+    "category": "compound",
+    "primaryMuscles": ["quadriceps", "glutes"],
+    "secondaryMuscles": ["hamstrings", "calves", "core"],
+    "equipment": ["plyo box"],
+    "movementPattern": "squat"
+  },
+  {
+    "id": "hack-squat",
+    "name": "Hack Squat",
+    "aliases": ["machine hack squat", "45 degree hack squat", "sled squat"],
+    "category": "compound",
+    "primaryMuscles": ["quadriceps"],
+    "secondaryMuscles": ["glutes", "hamstrings", "adductors"],
+    "equipment": ["hack squat machine"],
+    "movementPattern": "squat"
+  },
+  {
+    "id": "cable-lateral-raise",
+    "name": "Cable Lateral Raise",
+    "aliases": ["cable side raise", "low cable lateral raise"],
+    "category": "isolation",
+    "primaryMuscles": ["lateral deltoid"],
+    "secondaryMuscles": ["traps"],
+    "equipment": ["cable machine"],
+    "movementPattern": "isolation"
+  }
+]

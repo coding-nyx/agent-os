@@ -85,9 +85,10 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
   const [fieldValues, setFieldValues] = useState<Record<string, import('@/lib/field-system/types').FieldValue>>({});
 
   const handleAddField = useCallback(() => {
-    // Opens field-CRUD chat panel — for now trigger via the main chat with a hint
-    console.log('[Atlas] Add field triggered — use chat to create custom metrics');
-  }, []);
+    ai.handleSendMessage(
+      'I want to add a custom tracking field to my Atlas dashboard. Please suggest some options based on my current goals and habits, or help me create a specific field if I describe what I want to track.'
+    );
+  }, [ai.handleSendMessage]);
 
   const handleDeleteField = useCallback(async (fieldId: string) => {
     try {
@@ -333,6 +334,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
         fieldValues={fieldValues}
         onAddField={handleAddField}
         onDeleteField={handleDeleteField}
+        onSendMessage={ai.handleSendMessage}
       />
     </SingleAgentLayout>
   );

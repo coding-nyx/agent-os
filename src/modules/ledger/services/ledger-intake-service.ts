@@ -18,14 +18,17 @@ export interface DebtItem {
   name: string;
   balance: number;
   minPayment: number;
-  apr?: number;
+  apr: number;
+  interestPaid?: number;
 }
 
 export interface SavingsGoal {
   id: string;
   name: string;
   targetAmount: number;
+  currentAmount: number;
   targetDate?: string;
+  monthlyContribution?: number;
 }
 
 export interface FinancialPlan {
@@ -51,6 +54,50 @@ export interface DocumentAnalysis {
   transactionCount: number;
 }
 
+export interface Transaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  category: string;
+  isRecurring?: boolean;
+  goalId?: string;
+  budgetCategoryId?: string;
+  taxCategory?: TaxCategory;
+  notes?: string;
+}
+
+export interface BudgetCategory {
+  id: string;
+  name: string;
+  allocated: number;
+  spent: number;
+  color: string;
+}
+
+export interface GoalMilestone {
+  id: string;
+  amount: number;
+  label: string;
+  achieved: boolean;
+  achievedAt?: string;
+}
+
+export interface FinancialGoal {
+  id: string;
+  name: string;
+  type: 'savings' | 'debt_payoff' | 'investment' | 'purchase' | 'other';
+  targetAmount: number;
+  currentAmount: number;
+  targetDate?: string;
+  monthlyContribution: number;
+  priority: 'low' | 'medium' | 'high';
+  notes?: string;
+  milestones?: GoalMilestone[];
+  createdAt: string;
+}
+
 export interface LedgerIntakeProfile {
   onboardingComplete: boolean;
   currency: string;
@@ -67,6 +114,9 @@ export interface LedgerIntakeProfile {
   lastPlanGeneratedAt?: string;
   documentAnalysisEnabled: boolean;
   lastDocumentAnalysis?: DocumentAnalysis;
+  transactions?: Transaction[];
+  budgetCategories?: BudgetCategory[];
+  financialGoals?: FinancialGoal[];
   createdAt: string;
   updatedAt: string;
 }
@@ -129,13 +179,52 @@ function normalizeLedgerProfile(raw: unknown): LedgerIntakeProfile {
       name: typeof entry?.name === 'string' ? entry.name : 'Debt Item',
       balance: parseNumber(entry?.balance),
       minPayment: parseNumber(entry?.minPayment),
-      apr: typeof entry?.apr === 'number' ? entry.apr : undefined
+      apr: parseNumber(entry?.apr),
+      interestPaid: typeof entry?.interestPaid === 'number' ? entry.interestPaid : undefined
     })),
     savingsGoals: parseArray(candidate.savingsGoals, (entry, index) => ({
       id: typeof entry?.id === 'string' ? entry.id : `goal_${index}`,
       name: typeof entry?.name === 'string' ? entry.name : 'Savings Goal',
       targetAmount: parseNumber(entry?.targetAmount),
-      targetDate: typeof entry?.targetDate === 'string' ? entry.targetDate : undefined
+      currentAmount: parseNumber(entry?.currentAmount),
+      targetDate: typeof entry?.targetDate === 'string' ? entry.targetDate : undefined,
+      monthlyContribution: typeof entry?.monthlyContribution === 'number' ? entry.monthlyContribution : undefined,
+    })),
+    transactions: parseArray(candidate.transactions, (entry, index) => ({
+      id: typeof entry?.id === 'string' ? entry.id : `tx_${index}_${Date.now()}`,
+      date: typeof entry?.date === 'string' ? entry.date : new Date().toISOString().split('T')[0],
+      description: typeof entry?.description === 'string' ? entry.description : 'Transaction',
+      amount: parseNumber(entry?.amount),
+      type: entry?.type === 'income' ? 'income' : 'expense',
+      category: typeof entry?.category === 'string' ? entry.category : 'Other',
+      isRecurring: entry?.isRecurring === true,
+      goalId: typeof entry?.goalId === 'string' ? entry.goalId : undefined,
+      budgetCategoryId: typeof entry?.budgetCategoryId === 'string' ? entry.budgetCategoryId : undefined,
+      notes: typeof entry?.notes === 'string' ? entry.notes : undefined,
+    })),
+    budgetCategories: parseArray(candidate.budgetCategories, (entry, index) => ({
+      id: typeof entry?.id === 'string' ? entry.id : `cat_${index}`,
+      name: typeof entry?.name === 'string' ? entry.name : 'Category',
+      allocated: parseNumber(entry?.allocated),
+      spent: parseNumber(entry?.spent),
+      color: typeof entry?.color === 'string' ? entry.color : '#6b7280',
+    })),
+    financialGoals: parseArray(candidate.financialGoals, (entry, index) => ({
+      id: typeof entry?.id === 'string' ? entry.id : `fgoal_${index}`,
+      name: typeof entry?.name === 'string' ? entry.name : 'Goal',
+      type: (['savings','debt_payoff','investment','purchase','other'] as const).includes(entry?.type as FinancialGoal['type'])
+        ? entry.type as FinancialGoal['type']
+        : 'other',
+      targetAmount: parseNumber(entry?.targetAmount),
+      currentAmount: parseNumber(entry?.currentAmount),
+      targetDate: typeof entry?.targetDate === 'string' ? entry.targetDate : undefined,
+      monthlyContribution: typeof entry?.monthlyContribution === 'number' ? entry.monthlyContribution : 0,
+      priority: (['low','medium','high'] as const).includes(entry?.priority as FinancialGoal['priority'])
+        ? entry.priority as FinancialGoal['priority']
+        : 'medium',
+      notes: typeof entry?.notes === 'string' ? entry.notes : undefined,
+      milestones: Array.isArray(entry?.milestones) ? entry.milestones : undefined,
+      createdAt: typeof entry?.createdAt === 'string' ? entry.createdAt : new Date().toISOString(),
     })),
     planningHorizon:
       candidate.planningHorizon === 'quarterly' || candidate.planningHorizon === 'yearly'
@@ -189,6 +278,9 @@ export function createEmptyLedgerProfile(): LedgerIntakeProfile {
     activePlanId: null,
     plannerBotState: 'idle',
     documentAnalysisEnabled: false,
+    transactions: [],
+    budgetCategories: [],
+    financialGoals: [],
     createdAt: now,
     updatedAt: now
   };

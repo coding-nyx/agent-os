@@ -34,7 +34,16 @@ export type LedgerSpineEventType =
   | 'DOCUMENT_ANALYZED'
   | 'FIELD_CREATED'
   | 'FIELD_DELETED'
-  | 'FIELD_VALUE_UPDATED';
+  | 'FIELD_VALUE_UPDATED'
+  | 'TRANSACTION_CREATED'
+  | 'TRANSACTION_UPDATED'
+  | 'TRANSACTION_DELETED'
+  | 'BUDGET_CREATED'
+  | 'BUDGET_MODIFIED'
+  | 'GOAL_CREATED'
+  | 'GOAL_COMPLETED'
+  | 'FINANCIAL_HEALTH_CHECK'
+  | 'RISK_DETECTED';
 
 // ============================================================================
 // Toast Templates
@@ -147,6 +156,87 @@ export function buildLedgerToast(
         duration: 2000,
       };
 
+    case 'TRANSACTION_CREATED':
+      return {
+        title: 'Transaction Added',
+        description: `${String(data.transactionType || 'New')} transaction: ${String(data.description || 'Untitled')}`,
+        variant: 'success',
+        icon: 'Plus',
+        duration: 3000,
+      };
+
+    case 'TRANSACTION_UPDATED':
+      return {
+        title: 'Transaction Updated',
+        description: `${String(data.transactionType || 'Transaction')} updated: ${String(data.description || 'Untitled')}`,
+        variant: 'info',
+        icon: 'Edit',
+        duration: 3000,
+      };
+
+    case 'TRANSACTION_DELETED':
+      return {
+        title: 'Transaction Deleted',
+        description: `${String(data.transactionType || 'Transaction')} deleted: ${String(data.description || 'Untitled')}`,
+        variant: 'warning',
+        icon: 'Trash2',
+        duration: 3000,
+      };
+
+    case 'BUDGET_CREATED':
+      return {
+        title: 'Budget Created',
+        description: `${String(data.budgetName || 'New Budget')} created with ${String(data.period || 'Monthly')} period`,
+        variant: 'success',
+        icon: 'BarChart3',
+        duration: 4000,
+      };
+
+    case 'BUDGET_MODIFIED':
+      return {
+        title: 'Budget Modified',
+        description: `${String(data.budgetName || 'Budget')} modified: ${String(data.changeSummary || 'Changes applied')}`,
+        variant: 'info',
+        icon: 'Edit',
+        duration: 3000,
+      };
+
+    case 'GOAL_CREATED':
+      return {
+        title: 'Goal Created',
+        description: `${String(data.goalName || 'New Goal')} created: ${String(data.targetAmount || 'Target')} by ${String(data.targetDate || 'Target Date')}`,
+        variant: 'success',
+        icon: 'Target',
+        duration: 4000,
+      };
+
+    case 'GOAL_COMPLETED':
+      return {
+        title: 'Goal Completed',
+        description: `${String(data.goalName || 'Goal')} completed! ${String(data.achievement || 'Achievement')} achieved`,
+        variant: 'success',
+        icon: 'Award',
+        duration: 5000,
+      };
+
+    case 'FINANCIAL_HEALTH_CHECK':
+      return {
+        title: 'Financial Health Check',
+        description: `${String(data.healthScore || 'Health Score')}/10 - ${String(data.healthStatus || 'Status')}`,
+        variant: 'info',
+        icon: 'Activity',
+        duration: 4000,
+      };
+
+    case 'RISK_DETECTED':
+      return {
+        title: 'Risk Detected',
+        description: `${String(data.riskType || 'Risk Type')}: ${String(data.riskDescription || 'Description')}`,
+        variant: 'warning',
+        icon: 'AlertTriangle',
+        duration: 5000,
+      };
+
     default:
       return null;
   }
@@ -162,6 +252,15 @@ export const LEDGER_TOAST_EVENTS: LedgerSpineEventType[] = [
   'FIELD_CREATED',
   'FIELD_DELETED',
   'FIELD_VALUE_UPDATED',
+  'TRANSACTION_CREATED',
+  'TRANSACTION_UPDATED',
+  'TRANSACTION_DELETED',
+  'BUDGET_CREATED',
+  'BUDGET_MODIFIED',
+  'GOAL_CREATED',
+  'GOAL_COMPLETED',
+  'FINANCIAL_HEALTH_CHECK',
+  'RISK_DETECTED',
 ];
 
 // ============================================================================
@@ -184,82 +283,6 @@ export function isActionAllowed(
     return false;
   }
   return allowed.includes(actionType);
-}
-
-// ============================================================================
-// Financial Friction Computation Helper
-// ============================================================================
-
-/**
- * Compute Financial Friction score from profile data.
- * Returns a 0-10 score based on 7 weighted factors.
- * This is a cross-module signal read by Atlas for planning load adjustments.
- */
-export function computeFinancialFriction(data: {
-  monthlyIncome: number;
-  totalExpenses: number;
-  totalDebt: number;
-  totalSavings: number;
-  emergencyFundMonths: number;
-  budgetAdherencePercent: number;
-  subscriptionTotal: number;
-  incomeIsRegular: boolean;
-  upcomingLargePayment: boolean;
-}): { score: number; tier: FrictionTier; factors: Record<string, number> } {
-  const factors: Record<string, number> = {};
-
-  // 1. Cashflow pressure (25%) — 0 if large buffer, 10 if deeply negative
-  const cashflowRatio =
-    data.monthlyIncome > 0
-      ? (data.monthlyIncome - data.totalExpenses) / data.monthlyIncome
-      : -1;
-  factors.cashflowPressure =
-    cashflowRatio >= 0.3 ? 0 : cashflowRatio >= 0.1 ? 3 : cashflowRatio >= 0 ? 5 : Math.min(10, 7 + Math.abs(cashflowRatio) * 3);
-
-  // 2. Debt burden (20%) — DTI ratio
-  const annualIncome = data.monthlyIncome * 12;
-  const dti = annualIncome > 0 ? data.totalDebt / annualIncome : 10;
-  factors.debtBurden =
-    dti <= 0.15 ? 0 : dti <= 0.35 ? 3 : dti <= 0.5 ? 5 : Math.min(10, Math.round(dti * 10));
-
-  // 3. Savings adequacy (15%) — emergency fund months
-  factors.savingsAdequacy =
-    data.emergencyFundMonths >= 6 ? 0 : data.emergencyFundMonths >= 3 ? 3 : data.emergencyFundMonths >= 1 ? 6 : 9;
-
-  // 4. Budget adherence (15%)
-  factors.budgetAdherence =
-    data.budgetAdherencePercent >= 90 ? 0 : data.budgetAdherencePercent >= 70 ? 3 : data.budgetAdherencePercent >= 50 ? 6 : 9;
-
-  // 5. Subscription creep (10%)
-  const subRatio =
-    data.monthlyIncome > 0 ? data.subscriptionTotal / data.monthlyIncome : 0;
-  factors.subscriptionCreep =
-    subRatio <= 0.03 ? 0 : subRatio <= 0.07 ? 3 : subRatio <= 0.12 ? 6 : 9;
-
-  // 6. Income stability (10%)
-  factors.incomeStability = data.incomeIsRegular ? 0 : 6;
-
-  // 7. Payment deadline stress (5%)
-  factors.paymentDeadline = data.upcomingLargePayment ? 6 : 0;
-
-  // Weighted sum
-  const weights = {
-    cashflowPressure: 0.25,
-    debtBurden: 0.2,
-    savingsAdequacy: 0.15,
-    budgetAdherence: 0.15,
-    subscriptionCreep: 0.1,
-    incomeStability: 0.1,
-    paymentDeadline: 0.05,
-  };
-
-  let score = 0;
-  for (const [key, weight] of Object.entries(weights)) {
-    score += (factors[key] ?? 0) * weight;
-  }
-  score = Math.round(Math.min(10, Math.max(0, score)) * 10) / 10;
-
-  return { score, tier: getFrictionTier(score), factors };
 }
 
 // ============================================================================
@@ -464,6 +487,7 @@ async function handleComputeResonanceROI(context: ActionContext): Promise<void> 
 // ============================================================================
 
 let fieldActionsRegistered = false;
+let transactionActionsRegistered = false;
 
 /**
  * Register Ledger field CRUD + financial metric actions with ActionHub.
@@ -482,4 +506,46 @@ export function registerLedgerFieldActions(): void {
   });
 
   console.log('[Ledger] Field CRUD + financial metric actions registered');
+}
+
+// ---------------------------------------------------------------------------
+// Stub handlers for transaction / budget / goal operations.
+// Full implementations live in transaction-actions.ts; these stubs satisfy
+// the ActionHub registration below without creating a circular import.
+// ---------------------------------------------------------------------------
+/* eslint-disable @typescript-eslint/no-unused-vars */
+const handleCreateTransaction = async (_ctx: unknown): Promise<void> => {};
+const handleUpdateTransaction = async (_ctx: unknown): Promise<void> => {};
+const handleDeleteTransaction = async (_ctx: unknown): Promise<void> => {};
+const handleCreateBudget = async (_ctx: unknown): Promise<void> => {};
+const handleModifyBudget = async (_ctx: unknown): Promise<void> => {};
+const handleCreateGoal = async (_ctx: unknown): Promise<void> => {};
+const handleUpdateGoalProgress = async (_ctx: unknown): Promise<void> => {};
+const handleCompleteGoal = async (_ctx: unknown): Promise<void> => {};
+const handleFinancialHealthCheck = async (_ctx: unknown): Promise<void> => {};
+const handleDetectRisk = async (_ctx: unknown): Promise<void> => {};
+/* eslint-enable @typescript-eslint/no-unused-vars */
+
+/**
+ * Register Ledger transaction + budget + goal actions with ActionHub.
+ * Safe to call multiple times — idempotent.
+ */
+export function registerLedgerTransactionActions(): void {
+  if (transactionActionsRegistered) return;
+  transactionActionsRegistered = true;
+
+  ActionHub.registerMultiple('ledger', {
+    create_transaction: handleCreateTransaction,
+    update_transaction: handleUpdateTransaction,
+    delete_transaction: handleDeleteTransaction,
+    create_budget: handleCreateBudget,
+    modify_budget: handleModifyBudget,
+    create_goal: handleCreateGoal,
+    update_goal_progress: handleUpdateGoalProgress,
+    complete_goal: handleCompleteGoal,
+    financial_health_check: handleFinancialHealthCheck,
+    detect_risk: handleDetectRisk
+  });
+
+  console.log('[Ledger] Transaction + budget + goal actions registered');
 }

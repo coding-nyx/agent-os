@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon } from 'lucide-react';
+import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon, Clock, Activity, FileText } from 'lucide-react';
 import * as Switch from '@radix-ui/react-switch';
 import { GlobalProjection } from '@/lib/types';
 import { LedgerIntakeProfile } from '../services/ledger-intake-service';
@@ -12,7 +12,10 @@ import { EmptyState } from '@/core/components/EmptyState';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
 import { CashFlowChart, DebtPayoffTracker } from './FinancialCharts';
+import { computeDashboardMetrics, computeMonthlyTotals } from '../services/ledger-aggregation-service';
 import { AIFinancialAdvisor } from './AIFinancialAdvisor';
+import { spineEventService } from '../services/spine-event-service';
+import { LedgerSpineEventType } from '../actions/ledger-field-actions';
 import { cn } from '@/lib/utils';
 
 export function LedgerDashboard({
@@ -43,15 +46,31 @@ export function LedgerDashboard({
   const hasSoul = Boolean(soul);
   const resource = soul?.crossFunctionalState?.resource || {};
   const lastUpdated = soul?.crossFunctionalState?.lastUpdated || {};
-  const totalFixed = profile ? profile.fixedExpenses.reduce((sum, item) => sum + item.amount, 0) : null;
-  const totalVariable = profile ? profile.variableExpenses.reduce((sum, item) => sum + item.amount, 0) : null;
-  const monthlyIncome = profile ? profile.monthlyIncome : null;
-  const totalExpense = monthlyIncome !== null && totalFixed !== null && totalVariable !== null ? totalFixed + totalVariable : null;
-  const monthlyBuffer =
-    monthlyIncome !== null && totalExpense !== null ? monthlyIncome - totalExpense : null;
+
+  // --- Real computed metrics from transaction history ---
+
+  // Total current debt from profile items (O(d) where d = number of debt items).
+  const totalDebt = useMemo(
+    () => (profile?.debtItems ?? []).reduce((sum, item) => sum + item.balance, 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profile?.debtItems],
+  );
+
+  // All dashboard stat-card numbers derived from actual transactions.
+  const metrics = useMemo(
+    () => computeDashboardMetrics(profile?.transactions ?? [], totalDebt),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profile?.transactions, totalDebt],
+  );
+
+  // Keep nullable wrappers so downstream conditional renders and prop types
+  // continue to work unchanged — null signals "no profile loaded yet".
+  const monthlyIncome = profile !== null ? metrics.currentMonthIncome : null;
+  const totalExpense = profile !== null ? metrics.currentMonthExpenses : null;
+  const monthlyBuffer = profile !== null ? metrics.currentMonthNet : null;
 
   const warnings: string[] = [];
-  if (monthlyIncome !== null && monthlyBuffer !== null && monthlyIncome > 0 && monthlyBuffer < 0) {
+  if (metrics.currentMonthIncome > 0 && metrics.currentMonthNet < 0) {
     warnings.push('Monthly cashflow is negative. Reduce variable spend or restructure debt payments.');
   }
   if (resource.financialFriction !== undefined && resource.financialFriction !== null && resource.financialFriction >= 8) {
@@ -70,34 +89,50 @@ export function LedgerDashboard({
       .map((item) => ({ ...item, max }));
   }, [profile]);
 
-  // Generate mock data for charts (in real implementation, this would come from transaction history)
-  const cashFlowData = useMemo(() => {
-    if (!profile) return [];
-    
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const totalExpenses = totalFixed !== null && totalVariable !== null ? totalFixed + totalVariable : 0;
-    
-    return months.map((month, index) => ({
-      month,
-      income: monthlyIncome !== null ? monthlyIncome * (0.95 + Math.random() * 0.1) : 0,
-      expenses: totalExpenses * (0.9 + Math.random() * 0.2)
-    }));
-  }, [profile, monthlyIncome, totalFixed, totalVariable]);
+  // Cash-flow chart: real per-month income vs expenses from transaction history.
+  // computeMonthlyTotals returns the last 6 calendar months ordered oldest→newest.
+  // We map `label` (e.g. "Mar 2025") to `month` as expected by CashFlowChart.
+  const cashFlowData = useMemo(
+    () =>
+      computeMonthlyTotals(profile?.transactions ?? []).map((t) => ({
+        month: t.label,
+        income: t.income,
+        expenses: t.expenses,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profile?.transactions],
+  );
 
-  const debtData = useMemo(() => {
-    if (!profile || profile.debtItems.length === 0) return [];
-    
-    const totalDebt = profile.debtItems.reduce((sum, item) => sum + item.balance, 0);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    
-    return months.map((month, index) => ({
-      month,
-      balance: totalDebt * (1 - index * 0.12) // Simulating debt reduction
-    }));
+  // Debt snapshot: each debt item becomes one data point.
+  // The `month` field is repurposed as the debt-item name so the tracker
+  // displays each account's current balance as a comparative bar.
+  const debtData = useMemo(
+    () =>
+      (profile?.debtItems ?? []).map((item) => ({
+        month: item.name,
+        balance: item.balance,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profile?.debtItems],
+  );
+
+  // Recent events display
+  const [recentEvents, setRecentEvents] = useState<any[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return;
+    setIsLoadingEvents(true);
+    spineEventService.getLedgerEvents({
+      type: 'TRANSACTION_CREATED' as LedgerSpineEventType,
+      startDate: Date.now() - 30 * 24 * 60 * 60 * 1000 // Last 30 days
+    }).then(events => {
+      setRecentEvents(events.slice(0, 5)); // Show last 5 transactions
+    }).finally(() => setIsLoadingEvents(false));
   }, [profile]);
 
-  const totalDebt = profile?.debtItems.reduce((sum, item) => sum + item.balance, 0) || 0;
-  const totalSavings = monthlyBuffer !== null && monthlyBuffer > 0 ? monthlyBuffer * 3 : 0; // Estimate
+  // totalDebt is already computed above via useMemo.
+  const totalSavings = monthlyBuffer !== null && monthlyBuffer > 0 ? monthlyBuffer * 3 : 0;
 
   return (
     <div className="p-8 space-y-8">
@@ -185,6 +220,50 @@ export function LedgerDashboard({
             />
           </div>
 
+          {/* Recent Transactions */}
+          <SurfaceCard className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider">Recent Transactions</h4>
+              {isLoadingEvents ? (
+                <Clock className="w-4 h-4 text-cyan-400 animate-spin" />
+              ) : (
+                <FileText className="w-4 h-4 text-cyan-400" />
+              )}
+            </div>
+            {isLoadingEvents ? (
+              <div className="flex items-center justify-center py-8">
+                <Clock className="w-6 h-6 text-cyan-400 animate-spin" />
+              </div>
+            ) : recentEvents.length === 0 ? (
+              <EmptyState
+                title="No transactions yet"
+                description="Add transactions to see recent activity here."
+                icon={Upload}
+                size="sm"
+                className="bg-transparent border-white/10"
+              />
+            ) : (
+              <div className="space-y-3">
+                {recentEvents.map((event) => (
+                  <div key={event.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{event.data.description || 'Transaction'}</p>
+                      <p className="text-xs text-white/60">
+                        {event.data.transactionType} - {formatCurrency(event.data.amount, profile?.currency)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-cyan-400">
+                        {event.data.transactionType === 'income' ? '+' : '-'}{formatCurrency(event.data.amount, profile?.currency)}
+                      </p>
+                      <p className="text-xs text-white/40">{new Date(event.timestamp).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SurfaceCard>
+
           <div className="grid grid-cols-1 gap-4">
             <SurfaceCard className="p-5 space-y-4">
               <div className="flex items-center justify-between">
@@ -264,6 +343,16 @@ export function LedgerDashboard({
             data={cashFlowData} 
             currency={profile?.currency || 'USD'}
           />
+          <div className="mt-6 space-y-3">
+            <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">Financial Events</h4>
+            <EmptyState
+              title="No financial events yet"
+              description="Transaction activity will appear here."
+              icon={FileText}
+              size="sm"
+              className="bg-transparent border-white/10"
+            />
+          </div>
         </SurfaceCard>
       )}
 
@@ -279,7 +368,7 @@ export function LedgerDashboard({
               <div className="mt-6 space-y-3">
                 <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">Debt Items</h4>
                 {profile?.debtItems.map((debt) => (
-                  <div key={debt.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/10">
+                  <div key={debt.id} className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-white">{debt.name}</span>
                       <span className="text-sm font-bold text-cyan-400">
@@ -292,6 +381,16 @@ export function LedgerDashboard({
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="mt-6 space-y-3">
+                <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">Financial Events</h4>
+                <EmptyState
+                  title="No financial events yet"
+                  description="Transaction activity will appear here."
+                  icon={FileText}
+                  size="sm"
+                  className="bg-transparent border-white/10"
+                />
               </div>
             </>
           ) : (

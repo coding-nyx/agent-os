@@ -4,7 +4,8 @@
  * Reverted visual style to original dashboard sections while keeping unified logic.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { GlobalProjection } from '@/lib/types';
 import {
   CalendarRange,
@@ -24,7 +25,13 @@ import {
   AtlasHabit,
   AtlasRoutine,
   DailyIntention,
+  ScheduledTask,
 } from '../services/atlas-profile-service';
+import { MorningCheckIn, shouldShowMorningCheckIn } from './MorningCheckIn';
+import { PriorityInbox } from './PriorityInbox';
+import { WeekGrid } from './WeekGrid';
+import { WeeklyReviewModal } from './WeeklyReviewModal';
+import { AtlasPredictiveService } from '../services/atlas-predictive-service';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { EmptyState } from '@/core/components/EmptyState';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
@@ -77,6 +84,7 @@ interface EnhancedAtlasDashboardProps {
   fieldValues?: Record<string, import('@/lib/field-system/types').FieldValue>;
   onAddField?: () => void;
   onDeleteField?: (fieldId: string) => void;
+  onSendMessage?: (message: string) => void;
 }
 
 const noop = () => {};
@@ -108,9 +116,17 @@ export function EnhancedAtlasDashboard({
   fieldValues = {},
   onAddField = noop,
   onDeleteField,
+  onSendMessage = noop,
 }: EnhancedAtlasDashboardProps) {
   const [isEditingIntention, setIsEditingIntention] = useState(false);
   const [intentionForm, setIntentionForm] = useState({ theme: '', focusDomain: '', energyTarget: 5 });
+
+  // New Phase-1 state — must live before any early returns (Rules of Hooks)
+  const { user } = useAuth();
+  const [morningDismissed, setMorningDismissed] = useState(false);
+  const [selectedWeekDate, setSelectedWeekDate] = useState<string | undefined>(undefined);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const predictiveService = useMemo(() => new AtlasPredictiveService(), []);
 
   const tabs: NeuralTabItem<AtlasTab>[] = [
     { id: 'dashboard', label: 'Dashboard', icon: CalendarRange },
@@ -188,17 +204,46 @@ export function EnhancedAtlasDashboard({
                 energyLevel={energyBudget}
                 onComplete={onCompleteTask}
                 onDefer={(id) => onUpdateTask(id, { status: 'deferred' })}
-                onOpenChat={noop}
+                onOpenChat={() => window.dispatchEvent(new CustomEvent('atlas:focus-chat'))}
               />
             )}
 
-            {/* ── Today plan card (Today view only) ── */}
+            {/* ── Today view: MorningCheckIn + PriorityInbox + TodaysPlanCard ── */}
             {activeView === 'today' && (
-              <TodaysPlanCard profile={profile} isLocked={isLocked} />
+              <div className="space-y-4">
+                {!morningDismissed && shouldShowMorningCheckIn(user?.uid) && (
+                  <MorningCheckIn
+                    profile={profile}
+                    soul={soul}
+                    userId={user?.uid ?? null}
+                    onDismiss={() => setMorningDismissed(true)}
+                    onSendMessage={onSendMessage}
+                  />
+                )}
+                <PriorityInbox
+                  tasks={profile?.tasks ?? []}
+                  energyBudget={energyBudget}
+                  onCompleteTask={onCompleteTask}
+                  onDeferTask={(id) => onUpdateTask(id, { status: 'deferred' as const })}
+                  onSendMessage={onSendMessage}
+                />
+                <TodaysPlanCard profile={profile} isLocked={isLocked} />
+              </div>
             )}
 
-            {/* ── Normal dashboard content (Today & Week views) ── */}
-            {activeView !== 'focus' && (
+            {/* ── Week view: 7-day planning grid ── */}
+            {activeView === 'week' && (
+              <WeekGrid
+                tasks={profile?.tasks ?? []}
+                scheduledTasks={profile?.scheduledTasks ?? []}
+                habits={profile?.habits ?? []}
+                onDaySelect={setSelectedWeekDate}
+                selectedDate={selectedWeekDate}
+              />
+            )}
+
+            {/* ── Today view: main dashboard content ── */}
+            {activeView === 'today' && (
               <div className="space-y-6">
             {/* Daily Intention & Focus */}
             {profile?.dailyIntentions && profile.dailyIntentions.length > 0 && (
@@ -477,7 +522,15 @@ export function EnhancedAtlasDashboard({
         {/* ══════════════ REVIEW TAB ══════════════ */}
         {activeTab === 'review' && (
           <div className="space-y-6">
-            <h3 className="text-lg font-bold font-display text-white/90">Temporal Reviews</h3>
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="text-lg font-bold font-display text-white/90">Temporal Reviews</h3>
+              <button
+                onClick={() => setIsReviewModalOpen(true)}
+                className="px-4 py-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-xs font-black uppercase tracking-widest hover:bg-cyan-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50"
+              >
+                Run Weekly Review
+              </button>
+            </div>
             {profile?.reviews && profile.reviews.length > 0 ? (
               <div className="space-y-4">
                 {profile.reviews.map((review: any) => (
@@ -544,6 +597,16 @@ export function EnhancedAtlasDashboard({
           </div>
         )}
       </div>
+
+      {/* ── Weekly Review Modal ── */}
+      <WeeklyReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        soul={soul}
+        energyWave={energyWave}
+        scheduledTasks={profile?.scheduledTasks ?? []}
+        predictiveDisplay={predictiveService.getStateForDisplay()}
+      />
     </div>
   );
 }

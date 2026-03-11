@@ -51,9 +51,9 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
     history: data.history && typeof data.history === 'object' ? (data.history as TitanProfile['history']) : base.history,
     summary: typeof data.summary === 'string' ? data.summary : '',
     routines: Array.isArray(data.routines) ? (data.routines as TitanProfile['routines']) : base.routines,
-    sleepLog: Array.isArray(data.sleepLog) ? (data.sleepLog as TitanProfile['sleepLog']) : base.sleepLog,
+    sleepLog: Array.isArray(data.sleepLog) ? (data.sleepLog as NonNullable<TitanProfile['sleepLog']>).slice(0, 730) : base.sleepLog,
     cycles: Array.isArray(data.cycles) ? (data.cycles as TitanProfile['cycles']) : base.cycles,
-    workoutSessions: Array.isArray(data.workoutSessions) ? (data.workoutSessions as TitanProfile['workoutSessions']) : base.workoutSessions,
+    workoutSessions: Array.isArray(data.workoutSessions) ? (data.workoutSessions as NonNullable<TitanProfile['workoutSessions']>).slice(0, 500) : base.workoutSessions,
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : base.createdAt,
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : now,
     traits: Array.isArray(data.traits) ? data.traits.filter((entry): entry is string => typeof entry === 'string') : base.traits,
@@ -67,6 +67,8 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
     medicalImageAnalyses: Array.isArray(data.medicalImageAnalyses) ? (data.medicalImageAnalyses as TitanProfile['medicalImageAnalyses']).slice(0, 100) : base.medicalImageAnalyses,
     medicalSummary: typeof (data as Record<string, unknown>).medicalSummary === 'string' ? (data as Record<string, unknown>).medicalSummary as string : '',
     medicalOnboardingComplete: data.medicalOnboardingComplete === true,
+    personalRecords: data.personalRecords && typeof data.personalRecords === 'object' ? (data.personalRecords as TitanProfile['personalRecords']) : {},
+    directWriteMode: data.directWriteMode === true,
   };
 }
 

@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { LayoutDashboard, Receipt, PieChart, Target, ListTodo, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { LedgerIntakeProfile } from '../services/ledger-intake-service';
-import { TransactionManager, Transaction } from './TransactionManager';
-import { BudgetPlanner, BudgetCategory } from './BudgetPlanner';
-import { GoalTracker, FinancialGoal } from './GoalTracker';
+import { LedgerIntakeProfile, Transaction, BudgetCategory, FinancialGoal } from '../services/ledger-intake-service';
+import { TransactionManager } from './TransactionManager';
+import { BudgetPlanner } from './BudgetPlanner';
+import { GoalTracker } from './GoalTracker';
 import { FieldsTab } from './FieldsTab';
 
 interface LedgerWorkspaceProps {
@@ -30,13 +30,6 @@ const TABS = [
   { id: 'fields' as const, label: 'Fields', icon: Database },
 ];
 
-// Extended profile type with our new data structures
-interface ExtendedLedgerProfile extends LedgerIntakeProfile {
-  transactions?: Transaction[];
-  budgetCategories?: BudgetCategory[];
-  financialGoals?: FinancialGoal[];
-}
-
 export function LedgerWorkspace({ 
   profile, 
   onUpdateProfile, 
@@ -50,13 +43,10 @@ export function LedgerWorkspace({
 }: LedgerWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<TabId>('transactions');
 
-  // Cast profile to extended type
-  const extendedProfile = profile as ExtendedLedgerProfile;
-
   // Initialize data with defaults
-  const transactions = extendedProfile.transactions || [];
-  const budgetCategories = extendedProfile.budgetCategories || [];
-  const financialGoals = extendedProfile.financialGoals || [];
+  const transactions = profile.transactions || [];
+  const budgetCategories = profile.budgetCategories || [];
+  const financialGoals = profile.financialGoals || [];
 
   // Extract unique categories from profile expenses
   const categories = useMemo(() => {
@@ -86,7 +76,7 @@ export function LedgerWorkspace({
     
     onUpdateProfile({
       transactions: [...transactions, newTransaction]
-    } as any);
+    });
   }, [transactions, onUpdateProfile]);
 
   const handleUpdateTransaction = useCallback((id: string, updates: Partial<Transaction>) => {
@@ -96,7 +86,7 @@ export function LedgerWorkspace({
     
     onUpdateProfile({
       transactions: updatedTransactions
-    } as any);
+    });
   }, [transactions, onUpdateProfile]);
 
   const handleDeleteTransaction = useCallback((id: string) => {
@@ -104,7 +94,7 @@ export function LedgerWorkspace({
     
     onUpdateProfile({
       transactions: updatedTransactions
-    } as any);
+    });
   }, [transactions, onUpdateProfile]);
 
   const handleImportCSV = useCallback((file: File) => {
@@ -135,7 +125,7 @@ export function LedgerWorkspace({
       if (newTransactions.length > 0) {
         onUpdateProfile({
           transactions: [...transactions, ...newTransactions]
-        } as any);
+        });
       }
     };
     reader.readAsText(file);
@@ -166,7 +156,7 @@ export function LedgerWorkspace({
     
     onUpdateProfile({
       budgetCategories: updatedCategories
-    } as any);
+    });
   }, [budgetCategories, onUpdateProfile]);
 
   const handleAddBudgetCategory = useCallback((name: string, allocated: number) => {
@@ -180,7 +170,7 @@ export function LedgerWorkspace({
     
     onUpdateProfile({
       budgetCategories: [...budgetCategories, newCategory]
-    } as any);
+    });
   }, [budgetCategories, onUpdateProfile]);
 
   const handleDeleteBudgetCategory = useCallback((id: string) => {
@@ -188,7 +178,7 @@ export function LedgerWorkspace({
     
     onUpdateProfile({
       budgetCategories: updatedCategories
-    } as any);
+    });
   }, [budgetCategories, onUpdateProfile]);
 
   const handleApplyBudgetTemplate = useCallback((template: any) => {
@@ -202,7 +192,7 @@ export function LedgerWorkspace({
     
     onUpdateProfile({
       budgetCategories: newCategories
-    } as any);
+    });
   }, [profile.monthlyIncome, onUpdateProfile]);
 
   // Goal handlers
@@ -215,7 +205,7 @@ export function LedgerWorkspace({
     
     onUpdateProfile({
       financialGoals: [...financialGoals, newGoal]
-    } as any);
+    });
   }, [financialGoals, onUpdateProfile]);
 
   const handleUpdateGoal = useCallback((id: string, updates: Partial<FinancialGoal>) => {
@@ -225,7 +215,7 @@ export function LedgerWorkspace({
     
     onUpdateProfile({
       financialGoals: updatedGoals
-    } as any);
+    });
   }, [financialGoals, onUpdateProfile]);
 
   const handleDeleteGoal = useCallback((id: string) => {
@@ -233,34 +223,33 @@ export function LedgerWorkspace({
     
     onUpdateProfile({
       financialGoals: updatedGoals
-    } as any);
+    });
   }, [financialGoals, onUpdateProfile]);
 
   // Sync spending from transactions to budget categories
-  useMemo(() => {
-    if (transactions.length > 0 && budgetCategories.length > 0) {
-      const categorySpending: Record<string, number> = {};
-      
-      transactions
-        .filter(t => t.type === 'expense')
-        .forEach(t => {
-          categorySpending[t.category] = (categorySpending[t.category] || 0) + t.amount;
-        });
-      
-      const updatedCategories = budgetCategories.map(cat => ({
-        ...cat,
-        spent: categorySpending[cat.name] || 0
-      }));
-      
-      // Only update if there's a change
-      const hasChanges = updatedCategories.some((cat, i) => cat.spent !== budgetCategories[i].spent);
-      if (hasChanges) {
-        onUpdateProfile({
-          budgetCategories: updatedCategories
-        } as any);
-      }
+  useEffect(() => {
+    if (transactions.length === 0 || budgetCategories.length === 0) return;
+    const categorySpending: Record<string, number> = {};
+
+    transactions
+      .filter(t => t.type === 'expense')
+      .forEach(t => {
+        categorySpending[t.category] = (categorySpending[t.category] || 0) + t.amount;
+      });
+
+    const updatedCategories = budgetCategories.map(cat => ({
+      ...cat,
+      spent: categorySpending[cat.name] || 0
+    }));
+
+    // Only update if there's a change
+    const hasChanges = updatedCategories.some((cat, i) => cat.spent !== budgetCategories[i].spent);
+    if (hasChanges) {
+      onUpdateProfile({
+        budgetCategories: updatedCategories
+      } as any);
     }
-  }, [transactions, budgetCategories, onUpdateProfile]);
+  }, [transactions]); // Only re-run when transactions change, not budgetCategories (prevents loop)
 
   return (
     <div className="space-y-6">
