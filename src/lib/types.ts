@@ -103,6 +103,8 @@ export interface NeuralStateVector {
     deadlinePressure?: number | null;
     /** Consecutive days with a saved journal entry. */
     reflectionStreak?: number;
+    /** Proportion of active goals with at least one linked task (0-1). */
+    goalAlignment?: number | null;
   };
   resource: {
     financialFriction?: number | null;
@@ -212,10 +214,20 @@ export type SpineEventType =
   | 'ATLAS_TASK_COMPLETED'
   | 'ATLAS_HABIT_LOGGED'
   | 'ATLAS_GOAL_MILESTONE'
+  | 'ATLAS_GOAL_COMPLETED'
   | 'ATLAS_ENERGY_UPDATED'
+  | 'ATLAS_ENERGY_OVERLOAD'
+  | 'ATLAS_RECOVERY_WINDOW_CREATED'
+  | 'ATLAS_TASK_CREATED'
+  | 'ATLAS_TASK_BLOCKED'
+  | 'ATLAS_TASK_UNBLOCKED'
+  | 'ATLAS_HABIT_MILESTONE'
   | 'ATLAS_FIELD_CREATED'
   | 'ATLAS_FIELD_DELETED'
   | 'ATLAS_FIELD_VALUE_UPDATED'
+  | 'ATLAS_GOAL_UPDATED'
+  | 'DEADLINE_PRESSURE_CHANGED'
+  | 'PLANNING_STATE_UPDATED'
   // Ledger Spine Events
   | 'BUDGET_UPDATED'
   | 'GOAL_PROGRESS'

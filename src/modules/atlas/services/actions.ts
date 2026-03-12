@@ -27,6 +27,14 @@ function parseBoundedScore(value: unknown, fallback = 5): number {
   return Math.max(0, Math.min(10, value));
 }
 
+const MAX_TITLE_LENGTH = 500;
+
+function sanitizeTitle(raw: unknown, defaultValue: string): string {
+  if (typeof raw !== 'string') return defaultValue;
+  const trimmed = raw.trim().slice(0, MAX_TITLE_LENGTH);
+  return trimmed.length > 0 ? trimmed : defaultValue;
+}
+
 async function loadProfile(userId?: string | null, encryptionKey?: CryptoKey | null) {
   return loadAtlasProfile({ userId, encryptionKey });
 }
@@ -300,7 +308,7 @@ export function registerAtlasActions() {
 
       const newTask: AtlasTask = {
         id: `task_${crypto.randomUUID()}`,
-        title: typeof payload?.title === 'string' ? payload.title : 'Untitled Task',
+        title: sanitizeTitle(payload?.title, 'Untitled Task'),
         description: typeof payload?.description === 'string' ? payload.description : undefined,
         deadline: typeof payload?.deadline === 'string' ? payload.deadline : undefined,
         priority,
@@ -480,7 +488,7 @@ export function registerAtlasActions() {
         }
       });
 
-      emitSpineEvent('TASK_COMPLETED', {
+      emitSpineEvent('ATLAS_TASK_COMPLETED', {
         taskId: task.id,
         title: task.title,
         energyCost: task.energyCost,
@@ -559,7 +567,7 @@ export function registerAtlasActions() {
 
       const newGoal: AtlasGoal = {
         id: `goal_${crypto.randomUUID()}`,
-        title: payload.title.trim(),
+        title: sanitizeTitle(payload?.title, 'Untitled Goal'),
         description: typeof payload?.description === 'string' ? payload.description : undefined,
         deadline: typeof payload?.deadline === 'string' ? payload.deadline : undefined,
         milestones,
@@ -584,7 +592,7 @@ export function registerAtlasActions() {
       });
     },
 
-    update_goal_progress: async ({ userId, encryptionKey, payload }) => {
+    update_goal_progress: async ({ userId, encryptionKey, payload, emitSpineEvent, updateGlobalSoul }) => {
       const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!raw) return;
       const profile = raw;
@@ -609,7 +617,12 @@ export function registerAtlasActions() {
 
       const total = goal.milestones.length;
       const completed = goal.milestones.filter(m => m.completed).length;
-      goal.progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+      // For milestone-less goals, accept an explicit progressPercent from the payload.
+      if (total > 0) {
+        goal.progressPercent = Math.round((completed / total) * 100);
+      } else if (typeof payload?.progressPercent === 'number' && Number.isFinite(payload.progressPercent)) {
+        goal.progressPercent = Math.max(0, Math.min(100, Math.round(payload.progressPercent)));
+      }
 
       if (goal.progressPercent >= 100) {
         goal.status = 'completed';
@@ -617,6 +630,30 @@ export function registerAtlasActions() {
 
       goal.updatedAt = now;
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+      emitSpineEvent('ATLAS_GOAL_UPDATED', {
+        goalId: goal.id,
+        title: goal.title,
+        action: 'progress_updated',
+        progressPercent: goal.progressPercent,
+        status: goal.status
+      });
+
+      if (goal.progressPercent >= 100) {
+        emitSpineEvent('ATLAS_GOAL_COMPLETED', {
+          goalId: goal.id,
+          title: goal.title,
+          completedAt: now
+        });
+      }
+
+      // Update goal alignment
+      const activeGoals = profile.goals.filter(g => g.status === 'active');
+      const linkedTaskCount = profile.tasks.filter(t => t.goalId && t.status !== 'done').length;
+      const goalAlignment = activeGoals.length > 0
+        ? Math.min(1, linkedTaskCount / Math.max(1, activeGoals.length * 2))
+        : 0;
+      await updateGlobalSoul({ planning: { goalAlignment: Math.round(goalAlignment * 100) / 100 } });
     },
 
     set_deadline: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {
@@ -656,8 +693,21 @@ export function registerAtlasActions() {
       }
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+      const newDeadlinePressure = calculateDeadlinePressure(profile.tasks);
       await updateGlobalSoul({
-        planning: { deadlinePressure: calculateDeadlinePressure(profile.tasks) }
+        planning: { deadlinePressure: newDeadlinePressure }
+      });
+
+      emitSpineEvent('DEADLINE_PRESSURE_CHANGED', {
+        deadlinePressure: newDeadlinePressure,
+        targetId,
+        targetType,
+        deadline
+      });
+
+      emitSpineEvent('PLANNING_STATE_UPDATED', {
+        changedFields: ['planning.deadlinePressure'],
+        deadlinePressure: newDeadlinePressure
       });
     },
 
@@ -678,7 +728,7 @@ export function registerAtlasActions() {
 
       const newHabit: AtlasHabit = {
         id: `habit_${crypto.randomUUID()}`,
-        title: typeof payload?.title === 'string' ? payload.title : 'Untitled Habit',
+        title: sanitizeTitle(payload?.title, 'Untitled Habit'),
         frequency,
         targetStreak: typeof payload?.targetStreak === 'number' ? Math.max(1, payload.targetStreak) : 30,
         currentStreak: 0,
@@ -735,7 +785,19 @@ export function registerAtlasActions() {
         ? Math.min(10, Math.round(totalStreak / activeHabits.length))
         : 5;
 
-      await updateGlobalSoul({ planning: { streakHealth } });
+      // Habit momentum: ratio of habits with streak > 0 to all active habits (0-1)
+      const habitsWithStreak = activeHabits.filter(h => h.currentStreak > 0).length;
+      const habitMomentum = activeHabits.length > 0
+        ? Math.round((habitsWithStreak / activeHabits.length) * 100) / 100
+        : 0;
+
+      await updateGlobalSoul({ planning: { streakHealth, habitMomentum } });
+
+      emitSpineEvent('PLANNING_STATE_UPDATED', {
+        changedFields: ['planning.streakHealth', 'planning.habitMomentum'],
+        streakHealth,
+        habitMomentum
+      });
     },
 
     pause_habit: async ({ userId, encryptionKey, payload }) => {
@@ -800,7 +862,11 @@ export function registerAtlasActions() {
         newScheduled.push(entry);
       }
 
-      profile.scheduledTasks = [...profile.scheduledTasks, ...newScheduled];
+      // Remove existing blocks for this date before appending (deduplication).
+      profile.scheduledTasks = [
+        ...profile.scheduledTasks.filter(t => !t.scheduledAt.startsWith(date)),
+        ...newScheduled,
+      ];
 
       const existingIdx = profile.dailyIntentions.findIndex(d => d.date === date);
       const intention: DailyIntention = {
@@ -987,7 +1053,7 @@ export function registerAtlasActions() {
       await updateGlobalSoul({ cognitive: { activeLoad: calculateActiveLoad(profile.tasks) } });
     },
 
-    update_goal: async ({ userId, encryptionKey, payload }) => {
+    update_goal: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
       const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!raw) return;
       const profile = raw;
@@ -997,6 +1063,11 @@ export function registerAtlasActions() {
 
       const goal = profile.goals.find(g => g.id === goalId);
       if (!goal) return;
+
+      // Validate deadline if provided
+      if (payload?.deadline !== undefined && typeof payload.deadline === 'string') {
+        if (isNaN(Date.parse(payload.deadline))) return;
+      }
 
       const now = new Date().toISOString();
 
@@ -1025,15 +1096,26 @@ export function registerAtlasActions() {
       goal.updatedAt = now;
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+      emitSpineEvent('ATLAS_GOAL_UPDATED', {
+        goalId: goal.id,
+        title: goal.title,
+        action: 'updated',
+        progressPercent: goal.progressPercent,
+        status: goal.status
+      });
     },
 
-    delete_goal: async ({ userId, encryptionKey, payload }) => {
+    delete_goal: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
       const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!raw) return;
       const profile = raw;
 
       const goalId = typeof payload?.id === 'string' ? payload.id : null;
       if (!goalId) return;
+
+      const deletedGoal = profile.goals.find(g => g.id === goalId);
+      const goalTitle = deletedGoal?.title ?? 'Unknown goal';
 
       profile.goals = profile.goals.filter(g => g.id !== goalId);
 
@@ -1052,6 +1134,12 @@ export function registerAtlasActions() {
       }
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+      emitSpineEvent('ATLAS_GOAL_UPDATED', {
+        goalId,
+        title: goalTitle,
+        action: 'deleted'
+      });
     },
 
     update_habit: async ({ userId, encryptionKey, payload }) => {
@@ -1098,6 +1186,193 @@ export function registerAtlasActions() {
       profile.habits = profile.habits.filter(h => h.id !== habitId);
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    },
+
+    // === New Required Actions ===
+
+    /**
+     * complete_goal
+     * Mark a goal as completed or abandoned. Updates progress to 100% on completion.
+     * Payload: { id: string; status?: 'completed' | 'abandoned'; notes?: string }
+     */
+    complete_goal: async ({ userId, encryptionKey, payload, emitSpineEvent, updateGlobalSoul }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const goalId = typeof payload?.id === 'string' ? payload.id : null;
+      if (!goalId) return;
+
+      const goal = profile.goals.find(g => g.id === goalId);
+      if (!goal) return;
+
+      const validStatuses: AtlasGoal['status'][] = ['completed', 'abandoned'];
+      const newStatus: AtlasGoal['status'] = validStatuses.includes(payload?.status as AtlasGoal['status'])
+        ? (payload!.status as AtlasGoal['status'])
+        : 'completed';
+
+      const now = new Date().toISOString();
+      goal.status = newStatus;
+      if (newStatus === 'completed') {
+        goal.progressPercent = 100;
+        for (const ms of goal.milestones) {
+          if (!ms.completed) {
+            ms.completed = true;
+            ms.completedAt = now;
+          }
+        }
+      }
+      if (typeof payload?.notes === 'string') goal.notes = payload.notes;
+      goal.updatedAt = now;
+
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+      emitSpineEvent('ATLAS_GOAL_UPDATED', {
+        goalId: goal.id,
+        title: goal.title,
+        action: newStatus,
+        progressPercent: goal.progressPercent,
+        status: newStatus
+      });
+
+      if (newStatus === 'completed') {
+        emitSpineEvent('ATLAS_GOAL_COMPLETED', {
+          goalId: goal.id,
+          title: goal.title,
+          completedAt: now
+        });
+      }
+
+      // Recompute goal alignment
+      const activeGoals = profile.goals.filter(g => g.status === 'active');
+      const linkedTaskCount = profile.tasks.filter(t => t.goalId && t.status !== 'done').length;
+      const goalAlignment = activeGoals.length > 0
+        ? Math.min(1, linkedTaskCount / Math.max(1, activeGoals.length * 2))
+        : 0;
+      await updateGlobalSoul({ planning: { goalAlignment: Math.round(goalAlignment * 100) / 100 } });
+    },
+
+    /**
+     * update_nsv_planning
+     * Directly write Atlas-owned planning.* NSV fields.
+     * Payload: {
+     *   goalAlignment?: number;        // 0-1
+     *   executionConsistency?: number; // 0-1
+     *   adaptability?: number;         // 0-1
+     *   habitMomentum?: number;        // 0-1
+     *   streakHealth?: number;         // 0-10
+     *   deadlinePressure?: number;     // 0-10
+     * }
+     */
+    update_nsv_planning: async ({ payload, updateGlobalSoul, emitSpineEvent }) => {
+      const clamp01 = (v: unknown): number | undefined => {
+        if (typeof v !== 'number' || !Number.isFinite(v)) return undefined;
+        return Math.round(Math.max(0, Math.min(1, v)) * 100) / 100;
+      };
+      const clamp010 = (v: unknown): number | undefined => {
+        if (typeof v !== 'number' || !Number.isFinite(v)) return undefined;
+        return Math.round(Math.max(0, Math.min(10, v)) * 10) / 10;
+      };
+
+      const goalAlignment        = clamp01(payload?.goalAlignment);
+      const executionConsistency = clamp01(payload?.executionConsistency);
+      const adaptability         = clamp01(payload?.adaptability);
+      const habitMomentum        = clamp01(payload?.habitMomentum);
+      const streakHealth         = clamp010(payload?.streakHealth);
+      const deadlinePressure     = clamp010(payload?.deadlinePressure);
+
+      const planningUpdates: Record<string, number> = {};
+      if (goalAlignment        !== undefined) planningUpdates.goalAlignment        = goalAlignment;
+      if (executionConsistency !== undefined) planningUpdates.executionConsistency = executionConsistency;
+      if (adaptability         !== undefined) planningUpdates.adaptability         = adaptability;
+      if (habitMomentum        !== undefined) planningUpdates.habitMomentum        = habitMomentum;
+      if (streakHealth         !== undefined) planningUpdates.streakHealth         = streakHealth;
+      if (deadlinePressure     !== undefined) planningUpdates.deadlinePressure     = deadlinePressure;
+
+      if (Object.keys(planningUpdates).length === 0) return;
+
+      await updateGlobalSoul({ planning: planningUpdates });
+
+      emitSpineEvent('PLANNING_STATE_UPDATED', {
+        changedFields: Object.keys(planningUpdates).map(k => `planning.${k}`),
+        ...planningUpdates
+      });
+    },
+
+    /**
+     * complete_check_in
+     * Record a morning or evening check-in.
+     * Payload: {
+     *   type: 'morning' | 'evening';
+     *   energyRating?: number;   // 1-5
+     *   moodRating?: number;     // 1-5
+     *   intention?: string;
+     *   reflection?: string;
+     * }
+     */
+    complete_check_in: async ({ userId, encryptionKey, payload, emitSpineEvent, updateGlobalSoul }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const type = payload?.type === 'morning' || payload?.type === 'evening' ? payload.type : null;
+      if (!type) return;
+
+      const now = new Date().toISOString();
+      const dateOnly = now.slice(0, 10);
+
+      const clamp15 = (v: unknown): number | undefined => {
+        if (typeof v !== 'number' || !Number.isFinite(v)) return undefined;
+        return Math.max(1, Math.min(5, Math.round(v)));
+      };
+
+      const energyRating = clamp15(payload?.energyRating);
+      const moodRating   = clamp15(payload?.moodRating);
+
+      const checkInEntry = {
+        id: `checkin_${crypto.randomUUID()}`,
+        date: dateOnly,
+        type,
+        energyRating,
+        moodRating,
+        intention:  typeof payload?.intention  === 'string' ? payload.intention.slice(0, 500)  : undefined,
+        reflection: typeof payload?.reflection === 'string' ? payload.reflection.slice(0, 500) : undefined,
+        loggedAt: now
+      };
+
+      // Persist to profile check-in history (capped at 60) using a type-safe extension field
+      const extProfile = profile as AtlasProfile & { checkIns?: typeof checkInEntry[] };
+      if (!Array.isArray(extProfile.checkIns)) extProfile.checkIns = [];
+      const existingIdx = extProfile.checkIns.findIndex(
+        (c: typeof checkInEntry) => c.date === dateOnly && c.type === type
+      );
+      if (existingIdx >= 0) {
+        extProfile.checkIns[existingIdx] = checkInEntry;
+      } else {
+        extProfile.checkIns.unshift(checkInEntry);
+        if (extProfile.checkIns.length > 60) extProfile.checkIns.splice(60);
+      }
+
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+      // Update localStorage markers used by cascade rules
+      try {
+        if (type === 'morning') {
+          localStorage.setItem('atlas_last_morning_brief', now);
+        } else {
+          localStorage.setItem('atlas_last_evening_checkin', now);
+        }
+      } catch { /* SSR / non-browser environments */ }
+
+      emitSpineEvent('ATLAS_STATE_CHANGED', {
+        reason: `${type}_check_in_completed`,
+        date: dateOnly
+      });
+
+      if (energyRating !== undefined) {
+        const energyBudget = Math.round((energyRating / 5) * 10);
+        await updateGlobalSoul({ cognitive: { energyBudget } });
+      }
     },
 
     set_daily_intention: async ({ userId, encryptionKey, payload }) => {
