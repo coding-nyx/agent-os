@@ -57,7 +57,7 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
     <nav
       role="tablist"
       aria-label="Atlas view switcher"
-      className="inline-flex items-center gap-0.5 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10 p-0.5"
+      className="inline-flex items-center gap-0.5 rounded-2xl bg-white/[0.03] backdrop-blur-sm p-0.5"
     >
       {VIEW_TABS.map(({ key, label, icon: Icon }) => {
         const isActive = activeView === key;
@@ -85,20 +85,7 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
             {isActive && (
               <motion.div
                 layoutId="atlas-view-pill"
-                className="absolute inset-0 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
-                transition={
-                  reducedMotion
-                    ? { duration: 0 }
-                    : { type: 'spring', stiffness: 500, damping: 35 }
-                }
-              />
-            )}
-
-            {/* Active emerald underline */}
-            {isActive && (
-              <motion.div
-                layoutId="atlas-view-underline"
-                className="hidden sm:block absolute bottom-0 left-3 right-3 h-0.5 bg-emerald-400 rounded-full"
+                className="absolute inset-0 rounded-xl bg-emerald-500/10"
                 transition={
                   reducedMotion
                     ? { duration: 0 }
