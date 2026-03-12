@@ -359,8 +359,9 @@ export function registerAtlasActions() {
       }
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
-      // NSV activeLoad is derived from profile.tasks in AtlasPage via useEffect
-      // to avoid a second React render cascade on top of the Firestore subscription echo.
+      // Deferred so React 18 batches this with the Firestore subscription echo
+      // and produces a single render cycle instead of two.
+      setTimeout(() => updateGlobalSoul({ cognitive: { activeLoad: calculateActiveLoad(profile.tasks) } }), 0);
     },
 
     update_task: async ({ userId, encryptionKey, payload, updateGlobalSoul }) => {
@@ -409,7 +410,7 @@ export function registerAtlasActions() {
       task.updatedAt = now;
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
-      // NSV activeLoad derived from profile.tasks in AtlasPage useEffect — avoids double render.
+      setTimeout(() => updateGlobalSoul({ cognitive: { activeLoad: calculateActiveLoad(profile.tasks) } }), 0);
     },
 
     complete_task: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {

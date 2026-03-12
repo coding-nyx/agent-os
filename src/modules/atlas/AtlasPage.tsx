@@ -24,7 +24,6 @@ import {
   subscribeAtlasProfile,
   syncGuestAtlasProfileToUser
 } from './services/atlas-profile-service';
-import { calculateActiveLoad } from './services/actions';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
@@ -164,14 +163,6 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
       }
     }
   }, [profile]);
-
-  // Derive cognitive.activeLoad from profile.tasks so NSV stays in sync
-  // without triggering a second render cascade from inside async action handlers.
-  useEffect(() => {
-    if (!profile?.tasks) return;
-    updateCrossFunctionalState({ cognitive: { activeLoad: calculateActiveLoad(profile.tasks) } });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.tasks]);
 
   // AI Logic for Atlas
   const ai = useModuleAI({
