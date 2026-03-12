@@ -7,7 +7,7 @@ import { useVault } from '@/lib/vault-context';
 import { AgnesOnboarding } from './onboarding/AgnesOnboarding';
 import { AGNES_PERSONA } from './personas';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield, ArrowRight, ChevronLeft, ChevronRight, Wind } from 'lucide-react';
+import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield, ArrowRight, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
 import { SomaticSessionPicker, type SomaticExerciseType } from './components/somatic/SomaticSessionPicker';
 import { BreathworkExercise } from './components/somatic/BreathworkExercise';
 import { GroundingExercise } from './components/somatic/GroundingExercise';
@@ -23,7 +23,6 @@ import { Agnes3DEnvironment } from './components/Agnes3DEnvironment';
 import { AgnesTelemetryHeader } from './components/AgnesTelemetryHeader';
 import { AgnesPersonalitySidebar } from './components/AgnesPersonalitySidebar';
 import { AgnesTherapistCard } from './components/AgnesTherapistCard';
-import { AgnesSettingsPanel } from './components/AgnesSettingsPanel';
 import {
   createEmptyAgnesProfile,
   loadAgnesProfile,
@@ -31,6 +30,7 @@ import {
   subscribeAgnesProfile,
   TherapyIntakeProfile
 } from './services/agnes-profile-service';
+import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { ModuleMemoryService } from '@/lib/services/module-memory-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
@@ -83,11 +83,7 @@ const AgnesSidebar = React.memo(function AgnesSidebar({
             agentAlias={agentAlias}
             naked
           />
-          <div className="h-px w-full bg-white/[0.06]" />
-          <AgnesSettingsPanel
-            profile={profile}
-            onSave={onSave}
-          />
+
         </motion.div>
       )}
     </div>
@@ -118,6 +114,36 @@ function AgnesContent({
   // Somatic session state
   const [selectedSomaticExercise, setSelectedSomaticExercise] = useState<SomaticExerciseType | null>(null);
   const somaticStartedAt = useRef<number>(0);
+
+  // Somatic preference toggle (mirrors AgnesSettingsPanel logic)
+  const [somaticEnabled, setSomaticEnabled] = useState<boolean>(
+    profile?.baseContext?.somaticEnabled !== false
+  );
+  const pendingSomaticSave = useRef(false);
+
+  useEffect(() => {
+    if (pendingSomaticSave.current) return;
+    setSomaticEnabled(profile?.baseContext?.somaticEnabled !== false);
+  }, [profile?.baseContext?.somaticEnabled]);
+
+  const handleSomaticToggle = useCallback(async () => {
+    if (!profile || !user) return;
+    const newValue = !somaticEnabled;
+    setSomaticEnabled(newValue);
+    pendingSomaticSave.current = true;
+    try {
+      await saveAgnesProfile(
+        {
+          ...profile,
+          baseContext: { ...profile.baseContext, somaticEnabled: newValue },
+          updatedAt: new Date().toISOString(),
+        },
+        { userId: user.uid, encryptionKey: null }
+      );
+    } finally {
+      setTimeout(() => { pendingSomaticSave.current = false; }, 500);
+    }
+  }, [profile, user, somaticEnabled]);
 
   const agentAlias = globalSoul?.displayNames?.agnes || 'Agnes';
 
@@ -321,6 +347,19 @@ function AgnesContent({
           snapshot,
           { encryptionKey }
         );
+
+        // Increment sessionCount so Agnes stops re-introducing herself
+        if (profile) {
+          const updatedCount = (profile.baseContext?.sessionCount ?? 0) + 1;
+          await saveAgnesProfile(
+            {
+              ...profile,
+              baseContext: { ...profile.baseContext, sessionCount: updatedCount },
+              updatedAt: new Date().toISOString(),
+            },
+            { userId: user.uid, encryptionKey }
+          );
+        }
       }
 
       await finalizeClose();
@@ -402,7 +441,7 @@ function AgnesContent({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
-              className="min-h-full flex flex-col items-center justify-start p-4 min-[620px]:p-12 min-[620px]:justify-center max-w-5xl mx-auto w-full space-y-12 pb-20"
+              className="min-h-full overflow-y-auto no-scrollbar flex flex-col items-center justify-start p-4 min-[620px]:p-12 min-[620px]:justify-center max-w-5xl mx-auto w-full space-y-12 pb-20"
             >
               {/* s18-002: show spinner while hydrating to prevent accidental clearSession click */}
               {isHydrating ? (
@@ -509,36 +548,35 @@ function AgnesContent({
                   )}
                 </div>
 
-                {/* Somatic Practice entry point — only shown when somaticEnabled */}
-                {profile?.baseContext?.somaticEnabled !== false && isAccessible && !isGuest && (
-                  <motion.button
+                {/* Session preferences card — somatic toggle + somatic practice entry */}
+                {isAccessible && !isGuest && (
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
-                    whileHover={{ scale: 1.01, y: -2 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={handleOpenSomatic}
-                    className="group w-full mt-2 p-6 rounded-[2rem] bg-violet-500/[0.04] border border-violet-500/15 hover:bg-violet-500/[0.08] hover:border-violet-500/30 transition-all text-left relative overflow-hidden backdrop-blur-md"
+                    className="w-full rounded-[2rem] bg-white/[0.03] border border-white/[0.06] overflow-hidden"
                   >
-                    <div className="absolute top-0 right-0 p-5 opacity-[0.06] group-hover:opacity-[0.1] transition-opacity pointer-events-none">
-                      <Wind className="w-14 h-18 text-violet-400" />
-                    </div>
-                    <div className="relative z-10 flex items-center gap-5">
-                      <Wind className="w-7 h-7 text-violet-400 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-black tracking-tighter uppercase italic text-white/80 mb-0.5">
-                          Somatic Practice
-                        </h3>
-                        <p className="text-[11px] text-white/30 font-medium">
-                          Breathwork &amp; grounding exercises · body-based regulation
-                        </p>
+                    {/* Somatic Awareness toggle */}
+                    <div className="flex items-start justify-between gap-3 p-6">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <Activity className="w-4 h-4 text-indigo-400/60 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-white/80 leading-none mb-1">Somatic Awareness</p>
+                          <p className="text-[11px] text-white/35 leading-relaxed">
+                            Agnes asks about physical sensations and body-based feelings during sessions.
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 text-violet-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-3 group-hover:translate-x-0 shrink-0">
-                        <span className="text-[9px] font-black uppercase tracking-widest">Begin</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </div>
+                      <NeuralToggle
+                        checked={somaticEnabled}
+                        onChange={handleSomaticToggle}
+                        color="indigo"
+                        label="Somatic Awareness"
+                      />
                     </div>
-                  </motion.button>
+
+
+                  </motion.div>
                 )}
               </motion.div>
               )} {/* end isHydrating gate */}

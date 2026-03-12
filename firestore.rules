@@ -209,6 +209,18 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // Soma Diagnosis Sessions (ephemeral PHI — E2EE, 24h TTL)
+    match /soma_diagnoses/{userId}/sessions/{sessionId} {
+      allow read, write: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    // Soma Pending Approvals (agent review queue)
+    match /soma_pending_approvals/{userId}/queue/{entryId} {
+      allow read, write: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
     // Default deny all other documents
     match /{document=**} {
       allow read, write: if false;

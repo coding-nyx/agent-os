@@ -546,5 +546,77 @@ export function registerSomaFieldActions(): void {
           recsText
       );
     },
+
+    // ── Approve a single health entry ──────────────────────────────────
+    approve_health_entry: async ({ payload, pushAssistantMessage }) => {
+      const entryId = typeof payload?.entryId === 'string' ? payload.entryId : null;
+      if (!entryId) {
+        pushAssistantMessage?.('⚠️ approve_health_entry: missing entryId.');
+        return;
+      }
+      Spine.emit({
+        type: 'SOMA_PROFILE_UPDATED',
+        source: 'soma',
+        domain: 'B',
+        data: { action: 'approve_health_entry', entryId, agentNote: payload?.agentNote ?? '' },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+      pushAssistantMessage?.(`✅ Health entry "${entryId}" approved.`);
+    },
+
+    // ── Reject a single health entry ───────────────────────────────────
+    reject_health_entry: async ({ payload, pushAssistantMessage }) => {
+      const entryId = typeof payload?.entryId === 'string' ? payload.entryId : null;
+      if (!entryId) {
+        pushAssistantMessage?.('⚠️ reject_health_entry: missing entryId.');
+        return;
+      }
+      Spine.emit({
+        type: 'SOMA_PROFILE_UPDATED',
+        source: 'soma',
+        domain: 'B',
+        data: { action: 'reject_health_entry', entryId, reason: payload?.reason ?? '' },
+        cascadeDepth: 0,
+        priority: 'alert',
+      });
+      pushAssistantMessage?.(`⚠️ Health entry "${entryId}" flagged for review: ${payload?.reason ?? 'no reason given'}.`);
+    },
+
+    // ── Approve a diagnosis merge into health profile ──────────────────
+    approve_diagnosis_merge: async ({ payload, pushAssistantMessage }) => {
+      const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : null;
+      if (!sessionId) {
+        pushAssistantMessage?.('⚠️ approve_diagnosis_merge: missing sessionId.');
+        return;
+      }
+      Spine.emit({
+        type: 'SOMA_DIAGNOSIS_MERGED',
+        source: 'soma',
+        domain: 'B',
+        data: { sessionId, approvedFields: payload?.approvedFields ?? [], agentNote: payload?.agentNote ?? '' },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+      pushAssistantMessage?.(`✅ Diagnosis session "${sessionId}" approved for merge.`);
+    },
+
+    // ── Reject a diagnosis merge ───────────────────────────────────────
+    reject_diagnosis_merge: async ({ payload, pushAssistantMessage }) => {
+      const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : null;
+      if (!sessionId) {
+        pushAssistantMessage?.('⚠️ reject_diagnosis_merge: missing sessionId.');
+        return;
+      }
+      Spine.emit({
+        type: 'SOMA_DIAGNOSIS_DISCARDED',
+        source: 'soma',
+        domain: 'B',
+        data: { sessionId, reason: payload?.reason ?? '' },
+        cascadeDepth: 0,
+        priority: 'alert',
+      });
+      pushAssistantMessage?.(`⚠️ Diagnosis merge rejected for session "${sessionId}": ${payload?.reason ?? 'no reason given'}.`);
+    },
   });
 }

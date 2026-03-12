@@ -6,11 +6,14 @@ import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SomaDashboard } from './components/SomaDashboard';
 import type { VitalReading, PhysicalAssessment } from './components/SomaDashboard';
+import type { PhysicalAssessment as StoredPhysicalAssessment } from '@/lib/types';
 import {
   loadSomaProfile,
   saveSomaProfile,
   subscribeSomaProfile,
-  syncGuestSomaProfileToUser
+  syncGuestSomaProfileToUser,
+  addVitalReading,
+  addPhysicalAssessment,
 } from './services/soma-profile-service';
 import { useSomaHealth } from './hooks/use-soma-health';
 import { SomaProfile } from './types';
@@ -71,15 +74,37 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
     await saveSomaProfile(updated, { userId: user.uid, encryptionKey });
   }, [profile, user?.uid, encryptionKey]);
 
-  // Fix 2: Wire onAddVitalReading to update local session state
-  const handleAddVitalReading = useCallback((reading: VitalReading) => {
+  // Fix 2: Wire onAddVitalReading to update local session state AND persist to Firestore
+  const handleAddVitalReading = useCallback(async (reading: VitalReading) => {
     setVitalHistory(prev => [...prev, reading]);
-  }, []);
+    if (user?.uid && encryptionKey) {
+      const { timestamp: _ts, ...fields } = reading;
+      await addVitalReading(user.uid, fields, encryptionKey).catch(err =>
+        console.error('[SomaPage] addVitalReading failed:', err)
+      );
+    }
+  }, [user?.uid, encryptionKey]);
 
-  // Fix 2: Wire onAddAssessment to update local session state
-  const handleAddAssessment = useCallback((assessment: PhysicalAssessment) => {
+  // Fix 2: Wire onAddAssessment to update local session state AND persist to Firestore
+  const handleAddAssessment = useCallback(async (assessment: PhysicalAssessment) => {
     setAssessmentHistory(prev => [...prev, assessment]);
-  }, []);
+    if (user?.uid && encryptionKey) {
+      // Map UI PhysicalAssessment shape → stored PhysicalAssessment shape
+      const storedFields: Omit<StoredPhysicalAssessment, 'timestamp'> = {
+        ...(assessment.measurements?.vo2max != null ? { vo2Max: assessment.measurements.vo2max } : {}),
+        ...(assessment.measurements?.weight != null ? { weight: assessment.measurements.weight } : {}),
+        ...(assessment.measurements?.bmi != null ? { bmi: assessment.measurements.bmi } : {}),
+        ...(assessment.measurements?.bodyFat != null ? { bodyFatPercentage: assessment.measurements.bodyFat } : {}),
+        ...(assessment.measurements?.muscleMass != null ? { muscleMass: assessment.measurements.muscleMass } : {}),
+        ...(assessment.type === 'strength' ? { strength: assessment.score } : {}),
+        ...(assessment.type === 'flexibility' ? { flexibility: assessment.score } : {}),
+        ...(assessment.type === 'endurance' ? { endurance: assessment.score } : {}),
+      };
+      await addPhysicalAssessment(user.uid, storedFields, encryptionKey).catch(err =>
+        console.error('[SomaPage] addPhysicalAssessment failed:', err)
+      );
+    }
+  }, [user?.uid, encryptionKey]);
 
   const { globalSoul } = useGlobalSoul();
 

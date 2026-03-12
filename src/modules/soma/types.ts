@@ -9,10 +9,13 @@ import type {
   LabSummaryRecord,
   MedicalImageAnalysis,
   SomaProfile as CoreSomaProfile,
+  AgentReview,
+  VitalReading,
+  PhysicalAssessment,
 } from '@/lib/types';
 
 // Re-export sub-types for downstream consumers that import from soma/types
-export type { BiomarkerRecord, ClearanceRecord, LabSummaryRecord, MedicalImageAnalysis };
+export type { BiomarkerRecord, ClearanceRecord, LabSummaryRecord, MedicalImageAnalysis, AgentReview, VitalReading, PhysicalAssessment };
 
 export type SomaProfile = CoreSomaProfile;
 

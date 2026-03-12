@@ -269,6 +269,8 @@ export type SpineEventType =
   | 'SOMA_VITAL_LOGGED'
   | 'SOMA_LAB_REPORT_PARSED'
   | 'SOMA_PROFILE_UPDATED'
+  | 'SOMA_DIAGNOSIS_MERGED'
+  | 'SOMA_DIAGNOSIS_DISCARDED'
   // Soma Cascade Derived Events
   | 'HEALTH_CONTEXT_STALE'
   // Titan Cycle Events
@@ -481,6 +483,7 @@ export interface BiomarkerRecord {
   unit?: string;
   source?: string;
   recordedAt: string;
+  agentReview?: AgentReview;
 }
 
 export interface ClearanceRecord {
@@ -1189,6 +1192,25 @@ export interface VitalReading {
   weight?: number;
 }
 
+/**
+ * A single timestamped physical assessment record.
+ * Stored in SomaProfile.physicalAssessments (persisted, E2EE).
+ */
+export interface PhysicalAssessment {
+  /** Unix timestamp (ms) when the assessment was recorded */
+  timestamp: number;
+  height?: number;
+  weight?: number;
+  bmi?: number;
+  bodyFatPercentage?: number;
+  muscleMass?: number;
+  vo2Max?: number;
+  strength?: number;
+  flexibility?: number;
+  endurance?: number;
+  agentReview?: AgentReview;
+}
+
 export interface SomaProfile {
   id: string;
   userId: string;
@@ -1233,6 +1255,8 @@ export interface SomaProfile {
   readinessScore?: number;
   /** Timestamped vital-sign readings persisted into the encrypted profile */
   vitalReadings?: VitalReading[];
+  /** Timestamped physical assessment records persisted into the encrypted profile */
+  physicalAssessments?: PhysicalAssessment[];
 }
 
 export interface GuestQuota {

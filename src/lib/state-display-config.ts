@@ -135,6 +135,8 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   SOMA_VITAL_LOGGED: 'Soma vital logged',
   SOMA_LAB_REPORT_PARSED: 'Soma lab report parsed',
   SOMA_PROFILE_UPDATED: 'Soma profile updated',
+  SOMA_DIAGNOSIS_MERGED: 'Diagnosis data merged to health profile',
+  SOMA_DIAGNOSIS_DISCARDED: 'Diagnosis session discarded',
   // Soma Cascade Derived Events
   HEALTH_CONTEXT_STALE: 'Health context refreshing',
   ai_validation_suggestion: 'AI validation suggestion',

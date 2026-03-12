@@ -40,9 +40,14 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   const normalized = stripProviderControlTokens(content);
 
   // 1. Extract thought content — handles <thought> (custom), <think>/<thinking> (model-native, e.g. DeepSeek, Grok)
+  //    Also handles cross-matched tags (e.g. model opens with <thinking> but closes with </thought>)
   const thoughtMatch = normalized.match(/<thought>([\s\S]*?)<\/thought>/)
     ?? normalized.match(/<thinking>([\s\S]*?)<\/thinking>/)
-    ?? normalized.match(/<think>([\s\S]*?)<\/think>/);
+    ?? normalized.match(/<think>([\s\S]*?)<\/think>/)
+    ?? normalized.match(/<thinking>([\s\S]*?)<\/thought>/)
+    ?? normalized.match(/<thought>([\s\S]*?)<\/thinking>/)
+    ?? normalized.match(/<think>([\s\S]*?)<\/thought>/)
+    ?? normalized.match(/<thought>([\s\S]*?)<\/think>/);
   const thoughtText = thoughtMatch ? thoughtMatch[1].trim() : '';
 
   // 2. Extract action content — \s+ tolerates extra whitespace between tag name and attribute
@@ -62,11 +67,10 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
     .join('\n');
 
   // Check if currently thinking — open tag present but no closing tag yet (streaming)
-  const isThinking = (
-    (normalized.includes('<thought>') && !normalized.includes('</thought>')) ||
-    (normalized.includes('<think>') && !normalized.includes('</think>')) ||
-    (normalized.includes('<thinking>') && !normalized.includes('</thinking>'))
-  );
+  // Any thought closer (</thought>, </think>, </thinking>) is treated as valid regardless of opener
+  const hasThoughtOpener = normalized.includes('<thought>') || normalized.includes('<think>') || normalized.includes('<thinking>');
+  const hasThoughtCloser = normalized.includes('</thought>') || normalized.includes('</think>') || normalized.includes('</thinking>');
+  const isThinking = hasThoughtOpener && !hasThoughtCloser;
 
   // Check if currently acting — <action type="..."> present but no </action> yet
   const actionOpenMatch = normalized.match(/<action\s+type="([^"]+)">[\s\S]*$/i);
@@ -78,20 +82,29 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   const internalText = internalParts.length > 0 ? internalParts.join('\n\n') : null;
 
   // Aggressively clean public text of all internal tags - REPLACE WITH SPACE TO PREVENT WORD JOINING
+  // Includes cross-matched openers/closers (e.g. <thinking>...</thought>) from non-conforming models
   let publicText = normalized
     .replace(/<thought>[\s\S]*?<\/thought>/g, ' ')
     .replace(/<think>[\s\S]*?<\/think>/g, ' ')
     .replace(/<thinking>[\s\S]*?<\/thinking>/g, ' ')
+    .replace(/<thinking>[\s\S]*?<\/thought>/g, ' ')
+    .replace(/<thought>[\s\S]*?<\/thinking>/g, ' ')
+    .replace(/<think>[\s\S]*?<\/thought>/g, ' ')
+    .replace(/<thought>[\s\S]*?<\/think>/g, ' ')
     .replace(/<action[\s\S]*?<\/action>/g, ' ')
     .replace(/<tool_calls_begin>[\s\S]*?<tool_calls_end>/g, ' ')
     .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/g, ' ')
     .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, ' ');
 
   // Remove any unclosed tags at the end (for streaming) - REPLACE WITH SPACE
+  // Only strip greedily if there is truly no thought-closer of any kind present
+  if (!hasThoughtCloser) {
+    publicText = publicText
+      .replace(/<thought>[\s\S]*/g, ' ')
+      .replace(/<think>[\s\S]*/g, ' ')
+      .replace(/<thinking>[\s\S]*/g, ' ');
+  }
   publicText = publicText
-    .replace(/<thought>[\s\S]*/g, ' ')
-    .replace(/<think>[\s\S]*/g, ' ')
-    .replace(/<thinking>[\s\S]*/g, ' ')
     .replace(/<action[\s\S]*/g, ' ')
     .replace(/<tool_calls_begin>[\s\S]*/g, ' ')
     .replace(/<tool_call_begin>[\s\S]*/g, ' ')
