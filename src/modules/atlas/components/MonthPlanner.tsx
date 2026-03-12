@@ -180,7 +180,7 @@ export function MonthPlanner({
               aria-selected={isSelected}
               aria-current={isToday ? 'date' : undefined}
               className={cn(
-                'relative flex flex-col items-center justify-center p-1 sm:p-2 rounded-lg text-center transition-all',
+                'relative aspect-square flex flex-col items-center justify-center rounded-lg text-center transition-all',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
                 isSelected
                   ? 'bg-emerald-500/20 text-emerald-300'

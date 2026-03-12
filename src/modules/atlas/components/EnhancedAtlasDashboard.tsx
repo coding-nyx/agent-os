@@ -58,6 +58,7 @@ import { TodaysPlanCard } from './TodaysPlanCard';
 import { FocusView } from './FocusView';
 import { ViewSwitcher } from './ViewSwitcher';
 import { MonthPlanner } from './MonthPlanner';
+import { DayTaskPanel } from './DayTaskPanel';
 import { QuickAddForm } from './QuickAddForm';
 import { QuickCaptureBar } from './QuickCaptureBar';
 import { JournalTab } from './journal/JournalTab';
@@ -365,6 +366,16 @@ export function EnhancedAtlasDashboard({
                 habits={profile?.habits ?? []}
                 onDaySelect={setSelectedWeekDate}
                 selectedDate={selectedWeekDate}
+              />
+            )}
+
+            {/* ── Day task panel — shown when a day is selected from week or month view ── */}
+            {(activeView === 'week' || activeView === 'month') && selectedWeekDate && (
+              <DayTaskPanel
+                date={selectedWeekDate}
+                tasks={profile?.tasks ?? []}
+                scheduledTasks={profile?.scheduledTasks ?? []}
+                onClose={() => setSelectedWeekDate(undefined)}
               />
             )}
 
