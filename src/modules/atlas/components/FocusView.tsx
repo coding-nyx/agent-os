@@ -120,7 +120,7 @@ export function FocusView({
 
   return (
     <div
-      className="relative h-full flex flex-col items-center justify-center p-6 md:p-12 bg-zinc-950 overflow-hidden"
+      className="relative min-h-full flex flex-col items-center justify-center p-6 pb-24 md:p-12 md:pb-12 bg-zinc-950 overflow-hidden"
       role="region"
       aria-label={`Focus mode: ${activeTask.title}`}
     >
@@ -142,7 +142,7 @@ export function FocusView({
             ? { duration: 0 }
             : { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
         }
-        className="relative z-10 flex flex-col items-center gap-8 max-w-md w-full"
+        className="relative z-10 flex flex-col items-center gap-5 sm:gap-8 max-w-md w-full"
       >
         {/* ── Energy gauge ── */}
         <div

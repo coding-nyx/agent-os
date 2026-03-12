@@ -281,7 +281,7 @@ export function EnhancedAtlasDashboard({
 
         {/* ── Focus mode: full-bleed wrapper — bypasses padded scroll container ── */}
         {activeTab === 'dashboard' && activeView === 'focus' && (
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto no-scrollbar">
             <FocusView
               activeTask={tasks.find(t => t.status === 'active' || t.status === 'queued') ?? null}
               energyLevel={energyBudget}

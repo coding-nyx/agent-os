@@ -159,7 +159,7 @@ export function WeekGrid({
     <section aria-label="Week planning grid" className="space-y-3">
       {/* Responsive layout: horizontal scroll on mobile, 7-col grid on md+ */}
       <div
-        className="grid grid-cols-7 gap-1 sm:gap-1.5"
+        className="flex overflow-x-auto no-scrollbar snap-x snap-mandatory gap-1.5 pb-0.5 sm:pb-0 sm:grid sm:grid-cols-7 sm:gap-1.5"
         role="grid"
         aria-label="Weekly schedule"
       >
@@ -182,9 +182,8 @@ export function WeekGrid({
               aria-label={`${day.dayLabel} ${day.dayOfMonth}. ${stats?.taskCount ?? 0} tasks, ${Math.round(loadPercent)}% energy load${day.isToday ? ', today' : ''}`}
               aria-selected={isSelected}
               className={cn(
-                // Full 7-col grid on all screen sizes
-                'min-w-0',
-                'relative flex flex-col items-center gap-2 p-1.5 sm:p-3 rounded-xl border transition-all',
+                'snap-center shrink-0 w-12 sm:w-auto sm:min-w-0',
+                'relative flex flex-col items-center gap-1 sm:gap-2 p-1.5 sm:p-3 rounded-xl border transition-all',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
                 'bg-white/[0.03] backdrop-blur-sm',
                 isSelected &&
