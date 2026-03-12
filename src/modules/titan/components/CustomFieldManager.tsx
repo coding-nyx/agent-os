@@ -327,6 +327,7 @@ export function CustomFieldManager({ currentValues, onSubmitForApproval, classNa
             {customFieldCategories.map((cat) => (
               <button
                 key={cat.id}
+                type="button"
                 onClick={() => setActiveCategory(cat.id)}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all',

@@ -16,13 +16,14 @@ import { QuickLogBar } from './components/QuickLogBar';
 import { LogConfirmCard } from './components/LogConfirmCard';
 import { parseQuickLogInput, annotatePRs } from './utils/quick-log-parser';
 import type { ParsedEntry } from './utils/quick-log-parser';
+import { calculateE1RM } from './utils/e1rm';
 import { SleepTracker } from './components/SleepTracker';
 import { TitanOnboarding } from './onboarding/TitanOnboarding';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
-import { TitanProfile, Routine, Exercise, WorkoutSession, PersonalRecord, SomaProfile, ExerciseLog } from '@/lib/types';
+import { TitanProfile, Routine, Exercise, WorkoutSession, PersonalRecord, SomaProfile, ExerciseLog, SleepEntry, CycleEntry } from '@/lib/types';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { buildTitanSessionPrompt } from './prompts/titan-session-prompt';
 import { loadTitanProfile, saveTitanProfile, subscribeTitanProfile, syncGuestTitanProfileToUser } from './services/titan-profile-service';
@@ -169,6 +170,8 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   // Guard ref: prevents a concurrent or double-invoke save if the profile
   // subscription fires before the first save resolves.
   const isAutoAdvancingRef = useRef(false);
+  // Guard ref: prevents duplicate sessions from a rapid double-tap on Commit.
+  const isCommittingQuickLogRef = useRef(false);
 
   useEffect(() => {
     // Prevent concurrent saves from multiple rapid subscription updates.
@@ -336,18 +339,36 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const handleQuickLogBarSubmit = useCallback((input: string) => {
     const result = parseQuickLogInput(input);
     if (result.isEmpty) return;
-    // Pass empty array for PRs to avoid type mismatch between titan/types and lib/types PersonalRecord
-    const annotated = annotatePRs(result.entries, []);
+    // Annotate PR badges inline using the name-keyed profile.personalRecords.
+    // (annotatePRs expects titan/types.PersonalRecord keyed by exerciseId, but
+    //  stored PRs use lib/types.PersonalRecord keyed by exerciseName, so we do
+    //  the comparison here to avoid a cross-type mismatch.)
+    const prs = profile?.personalRecords ?? {};
+    const annotated = result.entries.map(entry => {
+      if (!entry.weight || !entry.reps) return entry;
+      const key = entry.exerciseName.toLowerCase().trim();
+      const storedPR = prs[key];
+      const candidateE1RM = calculateE1RM(entry.weight, entry.reps);
+      const isPR = !storedPR || candidateE1RM > storedPR.e1RM;
+      return {
+        ...entry,
+        isPR,
+        prDelta: isPR && storedPR ? Math.round((candidateE1RM - storedPR.e1RM) * 10) / 10 : null,
+      };
+    });
     setPendingLogEntries(annotated);
-  }, []);
+  }, [profile?.personalRecords]);
 
   const handleQuickLogBarCommit = useCallback(async () => {
     if (!profile || !encryptionKey || !user || pendingLogEntries.length === 0) return;
+    // Guard against duplicate sessions from rapid double-tap on the Commit button.
+    if (isCommittingQuickLogRef.current) return;
+    isCommittingQuickLogRef.current = true;
     setQuickLogCommitError(null);
     try {
       const now = new Date().toISOString();
       const today = now.slice(0, 10);
-      const sessionId = `ql-fast-${Date.now()}`;
+      const sessionId = `ql-fast-${crypto.randomUUID()}`;
 
       const exercises: ExerciseLog[] = pendingLogEntries.map(entry => ({
         exerciseName: entry.exerciseName,
@@ -387,9 +408,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         const key = exLog.exerciseName.toLowerCase().trim();
         for (const s of exLog.sets) {
           if (!s.completed || !s.weight || !s.repsCompleted) continue;
-          const e1RM = s.repsCompleted === 1
-            ? s.weight
-            : Math.round(s.weight * (1 + s.repsCompleted / 30));
+          const e1RM = calculateE1RM(s.weight, s.repsCompleted);
           const existing = updatedPRs[key];
           if (!existing || e1RM > existing.e1RM) {
             updatedPRs[key] = {
@@ -417,6 +436,8 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     } catch (err) {
       console.error('[QuickLogBar] commit failed:', err);
       setQuickLogCommitError('Failed to save. Tap retry.');
+    } finally {
+      isCommittingQuickLogRef.current = false;
     }
   }, [profile, encryptionKey, user, pendingLogEntries]);
 
@@ -452,16 +473,46 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             <CycleManager
               cycles={profile?.cycles ?? []}
               onSubmitForApproval={ai.handleSendMessage}
+              directWriteMode={directWrite}
+              onDirectCreate={async (cycle: CycleEntry) => {
+                if (!profile || !encryptionKey || !user) return;
+                const updated: TitanProfile = {
+                  ...profile,
+                  cycles: [...(profile.cycles ?? []), cycle],
+                  updatedAt: new Date().toISOString(),
+                };
+                await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+              }}
+              onDirectDelete={async (cycleId: string) => {
+                if (!profile || !encryptionKey || !user) return;
+                const updated: TitanProfile = {
+                  ...profile,
+                  cycles: (profile.cycles ?? []).filter(c => c.id !== cycleId),
+                  updatedAt: new Date().toISOString(),
+                };
+                await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+              }}
             />
           </div>
         );
 
       case 'sleep':
         return (
-          <div className="px-4 md:px-8 pb-8 pt-4">
+          <div className="pb-8">
             <SleepTracker
               sleepLog={profile?.sleepLog ?? []}
-              onAnalyze={ai.handleSendMessage}
+              onAnalyze={directWrite ? undefined : (prompt: string) => { ai.handleSendMessage(prompt); }}
+              directWriteMode={directWrite}
+              onDirectSave={async (entry: SleepEntry) => {
+                if (!profile || !encryptionKey || !user) return;
+                const updatedLog = [entry, ...(profile.sleepLog ?? [])].slice(0, 365);
+                const updated: TitanProfile = {
+                  ...profile,
+                  sleepLog: updatedLog,
+                  updatedAt: new Date().toISOString(),
+                };
+                await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+              }}
             />
           </div>
         );
@@ -518,10 +569,25 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             {/* Quick session logger for calendar-selected routine */}
             {calendarSelectedRoutine && (
               <div className="px-8 pb-4 pt-0">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-white/40 uppercase tracking-wider font-bold">
+                    Session: {calendarSelectedRoutine.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCalendarSelectedRoutine(null)}
+                    className="text-[10px] text-white/30 hover:text-white/60 transition-colors"
+                  >
+                    ✕ Dismiss
+                  </button>
+                </div>
                 <WorkoutSessionLogger
                   routines={[calendarSelectedRoutine]}
                   recentSessions={profile?.workoutSessions ?? []}
-                  onSubmitSession={ai.handleSendMessage}
+                  onSubmitSession={(prompt) => {
+                    ai.handleSendMessage(prompt);
+                    setCalendarSelectedRoutine(null);
+                  }}
                   directWriteMode={directWrite}
                   onDirectCommit={async (session) => {
                     if (!profile || !encryptionKey || !user) return;
@@ -531,7 +597,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                       const key = exLog.exerciseName.toLowerCase().trim();
                       for (const s of exLog.sets) {
                         if (!s.completed || !s.weight || !s.repsCompleted) continue;
-                        const e1RM = s.repsCompleted === 1 ? s.weight : Math.round(s.weight * (1 + s.repsCompleted / 30));
+                        const e1RM = calculateE1RM(s.weight, s.repsCompleted);
                         const existing = updatedPRs[key];
                         if (!existing || e1RM > existing.e1RM) {
                           updatedPRs[key] = { exerciseName: exLog.exerciseName, maxWeight: s.weight, repsAtMax: s.repsCompleted, e1RM, achievedDate: session.date, sessionId: session.id };
@@ -540,6 +606,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                     }
                     const updated: TitanProfile = { ...profile, workoutSessions: updatedSessions, personalRecords: updatedPRs, updatedAt: new Date().toISOString() };
                     await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+                    setCalendarSelectedRoutine(null);
                     if (session.rpe != null && session.rpe >= 9) {
                       setAdvisoryBanner(`High RPE (${session.rpe}) detected — consider scheduling a deload day tomorrow.`);
                     }
@@ -572,10 +639,11 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               onGeneratePlan={handleGeneratePlan}
               onImportRoutine={handleImportRoutine}
               onSubmitForApproval={handleSubmitRoutineForApproval}
+              onStartSession={(routine) => setCalendarSelectedRoutine(routine)}
             />
 
-            {/* Session logger — log actual vs planned performance */}
-            {profile?.routines && profile.routines.length > 0 && (
+            {/* Session logger — shows all routines when no specific routine is selected via Start Session */}
+            {!calendarSelectedRoutine && profile?.routines && profile.routines.length > 0 && (
               <div className="px-8 pb-4 pt-4">
                 <WorkoutSessionLogger
                   routines={profile.routines}
@@ -590,7 +658,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                       const key = exLog.exerciseName.toLowerCase().trim();
                       for (const s of exLog.sets) {
                         if (!s.completed || !s.weight || !s.repsCompleted) continue;
-                        const e1RM = s.repsCompleted === 1 ? s.weight : Math.round(s.weight * (1 + s.repsCompleted / 30));
+                        const e1RM = calculateE1RM(s.weight, s.repsCompleted);
                         const existing = updatedPRs[key];
                         if (!existing || e1RM > existing.e1RM) {
                           updatedPRs[key] = { exerciseName: exLog.exerciseName, maxWeight: s.weight, repsAtMax: s.repsCompleted, e1RM, achievedDate: session.date, sessionId: session.id };
@@ -733,10 +801,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               const key = exLog.exerciseName.toLowerCase().trim();
               for (const s of exLog.sets) {
                 if (!s.completed || !s.weight || !s.repsCompleted) continue;
-                const e1RM =
-                  s.repsCompleted === 1
-                    ? s.weight
-                    : Math.round(s.weight * (1 + s.repsCompleted / 30));
+                const e1RM = calculateE1RM(s.weight, s.repsCompleted);
                 const existing = updatedPRs[key];
                 if (!existing || e1RM > existing.e1RM) {
                   updatedPRs[key] = {

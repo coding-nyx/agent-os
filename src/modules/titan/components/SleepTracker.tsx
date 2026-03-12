@@ -14,6 +14,10 @@ import { getTodayIso } from '../utils';
 interface SleepTrackerProps {
   sleepLog: SleepEntry[];
   onAnalyze?: (prompt: string) => void;
+  /** When true, bypasses AI and saves the entry directly. */
+  directWriteMode?: boolean;
+  /** Direct-write save handler — called instead of onAnalyze when directWriteMode is true. */
+  onDirectSave?: (entry: SleepEntry) => Promise<void>;
 }
 
 const SLEEP_TAGS = ['stress', 'alcohol', 'late_meal', 'caffeine', 'exercise_pm', 'screen_time', 'travel', 'illness'] as const;
@@ -46,7 +50,7 @@ function trendIcon(current: number, previous: number) {
 }
 
 
-export function SleepTracker({ sleepLog, onAnalyze }: SleepTrackerProps) {
+export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onDirectSave }: SleepTrackerProps) {
   const [showModal, setShowModal] = useState(false);
 
   // ── form state ──
@@ -77,32 +81,52 @@ export function SleepTracker({ sleepLog, onAnalyze }: SleepTrackerProps) {
     );
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (!onAnalyze) return;
+  const handleSave = useCallback(async () => {
+    if (!directWriteMode && !onAnalyze) return;
     if (typeof deepSleepPct === 'number' && typeof remSleepPct === 'number' && deepSleepPct + remSleepPct > 100) {
       setFormError('Deep sleep % + REM % cannot exceed 100%.');
       return;
     }
     setFormError(null);
     const dur = durationHours ?? 7;
-    const tagStr = selectedTags.length ? ` Tags: ${selectedTags.join(', ')}.` : '';
-    const extrasStr = [
-      deepSleepPct !== '' ? `deep sleep ${deepSleepPct}%` : null,
-      remSleepPct !== '' ? `REM ${remSleepPct}%` : null,
-      awakenings !== '' ? `${awakenings} awakenings` : null,
-    ].filter(Boolean).join(', ');
-    const notesStr = notes.trim() ? ` Notes: "${notes.trim()}".` : '';
 
-    const prompt = [
-      `Log my sleep for ${date}:`,
-      `Bedtime ${bedtime}, wake ${wakeTime} (${dur.toFixed(1)}h). Quality: ${quality}/10.`,
-      extrasStr,
-      tagStr,
-      notesStr,
-      'Save this entry and give me a brief sleep quality analysis with any recommendations.',
-    ].filter(Boolean).join(' ');
+    if (directWriteMode && onDirectSave) {
+      const entry: SleepEntry = {
+        id: crypto.randomUUID(),
+        date,
+        bedtime,
+        wakeTime,
+        durationHours: dur,
+        quality,
+        deepSleepPct: deepSleepPct !== '' ? deepSleepPct : undefined,
+        remSleepPct: remSleepPct !== '' ? remSleepPct : undefined,
+        awakenings: awakenings !== '' ? awakenings : undefined,
+        notes: notes.trim() || undefined,
+        tags: selectedTags.length ? [...selectedTags] : undefined,
+        recordedAt: new Date().toISOString(),
+      };
+      await onDirectSave(entry);
+    } else if (onAnalyze) {
+      const tagStr = selectedTags.length ? ` Tags: ${selectedTags.join(', ')}.` : '';
+      const extrasStr = [
+        deepSleepPct !== '' ? `deep sleep ${deepSleepPct}%` : null,
+        remSleepPct !== '' ? `REM ${remSleepPct}%` : null,
+        awakenings !== '' ? `${awakenings} awakenings` : null,
+      ].filter(Boolean).join(', ');
+      const notesStr = notes.trim() ? ` Notes: "${notes.trim()}".` : '';
 
-    onAnalyze(prompt);
+      const prompt = [
+        `Log my sleep for ${date}:`,
+        `Bedtime ${bedtime}, wake ${wakeTime} (${dur.toFixed(1)}h). Quality: ${quality}/10.`,
+        extrasStr,
+        tagStr,
+        notesStr,
+        'Save this entry and give me a brief sleep quality analysis with any recommendations.',
+      ].filter(Boolean).join(' ');
+
+      onAnalyze(prompt);
+    }
+
     setShowModal(false);
     // Reset
     setDate(getTodayIso());
@@ -111,7 +135,7 @@ export function SleepTracker({ sleepLog, onAnalyze }: SleepTrackerProps) {
     setDeepSleepPct('');
     setRemSleepPct('');
     setAwakenings('');
-  }, [date, bedtime, wakeTime, durationHours, quality, deepSleepPct, remSleepPct, awakenings, notes, selectedTags, onAnalyze]);
+  }, [date, bedtime, wakeTime, durationHours, quality, deepSleepPct, remSleepPct, awakenings, notes, selectedTags, onAnalyze, directWriteMode, onDirectSave]);
 
   // ── stats ──
   const recent = useMemo(() => (sleepLog ?? []).slice(0, 14), [sleepLog]);
@@ -431,9 +455,9 @@ export function SleepTracker({ sleepLog, onAnalyze }: SleepTrackerProps) {
             <NeuralButton variant="ghost" themeColor="cyan" onClick={() => setShowModal(false)}>
               Cancel
             </NeuralButton>
-            <NeuralButton themeColor="cyan" onClick={handleSave} disabled={!onAnalyze}>
+            <NeuralButton themeColor="cyan" onClick={handleSave} disabled={!directWriteMode && !onAnalyze}>
               <Moon className="w-4 h-4 mr-2" />
-              Save & Analyze
+              {directWriteMode ? 'Save Entry' : 'Save & Analyze'}
             </NeuralButton>
           </div>
         </div>

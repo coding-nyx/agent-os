@@ -1,11 +1,13 @@
 /**
  * CycleManager - View and manage active/completed cycles
- * All mutations go through Titan AI via onSubmitForApproval (AI-gated write path)
+ * Supports two write paths:
+ *   - AI-gated (Coach mode): mutations go through Titan AI via onSubmitForApproval
+ *   - Direct-write (Logbook mode): create/delete bypass AI via onDirectCreate / onDirectDelete
  */
 
 import React, { useState, useCallback } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { RefreshCw, Plus, CheckCircle, PauseCircle, ChevronRight, MessageSquare, Dumbbell, Zap, Settings } from 'lucide-react';
+import { RefreshCw, Plus, CheckCircle, PauseCircle, ChevronRight, MessageSquare, Dumbbell, Zap, Settings, Trash2 } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -17,6 +19,12 @@ interface CycleManagerProps {
   cycles: CycleEntry[];
   /** Routes the user's cycle request to Titan AI for validation + commit */
   onSubmitForApproval: (prompt: string) => void;
+  /** When true, New Cycle and delete use direct writes instead of AI. */
+  directWriteMode?: boolean;
+  /** Direct-write: persist a newly created cycle without AI. */
+  onDirectCreate?: (cycle: CycleEntry) => void;
+  /** Direct-write: remove a cycle by id without AI. */
+  onDirectDelete?: (cycleId: string) => void;
   className?: string;
 }
 
@@ -45,9 +53,13 @@ const STATUS_COLOR: Record<CycleEntry['status'], string> = {
 function CycleCard({
   cycle,
   onSelect,
+  directWriteMode,
+  onDirectDelete,
 }: {
   cycle: CycleEntry;
   onSelect: (c: CycleEntry) => void;
+  directWriteMode?: boolean;
+  onDirectDelete?: (id: string) => void;
 }) {
   const typeMeta = CYCLE_TYPE_META[cycle.type] ?? CYCLE_TYPE_META.custom;
   const TypeIcon = typeMeta.icon;
@@ -58,6 +70,7 @@ function CycleCard({
     : 0;
 
   return (
+  <div className="relative">
     <button
       type="button"
       onClick={() => onSelect(cycle)}
@@ -96,6 +109,17 @@ function CycleCard({
         <ChevronRight className="w-3.5 h-3.5 text-white/20 group-hover:text-orange-400/60 transition-colors shrink-0 mt-2" />
       </div>
     </button>
+    {directWriteMode && onDirectDelete && (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onDirectDelete(cycle.id); }}
+        className="absolute top-2 right-2 p-1 rounded-md text-white/20 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+        aria-label={`Delete cycle ${cycle.name}`}
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    )}
+  </div>
   );
 }
 
@@ -229,20 +253,52 @@ function CycleDetailModal({
   );
 }
 
-export function CycleManager({ cycles, onSubmitForApproval, className }: CycleManagerProps) {
+export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onDirectCreate, onDirectDelete, className }: CycleManagerProps) {
   const [selectedCycle, setSelectedCycle] = useState<CycleEntry | null>(null);
+  const [showDirectModal, setShowDirectModal] = useState(false);
+  const [directName, setDirectName] = useState('');
+  const [directType, setDirectType] = useState<'workout' | 'recovery' | 'custom'>('workout');
+  const [directStartDate, setDirectStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [directDescription, setDirectDescription] = useState('');
 
   const active = cycles.filter(c => c.status === 'active');
   const completed = cycles.filter(c => c.status !== 'active');
 
   const handleNewCycle = useCallback(() => {
+    if (directWriteMode) {
+      setDirectName('');
+      setDirectType('workout');
+      setDirectStartDate(new Date().toISOString().slice(0, 10));
+      setDirectDescription('');
+      setShowDirectModal(true);
+      return;
+    }
     const prompt = [
       "I want to set up a new training cycle. Please help me create one.",
       "Ask me: What type of cycle (workout periodization, recovery block, or custom)?",
       "Then build the phases with me and use the create_cycle action to commit it.",
     ].join('\n');
     onSubmitForApproval(prompt);
-  }, [onSubmitForApproval]);
+  }, [directWriteMode, onSubmitForApproval]);
+
+  const handleDirectCreate = useCallback(() => {
+    if (!directName.trim() || !onDirectCreate) return;
+    const newCycle: CycleEntry = {
+      id: `cycle-${Date.now()}`,
+      name: directName.trim(),
+      type: directType,
+      description: directDescription.trim() || undefined,
+      startDate: directStartDate,
+      phases: [],
+      currentPhaseIndex: 0,
+      currentPhaseStartDate: directStartDate,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    onDirectCreate(newCycle);
+    setShowDirectModal(false);
+  }, [directName, directType, directStartDate, directDescription, onDirectCreate]);
 
   return (
     <div className={className}>
@@ -274,7 +330,7 @@ export function CycleManager({ cycles, onSubmitForApproval, className }: CycleMa
               <div className="space-y-2">
                 <div className="text-[9px] font-black uppercase tracking-wider text-white/40">Active</div>
                 {active.map(c => (
-                  <CycleCard key={c.id} cycle={c} onSelect={setSelectedCycle} />
+                  <CycleCard key={c.id} cycle={c} onSelect={setSelectedCycle} directWriteMode={directWriteMode} onDirectDelete={onDirectDelete} />
                 ))}
               </div>
             )}
@@ -283,7 +339,7 @@ export function CycleManager({ cycles, onSubmitForApproval, className }: CycleMa
               <div className="space-y-2">
                 <div className="text-[9px] font-black uppercase tracking-wider text-white/40">Completed / Paused</div>
                 {completed.slice(0, 3).map(c => (
-                  <CycleCard key={c.id} cycle={c} onSelect={setSelectedCycle} />
+                  <CycleCard key={c.id} cycle={c} onSelect={setSelectedCycle} directWriteMode={directWriteMode} onDirectDelete={onDirectDelete} />
                 ))}
               </div>
             )}
@@ -296,6 +352,94 @@ export function CycleManager({ cycles, onSubmitForApproval, className }: CycleMa
         onClose={() => setSelectedCycle(null)}
         onSubmitForApproval={onSubmitForApproval}
       />
+
+      {/* Direct-write (Logbook mode) new cycle modal */}
+      <NeuralModal
+        isOpen={showDirectModal}
+        onClose={() => setShowDirectModal(false)}
+        title="New Training Cycle"
+        subtitle="Logbook mode — saved instantly"
+        icon={RefreshCw}
+        themeColor="orange"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-wider text-white/50 mb-1.5">
+              Cycle Name *
+            </label>
+            <input
+              type="text"
+              value={directName}
+              onChange={e => setDirectName(e.target.value)}
+              placeholder="e.g. Hypertrophy Block, Deload Week"
+              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-wider text-white/50 mb-1.5">
+              Type
+            </label>
+            <div className="flex gap-2">
+              {(['workout', 'recovery', 'custom'] as const).map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setDirectType(t)}
+                  className={cn(
+                    'flex-1 py-2 rounded-xl text-xs font-bold transition-all border',
+                    directType === t
+                      ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
+                      : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20'
+                  )}
+                >
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-wider text-white/50 mb-1.5">
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={directStartDate}
+              onChange={e => setDirectStartDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-orange-500/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-wider text-white/50 mb-1.5">
+              Description (optional)
+            </label>
+            <textarea
+              value={directDescription}
+              onChange={e => setDirectDescription(e.target.value)}
+              rows={2}
+              placeholder="Goals, notes, or context for this cycle"
+              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50 resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
+            <NeuralButton variant="ghost" themeColor="orange" onClick={() => setShowDirectModal(false)}>
+              Cancel
+            </NeuralButton>
+            <NeuralButton
+              themeColor="orange"
+              onClick={handleDirectCreate}
+              disabled={!directName.trim()}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Cycle
+            </NeuralButton>
+          </div>
+        </div>
+      </NeuralModal>
     </div>
   );
 }
