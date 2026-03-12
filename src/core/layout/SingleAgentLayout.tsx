@@ -246,7 +246,7 @@ export function SingleAgentLayout({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed inset-0 z-[var(--z-modal)] bg-[#020205] flex flex-col"
+              className="fixed inset-0 z-[var(--z-modal)] bg-[#020205] flex flex-col h-[100dvh]"
             >
               <div className={cn("flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b", currentTheme.sidebarBorder)}>
                 <div className="flex items-center gap-3">

@@ -162,7 +162,7 @@ export function HubBottomDashboard({
 
         <div className="hidden md:block w-px h-12 bg-white/5" />
 
-        <div className="flex items-center gap-4 sm:gap-8 px-4 sm:px-8 py-3">
+        <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-8 px-4 sm:px-8 py-3">
           <ReactiveGauge label="Wellness" value={wellnessGauge} colorClass="text-indigo-400" icon={Sparkles} />
           <div className="w-px h-8 bg-white/5 shrink-0 hidden sm:block" />
           <ReactiveGauge label="Stability" value={stabilityGauge} colorClass="text-orange-400" icon={Activity} />

@@ -436,13 +436,13 @@ export function ChatInterface({
                       return (
                         <div className="flex flex-col max-w-[75%] w-fit items-end">
                             <div className={cn(
-                              "border backdrop-blur-3xl transition-all",
+                              "border backdrop-blur-3xl transition-all min-w-0 break-words break-all sm:break-normal",
                               isAgnes
                                 ? "p-4 sm:p-5 bg-gradient-to-br from-indigo-500/[0.12] to-violet-500/[0.08] border-indigo-400/20 rounded-2xl rounded-tr-sm shadow-lg shadow-indigo-500/10"
                                 : cn("p-3.5 sm:p-5", theme.userBubble, theme.glow)
                             )}>
                                 <div className={cn(
-                                  "leading-relaxed break-words overflow-hidden",
+                                  "leading-relaxed break-words overflow-hidden min-w-0 break-all sm:break-normal",
                                   isAgnes
                                     ? "agnes-user-text text-white/95 whitespace-pre-wrap"
                                     : "text-sm text-white/90 font-medium whitespace-pre-wrap"
