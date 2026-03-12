@@ -319,7 +319,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
           </div>
         </div>
 
-        <div className="flex-1 h-1/2 md:h-full overflow-hidden">
+        <div className="flex-1 h-1/2 md:h-full flex flex-col min-h-0">
           <NexusChat
             moduleId="forge"
             ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}

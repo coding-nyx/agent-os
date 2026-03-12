@@ -1,11 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, Info, Activity, Code2, Bug } from 'lucide-react';
+import { LogOut, Info, Activity, Code2, Bug, Cpu } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { useDebugMode, type DebugFlags } from '@/lib/hooks/use-debug-mode';
+import { ModelSelector } from './ModelSelector';
 
 const APP_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? '1.0.0-beta';
 
@@ -274,6 +275,32 @@ export function SystemPanel() {
           </div>
         </div>
       </GlassCard>
+
+      {/* Model Selection — visible only when debug mode is ON */}
+      <AnimatePresence initial={false}>
+        {debugMode && (
+          <motion.div
+            key="model-selector"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <GlassCard className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-7 h-7 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <Cpu className="w-3.5 h-3.5 text-amber-400" />
+                </div>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+                  Model Selection
+                </h3>
+              </div>
+              <ModelSelector />
+            </GlassCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Developer — collapsible, for future dev tools */}
       <GlassCard className="p-6">

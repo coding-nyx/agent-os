@@ -1,85 +1,268 @@
-import React, { useEffect, useState } from 'react';
-import { ModelRegistry } from '@/llm-engine/engine/ModelRegistry';
-import { ModelMetadata } from '@/llm-engine/engine/types';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Cpu, ChevronDown, Search, RefreshCw, Check, Loader2 } from 'lucide-react';
 
-interface ModelSelectorProps {
-  currentModel: string | null;
-  onSelect: (modelId: string) => void;
-  onReset: () => void;
+// ---------------------------------------------------------------------------
+// Types & constants
+// ---------------------------------------------------------------------------
+
+type ProviderId = 'openrouter' | 'google' | 'grok';
+
+const PROVIDERS: Array<{ id: ProviderId; label: string }> = [
+  { id: 'openrouter', label: 'OpenRouter' },
+  { id: 'google', label: 'Google' },
+  { id: 'grok', label: 'Grok' },
+];
+
+const PROVIDER_KEY = 'nexus_debug_provider';
+const MODEL_KEY = 'preferred_model';
+
+const DEFAULT_PROVIDER_MODELS: Record<string, string> = {
+  google: 'google/gemini-2.0-flash-exp:free',
+  grok: 'x-ai/grok-2',
+};
+
+interface ORModel {
+  id: string;
+  name: string;
+  context_length: number;
+  pricing: { prompt: string; completion: string };
 }
 
-export function ModelSelector({ currentModel, onSelect, onReset }: ModelSelectorProps) {
-  const [models, setModels] = useState<ModelMetadata[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-  useEffect(() => {
+function readProvider(): ProviderId {
+  try {
+    const v = localStorage.getItem(PROVIDER_KEY);
+    if (v === 'openrouter' || v === 'google' || v === 'grok') return v;
+  } catch { /* noop */ }
+  return 'openrouter';
+}
+
+function readModel(): string {
+  try { return localStorage.getItem(MODEL_KEY) || ''; }
+  catch { return ''; }
+}
+
+function formatCtx(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
+  return String(n);
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function ModelSelector() {
+  const [provider, setProviderState] = useState<ProviderId>(readProvider);
+  const [selectedModel, setSelectedModelState] = useState<string>(readModel);
+  const [models, setModels] = useState<ORModel[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+
+  // ── Fetch OpenRouter model catalogue ──
+  const fetchModels = useCallback(async () => {
     const apiKey =
       localStorage.getItem('VITE_OPENROUTER_API_KEY') ||
       (import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined);
-
-    if (!apiKey) {
-      setError('No API key — set VITE_OPENROUTER_API_KEY to browse models');
-      return;
-    }
-
-    setIsLoading(true);
-    ModelRegistry.fetchModels(apiKey)
-      .then((fetched) => {
-        setModels(fetched);
-        setIsLoading(false);
-      })
-      .catch(() => {
-        setError('Failed to load models');
-        setIsLoading(false);
+    if (!apiKey) return;
+    setLoading(true);
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer': window.location.origin,
+        },
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const data: ORModel[] = (json.data ?? []).sort((a: ORModel, b: ORModel) =>
+        a.name.localeCompare(b.name),
+      );
+      setModels(data);
+    } catch (e) {
+      console.warn('ModelSelector: fetch failed', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (value) onSelect(value);
-  };
+  useEffect(() => {
+    if (provider === 'openrouter') void fetchModels();
+  }, [provider, fetchModels]);
 
-  if (isLoading) {
-    return (
-      <div className="h-9 w-full rounded-xl bg-white/5 border border-white/10 animate-pulse" />
-    );
-  }
+  // ── Provider change ──
+  const setProvider = useCallback((p: ProviderId) => {
+    setProviderState(p);
+    try { localStorage.setItem(PROVIDER_KEY, p); } catch { /* noop */ }
+    if (p !== 'openrouter') {
+      const m = DEFAULT_PROVIDER_MODELS[p] ?? '';
+      setSelectedModelState(m);
+      try { localStorage.setItem(MODEL_KEY, m); } catch { /* noop */ }
+    }
+  }, []);
+
+  // ── Model change ──
+  const selectModel = useCallback((id: string) => {
+    setSelectedModelState(id);
+    try { localStorage.setItem(MODEL_KEY, id); } catch { /* noop */ }
+    setIsOpen(false);
+    setSearch('');
+  }, []);
+
+  // ── Filtered list (cap at 80 for perf) ──
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const src = q
+      ? models.filter(m => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q))
+      : models;
+    return src.slice(0, 80);
+  }, [models, search]);
+
+  const displayName = useMemo(() => {
+    if (!selectedModel) return 'None selected';
+    return models.find(m => m.id === selectedModel)?.name ?? selectedModel;
+  }, [selectedModel, models]);
 
   return (
-    <div className="space-y-2">
-      {error && (
-        <p className="text-[10px] font-medium text-amber-400/80 uppercase tracking-wider">
-          ⚠ {error}
+    <div className="space-y-4">
+      {/* ── Provider selector ── */}
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 mb-2">
+          Provider
         </p>
+        <div className="flex gap-2">
+          {PROVIDERS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setProvider(p.id)}
+              className={`flex-1 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 border ${
+                provider === p.id
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                  : 'border-white/10 bg-black/20 text-white/50 hover:border-white/20 hover:text-white/70'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Model selector (OpenRouter only) ── */}
+      {provider === 'openrouter' && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+              Model
+            </p>
+            <button
+              onClick={() => void fetchModels()}
+              disabled={loading}
+              className="text-[9px] text-amber-400/60 hover:text-amber-400 transition-colors flex items-center gap-1"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          {/* Trigger */}
+          <button
+            onClick={() => setIsOpen(o => !o)}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-white/10 bg-black/30 hover:border-amber-500/30 transition-colors text-left"
+          >
+            <span className="text-xs text-white/70 truncate">{displayName}</span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-white/30 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {/* Dropdown */}
+          <AnimatePresence>
+            {isOpen && (
+              <motion.div
+                key="model-list"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-2 rounded-xl border border-white/10 bg-black/40 overflow-hidden">
+                  {/* Search */}
+                  <div className="p-2 border-b border-white/5">
+                    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-black/30 border border-white/5">
+                      <Search className="w-3 h-3 text-white/30 shrink-0" />
+                      <input
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search models…"
+                        className="w-full text-xs bg-transparent text-white/80 placeholder:text-white/20 outline-none"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* List */}
+                  <div className="max-h-64 overflow-y-auto">
+                    {loading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-4 h-4 text-amber-400/60 animate-spin" />
+                      </div>
+                    ) : filtered.length === 0 ? (
+                      <div className="py-6 text-center text-[10px] text-white/30">
+                        No models found
+                      </div>
+                    ) : (
+                      filtered.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => selectModel(m.id)}
+                          className={`w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors ${
+                            selectedModel === m.id ? 'bg-amber-500/10' : ''
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-white/75 truncate">{m.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[9px] text-white/25 font-mono truncate">
+                                {m.id}
+                              </span>
+                              <span className="text-[9px] text-white/20 shrink-0">
+                                {formatCtx(m.context_length)} ctx
+                              </span>
+                            </div>
+                          </div>
+                          {selectedModel === m.id && (
+                            <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
 
-      <select
-        value={currentModel ?? ''}
-        onChange={handleChange}
-        className="w-full rounded-xl bg-black/30 border border-white/10 text-xs text-white/80 font-medium px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/40 transition-colors hover:border-white/20 disabled:opacity-40"
-        disabled={models.length === 0 && !error}
-        aria-label="Select language model"
-      >
-        <option value="" className="bg-neutral-900 text-white/60">
-          Default (deepseek/deepseek-chat)
-        </option>
-        {models.map((m) => (
-          <option key={m.id} value={m.id} className="bg-neutral-900 text-white/90">
-            {m.name}
-          </option>
-        ))}
-      </select>
+      {/* Current selection summary */}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/20 border border-white/5">
+        <Cpu className="w-3 h-3 text-amber-400/50 shrink-0" />
+        <p className="text-[9px] text-white/40 truncate">
+          Active:{' '}
+          <span className="text-amber-400/70 font-mono">{selectedModel || 'default'}</span>
+        </p>
+      </div>
 
-      {currentModel && (
-        <button
-          type="button"
-          onClick={onReset}
-          className="text-[10px] font-bold uppercase tracking-wider text-rose-400/70 hover:text-rose-400 transition-colors px-1"
-        >
-          Reset to default
-        </button>
-      )}
+      <p className="text-[9px] text-amber-400/40 px-1">
+        ⚡ Reload page to apply model changes
+      </p>
     </div>
   );
 }
