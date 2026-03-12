@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useAtlasPredictiveState } from '@/lib/hooks/use-atlas-predictive-state';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import { SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
-import { useAtlasPredictiveState } from '@/lib/hooks/use-atlas-predictive-state';
-import type { AtlasStateDisplay } from './services/atlas-predictive-service';
 import { ATLAS_PERSONA } from './personas';
 import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
 import { QuickAddForm } from './components/QuickAddForm';
@@ -54,14 +53,15 @@ interface AtlasContentProps {
   encryptionKey: CryptoKey | null;
   user: ReturnType<typeof useAuth>['user'];
   isGuest: boolean;
-  globalSoul: ReturnType<typeof useGlobalSoul>['globalSoul'];
-  updateCrossFunctionalState: ReturnType<typeof useGlobalSoul>['updateCrossFunctionalState'];
   isLocked: boolean;
-  predictiveDisplay: AtlasStateDisplay;
 }
 
-function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updateCrossFunctionalState, isLocked, predictiveDisplay }: AtlasContentProps) {
+function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: AtlasContentProps) {
+  const { globalSoul, updateCrossFunctionalState } = useGlobalSoul();
   const agentAlias = globalSoul?.displayNames?.atlas || 'Atlas';
+  const { display: predictiveDisplay } = useAtlasPredictiveState(
+    globalSoul?.crossFunctionalState ?? null
+  );
   const [activeTab, setActiveTab] = useState<any>('dashboard');
   const [activeView, setActiveView] = useState<any>('today');
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -557,21 +557,11 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
 }
 
 export default function AtlasPage() {
-  const { globalSoul, updateCrossFunctionalState } = useGlobalSoul();
   const { user, isGuest, profile: coreProfile, refreshProfile } = useAuth();
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('atlas');
 
   const baseContext = useMemo(() => IntakeBaseContextService.buildForAtlas({ coreProfile }), [coreProfile]);
-
-  // ── Predictive evaluation on every Atlas page load ────────────────────────
-  // The hook owns the AtlasPredictiveService lifecycle: instantiates once, calls
-  // evaluate() whenever the NSV snapshot changes, and tears down on unmount.
-  // Spine ATLAS_STATE_CHANGED / ATLAS_PREDICTIVE_ALERT events are emitted
-  // internally by the service on each state transition.
-  const { display: predictiveDisplay } = useAtlasPredictiveState(
-    globalSoul?.crossFunctionalState ?? null
-  );
 
   return (
     <UnifiedModulePage<AtlasProfile>
@@ -606,10 +596,7 @@ export default function AtlasPage() {
           encryptionKey={encryptionKey}
           user={user}
           isGuest={!!isGuest}
-          globalSoul={globalSoul}
-          updateCrossFunctionalState={updateCrossFunctionalState}
           isLocked={isLocked}
-          predictiveDisplay={predictiveDisplay}
         />
       )}
     />

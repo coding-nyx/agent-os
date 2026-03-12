@@ -359,9 +359,6 @@ export function registerAtlasActions() {
       }
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
-      // Deferred so React 18 batches this with the Firestore subscription echo
-      // and produces a single render cycle instead of two.
-      setTimeout(() => updateGlobalSoul({ cognitive: { activeLoad: calculateActiveLoad(profile.tasks) } }), 0);
     },
 
     update_task: async ({ userId, encryptionKey, payload, updateGlobalSoul }) => {
@@ -410,7 +407,6 @@ export function registerAtlasActions() {
       task.updatedAt = now;
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
-      setTimeout(() => updateGlobalSoul({ cognitive: { activeLoad: calculateActiveLoad(profile.tasks) } }), 0);
     },
 
     complete_task: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {
