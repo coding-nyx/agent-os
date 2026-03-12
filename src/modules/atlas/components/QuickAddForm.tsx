@@ -483,7 +483,7 @@ export function QuickAddForm({
                     <legend className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
                       Frequency
                     </legend>
-                    <div className="grid grid-cols-5 gap-1">
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
                       {(['daily', 'weekdays', 'weekends', 'weekly', 'custom'] as const).map((f) => (
                         <button
                           key={f}

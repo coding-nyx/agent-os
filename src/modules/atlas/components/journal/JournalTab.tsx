@@ -228,7 +228,8 @@ export function JournalTab({
         </div>
 
         {/* Sub-view pill nav */}
-        <div className="flex gap-1.5 bg-black/20 rounded-xl p-1 w-fit">
+        <div className="overflow-x-auto no-scrollbar -mx-1">
+        <div className="flex gap-1.5 bg-black/20 rounded-xl p-1 w-fit min-w-full sm:min-w-0 mx-1">
           {VIEWS.map(({ id, label }) => (
             <button
               key={id}
@@ -247,6 +248,7 @@ export function JournalTab({
               {label}
             </button>
           ))}
+        </div>
         </div>
       </div>
 

@@ -48,7 +48,7 @@ class SpineEventBus {
   }
 
   registerCascadeRules(rules: CascadeRule[]): void {
-    this.cascadeRules = rules;
+    this.cascadeRules = [...this.cascadeRules, ...rules];
   }
 
   publish(eventInput: SpineEventPayload): SpineEvent {

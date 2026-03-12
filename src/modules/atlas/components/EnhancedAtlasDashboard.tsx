@@ -241,7 +241,7 @@ export function EnhancedAtlasDashboard({
       </div>
 
       {/* ── Tab Navigation ── */}
-      <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5">
+      <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5 overflow-x-auto no-scrollbar">
         <NeuralTabGroup
           tabs={tabs}
           activeTab={activeTab}

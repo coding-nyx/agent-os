@@ -585,7 +585,6 @@ async function handleSetFieldValue(context: ActionContext): Promise<void> {
 // ============================================================================
 
 let fieldActionsRegistered = false;
-let transactionActionsRegistered = false;
 
 /**
  * Register Ledger field CRUD + financial metric actions with ActionHub.
@@ -606,45 +605,5 @@ export function registerLedgerFieldActions(): void {
 
 
 }
-
-// ---------------------------------------------------------------------------
-// Stub handlers for transaction / budget / goal operations.
-// Full implementations live in transaction-actions.ts; these stubs satisfy
-// the ActionHub registration below without creating a circular import.
-// ---------------------------------------------------------------------------
- 
-const handleCreateTransaction = async (_ctx: unknown): Promise<void> => {};
-const handleUpdateTransaction = async (_ctx: unknown): Promise<void> => {};
-const handleDeleteTransaction = async (_ctx: unknown): Promise<void> => {};
-const handleCreateBudget = async (_ctx: unknown): Promise<void> => {};
-const handleModifyBudget = async (_ctx: unknown): Promise<void> => {};
-const handleCreateGoal = async (_ctx: unknown): Promise<void> => {};
-const handleUpdateGoalProgress = async (_ctx: unknown): Promise<void> => {};
-const handleCompleteGoal = async (_ctx: unknown): Promise<void> => {};
-const handleFinancialHealthCheck = async (_ctx: unknown): Promise<void> => {};
-const handleDetectRisk = async (_ctx: unknown): Promise<void> => {};
- 
-
-/**
- * Register Ledger transaction + budget + goal actions with ActionHub.
- * Safe to call multiple times — idempotent.
- */
-export function registerLedgerTransactionActions(): void {
-  if (transactionActionsRegistered) return;
-  transactionActionsRegistered = true;
-
-  ActionHub.registerMultiple('ledger', {
-    create_transaction: handleCreateTransaction,
-    update_transaction: handleUpdateTransaction,
-    delete_transaction: handleDeleteTransaction,
-    create_budget: handleCreateBudget,
-    modify_budget: handleModifyBudget,
-    create_goal: handleCreateGoal,
-    update_goal_progress: handleUpdateGoalProgress,
-    complete_goal: handleCompleteGoal,
-    financial_health_check: handleFinancialHealthCheck,
-    detect_risk: handleDetectRisk
-  });
-
-
-}
+// FIX-A2: registerLedgerTransactionActions was removed from this file.
+// The real implementation lives in transaction-actions.ts and is imported directly.

@@ -19,6 +19,7 @@ import { registerAtlasActions } from './modules/atlas/services/actions'
 import { registerAtlasFieldActions } from './modules/atlas/actions/atlas-field-actions'
 import { registerLedgerActions } from './modules/ledger/services/actions'
 import { registerLedgerFieldActions } from './modules/ledger/actions/ledger-field-actions'
+import { registerLedgerTransactionActions } from './modules/ledger/actions/transaction-actions'
 import { registerTitanActions } from './modules/titan/services/actions'
 import { registerScoutActions } from './modules/scout/services/actions'
 import { registerForgeActions } from './modules/forge/services/actions'
@@ -42,6 +43,7 @@ registerAtlasActions();
 registerAtlasFieldActions();
 registerLedgerActions();
 registerLedgerFieldActions();
+registerLedgerTransactionActions();
 registerTitanActions();
 registerScoutActions();
 registerForgeActions();

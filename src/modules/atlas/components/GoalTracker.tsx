@@ -436,7 +436,7 @@ export function GoalTracker({
                     ))}
 
                     {/* Add new milestone */}
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
                         value={newMilestone.title}
@@ -444,7 +444,7 @@ export function GoalTracker({
                           setNewMilestone({ ...newMilestone, title: e.target.value })
                         }
                         placeholder="Add milestone..."
-                        className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                        className="flex-1 min-w-0 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                       />
                       <input
                         type="date"
@@ -452,7 +452,7 @@ export function GoalTracker({
                         onChange={(e) =>
                           setNewMilestone({ ...newMilestone, dueDate: e.target.value })
                         }
-                        className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                        className="shrink-0 w-full sm:w-auto px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                       />
                       <NeuralButton
                         onClick={handleAddMilestone}
@@ -499,7 +499,7 @@ export function GoalTracker({
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
                 <NeuralButton onClick={handleCloseForm} variant="ghost">
                   Cancel
                 </NeuralButton>

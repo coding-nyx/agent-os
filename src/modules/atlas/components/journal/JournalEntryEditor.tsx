@@ -185,7 +185,7 @@ export function JournalEntryEditor({
               onClick={() => patch('mood', value)}
               title={label}
               className={cn(
-                'flex-1 flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg border text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-400',
+                'flex-1 flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg border text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-400 min-h-11',
                 draft.mood === value
                   ? 'border-violet-500/50 bg-violet-500/15 text-violet-200'
                   : 'border-white/10 bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white/60',
@@ -209,7 +209,7 @@ export function JournalEntryEditor({
               onClick={() => patch('energyLevel', val)}
               title={`Energy ${val}`}
               className={cn(
-                'flex-1 py-2.5 rounded-lg border text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-400',
+                'flex-1 py-2.5 rounded-lg border text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-400 min-h-11',
                 draft.energyLevel === val
                   ? 'border-violet-500/50 bg-violet-500/15 text-violet-200'
                   : 'border-white/10 bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white/60',

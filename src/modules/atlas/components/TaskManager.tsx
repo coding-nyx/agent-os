@@ -590,7 +590,7 @@ export function TaskManager({
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
                 <NeuralButton onClick={handleCloseForm} variant="ghost">
                   Cancel
                 </NeuralButton>

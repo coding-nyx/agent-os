@@ -94,7 +94,7 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
   };
 }
 
-type LedgerTab = 'overview' | 'budget' | 'goals' | 'transactions' | 'fields';
+type LedgerTab = 'overview' | 'budget' | 'goals' | 'transactions' | 'fields' | 'tax';
 
 /** Shape expected by handleApplyBudgetTemplate */
 interface BudgetTemplate {
@@ -401,6 +401,65 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
     persistUpdate({ ...profile, financialGoals: financialGoals.filter(g => g.id !== id) });
   }, [profile, financialGoals, persistUpdate]);
 
+  // ─── Debt item handlers (FIX-P3) ─────────────────────────────────────────
+
+  const handleAddDebt = useCallback((debt: Omit<DebtItem, 'id'>) => {
+    if (!profile) return;
+    const newDebt: DebtItem = { ...debt, id: crypto.randomUUID() };
+    persistUpdate({ ...profile, debtItems: [...(profile.debtItems ?? []), newDebt] });
+  }, [profile, persistUpdate]);
+
+  const handleUpdateDebt = useCallback((id: string, updates: Partial<DebtItem>) => {
+    if (!profile) return;
+    persistUpdate({
+      ...profile,
+      debtItems: (profile.debtItems ?? []).map(d => d.id === id ? { ...d, ...updates } : d),
+    });
+  }, [profile, persistUpdate]);
+
+  const handleDeleteDebt = useCallback((id: string) => {
+    if (!profile) return;
+    persistUpdate({ ...profile, debtItems: (profile.debtItems ?? []).filter(d => d.id !== id) });
+  }, [profile, persistUpdate]);
+
+  // ─── Extension values state for FieldsTab (FIX-P1) ───────────────────────
+
+  const [extensionValues, setExtensionValues] = useState<Record<string, unknown>>({});
+
+  const handleExtensionValueChange = useCallback((fieldId: string, value: unknown) => {
+    setExtensionValues(prev => ({ ...prev, [fieldId]: value }));
+  }, []);
+
+  const handleAddField = useCallback(() => {
+    const newField: FieldDefinition = {
+      id: crypto.randomUUID(),
+      name: 'Custom Field',
+      type: FieldType.TEXT,
+      required: false,
+    };
+    SchemaRegistry.extendSchema('ledger', [newField]).catch(err =>
+      console.error('[LedgerPage] Failed to add custom field:', err)
+    );
+  }, []);
+
+  const handleDeleteField = useCallback((fieldId: string) => {
+    SchemaRegistry.removeExtension('ledger', fieldId).catch(err =>
+      console.error('[LedgerPage] Failed to delete custom field:', err)
+    );
+    setExtensionValues(prev => {
+      const next = { ...prev };
+      delete next[fieldId];
+      return next;
+    });
+  }, []);
+
+  // ─── Profile update handler ───────────────────────────────────────────────
+
+  const handleProfileUpdate = useCallback((updates: Partial<LedgerIntakeProfile>) => {
+    if (!profile) return;
+    persistUpdate({ ...profile, ...updates });
+  }, [profile, persistUpdate]);
+
   useEffect(() => {
     if (!profile || !profile.onboardingComplete || plannerBootstrappedRef.current) return;
     if (profile.activePlanId) return;
@@ -565,6 +624,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
                 soul={globalSoul}
                 profile={profile}
                 isLocked={isLocked}
+                onAskAI={(question) => ai.handleSendMessage(question)}
                 onToggleDocumentAnalysis={async (enabled) => {
                   if (!profile) return;
                   persistUpdate({ ...profile, documentAnalysisEnabled: enabled });
@@ -613,10 +673,14 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
                 onAddGoal={handleAddGoal}
                 onUpdateGoal={handleUpdateGoal}
                 onDeleteGoal={handleDeleteGoal}
+                onAISuggestions={() => ai.handleSendMessage("Give me AI suggestions for my financial goals based on my current profile")}
               />
               <DebtStrategist
                 debtItems={profile.debtItems ?? []}
                 currency={profile.currency}
+                onAddDebt={handleAddDebt}
+                onUpdateDebt={handleUpdateDebt}
+                onDeleteDebt={handleDeleteDebt}
               />
             </div>
           )}
@@ -625,7 +689,19 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
             <div className="px-4 md:px-8">
               <FieldsTab
                 currency={profile.currency}
-                extensionValues={{}}
+                extensionValues={extensionValues}
+                onValueChange={handleExtensionValueChange}
+                onAddField={handleAddField}
+                onDeleteField={handleDeleteField}
+              />
+            </div>
+          )}
+
+          {activeTab === 'tax' && profile && (
+            <div className="px-4 md:px-8">
+              <TaxTracker
+                profile={profile}
+                onUpdateProfile={handleProfileUpdate}
               />
             </div>
           )}

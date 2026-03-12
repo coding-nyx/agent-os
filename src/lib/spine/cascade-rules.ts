@@ -1,5 +1,6 @@
 import { SpineEvent, SpineEventType } from '@/lib/types';
 import { LedgerSpineEventType } from '@/modules/ledger/actions/ledger-field-actions';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 export interface CascadeRule {
   id: string;
@@ -57,11 +58,7 @@ export const LEDGER_CASCADE_RULES: CascadeRule[] = [
 ];
 
 export function registerLedgerCascadeRules(): void {
-  const spine = (window as any).Spine;
-  if (spine && spine.registerCascadeRules) {
-    spine.registerCascadeRules(LEDGER_CASCADE_RULES);
-
-  }
+  Spine.registerCascadeRules(LEDGER_CASCADE_RULES);
 }
 
 /** Alias — core cascade rules used by App-level registration. */
@@ -143,10 +140,7 @@ export const AGNES_CASCADE_RULES: CascadeRule[] = [
 ];
 
 export function registerAgnesCascadeRules(): void {
-  const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
-  if (spine?.registerCascadeRules) {
-    spine.registerCascadeRules(AGNES_CASCADE_RULES);
-  }
+  Spine.registerCascadeRules(AGNES_CASCADE_RULES);
 }
 
 // ---------------------------------------------------------------------------
@@ -253,14 +247,11 @@ export const ATLAS_JOURNAL_RULES: CascadeRule[] = [
 ];
 
 export function registerAtlasCascadeRules(): void {
-  const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
-  if (spine?.registerCascadeRules) {
-    spine.registerCascadeRules(ATLAS_CASCADE_RULES);
-    spine.registerCascadeRules(ATLAS_MORNING_RULES);
-    spine.registerCascadeRules(ATLAS_JOURNAL_RULES);
-    // Planning intelligence rules are registered separately via registerAtlasPlanningCascadeRules()
-    // to avoid forward-reference issues (ATLAS_PLANNING_CASCADE_RULES is defined after this function).
-  }
+  Spine.registerCascadeRules(ATLAS_CASCADE_RULES);
+  Spine.registerCascadeRules(ATLAS_MORNING_RULES);
+  Spine.registerCascadeRules(ATLAS_JOURNAL_RULES);
+  // Planning intelligence rules are registered separately via registerAtlasPlanningCascadeRules()
+  // to avoid forward-reference issues (ATLAS_PLANNING_CASCADE_RULES is defined after this function).
 }
 
 // ---------------------------------------------------------------------------
@@ -311,10 +302,7 @@ export const ATLAS_FAILURE_RULES: CascadeRule[] = [
 ];
 
 export function registerAtlasFailureRules(): void {
-  const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
-  if (spine?.registerCascadeRules) {
-    spine.registerCascadeRules(ATLAS_FAILURE_RULES);
-  }
+  Spine.registerCascadeRules(ATLAS_FAILURE_RULES);
 }
 
 // ---------------------------------------------------------------------------
@@ -402,8 +390,5 @@ export const ATLAS_PLANNING_CASCADE_RULES: CascadeRule[] = [
 ];
 
 export function registerAtlasPlanningCascadeRules(): void {
-  const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
-  if (spine?.registerCascadeRules) {
-    spine.registerCascadeRules(ATLAS_PLANNING_CASCADE_RULES);
-  }
+  Spine.registerCascadeRules(ATLAS_PLANNING_CASCADE_RULES);
 }

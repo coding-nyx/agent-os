@@ -210,9 +210,10 @@ export function computeMonthlyTotals(
     bucket.transactionCount += 1;
     if (tx.type === 'income') {
       bucket.income = round2(bucket.income + tx.amount);
-    } else {
+    } else if (tx.type === 'expense') {
       bucket.expenses = round2(bucket.expenses + tx.amount);
     }
+    // transfer: skip — do not count in either income or expenses
     bucket.net = round2(bucket.income - bucket.expenses);
   }
 
@@ -298,7 +299,7 @@ export function computeBudgetActuals(
     const variance = round2(actual - bc.allocated);
     const variancePercent =
       bc.allocated > 0 ? round2((variance / bc.allocated) * 100) : actual > 0 ? 100 : 0;
-    const utilizationPct = bc.allocated > 0 ? (actual / bc.allocated) * 100 : Infinity;
+    const utilizationPct = bc.allocated > 0 ? (actual / bc.allocated) * 100 : actual > 0 ? 100 : 0;
 
     let status: BudgetPerformance['status'];
     if (utilizationPct < 80) {
@@ -393,9 +394,10 @@ export function computeDashboardMetrics(
   for (const tx of currentTxs) {
     if (tx.type === 'income') {
       currentMonthIncome = round2(currentMonthIncome + tx.amount);
-    } else {
+    } else if (tx.type === 'expense') {
       currentMonthExpenses = round2(currentMonthExpenses + tx.amount);
     }
+    // transfer: skip
   }
 
   const currentMonthNet = round2(currentMonthIncome - currentMonthExpenses);

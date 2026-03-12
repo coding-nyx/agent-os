@@ -5,6 +5,7 @@ import {
   LedgerIntakeProfile,
   Transaction,
   BudgetCategory,
+  BudgetLineItem,
   FinancialGoal,
   loadLedgerProfile,
   saveLedgerProfile
@@ -110,23 +111,28 @@ export function registerLedgerActions() {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
-      const mergeItems = (existing: any[], incoming: any[]) => {
+      const mergeItems = (existing: BudgetLineItem[], incoming: unknown[]): BudgetLineItem[] => {
         if (!Array.isArray(incoming)) return existing;
-        const merged = [...existing];
-        incoming.forEach(item => {
-          const idx = merged.findIndex(e => e.label === item.label);
-          if (idx !== -1) merged[idx] = { ...merged[idx], ...item };
-          else merged.push({ id: crypto.randomUUID(), ...item });
-        });
-        return merged;
+        const result = [...existing];
+        for (const raw of incoming) {
+          if (!raw || typeof raw !== 'object') continue;
+          const obj = raw as Record<string, unknown>;
+          const amount = typeof obj.amount === 'number' && Number.isFinite(obj.amount) && obj.amount > 0 ? obj.amount : null;
+          if (amount === null) continue;
+          const id = typeof obj.id === 'string' && obj.id ? obj.id : '';
+          const idx = id ? result.findIndex(e => e.id === id) : -1;
+          if (idx !== -1) result[idx] = { ...result[idx], amount };
+          else result.push({ id: crypto.randomUUID(), label: String(obj.label ?? 'Expense'), amount });
+        }
+        return result;
       };
 
       const next: LedgerIntakeProfile = {
         ...profile,
         monthlyIncome: parseNumber(payload?.monthlyIncome, profile.monthlyIncome),
         currency: typeof payload?.currency === 'string' && payload.currency.trim() ? payload.currency : profile.currency,
-        fixedExpenses: mergeItems(profile.fixedExpenses, payload?.fixedExpenses as any[]),
-        variableExpenses: mergeItems(profile.variableExpenses, payload?.variableExpenses as any[]),
+        fixedExpenses: mergeItems(profile.fixedExpenses, Array.isArray(payload?.fixedExpenses) ? payload.fixedExpenses : []),
+        variableExpenses: mergeItems(profile.variableExpenses, Array.isArray(payload?.variableExpenses) ? payload.variableExpenses : []),
         debtItems: Array.isArray(payload?.debtItems) ? payload.debtItems : profile.debtItems,
         savingsGoals: Array.isArray(payload?.savingsGoals) ? payload.savingsGoals : profile.savingsGoals,
         updatedAt: new Date().toISOString()
@@ -210,7 +216,14 @@ export function registerLedgerActions() {
       if (!profile) return;
 
       const now = new Date().toISOString();
-      const amount = parseNumber(payload?.amount);
+      const rawAmount = parseNumber(payload?.amount);
+      const absAmount = Math.abs(rawAmount);
+
+      // Reject zero amounts
+      if (absAmount === 0) {
+        console.warn('[Ledger] add_transaction: amount must be non-zero');
+        return;
+      }
 
       // Derive transaction type: explicit payload wins; otherwise infer from sign.
       const rawType = payload?.type;
@@ -219,7 +232,7 @@ export function registerLedgerActions() {
           ? 'income'
           : rawType === 'expense'
           ? 'expense'
-          : amount >= 0
+          : rawAmount >= 0
           ? 'income'
           : 'expense';
 
@@ -257,7 +270,7 @@ export function registerLedgerActions() {
         id: crypto.randomUUID(),
         date,
         description: merchant || categoryName || 'Transaction',
-        amount,
+        amount: absAmount,
         type: txType,
         category: categoryName || existingCategories.find((c) => c.id === budgetCategoryId)?.name || 'Other',
         budgetCategoryId,
@@ -267,7 +280,7 @@ export function registerLedgerActions() {
       // Increment the matched category's `spent` for expense transactions.
       const updatedCategories: BudgetCategory[] = existingCategories.map((c) => {
         if (c.id === budgetCategoryId && txType === 'expense') {
-          return { ...c, spent: c.spent + Math.abs(amount) };
+          return { ...c, spent: c.spent + absAmount };
         }
         return c;
       });
@@ -286,7 +299,7 @@ export function registerLedgerActions() {
         source: 'ledger',
         priority: 'info',
         transactionId: transaction.id,
-        amount,
+        amount: absAmount,
         type: txType,
         category: transaction.category,
         date,
@@ -579,6 +592,92 @@ export function registerLedgerActions() {
       ].join('\n');
 
       pushAssistantMessage?.(header + goalLines.join('\n\n'));
+    },
+
+    // ── Handler: parse_financial_document (FIX-P8) ────────────────────────
+    parse_financial_document: async ({ userId, encryptionKey, payload }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+      const now = new Date().toISOString();
+      const transactions = Array.isArray(payload?.transactions) ? payload.transactions : [];
+      const monthlyIncome = parseNumber(payload?.monthlyIncome, profile.monthlyIncome);
+      const newTxns: Transaction[] = transactions
+        .filter((t: unknown) => t && typeof t === 'object')
+        .map((t: Record<string, unknown>) => ({
+          id: crypto.randomUUID(),
+          date: typeof t.date === 'string' ? t.date : now.split('T')[0],
+          description: typeof t.description === 'string' ? t.description : 'Parsed Transaction',
+          amount: Math.abs(parseNumber(t.amount)),
+          type: (t.type === 'income' || t.type === 'expense') ? t.type : 'expense',
+          category: typeof t.category === 'string' ? t.category : 'Other',
+        } satisfies Transaction))
+        .filter((t: Transaction) => t.amount > 0);
+      const next: LedgerIntakeProfile = {
+        ...profile,
+        monthlyIncome: monthlyIncome > 0 ? monthlyIncome : profile.monthlyIncome,
+        transactions: [...(profile.transactions ?? []), ...newTxns],
+        updatedAt: now,
+      };
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+    },
+
+    // ── Handler: commit_transaction (FIX-P8) ────────────────────────────────
+    commit_transaction: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+      const now = new Date().toISOString();
+      const rawAmt = parseNumber(payload?.amount);
+      const absAmt = Math.abs(rawAmt);
+      if (absAmt === 0) return;
+      const txType: Transaction['type'] = payload?.type === 'income' ? 'income' : 'expense';
+      const tx: Transaction = {
+        id: crypto.randomUUID(),
+        date: typeof payload?.date === 'string' && payload.date ? payload.date : now.split('T')[0],
+        description: typeof payload?.description === 'string' ? payload.description : 'Committed Transaction',
+        amount: absAmt,
+        type: txType,
+        category: typeof payload?.category === 'string' ? payload.category : 'Other',
+      };
+      const next: LedgerIntakeProfile = {
+        ...profile,
+        transactions: [...(profile.transactions ?? []), tx],
+        updatedAt: now,
+      };
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      emitSpineEvent('TRANSACTION_CREATED', {
+        domain: 'R', source: 'ledger', priority: 'info',
+        transactionId: tx.id, amount: absAmt, type: txType,
+        category: tx.category, date: tx.date,
+      });
+      markProfileDirty?.();
+    },
+
+    // ── Handler: flag_anomaly (FIX-P8) ────────────────────────────────────
+    flag_anomaly: async ({ payload, emitSpineEvent }) => {
+      const anomalyType = typeof payload?.anomalyType === 'string' ? payload.anomalyType : 'Unknown';
+      const description = typeof payload?.description === 'string' ? payload.description : '';
+      emitSpineEvent('RISK_DETECTED', {
+        domain: 'R', source: 'ledger-anomaly-detector', priority: 'alert',
+        riskType: anomalyType, riskDescription: description,
+      });
+    },
+
+    // ── Handler: categorize_expense (FIX-P8) ──────────────────────────────
+    categorize_expense: async ({ userId, encryptionKey, payload, markProfileDirty }) => {
+      const transactionId = typeof payload?.transactionId === 'string' ? payload.transactionId : '';
+      const category = typeof payload?.category === 'string' ? payload.category : '';
+      if (!transactionId || !category) return;
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+      const next: LedgerIntakeProfile = {
+        ...profile,
+        transactions: (profile.transactions ?? []).map(tx =>
+          tx.id === transactionId ? { ...tx, category } : tx,
+        ),
+        updatedAt: new Date().toISOString(),
+      };
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      markProfileDirty?.();
     },
   });
 }

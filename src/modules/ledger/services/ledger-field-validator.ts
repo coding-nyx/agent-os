@@ -126,23 +126,24 @@ function keywordFallback(fieldName: string, value: string): FieldValidationResul
   switch (kind) {
     case 'amount': {
       const num = parseFloat(value);
-      const valid = Number.isFinite(num);
+      const valid = Number.isFinite(num) && num !== 0;
       return {
         valid,
         reason: valid
           ? undefined
-          : `Amount field "${fieldName}" must be a valid finite number.`,
+          : `Amount field "${fieldName}" must be a valid non-zero finite number.`,
         source: 'fallback',
       };
     }
 
     case 'date': {
-      const valid = /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
+      const trimmed = value.trim();
+      const valid = /^\d{4}-\d{2}-\d{2}$/.test(trimmed) && !isNaN(new Date(trimmed).getTime());
       return {
         valid,
         reason: valid
           ? undefined
-          : `Date field "${fieldName}" must use ISO format YYYY-MM-DD.`,
+          : `Date field "${fieldName}" must use ISO format YYYY-MM-DD and be a real calendar date.`,
         source: 'fallback',
       };
     }
@@ -274,17 +275,19 @@ export async function validateFieldValue(
   if (sendMessage !== undefined) {
     // Prompt deliberately kept minimal (< 100 tokens) to avoid context bloat.
     const prompt =
-      `You are a financial data validator. Field: '${fieldName}'. Value: '${value}'. Context: ${moduleContext}. Reply with ONLY valid JSON: {"valid": bool, "correctedValue": string|null, "reason": string}`;
+      `You are a financial data validator.\nField name: ${JSON.stringify(fieldName)}\nField value: ${JSON.stringify(value)}\nContext: ${JSON.stringify(moduleContext)}\nReply with ONLY valid JSON: {"valid": bool, "correctedValue": string|null, "reason": string}`;
 
     try {
       const raw = await callWithTimeout(prompt, sendMessage);
       const payload = parseLLMResponse(raw);
 
+      const MAX_CORRECTED_LEN = 500;
       const result: FieldValidationResult = {
         valid: payload.valid,
         correctedValue:
           typeof payload.correctedValue === 'string' &&
-          payload.correctedValue.length > 0
+          payload.correctedValue.length > 0 &&
+          payload.correctedValue.length <= MAX_CORRECTED_LEN
             ? payload.correctedValue
             : undefined,
         reason: payload.reason.length > 0 ? payload.reason : undefined,

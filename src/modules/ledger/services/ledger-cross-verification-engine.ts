@@ -506,7 +506,7 @@ export function analyzeProfile(
       id: goal.id,
       name: goal.name,
       targetAmount: goal.targetAmount,
-      currentBalance: 0, // Profile doesn't store current balance; caller can override
+      currentBalance: goal.currentAmount ?? 0, // Use currentAmount from profile goal
       monthlyContribution: contribution,
     });
   });

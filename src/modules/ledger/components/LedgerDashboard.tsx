@@ -170,7 +170,7 @@ export function LedgerDashboard({
   }
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8">
       <SectionHeader
         label="Resource Control"
         title="Financial Command Center"

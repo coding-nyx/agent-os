@@ -51,6 +51,10 @@ interface DebtStrategistProps {
   onExtraPaymentChange?: (amount: number) => void;
   /** When true, recommend the Snowball strategy (lower balance first) based on NSV stressLoad. */
   recommendSnowball?: boolean;
+  /** FIX-P3: CRUD callbacks */
+  onAddDebt?: (debt: Omit<DebtItem, 'id'>) => void;
+  onUpdateDebt?: (id: string, updates: Partial<DebtItem>) => void;
+  onDeleteDebt?: (id: string) => void;
 }
 
 /** Chart data point: one row per month with both strategy balances. */
@@ -241,6 +245,9 @@ export function DebtStrategist({
   extraMonthlyPayment: controlledExtra,
   onExtraPaymentChange,
   recommendSnowball = false,
+  onAddDebt,
+  onUpdateDebt: _onUpdateDebt,
+  onDeleteDebt,
 }: DebtStrategistProps) {
   // Semi-controlled: internal state seeded from prop; reports changes upward.
   const [internalExtra, setInternalExtra] = useState<number>(controlledExtra ?? 0);

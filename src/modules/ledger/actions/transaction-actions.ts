@@ -71,9 +71,8 @@ async function handleCreateTransaction(context: ActionContext): Promise<void> {
   }
 
   // Calculate net cashflow impact
-  const netCashflow = transaction.type === 'income' 
-    ? profile.monthlyIncome + transaction.amount 
-    : profile.monthlyIncome - transaction.amount;
+  // Calculate net cashflow impact — positive for income, negative for expense
+  const netCashflow = transaction.type === 'income' ? transaction.amount : -transaction.amount;
 
   // Delegate friction calculation to the canonical formula in resonance-roi-service
   const frictionValue = computeFinancialFriction(profile);
