@@ -17,7 +17,7 @@ import {
 } from './services/scout-knowledge-service';
 import { generateNewsBriefs } from './services/scout-news-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
-import { FileUp, Plus, X, Search, LayoutDashboard } from 'lucide-react';
+import { FileUp, Plus, X, Search, LayoutDashboard, AlertTriangle } from 'lucide-react';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { scoutDiagnosisSpec } from './diagnosis/scout-diagnosis-spec';
 import { Spine } from '@/lib/spine/spine-event-bus';
@@ -53,6 +53,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   ]);
   const [activeWindowId, setActiveWindowId] = useState<string>(windows[0].id);
   const [showUploadZone, setShowUploadZone] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const ai = useModuleAI({
     moduleId: 'scout',
@@ -64,8 +65,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
   const handleUploadSubmit = useCallback((result: DocumentParseResult) => {
     setShowUploadZone(false);
+    setErrorMessage(null);
     const prompt = buildDocumentAnalysisPrompt(result);
-    ai.handleSendMessage(prompt, onActionParsed);
+    try {
+      ai.handleSendMessage(prompt, onActionParsed);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to process document. Please try again.');
+    }
   }, [ai, onActionParsed]);
 
   const addWindow = useCallback(() => {
@@ -104,7 +110,17 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       moduleId="scout"
       agentName={agentAlias}
       themeColor="lime"
-      ai={ai}
+      ai={{
+        ...ai,
+        handleSendMessage: async (content, onAction) => {
+          setErrorMessage(null);
+          try {
+            await ai.handleSendMessage(content, onAction ?? onActionParsed);
+          } catch (err) {
+            setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+          }
+        }
+      }}
       authMode="scout"
       placeholder="Query research node..."
     >
@@ -117,6 +133,20 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
             accentClassName="text-lime-400"
           />
         </div>
+
+        {errorMessage && (
+          <div className="mx-4 md:mx-8 mb-3 flex items-start gap-3 px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            <p className="text-xs leading-relaxed">{errorMessage}</p>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="ml-auto shrink-0 text-red-400/60 hover:text-red-300 transition-colors"
+              aria-label="Dismiss error"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5">
           <NeuralTabGroup

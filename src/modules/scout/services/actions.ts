@@ -8,11 +8,10 @@ import {
   createEmptyScoutProfile
 } from './scout-knowledge-service';
 import { ScoutWebSearchService, ScoutWebResult } from './scout-web-search-service';
-import { generateNewsBriefs } from './scout-news-service';
+import { generateNewsBriefs, isSearchAvailable } from './scout-news-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
 
 let registered = false;
-let currentDraftProfile: ScoutProfile | null = null;
 
 function parseConfidence(value: unknown, fallback = 0.5): number {
   if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
@@ -55,24 +54,20 @@ async function loadProfile(userId?: string | null, encryptionKey?: CryptoKey | n
 }
 
 async function persistProfile(profile: ScoutProfile, context: ActionContext) {
-  const { userId, encryptionKey, persistencePolicy } = context;
+  const { userId, encryptionKey } = context;
   profile.updatedAt = new Date().toISOString();
-  currentDraftProfile = profile;
-  
-  if (persistencePolicy === 'scout-research') {
-    // During research, only update local state via Spine events
-    Spine.emit({
-      type: 'SCOUT_PROFILE_DRAFT_UPDATED' as any,
-      source: 'scout',
-      domain: 'system',
-      data: profile as unknown as Record<string, unknown>,
-      cascadeDepth: 0,
-      priority: 'info'
-    });
-    return;
-  }
-  
+
+  // Always save to Firestore for durability, then emit Spine event for real-time UI sync.
   await saveScoutProfile(profile, { userId: userId ?? null, encryptionKey });
+
+  Spine.emit({
+    type: 'SCOUT_PROFILE_DRAFT_UPDATED' as any,
+    source: 'scout',
+    domain: 'system',
+    data: profile as unknown as Record<string, unknown>,
+    cascadeDepth: 0,
+    priority: 'info'
+  });
 }
 
 async function triggerWebSearch(
@@ -99,7 +94,7 @@ async function triggerWebSearch(
       sources: [result.url],
       evidence: result.content ? [result.content] : undefined,
       searchCompleted: true,
-      status: 'pending' as const,
+      status: (isReputableDomain(extractDomain(result.url)) ? 'verified' : 'pending') as 'verified' | 'pending',
       updatedAt: new Date().toISOString()
     }));
 
@@ -110,7 +105,7 @@ async function triggerWebSearch(
       node.claim === query
         ? {
             ...node,
-            status: 'pending' as const,
+            status: (confidence >= 0.6 ? 'verified' : 'pending') as 'verified' | 'pending',
             confidence,
             source: sources[0],
             sources,
@@ -125,7 +120,7 @@ async function triggerWebSearch(
       entry.id === entryId
         ? {
             ...entry,
-            status: 'pending' as const,
+            status: 'verified' as const,
             reason: 'web_search_completed'
           }
         : entry
@@ -154,14 +149,17 @@ async function triggerWebSearch(
   } catch (error) {
     console.error('[Scout] Web search failed:', error);
 
-    const failedQueue: ScoutProfile['verificationQueue'] = baseProfile.verificationQueue.map((entry) =>
+    // Re-load fresh profile to avoid clobbering concurrent changes made after the search started.
+    const failedProfile = await loadProfile(userId, encryptionKey) ?? baseProfile;
+
+    const failedQueue: ScoutProfile['verificationQueue'] = failedProfile.verificationQueue.map((entry) =>
       entry.id === entryId
-        ? { ...entry, status: 'pending' as const, reason: 'search_failed' }
+        ? { ...entry, status: 'contested' as const, reason: 'search_failed' }
         : entry
     );
 
     const fallback: ScoutProfile = {
-      ...baseProfile,
+      ...failedProfile,
       verificationQueue: failedQueue,
       updatedAt: new Date().toISOString()
     };
@@ -210,7 +208,7 @@ export function registerScoutActions() {
     },
 
     verify_claim: async (context) => {
-      const { userId, encryptionKey, payload } = context;
+      const { userId, encryptionKey, payload, pushAssistantMessage } = context;
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -243,12 +241,26 @@ export function registerScoutActions() {
       await persistProfile(next, context);
 
       if (claim) {
+        if (!isSearchAvailable()) {
+          pushAssistantMessage?.(
+            `⚠️ Claim queued for verification but no search backend is configured. Set \`VITE_TAVILY_API_KEY\` to enable automatic verification.`
+          );
+          return;
+        }
         await triggerWebSearch(claim, entryId, next, context);
       }
     },
 
     search_web: async (context) => {
       const { userId, encryptionKey, payload, pushAssistantMessage } = context;
+
+      if (!isSearchAvailable()) {
+        pushAssistantMessage?.(
+          '⚠️ No search backend is configured. Set `VITE_TAVILY_API_KEY` in your environment to enable web search.'
+        );
+        return;
+      }
+
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) {
         pushAssistantMessage?.('⚠️ Unable to load research profile. Please try again.');
@@ -289,15 +301,17 @@ export function registerScoutActions() {
     },
 
     commit_research: async (context) => {
-       const { userId, encryptionKey, pushAssistantMessage } = context;
-       if (!currentDraftProfile) {
-          console.warn('[Scout] commit_research called but no draft profile exists.');
-          return;
-       }
-       
-       // Force a save to Firestore
-       await saveScoutProfile(currentDraftProfile, { userId: userId ?? null, encryptionKey });
-       pushAssistantMessage?.('✅ Research session successfully synchronized with the neural vault.');
+      const { userId, encryptionKey, pushAssistantMessage } = context;
+      // Each action already persists to Firestore. This action confirms the vault is current
+      // and optionally triggers a fresh save of the current in-memory profile state.
+      const current = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!current) {
+        pushAssistantMessage?.('⚠️ No research profile found to commit.');
+        return;
+      }
+      // Re-save to ensure the latest state is flushed (handles any edge case from rapid actions).
+      await saveScoutProfile(current, { userId: userId ?? null, encryptionKey });
+      pushAssistantMessage?.('✅ Research session synchronized with the neural vault.');
     },
 
     update_research_graph: async (context) => {
