@@ -6,7 +6,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
 import { useGlobalSoul } from '../global-soul-context';
 import { useAuth } from '../auth-context';
-import { Message, MessageContent, GuestQuota, NeuralStateVectorPatch, SpineEventType, ContextPolicy } from '../types';
+import { Message, MessageContent, GuestQuota, NeuralStateVectorPatch, SpineEventType, SpineEventPriority, ContextPolicy } from '../types';
 import { GuestQuotaService } from '../services/guest-quota-service';
 import { ModuleMemoryService } from '../services/module-memory-service';
 import { PersonaFactory } from '@/lib/ai-adapters/persona-factory';
@@ -530,7 +530,9 @@ export function useModuleAI({
               domain: 'system',
               data,
               cascadeDepth: 0,
-              priority: 'info'
+              priority: (['info', 'alert', 'critical'] as const).includes(data.priority as SpineEventPriority)
+                ? (data.priority as SpineEventPriority)
+                : 'info'
             }),
             updateGlobalSoul,
             delegateToModule,

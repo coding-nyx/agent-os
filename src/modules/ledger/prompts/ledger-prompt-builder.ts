@@ -88,10 +88,33 @@ export const LEDGER_SCOPE_ACTIONS: Record<
     'analyze_financial_document',
     'log_transaction_summary',
     'suggest_field',
+    'create_transaction',
+    'set_financial_goal',
+    'run_debt_simulation',
+    'financial_health_check',
+    'detect_risk',
   ],
-  'budget-review': ['update_budget_snapshot'],
-  'goal-focus': ['update_budget_snapshot'],
-  'field-crud': ['suggest_field', 'create_field', 'delete_field'],
+  'budget-review': [
+    'update_budget_snapshot',
+    'create_transaction',
+    'create_budget',
+    'modify_budget',
+    'financial_health_check',
+  ],
+  'goal-focus': [
+    'update_budget_snapshot',
+    'set_financial_goal',
+    'update_goal_progress',
+    'complete_goal',
+    'project_savings_timeline',
+    'create_transaction',
+  ],
+  'field-crud': [
+    'suggest_field',
+    'create_field',
+    'delete_field',
+    'set_field_value',
+  ],
 } as const;
 
 // ============================================================================
@@ -165,6 +188,27 @@ AVAILABLE ACTIONS:
 - <action type="suggest_field">{"description":"...","purpose":"...","suggestedType":"number"}</action>
   Use when the user mentions tracking a financial metric not covered by existing fields.
 
+- <action type="create_transaction">{"type":"expense","amount":150,"description":"Grocery run","category":"Food","date":"2026-03-12"}</action>
+  Use when the user confirms a transaction to log. Amount must be positive.
+
+- <action type="set_financial_goal">{"name":"Emergency Fund","type":"savings","targetAmount":10000,"currentAmount":0,"targetDate":"2027-01-01","monthlyContribution":500,"priority":"high"}</action>
+  Use when the user wants to set or track a specific financial goal.
+
+- <action type="update_goal_progress">{"goalId":"GOAL_ID","newAmount":2500}</action>
+  Use when the user reports progress on an existing goal. Requires goalId from their profile.
+
+- <action type="complete_goal">{"goalId":"GOAL_ID","goalName":"Emergency Fund"}</action>
+  Use when a goal has been fully achieved.
+
+- <action type="run_debt_simulation">{"extraMonthlyPayment":500}</action>
+  Use to run avalanche vs snowball debt payoff comparison. extraMonthlyPayment is optional.
+
+- <action type="financial_health_check">{"healthScore":6,"healthStatus":"Moderate stress"}</action>
+  Use to assess and record overall financial health. healthScore is 0-10.
+
+- <action type="detect_risk">{"riskType":"Overspending","riskDescription":"Variable expenses exceed 40% of income"}</action>
+  Use when you identify a financial risk pattern.
+
 FINANCIAL FRICTION SCALE:
 Financial Friction measures emotional and operational money stress on a 0-10 scale.
 Factors: cashflow pressure, debt burden, subscription creep, irregular income,
@@ -230,6 +274,18 @@ AVAILABLE ACTIONS:
 - <action type="update_budget_snapshot">{"monthlyIncome":0,"fixedExpenses":[],"variableExpenses":[],"debtItems":[],"savingsGoals":[]}</action>
   Use when the user wants to adjust this category's allocation or expenses.
 
+- <action type="create_transaction">{"type":"expense","amount":50,"description":"Transaction description","category":"${budget.categoryName}","date":"2026-03-12"}</action>
+  Use when the user wants to log a transaction within this budget category.
+
+- <action type="create_budget">{"name":"Food & Dining","amount":600,"currency":"USD","categories":["groceries","restaurants"]}</action>
+  Use to create a new budget category.
+
+- <action type="modify_budget">{"budgetId":"BUDGET_ID","budgetName":"Food & Dining","amount":700,"changeSummary":"Increased food budget by $100"}</action>
+  Use to update an existing budget category amount.
+
+- <action type="financial_health_check">{"healthScore":6,"healthStatus":"Moderate stress"}</action>
+  Use to assess overall financial health after reviewing budget performance.
+
 RULES:
 - Only discuss this budget category.
 - Suggest specific cuts or reallocations with concrete numbers.
@@ -281,6 +337,21 @@ ${projectionBlock}
 AVAILABLE ACTIONS:
 - <action type="update_budget_snapshot">{"savingsGoals":[{"id":"${goal.id}","name":"${goal.name}","targetAmount":${goal.targetAmount}}]}</action>
   Use when the user wants to adjust this goal's target, contribution, or timeline.
+
+- <action type="set_financial_goal">{"name":"${goal.name}","type":"savings","targetAmount":${goal.targetAmount},"currentAmount":${goal.currentAmount},"targetDate":"YYYY-MM-DD","monthlyContribution":500,"priority":"high"}</action>
+  Use when the user wants to create a new goal or replace this one.
+
+- <action type="update_goal_progress">{"goalId":"${goal.id}","newAmount":${goal.currentAmount}}</action>
+  Use when the user reports updated progress toward this goal.
+
+- <action type="complete_goal">{"goalId":"${goal.id}","goalName":"${goal.name}"}</action>
+  Use when the user confirms this goal has been fully achieved.
+
+- <action type="project_savings_timeline">{"goalId":"${goal.id}"}</action>
+  Use to project when the user will reach their savings goal based on monthly contribution.
+
+- <action type="create_transaction">{"type":"income","amount":500,"description":"Goal contribution","category":"Savings","date":"2026-03-12"}</action>
+  Use when the user logs a contribution toward this goal.
 
 RULES:
 - Only discuss this specific goal.
@@ -349,6 +420,9 @@ AVAILABLE ACTIONS:
 
 - <action type="delete_field">{"fieldId":"field-id-to-delete"}</action>
   Delete a custom field. Core fields are immutable.
+
+- <action type="set_field_value">{"fieldId":"FIELD_ID","fieldName":"Monthly Savings Rate","value":"25"}</action>
+  Use to set a value for a custom numeric field.
 
 DOMAIN VALIDATION RULES:
 You are the semantic domain validator. For each field creation request, evaluate:

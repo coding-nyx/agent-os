@@ -129,6 +129,7 @@ export interface LedgerIntakeProfile {
   financialGoals?: FinancialGoal[];
   /** Quarter indices (0-based) the user has marked as paid for the current tax year. */
   paidQuarters?: number[];
+  extensionValues?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -267,6 +268,9 @@ function normalizeLedgerProfile(raw: unknown): LedgerIntakeProfile {
             transactionCount: parseNumber((candidate.lastDocumentAnalysis as Record<string, unknown>)?.transactionCount, 0)
           }
         : undefined,
+    extensionValues: candidate.extensionValues && typeof candidate.extensionValues === 'object' && !Array.isArray(candidate.extensionValues)
+      ? candidate.extensionValues as Record<string, unknown>
+      : {},
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : now
   };
@@ -293,6 +297,7 @@ export function createEmptyLedgerProfile(): LedgerIntakeProfile {
     transactions: [],
     budgetCategories: [],
     financialGoals: [],
+    extensionValues: {},
     createdAt: now,
     updatedAt: now
   };
