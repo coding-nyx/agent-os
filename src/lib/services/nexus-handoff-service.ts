@@ -46,5 +46,14 @@ export const NexusHandoffService = {
     delete store[moduleId];
     writeStore(store);
     return handoff;
-  }
+  },
+
+  /** Non-destructive check: returns true if a fresh (< 10 min old) handoff exists for this module. */
+  hasPending(moduleId: string): boolean {
+    const store = readStore();
+    const handoff = store[moduleId];
+    if (!handoff) return false;
+    const tenMinAgo = Date.now() - 10 * 60 * 1000;
+    return new Date(handoff.createdAt).getTime() >= tenMinAgo;
+  },
 };

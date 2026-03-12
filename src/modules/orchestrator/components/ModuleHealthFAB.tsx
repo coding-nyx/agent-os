@@ -223,7 +223,7 @@ export function ModuleHealthFAB() {
           'flex items-center justify-center',
           'transition-all duration-200',
           'hover:bg-white/[0.07] hover:border-white/[0.12]',
-          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40',
+          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500/40',
           isOpen && 'bg-white/[0.08] border-white/[0.15]'
         )}
         aria-label={isOpen ? 'Close module navigator' : `Open module navigator${badgeCount > 0 ? ` (${badgeCount} alerts)` : ''}`}

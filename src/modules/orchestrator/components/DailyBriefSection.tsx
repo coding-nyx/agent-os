@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { motion } from 'framer-motion';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
-import { Spine } from '@/lib/spine/spine-event-bus';
 import {
   DOMAIN_PILLARS,
   DOMAIN_ORDER,
@@ -13,6 +13,8 @@ import {
   generateBriefSentence,
 } from '@/lib/state-display-config';
 import { TrendArrow, type TrendDirection } from '@/core/components/TrendArrow';
+import { useNsvTrends } from '../hooks/useNsvTrends';
+import { GlassCard } from '@/core/components/GlassCard';
 import type { StatusTone } from '@/modules/hub/constants';
 
 const TONE_ACCENT: Record<StatusTone, string> = {
@@ -58,14 +60,16 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
   const displayNames = globalSoul?.displayNames ?? {};
   const userName = profile?.preferredName || 'there';
 
+  const trends = useNsvTrends();
+
   const pillars = useMemo(() => {
     return DOMAIN_ORDER.map((domain) => {
       const config = DOMAIN_PILLARS[domain];
       const { word, tone } = computePillarState(nsv, domain);
-      const trend: TrendDirection = 'unknown';
+      const trend: TrendDirection = trends[domain] ?? 'unknown';
       return { domain, config, word, tone, trend };
     });
-  }, [nsv]);
+  }, [nsv, trends]);
 
   const briefSentence = useMemo(() => {
     const pillarMap: Record<string, { tone: StatusTone; trend: TrendDirection }> = {};
@@ -77,12 +81,19 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
 
   const greeting = getGreeting(userName);
 
-  // Recent cascade events from Spine
-  const cascadeEvents = useMemo(() => {
-    return Spine.getRecentEvents()
+  // Recent cascade events — reactive via Spine subscription
+  const [cascadeEvents, setCascadeEvents] = useState(() =>
+    Spine.getRecentEvents()
       .filter((e) => e.source.startsWith('cascade:'))
-      .slice(0, 3);
-  }, []);
+      .slice(0, 3)
+  );
+  useSpineEvent('*', () => {
+    setCascadeEvents(
+      Spine.getRecentEvents()
+        .filter((e) => e.source.startsWith('cascade:'))
+        .slice(0, 3)
+    );
+  });
 
   return (
     <motion.section
@@ -113,35 +124,34 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
             {pillars.map((p, i) => {
               const Icon = p.config.icon;
               return (
-                <motion.button
+                <motion.div
                   key={p.domain}
                   initial={reducedMotion ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={reducedMotion ? { duration: 0 } : { delay: i * 0.08, duration: 0.3 }}
+                  whileHover={{ scale: 1.02 }}
                   onClick={() => onAskAboutDomain?.(p.domain)}
-                  className={cn(
-                    'rounded-xl border px-4 py-3.5 space-y-2 text-left transition-colors',
-                    'hover:border-white/15',
-                    TONE_ACCENT[p.tone]
-                  )}
+                  role="button"
                   aria-label={`${p.config.label}: ${p.word}`}
                 >
-                  <div className="flex items-center justify-between">
+                  <GlassCard className={cn('cursor-pointer px-4 py-3.5 space-y-2 hover:border-white/15 transition-colors', TONE_ACCENT[p.tone])}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Icon className={cn('w-4 h-4', TONE_TEXT[p.tone])} />
+                        <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-white/50">
+                          {p.config.label}
+                        </span>
+                      </div>
+                      <TrendArrow trend={p.trend} size="sm" />
+                    </div>
                     <div className="flex items-center gap-2">
-                      <Icon className={cn('w-4 h-4', TONE_TEXT[p.tone])} />
-                      <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-white/50">
-                        {p.config.label}
+                      <div className={cn('w-2 h-2 rounded-full', TONE_DOT[p.tone])} />
+                      <span className={cn('text-base font-bold uppercase tracking-tight font-display', TONE_TEXT[p.tone])}>
+                        {p.word}
                       </span>
                     </div>
-                    <TrendArrow trend={p.trend} size="sm" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={cn('w-2 h-2 rounded-full', TONE_DOT[p.tone])} />
-                    <span className={cn('text-base font-bold uppercase tracking-tight font-display', TONE_TEXT[p.tone])}>
-                      {p.word}
-                    </span>
-                  </div>
-                </motion.button>
+                  </GlassCard>
+                </motion.div>
               );
             })}
           </div>

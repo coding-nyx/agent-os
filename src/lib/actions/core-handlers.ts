@@ -43,7 +43,7 @@ export function registerCoreActions() {
       });
     },
 
-    delegate_to_module: ({ moduleId, payload, delegateToModule, navigateTo }) => {
+    delegate_to_module: ({ moduleId, payload, delegateToModule }) => {
       if (typeof payload?.moduleId === 'string') {
         const content =
           typeof payload?.instruction === 'string'
@@ -54,11 +54,12 @@ export function registerCoreActions() {
             ? payload.content
             : '';
         const reason = typeof payload?.reason === 'string' ? payload.reason : 'delegation';
+        // Store the handoff context so the target module can consume it on arrival.
+        // Navigation is intentionally NOT performed here — for the orchestrator the
+        // onActionParsed callback in NexusDashboard intercepts this action and shows
+        // a RoutingSuggestion that the user confirms before navigating.  Other callers
+        // that need immediate navigation should use the `navigate_to_module` action.
         delegateToModule(payload.moduleId, reason, content);
-        if (navigateTo) {
-          const route = NexusRoutingService.getRoute(payload.moduleId as ModuleId);
-          if (route) navigateTo(route);
-        }
       }
     },
 

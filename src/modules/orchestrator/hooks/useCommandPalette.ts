@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Brain, Activity, ClipboardList, Zap,
   Search, Code, LayoutGrid, User, Compass,
-  MessageSquare, BarChart3, RefreshCw, Microscope
+  MessageSquare, BarChart3, RefreshCw, Microscope, HeartPulse
 } from 'lucide-react';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import { useVault } from '@/lib/vault-context';
@@ -36,6 +36,7 @@ export interface UseCommandPaletteReturn {
 const MODULE_ICONS: Record<string, typeof Brain> = {
   agnes: Brain,
   titan: Activity,
+  soma: HeartPulse,
   ledger: ClipboardList,
   atlas: Zap,
   scout: Search,
@@ -46,6 +47,8 @@ export function useCommandPalette(options?: {
   onSynthesisRefresh?: () => void;
   onMemorySearch?: (query: string) => void;
   onAskModule?: (moduleId: string, question: string) => void;
+  onOpenAuth?: (moduleId: ModuleId) => void;
+  onExpandBrief?: () => void;
 }): UseCommandPaletteReturn {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -93,7 +96,7 @@ export function useCommandPalette(options?: {
     ];
 
     // Build module nav commands
-    const moduleNav: ModuleId[] = ['agnes', 'titan', 'ledger', 'atlas', 'scout', 'forge'];
+    const moduleNav: ModuleId[] = ['agnes', 'titan', 'soma', 'ledger', 'atlas', 'scout', 'forge'];
     moduleNav.forEach((id) => {
       const manifest = MODULE_MANIFEST[id];
       if (!manifest?.hasPage) return;
@@ -104,7 +107,14 @@ export function useCommandPalette(options?: {
         label: `Open ${manifest.title} (${manifest.description})`,
         icon: MODULE_ICONS[id] || Compass,
         isLocked,
-        execute: () => { navigate(manifest.route); close(); },
+        execute: () => {
+          if (isLocked) {
+            options?.onOpenAuth?.(id as ModuleId);
+          } else {
+            navigate(manifest.route);
+            close();
+          }
+        },
       });
     });
 
@@ -116,8 +126,9 @@ export function useCommandPalette(options?: {
         icon: Search,
         shortcut: '⌘S',
         execute: () => {
-          options?.onMemorySearch?.('');
-          close();
+          // Two-step flow: pre-fill the input so the user can type their query.
+          // executeSelected handles the "Search my memory: " prefix on Enter.
+          setSearch('Search my memory: ');
         },
       },
       {
@@ -135,7 +146,10 @@ export function useCommandPalette(options?: {
         category: 'system',
         label: 'Show Daily Brief',
         icon: RefreshCw,
-        execute: () => { close(); },
+        execute: () => {
+          options?.onExpandBrief?.();
+          close();
+        },
       },
     ];
 
@@ -157,14 +171,17 @@ export function useCommandPalette(options?: {
     }
 
     const aiCommands: Command[] = [];
-    const consultModules: ModuleId[] = ['agnes', 'titan', 'ledger', 'atlas'];
+    const consultModules: ModuleId[] = ['agnes', 'titan', 'soma', 'ledger', 'atlas'];
     consultModules.forEach((id) => {
       const manifest = MODULE_MANIFEST[id];
       if (!manifest) return;
+      const label = id === 'soma'
+        ? 'Ask Soma about recovery & biomarkers'
+        : `Ask ${manifest.title} about…`;
       aiCommands.push({
         id: `ai:consult:${id}`,
         category: 'ai',
-        label: `Ask ${manifest.title} about…`,
+        label,
         icon: MessageSquare,
         execute: () => {
           options?.onAskModule?.(id, '');
@@ -191,9 +208,20 @@ export function useCommandPalette(options?: {
   }, [filteredCommands.length]);
 
   const executeSelected = useCallback(() => {
+    // Two-step memory search: if the query starts with the prefix, extract the
+    // search term and fire onMemorySearch instead of running a normal command.
+    const MEMORY_PREFIX = 'Search my memory: ';
+    if (search.startsWith(MEMORY_PREFIX)) {
+      const searchTerm = search.slice(MEMORY_PREFIX.length).trim();
+      if (searchTerm) {
+        options?.onMemorySearch?.(searchTerm);
+      }
+      close();
+      return;
+    }
     const cmd = filteredCommands[selectedIndex];
     if (cmd) cmd.execute();
-  }, [filteredCommands, selectedIndex]);
+  }, [filteredCommands, selectedIndex, search, options, close]);
 
   return {
     isOpen,

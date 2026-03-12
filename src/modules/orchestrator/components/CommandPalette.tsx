@@ -3,11 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Lock, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCommandPalette, type Command } from '../hooks/useCommandPalette';
+import type { ModuleId } from '@/lib/module-manifest';
 
 interface CommandPaletteProps {
   onSynthesisRefresh?: () => void;
   onMemorySearch?: (query: string) => void;
   onAskModule?: (moduleId: string, question: string) => void;
+  onOpenAuth?: (moduleId: ModuleId) => void;
+  onExpandBrief?: () => void;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -47,7 +50,7 @@ function CommandRow({ command, isSelected, onSelect }: {
   );
 }
 
-export function CommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule }: CommandPaletteProps) {
+export function CommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule, onOpenAuth, onExpandBrief }: CommandPaletteProps) {
   const {
     isOpen,
     close,
@@ -57,7 +60,7 @@ export function CommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule
     selectedIndex,
     setSelectedIndex,
     executeSelected,
-  } = useCommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule });
+  } = useCommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule, onOpenAuth, onExpandBrief });
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);

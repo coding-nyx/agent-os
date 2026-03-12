@@ -4,6 +4,8 @@ import { GuidedIntakeStep, IntakeModuleConfig } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
 import { NexusChat } from '@/core/components/NexusChat';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import { Zap } from 'lucide-react';
 import { AgentPersonalityProvision, CoreUserProfile } from '@/lib/types';
 import { ORCHESTRATOR_ONBOARDING_PERSONA } from '../personas';
@@ -229,26 +231,30 @@ export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: Or
             <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
               <Zap className="w-3 h-3" /> Fast Track Initialization
             </p>
-            <div className="flex gap-2">
-              <input
-                placeholder="Preferred Name"
-                value={fastName}
-                onChange={e => setFastName(e.target.value)}
-                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
-              />
-              <input
-                placeholder="Pronouns (e.g., they/them)"
-                value={fastPronouns}
-                onChange={e => setFastPronouns(e.target.value)}
-                className="flex-[1.5] bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
-              />
-              <button
+            <div className="flex gap-2 items-center">
+              <div className="flex-1 min-w-0">
+                <NeuralInput
+                  placeholder="Preferred Name"
+                  value={fastName}
+                  onChange={e => setFastName(e.target.value)}
+                />
+              </div>
+              <div className="flex-[1.5] min-w-0">
+                <NeuralInput
+                  placeholder="Pronouns (e.g., they/them)"
+                  value={fastPronouns}
+                  onChange={e => setFastPronouns(e.target.value)}
+                />
+              </div>
+              <NeuralButton
+                themeColor="cyan"
+                size="sm"
                 onClick={handleFastTrack}
-                disabled={!fastName.trim() || !fastPronouns.trim() || isSubmitting}
-                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+                disabled={!fastName.trim() || !fastPronouns.trim()}
+                loading={isSubmitting}
               >
                 Execute
-              </button>
+              </NeuralButton>
             </div>
             <p className="text-[9px] text-white/40 uppercase tracking-tight">
               Bypass conversational proxy. Requires name and pronouns.

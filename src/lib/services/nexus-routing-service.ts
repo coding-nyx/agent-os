@@ -8,6 +8,18 @@ type SendMessageFn = (content: string, context: { systemPrompt: string; insights
 // are checked first so that "workout plan" (weight 2) beats a lone "plan" (weight 1).
 const KEYWORD_ROUTES: Array<{ moduleId: ModuleId; keywords: Array<{ term: string; weight: number }> }> = [
   {
+    moduleId: 'soma',
+    keywords: [
+      // High-weight compound phrases unique to somatic/recovery domain
+      { term: 'heart rate variability', weight: 3 }, { term: 'sleep score', weight: 3 },
+      { term: 'heart rate', weight: 2 }, { term: 'hrv', weight: 2 },
+      { term: 'soma', weight: 2 },
+      { term: 'recovery', weight: 1 }, { term: 'readiness', weight: 1 },
+      { term: 'resting', weight: 1 }, { term: 'soreness', weight: 1 },
+      { term: 'somatic', weight: 1 }, { term: 'biomarker', weight: 1 }
+    ]
+  },
+  {
     moduleId: 'agnes',
     keywords: [
       { term: 'mental health', weight: 2 },

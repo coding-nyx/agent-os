@@ -24,13 +24,18 @@ import { registerTitanActions } from './modules/titan/services/actions'
 import { registerScoutActions } from './modules/scout/services/actions'
 import { registerForgeActions } from './modules/forge/services/actions'
 import { registerSomaFieldActions } from './modules/soma/actions/soma-field-actions'
+import { registerOrchestratorActions } from './modules/orchestrator/services/actions'
 
 // Boot NexusLogger before anything else — console override must be in place before
 // any module code or React runs. Reads debug state from localStorage so it persists.
 const _debugOnBoot = localStorage.getItem('nexus_debug_mode') === 'true';
 NexusLogger.init(_debugOnBoot);
 
-// Initialize the central action registry for core NSV updates and orchestration
+// Initialize the central action registry for core NSV updates and orchestration.
+// Orchestrator supplementary handlers (navigate_to_module, create_module_handoff,
+// and typed fallbacks for the 4 AI-facing handlers) are registered first so that
+// registerCoreActions() can overwrite shared keys with its hardened implementations.
+registerOrchestratorActions();
 registerCoreActions();
 registerAnalysisActions();
 registerGlobalValidationActions();

@@ -112,6 +112,9 @@ function normalizeAtlasProfile(raw: unknown): AtlasProfile {
       ? candidate.preferenceMode
       : undefined,
     dailyCheckIns: Array.isArray(candidate.dailyCheckIns) ? candidate.dailyCheckIns : [],
+    fieldValues: candidate.fieldValues && typeof candidate.fieldValues === 'object' && !Array.isArray(candidate.fieldValues)
+      ? (candidate.fieldValues as Record<string, unknown>)
+      : undefined,
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : now
   };

@@ -32,7 +32,7 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
-import { Activity, BarChart3, RefreshCw, Zap, X, Plus, Moon } from 'lucide-react';
+import { Activity, BarChart3, RefreshCw, Zap, X, Plus, Moon, ShieldAlert } from 'lucide-react';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
@@ -59,9 +59,13 @@ function resolveInitialTab(searchParams: URLSearchParams): TitanTab {
 
 function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null }) {
   const { globalSoul } = useGlobalSoul();
-  const { isModuleAccessible, getModuleKey } = useVault();
+  const { isModuleAccessible, getModuleKey, lockVault } = useVault();
   const { user } = useAuth();
   const isLocked = !isModuleAccessible('titan');
+
+  // ── Medical-data vault advisory (S21-015) ─────────────────────────────────
+  // Shown once per session when vault is accessible AND profile has medical data.
+  const [showAdvisory, setShowAdvisory] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams));
@@ -142,7 +146,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   }, [profile, directWrite, encryptionKey, user]);
 
   // Phase 6 — Agnes→Titan reactive Spine: auto-suggest deload on high stress events
-  // Use a Set so COMPOUND_STRESS and BURNOUT_WARNING deduplicate independently
+  // Use a Set so COMPOUND_STRESS, BURNOUT_WARNING, COMMITMENT_MISSED, and FINANCIAL_STRESS deduplicate independently
   const handledSpineEventsRef = useRef<Set<string>>(new Set());
   useSpineEvent('COMPOUND_STRESS', useCallback((event) => {
     if (!profile?.onboardingComplete) return;
@@ -163,6 +167,38 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     handledSpineEventsRef.current.add(eventKey);
     ai.handleSendMessage(
       'Agnes has detected a burnout warning signal. Please reduce training volume immediately and suggest a 3–5 day active recovery protocol based on my current state.'
+    );
+  }, [profile?.onboardingComplete, ai.handleSendMessage]));
+
+  useSpineEvent('COMMITMENT_MISSED', useCallback((event) => {
+    if (!profile?.onboardingComplete) return;
+    const eventKey = `commitment-missed-${event.id}`;
+    if (handledSpineEventsRef.current.has(eventKey)) return;
+    handledSpineEventsRef.current.add(eventKey);
+    // Only react to physical domain commitments (domain 'B' at event level, or 'physical' in data)
+    if (event.data?.domain !== 'physical' && event.domain !== 'B') return;
+    const title = event.data?.commitmentTitle ?? event.data?.title ?? 'a physical commitment';
+    ai.handleSendMessage(
+      `[System] You missed ${title as string}. ` +
+      `Should we adjust your training plan or reschedule this session?`
+    );
+  }, [profile?.onboardingComplete, ai.handleSendMessage]));
+
+  useSpineEvent('FINANCIAL_STRESS', useCallback((event) => {
+    if (!profile?.onboardingComplete) return;
+    const eventKey = `financial-stress-${event.id}`;
+    if (handledSpineEventsRef.current.has(eventKey)) return;
+    handledSpineEventsRef.current.add(eventKey);
+
+    // Only react when stress level is significant (≥7/10)
+    const rawLevel = (event.data?.stressLevel ?? event.data?.level) as number | undefined;
+    const stressLevel = rawLevel ?? 0;
+    if (stressLevel < 7) return;
+
+    ai.handleSendMessage(
+      `[System] Financial stress detected at ${stressLevel}/10. ` +
+      `This is a cortisol contributor that compresses recovery capacity. ` +
+      `Please factor this into today's training intensity and recovery recommendations.`
     );
   }, [profile?.onboardingComplete, ai.handleSendMessage]));
 
@@ -225,6 +261,41 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.cycles, user, encryptionKey]);
 
+  // ── NexusHandoff consume on mount (S21-010) ───────────────────────────────
+  // Picks up any pending cross-module handoff stored for 'titan' (from Agnes,
+  // Atlas, or any other module) and routes it to the AI as a prefixed context
+  // message. The service clears the stored entry on consume automatically.
+  useEffect(() => {
+    const handoff = NexusHandoffService.consume('titan');
+    if (!handoff) return;
+
+    // Case 1 — Stress context delegated from Agnes
+    if (handoff.type === 'delegate' && handoff.sourceModuleId === 'agnes') {
+      ai.handleSendMessage(
+        `[Context from Agnes] Stress context: ${handoff.content}. ` +
+        `Please factor this into training recommendations.`
+      );
+    }
+    // Case 2 — Commitment failure delegated from Atlas
+    else if (handoff.sourceModuleId === 'atlas') {
+      ai.handleSendMessage(
+        `[Atlas] A physical commitment was missed: "${handoff.content}". ` +
+        `Should we reschedule or adjust the training plan?`
+      );
+    }
+    // Case 3 — Generic delegate with a content message
+    else if (handoff.type === 'delegate') {
+      ai.handleSendMessage(`[${handoff.sourceModuleId ?? 'System'}] ${handoff.content}`);
+    }
+    // Case 4 — Query result (response to a previous Titan query)
+    else if (handoff.type === 'query_result') {
+      ai.handleSendMessage(
+        `[Query Result from ${handoff.sourceModuleId ?? 'module'}] ${handoff.content}`
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
       const hasRoutine = profile.routines && profile.routines.length > 0;
@@ -238,6 +309,49 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       ]);
     }
   }, [profile?.onboardingComplete, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages, profile?.routines]);
+
+  // ── Medical-data vault advisory (S21-015) ─────────────────────────────────
+  // Fires once per session when: onboarding complete + medical data present
+  // + vault is currently accessible (not locked). Uses sessionStorage to ensure
+  // it shows at most once per browser session, per user (prevents cross-user
+  // leakage on shared devices).
+  useEffect(() => {
+    const hasMedicalData = (
+      (profile?.labSummaries?.length ?? 0) > 0 ||
+      (profile?.medicalImageAnalyses?.length ?? 0) > 0 ||
+      (profile?.medications?.length ?? 0) > 0
+    );
+    if (!hasMedicalData) return;
+    if (!profile?.onboardingComplete) return;
+
+    // isModuleAccessible returns true when vault is open OR module has no vault
+    // policy — in both cases the raw data is readable, so the advisory applies.
+    const isAccessible = isModuleAccessible('titan');
+    if (!isAccessible) return; // vault is locked — data is already protected
+
+    const sessionKey = `titan-vault-advisory-${user?.uid ?? 'guest'}`;
+    if (sessionStorage.getItem(sessionKey)) return; // already shown this session
+
+    sessionStorage.setItem(sessionKey, '1');
+    setShowAdvisory(true);
+  }, [
+    profile?.labSummaries?.length,
+    profile?.medicalImageAnalyses?.length,
+    profile?.medications?.length,
+    profile?.onboardingComplete,
+    // isModuleAccessible and user?.uid are intentionally omitted from the
+    // dependency array: the session-storage guard means even if vault state
+    // changes during the session the toast only fires once. Adding them would
+    // cause the toast to re-trigger on every vault state transition.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ]);
+
+  // Auto-dismiss the advisory after 8 seconds
+  useEffect(() => {
+    if (!showAdvisory) return;
+    const timer = window.setTimeout(() => setShowAdvisory(false), 8000);
+    return () => window.clearTimeout(timer);
+  }, [showAdvisory]);
 
   const handleCalibrate = useCallback(
     (metricKey: string) => {
@@ -874,6 +988,51 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           }
         }}
       />
+
+      {/* ── Medical-data vault advisory toast (S21-015) ───────────────────
+          Shown once per session when vault is accessible and the profile
+          contains lab reports, clinical flags, or medications. Purely
+          advisory — no forced migration or breaking changes.                */}
+      <AnimatePresence>
+        {showAdvisory && (
+          <motion.div
+            key="vault-advisory"
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 100, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            role="alert"
+            aria-live="polite"
+            className="fixed bottom-6 right-6 z-[var(--z-toast)] w-[340px] max-w-[calc(100vw-3rem)] rounded-2xl border border-amber-500/30 bg-[#05050a]/95 backdrop-blur-xl p-4 shadow-2xl pointer-events-auto"
+          >
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" aria-hidden="true" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-white/80 font-bold leading-snug">
+                  Medical data is unprotected
+                </p>
+                <p className="text-[11px] text-white/50 mt-1 leading-relaxed">
+                  Your Titan profile contains lab reports or clinical data. Lock the vault to encrypt it.
+                </p>
+                <button
+                  onClick={() => { lockVault(); setShowAdvisory(false); }}
+                  className="mt-3 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/25 text-[11px] font-semibold text-amber-300 transition-colors"
+                  aria-label="Lock vault now"
+                >
+                  Lock Vault
+                </button>
+              </div>
+              <button
+                onClick={() => setShowAdvisory(false)}
+                className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center shrink-0 transition-colors"
+                aria-label="Dismiss advisory"
+              >
+                <X className="w-3 h-3 text-white/50" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

@@ -5,7 +5,23 @@ import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { ModuleMemoryService } from '@/lib/services/module-memory-service';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { useNexusSynthesis } from './useNexusSynthesis';
 import type { ModuleMemoryEnvelope } from '@/lib/types';
+
+/**
+ * Maps each module to the NSV domain it "owns" for alert correlation.
+ * Alerts whose involvedDomains include a module's domain will surface as hasAlert=true.
+ */
+const MODULE_DOMAIN_MAP: Record<string, string> = {
+  agnes: 'emotional',
+  titan: 'biological',
+  soma: 'biological',
+  ledger: 'resource',
+  atlas: 'planning',
+  scout: 'cognitive',
+  forge: 'cognitive',
+};
 
 export type StatusTone = 'good' | 'warn' | 'bad' | 'neutral';
 
@@ -87,6 +103,7 @@ export function useModuleHealth(): UseModuleHealthReturn {
   const { user } = useAuth();
   const { globalSoul } = useGlobalSoul();
   const vault = useVault();
+  const { alerts } = useNexusSynthesis();
   const [envelopes, setEnvelopes] = useState<Record<string, ModuleMemoryEnvelope | null>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -134,6 +151,19 @@ export function useModuleHealth(): UseModuleHealthReturn {
       const envelope = envelopes[id];
       const isAccessible = vault?.isModuleAccessible?.(id) ?? !manifest.securityPolicy.defaultLocked;
 
+      // Derive hasAlert: any critical/warning synthesis alert that involves this module's domain
+      const moduleDomain = MODULE_DOMAIN_MAP[id];
+      const hasAlert = moduleDomain
+        ? alerts.some(
+            (alert) =>
+              (alert.severity === 'critical' || alert.severity === 'warning') &&
+              alert.involvedDomains.includes(moduleDomain)
+          )
+        : false;
+
+      // Derive hasPendingHandoff: non-destructive check against sessionStorage-backed service
+      const hasPendingHandoff = NexusHandoffService.hasPending(id);
+
       return {
         moduleId: id,
         title: manifest.title,
@@ -145,11 +175,11 @@ export function useModuleHealth(): UseModuleHealthReturn {
         lastActive: envelope?.lastActive ?? null,
         lastSnapshot: envelope?.latestSnapshot ?? null,
         keyMetricTone: deriveMetricTone(id, nsv),
-        hasPendingHandoff: false,
-        hasAlert: false,
+        hasPendingHandoff,
+        hasAlert,
       };
     });
-  }, [envelopes, nsv, vault]);
+  }, [envelopes, nsv, vault, alerts]);
 
   return {
     modules,

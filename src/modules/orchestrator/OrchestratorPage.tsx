@@ -22,6 +22,7 @@ export default function OrchestratorPage() {
   const [pageState, setPageState] = useState<PageState>('ONBOARDING');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNudge, setShowNudge] = useState(false);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
 
   const {
     messages,
@@ -90,6 +91,7 @@ export default function OrchestratorPage() {
       setPageState('DASHBOARD');
     } catch (e) {
       console.error('Failed to complete onboarding:', e);
+      setOnboardingError('Something went wrong saving your profile. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -114,6 +116,14 @@ export default function OrchestratorPage() {
   return (
     <ModuleLayout title="Nexus" themeColor="cyan" moduleId="orchestrator" hideBack>
       <OrchestratorOnboarding profile={profile} isSubmitting={isSubmitting} onComplete={handleComplete} />
+      {onboardingError && (
+        <div
+          data-testid="onboarding-error"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-500/20 border border-red-500/40 text-red-300 text-sm px-4 py-3 rounded-xl backdrop-blur-sm whitespace-nowrap"
+        >
+          {onboardingError}
+        </div>
+      )}
       <AnimatePresence>
         {showNudge && (
           <VaultSetupNudge onClose={() => setShowNudge(false)} />

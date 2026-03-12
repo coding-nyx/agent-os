@@ -1,6 +1,6 @@
 import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
 import { LoadContext } from '@/lib/types/encrypted-document';
-import { TitanProfile } from '@/lib/types';
+import { TitanProfile, CustomField } from '@/lib/types';
 
 const GUEST_PROFILE_KEY = 'nexus_titan_profile_guest';
 
@@ -68,6 +68,7 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
     workoutLogs: Array.isArray(data.workoutLogs) ? (data.workoutLogs as NonNullable<TitanProfile['workoutLogs']>).slice(0, 1000) : base.workoutLogs,
     exerciseLibrary: Array.isArray(data.exerciseLibrary) ? (data.exerciseLibrary as NonNullable<TitanProfile['exerciseLibrary']>) : base.exerciseLibrary,
     directWriteMode: data.directWriteMode === true,
+    customFields: Array.isArray(data.customFields) ? (data.customFields as CustomField[]).slice(0, 20) : undefined,
   };
 }
 

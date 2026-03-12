@@ -5,7 +5,7 @@
 
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import type { SomaProfile } from '@/lib/types';
+import type { SomaProfile, VitalReading } from '@/lib/types';
 
 const COLLECTION = 'soma_profiles';
 const VAULT_SALT_MARKER = 'vault_salt_used';
@@ -30,6 +30,7 @@ export function createEmptySomaProfile(userId: string): SomaProfile {
     labSummaries: [],
     clearances: [],
     medicalImageAnalyses: [],
+    vitalReadings: [],
     medicalSummary: '',
     medicalOnboardingComplete: false,
     createdAt: now,
@@ -64,6 +65,11 @@ export function normalizeSomaProfile(userId: string, raw: unknown): SomaProfile 
       : [],
     medicalImageAnalyses: Array.isArray(data.medicalImageAnalyses)
       ? (data.medicalImageAnalyses as SomaProfile['medicalImageAnalyses']).slice(0, 100)
+      : [],
+    vitalReadings: Array.isArray(data.vitalReadings)
+      ? (data.vitalReadings as VitalReading[])
+          .filter((r): r is VitalReading => r !== null && typeof r === 'object' && typeof r.timestamp === 'number')
+          .slice(-500) // keep last 500 readings max
       : [],
     medicalSummary: typeof (data as Record<string, unknown>).medicalSummary === 'string'
       ? (data as Record<string, unknown>).medicalSummary as string
@@ -171,5 +177,36 @@ export function subscribeSomaProfile(
         onUpdate(null);
       }
     }
+  );
+}
+
+/**
+ * Appends a new VitalReading to the user's SomaProfile.
+ * Loads the current profile, merges the new reading, and persists (E2EE).
+ *
+ * Time complexity: O(n) where n = existing readings (capped at 500).
+ *
+ * @param userId        - Authenticated user ID
+ * @param fields        - Vital metric fields to record (timestamp is auto-set)
+ * @param encryptionKey - Vault key for E2EE encrypt/decrypt
+ */
+export async function addVitalReading(
+  userId: string,
+  fields: Omit<VitalReading, 'timestamp'>,
+  encryptionKey: CryptoKey,
+): Promise<void> {
+  if (!userId || !encryptionKey) return;
+
+  const current = await loadSomaProfile({ userId, encryptionKey });
+  const base = current ?? createEmptySomaProfile(userId);
+
+  const newReading: VitalReading = { timestamp: Date.now(), ...fields };
+
+  const MAX_READINGS = 500;
+  const updatedReadings = [...(base.vitalReadings ?? []), newReading].slice(-MAX_READINGS);
+
+  await saveSomaProfile(
+    { ...base, vitalReadings: updatedReadings },
+    { userId, encryptionKey },
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NexusChat } from '@/core/components/NexusChat';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
@@ -9,6 +9,8 @@ import { SynthesisPanel } from './SynthesisPanel';
 import { ModuleHealthFAB } from './ModuleHealthFAB';
 import { CommandPalette } from './CommandPalette';
 import { RoutingSuggestion } from './RoutingSuggestion';
+import { useGlobalSoul } from '@/lib/global-soul-context';
+import { OrchestratorErrorBoundary } from './OrchestratorErrorBoundary';
 
 interface NexusDashboardProps {
   ai: {
@@ -33,12 +35,21 @@ function contentToText(content: MessageContent): string {
 
 export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
   const navigate = useNavigate();
+  const { refreshGlobalSoul } = useGlobalSoul();
   const [briefCollapsed, setBriefCollapsed] = useState(false);
   const [routingSuggestion, setRoutingSuggestion] = useState<{
     target: ModuleId;
     reason?: string;
   } | null>(null);
   const [suggestionCount, setSuggestionCount] = useState(0);
+  const suggestionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup suggestion timer on unmount
+  useEffect(() => {
+    return () => {
+      if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
+    };
+  }, []);
 
   const hasMessages = ai.messages.length > 0;
   const conversationDepth = ai.messages.filter(m => m.role === 'user').length;
@@ -49,6 +60,18 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
       setBriefCollapsed(true);
     }
   }, [conversationDepth]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleActionParsed = useCallback((type: string, payload: Record<string, unknown>) => {
+    if (type === 'delegate_to_module' && typeof payload?.moduleId === 'string') {
+      const targetModuleId = payload.moduleId as ModuleId;
+      const reason = typeof payload?.reason === 'string' ? payload.reason : undefined;
+      setRoutingSuggestion({ target: targetModuleId, reason });
+      setSuggestionCount(prev => prev + 1);
+      // Auto-dismiss after 8 seconds — clear any prior timer to avoid leaks
+      if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
+      suggestionTimerRef.current = setTimeout(() => setRoutingSuggestion(null), 8000);
+    }
+  }, []);
 
   // Smart routing: classify intent before sending
   const handleSendWithRouting = useCallback(async (
@@ -68,8 +91,9 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
       if (decision.target !== 'orchestrator' && decision.confidence >= 0.62) {
         setRoutingSuggestion({ target: decision.target, reason: decision.reason });
         setSuggestionCount(prev => prev + 1);
-        // Auto-dismiss after 8 seconds
-        setTimeout(() => setRoutingSuggestion(null), 8000);
+        // Auto-dismiss after 8 seconds — clear any prior timer to avoid leaks
+        if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
+        suggestionTimerRef.current = setTimeout(() => setRoutingSuggestion(null), 8000);
       }
     }
 
@@ -106,24 +130,37 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Daily Brief — above chat, collapsible, constrained on mobile */}
       <div className="shrink-0 px-4 pt-3 pb-2 space-y-3 max-h-[40vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
-        <DailyBriefSection
-          collapsed={briefCollapsed}
-          onToggleCollapse={() => setBriefCollapsed(!briefCollapsed)}
-          onAskAboutDomain={handleAskAboutDomain}
-        />
+        <OrchestratorErrorBoundary name="DailyBrief">
+          <DailyBriefSection
+            collapsed={briefCollapsed}
+            onToggleCollapse={() => setBriefCollapsed(!briefCollapsed)}
+            onAskAboutDomain={handleAskAboutDomain}
+          />
+        </OrchestratorErrorBoundary>
 
         {/* Synthesis Panel — below brief, above chat */}
-        <SynthesisPanel
-          onInjectChat={handleInjectChat}
-          onConsultModule={handleConsultModule}
-          onNavigate={(path) => navigate(path)}
-        />
+        <OrchestratorErrorBoundary name="SynthesisPanel">
+          <SynthesisPanel
+            onInjectChat={handleInjectChat}
+            onConsultModule={handleConsultModule}
+            onNavigate={(path) => navigate(path)}
+          />
+        </OrchestratorErrorBoundary>
       </div>
 
       {/* Chat area — fills remaining space; relative for FAB positioning */}
       <div className="flex-1 min-h-0 flex flex-col relative">
         {/* Module Health FAB — floats bottom-right inside chat area */}
-        <ModuleHealthFAB />
+        <OrchestratorErrorBoundary name="ModuleHealth">
+          <ModuleHealthFAB />
+        </OrchestratorErrorBoundary>
+
+        {/* ⌘K discoverability hint */}
+        <div className="absolute top-2 right-3 z-10 pointer-events-none">
+          <kbd className="text-[10px] font-mono text-white/20 bg-white/5 px-1.5 py-0.5 rounded border border-white/10 select-none">
+            ⌘K
+          </kbd>
+        </div>
 
         <NexusChat
           ai={{
@@ -131,10 +168,11 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
             handleSendMessage: handleSendWithRouting,
           }}
           agentName={agentName}
-          themeColor="indigo"
+          themeColor="cyan"
           placeholder="Ask Nexus anything — system command, cross-domain analysis, or module routing..."
           moduleId="orchestrator"
           onClearHistory={ai.clearSession}
+          onActionParsed={handleActionParsed}
         />
 
         {/* Routing suggestion — inline below chat input */}
@@ -149,13 +187,14 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
 
       {/* Command Palette — overlay, ⌘K triggered */}
       <CommandPalette
-        onSynthesisRefresh={() => {}}
+        onSynthesisRefresh={refreshGlobalSoul}
         onMemorySearch={(query) => {
           if (query) ai.handleSendMessage(`Search my memory for: ${query}`);
         }}
         onAskModule={(moduleId) => {
           handleConsultModule(moduleId);
         }}
+        onExpandBrief={() => setBriefCollapsed(false)}
       />
     </div>
   );

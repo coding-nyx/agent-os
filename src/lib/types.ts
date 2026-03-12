@@ -673,6 +673,29 @@ export interface PersonalRecord {
   sessionId: string;
 }
 
+/**
+ * A user-defined custom tracking field stored in TitanProfile.customFields.
+ * Created / deleted by the AI via the `create_field` / `delete_field` actions.
+ */
+export interface CustomField {
+  /** Stable unique identifier (crypto.randomUUID). */
+  id: string;
+  /** Human-readable label shown in the UI. */
+  name: string;
+  /** Semantic data type — determines how the value is rendered and validated. */
+  type: 'number' | 'text' | 'boolean' | 'select';
+  /** Optional unit label (e.g. "kg", "mg/dL"). */
+  unit?: string;
+  /** Short description of what the field tracks. */
+  description?: string;
+  /** Numeric range guard [min, max] — only meaningful when type === 'number'. */
+  range?: [number, number];
+  /** Selectable options — only meaningful when type === 'select'. Max 10 items. */
+  options?: string[];
+  /** Unix-ms timestamp when the field was created. */
+  createdAt: number;
+}
+
 export interface TitanProfile {
   onboardingComplete: boolean;
   privacyLevel: TitanPrivacyLevel;
@@ -693,6 +716,8 @@ export interface TitanProfile {
   exerciseLibrary?: TitanExerciseEntry[];
   /** Whether Direct Write Mode is enabled (bypasses AI gating for logging operations). */
   directWriteMode?: boolean;
+  /** User-defined custom tracking fields created via AI `create_field` action. Max 20. */
+  customFields?: CustomField[];
   createdAt: string;
   updatedAt: string;
   traits?: string[];
@@ -1101,6 +1126,8 @@ export interface AtlasProfile {
   dailyCheckIns?: DailyCheckInEntry[];
   preferences?: AtlasPreferences;
   preferenceMode?: 'conversational' | 'structured';
+  /** Extension field values, persisted alongside the profile. */
+  fieldValues?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -1147,6 +1174,21 @@ export interface JournalEntry {
 }
 
 // Soma
+
+/**
+ * A single timestamped vital-signs reading.
+ * Stored in SomaProfile.vitalReadings (persisted, E2EE).
+ */
+export interface VitalReading {
+  /** Unix timestamp (ms) when the reading was recorded */
+  timestamp: number;
+  heartRate?: number;
+  bloodPressure?: string;
+  temperature?: number;
+  spo2?: number;
+  weight?: number;
+}
+
 export interface SomaProfile {
   id: string;
   userId: string;
@@ -1189,12 +1231,36 @@ export interface SomaProfile {
   nextCheckup?: string;
   clearanceStatus?: 'cleared' | 'pending' | 'restricted';
   readinessScore?: number;
+  /** Timestamped vital-sign readings persisted into the encrypted profile */
+  vitalReadings?: VitalReading[];
 }
 
 export interface GuestQuota {
   totalTurnsUsed: number;
   maxTurnsAllowed: number;
   isHardLocked: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Agent Validation — S4 Agent Review UI
+// ---------------------------------------------------------------------------
+
+/**
+ * Represents the result of an AI agent's review of a health data entry.
+ * Drives the AgentPendingBadge, AgentOverridePanel, and AgentApprovalLog components.
+ */
+export interface AgentReview {
+  /** Current review lifecycle state for the health entry. */
+  status: 'pending_review' | 'approved' | 'rejected' | 'modified';
+  /** Human-readable reasoning or note left by the agent. */
+  agentNote?: string;
+  /**
+   * Agent's proposed replacement value (present when status is 'modified').
+   * Typed as string | number to cover both scalar health metrics and formatted strings.
+   */
+  suggestedValue?: string | number;
+  /** ISO-8601 timestamp of when the agent completed its review. */
+  reviewedAt?: string;
 }
 
 // --- Global Aliases for LLM Engine ---

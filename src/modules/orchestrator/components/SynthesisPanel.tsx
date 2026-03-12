@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, MessageSquare, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { useNexusSynthesis, type SynthesisAlert, type SynthesisAction } from '../hooks/useNexusSynthesis';
 
 interface SynthesisPanelProps {
@@ -97,10 +98,7 @@ export function SynthesisPanel({ onInjectChat, onConsultModule, onNavigate }: Sy
       animate={{ opacity: 1, height: 'auto' }}
       className="w-full"
     >
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="flex items-center gap-2 w-full px-1 py-2 text-left"
-      >
+      <div className="flex items-center gap-2 w-full px-1 py-2">
         <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-violet-400">
           ⚡ Nexus Synthesis
         </span>
@@ -108,12 +106,22 @@ export function SynthesisPanel({ onInjectChat, onConsultModule, onNavigate }: Sy
           {alerts.length} pattern{alerts.length !== 1 ? 's' : ''}
         </span>
         <span className="flex-1" />
-        {isCollapsed ? <ChevronDown className="w-3 h-3 text-white/30" /> : <ChevronUp className="w-3 h-3 text-white/30" />}
-      </button>
+        <NeuralButton
+          themeColor="cyan"
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          aria-expanded={!isCollapsed}
+          aria-controls="synthesis-panel-content"
+        >
+          {isCollapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+        </NeuralButton>
+      </div>
 
       <AnimatePresence>
         {!isCollapsed && (
           <motion.div
+            id="synthesis-panel-content"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
