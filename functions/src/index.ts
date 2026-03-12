@@ -16,17 +16,40 @@ const tavilySecret = defineSecret("TAVILY_API_KEY");
 
 initializeApp();
 
+/** Single Tavily query — reusable by both the single-query and batch paths. */
+async function tavilySearch(
+  tavilyKey: string,
+  query: string,
+  maxResults: number,
+): Promise<{ query: string; results: unknown[]; answer?: string }> {
+  const response = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: tavilyKey,
+      query,
+      max_results: maxResults,
+      include_answer: true,
+      include_raw_content: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Tavily error (${response.status}): ${text || response.statusText}`);
+  }
+
+  const data = await response.json();
+  return {
+    query,
+    results: Array.isArray(data?.results) ? data.results : [],
+    answer: data?.answer,
+  };
+}
+
 export const scoutWebSearch = onRequest({ cors: true, secrets: [tavilySecret] }, async (req: Request, res: Response) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
-
-  const query = typeof req.body?.query === "string" ? req.body.query : "";
-  const maxResults = typeof req.body?.maxResults === "number" ? Math.max(1, Math.min(10, req.body.maxResults)) : 5;
-
-  if (!query.trim()) {
-    res.status(400).json({ error: "Missing query" });
     return;
   }
 
@@ -36,31 +59,49 @@ export const scoutWebSearch = onRequest({ cors: true, secrets: [tavilySecret] },
     return;
   }
 
-  try {
-    const response = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: tavilyKey,
-        query,
-        max_results: maxResults,
-        include_answer: true,
-        include_raw_content: false
-      })
-    });
+  // ── Batch path: { queries: string[], maxResults?: number } ───────────────
+  const queriesRaw = req.body?.queries;
+  if (Array.isArray(queriesRaw)) {
+    const maxResults = typeof req.body?.maxResults === "number" ? Math.max(1, Math.min(10, req.body.maxResults)) : 5;
+    const queries: string[] = queriesRaw
+      .filter((q): q is string => typeof q === "string" && q.trim().length > 0)
+      .slice(0, 10); // cap at 10 sub-queries per batch
 
-    if (!response.ok) {
-      const text = await response.text();
-      res.status(500).json({ error: text || "Search failed" });
+    if (queries.length === 0) {
+      res.status(400).json({ error: "queries array is empty or contains no valid strings" });
       return;
     }
 
-    const data = await response.json();
-    res.status(200).json({
-      query,
-      results: Array.isArray(data?.results) ? data.results : [],
-      answer: data?.answer
-    });
+    try {
+      const results = await Promise.allSettled(
+        queries.map((q) => tavilySearch(tavilyKey, q, maxResults)),
+      );
+      res.status(200).json({
+        batch: results.map((r) =>
+          r.status === "fulfilled"
+            ? { ok: true, ...r.value }
+            : { ok: false, error: r.reason?.message ?? "Search failed" },
+        ),
+      });
+    } catch (error) {
+      logger.error("Scout batch web search failure", error);
+      res.status(500).json({ error: "Batch search failed" });
+    }
+    return;
+  }
+
+  // ── Single query path (backward compatible): { query: string, maxResults?: number } ──
+  const query = typeof req.body?.query === "string" ? req.body.query : "";
+  const maxResults = typeof req.body?.maxResults === "number" ? Math.max(1, Math.min(10, req.body.maxResults)) : 5;
+
+  if (!query.trim()) {
+    res.status(400).json({ error: "Missing query or queries" });
+    return;
+  }
+
+  try {
+    const result = await tavilySearch(tavilyKey, query, maxResults);
+    res.status(200).json(result);
   } catch (error) {
     logger.error("Scout web search failure", error);
     res.status(500).json({ error: "Search failed" });

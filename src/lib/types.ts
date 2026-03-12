@@ -94,6 +94,8 @@ export interface NeuralStateVector {
     taskCompletionRate?: number | null;
     /** Scout-owned: breadth of active research interests (0-10). Low diversity may indicate hyperfocus. */
     interestDiversity?: number | null;
+    /** Scout-owned: fraction of verified high-confidence nodes (0-1). */
+    researchDepth?: number | null;
   };
   /** Atlas-owned planning domain — habit/deadline health metrics. */
   planning: {
@@ -306,7 +308,17 @@ export type SpineEventType =
   | 'JOURNAL_ENTRY_CREATED'
   | 'JOURNAL_ENTRY_UPDATED'
   // Atlas Habit Milestone Events
-  | 'HABIT_STREAK_MILESTONE';
+  | 'HABIT_STREAK_MILESTONE'
+  // Scout v2 Research Events
+  | 'DEEP_RESEARCH_REQUESTED'
+  | 'DEEP_RESEARCH_BACKUP_FOUND'
+  | 'DEEP_RESEARCH_STARTED'
+  | 'DEEP_RESEARCH_COMPLETED'
+  | 'DIGEST_GENERATION_STARTED'
+  | 'DIGEST_GENERATED'
+  | 'DIGEST_GENERATION_FAILED'
+  | 'EXPORT_REQUESTED'
+  | 'SOURCE_ADDED';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'alert' | 'critical';

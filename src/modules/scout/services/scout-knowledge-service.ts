@@ -238,8 +238,16 @@ export async function saveScoutProfile(profile: ScoutProfile, { userId, encrypti
       const activeNodes = normalized.knowledgeNodes.filter(n => n.status === 'pending').length;
       const queueDepth = normalized.verificationQueue.filter(q => q.status === 'pending').length;
       const researchLoad = Math.min(1, (activeNodes + queueDepth) / 20);
+
+      const verifiedNodes = normalized.knowledgeNodes.filter(n => n.status === 'verified').length;
+      const totalNodes = normalized.knowledgeNodes.length;
+      // researchDepth: fraction of verified nodes out of total, weighted by confidence
+      const researchDepth = totalNodes > 0
+        ? Math.min(1, (verifiedNodes / totalNodes) * (normalized.knowledgeNodes.reduce((sum, n) => sum + n.confidence, 0) / totalNodes))
+        : 0;
+
       await GlobalProjectionService.updateCrossFunctionalState(userId, {
-        cognitive: { researchLoad }
+        cognitive: { researchLoad, researchDepth }
       });
     } catch (error) {
       console.error('[ScoutKnowledgeService] Failed to update cross-functional state:', error);

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
@@ -17,7 +17,7 @@ import {
 } from './services/scout-knowledge-service';
 import { generateNewsBriefs } from './services/scout-news-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
-import { FileUp, Plus, X, Search, LayoutDashboard, AlertTriangle } from 'lucide-react';
+import { FileUp, Plus, X, Search, LayoutDashboard, AlertTriangle, BookMarked, FileText } from 'lucide-react';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { scoutDiagnosisSpec } from './diagnosis/scout-diagnosis-spec';
 import { Spine } from '@/lib/spine/spine-event-bus';
@@ -27,6 +27,16 @@ import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { ScoutOnboarding } from './onboarding/ScoutOnboarding';
+// Scout v2 imports
+import { useSources } from './hooks/useSources';
+import { useDigests } from './hooks/useDigests';
+import { useDeepResearch } from './hooks/useDeepResearch';
+import { SourceLibraryPane } from './components/sources/SourceLibraryPane';
+import { DigestViewer } from './components/digest/DigestViewer';
+import { DeepResearchPanel } from './components/deep-research/DeepResearchPanel';
+import { ExportDialog } from './components/ExportDialog';
+import type { ExportTarget } from './services/scout-export-service';
+import type { DeepResearchResult } from './hooks/useDeepResearch';
 
 registerDiagnosisSpec(scoutDiagnosisSpec);
 
@@ -44,16 +54,104 @@ interface ScoutViewProps {
 }
 
 function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews, onActionParsed }: ScoutViewProps) {
+  const { user } = useAuth();
   const { globalSoul } = useGlobalSoul();
   const agentAlias = globalSoul?.displayNames?.scout || 'Scout';
   
-  const [activeView, setActiveView] = useState<'research' | 'dashboard'>('research');
+  const [activeView, setActiveView] = useState<'research' | 'dashboard' | 'sources' | 'digest'>('research');
   const [windows, setWindows] = useState<ResearchWindow[]>([
     { id: crypto.randomUUID(), title: 'Primary Research' }
   ]);
   const [activeWindowId, setActiveWindowId] = useState<string>(windows[0].id);
   const [showUploadZone, setShowUploadZone] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // v2 state
+  const [deepResearchOpen, setDeepResearchOpen] = useState(false);
+  const [deepResearchInitialQuery, setDeepResearchInitialQuery] = useState('');
+  const [exportTarget, setExportTarget] = useState<ExportTarget | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
+  const sourceCtx = useMemo(
+    () => ({ userId: user?.uid, encryptionKey }),
+    [user?.uid, encryptionKey],
+  );
+
+  const {
+    sources,
+    isLoading: sourcesLoading,
+    addSource: addSourceFn,
+    updateSource: updateSourceFn,
+    archiveSource: archiveSourceFn,
+  } = useSources(sourceCtx);
+
+  const {
+    digests,
+    isLoading: digestsLoading,
+    isGenerating: isGeneratingDigest,
+    error: digestError,
+    generateDigest: generateDigestFn,
+    deleteDigest: deleteDigestFn,
+  } = useDigests(sourceCtx, sources);
+
+  const handleDeepResearchComplete = useCallback((result: DeepResearchResult) => {
+    // Sources are captured automatically when the result is accepted
+  }, []);
+
+  const deepResearch = useDeepResearch({
+    userId: user?.uid,
+    encryptionKey,
+    onComplete: handleDeepResearchComplete,
+  });
+
+  const openExportDialog = useCallback((target: ExportTarget) => {
+    setExportTarget(target);
+    setExportDialogOpen(true);
+  }, []);
+
+  const handleDeepResearchAccepted = useCallback(async (result: DeepResearchResult) => {
+    if (!profile || !encryptionKey) return;
+    // Auto-capture all sources from the research result
+    for (const src of result.capturedSources) {
+      await addSourceFn(src).catch(() => null);
+    }
+    // The ScoutPage parent will update the profile via Spine/subscriptions
+    // after the accept handler in the parent merges the synthesis node
+    deepResearch.reset();
+    setDeepResearchOpen(false);
+    setActiveView('research');
+  }, [profile, encryptionKey, addSourceFn, deepResearch]);
+
+  // Spine listeners for AI-triggered UI events
+  useEffect(() => {
+    const unsubDeepResearch = Spine.subscribe('DEEP_RESEARCH_REQUESTED', (event) => {
+      const query = (event.data?.query as string) ?? '';
+      setDeepResearchInitialQuery(query);
+      setDeepResearchOpen(true);
+    });
+
+    const unsubExport = Spine.subscribe('EXPORT_REQUESTED', (event) => {
+      const exportType = event.data?.exportType as string;
+      if (exportType === 'full-library') {
+        openExportDialog({ type: 'full-library', nodes: profile?.knowledgeNodes ?? [], digests, sources });
+      } else if (exportType === 'sources') {
+        openExportDialog({ type: 'sources', sources });
+      } else if (exportType === 'nodes') {
+        openExportDialog({ type: 'nodes', nodes: profile?.knowledgeNodes ?? [] });
+      } else if (exportType === 'digest' && digests[0]) {
+        openExportDialog({ type: 'digest', digest: digests[0] });
+      }
+    });
+
+    const unsubDigest = Spine.subscribe('DIGEST_GENERATION_STARTED', () => {
+      setActiveView('digest');
+    });
+
+    return () => {
+      unsubDeepResearch();
+      unsubExport();
+      unsubDigest();
+    };
+  }, [profile, sources, digests, openExportDialog]);
 
   const ai = useModuleAI({
     moduleId: 'scout',
@@ -100,9 +198,11 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     }
   }, [profile?.onboardingComplete, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages, agentAlias, activeWindowId]);
 
-  const tabs: NeuralTabItem<'research' | 'dashboard'>[] = [
+  const tabs: NeuralTabItem<'research' | 'dashboard' | 'sources' | 'digest'>[] = [
     { id: 'research', label: 'Research Nodes', icon: Search },
     { id: 'dashboard', label: 'Telemetry', icon: LayoutDashboard },
+    { id: 'sources', label: 'Sources', icon: BookMarked },
+    { id: 'digest', label: 'Digest', icon: FileText },
   ];
 
   return (
@@ -268,6 +368,26 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 )}
               </AnimatePresence>
             </div>
+          ) : activeView === 'sources' ? (
+            <SourceLibraryPane
+              sources={sources}
+              isLoading={sourcesLoading}
+              onAddSource={addSourceFn}
+              onUpdateSource={updateSourceFn}
+              onArchiveSource={archiveSourceFn}
+              onExportSources={() => openExportDialog({ type: 'sources', sources })}
+            />
+          ) : activeView === 'digest' ? (
+            <DigestViewer
+              digests={digests}
+              isLoading={digestsLoading}
+              isGenerating={isGeneratingDigest}
+              error={digestError}
+              profile={profile}
+              onGenerate={() => profile && generateDigestFn(profile, 'manual', sources)}
+              onDelete={deleteDigestFn}
+              onExport={(digest) => openExportDialog({ type: 'digest', digest })}
+            />
           ) : (
             <ScoutDashboard 
               soul={globalSoul} 
@@ -278,6 +398,20 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           )}
         </div>
       </div>
+
+      <DeepResearchPanel
+        isOpen={deepResearchOpen}
+        onClose={() => setDeepResearchOpen(false)}
+        initialQuery={deepResearchInitialQuery}
+        onResultAccepted={handleDeepResearchAccepted}
+        deepResearch={deepResearch}
+      />
+
+      <ExportDialog
+        isOpen={exportDialogOpen}
+        onClose={() => { setExportDialogOpen(false); setExportTarget(null); }}
+        target={exportTarget}
+      />
     </SingleAgentLayout>
   );
 }

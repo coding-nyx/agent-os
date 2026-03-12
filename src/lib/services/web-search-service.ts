@@ -230,4 +230,75 @@ export const WebSearchService = {
 
     throw lastError ?? new Error('Search failed after retries.');
   },
+
+  /**
+   * Batch search — sends multiple queries in a single request to the Cloud Function.
+   * Falls back to sequential individual calls when using proxy or direct Tavily.
+   * Results are returned in the same order as the input queries.
+   */
+  async searchBatch(
+    queries: string[],
+    options?: { maxResults?: number; signal?: AbortSignal },
+  ): Promise<WebSearchResponse[]> {
+    if (queries.length === 0) return [];
+
+    const backend = resolveBackend();
+    const maxResults = options?.maxResults ?? 5;
+
+    if (!backend) {
+      throw new Error('No Scout search backend configured for batch search.');
+    }
+
+    // Cloud Function supports native batch endpoint
+    if (backend.kind === 'cloud-function') {
+      const response = await fetchWithTimeout(
+        backend.url,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ queries, maxResults }),
+          signal: options?.signal,
+        },
+        30_000,
+      );
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`Scout Cloud Function batch error (${response.status}): ${text}`);
+      }
+
+      const data = await response.json();
+      const batch = data?.batch as Array<{
+        ok: boolean;
+        query?: string;
+        results?: WebSearchResult[];
+        answer?: string;
+        error?: string;
+      }>;
+
+      if (!Array.isArray(batch)) {
+        throw new Error('Unexpected batch response format from Cloud Function.');
+      }
+
+      return batch.map((item, i) => {
+        if (!item.ok) {
+          // Return empty result for failed sub-queries rather than throwing
+          console.warn(`[WebSearchService] Batch sub-query ${i} failed: ${item.error}`);
+          return { query: queries[i], results: [] };
+        }
+        return { query: item.query ?? queries[i], results: item.results ?? [], answer: item.answer };
+      });
+    }
+
+    // Proxy and direct Tavily: fall back to sequential calls
+    // (these backends don't implement a batch endpoint)
+    const results: WebSearchResponse[] = [];
+    for (const query of queries) {
+      if (options?.signal?.aborted) {
+        throw new DOMException('Batch search aborted', 'AbortError');
+      }
+      results.push(await WebSearchService.search(query, { maxResults }));
+    }
+    return results;
+  },
 };

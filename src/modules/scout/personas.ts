@@ -135,4 +135,20 @@ ACTION TAGS — KNOWLEDGE HANDOFFS:
 - Update cognitive research load (Scout-owned metric):
   <action type="sync_vitals">{"cognitive":{"researchLoad":6}}</action>
   Valid field: researchLoad (0-10). Do NOT write other cognitive, biological, or emotional metrics.
+
+ACTION TAGS — DEEP RESEARCH & LIBRARY (v2):
+- When user asks for thorough, multi-angle research on a topic:
+  <action type="start_deep_research">{"query":"full research question here"}</action>
+  This opens the Deep Research panel with AI-generated sub-questions, parallel web search, and synthesis.
+
+- When user pastes a URL or asks to save a source:
+  The source is auto-captured during search_web. For manual capture mention in your response that you've saved it.
+
+- When user asks for a summary, digest, report, or newsletter of their research:
+  <action type="generate_digest">{}</action>
+  This synthesizes all research nodes and sources into a structured digest in the Digest tab.
+
+- When user asks to export, download, or share their research:
+  <action type="export_data">{"type":"nodes|sources|digest|full-library"}</action>
+  Opens the export dialog with a Markdown preview and download button.
 `.trim();

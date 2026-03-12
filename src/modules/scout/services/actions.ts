@@ -460,6 +460,66 @@ export function registerScoutActions() {
         updatedAt: now
       };
       await persistProfile(next, context);
+    },
+
+    // ── Scout v2 actions ──────────────────────────────────────────────────
+
+    /**
+     * Trigger deep research workflow. Emits DEEP_RESEARCH_REQUESTED Spine event
+     * so the DeepResearchPanel can open automatically in the UI.
+     */
+    start_deep_research: async (context) => {
+      const { payload, pushAssistantMessage } = context;
+      const query = typeof payload?.query === 'string' ? payload.query.trim() : '';
+      if (!query) {
+        pushAssistantMessage?.('⚠️ Please provide a research query to start deep research.');
+        return;
+      }
+      Spine.emit({
+        type: 'DEEP_RESEARCH_REQUESTED',
+        source: 'scout',
+        domain: 'C',
+        data: { query },
+        cascadeDepth: 0,
+        priority: 'info'
+      });
+      pushAssistantMessage?.(`🔬 Opening deep research for: "${query}"`);
+    },
+
+    /**
+     * Trigger digest generation. Emits DIGEST_GENERATION_STARTED Spine event
+     * so the DigestViewer can switch to the digest tab and show the spinner.
+     */
+    generate_digest: async (context) => {
+      const { pushAssistantMessage } = context;
+      Spine.emit({
+        type: 'DIGEST_GENERATION_STARTED',
+        source: 'scout',
+        domain: 'C',
+        data: { triggerSource: 'ai' },
+        cascadeDepth: 0,
+        priority: 'info'
+      });
+      pushAssistantMessage?.('📊 Generating research digest… switching to the Digest tab.');
+    },
+
+    /**
+     * Export research data. Emits EXPORT_REQUESTED Spine event for the ExportDialog.
+     */
+    export_data: async (context) => {
+      const { payload, pushAssistantMessage } = context;
+      const exportType = typeof payload?.type === 'string' ? payload.type : 'nodes';
+      const nodeId = typeof payload?.nodeId === 'string' ? payload.nodeId : undefined;
+      const digestId = typeof payload?.digestId === 'string' ? payload.digestId : undefined;
+      Spine.emit({
+        type: 'EXPORT_REQUESTED',
+        source: 'scout',
+        domain: 'C',
+        data: { exportType, nodeId, digestId },
+        cascadeDepth: 0,
+        priority: 'info'
+      });
+      pushAssistantMessage?.(`📥 Opening export dialog for ${exportType}…`);
     }
   });
 }
