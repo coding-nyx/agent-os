@@ -159,7 +159,7 @@ export function WeekGrid({
     <section aria-label="Week planning grid" className="space-y-3">
       {/* Responsive layout: horizontal scroll on mobile, 7-col grid on md+ */}
       <div
-        className="grid grid-cols-7 gap-1.5"
+        className="grid grid-cols-7 gap-1 sm:gap-1.5"
         role="grid"
         aria-label="Weekly schedule"
       >
@@ -192,10 +192,20 @@ export function WeekGrid({
                 !isSelected && 'border-white/5 hover:border-white/10'
               )}
             >
-              {/* Day label */}
+              {/* Day initial — mobile only (1 char) */}
               <span
                 className={cn(
-                  'text-[10px] font-bold uppercase tracking-wider',
+                  'text-[9px] font-bold uppercase tracking-wider sm:hidden',
+                  day.isToday ? 'text-emerald-400' : 'text-white/40'
+                )}
+              >
+                {day.dayLabel.charAt(0)}
+              </span>
+
+              {/* Day abbreviation — sm+ */}
+              <span
+                className={cn(
+                  'hidden sm:block text-[10px] font-bold uppercase tracking-wider',
                   day.isToday ? 'text-emerald-400' : 'text-white/40'
                 )}
               >
@@ -212,7 +222,10 @@ export function WeekGrid({
                 {day.dayOfMonth}
               </span>
 
-              {/* Habit completion dots */}
+              {/* Mobile: single status dot (task density) */}
+              <div className="sm:hidden w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: (stats?.taskCount ?? 0) === 0 ? 'rgba(255,255,255,0.1)' : loadPercent > 80 ? '#f87171' : loadPercent > 60 ? '#fbbf24' : '#34d399' }} aria-hidden="true" />
+
+              {/* sm+: Habit completion dots */}
               {activeHabits.length > 0 && (
                 <div
                   className="hidden sm:flex items-center gap-0.5"
@@ -233,12 +246,12 @@ export function WeekGrid({
                 </div>
               )}
 
-              {/* Day stats */}
-              <div className="w-full space-y-1.5 mt-1">
+              {/* sm+: Day stats */}
+              <div className="hidden sm:block w-full space-y-1.5 mt-1">
                 {/* Task count */}
-                <div className="flex items-center justify-between text-[8px] sm:text-[10px]">
-                  <span className="text-white/30 hidden sm:inline">Tasks</span>
-                  <span className="text-[8px] sm:text-[10px] font-bold tabular-nums text-white/60">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-white/30">Tasks</span>
+                  <span className="font-bold tabular-nums text-white/60">
                     {stats?.completedCount ?? 0}/{stats?.taskCount ?? 0}
                   </span>
                 </div>
