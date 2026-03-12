@@ -17,7 +17,7 @@ export const ModuleCard = React.memo(function ModuleCard({
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={cn(
         "group relative rounded-[32px] border transition-all text-left overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/50",
-        isPlugin ? "p-6 w-[280px] shrink-0" : "p-8",
+        isPlugin ? "p-6 w-full sm:w-[280px] shrink-0" : "p-6 sm:p-8",
         isLocked
           ? "bg-white/[0.03] border-white/[0.07] opacity-60 hover:opacity-75"
           : "bg-black/60 backdrop-blur-3xl border-white/20 hover:border-white/30 hover:bg-white/[0.05] shadow-2xl"
@@ -95,7 +95,7 @@ export function CardsView({ modules, moduleAccess, moduleStats, displayNames, on
           <h2 className="text-[11px] font-black uppercase tracking-[0.6em] text-white/60 italic drop-shadow-sm">Soul Core Interface</h2>
           <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/20 to-transparent" aria-hidden="true" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-10">
           {modules.filter(m => !m.isPlugin).map((m) => (
             <ModuleCard
               key={m.id}
