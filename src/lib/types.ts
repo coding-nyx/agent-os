@@ -105,6 +105,8 @@ export interface NeuralStateVector {
     reflectionStreak?: number;
     /** Proportion of active goals with at least one linked task (0-1). */
     goalAlignment?: number | null;
+    /** Ratio of active habits with streak > 0 (0-1). */
+    habitMomentum?: number | null;
   };
   resource: {
     financialFriction?: number | null;

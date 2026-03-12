@@ -147,8 +147,11 @@ export class AtlasPredictiveService {
     // Update history
     this._history = [nsv, ...this._history].slice(0, 5);
 
-    const planningLoad = nsv.cognitive?.planningLoad ?? nsv.planning?.deadlinePressure ?? 0;
-    const deadlinePressure = nsv.planning?.deadlinePressure ?? 0;
+    // Guard against NaN: treat non-finite values as 0 so they never block transitions.
+    const rawPlanningLoad = nsv.cognitive?.planningLoad ?? nsv.planning?.deadlinePressure ?? 0;
+    const rawDeadlinePressure = nsv.planning?.deadlinePressure ?? 0;
+    const planningLoad = Number.isFinite(rawPlanningLoad) ? rawPlanningLoad : 0;
+    const deadlinePressure = Number.isFinite(rawDeadlinePressure) ? rawDeadlinePressure : 0;
     
     const risk = this.getTransitionRisk();
 
@@ -227,10 +230,25 @@ export class AtlasPredictiveService {
         break;
       }
 
-      case 'Overloaded':
-        // CRISIS_MODE subscription handles Recovery transition.
-        // Burnout detection already handled above.
+      case 'Overloaded': {
+        // Allow downgrade to Compressed when both pressure metrics drop below threshold.
+        // Without this path, the machine would be permanently stuck in Overloaded unless
+        // a CRISIS_MODE event fires (which requires external cascade rules to trigger).
+        const overloadedClear =
+          planningLoad < 6 &&
+          deadlinePressure < 6;
+
+        if (overloadedClear) {
+          this._cleanEvalCount += 1;
+          if (this._cleanEvalCount >= CLEAN_EVALS_TO_DOWNGRADE) {
+            this._cleanEvalCount = 0;
+            this._transition('Compressed'); // land softly in Compressed, not Normal
+          }
+        } else {
+          this._cleanEvalCount = 0;
+        }
         break;
+      }
 
       case 'Recovery': {
         // Exit Recovery only when both pressure metrics are low.

@@ -127,6 +127,8 @@ export interface LedgerIntakeProfile {
   transactions?: Transaction[];
   budgetCategories?: BudgetCategory[];
   financialGoals?: FinancialGoal[];
+  /** Quarter indices (0-based) the user has marked as paid for the current tax year. */
+  paidQuarters?: number[];
   createdAt: string;
   updatedAt: string;
 }

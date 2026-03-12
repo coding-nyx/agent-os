@@ -569,8 +569,8 @@ export function EnhancedAtlasDashboard({
 
         {/* ══════════════ BACKLOG TAB ══════════════ */}
         {activeTab === 'backlog' && (
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-4">
+           <div className="space-y-8">
+              <section className="space-y-4">
                   <h3 className="text-lg font-bold font-display text-white/90">Task Backlog</h3>
                   <TaskManager
                     tasks={tasks}
@@ -580,8 +580,9 @@ export function EnhancedAtlasDashboard({
                     onDeleteTask={onDeleteTask}
                     onCompleteTask={onCompleteTask}
                   />
-              </div>
-              <div className="space-y-4">
+              </section>
+              <div className="border-t border-white/5" />
+              <section className="space-y-4">
                   <h3 className="text-lg font-bold font-display text-white/90">Active Goals</h3>
                   <GoalTracker
                     goals={goals}
@@ -591,7 +592,7 @@ export function EnhancedAtlasDashboard({
                     onDeleteGoal={onDeleteGoal}
                     onUpdateGoalProgress={onUpdateGoalProgress}
                   />
-              </div>
+              </section>
            </div>
         )}
 

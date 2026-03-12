@@ -39,8 +39,49 @@ export type AtlasContextMode =
   | { kind: 'field-crud'; currentExtensions: FieldDefinition[] };
 
 // ============================================================================
-// NSV Read Permissions (Atlas-specific)
+// Full Atlas Data Context for General Mode
 // ============================================================================
+
+/** Decrypted journal summary injected into the AI context (no raw content stored). */
+export interface AtlasJournalSummary {
+  date: string;
+  mood: number;           // 1-5
+  energyLevel: number;    // 1-5
+  morningIntent?: string;
+  blockers?: string;
+  /** first 120 chars of freeform, already decrypted at call site */
+  freeformSnippet?: string;
+}
+
+/** Morning or evening check-in snapshot. */
+export interface AtlasCheckInSummary {
+  type: 'morning' | 'evening';
+  completedAt: string;
+  energyRating?: number;  // 1-5
+  moodRating?: number;    // 1-5
+  intention?: string;
+  reflection?: string;
+}
+
+/**
+ * All Atlas entity data passed to the general-mode prompt builder.
+ * The caller (AtlasPage / useModuleAI glue) is responsible for:
+ *  - Filtering tasks/goals/habits to the relevant subset.
+ *  - Decrypting journal entries and passing only the summary fields — never
+ *    raw encrypted content or full freeform text.
+ */
+export interface AtlasDataContext {
+  tasks?: AtlasTask[];
+  goals?: AtlasGoal[];
+  habits?: AtlasHabit[];
+  routine?: AtlasRoutine | null;
+  /** Last 3-5 entries, already decrypted to summary fields only. */
+  journalSummaries?: AtlasJournalSummary[];
+  /** Today's completed check-ins. */
+  checkIns?: AtlasCheckInSummary[];
+  /** ISO date string for "today", defaults to Date.now() when omitted. */
+  today?: string;
+}
 
 /**
  * NSV fields Atlas is permitted to READ (but never write).

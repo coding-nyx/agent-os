@@ -31,6 +31,7 @@ import { GlassCard } from '@/core/components/GlassCard';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils';
 import type { LedgerIntakeProfile, Transaction } from '../services/ledger-intake-service';
+import { estimateQuarterlyTax, suggestTaxOptimizations, categorizeTax } from '../services/ledger-cross-verification-engine';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,6 +40,7 @@ import type { LedgerIntakeProfile, Transaction } from '../services/ledger-intake
 export interface TaxTrackerProps {
   profile: LedgerIntakeProfile;
   encryptionKey?: CryptoKey;
+  onUpdateProfile?: (updates: Partial<LedgerIntakeProfile>) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -325,24 +327,31 @@ function DeductibleExpenses({ transactions, currency }: DeductibleExpensesProps)
 interface QuarterlyEstimatesProps {
   annualTaxEstimate: number;
   currency: string;
+  paidQuarters?: Set<number>;
+  onTogglePaid?: (index: number) => void;
 }
 
-function QuarterlyEstimates({ annualTaxEstimate, currency }: QuarterlyEstimatesProps) {
-  const [paidQuarters, setPaidQuarters] = useState<Set<number>>(new Set());
+function QuarterlyEstimates({ annualTaxEstimate, currency, paidQuarters: externalPaidQuarters, onTogglePaid }: QuarterlyEstimatesProps) {
+  const [localPaidQuarters, setLocalPaidQuarters] = useState<Set<number>>(new Set());
+  const paidQuarters = externalPaidQuarters ?? localPaidQuarters;
   const quarterlyPayment = annualTaxEstimate / 4;
   const taxYear = currentTaxYear();
   const today = new Date();
 
   function togglePaid(index: number) {
-    setPaidQuarters((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
+    if (onTogglePaid) {
+      onTogglePaid(index);
+    } else {
+      setLocalPaidQuarters((prev) => {
+        const next = new Set(prev);
+        if (next.has(index)) {
+          next.delete(index);
+        } else {
+          next.add(index);
+        }
+        return next;
+      });
+    }
   }
 
   function getDueDateObj(q: QuarterDef, idx: number): Date {
@@ -464,7 +473,7 @@ function AIInsightsPrompt() {
 // Root component
 // ---------------------------------------------------------------------------
 
-export function TaxTracker({ profile }: TaxTrackerProps) {
+export function TaxTracker({ profile, onUpdateProfile }: TaxTrackerProps) {
   const transactions = profile.transactions ?? [];
   const currency = profile.currency ?? 'USD';
 
@@ -486,6 +495,34 @@ export function TaxTracker({ profile }: TaxTrackerProps) {
     return computeFederalTax(taxableIncome);
   }, [transactions]);
 
+  // FIX-P6: wire estimateQuarterlyTax
+  const quarterlyEstimate = useMemo(() => {
+    const monthlyIncome = profile.monthlyIncome ?? 0;
+    const monthlyDeductibles = [...(profile.fixedExpenses ?? []), ...(profile.variableExpenses ?? [])]
+      .reduce((sum, e) => sum + e.amount, 0);
+    return estimateQuarterlyTax(monthlyIncome, monthlyDeductibles);
+  }, [profile.monthlyIncome, profile.fixedExpenses, profile.variableExpenses]);
+
+  // FIX-P6: wire suggestTaxOptimizations
+  const taxOptimizations = useMemo(() => {
+    const allExpenses = [...(profile.fixedExpenses ?? []), ...(profile.variableExpenses ?? [])];
+    const enriched = allExpenses.map(e => ({ ...e, taxCategory: categorizeTax(e) }));
+    return suggestTaxOptimizations(enriched);
+  }, [profile.fixedExpenses, profile.variableExpenses]);
+
+  // FIX-P7: Use profile paidQuarters instead of local state
+  const paidQuartersSet = useMemo(
+    () => new Set<number>(profile.paidQuarters ?? []),
+    [profile.paidQuarters],
+  );
+
+  const handleTogglePaidQuarter = (idx: number) => {
+    if (!onUpdateProfile) return;
+    const current = new Set<number>(profile.paidQuarters ?? []);
+    if (current.has(idx)) { current.delete(idx); } else { current.add(idx); }
+    onUpdateProfile({ paidQuarters: Array.from(current) });
+  };
+
   return (
     <div className="px-4 md:px-8 space-y-8 pb-8">
       <div className="flex items-center gap-3 pt-2">
@@ -498,9 +535,36 @@ export function TaxTracker({ profile }: TaxTrackerProps) {
         </div>
       </div>
 
+      {/* FIX-P6: Show quarterly estimate from engine */}
+      {quarterlyEstimate.estimatedLiability > 0 && (
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4">
+          <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-1">Quarterly Liability Estimate</p>
+          <p className="text-xl font-bold text-white">{formatCurrency(quarterlyEstimate.estimatedLiability, currency)}</p>
+          <p className="text-xs text-white/50 mt-1">Next deadline: {quarterlyEstimate.nextDeadline}</p>
+        </div>
+      )}
+
+      {/* FIX-P6: Show tax optimization suggestions */}
+      {taxOptimizations.length > 0 && (
+        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4 space-y-2">
+          <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Tax Optimization Suggestions</p>
+          {taxOptimizations.slice(0, 3).map(s => (
+            <div key={s.fieldId} className="text-xs text-white/70">
+              <span className="font-medium text-white">{s.reason}</span>
+              <span className="text-white/40 ml-2">{s.current} → {s.suggested}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <TaxYearSummary transactions={transactions} currency={currency} />
       <DeductibleExpenses transactions={transactions} currency={currency} />
-      <QuarterlyEstimates annualTaxEstimate={annualTaxEstimate} currency={currency} />
+      <QuarterlyEstimates
+        annualTaxEstimate={annualTaxEstimate}
+        currency={currency}
+        paidQuarters={paidQuartersSet}
+        onTogglePaid={handleTogglePaidQuarter}
+      />
       <AIInsightsPrompt />
     </div>
   );

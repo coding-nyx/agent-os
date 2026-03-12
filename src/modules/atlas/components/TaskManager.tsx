@@ -202,7 +202,7 @@ export function TaskManager({
   return (
     <div className="space-y-6">
       {/* ── Header with stats ── */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <SurfaceCard className="p-3">
           <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">
             Total Tasks
@@ -247,9 +247,9 @@ export function TaskManager({
       </div>
 
       {/* ── Controls: Search, Filter, Sort, Actions ── */}
-      <div className="flex flex-col md:flex-row gap-3">
+      <div className="flex flex-wrap gap-2">
         {/* Search */}
-        <div className="flex-1 relative">
+        <div className="relative min-w-0 flex-1 basis-40">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
           <input
             type="text"
@@ -264,7 +264,7 @@ export function TaskManager({
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as TaskFilter)}
-          className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400/50 cursor-pointer"
+          className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400/50 cursor-pointer min-w-0"
         >
           <option value="all">All Tasks</option>
           <option value="active">Active</option>
@@ -277,7 +277,7 @@ export function TaskManager({
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as TaskSort)}
-          className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400/50 cursor-pointer"
+          className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400/50 cursor-pointer min-w-0"
         >
           <option value="priority">Priority</option>
           <option value="deadline">Deadline</option>
@@ -286,7 +286,7 @@ export function TaskManager({
         </select>
 
         {/* Action buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 ml-auto">
           <NeuralButton
             onClick={() => setShowDependencyGraph(!showDependencyGraph)}
             size="sm"

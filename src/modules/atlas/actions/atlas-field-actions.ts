@@ -26,23 +26,23 @@ import type { SpineEventType } from '@/lib/types';
 export const ATLAS_SPINE_EVENTS = {
   // ── Task Events ────────────────────────────────────────────────────────
   TASK_COMPLETED: 'ATLAS_TASK_COMPLETED' as SpineEventType,
-  TASK_CREATED: 'TASK_COMPLETED' as SpineEventType, // Reuse generic
-  TASK_BLOCKED: 'TASK_COMPLETED' as SpineEventType,
-  TASK_UNBLOCKED: 'TASK_COMPLETED' as SpineEventType,
+  TASK_CREATED: 'ATLAS_TASK_CREATED' as SpineEventType,
+  TASK_BLOCKED: 'ATLAS_TASK_BLOCKED' as SpineEventType,
+  TASK_UNBLOCKED: 'ATLAS_TASK_UNBLOCKED' as SpineEventType,
 
   // ── Habit Events ───────────────────────────────────────────────────────
   HABIT_LOGGED: 'ATLAS_HABIT_LOGGED' as SpineEventType,
   HABIT_STREAK_BROKEN: 'HABIT_STREAK_BROKEN' as SpineEventType,
-  HABIT_MILESTONE: 'ATLAS_HABIT_LOGGED' as SpineEventType,
+  HABIT_MILESTONE: 'ATLAS_HABIT_MILESTONE' as SpineEventType,
 
   // ── Goal Events ────────────────────────────────────────────────────────
   GOAL_MILESTONE: 'ATLAS_GOAL_MILESTONE' as SpineEventType,
-  GOAL_COMPLETED: 'ATLAS_GOAL_MILESTONE' as SpineEventType,
+  GOAL_COMPLETED: 'ATLAS_GOAL_COMPLETED' as SpineEventType,
 
   // ── Energy Events ──────────────────────────────────────────────────────
   ENERGY_BUDGET_UPDATED: 'ATLAS_ENERGY_UPDATED' as SpineEventType,
-  ENERGY_OVERLOAD: 'ATLAS_ENERGY_UPDATED' as SpineEventType,
-  RECOVERY_WINDOW_CREATED: 'ATLAS_ENERGY_UPDATED' as SpineEventType,
+  ENERGY_OVERLOAD: 'ATLAS_ENERGY_OVERLOAD' as SpineEventType,
+  RECOVERY_WINDOW_CREATED: 'ATLAS_RECOVERY_WINDOW_CREATED' as SpineEventType,
 
   // ── Field Events ───────────────────────────────────────────────────────
   FIELD_CREATED: 'ATLAS_FIELD_CREATED' as SpineEventType,

@@ -258,6 +258,8 @@ export function registerAtlasCascadeRules(): void {
     spine.registerCascadeRules(ATLAS_CASCADE_RULES);
     spine.registerCascadeRules(ATLAS_MORNING_RULES);
     spine.registerCascadeRules(ATLAS_JOURNAL_RULES);
+    // Planning intelligence rules are registered separately via registerAtlasPlanningCascadeRules()
+    // to avoid forward-reference issues (ATLAS_PLANNING_CASCADE_RULES is defined after this function).
   }
 }
 
@@ -312,5 +314,96 @@ export function registerAtlasFailureRules(): void {
   const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
   if (spine?.registerCascadeRules) {
     spine.registerCascadeRules(ATLAS_FAILURE_RULES);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Atlas Planning Intelligence Cascade Rules (Atlas Audit)
+// ---------------------------------------------------------------------------
+
+/**
+ * When an Atlas goal is updated (created / progress / completed / deleted):
+ *   - Emit ATLAS_STATE_CHANGED so the predictive service can re-evaluate risk.
+ *   - If goal is completed, emit ATLAS_GOAL_MILESTONE for badges/acknowledgements.
+ * When deadline pressure is high (≥8), escalate to DEADLINE_CRUNCH.
+ * When planning state changes, propagate as VITAL_UPDATED for consumer modules.
+ */
+export const ATLAS_PLANNING_CASCADE_RULES: CascadeRule[] = [
+  {
+    id: 'atlas-goal-updated-to-state-changed',
+    trigger: 'ATLAS_GOAL_UPDATED' as SpineEventType,
+    condition: () => true,
+    transform: (event) => ({
+      type: 'ATLAS_STATE_CHANGED' as SpineEventType,
+      domain: 'C' as const,
+      source: 'spine-cascade',
+      priority: 'info' as const,
+      data: {
+        triggeredBy: 'ATLAS_GOAL_UPDATED',
+        goalId: event.data.goalId,
+        action: event.data.action,
+        timestamp: new Date().toISOString(),
+      },
+    }),
+  },
+  {
+    id: 'atlas-goal-completed-to-milestone',
+    trigger: 'ATLAS_GOAL_UPDATED' as SpineEventType,
+    condition: (event) => event.data?.action === 'completed',
+    transform: (event) => ({
+      type: 'ATLAS_GOAL_MILESTONE' as SpineEventType,
+      domain: 'C' as const,
+      source: 'spine-cascade',
+      priority: 'info' as const,
+      data: {
+        triggeredBy: 'ATLAS_GOAL_UPDATED',
+        goalId: event.data.goalId,
+        title: event.data.title,
+        progressPercent: 100,
+        timestamp: new Date().toISOString(),
+      },
+    }),
+  },
+  {
+    id: 'atlas-deadline-pressure-high-to-crunch',
+    trigger: 'DEADLINE_PRESSURE_CHANGED' as SpineEventType,
+    condition: (event) => {
+      const pressure = (event.data as Record<string, unknown>)?.deadlinePressure;
+      return typeof pressure === 'number' && pressure >= 8;
+    },
+    transform: (event) => ({
+      type: 'DEADLINE_CRUNCH' as SpineEventType,
+      domain: 'C' as const,
+      source: 'spine-cascade',
+      priority: 'alert' as const,
+      data: {
+        triggeredBy: 'DEADLINE_PRESSURE_CHANGED',
+        deadlinePressure: event.data.deadlinePressure,
+        timestamp: new Date().toISOString(),
+      },
+    }),
+  },
+  {
+    id: 'atlas-planning-state-updated-to-vital',
+    trigger: 'PLANNING_STATE_UPDATED' as SpineEventType,
+    condition: () => true,
+    transform: (event) => ({
+      type: 'VITAL_UPDATED' as SpineEventType,
+      domain: 'C' as const,
+      source: 'spine-cascade',
+      priority: 'info' as const,
+      data: {
+        triggeredBy: 'PLANNING_STATE_UPDATED',
+        changedFields: event.data.changedFields,
+        timestamp: new Date().toISOString(),
+      },
+    }),
+  },
+];
+
+export function registerAtlasPlanningCascadeRules(): void {
+  const spine = (window as Window & typeof globalThis & { Spine?: { registerCascadeRules?: (rules: CascadeRule[]) => void } }).Spine;
+  if (spine?.registerCascadeRules) {
+    spine.registerCascadeRules(ATLAS_PLANNING_CASCADE_RULES);
   }
 }

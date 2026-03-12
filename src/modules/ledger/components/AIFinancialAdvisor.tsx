@@ -244,14 +244,14 @@ export function AIFinancialAdvisor({
               <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider mb-3">
                 Ask AI Advisor
               </h4>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {quickQuestions.map((question, index) => (
                   <button
                     key={index}
                     onClick={() => handleQuestionClick(question)}
                     disabled={disabled}
                     className={cn(
-                      "p-3 rounded-lg text-left text-[10px] text-white/70 hover:text-white transition-colors border border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5 disabled:opacity-50",
+                      "p-3 rounded-lg text-left text-xs text-white/70 hover:text-white transition-colors border border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5 disabled:opacity-50",
                       selectedQuestion === question && "border-violet-500/50 bg-violet-500/10"
                     )}
                   >

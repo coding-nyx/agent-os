@@ -174,7 +174,7 @@ export function GoalTracker({
   return (
     <div className="space-y-6">
       {/* ── Header with stats ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <SurfaceCard className="p-3">
           <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">
             Total Goals
@@ -211,12 +211,12 @@ export function GoalTracker({
       </div>
 
       {/* ── Controls: Filter & Actions ── */}
-      <div className="flex flex-col md:flex-row gap-3 justify-between">
+      <div className="flex flex-wrap items-center gap-2">
         {/* Filter dropdown */}
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as GoalFilter)}
-          className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 cursor-pointer"
+          className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 cursor-pointer"
         >
           <option value="all">All Goals</option>
           <option value="active">Active</option>
@@ -226,7 +226,7 @@ export function GoalTracker({
         </select>
 
         {/* New Goal button */}
-        <NeuralButton onClick={() => handleOpenForm()} size="sm">
+        <NeuralButton onClick={() => handleOpenForm()} size="sm" className="ml-auto">
           <Plus className="w-4 h-4 mr-2" />
           New Goal
         </NeuralButton>

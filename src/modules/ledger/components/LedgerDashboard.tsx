@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon, Clock, Activity, FileText, Info } from 'lucide-react';
+import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon, Activity, FileText, Info } from 'lucide-react';
 import * as Switch from '@radix-ui/react-switch';
 import { GlobalProjection } from '@/lib/types';
 import { LedgerIntakeProfile } from '../services/ledger-intake-service';
@@ -17,8 +17,6 @@ import { SpendingTrendsChart } from './SpendingTrendsChart';
 import { computeDashboardMetrics, computeMonthlyTotals, computeBudgetActuals, evaluateAlerts } from '../services/ledger-aggregation-service';
 import type { LedgerAlert } from '../services/ledger-aggregation-service';
 import { AIFinancialAdvisor } from './AIFinancialAdvisor';
-import { spineEventService, LedgerEvent } from '../services/spine-event-service';
-import { LedgerSpineEventType } from '../actions/ledger-field-actions';
 import { cn } from '@/lib/utils';
 
 export function LedgerDashboard({
@@ -37,6 +35,15 @@ export function LedgerDashboard({
   isLocked?: boolean;
 }) {
   const [activeView, setActiveView] = useState<'overview' | 'cashflow' | 'debt'>('overview');
+  // FIX-P9: Behavioral insights toggle persisted to localStorage
+  const [behavioralEnabled, setBehavioralEnabled] = useState(
+    () => localStorage.getItem('nexus:ledger:behavioral') === 'true'
+  );
+  const handleToggleBehavioral = () => {
+    const next = !behavioralEnabled;
+    setBehavioralEnabled(next);
+    localStorage.setItem('nexus:ledger:behavioral', String(next));
+  };
 
   const hasSoul = Boolean(soul);
   const resource = soul?.crossFunctionalState?.resource || {};
@@ -125,20 +132,14 @@ export function LedgerDashboard({
     [profile?.debtItems],
   );
 
-  // Recent events display
-  const [recentEvents, setRecentEvents] = useState<LedgerEvent[]>([]);
-  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
-
-  useEffect(() => {
-    if (!profile) return;
-    setIsLoadingEvents(true);
-    spineEventService.getLedgerEvents({
-      type: 'TRANSACTION_CREATED' as LedgerSpineEventType,
-      startDate: Date.now() - 30 * 24 * 60 * 60 * 1000 // Last 30 days
-    }).then(events => {
-      setRecentEvents(events.slice(0, 5)); // Show last 5 transactions
-    }).finally(() => setIsLoadingEvents(false));
-  }, [profile]);
+  // Recent transactions — derived directly from profile (FIX-P5)
+  const recentTransactions = useMemo(
+    () =>
+      (profile?.transactions ?? [])
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5),
+    [profile?.transactions],
+  );
 
   // totalDebt is already computed above via useMemo.
   const totalSavings = monthlyBuffer !== null && monthlyBuffer > 0 ? monthlyBuffer * 3 : 0;
@@ -177,12 +178,15 @@ export function LedgerDashboard({
         accentClassName="text-cyan-400"
       />
 
-      {/* View Tabs */}
-      <div className="flex gap-2">
+      {/* View Tabs + Behavioral Insights Toggle */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex gap-2" role="tablist" aria-label="Dashboard views">
         <button
+          role="tab"
+          aria-selected={activeView === 'overview'}
           onClick={() => setActiveView('overview')}
           className={cn(
-            "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+            "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
             activeView === 'overview'
               ? "bg-cyan-600 text-white"
               : "bg-white/5 text-white/60 hover:bg-white/10"
@@ -191,9 +195,11 @@ export function LedgerDashboard({
           Overview
         </button>
         <button
+          role="tab"
+          aria-selected={activeView === 'cashflow'}
           onClick={() => setActiveView('cashflow')}
           className={cn(
-            "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+            "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
             activeView === 'cashflow'
               ? "bg-cyan-600 text-white"
               : "bg-white/5 text-white/60 hover:bg-white/10"
@@ -203,9 +209,11 @@ export function LedgerDashboard({
           Cash Flow
         </button>
         <button
+          role="tab"
+          aria-selected={activeView === 'debt'}
           onClick={() => setActiveView('debt')}
           className={cn(
-            "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+            "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
             activeView === 'debt'
               ? "bg-cyan-600 text-white"
               : "bg-white/5 text-white/60 hover:bg-white/10"
@@ -213,6 +221,20 @@ export function LedgerDashboard({
         >
           <Target className="w-3 h-3 inline mr-1" />
           Debt Tracker
+        </button>
+        </div>
+        {/* FIX-P9: Behavioral insights user toggle */}
+        <button
+          onClick={handleToggleBehavioral}
+          aria-pressed={behavioralEnabled}
+          className={cn(
+            "px-3 py-2 rounded-lg text-xs font-semibold transition-colors border",
+            behavioralEnabled
+              ? "bg-violet-500/20 border-violet-500/30 text-violet-300"
+              : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
+          )}
+        >
+          {behavioralEnabled ? '✦ Behavioral Insights On' : 'Enable Behavioral Insights'}
         </button>
       </div>
 
@@ -348,17 +370,9 @@ export function LedgerDashboard({
           <SurfaceCard className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-sm font-bold text-white uppercase tracking-wider">Recent Transactions</h4>
-              {isLoadingEvents ? (
-                <Clock className="w-4 h-4 text-cyan-400 animate-spin" />
-              ) : (
-                <FileText className="w-4 h-4 text-cyan-400" />
-              )}
+              <FileText className="w-4 h-4 text-cyan-400" />
             </div>
-            {isLoadingEvents ? (
-              <div className="flex items-center justify-center py-8">
-                <Clock className="w-6 h-6 text-cyan-400 animate-spin" />
-              </div>
-            ) : recentEvents.length === 0 ? (
+            {recentTransactions.length === 0 ? (
               <EmptyState
                 title="No transactions yet"
                 description="Add transactions to see recent activity here."
@@ -368,27 +382,20 @@ export function LedgerDashboard({
               />
             ) : (
               <div className="space-y-3">
-                {recentEvents.map((event) => {
-                  const desc = typeof event.data.description === 'string' ? event.data.description : 'Transaction';
-                  const txType = typeof event.data.transactionType === 'string' ? event.data.transactionType : '';
-                  const amount = typeof event.data.amount === 'number' ? event.data.amount : 0;
-                  return (
-                    <div key={event.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-white">{desc}</p>
-                        <p className="text-xs text-white/60">
-                          {txType} - {formatCurrency(amount, profile?.currency)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-cyan-400">
-                          {txType === 'income' ? '+' : '-'}{formatCurrency(amount, profile?.currency)}
-                        </p>
-                        <p className="text-xs text-white/40">{new Date(event.timestamp).toLocaleDateString()}</p>
-                      </div>
+                {recentTransactions.map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{tx.description}</p>
+                      <p className="text-xs text-white/60">{tx.category} · {tx.date}</p>
                     </div>
-                  );
-                })}
+                    <div className="text-right">
+                      <p className={cn('text-sm font-bold', tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400')}>
+                        {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, profile?.currency)}
+                      </p>
+                      <p className="text-xs text-white/40 capitalize">{tx.type}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </SurfaceCard>

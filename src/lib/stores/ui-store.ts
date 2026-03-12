@@ -1,4 +1,13 @@
 import { create } from 'zustand';
+import type { NeuralThemeColor } from '@/core/components/NeuralTabGroup';
+
+export interface FabAction {
+  id: string;
+  label: string;
+  renderIcon: () => React.ReactNode;
+  themeColor: NeuralThemeColor;
+  onClick: () => void;
+}
 
 interface UIStore {
   // Sidebar states for fine-grained control
@@ -12,6 +21,13 @@ interface UIStore {
   // Layout mode for dynamic positioning
   activeLayout: 'full' | 'split' | 'overlay';
   setActiveLayout: (val: 'full' | 'split' | 'overlay') => void;
+  // Speed-dial actions registered by the current module page
+  fabActions: FabAction[];
+  setFabActions: (actions: FabAction[]) => void;
+  clearFabActions: () => void;
+  // Height (px) of a module-specific bottom bar, so the FAB can float above it
+  moduleBottomBarHeight: number;
+  setModuleBottomBarHeight: (height: number) => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -23,6 +39,11 @@ export const useUIStore = create<UIStore>((set) => ({
   setChatOverlayOpen: (val) => set({ isChatOverlayOpen: val }),
   activeLayout: 'full',
   setActiveLayout: (val) => set({ activeLayout: val }),
+  fabActions: [],
+  setFabActions: (actions) => set({ fabActions: actions }),
+  clearFabActions: () => set({ fabActions: [] }),
+  moduleBottomBarHeight: 0,
+  setModuleBottomBarHeight: (height) => set({ moduleBottomBarHeight: height }),
 }));
 
 // Fine-grained selector hooks — use these instead of the whole store
