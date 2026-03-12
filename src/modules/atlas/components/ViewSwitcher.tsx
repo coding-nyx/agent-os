@@ -57,7 +57,7 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
     <nav
       role="tablist"
       aria-label="Atlas view switcher"
-      className="inline-flex items-center gap-0.5 sm:gap-1 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10 p-0.5 sm:p-1"
+      className="inline-flex items-center gap-0.5 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10 p-0.5"
     >
       {VIEW_TABS.map(({ key, label, icon: Icon }) => {
         const isActive = activeView === key;
@@ -73,13 +73,13 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
             onClick={() => onViewChange(key)}
             onKeyDown={(e) => handleKeyDown(e, key)}
             className={cn(
-              'relative shrink-0 flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 min-h-[32px] sm:px-3 sm:py-1.5 sm:min-h-[40px] rounded-xl text-xs font-bold uppercase tracking-wider transition-colors',
+              'relative shrink-0 flex items-center gap-1.5 px-2.5 py-1 min-h-[32px] rounded-xl text-xs font-bold uppercase tracking-wider transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
               isActive ? 'text-white' : 'text-white/40 hover:text-white/60'
             )}
           >
-            <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden />
-            <span className="hidden sm:inline">{label}</span>
+            <Icon className="w-3 h-3" aria-hidden />
+            <span>{label}</span>
 
             {/* Active background pill */}
             {isActive && (
