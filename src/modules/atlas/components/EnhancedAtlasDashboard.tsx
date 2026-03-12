@@ -57,6 +57,7 @@ import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup'
 import { TodaysPlanCard } from './TodaysPlanCard';
 import { FocusView } from './FocusView';
 import { ViewSwitcher } from './ViewSwitcher';
+import { MonthPlanner } from './MonthPlanner';
 import { QuickAddForm } from './QuickAddForm';
 import { QuickCaptureBar } from './QuickCaptureBar';
 import { JournalTab } from './journal/JournalTab';
@@ -64,7 +65,7 @@ import { ManualEnergyLog } from './ManualEnergyLog';
 import { BookOpen } from 'lucide-react';
 
 type AtlasTab = 'dashboard' | 'backlog' | 'routines' | 'journal' | 'fields' | 'review';
-type AtlasView = 'today' | 'week' | 'focus';
+type AtlasView = 'today' | 'week' | 'month' | 'focus';
 
 interface EnhancedAtlasDashboardProps {
   soul: GlobalProjection | null;
@@ -344,6 +345,17 @@ export function EnhancedAtlasDashboard({
             {/* ── Week view: 7-day planning grid ── */}
             {activeView === 'week' && (
               <WeekGrid
+                tasks={profile?.tasks ?? []}
+                scheduledTasks={profile?.scheduledTasks ?? []}
+                habits={profile?.habits ?? []}
+                onDaySelect={setSelectedWeekDate}
+                selectedDate={selectedWeekDate}
+              />
+            )}
+
+            {/* ── Month view: full month calendar planner ── */}
+            {activeView === 'month' && (
+              <MonthPlanner
                 tasks={profile?.tasks ?? []}
                 scheduledTasks={profile?.scheduledTasks ?? []}
                 habits={profile?.habits ?? []}

@@ -159,7 +159,7 @@ export function WeekGrid({
     <section aria-label="Week planning grid" className="space-y-3">
       {/* Responsive layout: horizontal scroll on mobile, 7-col grid on md+ */}
       <div
-        className="flex md:grid md:grid-cols-7 gap-2 overflow-x-auto md:overflow-visible no-scrollbar snap-x snap-mandatory md:snap-none pb-2 md:pb-0"
+        className="grid grid-cols-7 gap-1.5"
         role="grid"
         aria-label="Weekly schedule"
       >
@@ -182,9 +182,9 @@ export function WeekGrid({
               aria-label={`${day.dayLabel} ${day.dayOfMonth}. ${stats?.taskCount ?? 0} tasks, ${Math.round(loadPercent)}% energy load${day.isToday ? ', today' : ''}`}
               aria-selected={isSelected}
               className={cn(
-                // Fixed width on mobile for 3-visible-days, flexible on md+
-                'min-w-[calc(33.333%-0.375rem)] md:min-w-0 flex-shrink-0 md:flex-shrink snap-start',
-                'relative flex flex-col items-center gap-2 p-3 rounded-xl border transition-all',
+                // Full 7-col grid on all screen sizes
+                'min-w-0',
+                'relative flex flex-col items-center gap-2 p-1.5 sm:p-3 rounded-xl border transition-all',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
                 'bg-white/[0.03] backdrop-blur-sm',
                 isSelected &&
@@ -205,7 +205,7 @@ export function WeekGrid({
               {/* Day number */}
               <span
                 className={cn(
-                  'text-lg font-black tabular-nums',
+                  'text-sm sm:text-lg font-black tabular-nums',
                   day.isToday ? 'text-emerald-400' : 'text-white/80'
                 )}
               >
@@ -215,7 +215,7 @@ export function WeekGrid({
               {/* Habit completion dots */}
               {activeHabits.length > 0 && (
                 <div
-                  className="flex items-center gap-0.5"
+                  className="hidden sm:flex items-center gap-0.5"
                   aria-label={`${habitsDone.length} of ${activeHabits.length} habits completed`}
                 >
                   {activeHabits.map((habit) => (
@@ -236,9 +236,9 @@ export function WeekGrid({
               {/* Day stats */}
               <div className="w-full space-y-1.5 mt-1">
                 {/* Task count */}
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-white/30">Tasks</span>
-                  <span className="text-white/60 font-bold tabular-nums">
+                <div className="flex items-center justify-between text-[8px] sm:text-[10px]">
+                  <span className="text-white/30 hidden sm:inline">Tasks</span>
+                  <span className="text-[8px] sm:text-[10px] font-bold tabular-nums text-white/60">
                     {stats?.completedCount ?? 0}/{stats?.taskCount ?? 0}
                   </span>
                 </div>

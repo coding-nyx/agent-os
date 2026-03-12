@@ -1,14 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, CalendarDays, Crosshair } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, Crosshair } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
 // ---------------------------------------------------------------------------
-// ViewSwitcher — Atlas tab navigation (Today | Week | Focus)
+// ViewSwitcher — Atlas tab navigation (Today | Week | Month | Focus)
 // ---------------------------------------------------------------------------
 
-type AtlasView = 'today' | 'week' | 'focus';
+type AtlasView = 'today' | 'week' | 'month' | 'focus';
 
 interface ViewSwitcherProps {
   activeView: AtlasView;
@@ -22,6 +22,7 @@ const VIEW_TABS: {
 }[] = [
   { key: 'today', label: 'Today', icon: Calendar },
   { key: 'week', label: 'Week', icon: CalendarDays },
+  { key: 'month', label: 'Month', icon: CalendarRange },
   { key: 'focus', label: 'Focus', icon: Crosshair },
 ];
 
@@ -72,13 +73,13 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
             onClick={() => onViewChange(key)}
             onKeyDown={(e) => handleKeyDown(e, key)}
             className={cn(
-              'relative shrink-0 flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-xl text-xs font-bold uppercase tracking-wider transition-colors',
+              'relative shrink-0 flex items-center gap-2 px-3 py-1.5 min-h-[36px] sm:min-h-[40px] rounded-xl text-xs font-bold uppercase tracking-wider transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
               isActive ? 'text-white' : 'text-white/40 hover:text-white/60'
             )}
           >
             <Icon className="w-3.5 h-3.5" aria-hidden />
-            <span>{label}</span>
+            <span className="hidden sm:inline">{label}</span>
 
             {/* Active background pill */}
             {isActive && (
