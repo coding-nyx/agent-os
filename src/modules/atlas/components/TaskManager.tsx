@@ -465,7 +465,7 @@ export function TaskManager({
                 </div>
 
                 {/* Priority & Energy Cost */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
                       Priority (1-5)
@@ -503,7 +503,7 @@ export function TaskManager({
                 </div>
 
                 {/* Deadline & Project */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-1">
                       <Calendar className="w-3 h-3" />

@@ -192,11 +192,19 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
   // Field values state (ephemeral for now — persisted via SchemaRegistry in future)
   const [fieldValues, setFieldValues] = useState<Record<string, import('@/lib/field-system/types').FieldValue>>({});
 
-  const handleAddField = useCallback(() => {
-    ai.handleSendMessage(
-      'I want to add a custom tracking field to my Atlas dashboard. Please suggest some options based on my current goals and habits, or help me create a specific field if I describe what I want to track.'
-    );
-  }, [ai.handleSendMessage]);
+  const handleAddField = useCallback(async (field?: import('@/lib/field-system/types').FieldDefinition) => {
+    if (field) {
+      try {
+        await addExtension(field);
+      } catch (err) {
+        console.error('[Atlas] Failed to add extension field:', err);
+      }
+    } else {
+      ai.handleSendMessage(
+        'I want to add a custom tracking field to my Atlas dashboard. Please suggest some options based on my current goals and habits, or help me create a specific field if I describe what I want to track.'
+      );
+    }
+  }, [addExtension, ai.handleSendMessage]);
 
   const handleDeleteField = useCallback(async (fieldId: string) => {
     try {

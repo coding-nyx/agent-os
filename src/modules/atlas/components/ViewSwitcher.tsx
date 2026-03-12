@@ -52,6 +52,7 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
   };
 
   return (
+    <div className="w-full overflow-x-auto no-scrollbar">
     <nav
       role="tablist"
       aria-label="Atlas view switcher"
@@ -71,7 +72,7 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
             onClick={() => onViewChange(key)}
             onKeyDown={(e) => handleKeyDown(e, key)}
             className={cn(
-              'relative flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors',
+              'relative shrink-0 flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-xl text-xs font-bold uppercase tracking-wider transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
               isActive ? 'text-white' : 'text-white/40 hover:text-white/60'
             )}
@@ -108,5 +109,6 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
         );
       })}
     </nav>
+    </div>
   );
 }

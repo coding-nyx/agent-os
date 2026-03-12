@@ -195,7 +195,7 @@ export function QuickCaptureBar({ onAddTask, onAddHabit, disabled = false }: Qui
             onClick={handleClear}
             aria-label="Clear input"
             tabIndex={-1}
-            className="shrink-0 text-white/30 hover:text-white/70 transition-colors p-0.5"
+            className="shrink-0 text-white/30 hover:text-white/70 transition-colors p-2.5"
           >
             <X className="w-4 h-4" />
           </button>
@@ -208,11 +208,12 @@ export function QuickCaptureBar({ onAddTask, onAddHabit, disabled = false }: Qui
           aria-label="Add entry"
           className={cn(
             'shrink-0 flex items-center justify-center',
-            'w-7 h-7 rounded-lg',
+            'w-10 h-10 rounded-lg flex-none',
             'bg-sky-500 hover:bg-sky-400 active:bg-sky-600',
             'text-white transition-colors',
             'disabled:opacity-40 disabled:cursor-not-allowed',
-            'shadow-[0_2px_8px_rgba(14,165,233,0.35)]'
+            'shadow-[0_2px_8px_rgba(14,165,233,0.35)]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50'
           )}
         >
           <Plus className="w-4 h-4" />

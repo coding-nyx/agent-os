@@ -255,8 +255,8 @@ export function TaskTimeline({
             onClick={() => setShowBacklog((prev) => !prev)}
             aria-expanded={showBacklog}
             className={cn(
-              'flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/40 hover:text-white/60 transition-colors w-full',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 rounded-lg p-1'
+              'flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/40 hover:text-white/60 transition-colors w-full min-h-[44px]',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 rounded-lg py-3 px-2'
             )}
           >
             {showBacklog ? (

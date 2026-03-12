@@ -21,6 +21,7 @@ import type {
   AtlasHabit,
   AtlasGoal,
 } from '../services/atlas-profile-service';
+import type { AtlasRoutine } from '@/lib/types';
 import { ATLAS_PERSONA } from '../personas';
 
 // ============================================================================
@@ -168,16 +169,18 @@ ENERGY BUDGET COMPUTATION:
  * @param mode - The current conversation scope
  * @param nsvBlock - Pre-formatted NSV context from formatNSVForAtlasPlanner()
  * @param extensionFieldsBlock - Serialized extension field values
+ * @param dataContext - All Atlas entity data for general-mode context injection
  * @returns Complete system prompt string
  */
 export function buildAtlasPrompt(
   mode: AtlasContextMode,
   nsvBlock?: string,
-  extensionFieldsBlock?: string
+  extensionFieldsBlock?: string,
+  dataContext?: AtlasDataContext
 ): string {
   switch (mode.kind) {
     case 'general':
-      return buildGeneralPrompt(nsvBlock, extensionFieldsBlock);
+      return buildGeneralPrompt(nsvBlock, extensionFieldsBlock, dataContext);
     case 'task-focus':
       return buildTaskFocusPrompt(mode.task, nsvBlock);
     case 'habit-review':
@@ -193,7 +196,8 @@ export function buildAtlasPrompt(
 
 function buildGeneralPrompt(
   nsvBlock?: string,
-  extensionFieldsBlock?: string
+  extensionFieldsBlock?: string,
+  data?: AtlasDataContext
 ): string {
   // Full ATLAS_PERSONA already contains identity, philosophy, mission,
   // all 13 rules, action tags, cross-module intelligence, and planning methodology.
@@ -208,7 +212,143 @@ function buildGeneralPrompt(
     parts.push(nsvBlock);
   }
 
+  // Inject live Atlas data so the AI is never hallucinating about user state.
+  if (data) {
+    const dataBlock = buildAtlasDataContextBlock(data);
+    if (dataBlock) parts.push(dataBlock);
+  }
+
   parts.push(ENERGY_BUDGET_COMPUTATION_PROMPT);
+
+  return parts.join('\n\n');
+}
+
+// ============================================================================
+// Atlas Data Context Serializer
+// ============================================================================
+
+/**
+ * Serialize live Atlas entity data into a prompt block.
+ * Token efficiency principles:
+ *  - Goals: id, title, progress%, deadline, status (≤25)
+ *  - Habits: title, streak/target, status, frequency (≤10 active)
+ *  - Tasks: title, priority, deadline, energyCost — today's + overdue first (≤15)
+ *  - Journal: date, mood, energy, intent snippet, blocker snippet (last 5)
+ *  - Routines: active blocks only
+ *  - Check-ins: today's only
+ */
+function buildAtlasDataContextBlock(data: AtlasDataContext): string {
+  const today = data.today ?? new Date().toISOString().slice(0, 10);
+  const parts: string[] = ['[ATLAS LIVE DATA — DO NOT FABRICATE ANY VALUES BELOW]'];
+
+  // ── Goals ──────────────────────────────────────────────────────────────
+  if (data.goals && data.goals.length > 0) {
+    const activeGoals = data.goals.filter(g => g.status !== 'abandoned').slice(0, 25);
+    const now7 = new Date(today);
+    now7.setDate(now7.getDate() + 7);
+    const upcomingDeadlineGoals = activeGoals.filter(g =>
+      g.deadline && g.deadline <= now7.toISOString().slice(0, 10)
+    );
+
+    const goalLines = activeGoals.map(g => {
+      const deadlineStr = g.deadline ? ` | deadline: ${g.deadline}` : '';
+      const urgentMarker = g.deadline && g.deadline <= now7.toISOString().slice(0, 10) ? ' ⚠️' : '';
+      return `  - [${g.status.toUpperCase()}] "${g.title}" — ${g.progressPercent}% complete${deadlineStr}${urgentMarker}`;
+    });
+    parts.push(`GOALS (${activeGoals.length} active):\n${goalLines.join('\n')}`);
+
+    if (upcomingDeadlineGoals.length > 0) {
+      const deadlineLines = upcomingDeadlineGoals.map(g =>
+        `  - "${g.title}" — due ${g.deadline} (${g.progressPercent}% done)`
+      );
+      parts.push(`UPCOMING GOAL DEADLINES (next 7 days):\n${deadlineLines.join('\n')}`);
+    }
+  }
+
+  // ── Tasks ──────────────────────────────────────────────────────────────
+  if (data.tasks && data.tasks.length > 0) {
+    const activeTasks = data.tasks.filter(t =>
+      t.status === 'active' || t.status === 'queued' || t.status === 'blocked'
+    );
+
+    // Sort: overdue first, then by priority desc, then by energyCost desc
+    const sorted = [...activeTasks].sort((a, b) => {
+      const aOverdue = a.deadline && a.deadline.slice(0, 10) < today ? 1 : 0;
+      const bOverdue = b.deadline && b.deadline.slice(0, 10) < today ? 1 : 0;
+      if (aOverdue !== bOverdue) return bOverdue - aOverdue;
+      return b.priority - a.priority;
+    });
+
+    const topTasks = sorted.slice(0, 15);
+    const taskLines = topTasks.map(t => {
+      const overdue = t.deadline && t.deadline.slice(0, 10) < today ? ' 🔴OVERDUE' : '';
+      const dueStr = t.deadline ? ` | due: ${t.deadline.slice(0, 10)}` : '';
+      return `  - [P${t.priority}|E${t.energyCost}] "${t.title}" (${t.status})${dueStr}${overdue}`;
+    });
+
+    const todayTasks = sorted.filter(t =>
+      !t.deadline || t.deadline.slice(0, 10) <= today
+    ).slice(0, 8);
+
+    parts.push(`ACTIVE TASKS (${activeTasks.length} total, top ${topTasks.length} shown):\n${taskLines.join('\n')}`);
+
+    if (todayTasks.length > 0) {
+      const todayLines = todayTasks.map(t =>
+        `  - [P${t.priority}] "${t.title}" — energy: ${t.energyCost}/10`
+      );
+      parts.push(`TODAY'S PRIORITY TASKS:\n${todayLines.join('\n')}`);
+    }
+  }
+
+  // ── Habits ─────────────────────────────────────────────────────────────
+  if (data.habits && data.habits.length > 0) {
+    const activeHabits = data.habits.filter(h => h.status === 'active').slice(0, 10);
+    const habitLines = activeHabits.map(h => {
+      const streakRisk = h.currentStreak > 0 && h.lastCompleted
+        ? (Date.now() - new Date(h.lastCompleted).getTime() > 20 * 60 * 60 * 1000 ? ' ⚠️ streak at risk' : '')
+        : '';
+      return `  - "${h.title}" | streak: ${h.currentStreak}/${h.targetStreak} (best: ${h.bestStreak}) | ${h.frequency}${streakRisk}`;
+    });
+    parts.push(`ACTIVE HABITS (${activeHabits.length}):\n${habitLines.join('\n')}`);
+  }
+
+  // ── Routine ────────────────────────────────────────────────────────────
+  if (data.routine && data.routine.isActive && data.routine.blocks.length > 0) {
+    const todayDayOfWeek = new Date(today + 'T12:00:00').getDay();
+    const todayBlocks = data.routine.blocks.filter(b =>
+      b.daysOfWeek.includes(todayDayOfWeek)
+    );
+    if (todayBlocks.length > 0) {
+      const blockLines = todayBlocks.map(b =>
+        `  - ${b.startTime}–${b.endTime}: "${b.title}" (${b.category}, E${b.energyCost})`
+      );
+      parts.push(`TODAY'S ROUTINE BLOCKS:\n${blockLines.join('\n')}`);
+    }
+  }
+
+  // ── Journal Summaries (pre-decrypted by caller) ─────────────────────────
+  if (data.journalSummaries && data.journalSummaries.length > 0) {
+    const recent = data.journalSummaries.slice(-5).reverse(); // most recent first
+    const journalLines = recent.map(j => {
+      const intentStr = j.morningIntent ? ` | intent: "${j.morningIntent.slice(0, 60)}"` : '';
+      const blockerStr = j.blockers ? ` | blockers: "${j.blockers.slice(0, 60)}"` : '';
+      const snippetStr = j.freeformSnippet ? ` | wrote: "${j.freeformSnippet.slice(0, 80)}..."` : '';
+      return `  - ${j.date}: mood ${j.mood}/5, energy ${j.energyLevel}/5${intentStr}${blockerStr}${snippetStr}`;
+    });
+    parts.push(`RECENT JOURNAL ENTRIES (last ${recent.length}, summarised — raw content never exposed):\n${journalLines.join('\n')}`);
+  }
+
+  // ── Today's Check-ins ──────────────────────────────────────────────────
+  if (data.checkIns && data.checkIns.length > 0) {
+    const checkInLines = data.checkIns.map(ci => {
+      const energyStr = ci.energyRating ? ` energy: ${ci.energyRating}/5` : '';
+      const moodStr = ci.moodRating ? ` mood: ${ci.moodRating}/5` : '';
+      const intentStr = ci.intention ? ` intention: "${ci.intention.slice(0, 80)}"` : '';
+      const reflectStr = ci.reflection ? ` reflection: "${ci.reflection.slice(0, 80)}"` : '';
+      return `  - ${ci.type.toUpperCase()} (${ci.completedAt.slice(11, 16)}):${energyStr}${moodStr}${intentStr}${reflectStr}`;
+    });
+    parts.push(`TODAY'S CHECK-INS:\n${checkInLines.join('\n')}`);
+  }
 
   return parts.join('\n\n');
 }

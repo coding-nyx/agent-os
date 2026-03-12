@@ -261,7 +261,7 @@ export function MorningCheckIn({
             <button
               onClick={handleDismiss}
               aria-label="Dismiss morning check-in"
-              className="rounded-lg p-1 text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
+              className="rounded-lg p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
             >
               <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>

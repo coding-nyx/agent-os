@@ -51,9 +51,15 @@ import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { ledgerDiagnosisSpec } from './diagnosis/ledger-diagnosis-spec';
 import { useDocumentIntelligence } from '@/lib/hooks/use-document-intelligence';
-import { registerLedgerFieldActions, registerLedgerTransactionActions } from '@/modules/ledger/actions/ledger-field-actions';
+import { registerLedgerFieldActions } from '@/modules/ledger/actions/ledger-field-actions';
+import { registerLedgerTransactionActions } from '@/modules/ledger/actions/transaction-actions';
 import { registerLedgerCascadeRules } from '@/lib/spine/cascade-rules';
 import { useLedgerCrossVerify } from './hooks/use-ledger-cross-verify';
+import { TaxTracker } from './components/TaxTracker';
+import { SchemaRegistry } from '@/lib/schema-registry';
+import type { FieldDefinition } from '@/lib/field-system/types';
+import { FieldType } from '@/lib/field-system/types';
+import type { DebtItem } from './services/ledger-intake-service';
 
 registerDiagnosisSpec(ledgerDiagnosisSpec);
 registerLedgerFieldActions();

@@ -124,7 +124,7 @@ function getCategoryColors(category: string) {
 interface FieldsTabProps {
   extensions: FieldDefinition[];
   fieldValues: Record<string, FieldValue>;
-  onAddField: () => void;
+  onAddField: (field?: FieldDefinition) => void;
   onDeleteField?: (fieldId: string) => void;
   onUpdateFieldValue?: (fieldId: string, value: unknown) => void;
 }
@@ -250,7 +250,7 @@ function FieldCard({ field, value, isSelected, onSelect, onDelete, isExtension }
 // Suggestion Card Component
 // ============================================================================
 
-function SuggestionCard({ field, onAdd }: { field: FieldDefinition; onAdd: () => void }) {
+function SuggestionCard({ field, onAdd }: { field: FieldDefinition; onAdd: (field: FieldDefinition) => void }) {
   const category = getAtlasFieldCategory(field);
   const colors = getCategoryColors(category.name);
   const Icon = resolveIcon(field.metadata?.icon);
@@ -267,7 +267,7 @@ function SuggestionCard({ field, onAdd }: { field: FieldDefinition; onAdd: () =>
       <NeuralButton
         variant="ghost"
         size="sm"
-        onClick={onAdd}
+        onClick={() => onAdd(field)}
         className="shrink-0"
       >
         <Plus className="w-3.5 h-3.5" />
@@ -328,7 +328,7 @@ export function FieldsTab({
         <NeuralButton
           variant="secondary"
           size="sm"
-          onClick={onAddField}
+          onClick={() => onAddField()}
           disabled={extensions.length >= extensionLimit}
         >
           <Plus className="w-4 h-4 mr-1.5" />
@@ -424,7 +424,7 @@ export function FieldsTab({
               <SuggestionCard
                 key={field.id}
                 field={field}
-                onAdd={onAddField}
+                onAdd={(f) => onAddField(f)}
               />
             ))}
           </div>

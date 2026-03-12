@@ -91,7 +91,7 @@ interface EnhancedAtlasDashboardProps {
   /** Extension field management */
   extensions?: import('@/lib/field-system/types').FieldDefinition[];
   fieldValues?: Record<string, import('@/lib/field-system/types').FieldValue>;
-  onAddField?: () => void;
+  onAddField?: (field?: import('@/lib/field-system/types').FieldDefinition) => void;
   onDeleteField?: (fieldId: string) => void;
   onSendMessage?: (message: string) => void;
   /** Encryption key for vault-gated journal tab */
@@ -190,19 +190,7 @@ export function EnhancedAtlasDashboard({
     );
   }
 
-  if (!soul) {
-    return (
-      <div className="h-full flex items-center justify-center p-8">
-        <EmptyState
-          title="Cognitive link pending"
-          description="Share your task load to activate the Atlas waveboard."
-          size="lg"
-        />
-      </div>
-    );
-  }
-
-  const cognitive = soul.crossFunctionalState.cognitive || {};
+  const cognitive = soul?.crossFunctionalState?.cognitive ?? {};
   const energyBudget = typeof cognitive.energyBudget === 'number' ? cognitive.energyBudget : 5;
   const focusScore = typeof cognitive.focusScore === 'number' ? cognitive.focusScore : 5;
   const activeLoad = typeof cognitive.activeLoad === 'number' ? cognitive.activeLoad : 5;
@@ -395,7 +383,7 @@ export function EnhancedAtlasDashboard({
                             className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1">
                             <label className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Focus Domain</label>
                             <input 
@@ -516,7 +504,7 @@ export function EnhancedAtlasDashboard({
                 <EmptyState
                   size="sm"
                   title="No energy wave points yet"
-                  description="Atlas will build this as you chat."
+                  description="Your 48-hour energy forecast will populate here. Log energy data during onboarding or check-ins."
                   className="bg-transparent border-white/10"
                 />
               )}
@@ -686,7 +674,7 @@ export function EnhancedAtlasDashboard({
                         {review.totalCompleted}/{review.totalScheduled} completed
                       </span>
                     </div>
-                    <div className="grid grid-cols-4 gap-4 text-xs mb-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs mb-4">
                       <div>
                         <span className="text-white/40">Completion</span>
                         <p className="text-lg font-bold text-emerald-400 mt-1">
@@ -729,7 +717,7 @@ export function EnhancedAtlasDashboard({
             ) : (
               <EmptyState
                 title="No reviews yet"
-                description="Trigger a daily or weekly wrap-up in the Atlas chat."
+                description="Click 'Run Weekly Review' above to create your first review."
                 icon={History}
                 size="lg"
               />

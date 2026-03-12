@@ -108,6 +108,10 @@ function normalizeAtlasProfile(raw: unknown): AtlasProfile {
     routine: candidate.routine && typeof candidate.routine === 'object' ? (candidate.routine as AtlasRoutine) : { id: 'routine_default', blocks: [], isActive: true },
     reviews: Array.isArray(candidate.reviews) ? candidate.reviews : (Array.isArray(candidate.weeklyReviews) ? (candidate.weeklyReviews as any[]).map(r => ({...r, scope: 'weekly', periodStart: r.weekOf, periodEnd: r.weekOf, insights: [], reviews: []})) : []),
     preferences: (candidate.preferences as AtlasPreferences) || undefined,
+    preferenceMode: candidate.preferenceMode === 'conversational' || candidate.preferenceMode === 'structured'
+      ? candidate.preferenceMode
+      : undefined,
+    dailyCheckIns: Array.isArray(candidate.dailyCheckIns) ? candidate.dailyCheckIns : [],
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : now
   };

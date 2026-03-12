@@ -533,12 +533,18 @@ export function registerAtlasActions() {
 
     // === Goal Management ===
 
-    create_goal: async ({ userId, encryptionKey, payload }) => {
+    create_goal: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
       const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!raw) return;
       const profile = raw;
 
       if (profile.goals.length >= 25) return;
+
+      // Validation
+      if (typeof payload?.title !== 'string' || payload.title.trim() === '') return;
+      if (payload?.deadline !== undefined && typeof payload.deadline === 'string') {
+        if (isNaN(Date.parse(payload.deadline))) return; // reject invalid dates
+      }
 
       const now = new Date().toISOString();
       const milestones: AtlasMilestone[] = Array.isArray(payload?.milestones)
@@ -553,7 +559,7 @@ export function registerAtlasActions() {
 
       const newGoal: AtlasGoal = {
         id: `goal_${crypto.randomUUID()}`,
-        title: typeof payload?.title === 'string' ? payload.title : 'Untitled Goal',
+        title: payload.title.trim(),
         description: typeof payload?.description === 'string' ? payload.description : undefined,
         deadline: typeof payload?.deadline === 'string' ? payload.deadline : undefined,
         milestones,
@@ -568,6 +574,14 @@ export function registerAtlasActions() {
 
       profile.goals.push(newGoal);
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+      emitSpineEvent('ATLAS_GOAL_UPDATED', {
+        goalId: newGoal.id,
+        title: newGoal.title,
+        action: 'created',
+        progressPercent: 0,
+        status: 'active'
+      });
     },
 
     update_goal_progress: async ({ userId, encryptionKey, payload }) => {
