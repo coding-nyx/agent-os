@@ -220,12 +220,18 @@ export function TransactionManager({
 
   // Statistics
   const stats = useMemo(() => {
-    const totalIncome = transactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
-    const totalExpenses = transactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
+    // ⚡ Bolt: Single-pass O(n) calculation to prevent multiple filter+reduce passes
+    let totalIncome = 0;
+    let totalExpenses = 0;
+
+    for (const t of transactions) {
+      if (t.type === 'income') {
+        totalIncome += t.amount;
+      } else if (t.type === 'expense') {
+        totalExpenses += t.amount;
+      }
+    }
+
     const netCashFlow = totalIncome - totalExpenses;
 
     return { totalIncome, totalExpenses, netCashFlow };
