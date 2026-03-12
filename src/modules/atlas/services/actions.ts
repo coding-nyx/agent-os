@@ -51,9 +51,22 @@ function calculateActiveLoad(tasks: AtlasTask[]): number {
 
 function calculateDeadlinePressure(tasks: AtlasTask[]): number {
   const now = Date.now();
-  const urgent = tasks.filter(t => t.deadline && t.status !== 'done' && t.status !== 'deferred')
+  const overdue = tasks.filter(
+    t => t.deadline &&
+      new Date(t.deadline).getTime() < now &&
+      t.status !== 'done' &&
+      t.status !== 'deferred'
+  );
+  const upcoming = tasks
+    .filter(
+      t => t.deadline &&
+        new Date(t.deadline).getTime() >= now &&
+        t.status !== 'done' &&
+        t.status !== 'deferred'
+    )
     .filter(t => new Date(t.deadline!).getTime() - now < 48 * 60 * 60 * 1000);
-  return Math.min(10, urgent.length * 3);
+  const overduePenalty = Math.min(overdue.length * 1.5, 4);
+  return Math.min(10, upcoming.length * 3 + overduePenalty);
 }
 
 function unblockDependents(tasks: AtlasTask[], completedId: string): void {

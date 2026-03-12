@@ -60,6 +60,7 @@ import { ViewSwitcher } from './ViewSwitcher';
 import { QuickAddForm } from './QuickAddForm';
 import { QuickCaptureBar } from './QuickCaptureBar';
 import { JournalTab } from './journal/JournalTab';
+import { ManualEnergyLog } from './ManualEnergyLog';
 import { BookOpen } from 'lucide-react';
 
 type AtlasTab = 'dashboard' | 'backlog' | 'routines' | 'journal' | 'fields' | 'review';
@@ -114,6 +115,8 @@ interface EnhancedAtlasDashboardProps {
   onTogglePreferenceMode?: () => void;
   /** S9-001: Evaluated Atlas predictive state — sourced from useAtlasPredictiveState in AtlasPage. */
   predictiveDisplay: AtlasStateDisplay;
+  /** Optional manual energy log callback — shown when energyWave has no data */
+  onLogEnergy?: (level: number, timeOfDay: 'morning' | 'midday' | 'afternoon' | 'evening' | 'night') => void;
 }
 
 const noop = () => {};
@@ -156,6 +159,7 @@ export function EnhancedAtlasDashboard({
   preferenceMode = 'conversational',
   onTogglePreferenceMode = noop,
   predictiveDisplay,
+  onLogEnergy,
 }: EnhancedAtlasDashboardProps) {
   const [isEditingIntention, setIsEditingIntention] = useState(false);
   const [intentionForm, setIntentionForm] = useState({ theme: '', focusDomain: '', energyTarget: 5 });
@@ -257,8 +261,8 @@ export function EnhancedAtlasDashboard({
 
       {/* ── Tab Content ── */}
       <div className="flex-1 overflow-hidden flex">
-        {/* S9-006: Structured mode — persistent sidebar QuickAdd panel */}
-        {preferenceMode === 'structured' && activeTab === 'dashboard' && (
+        {/* S9-006: Structured mode — persistent sidebar QuickAdd panel (hidden in focus mode) */}
+        {preferenceMode === 'structured' && activeTab === 'dashboard' && activeView !== 'focus' && (
           <aside className="hidden md:flex shrink-0 w-72 border-r border-white/5 overflow-y-auto p-4 no-scrollbar">
             <QuickAddForm
               projects={profile?.projects ?? []}
@@ -272,6 +276,22 @@ export function EnhancedAtlasDashboard({
             />
           </aside>
         )}
+
+        {/* ── Focus mode: full-bleed wrapper — bypasses padded scroll container ── */}
+        {activeTab === 'dashboard' && activeView === 'focus' && (
+          <div className="flex-1 overflow-hidden">
+            <FocusView
+              activeTask={tasks.find(t => t.status === 'active' || t.status === 'queued') ?? null}
+              energyLevel={energyBudget}
+              onComplete={onCompleteTask}
+              onDefer={(id) => onUpdateTask(id, { status: 'deferred' })}
+              onOpenChat={() => window.dispatchEvent(new CustomEvent('atlas:focus-chat'))}
+            />
+          </div>
+        )}
+
+        {/* ── Normal scroll container — hidden while focus mode is active ── */}
+        {!(activeTab === 'dashboard' && activeView === 'focus') && (
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-4 md:pt-6 space-y-6 no-scrollbar">
         {/* ══════════════ DASHBOARD TAB ══════════════ */}
         {activeTab === 'dashboard' && (
@@ -280,24 +300,11 @@ export function EnhancedAtlasDashboard({
             <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />
 
             {/* ── Quick Capture Bar — always visible on Dashboard ── */}
-            {activeView !== 'focus' && (
-              <QuickCaptureBar
-                onAddTask={onCreateTask}
-                onAddHabit={onCreateHabit}
-                disabled={isLocked}
-              />
-            )}
-
-            {/* ── Focus Mode (Zen / Pomodoro) ── */}
-            {activeView === 'focus' && (
-              <FocusView
-                activeTask={tasks.find(t => t.status === 'active' || t.status === 'queued') ?? null}
-                energyLevel={energyBudget}
-                onComplete={onCompleteTask}
-                onDefer={(id) => onUpdateTask(id, { status: 'deferred' })}
-                onOpenChat={() => window.dispatchEvent(new CustomEvent('atlas:focus-chat'))}
-              />
-            )}
+            <QuickCaptureBar
+              onAddTask={onCreateTask}
+              onAddHabit={onCreateHabit}
+              disabled={isLocked}
+            />
 
             {/* ── Today view: MorningCheckIn + PriorityInbox + TodaysPlanCard ── */}
             {activeView === 'today' && (
@@ -506,6 +513,17 @@ export function EnhancedAtlasDashboard({
                   title="No energy wave points yet"
                   description="Your 48-hour energy forecast will populate here. Log energy data during onboarding or check-ins."
                   className="bg-transparent border-white/10"
+                />
+              )}
+              {/* Manual energy log — always visible on today view for non-AI users */}
+              {onLogEnergy && (
+                <ManualEnergyLog
+                  onLogEnergy={onLogEnergy}
+                  lastLoggedAt={
+                    energyWave.length > 0
+                      ? (energyWave[energyWave.length - 1] as { timestamp?: string }).timestamp
+                      : undefined
+                  }
                 />
               )}
             </section>
@@ -726,6 +744,7 @@ export function EnhancedAtlasDashboard({
           </div>
         )}
       </div>
+        )}
       </div>
 
       {/* ── Weekly Review Modal ── */}

@@ -18,6 +18,8 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import type { FieldDefinition } from '@/lib/field-system/types';
 import { FieldType } from '@/lib/field-system/types';
 import type { SpineEventType } from '@/lib/types';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { encryptWithKey, decryptWithKey } from '@/lib/encryption';
 
 // ============================================================================
 // Atlas Spine Event Constants
@@ -267,7 +269,7 @@ export function registerAtlasFieldActions(): void {
     /**
      * delete_field — Remove an extension field from Atlas.
      */
-    delete_field: async ({ userId, payload, emitSpineEvent }) => {
+    delete_field: async ({ userId, payload, emitSpineEvent, encryptionKey }) => {
       if (!userId) {
         console.warn('[Atlas] delete_field: No userId, skipping');
         return;
@@ -293,6 +295,57 @@ export function registerAtlasFieldActions(): void {
       } catch (err) {
         console.error('[Atlas] Failed to delete extension field:', err);
         return;
+      }
+
+      // Clean up any stored field values from the extension_field_values store
+      try {
+        const dataLayer = getNexusDataLayer();
+        type FieldValuesDoc = {
+          moduleId: string;
+          lastModified: string;
+          plainValues?: Record<string, unknown>;
+          encryptedValues?: { ciphertext: string; iv: string };
+        };
+        const stored = await dataLayer.getDocument<FieldValuesDoc>(
+          `extension_field_values/${userId}/modules`,
+          'atlas'
+        );
+        if (stored) {
+          let dirty = false;
+          const updated: FieldValuesDoc = { ...stored, lastModified: new Date().toISOString() };
+
+          if (stored.plainValues && fieldId in stored.plainValues) {
+            const newPlain = { ...stored.plainValues };
+            delete newPlain[fieldId];
+            updated.plainValues = newPlain;
+            dirty = true;
+          }
+
+          if (stored.encryptedValues && encryptionKey) {
+            try {
+              const decrypted = await decryptWithKey(stored.encryptedValues, encryptionKey);
+              const values = JSON.parse(decrypted) as Record<string, unknown>;
+              if (fieldId in values) {
+                delete values[fieldId];
+                const reEncrypted = await encryptWithKey(JSON.stringify(values), encryptionKey);
+                updated.encryptedValues = reEncrypted;
+                dirty = true;
+              }
+            } catch (cryptoErr) {
+              console.warn('[Atlas] delete_field: Failed to clean encrypted field value:', cryptoErr);
+            }
+          }
+
+          if (dirty) {
+            await dataLayer.setDocument(
+              `extension_field_values/${userId}/modules`,
+              'atlas',
+              updated
+            );
+          }
+        }
+      } catch (cleanupErr) {
+        console.warn('[Atlas] delete_field: Failed to clean up orphaned field value:', cleanupErr);
       }
 
       emitSpineEvent(ATLAS_SPINE_EVENTS.FIELD_DELETED, {
@@ -328,6 +381,33 @@ export function registerAtlasFieldActions(): void {
       if (!fieldId) {
         console.warn('[Atlas] update_field_value: Missing fieldId');
         return;
+      }
+
+      // Type validation against the registered field definition
+      const extensions = SchemaRegistry.getExtensions('atlas');
+      const field = extensions.find(f => f.id === fieldId);
+      if (!field) {
+        console.warn(`[Atlas] update_field_value: Field ${fieldId} not found`);
+        return;
+      }
+
+      if (payload.value !== undefined) {
+        if (field.type === FieldType.NUMBER && typeof payload.value !== 'number') {
+          console.warn(`[Atlas] update_field_value: Field ${fieldId} expects a number, got ${typeof payload.value}`);
+          return;
+        }
+        if (field.type === FieldType.BOOLEAN && typeof payload.value !== 'boolean') {
+          console.warn(`[Atlas] update_field_value: Field ${fieldId} expects a boolean, got ${typeof payload.value}`);
+          return;
+        }
+        if (
+          field.type === FieldType.DATE &&
+          typeof payload.value === 'string' &&
+          isNaN(Date.parse(payload.value))
+        ) {
+          console.warn(`[Atlas] update_field_value: Field ${fieldId} expects a valid date string`);
+          return;
+        }
       }
 
       // Value storage is handled by the FieldsTab component via Firestore.

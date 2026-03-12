@@ -582,10 +582,10 @@ export function HabitBuilder({
 
               {/* Actions */}
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
-                <NeuralButton onClick={handleCloseForm} variant="ghost">
+                <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
                   Cancel
                 </NeuralButton>
-                <NeuralButton onClick={handleSubmitForm} disabled={!formData.title?.trim()}>
+                <NeuralButton onClick={handleSubmitForm} disabled={!formData.title?.trim()} className="w-full sm:w-auto">
                   {editingHabit ? 'Update Habit' : 'Create Habit'}
                 </NeuralButton>
               </div>

@@ -18,6 +18,7 @@ import {
   AtlasHabit,
   AtlasGoal,
   RecoveryWindow,
+  EnergyWavePoint,
   loadAtlasProfile,
   saveAtlasProfile,
   subscribeAtlasProfile,
@@ -409,6 +410,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
               energyLevel: data.energyLevel,
               blockers: data.blockers,
             });
+            if (!updated.blockers?.trim()) return; // don't save empty entries
             await saveJournalEntry(updated, { userId: uid, encryptionKey });
           } catch (err) {
             console.error('[Atlas] Failed to auto-populate journal from evening check-in:', err);
@@ -458,6 +460,27 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
     };
     persistUpdate(next);
   });
+
+  const handleManualEnergyLog = useCallback((level: number, timeOfDay: string) => {
+    if (!profile) return;
+    // Map 1-5 widget scale → 2-10 EnergyWavePoint.energy scale
+    const scaledEnergy = Math.min(10, Math.max(1, level * 2));
+    const newEntry: EnergyWavePoint = {
+      id: `manual_${timeOfDay}_${Date.now()}`,
+      slot: timeOfDay,
+      energy: scaledEnergy,
+      focus: 5,
+      load: 5,
+    };
+    // Deduplicate by slot (timeOfDay), keep rest of today's entries
+    const filtered = (profile.energyWave ?? []).filter((e) => e.slot !== timeOfDay);
+    const next: AtlasProfile = {
+      ...profile,
+      energyWave: [...filtered, newEntry],
+      updatedAt: new Date().toISOString(),
+    };
+    persistUpdate(next);
+  }, [profile, persistUpdate]);
 
   return (
     <SingleAgentLayout
@@ -509,6 +532,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, globalSoul, updat
         onAddField={handleAddField}
         onDeleteField={handleDeleteField}
         onSendMessage={ai.handleSendMessage}
+        onLogEnergy={handleManualEnergyLog}
         encryptionKey={encryptionKey}
         predictiveDisplay={predictiveDisplay}
         weeklyReviewPending={weeklyReviewPending}
