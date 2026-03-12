@@ -261,6 +261,13 @@ export function EnhancedAtlasDashboard({
         />
       </div>
 
+      {/* ── Dashboard view switcher — always visible on dashboard tab ── */}
+      {activeTab === 'dashboard' && (
+        <div className="shrink-0 px-4 md:px-8 pt-4 pb-2">
+          <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />
+        </div>
+      )}
+
       {/* ── Tab Content ── */}
       <div className="flex-1 overflow-hidden flex">
         {/* S9-006: Structured mode — persistent sidebar QuickAdd panel (hidden in focus mode) */}
@@ -294,13 +301,10 @@ export function EnhancedAtlasDashboard({
 
         {/* ── Normal scroll container — hidden while focus mode is active ── */}
         {!(activeTab === 'dashboard' && activeView === 'focus') && (
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-4 md:pt-6 space-y-6 no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-2 md:pt-4 space-y-6 no-scrollbar">
         {/* ══════════════ DASHBOARD TAB ══════════════ */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            {/* ── Sub-view navigation: Today / Week / Focus ── */}
-            <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />
-
             {/* ── Quick Capture Bar — always visible on Dashboard ── */}
             <QuickCaptureBar
               onAddTask={onCreateTask}
