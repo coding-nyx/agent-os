@@ -69,6 +69,8 @@ export function useModuleAI({
   const { enhanceContext, enhanceContextForModule, globalSoul } = useGlobalSoul();
   const { user, isGuest, profile } = useAuth();
   const { debugMode } = useDebugMode();
+  const debugModeRef = useRef(debugMode);
+  useEffect(() => { debugModeRef.current = debugMode; }, [debugMode]);
   const activeSessionId = sessionId ?? 'current';
   const resolvedContextPolicy: ContextPolicy = contextPolicy ?? 'base-context';
 
@@ -593,7 +595,7 @@ export function useModuleAI({
           const assistantMessage: Message = { role: 'assistant', content: finalContent };
 
           // Populate debugMeta when debug mode is active
-          if (debugMode) {
+          if (debugModeRef.current) {
             const spineEventsSlice = NexusLogger.getRecentSpineEvents()
               .filter((e) => e.timestamp >= sendStartTime)
               .map((e) => e.eventType);

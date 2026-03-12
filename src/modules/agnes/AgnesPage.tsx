@@ -268,7 +268,7 @@ function AgnesContent({
     const userName = (typeof profile?.baseContext?.identity === 'object' 
       ? profile?.baseContext?.identity?.name 
       : profile?.baseContext?.identity) || 'there';
-    const isFirstSession = !profile?.baseContext?.sessionCount || profile.baseContext.sessionCount === 0;
+    const isFirstSession = !profile?.onboardingComplete;
 
     const firstTimeGreetings = [
       `Hi, I'm ${agentAlias}. I'm here to provide a safe, encrypted space for your thoughts. Where shall we begin?`,
@@ -328,27 +328,29 @@ function AgnesContent({
         if (!existing) {
           if (!encryptionKey) {
             console.warn('[Agnes] Skipping session merge: missing encryption key for vault-scoped module.');
-            return;
+          } else {
+            await ModuleMemoryService.initializeEnvelope(user.uid, 'agnes', encryptionKey);
           }
-          await ModuleMemoryService.initializeEnvelope(user.uid, 'agnes', encryptionKey);
         }
 
-        await ModuleMemoryService.commitSession(
-          user.uid,
-          'agnes',
-          {
-            id: `agnes_${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            summary: sessionSummary || 'Agnes session completed.',
-            keyInsights: [],
-            sentiment: 0,
-            tokenUsage: 0
-          },
-          snapshot,
-          { encryptionKey }
-        );
+        if (existing || encryptionKey) {
+          await ModuleMemoryService.commitSession(
+            user.uid,
+            'agnes',
+            {
+              id: `agnes_${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              summary: sessionSummary || 'Agnes session completed.',
+              keyInsights: [],
+              sentiment: 0,
+              tokenUsage: 0
+            },
+            snapshot,
+            { encryptionKey }
+          );
+        }
 
-        // Increment sessionCount so Agnes stops re-introducing herself
+        // Always increment sessionCount regardless of memory service state
         if (profile) {
           const updatedCount = (profile.baseContext?.sessionCount ?? 0) + 1;
           await saveAgnesProfile(

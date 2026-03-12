@@ -18,7 +18,6 @@ import { getActionLabel } from '@/lib/actions/action-labels';
 import { PendingRequestState } from '@/lib/hooks/use-pending-recovery';
 import { DocumentMessageCard, parseDocumentMessage } from './DocumentMessageCard';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
-import { DebugThoughtPanel } from '@/core/components/debug';
 
 // Helper to convert MessageContent to string for display
 function messageContentToString(content: MessageContent): string {
@@ -143,42 +142,46 @@ const THEMES = {
 
 type ThemeConfig = typeof THEMES[keyof typeof THEMES];
 
-const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading, isAgnes }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean }) {
+const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading, isAgnes, debugMode, debugMeta }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean, debugMode?: boolean, debugMeta?: import('@/lib/types').MessageDebugMeta }) {
     const { publicText, internalText, isThinking, isActing, currentActionType } = stripInternalTags(content, { retainSpacings: true });
     const [showInternal, setShowInternal] = useState(false);
     const hasPublicContent = publicText.length > 0;
 
-    // Extract completed action types for chips
-    const actionMatches = [...content.matchAll(/<action\s+type="([^"]+)">/gi)];
-    const completedActions = actionMatches.map(m => m[1]);
+    const showProcessingPulse = isThinking || isActing;
+    const showCompletedThought = debugMode && !!internalText && !isThinking && !isActing;
+
+    // Debug chips — actions and spine events
+    const actionChips = debugMode ? (debugMeta?.actionTagsExtracted ?? []) : [];
+    const spineChips = debugMode ? (debugMeta?.spineEvents ?? []) : [];
+    const hasDebugChips = actionChips.length > 0 || spineChips.length > 0;
 
     return (
         <div className="flex flex-col w-full max-w-[95%] sm:max-w-[85%] items-start">
-            {(isThinking || isActing || (internalText && isLast)) && (
+            {(showProcessingPulse || showCompletedThought) && (
                 <div className="mb-3 w-full">
                     <button 
-                        onClick={() => !isThinking && !isActing && setShowInternal(!showInternal)}
-                        disabled={isThinking || isActing}
+                        onClick={() => !showProcessingPulse && setShowInternal(!showInternal)}
+                        disabled={showProcessingPulse}
                         className={cn(
                             "flex items-center gap-3 px-4 py-2 rounded-2xl transition-all group border",
-                            (isThinking || isActing) ? "bg-white/[0.03] border-white/10 animate-pulse" : "bg-white/5 border-white/5 hover:bg-white/10"
+                            showProcessingPulse ? "bg-white/[0.03] border-white/10 animate-pulse" : "bg-white/5 border-white/5 hover:bg-white/10"
                         )}
                     >
-                        {isThinking || isActing ? (
+                        {showProcessingPulse ? (
                             <BrainCircuit className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
                         ) : (
                             <Terminal className="w-3.5 h-3.5 text-white/20 group-hover:text-white/40" />
                         )}
                         <span className={cn(
                             "text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em]",
-                            (isThinking || isActing) ? "text-indigo-400" : "text-white/20 group-hover:text-white/40"
+                            showProcessingPulse ? "text-indigo-400" : "text-white/20 group-hover:text-white/40"
                         )}>
                             {isThinking ? 'Processing Neural Signals...' : (isActing ? `${getActionLabel(currentActionType || 'action')}...` : 'View Internal Signals')}
                         </span>
                     </button>
                     
                     <AnimatePresence>
-                        {showInternal && !isThinking && !isActing && (
+                        {showInternal && !showProcessingPulse && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                                 <div className="mt-2 p-3 sm:p-4 bg-black/60 border border-white/5 rounded-xl sm:rounded-2xl font-mono text-[10px] sm:text-[11px] text-white/40 leading-relaxed whitespace-pre-wrap shadow-xl">
                                     {internalText}
@@ -189,15 +192,21 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                 </div>
             )}
 
-            {completedActions.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                {completedActions.map((type, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-sm">
-                    <ActivityIcon className="w-3 h-3" />
-                    <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider">{getActionLabel(type)}</span>
-                  </div>
-                ))}
-              </div>
+            {hasDebugChips && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                    {actionChips.map((a, idx) => (
+                        <div key={`a-${idx}`} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                            <ActivityIcon className="w-2.5 h-2.5" />
+                            <span className="text-[9px] font-semibold uppercase tracking-wider">{getActionLabel(a.type)}</span>
+                        </div>
+                    ))}
+                    {spineChips.map((evt, idx) => (
+                        <div key={`s-${idx}`} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400">
+                            <Zap className="w-2.5 h-2.5" />
+                            <span className="text-[9px] font-semibold uppercase tracking-wider">{evt}</span>
+                        </div>
+                    ))}
+                </div>
             )}
 
             {hasPublicContent && (
@@ -264,7 +273,7 @@ export function ChatInterface({
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isNearBottomRef = useRef(true);
-  const { debugMode, debugFlags } = useDebugMode();
+  const { debugMode } = useDebugMode();
   
   const effectiveIsProcessing = isProcessing !== undefined ? isProcessing : isLoading;
 
@@ -399,7 +408,6 @@ export function ChatInterface({
                 )}
                 {isAI ? (
                     <div className="w-full flex flex-col items-start">
-                        <DebugThoughtPanel message={msg} debugMode={debugMode} debugFlags={debugFlags} />
                         <AIMessage
                           content={showInternalSignals ? messageContentToString(msg.content) : stripInternalTags(messageContentToString(msg.content)).publicText}
                           theme={theme}
@@ -407,6 +415,8 @@ export function ChatInterface({
                           isLast={isLast}
                           isLoading={effectiveIsProcessing}
                           isAgnes={isAgnes}
+                          debugMode={debugMode}
+                          debugMeta={msg.debugMeta}
                         />
                     </div>
                 ) : (
