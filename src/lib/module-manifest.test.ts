@@ -63,9 +63,9 @@ describe('buildDefaultVaultLocks', () => {
     expect(locks.agnes).toBe(true);
   });
 
-  it('soma is not included in default locks because it has no page route', () => {
+  it('soma is included in default locks because it has a page route now', () => {
     const locks = buildDefaultVaultLocks();
-    expect(locks).not.toHaveProperty('soma');
+    expect(locks).toHaveProperty('soma');
   });
 
   it('ledger is locked by default (defaultLocked)', () => {

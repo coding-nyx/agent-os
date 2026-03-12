@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, X, Trash2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
+import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { ORCHESTRATOR_PERSONA } from '@/modules/orchestrator/personas';
 import { NexusChat } from '@/core/components/NexusChat';
@@ -19,6 +20,7 @@ const NEXUS_EXPANDED_WIDTH = 180;
 
 export function NexusOverlay() {
   const { user, profile } = useAuth();
+  const { hasVault, isUnlocked } = useVault();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -53,8 +55,9 @@ export function NexusOverlay() {
 
   const isVisible = useMemo(() => {
     if (!user || !profile?.onboardingComplete) return false;
-    return location.pathname !== '/' && location.pathname !== '/orchestrator';
-  }, [user, profile?.onboardingComplete, location.pathname]);
+    if (hasVault && !isUnlocked) return false;
+    return location.pathname !== '/' && location.pathname !== '/orchestrator' && location.pathname !== '/vault-gate';
+  }, [user, profile?.onboardingComplete, location.pathname, hasVault, isUnlocked]);
 
   const isChatOverlayOpen = useUIStore((s) => s.isChatOverlayOpen);
 
