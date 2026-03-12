@@ -4,7 +4,7 @@
  * Reverted visual style to original dashboard sections while keeping unified logic.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { GlobalProjection } from '@/lib/types';
 import {
@@ -170,9 +170,10 @@ export function EnhancedAtlasDashboard({
   const [selectedWeekDate, setSelectedWeekDate] = useState<string | undefined>(undefined);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
-  const tabs: NeuralTabItem<AtlasTab>[] = [
+  const queuedCount = profile?.tasks.filter(t => t.status === 'queued').length;
+  const tabs = useMemo<NeuralTabItem<AtlasTab>[]>(() => [
     { id: 'dashboard', label: 'Dashboard', icon: CalendarRange },
-    { id: 'backlog', label: 'Backlog', icon: Inbox, badge: profile?.tasks.filter(t => t.status === 'queued').length || undefined },
+    { id: 'backlog', label: 'Backlog', icon: Inbox, badge: queuedCount || undefined },
     { id: 'routines', label: 'Routines & Habits', icon: Clock },
     { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'fields', label: 'Fields', icon: SlidersHorizontal },
@@ -183,7 +184,7 @@ export function EnhancedAtlasDashboard({
       badge: weeklyReviewPending ? '●' : undefined,
       badgeVariant: weeklyReviewPending ? 'warning' : undefined,
     },
-  ];
+  ], [queuedCount, weeklyReviewPending]);
 
   if (isLocked) {
     return (

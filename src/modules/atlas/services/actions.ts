@@ -44,7 +44,7 @@ async function persistProfile(profile: AtlasProfile, userId?: string | null, enc
   await saveAtlasProfile(profile, { userId, encryptionKey });
 }
 
-function calculateActiveLoad(tasks: AtlasTask[]): number {
+export function calculateActiveLoad(tasks: AtlasTask[]): number {
   const active = tasks.filter(t => t.status === 'active' || t.status === 'queued');
   return Math.min(10, Math.round((active.length / 50) * 10));
 }
@@ -359,7 +359,8 @@ export function registerAtlasActions() {
       }
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
-      await updateGlobalSoul({ cognitive: { activeLoad: calculateActiveLoad(profile.tasks) } });
+      // NSV activeLoad is derived from profile.tasks in AtlasPage via useEffect
+      // to avoid a second React render cascade on top of the Firestore subscription echo.
     },
 
     update_task: async ({ userId, encryptionKey, payload, updateGlobalSoul }) => {
@@ -408,7 +409,7 @@ export function registerAtlasActions() {
       task.updatedAt = now;
 
       await persistProfile(profile, userId ?? null, encryptionKey ?? null);
-      await updateGlobalSoul({ cognitive: { activeLoad: calculateActiveLoad(profile.tasks) } });
+      // NSV activeLoad derived from profile.tasks in AtlasPage useEffect — avoids double render.
     },
 
     complete_task: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {
