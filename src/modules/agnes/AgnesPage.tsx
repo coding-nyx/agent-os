@@ -109,6 +109,7 @@ function AgnesContent({
   const [isClosingSession, setIsClosingSession] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
+  const [pendingImpromptuWelcome, setPendingImpromptuWelcome] = useState<string | null>(null);
   const prevUserRef = useRef(user);
 
   // Somatic session state
@@ -204,6 +205,16 @@ function AgnesContent({
     prevUserRef.current = user;
   }, [user, clearSession]);
 
+  // Inject impromptu welcome AFTER the hook's reset+hydration effects settle.
+  // Without this, the welcome set during startSession() gets overwritten by
+  // useModuleAI's reset effect (activeSessionId change) and hydration effect.
+  useEffect(() => {
+    if (pendingImpromptuWelcome && !isHydrating && isImpromptu) {
+      setMessages([{ role: 'assistant', content: pendingImpromptuWelcome }]);
+      setPendingImpromptuWelcome(null);
+    }
+  }, [pendingImpromptuWelcome, isHydrating, isImpromptu, setMessages]);
+
   const handleRouteConfirm = useCallback(() => {
     if (!routingSuggestion) return;
     const manifest = MODULE_MANIFEST[routingSuggestion.target];
@@ -234,18 +245,20 @@ function AgnesContent({
     }
 
     if (type === 'impromptu') {
-      // Impromptu: do NOT clear the regular Firestore session (C-2 fix).
-      // sessionType change → isImpromptu → useModuleAI switches to sessionId='impromptu'
-      // with persistencePolicy='ephemeral', so messages and hydration are fully isolated.
+      // Clear any stale impromptu cache so the hydration effect finds nothing
+      // and doesn't overwrite the welcome we're about to inject.
+      sessionStorage.removeItem(`nexus_session_agnes_impromptu`);
+      const quickSupportGreetings = [
+        "You reached out, and that matters. This space is private — nothing here is saved or tracked. Take a breath, and whenever you're ready, tell me what's on your mind.",
+        "This is a quiet, off-the-record space — just between us, nothing stored. There's no agenda here. What's coming up for you right now?",
+        "Whatever brought you here, you don't have to hold it alone right now. This session leaves no trace. I'm listening — take your time."
+      ];
+      const greeting = quickSupportGreetings[Math.floor(Math.random() * quickSupportGreetings.length)];
+      // Store greeting to inject AFTER the hook's reset+hydration effects settle
+      setPendingImpromptuWelcome(greeting);
       setSessionType('impromptu');
       setSessionStartedAt(Date.now());
       setCurrentState('session');
-      const quickSupportGreetings = [
-        "I'm here. This is a private, off-the-record space — nothing is saved. What's going on right now?",
-        "Quick support active. I'm listening, and this stays between us. What do you need right now?",
-        "I've got you. This session is completely detached — no record kept. Tell me what's happening."
-      ];
-      setMessages([{ role: 'assistant', content: quickSupportGreetings[Math.floor(Math.random() * quickSupportGreetings.length)] }]);
       return;
     }
 

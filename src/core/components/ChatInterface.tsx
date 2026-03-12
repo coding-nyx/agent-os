@@ -142,8 +142,13 @@ const THEMES = {
 
 type ThemeConfig = typeof THEMES[keyof typeof THEMES];
 
-const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading, isAgnes, debugMode, debugMeta }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean, debugMode?: boolean, debugMeta?: import('@/lib/types').MessageDebugMeta }) {
-    const { publicText, internalText, isThinking, isActing, currentActionType } = stripInternalTags(content, { retainSpacings: true });
+const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading, isAgnes, debugMode, debugMeta, isStreaming, preStripped }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean, debugMode?: boolean, debugMeta?: import('@/lib/types').MessageDebugMeta, isStreaming?: boolean, preStripped?: boolean }) {
+    // Skip expensive regex when content is already stripped (pre-processed by caller)
+    // or when actively streaming (content has no internal tags yet)
+    const stripped = (preStripped || isStreaming)
+      ? { publicText: content, internalText: '', isThinking: false, isActing: false, currentActionType: null }
+      : stripInternalTags(content, { retainSpacings: true });
+    const { publicText, internalText, isThinking, isActing, currentActionType } = stripped;
     const [showInternal, setShowInternal] = useState(false);
     const hasPublicContent = publicText.length > 0;
 
@@ -222,19 +227,26 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                         ? "prose prose-invert prose-base agnes-prose prose-p:leading-[1.85] prose-p:text-white/90 prose-strong:text-white prose-strong:font-semibold prose-li:text-white/85 prose-li:leading-relaxed prose-blockquote:border-indigo-400/40 prose-blockquote:text-white/70 prose-blockquote:italic"
                         : "prose prose-invert prose-sm prose-p:leading-relaxed prose-strong:text-white prose-strong:font-black prose-p:text-white/90"
                     )}>
-                        <ReactMarkdown
-                          rehypePlugins={[rehypeSanitize]}
-                          components={{
-                            a: ({ href, children, ...props }) => (
-                              <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
-                            )
-                          }}
-                        >{publicText}</ReactMarkdown>
+                        {isStreaming ? (
+                          // Plain text during streaming — no markdown parsing overhead
+                          <p className="whitespace-pre-wrap">{publicText}</p>
+                        ) : (
+                          <ReactMarkdown
+                            rehypePlugins={[rehypeSanitize]}
+                            components={{
+                              a: ({ href, children, ...props }) => (
+                                <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
+                              )
+                            }}
+                          >{publicText}</ReactMarkdown>
+                        )}
                     </div>
-                    <div className="mt-3 flex items-center justify-between opacity-30 border-t border-white/5 pt-3">
-                        <span className="text-[9px] font-semibold uppercase tracking-[0.12em]">{agentName}</span>
-                        <span className="text-[9px] font-mono uppercase tracking-wider">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
+                    {!isStreaming && (
+                      <div className="mt-3 flex items-center justify-between opacity-30 border-t border-white/5 pt-3">
+                          <span className="text-[9px] font-semibold uppercase tracking-[0.12em]">{agentName}</span>
+                          <span className="text-[9px] font-mono uppercase tracking-wider">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    )}
                 </motion.div>
             )}
         </div>
@@ -417,6 +429,8 @@ export function ChatInterface({
                           isAgnes={isAgnes}
                           debugMode={debugMode}
                           debugMeta={msg.debugMeta}
+                          isStreaming={isLast && effectiveIsProcessing}
+                          preStripped={!showInternalSignals}
                         />
                     </div>
                 ) : (

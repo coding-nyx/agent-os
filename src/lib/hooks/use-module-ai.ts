@@ -113,6 +113,10 @@ export function useModuleAI({
   const currentAssistantMessageBodyRef = useRef('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  // RAF batching: buffer deltas and flush to React state once per animation frame
+  const pendingStreamTextRef = useRef('');
+  const pendingAIStateRef = useRef<{ isThinking: boolean; isActing: boolean; currentActionType: string | null }>({ isThinking: false, isActing: false, currentActionType: null });
+  const streamRafRef = useRef<number>(0);
   const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean }) => void) | null>(null);
   const recoveryReplayKeyRef = useRef<string | null>(null);
 
@@ -132,6 +136,10 @@ export function useModuleAI({
     return () => {
       mountedRef.current = false;
       abortControllerRef.current?.abort('unmount');
+      if (streamRafRef.current) {
+        cancelAnimationFrame(streamRafRef.current);
+        streamRafRef.current = 0;
+      }
     };
   }, []);
 
@@ -435,16 +443,22 @@ export function useModuleAI({
             history: messages  // history before user message — CognitiveAgent adds user msg
           }),
           (chunk) => {
-            setStreamingText((prev) => {
-              const next = prev + chunk.delta;
-              currentAssistantMessageBodyRef.current = next;
-              return next;
-            });
-            setAIState({
+            // Update refs synchronously on every chunk (for post-stream processing)
+            pendingStreamTextRef.current += chunk.delta;
+            currentAssistantMessageBodyRef.current = pendingStreamTextRef.current;
+            pendingAIStateRef.current = {
               isThinking: chunk.isThinking,
               isActing: chunk.isActing,
               currentActionType: chunk.currentActionType
-            });
+            };
+            // RAF-batch: only flush to React state once per animation frame
+            if (!streamRafRef.current) {
+              streamRafRef.current = requestAnimationFrame(() => {
+                streamRafRef.current = 0;
+                setStreamingText(pendingStreamTextRef.current);
+                setAIState({ ...pendingAIStateRef.current });
+              });
+            }
           },
           controller.signal
         );
@@ -610,6 +624,13 @@ export function useModuleAI({
           messagesRef.current = localHistory;
           setMessages(localHistory);
         }
+
+        // Cancel any pending RAF flush and reset streaming buffers
+        if (streamRafRef.current) {
+          cancelAnimationFrame(streamRafRef.current);
+          streamRafRef.current = 0;
+        }
+        pendingStreamTextRef.current = '';
 
         setStreamingText('');
         currentAssistantMessageBodyRef.current = '';
