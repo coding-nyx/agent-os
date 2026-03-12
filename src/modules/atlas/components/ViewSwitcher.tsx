@@ -73,7 +73,7 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
             onClick={() => onViewChange(key)}
             onKeyDown={(e) => handleKeyDown(e, key)}
             className={cn(
-              'relative shrink-0 flex items-center gap-1.5 px-2.5 py-1 min-h-[32px] rounded-xl text-xs font-bold uppercase tracking-wider transition-colors',
+              'relative shrink-0 flex items-center gap-1.5 px-2.5 py-1 min-h-[32px] rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
               isActive ? 'text-white' : 'text-white/40 hover:text-white/60'
             )}
