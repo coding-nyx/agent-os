@@ -3,6 +3,7 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
+import type { MessageContent } from '@/lib/types';
 import { SCOUT_PERSONA } from './personas';
 import { ScoutDashboard } from './components/ScoutDashboard';
 import { ScoutUploadZone } from './components/ScoutUploadZone';
@@ -93,15 +94,20 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     deleteDigest: deleteDigestFn,
   } = useDigests(sourceCtx, sources);
 
-  const handleDeepResearchComplete = useCallback((result: DeepResearchResult) => {
-    // Sources are captured automatically when the result is accepted
-  }, []);
-
   const deepResearch = useDeepResearch({
     userId: user?.uid,
     encryptionKey,
-    onComplete: handleDeepResearchComplete,
   });
+
+  // Stable refs for values used in Spine event callbacks (avoids re-subscribing on every change)
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  const sourcesRef = useRef(sources);
+  sourcesRef.current = sources;
+  const digestsRef = useRef(digests);
+  digestsRef.current = digests;
+  const deepResearchRef = useRef(deepResearch);
+  deepResearchRef.current = deepResearch;
 
   const openExportDialog = useCallback((target: ExportTarget) => {
     setExportTarget(target);
@@ -109,19 +115,16 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   }, []);
 
   const handleDeepResearchAccepted = useCallback(async (result: DeepResearchResult) => {
-    if (!profile || !encryptionKey) return;
-    // Auto-capture all sources from the research result
+    if (!profileRef.current || !encryptionKey) return;
     for (const src of result.capturedSources) {
       await addSourceFn(src).catch(() => null);
     }
-    // The ScoutPage parent will update the profile via Spine/subscriptions
-    // after the accept handler in the parent merges the synthesis node
-    deepResearch.reset();
+    deepResearchRef.current.reset();
     setDeepResearchOpen(false);
     setActiveView('research');
-  }, [profile, encryptionKey, addSourceFn, deepResearch]);
+  }, [encryptionKey, addSourceFn]);
 
-  // Spine listeners for AI-triggered UI events
+  // Spine listeners for AI-triggered UI events — subscribed once, read latest values via refs
   useEffect(() => {
     const unsubDeepResearch = Spine.subscribe('DEEP_RESEARCH_REQUESTED', (event) => {
       const query = (event.data?.query as string) ?? '';
@@ -131,14 +134,17 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
     const unsubExport = Spine.subscribe('EXPORT_REQUESTED', (event) => {
       const exportType = event.data?.exportType as string;
+      const p = profileRef.current;
+      const s = sourcesRef.current;
+      const d = digestsRef.current;
       if (exportType === 'full-library') {
-        openExportDialog({ type: 'full-library', nodes: profile?.knowledgeNodes ?? [], digests, sources });
+        openExportDialog({ type: 'full-library', nodes: p?.knowledgeNodes ?? [], digests: d, sources: s });
       } else if (exportType === 'sources') {
-        openExportDialog({ type: 'sources', sources });
+        openExportDialog({ type: 'sources', sources: s });
       } else if (exportType === 'nodes') {
-        openExportDialog({ type: 'nodes', nodes: profile?.knowledgeNodes ?? [] });
-      } else if (exportType === 'digest' && digests[0]) {
-        openExportDialog({ type: 'digest', digest: digests[0] });
+        openExportDialog({ type: 'nodes', nodes: p?.knowledgeNodes ?? [] });
+      } else if (exportType === 'digest' && d[0]) {
+        openExportDialog({ type: 'digest', digest: d[0] });
       }
     });
 
@@ -151,7 +157,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       unsubExport();
       unsubDigest();
     };
-  }, [profile, sources, digests, openExportDialog]);
+  }, [openExportDialog]);
 
   const ai = useModuleAI({
     moduleId: 'scout',
@@ -205,22 +211,29 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     { id: 'digest', label: 'Digest', icon: FileText },
   ];
 
+  const handleSendMessageWrapped = useCallback(async (
+    content: MessageContent,
+    onAction?: (actionType: string, payload: Record<string, unknown>) => void
+  ) => {
+    setErrorMessage(null);
+    try {
+      await ai.handleSendMessage(content, onAction ?? onActionParsed);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    }
+  }, [ai.handleSendMessage, onActionParsed]);
+
+  const aiProp = useMemo(() => ({
+    ...ai,
+    handleSendMessage: handleSendMessageWrapped,
+  }), [ai, handleSendMessageWrapped]);
+
   return (
     <SingleAgentLayout
       moduleId="scout"
       agentName={agentAlias}
       themeColor="lime"
-      ai={{
-        ...ai,
-        handleSendMessage: async (content, onAction) => {
-          setErrorMessage(null);
-          try {
-            await ai.handleSendMessage(content, onAction ?? onActionParsed);
-          } catch (err) {
-            setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-          }
-        }
-      }}
+      ai={aiProp}
       authMode="scout"
       placeholder="Query research node..."
     >
@@ -454,14 +467,6 @@ export default function ScoutPage() {
       setIsRefreshingNews(false);
     }
   }, [user?.uid, isRefreshingNews]);
-
-  // Listen for draft updates from the ActionHub
-  useEffect(() => {
-    const unsub = Spine.on('SCOUT_PROFILE_DRAFT_UPDATED' as any, (event) => {
-      setActiveProfile(event.data as unknown as ScoutProfile);
-    });
-    return unsub;
-  }, []);
 
   const handleActionParsed = useCallback((type: string, payload: Record<string, unknown>) => {
     // Handled by Spine event mostly, but could trigger sound/haptic here
