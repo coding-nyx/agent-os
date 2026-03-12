@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon, Activity, FileText, Info } from 'lucide-react';
+import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon, Activity, FileText, Info, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import * as Switch from '@radix-ui/react-switch';
 import { GlobalProjection } from '@/lib/types';
+import type { SpineEvent } from '@/lib/types';
+import { EVENT_DISPLAY_NAMES } from '@/lib/state-display-config';
 import { LedgerIntakeProfile } from '../services/ledger-intake-service';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
@@ -25,7 +27,8 @@ export function LedgerDashboard({
   onAnalyzeDocument,
   onToggleDocumentAnalysis,
   onAskAI,
-  isLocked = false
+  isLocked = false,
+  recentEvents = []
 }: {
   soul: GlobalProjection | null;
   profile: LedgerIntakeProfile | null;
@@ -33,6 +36,7 @@ export function LedgerDashboard({
   onToggleDocumentAnalysis?: (enabled: boolean) => void;
   onAskAI?: (question: string) => void;
   isLocked?: boolean;
+  recentEvents?: SpineEvent[];
 }) {
   const [activeView, setActiveView] = useState<'overview' | 'cashflow' | 'debt'>('overview');
   // FIX-P9: Behavioral insights toggle persisted to localStorage
@@ -485,18 +489,40 @@ export function LedgerDashboard({
           />
           <div className="mt-6 space-y-3">
             <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">Financial Events</h4>
-            <EmptyState
-              title="No financial events yet"
-              description="Transaction activity will appear here."
-              icon={FileText}
-              size="sm"
-              className="bg-transparent border-white/10"
-            />
+            {recentEvents.length === 0 ? (
+              <EmptyState
+                title="No financial events yet"
+                description="Transaction activity will appear here."
+                icon={FileText}
+                size="sm"
+                className="bg-transparent border-white/10"
+              />
+            ) : (
+              <div className="space-y-2">
+                {recentEvents.slice(0, 8).map((evt) => (
+                  <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/5 border border-white/10">
+                    <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0 text-cyan-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-white/80 truncate">
+                        {EVENT_DISPLAY_NAMES[evt.type] ?? evt.type}
+                      </p>
+                      {!!evt.data?.description && (
+                        <p className="text-[10px] text-white/40 truncate mt-0.5">{String(evt.data.description)}</p>
+                      )}
+                    </div>
+                    {typeof evt.data?.amount === 'number' && (
+                      <span className={cn('text-xs font-mono shrink-0', evt.data?.type === 'income' ? 'text-emerald-400' : 'text-rose-400')}>
+                        {evt.data.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(evt.data.amount as number), profile?.currency)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </SurfaceCard>
       )}
 
-      {/* Debt Tracker View */}
       {activeView === 'debt' && (
         <SurfaceCard className="p-6">
           {totalDebt > 0 ? (
@@ -524,13 +550,36 @@ export function LedgerDashboard({
               </div>
               <div className="mt-6 space-y-3">
                 <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">Financial Events</h4>
-                <EmptyState
-                  title="No financial events yet"
-                  description="Transaction activity will appear here."
-                  icon={FileText}
-                  size="sm"
-                  className="bg-transparent border-white/10"
-                />
+                {recentEvents.length === 0 ? (
+                  <EmptyState
+                    title="No financial events yet"
+                    description="Transaction activity will appear here."
+                    icon={FileText}
+                    size="sm"
+                    className="bg-transparent border-white/10"
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    {recentEvents.slice(0, 8).map((evt) => (
+                      <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/5 border border-white/10">
+                        <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0 text-cyan-400" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-white/80 truncate">
+                            {EVENT_DISPLAY_NAMES[evt.type] ?? evt.type}
+                          </p>
+                          {!!evt.data?.description && (
+                            <p className="text-[10px] text-white/40 truncate mt-0.5">{String(evt.data.description)}</p>
+                          )}
+                        </div>
+                        {typeof evt.data?.amount === 'number' && (
+                          <span className={cn('text-xs font-mono shrink-0', evt.data?.type === 'income' ? 'text-emerald-400' : 'text-rose-400')}>
+                            {evt.data.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(evt.data.amount as number), profile?.currency)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           ) : (

@@ -73,7 +73,7 @@ export function registerLedgerActions() {
   registered = true;
 
   ActionHub.registerMultiple('ledger', {
-    create_financial_plan: async ({ userId, encryptionKey, payload }) => {
+    create_financial_plan: async ({ userId, encryptionKey, payload, markProfileDirty, emitSpineEvent }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -105,9 +105,18 @@ export function registerLedgerActions() {
       };
 
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      emitSpineEvent('FINANCIAL_PLAN_CREATED', {
+        priority: 'alert',
+        domain: 'R',
+        source: 'ledger',
+        planId: plan.id,
+        planTitle: plan.title,
+        monthlyTarget: plan.monthlyTarget,
+      });
+      markProfileDirty?.();
     },
 
-    update_budget_snapshot: async ({ userId, encryptionKey, payload }) => {
+    update_budget_snapshot: async ({ userId, encryptionKey, payload, markProfileDirty }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -140,9 +149,10 @@ export function registerLedgerActions() {
 
       ensureActivePlan(next);
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      markProfileDirty?.();
     },
 
-    log_transaction_summary: async ({ userId, encryptionKey, payload }) => {
+    log_transaction_summary: async ({ userId, encryptionKey, payload, markProfileDirty }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
       if (typeof payload?.summary !== 'string' || !payload.summary.trim()) return;
@@ -155,9 +165,10 @@ export function registerLedgerActions() {
 
       ensureActivePlan(next);
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      markProfileDirty?.();
     },
 
-    analyze_financial_document: async ({ userId, encryptionKey, payload }) => {
+    analyze_financial_document: async ({ userId, encryptionKey, payload, markProfileDirty }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -206,6 +217,7 @@ export function registerLedgerActions() {
 
       ensureActivePlan(next);
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      markProfileDirty?.();
     },
 
     parse_financial_statement: parseFinancialStatement,
@@ -297,7 +309,7 @@ export function registerLedgerActions() {
       emitSpineEvent('TRANSACTION_CREATED', {
         domain: 'R',
         source: 'ledger',
-        priority: 'info',
+        priority: 'alert',
         transactionId: transaction.id,
         amount: absAmount,
         type: txType,
@@ -357,6 +369,7 @@ export function registerLedgerActions() {
         emitSpineEvent('GOAL_COMPLETED', {
           domain: 'R',
           source: 'ledger',
+          priority: 'alert',
           goalId,
           currentAmount: clampedAmount,
           targetAmount,
@@ -437,11 +450,12 @@ export function registerLedgerActions() {
       emitSpineEvent('GOAL_CREATED', {
         domain: 'R',
         source: 'ledger',
+        priority: 'alert',
         goalId: goal.id,
         name: goal.name,
         type: goal.type,
         targetAmount: goal.targetAmount,
-        priority: goal.priority,
+        goalPriority: goal.priority,
       });
 
       markProfileDirty?.();
@@ -595,7 +609,7 @@ export function registerLedgerActions() {
     },
 
     // ── Handler: parse_financial_document (FIX-P8) ────────────────────────
-    parse_financial_document: async ({ userId, encryptionKey, payload }) => {
+    parse_financial_document: async ({ userId, encryptionKey, payload, markProfileDirty }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
       const now = new Date().toISOString();
@@ -619,6 +633,7 @@ export function registerLedgerActions() {
         updatedAt: now,
       };
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      markProfileDirty?.();
     },
 
     // ── Handler: commit_transaction (FIX-P8) ────────────────────────────────
@@ -645,7 +660,7 @@ export function registerLedgerActions() {
       };
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
       emitSpineEvent('TRANSACTION_CREATED', {
-        domain: 'R', source: 'ledger', priority: 'info',
+        domain: 'R', source: 'ledger', priority: 'alert',
         transactionId: tx.id, amount: absAmt, type: txType,
         category: tx.category, date: tx.date,
       });
