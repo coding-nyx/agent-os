@@ -30,6 +30,9 @@ function pickBudgetColor(index: number): string {
   return BUDGET_CATEGORY_COLORS[index % BUDGET_CATEGORY_COLORS.length];
 }
 import { cn } from '@/lib/utils';
+import { Spine } from '@/lib/spine/spine-event-bus';
+import type { SpineEvent } from '@/lib/types';
+import { LEDGER_TOAST_EVENTS } from '@/modules/ledger/actions/ledger-field-actions';
 import { analyzeImageWithVision } from '@/lib/services/vision-analysis-service';
 import { ModelRegistry } from '@/lib/ai-adapters/model-registry';
 import {
@@ -114,6 +117,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
   const plannerBootstrappedRef = useRef(false);
   const [activeTab, setActiveTab] = useState<LedgerTab>('overview');
   const [isAddTransactionModalOpen, setIsAddTransactionModalOpen] = useState(false);
+  const [recentEvents, setRecentEvents] = useState<SpineEvent[]>([]);
 
   const ai = useModuleAI({
     moduleId: 'ledger',
@@ -424,11 +428,29 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
 
   // ─── Extension values state for FieldsTab (FIX-P1) ───────────────────────
 
-  const [extensionValues, setExtensionValues] = useState<Record<string, unknown>>({});
+  const [extensionValues, setExtensionValues] = useState<Record<string, unknown>>(
+    () => profile?.extensionValues ?? {}
+  );
+
+  const [extraDebtPayment, setExtraDebtPayment] = useState(0);
+
+  const extensionValuesSynced = useRef(false);
+  useEffect(() => {
+    if (!extensionValuesSynced.current && profile?.extensionValues) {
+      setExtensionValues(profile.extensionValues);
+      extensionValuesSynced.current = true;
+    }
+  }, [profile?.extensionValues]);
 
   const handleExtensionValueChange = useCallback((fieldId: string, value: unknown) => {
-    setExtensionValues(prev => ({ ...prev, [fieldId]: value }));
-  }, []);
+    setExtensionValues(prev => {
+      const next = { ...prev, [fieldId]: value };
+      if (profile) {
+        persistUpdate({ ...profile, extensionValues: next });
+      }
+      return next;
+    });
+  }, [profile, persistUpdate]);
 
   const handleAddField = useCallback(() => {
     const newField: FieldDefinition = {
@@ -496,6 +518,16 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
       }
     }).catch((err) => console.error('Failed to update resonance ROI:', err));
   }, [user, isGuest, profile, globalSoul?.crossFunctionalState?.resource]);
+
+  // Subscribe to Spine events to populate Financial Events panel
+  useEffect(() => {
+    const unsubs = (LEDGER_TOAST_EVENTS as import('@/lib/types').SpineEventType[]).map((evtType) =>
+      Spine.on(evtType, (evt: SpineEvent) => {
+        setRecentEvents((prev) => [evt, ...prev].slice(0, 10));
+      })
+    );
+    return () => unsubs.forEach((fn) => fn());
+  }, []);
 
   useEffect(() => {
     if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
@@ -625,6 +657,8 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
                 profile={profile}
                 isLocked={isLocked}
                 onAskAI={(question) => ai.handleSendMessage(question)}
+                onAnalyzeDocument={openDocumentPicker}
+                recentEvents={recentEvents}
                 onToggleDocumentAnalysis={async (enabled) => {
                   if (!profile) return;
                   persistUpdate({ ...profile, documentAnalysisEnabled: enabled });
@@ -661,6 +695,8 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
                 onAddCategory={handleAddBudgetCategory}
                 onDeleteCategory={handleDeleteBudgetCategory}
                 onApplyTemplate={handleApplyBudgetTemplate}
+                taxTrackerProfile={profile}
+                taxEncryptionKey={encryptionKey ?? undefined}
               />
             </div>
           )}
@@ -670,6 +706,8 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
               <GoalTracker
                 goals={financialGoals}
                 currency={profile.currency}
+                monthlyIncome={profile.monthlyIncome}
+                totalMonthlyExpenses={profile.fixedExpenses.reduce((s, i) => s + i.amount, 0) + profile.variableExpenses.reduce((s, i) => s + i.amount, 0)}
                 onAddGoal={handleAddGoal}
                 onUpdateGoal={handleUpdateGoal}
                 onDeleteGoal={handleDeleteGoal}
@@ -681,6 +719,9 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
                 onAddDebt={handleAddDebt}
                 onUpdateDebt={handleUpdateDebt}
                 onDeleteDebt={handleDeleteDebt}
+                extraMonthlyPayment={extraDebtPayment}
+                onExtraPaymentChange={setExtraDebtPayment}
+                recommendSnowball={Number(globalSoul?.crossFunctionalState?.resource?.financialFriction ?? 0) > 7}
               />
             </div>
           )}
