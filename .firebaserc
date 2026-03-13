@@ -7,7 +7,7 @@
     "agent-agnes-ai": {
       "hosting": {
         "default": [
-          "agent-agnes-ai"
+          "agent-nexus"
         ]
       }
     }

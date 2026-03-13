@@ -1,6 +1,6 @@
 [
   {
-    "origin": ["https://agent-agnes-ai.web.app", "https://agent-agnes-ai.firebaseapp.com"],
+    "origin": ["https://agent-nexus.web.app", "https://agent-nexus.firebaseapp.com"],
     "method": ["GET"],
     "maxAgeSeconds": 3600
   }
