@@ -221,24 +221,7 @@ export default function HubPage() {
                 exit={{ opacity: 0 }}
                 transition={reducedMotion ? { duration: 0 } : undefined}
                 className="flex-1 pointer-events-none"
-              >
-                {/* 3D keyboard accessibility overlay */}
-                <div className="absolute bottom-32 left-6 z-20 pointer-events-auto">
-                  <p className="sr-only">3D visualization active. Use the module list below to navigate.</p>
-                  <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-2 max-h-[300px] overflow-y-auto">
-                    {modules.map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => handleModuleNavigate(m.id, m.route)}
-                        className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                      >
-                        <m.icon className="w-4 h-4 shrink-0" style={{ color: m.color }} />
-                        <span className="text-xs text-white/80 font-bold uppercase tracking-wider">{m.title}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
+              />
             )}
           </AnimatePresence>
 

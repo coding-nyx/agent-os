@@ -102,7 +102,7 @@ export function ReactiveGauge({ label, value, colorClass, icon: Icon, trend }: R
         <Icon className="w-3 h-3" /> {label}
       </span>
       <span className={cn(
-        "text-2xl font-bold leading-none transition-all duration-300 flex items-center gap-1.5",
+        "text-xl md:text-2xl font-bold leading-none transition-all duration-300 flex items-center gap-1.5",
         isEmpty ? "text-white/40" : colorClass,
         !isEmpty && isSyncing && "animate-pulse scale-110 blur-[1px] brightness-150"
       )}>
@@ -139,7 +139,7 @@ export function HubBottomDashboard({
   lockedModules, wellnessGauge, stabilityGauge, resilienceGauge, openAuth, primaryLockedModule
 }: HubBottomDashboardProps) {
   return (
-    <div className="mt-auto pb-6 sm:pb-10 px-4 sm:px-6 md:px-12 pointer-events-auto relative z-20 w-full max-w-7xl mx-auto">
+    <div className="mt-auto pb-4 sm:pb-10 px-2 sm:px-6 md:px-12 pointer-events-auto relative z-20 w-full max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 bg-black/60 backdrop-blur-3xl border border-white/10 p-2 rounded-[32px] shadow-2xl">
         {lockedModules.length > 0 ? (
           <div className="flex-1 flex items-center gap-4 px-6 py-3 bg-amber-500/5 rounded-[24px] border border-amber-500/10">
@@ -162,7 +162,7 @@ export function HubBottomDashboard({
 
         <div className="hidden md:block w-px h-12 bg-white/5" />
 
-        <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-8 px-4 sm:px-8 py-3">
+        <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-8 px-2 sm:px-8 py-3">
           <ReactiveGauge label="Wellness" value={wellnessGauge} colorClass="text-indigo-400" icon={Sparkles} />
           <div className="w-px h-8 bg-white/5 shrink-0 hidden sm:block" />
           <ReactiveGauge label="Stability" value={stabilityGauge} colorClass="text-orange-400" icon={Activity} />

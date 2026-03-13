@@ -1,7 +1,8 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { SkeletonUtils } from 'three-stdlib';
 import type { GlobalProjection } from '@/lib/types';
 
 interface ModelProps {
@@ -13,7 +14,9 @@ interface ModelProps {
 
 export function WallEModel({ soul, ...props }: ModelProps) {
   const { scene } = useGLTF('/assets/models/walle.glb');
+  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const group = useRef<THREE.Group>(null);
+  
   useFrame((state) => {
     if (!group.current) return;
     const fatigue = typeof soul?.crossFunctionalState?.biological?.cnsFatigue === 'number'
@@ -24,12 +27,15 @@ export function WallEModel({ soul, ...props }: ModelProps) {
     const speed = fatigue !== null && fatigue > 7 ? 0.5 : 1.2;
     group.current.position.y = Math.sin(state.clock.elapsedTime * speed) * 0.1;
   });
-  return <group ref={group}><primitive object={scene} {...props} /></group>;
+  
+  return <group ref={group}><primitive object={clone} {...props} /></group>;
 }
 
 export function EveModel({ soul, ...props }: ModelProps) {
   const { scene } = useGLTF('/assets/models/eve.glb');
+  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const group = useRef<THREE.Group>(null);
+  
   useFrame((state) => {
     if (!group.current) return;
     const resilience = typeof soul?.crossFunctionalState?.emotional?.emotionalResilience === 'number'
@@ -40,40 +46,68 @@ export function EveModel({ soul, ...props }: ModelProps) {
     const targetTilt = resilience !== null && resilience < 5 ? -Math.PI / 16 : 0;
     group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, targetTilt, 0.05);
   });
-  return <group ref={group}><primitive object={scene} {...props} /></group>;
+  
+  return <group ref={group}><primitive object={clone} {...props} /></group>;
 }
 
-export function LedgerModel(props: Omit<ModelProps, 'soul'>) {
-  const { scene } = useGLTF('/assets/models/ledger.glb');
+// Simplified LedgerModel with guaranteed fallback
+export function LedgerModel({ scale = 0.8, ...props }: Omit<ModelProps, 'soul'>) {
   const group = useRef<THREE.Group>(null);
+
   useFrame((state) => {
     if (!group.current) return;
     group.current.rotation.y += 0.005;
     group.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
   });
-  return <group ref={group}><primitive object={scene} {...props} /></group>;
+
+  // Forcing PolyPod fallback to guarantee visibility while model issues are resolved
+  return (
+    <group ref={group} {...props}>
+      <PolyPodModel color="#06B6D4" shape="icosa" scale={scale * 0.8} />
+    </group>
+  );
+}
+
+export function AtlasModel(props: Omit<ModelProps, 'soul'>) {
+  const { scene } = useGLTF('/assets/models/atlas.glb');
+  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
+  const group = useRef<THREE.Group>(null);
+  
+  useFrame((state) => {
+    if (!group.current) return;
+    group.current.rotation.y += 0.005;
+    group.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
+  });
+  
+  return <group ref={group}><primitive object={clone} {...props} /></group>;
 }
 
 export function ForgeModel({ scale = 1, ...props }: Omit<ModelProps, 'soul'>) {
   const { scene } = useGLTF('/assets/models/forge.glb');
+  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const group = useRef<THREE.Group>(null);
+  
   useFrame((state) => {
     if (!group.current) return;
     group.current.rotation.y += 0.004;
     group.current.position.y = Math.sin(state.clock.elapsedTime * 0.6) * 0.06;
   });
-  return <group ref={group}><primitive object={scene} scale={scale * 0.03} {...props} /></group>;
+  
+  return <group ref={group}><primitive object={clone} scale={scale * 0.03} {...props} /></group>;
 }
 
-export function NexusModel(props: Omit<ModelProps, 'soul'>) {
+export function NexusModel({ scale = 0.05, ...props }: Omit<ModelProps, 'soul'>) {
   const { scene } = useGLTF('/assets/models/nexus.glb');
+  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const group = useRef<THREE.Group>(null);
+  
   useFrame((state) => {
     if (!group.current) return;
     group.current.rotation.y += 0.002;
-    group.current.position.y = Math.sin(state.clock.elapsedTime * 0.4) * 0.03;
+    // Static center for neural anchoring
   });
-  return <group ref={group}><primitive object={scene} {...props} /></group>;
+  
+  return <group ref={group}><primitive object={clone} scale={scale} {...props} /></group>;
 }
 
 interface PolyPodModelProps {
@@ -107,6 +141,6 @@ export function PolyPodModel({ color, shape, ...props }: PolyPodModelProps) {
 
 useGLTF.preload('/assets/models/walle.glb');
 useGLTF.preload('/assets/models/eve.glb');
-useGLTF.preload('/assets/models/ledger.glb');
+useGLTF.preload('/assets/models/atlas.glb');
 useGLTF.preload('/assets/models/forge.glb');
 useGLTF.preload('/assets/models/nexus.glb');

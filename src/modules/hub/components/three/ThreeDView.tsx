@@ -10,71 +10,130 @@ import { cn } from '@/lib/utils';
 import type { GlobalProjection } from '@/lib/types';
 import type { FloatingPodProps } from '../../constants';
 import { CORE_MODULES } from '../../constants';
-import { WallEModel, EveModel, LedgerModel, PolyPodModel, ForgeModel } from './models';
+import { WallEModel, EveModel, LedgerModel, PolyPodModel, ForgeModel, AtlasModel, NexusModel } from './models';
 
-// --- Spine (neural pathway connecting core modules) ---
+// --- Neural Flow (Star-topology connections from center to modules) ---
 
-export function HubSpine({ points }: { points: THREE.Vector3[] }) {
-  const tubeRef = useRef<THREE.Mesh>(null);
+function NexusFlow({ start, end, color, isPlugin, pulseRef }: { 
+  start: THREE.Vector3; 
+  end: THREE.Vector3; 
+  color: string; 
+  isPlugin: boolean;
+  pulseRef: React.MutableRefObject<number>;
+}) {
+  const lineRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.MeshStandardMaterial>(null);
-  const pulseRef = useRef(0);
-  const curve = useMemo(() => new THREE.CatmullRomCurve3(points, true, 'catmullrom', 0.6), [points]);
-  const geometry = useMemo(() => new THREE.TubeGeometry(curve, 220, 0.04, 12, true), [curve]);
+  const glowMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  
+  // Create a smooth, bulky arc from center to pod
+  const curve = useMemo(() => {
+    // Deep anchoring logic: extend start/end deeper into models to hide bobbing gaps
+    const dir = new THREE.Vector3().subVectors(end, start).normalize();
+    const adjStart = start.clone().sub(dir.clone().multiplyScalar(0.4)); // Deep into Nexus
+    const adjEnd = end.clone().add(dir.clone().multiplyScalar(0.8)); // Deep into Pod
+    
+    const mid = new THREE.Vector3().addVectors(adjStart, adjEnd).multiplyScalar(0.5);
+    mid.y += isPlugin ? 1.0 : 2.5; // Arch it upwards for a bulky look
+    
+    return new THREE.QuadraticBezierCurve3(adjStart, mid, adjEnd);
+  }, [start, end, isPlugin]);
+
+  const geometry = useMemo(() => new THREE.TubeGeometry(curve, 64, isPlugin ? 0.012 : 0.035, 8, false), [curve, isPlugin]);
+  const glowGeometry = useMemo(() => new THREE.TubeGeometry(curve, 64, isPlugin ? 0.025 : 0.06, 8, false), [curve, isPlugin]);
 
   useEffect(() => {
-    return () => { geometry.dispose(); };
-  }, [geometry]);
+    return () => { 
+      geometry.dispose(); 
+      glowGeometry.dispose();
+    };
+  }, [geometry, glowGeometry]);
 
-  useSpineEvent('*', (event) => {
-    if (event.priority !== 'info') {
-      pulseRef.current = 1;
-    }
-  });
-
-  useFrame(() => {
-    pulseRef.current = Math.max(0, pulseRef.current - 0.02);
-    if (!matRef.current) return;
-    matRef.current.emissiveIntensity = 0.6 + pulseRef.current * 1.6;
-    matRef.current.opacity = 0.3 + pulseRef.current * 0.4;
+  useFrame((state) => {
+    if (!matRef.current || !glowMatRef.current) return;
+    const baseOpacity = isPlugin ? 0.04 : 0.12;
+    const pulseIntensity = pulseRef.current * (isPlugin ? 0.2 : 0.5);
+    
+    matRef.current.opacity = baseOpacity + pulseIntensity;
+    matRef.current.emissiveIntensity = 0.4 + pulseRef.current * 2.5;
+    
+    glowMatRef.current.opacity = (baseOpacity * 0.5) + (pulseIntensity * 0.8);
+    glowMatRef.current.emissiveIntensity = 0.2 + pulseRef.current * 4;
   });
 
   return (
     <>
-      <mesh ref={tubeRef} geometry={geometry}>
-        <meshStandardMaterial ref={matRef} color="#7c3aed" emissive="#7c3aed" transparent opacity={0.35} />
+      {/* Primary bulkier nerve fiber */}
+      <mesh geometry={geometry}>
+        <meshStandardMaterial 
+          ref={matRef} 
+          color={color} 
+          emissive={color} 
+          transparent 
+          opacity={0.12} 
+          depthWrite={false}
+          metalness={0.8}
+          roughness={0.2}
+        />
       </mesh>
-      <SpineParticles curve={curve} pulseRef={pulseRef} />
+      {/* Secondary outer glow/aura - No scale here, use larger geometry instead */}
+      <mesh geometry={glowGeometry}>
+        <meshStandardMaterial 
+          ref={glowMatRef} 
+          color={color} 
+          emissive={color} 
+          transparent 
+          opacity={0.05} 
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+      {/* Bidirectional for Core, Unidirectional for Plugins */}
+      <FlowParticles curve={curve} color={color} isPlugin={isPlugin} pulseRef={pulseRef} direction="out" />
+      {!isPlugin && (
+        <FlowParticles curve={curve} color={color} isPlugin={isPlugin} pulseRef={pulseRef} direction="in" />
+      )}
     </>
   );
 }
 
-// --- Spine particles flowing along the curve ---
-
-function SpineParticles({ curve, pulseRef }: { curve: THREE.CatmullRomCurve3; pulseRef: React.MutableRefObject<number> }) {
-  const count = 30;
+function FlowParticles({ curve, color, isPlugin, pulseRef, direction }: { 
+  curve: THREE.Curve<THREE.Vector3>; 
+  color: string; 
+  isPlugin: boolean;
+  pulseRef: React.MutableRefObject<number>;
+  direction: 'in' | 'out';
+}) {
+  const count = isPlugin ? 8 : 12;
   const ref = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const offsets = useMemo(() => Array.from({ length: count }, () => Math.random()), []);
 
   useFrame(() => {
     if (!ref.current) return;
-    const speed = 0.05 + pulseRef.current * 0.15;
+    const speed = (isPlugin ? 0.02 : 0.04) + pulseRef.current * 0.1;
     for (let i = 0; i < count; i++) {
-      offsets[i] = (offsets[i] + speed * 0.01 * (1 + i * 0.02)) % 1;
+      if (direction === 'out') {
+        offsets[i] = (offsets[i] + speed * 0.01 * (1 + i * 0.05)) % 1;
+      } else {
+        offsets[i] = (offsets[i] - speed * 0.01 * (1 + i * 0.05));
+        if (offsets[i] < 0) offsets[i] = 1;
+      }
+      
       const point = curve.getPointAt(offsets[i]);
       dummy.position.copy(point);
-      const scale = 0.015 + pulseRef.current * 0.01;
+      const scale = (isPlugin ? 0.008 : 0.015) + pulseRef.current * 0.01;
       dummy.scale.setScalar(scale);
       dummy.updateMatrix();
       ref.current.setMatrixAt(i, dummy.matrix);
     }
     ref.current.instanceMatrix.needsUpdate = true;
+    (ref.current.material as THREE.MeshBasicMaterial).opacity = (isPlugin ? 0.1 : 0.4) + pulseRef.current * 0.4;
   });
 
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]}>
-      <sphereGeometry args={[1, 8, 8]} />
-      <meshBasicMaterial color="#a78bfa" transparent opacity={0.8} />
+      <sphereGeometry args={[1, 6, 6]} />
+      <meshBasicMaterial color={color} transparent opacity={0.4} depthWrite={false} />
     </instancedMesh>
   );
 }
@@ -105,25 +164,31 @@ export function DepthParticles() {
   );
 }
 
-// --- Camera entry animation (one-shot, then yields to OrbitControls) ---
-// Module-level flag so the intro only plays once per session
+// --- Camera entry animation ---
 let cameraIntroPlayed = false;
 
 export function CameraRig() {
-  const { camera } = useThree();
-  const target = useMemo(() => new THREE.Vector3(0, 0, 15), []);
-  const animating = useRef(false);
+  const { camera, size } = useThree();
+  const isMobile = size.width < 768;
+  const target = useMemo(() => new THREE.Vector3(0, isMobile ? 3 : 0, isMobile ? 26 : 15), [isMobile]);
+  const animating = useRef(true);
+  const lastIsMobile = useRef(isMobile);
 
   useEffect(() => {
     if (!cameraIntroPlayed) {
-      camera.position.set(0, 6, 24);
-      animating.current = true;
+      camera.position.set(0, 8, 35);
       cameraIntroPlayed = true;
     }
-  }, [camera]);
+    // Re-trigger animation if screen state changes
+    if (lastIsMobile.current !== isMobile) {
+      animating.current = true;
+      lastIsMobile.current = isMobile;
+    }
+  }, [camera, isMobile]);
 
   useFrame(() => {
     if (!animating.current) return;
+    
     camera.position.lerp(target, 0.04);
     if (camera.position.distanceTo(target) < 0.05) {
       camera.position.copy(target);
@@ -144,7 +209,7 @@ export const FloatingPod = React.memo(function FloatingPod({
   const torusRef = useRef<THREE.Mesh>(null);
   const scaleMult = isPlugin ? 0.6 : 1.6;
   const opacityMult = isPlugin ? 0.5 : 1;
-  const hasGlbModel = ['eve', 'walle', 'ledger', 'forge'].includes(modelType);
+  const hasGlbModel = ['eve', 'walle', 'ledger', 'forge', 'atlas'].includes(modelType);
   const sphereOpacity = modelType === 'walle'
     ? (isLocked ? 0.005 : 0.01) * opacityMult
     : hasGlbModel
@@ -169,7 +234,6 @@ export const FloatingPod = React.memo(function FloatingPod({
     setTimeout(() => onClick(), 400);
   }, [onClick]);
 
-  // Click ripple animation on torus ring
   useFrame(() => {
     if (clicked && torusRef.current) {
       const mat = torusRef.current.material as THREE.MeshStandardMaterial;
@@ -204,7 +268,7 @@ export const FloatingPod = React.memo(function FloatingPod({
           <LedgerModel scale={0.8 * scaleMult} position={[0, -0.2 * scaleMult, 0]} />
         )}
         {modelType === 'atlas' && (
-          <PolyPodModel shape="octa" color={color} scale={0.45 * scaleMult} position={[0, -0.4 * scaleMult, 0]} rotation={[0, Math.PI / 6, 0]} />
+          <AtlasModel scale={0.8 * scaleMult} position={[0, -0.2 * scaleMult, 0]} />
         )}
         {modelType === 'scout' && (
           <PolyPodModel shape="dodeca" color={color} scale={0.45 * scaleMult} position={[0, -0.4 * scaleMult, 0]} rotation={[0, Math.PI / 6, 0]} />
@@ -257,7 +321,7 @@ function Hub3DLoader() {
   );
 }
 
-// --- Full 3D View (lazy-loadable) ---
+// --- Full 3D View ---
 
 interface ThreeDViewProps {
   podLayout: Array<{ id: string; position: [number, number, number]; color: string; title: string; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; route: string; isPlugin: boolean }>;
@@ -267,7 +331,20 @@ interface ThreeDViewProps {
   onModuleNavigate: (moduleId: string, route: string) => void;
 }
 
-export default function ThreeDView({ podLayout, spinePoints, moduleAccess, globalSoul, onModuleNavigate }: ThreeDViewProps) {
+export default function ThreeDView({ podLayout, moduleAccess, globalSoul, onModuleNavigate }: ThreeDViewProps) {
+  const pulseRef = useRef(0);
+  const centerPos = useMemo(() => new THREE.Vector3(0, 0, 0), []);
+
+  useSpineEvent('*', (event) => {
+    if (event.priority !== 'info') {
+      pulseRef.current = 1;
+    }
+  });
+
+  useFrame(() => {
+    pulseRef.current = THREE.MathUtils.lerp(pulseRef.current, 0, 0.02);
+  });
+
   return (
     <>
     <CameraRig />
@@ -280,16 +357,29 @@ export default function ThreeDView({ podLayout, spinePoints, moduleAccess, globa
     <Suspense fallback={<Hub3DLoader />}>
       <Environment preset="city" />
 
-      {/* Improved lighting setup */}
       <ambientLight intensity={0.1} />
       <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1.2} color="#ede9fe" />
       <spotLight position={[-8, -6, -5]} angle={0.3} penumbra={1} intensity={0.4} color="#7c3aed" />
-      <pointLight position={[0, 0.8, 0]} intensity={0.6} color="#7c3aed" distance={8} decay={2} />
+      <pointLight position={[0, 0, 0]} intensity={0.8} color="#7c3aed" distance={10} decay={2} />
 
       <DepthParticles />
 
       <group position={[0, 0.8, 0]}>
-        <HubSpine points={spinePoints} />
+        {/* The Central Nexus Model */}
+        <NexusModel scale={0.05} />
+        
+        {/* Star-topology neural flows */}
+        {podLayout.map((module) => (
+          <NexusFlow
+            key={`flow-${module.id}`}
+            start={centerPos}
+            end={new THREE.Vector3(...module.position)}
+            color={module.color}
+            isPlugin={module.isPlugin}
+            pulseRef={pulseRef}
+          />
+        ))}
+
         {podLayout.map((module) => {
           const modelType =
             module.id === 'agnes' ? 'eve' :
@@ -318,7 +408,6 @@ export default function ThreeDView({ podLayout, spinePoints, moduleAccess, globa
 
       <ContactShadows position={[0, -4, 0]} opacity={0.4} scale={20} blur={2.4} far={4.5} />
 
-      {/* Post-processing pipeline */}
       <EffectComposer>
         <Bloom luminanceThreshold={0.3} luminanceSmoothing={0.9} intensity={0.8} mipmapBlur />
         <Vignette eskil={false} offset={0.1} darkness={0.8} />
