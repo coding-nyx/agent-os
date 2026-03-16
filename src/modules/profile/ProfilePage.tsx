@@ -31,7 +31,7 @@ export default function ProfilePage() {
       <div className="h-full flex flex-col overflow-hidden">
         {/* Tab bar */}
         <div className="shrink-0 px-4 md:px-8 pt-4 pb-2 border-b border-white/5">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
             <div>
               <p className="text-[9px] uppercase tracking-[0.25em] text-violet-400/70 font-black mb-0.5">
                 Identity Surface
@@ -40,7 +40,7 @@ export default function ProfilePage() {
                 Profile
               </h2>
             </div>
-            <div className="ml-auto">
+            <div className="w-full md:w-auto md:ml-auto">
               <NeuralTabGroup<TabId>
                 tabs={TABS}
                 activeTab={activeTab}
