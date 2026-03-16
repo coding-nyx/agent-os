@@ -183,4 +183,32 @@ describe('computeSessionPRs', () => {
 
     expect(() => computeSessionPRs(sets, frozen as Record<string, number>)).not.toThrow();
   });
+
+  // ── Added test case for functionality completeness ────────────────────────
+
+  it('correctly calculates new PRs and returns multiple updated entries with multiple exercises and multiple sets', () => {
+    const sets: PRSet[] = [
+      { exerciseName: 'Deadlift', weightKg: 160, reps: 5 },  // 160*(1+5/30) = 186.7
+      { exerciseName: 'Deadlift', weightKg: 170, reps: 3 },  // 170*(1+3/30) = 187.0
+      { exerciseName: 'Bench Press', weightKg: 105, reps: 5 } // 105*(1+5/30) = 122.5
+    ];
+    const existing = {
+      deadlift: 180, // Beaten by both sets
+      'bench press': 125 // Not beaten
+    };
+
+    const { updatedPRs, results } = computeSessionPRs(sets, existing);
+
+    expect(results).toHaveLength(2);
+
+    const deadliftResult = results.find(r => r.exerciseName === 'Deadlift')!;
+    expect(deadliftResult.isNewPR).toBe(true);
+    expect(deadliftResult.newE1RM).toBe(187.0);
+    expect(updatedPRs['deadlift']).toBe(187.0);
+
+    const benchResult = results.find(r => r.exerciseName === 'Bench Press')!;
+    expect(benchResult.isNewPR).toBe(false);
+    expect(benchResult.newE1RM).toBe(122.5);
+    expect(updatedPRs['bench press']).toBe(125); // unchanged
+  });
 });
