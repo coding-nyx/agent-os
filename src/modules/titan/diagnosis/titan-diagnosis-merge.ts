@@ -19,23 +19,26 @@ export async function mergeTitanDiagnosisData(
   }
 
   let next: TitanProfile = { ...profile };
+  const delegationPromises: Promise<unknown>[] = [];
 
   for (const item of items) {
     switch (item.type) {
       case 'biomarker': {
-        await SomaTitanDelegationService.commitBiomarker({
-          userId,
-          encryptionKey,
-          payload: {
-            id: item.id,
-            name: item.data.name,
-            value: item.data.value,
-            unit: item.data.unit,
-            source: item.data.source ?? 'diagnosis',
-            recordedAt: item.extractedAt,
-          },
-          source: 'titan_diagnosis',
-        });
+        delegationPromises.push(
+          SomaTitanDelegationService.commitBiomarker({
+            userId,
+            encryptionKey,
+            payload: {
+              id: item.id,
+              name: item.data.name,
+              value: item.data.value,
+              unit: item.data.unit,
+              source: item.data.source ?? 'diagnosis',
+              recordedAt: item.extractedAt,
+            },
+            source: 'titan_diagnosis',
+          })
+        );
         break;
       }
 
@@ -55,18 +58,20 @@ export async function mergeTitanDiagnosisData(
       }
 
       case 'clearance': {
-        await SomaTitanDelegationService.issueClearance({
-          userId,
-          encryptionKey,
-          payload: {
-            id: item.id,
-            activity: item.data.activity,
-            status: item.data.status,
-            reason: item.data.reason,
-            issuedAt: item.extractedAt,
-          },
-          source: 'titan_diagnosis',
-        });
+        delegationPromises.push(
+          SomaTitanDelegationService.issueClearance({
+            userId,
+            encryptionKey,
+            payload: {
+              id: item.id,
+              activity: item.data.activity,
+              status: item.data.status,
+              reason: item.data.reason,
+              issuedAt: item.extractedAt,
+            },
+            source: 'titan_diagnosis',
+          })
+        );
         break;
       }
 
@@ -127,6 +132,13 @@ export async function mergeTitanDiagnosisData(
         break;
       }
     }
+  }
+
+  // Wait for all external delegation calls to complete in parallel.
+  // This eliminates sequential I/O wait time for biomarker and clearance commits,
+  // reducing total merge duration from O(N * latency) to O(latency).
+  if (delegationPromises.length > 0) {
+    await Promise.all(delegationPromises);
   }
 
   next.updatedAt = new Date().toISOString();
