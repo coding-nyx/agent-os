@@ -315,22 +315,18 @@ function SessionHistoryList({
 // Public export
 // ---------------------------------------------------------------------------
 
+import { EmptyState } from '@/core/components/EmptyState';
+
 export function ProgressTab({ profile }: ProgressTabProps) {
   const sessions = profile?.workoutSessions ?? [];
 
   if (sessions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-4 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-          <TrendingUp className="w-6 h-6 text-orange-400" />
-        </div>
-        <div className="space-y-1">
-          <p className="text-sm font-bold text-white/70">No sessions yet</p>
-          <p className="text-xs text-white/40 max-w-xs">
-            Log your first workout session from the Training tab to start tracking progress.
-          </p>
-        </div>
-      </div>
+      <EmptyState
+        icon={TrendingUp}
+        title="No sessions yet"
+        description="Log your first workout session from the Training tab to start tracking progress."
+      />
     );
   }
 

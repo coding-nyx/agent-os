@@ -14,6 +14,7 @@ import {
   generateBriefSentence
 } from '@/lib/state-display-config';
 import type { StatusTone } from '../constants';
+import { useNsvTrends } from '@/modules/orchestrator/hooks/useNsvTrends';
 
 // ---------------------------------------------------------------------------
 // Pillar Card — one per domain (Body, Mind, Heart, Flow)

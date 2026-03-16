@@ -694,7 +694,12 @@ export const SomaDashboard = React.memo(function SomaDashboard({
         </div>
 
         {profile.clearances.length === 0 ? (
-          <p className="text-sm text-white/30 italic text-center py-4">No clearances recorded yet.</p>
+          <EmptyState
+            icon={ShieldCheck}
+            title="No clearances"
+            description="No clearances recorded yet."
+            size="sm"
+          />
         ) : (
           <div className="space-y-3">
             {profile.clearances.slice(0, 8).map(clearance => (

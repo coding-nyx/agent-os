@@ -2,7 +2,7 @@
  * OrchestratorPage critical-path tests
  *
  * T-01 — Guest mode renders guest overlay, not full onboarding
- * T-02 — handleComplete Firestore failure shows error (BUG-C4) [todo — no error UI yet]
+ * T-02 — handleComplete Firestore failure shows error (BUG-C4)
  * T-03 — Vault nudge appears after delay for users without vault
  */
 
@@ -54,8 +54,7 @@ vi.mock('@/core/components/GuestModePanel', () => ({
 }));
 
 /**
- * OrchestratorOnboarding is mocked with a trigger button so T-02 (if
- * ever un-todo'd) can programmatically call onComplete.
+ * OrchestratorOnboarding is mocked with a trigger button so T-02 can programmatically call onComplete.
  */
 vi.mock('@/modules/orchestrator/onboarding/OrchestratorOnboarding', () => ({
   OrchestratorOnboarding: ({
