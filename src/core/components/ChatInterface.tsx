@@ -259,7 +259,10 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
     );
 });
 
-export function ChatInterface({ 
+// ⚡ Bolt Performance Optimization:
+// Wrapped ChatInterface in React.memo to prevent unnecessary re-renders when parent components update.
+// This is critical since ChatInterface is a heavy component that receives deep props (messages, aiState).
+export const ChatInterface = React.memo(function ChatInterface({
   messages, 
   onSendMessage, 
   isLoading, 
@@ -689,4 +692,4 @@ export function ChatInterface({
       </div>
     </div>
   );
-}
+});
