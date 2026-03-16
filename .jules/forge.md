@@ -1,0 +1,3 @@
+## 2024-05-18 - [DailyBriefSection Cascade Reactivity Fix Was Already Implemented]
+**Learning:** I encountered a `test.todo` stating that `DailyBriefSection` used a stale `useMemo` for tracking cascade events via `Spine.getRecentEvents()`. Upon inspection, the component code *already* correctly used `useState` combined with `useSpineEvent('*', ...)` to reactively update.
+**Action:** Always verify if a `TODO` is actually referencing outdated information or if the fix was silently implemented without updating the tests. In this case, implementing the test was all that was needed to verify the existing logic.

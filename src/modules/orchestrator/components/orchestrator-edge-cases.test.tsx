@@ -42,6 +42,7 @@ const stripMotion = ({
 
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useReducedMotion: () => false,
   motion: {
     div: (p: any) => {
       const { children, ...r } = stripMotion(p);
@@ -131,19 +132,28 @@ vi.mock('@/core/components/NexusChat', () => ({
 }));
 
 // ─── NexusDashboard child component stubs ────────────────────────────────────
-vi.mock('./DailyBriefSection', () => ({
-  DailyBriefSection: ({ collapsed }: { collapsed: boolean; onToggleCollapse?: () => void; onAskAboutDomain?: (d: string) => void }) => (
-    <div data-testid="daily-brief" data-collapsed={String(collapsed)} />
-  ),
-}));
+// We don't mock DailyBriefSection entirely anymore because T-23 tests its actual behavior
+vi.mock('./DailyBriefSection', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./DailyBriefSection')>();
+  return {
+    ...actual,
+    DailyBriefSectionStubbedInDashboard: ({ collapsed }: { collapsed: boolean; onToggleCollapse?: () => void; onAskAboutDomain?: (d: string) => void }) => (
+      <div data-testid="daily-brief" data-collapsed={String(collapsed)} />
+    ),
+  };
+});
 
 // NOTE: SynthesisPanel is NOT mocked here — T-11 through T-14 test its real
 // implementation. NexusDashboard tests are safe because useNexusSynthesis
 // returns {alerts:[], isAnalyzing:false} → SynthesisPanel returns null.
 
-vi.mock('./ModuleHealthFAB', () => ({
-  ModuleHealthFAB: () => <div data-testid="module-health-fab-stub" />,
-}));
+vi.mock('./ModuleHealthFAB', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./ModuleHealthFAB')>();
+  return {
+    ...actual,
+    ModuleHealthFABStubbed: () => <div data-testid="module-health-fab-stub" />,
+  };
+});
 
 vi.mock('./CommandPalette', () => ({
   CommandPalette: () => null,
@@ -170,7 +180,17 @@ vi.mock('@/core/diagnosis/diagnosis-registry', () => ({
 // ─── Late imports ─────────────────────────────────────────────────────────────
 import { SynthesisPanel } from './SynthesisPanel';
 import { NexusDashboard } from './NexusDashboard';
+// Mock useModuleHealth for T-22, we keep the original for T-19/20 testing below
+vi.mock('../hooks/useModuleHealth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/useModuleHealth')>();
+  return {
+    ...actual,
+    useModuleHealth: vi.fn(actual.useModuleHealth),
+  };
+});
 import { useModuleHealth } from '../hooks/useModuleHealth';
+import { ModuleHealthFAB } from './ModuleHealthFAB';
+import { DailyBriefSection } from './DailyBriefSection';
 
 import { useNexusSynthesis } from '../hooks/useNexusSynthesis';
 import { useAuth } from '@/lib/auth-context';
@@ -178,6 +198,7 @@ import { useVault } from '@/lib/vault-context';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import { ModuleMemoryService } from '@/lib/services/module-memory-service';
+import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
 
 // ─── Shared fixture builders ───────────────────────────────────────────────────
 
@@ -574,29 +595,52 @@ describe('useModuleHealth', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 // ── T-22 — ModuleHealthFAB badge overflow (visual regression) ─────────────────
 // ═════════════════════════════════════════════════════════════════════════════
-test.todo(
-  'T-22 — ModuleHealthFAB: alert badge count >= 10 clips display. ' +
-    'Root cause: badge container uses w-[14px] h-[14px] which is too small for 2-digit numbers. ' +
-    'Fix: replace with min-w-[14px] (or min-w-fit) and ensure text-[8px] scales down for "10+". ' +
-    'This is a visual (DOM layout) regression that cannot be verified programmatically ' +
-    'without a headless browser with real CSS layout (e.g., Playwright visual diff). ' +
-    'Tracked in UI debt backlog as BADGE-OVERFLOW-001.'
-);
+it('T-22 — ModuleHealthFAB: alert badge count >= 10 renders without clipping', () => {
+  // Mock useModuleHealth to return 10 modules with alerts
+  const modules = Array.from({ length: 10 }).map((_, i) => ({
+    moduleId: `mod-${i}`,
+    hasAlert: true,
+    keyMetricTone: 'bad',
+    title: `Module ${i}`,
+    isAccessible: true,
+    icon: () => <svg />,
+  }));
+
+  (useModuleHealth as any).mockReturnValue({
+    modules,
+    isLoading: false,
+  });
+
+  render(<ModuleHealthFAB />);
+  expect(screen.getByText('10')).toBeInTheDocument();
+  // We can also verify that the classes containing min-w-[14px] and text-[6px] are present
+  expect(screen.getByText('10')).toHaveClass('min-w-[14px]');
+  expect(screen.getByText('10')).toHaveClass('text-[6px]');
+});
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ── T-23 — DailyBriefSection cascade events stale useMemo ────────────────────
 // ═════════════════════════════════════════════════════════════════════════════
-test.todo(
-  'T-23 — DailyBriefSection: cascade events should update reactively after mount ' +
-    '(regression for BUG-H2 / p1-cascade-stale). ' +
-    'Root cause: `cascadeEvents` is computed via `useMemo(() => Spine.getRecentEvents()..., [])` ' +
-    'with an EMPTY dependency array. This means the cascade events snapshot is taken once at ' +
-    'mount and never re-evaluated when new Spine events fire. ' +
-    'Fix: replace the stale useMemo with a useState + useSpineEvent(\'*\') listener pattern: ' +
-    '  const [cascadeEvents, setCascadeEvents] = useState(() => Spine.getRecentEvents().filter(...)); ' +
-    '  useSpineEvent(\'*\', () => setCascadeEvents(Spine.getRecentEvents().filter(e => e.source.startsWith(\'cascade:\')))); ' +
-    'This test should assert: render DailyBriefSection with no initial cascade events, ' +
-    'then publish a Spine event with source=\'cascade:agnes\', ' +
-    'then verify the cascade events section appears with "1 cascade event". ' +
-    'Currently fails because the useMemo does not re-run after the Spine.publish() call.'
-);
+it('T-23 — DailyBriefSection: cascade events should update reactively after mount', () => {
+  // Initially no cascade events
+  const listeners = new Set<() => void>();
+  (Spine.getRecentEvents as any).mockReturnValue([]);
+  (useSpineEvent as any).mockImplementation((type: string, cb: () => void) => {
+    listeners.add(cb);
+  });
+
+  render(<DailyBriefSection collapsed={false} />);
+  expect(screen.queryByText(/cascade event/i)).not.toBeInTheDocument();
+
+  // Publish a new cascade event
+  (Spine.getRecentEvents as any).mockReturnValue([
+    { source: 'cascade:agnes', payload: {} },
+  ]);
+
+  // Trigger listeners manually (simulating Spine event)
+  act(() => {
+    listeners.forEach((cb) => cb());
+  });
+
+  expect(screen.getByText(/1 cascade event/i)).toBeInTheDocument();
+});

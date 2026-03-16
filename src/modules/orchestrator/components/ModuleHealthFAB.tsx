@@ -259,16 +259,17 @@ export function ModuleHealthFAB() {
           <span
             className={cn(
               'absolute -top-1 -right-1',
-              'w-[14px] h-[14px]',
+              'min-w-[14px] h-[14px] px-0.5',
               'rounded-full flex items-center justify-center',
-              'text-[7px] font-bold text-white',
+              badgeCount >= 10 ? 'text-[6px]' : 'text-[7px]',
+              'font-bold text-white',
               alertCount > 0
                 ? 'bg-rose-500/90 shadow-[0_0_6px_rgba(244,63,94,0.4)]'
                 : 'bg-amber-500/90 shadow-[0_0_6px_rgba(245,158,11,0.3)]'
             )}
             aria-hidden="true"
           >
-            {badgeCount}
+            {badgeCount > 99 ? '99+' : badgeCount}
           </span>
         )}
       </motion.button>
