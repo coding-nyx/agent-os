@@ -225,7 +225,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                         <RenderDashboard profile={profile} encryptionKey={encryptionKey} />
                     </div>
                 )}
-                <div className="flex-1 flex flex-col h-[600px] lg:h-auto min-h-0 min-w-0">
+                <div className="flex-1 flex flex-col min-h-[600px] lg:h-auto lg:min-h-0 min-w-0">
                     <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
                 </div>
             </div>
@@ -244,7 +244,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                       />
                     )}
                 </div>
-                <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col h-[600px] lg:h-auto min-h-0 bg-black/20 backdrop-blur-md">
+                <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col min-h-[600px] lg:h-auto lg:min-h-0 bg-black/20 backdrop-blur-md">
                     <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
                 </div>
             </div>

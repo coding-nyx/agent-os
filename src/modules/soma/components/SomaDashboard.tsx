@@ -273,7 +273,6 @@ function QuickEntryChips({ uid, getModuleKey, allReadings, onAddVitalReading }: 
                   step={activeChip.step}
                   placeholder={`${activeChip.min}–${activeChip.max}`}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSave(activeChip); }}
-                  // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                   className={cn(
                     'flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2',
