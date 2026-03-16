@@ -1,3 +1,4 @@
+## 2025-03-14 - Fix truncate issue on flex items **Learning:** In CSS Flexbox, children with long text naturally stretch out the container to match their text width. In order to truncate, both the flex child elements themselves and their parent flex items must be given `min-w-0` explicitly, and text elements must be styled with `truncate`. Siblings inside the flex item should explicitly be styled with `shrink-0`. **Action:** Use `min-w-0` explicitly on parent flex elements containing `truncate` text elements alongside sibling `shrink-0` to guarantee boundaries.
 # Flex Persona Directive
 
 ## Mission

@@ -83,12 +83,12 @@ function PillarCard({
         </div>
         <TrendArrow trend={trend} size="sm" />
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         <div
-          className={cn('w-2 h-2 rounded-full', TONE_DOT[tone])}
+          className={cn('w-2 h-2 rounded-full shrink-0', TONE_DOT[tone])}
           aria-hidden="true"
         />
-        <span className={cn('text-lg font-bold uppercase tracking-tight font-display', TONE_TEXT[tone])}>
+        <span className={cn('text-lg font-bold uppercase tracking-tight font-display truncate min-w-0', TONE_TEXT[tone])}>
           {word}
         </span>
       </div>
