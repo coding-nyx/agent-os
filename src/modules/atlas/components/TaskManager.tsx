@@ -3,7 +3,7 @@
  * Comprehensive task CRUD with dependencies, energy cost, and AI-suggested scheduling
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -145,7 +145,7 @@ export function TaskManager({
   }, [tasks]);
 
   // ── Handlers ──
-  const handleOpenForm = (task?: AtlasTask) => {
+  const handleOpenForm = useCallback((task?: AtlasTask) => {
     if (task) {
       setEditingTask(task);
       setFormData(task);
@@ -162,9 +162,9 @@ export function TaskManager({
       });
     }
     setShowForm(true);
-  };
+  }, []);
 
-  const handleCloseForm = () => {
+  const handleCloseForm = useCallback(() => {
     setShowForm(false);
     setEditingTask(null);
     setFormData({
@@ -176,9 +176,9 @@ export function TaskManager({
       dependencies: [],
       tags: [],
     });
-  };
+  }, []);
 
-  const handleSubmitForm = () => {
+  const handleSubmitForm = useCallback(() => {
     if (!formData.title?.trim()) return;
 
     if (editingTask) {
@@ -193,11 +193,11 @@ export function TaskManager({
     }
 
     handleCloseForm();
-  };
+  }, [formData, editingTask, onUpdateTask, onCreateTask, handleCloseForm]);
 
-  const handleToggleExpand = (taskId: string) => {
+  const handleToggleExpand = useCallback((taskId: string) => {
     setExpandedTaskId((prev) => (prev === taskId ? null : taskId));
-  };
+  }, []);
 
   // ── Render ──
   return (

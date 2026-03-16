@@ -46,7 +46,7 @@ function isDeadlineOverdue(deadline: string): boolean {
   return new Date(deadline).getTime() < Date.now();
 }
 
-export function TaskCard({
+export const TaskCard = React.memo(function TaskCard({
   task,
   onComplete,
   isExpanded,
@@ -323,4 +323,20 @@ export function TaskCard({
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  const isTaskEqual = prevProps.task === nextProps.task;
+  const isExpandedEqual = prevProps.isExpanded === nextProps.isExpanded;
+  const isSelectedEqual = prevProps.isEntitySelected === nextProps.isEntitySelected;
+
+  // Only evaluate allTasks equality if the task actually has dependencies to display
+  const hasDependencies = nextProps.task.dependencies && nextProps.task.dependencies.length > 0;
+  const isAllTasksEqual = hasDependencies ? prevProps.allTasks === nextProps.allTasks : true;
+
+  // SAFE CLOSURE EXCEPTION:
+  // In this specific architecture (TaskManager parent), the inline functions
+  // passed to onComplete, onToggleExpand, and onEntitySelect only invoke
+  // stable setState setters with the task ID. They do not capture rapidly
+  // changing local state variables. Therefore, it is safe to ignore their
+  // reference equality to prevent O(N) re-renders without risking stale closures.
+  return isTaskEqual && isExpandedEqual && isSelectedEqual && isAllTasksEqual;
+});
