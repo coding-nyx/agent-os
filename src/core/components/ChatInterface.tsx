@@ -142,18 +142,24 @@ const THEMES = {
 
 type ThemeConfig = typeof THEMES[keyof typeof THEMES];
 
-const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading, isAgnes, debugMode, debugMeta, isStreaming, preStripped }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean, debugMode?: boolean, debugMeta?: import('@/lib/types').MessageDebugMeta, isStreaming?: boolean, preStripped?: boolean }) {
-    // Skip expensive regex when content is already stripped (pre-processed by caller)
-    // or when actively streaming (content has no internal tags yet)
-    const stripped = (preStripped || isStreaming)
+const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading, isAgnes, debugMode, debugMeta, isStreaming, showInternalSignals }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean, debugMode?: boolean, debugMeta?: import('@/lib/types').MessageDebugMeta, isStreaming?: boolean, showInternalSignals?: boolean }) {
+    // Skip expensive regex only when actively streaming (content has no internal tags yet)
+    // By keeping the regex inside this React.memo component, we avoid running it on
+    // historical messages during parent re-renders (e.g. while user is typing).
+    const stripped = isStreaming
       ? { publicText: content, internalText: '', isThinking: false, isActing: false, currentActionType: null }
       : stripInternalTags(content, { retainSpacings: true });
     const { publicText, internalText, isThinking, isActing, currentActionType } = stripped;
     const [showInternal, setShowInternal] = useState(false);
     const hasPublicContent = publicText.length > 0;
 
-    const showProcessingPulse = isThinking || isActing;
-    const showCompletedThought = debugMode && !!internalText && !isThinking && !isActing;
+    // Only show internal signal UI if showInternalSignals is allowed
+    const effectiveIsThinking = showInternalSignals ? isThinking : false;
+    const effectiveIsActing = showInternalSignals ? isActing : false;
+    const effectiveInternalText = showInternalSignals ? internalText : '';
+
+    const showProcessingPulse = effectiveIsThinking || effectiveIsActing;
+    const showCompletedThought = debugMode && !!effectiveInternalText && !showProcessingPulse;
 
     // Debug chips — actions and spine events
     const actionChips = debugMode ? (debugMeta?.actionTagsExtracted ?? []) : [];
@@ -181,7 +187,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                             "text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em]",
                             showProcessingPulse ? "text-indigo-400" : "text-white/20 group-hover:text-white/40"
                         )}>
-                            {isThinking ? 'Processing Neural Signals...' : (isActing ? `${getActionLabel(currentActionType || 'action')}...` : 'View Internal Signals')}
+                            {effectiveIsThinking ? 'Processing Neural Signals...' : (effectiveIsActing ? `${getActionLabel(currentActionType || 'action')}...` : 'View Internal Signals')}
                         </span>
                     </button>
                     
@@ -189,7 +195,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                         {showInternal && !showProcessingPulse && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                                 <div className="mt-2 p-3 sm:p-4 bg-black/60 border border-white/5 rounded-xl sm:rounded-2xl font-mono text-[10px] sm:text-[11px] text-white/40 leading-relaxed whitespace-pre-wrap shadow-xl">
-                                    {internalText}
+                                    {effectiveInternalText}
                                 </div>
                             </motion.div>
                         )}
@@ -421,7 +427,7 @@ export function ChatInterface({
                 {isAI ? (
                     <div className="w-full flex flex-col items-start">
                         <AIMessage
-                          content={showInternalSignals ? messageContentToString(msg.content) : stripInternalTags(messageContentToString(msg.content)).publicText}
+                          content={messageContentToString(msg.content)}
                           theme={theme}
                           agentName={agentName}
                           isLast={isLast}
@@ -430,7 +436,7 @@ export function ChatInterface({
                           debugMode={debugMode}
                           debugMeta={msg.debugMeta}
                           isStreaming={isLast && effectiveIsProcessing}
-                          preStripped={!showInternalSignals}
+                          showInternalSignals={showInternalSignals}
                         />
                     </div>
                 ) : (
