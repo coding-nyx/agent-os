@@ -6,6 +6,7 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { TrendArrow, type TrendDirection } from '@/core/components/TrendArrow';
+import { useNsvTrends } from '@/modules/orchestrator/hooks/useNsvTrends';
 import {
   DOMAIN_PILLARS,
   DOMAIN_ORDER,
@@ -182,6 +183,7 @@ export function DailyBrief() {
   const { globalSoul } = useGlobalSoul();
   const { profile } = useAuth();
   const reducedMotion = useReducedMotion();
+  const trends = useNsvTrends();
 
   const nsv = globalSoul?.crossFunctionalState ?? null;
   const displayNames = globalSoul?.displayNames ?? {};
@@ -191,11 +193,10 @@ export function DailyBrief() {
     return DOMAIN_ORDER.map(domain => {
       const config = DOMAIN_PILLARS[domain];
       const { word, tone } = computePillarState(nsv, domain);
-      // TODO(S10-007): trend requires historical comparison — default to 'unknown' for now
-      const trend: TrendDirection = 'unknown';
+      const trend: TrendDirection = trends[domain] ?? 'unknown';
       return { domain, config, word, tone, trend };
     });
-  }, [nsv]);
+  }, [nsv, trends]);
 
   const briefSentence = useMemo(() => {
     const pillarMap: Record<string, { tone: StatusTone; trend: TrendDirection }> = {};

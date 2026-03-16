@@ -1,3 +1,6 @@
+## 2024-05-14 - [DailyBrief Trend Hook Integration]
+**Learning:** `useNsvTrends` hook in `@/modules/orchestrator/hooks/useNsvTrends` correctly resolves the per-domain trends (e.g. `biological`, `cognitive`, `emotional`, `resource`) but requires passing the trends dynamically to the UI components. Also, some icon exports from `lucide-react` such as `Sparkles` or `Waves` must be mocked manually when writing vitest tests to prevent `Error: [vitest] No "Sparkles" export is defined on the "lucide-react" mock` failures.
+**Action:** Always verify all dynamically rendered icons (like those coming from `DOMAIN_PILLARS` config) are included in the `lucide-react` mock when adding or updating test cases for UI components utilizing `lucide-react`.
 ## 2024-05-18 - [DailyBriefSection Cascade Reactivity Fix Was Already Implemented]
 **Learning:** I encountered a `test.todo` stating that `DailyBriefSection` used a stale `useMemo` for tracking cascade events via `Spine.getRecentEvents()`. Upon inspection, the component code *already* correctly used `useState` combined with `useSpineEvent('*', ...)` to reactively update.
 **Action:** Always verify if a `TODO` is actually referencing outdated information or if the fix was silently implemented without updating the tests. In this case, implementing the test was all that was needed to verify the existing logic.
