@@ -22,6 +22,81 @@ export interface Transaction {
   notes?: string;
 }
 
+/**
+ * ⚡ Bolt Performance Optimization:
+ * Extracted individual transaction rows into a memoized component.
+ * This prevents O(N) evaluation cascades when the parent component re-renders
+ * due to frequent state updates (like typing in the search input).
+ */
+const TransactionRow = React.memo(function TransactionRow({
+  transaction,
+  currency,
+  disabled,
+  onEdit,
+  onDelete,
+}: {
+  transaction: Transaction;
+  currency: string;
+  disabled?: boolean;
+  onEdit: (transaction: Transaction) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <tr
+      className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+    >
+      <td className="px-4 py-3 text-xs text-white/70">
+        {new Date(transaction.date).toLocaleDateString()}
+      </td>
+      <td className="px-4 py-3">
+        <div className="text-sm text-white font-medium">{transaction.description}</div>
+        {transaction.recurring && (
+          <div className="text-[10px] text-cyan-400 mt-1">
+            ↻ {transaction.recurringFrequency}
+          </div>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <span className="inline-block px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+          {transaction.category}
+        </span>
+      </td>
+      <td className={cn(
+        "px-4 py-3 text-right text-sm font-bold tabular-nums",
+        transaction.type === 'income' ? 'text-emerald-400' : 'text-red-400'
+      )}>
+        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, currency)}
+      </td>
+      <td className="px-4 py-3 text-right">
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => onEdit(transaction)}
+            disabled={disabled}
+            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white disabled:opacity-50 transition-colors"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => onDelete(transaction.id)}
+            disabled={disabled}
+            className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 disabled:opacity-50 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}, (prevProps, nextProps) => {
+  // Custom equality check: Ignore inline callback references (onEdit, onDelete)
+  // to prevent re-renders, as they solely invoke stable setters and do not risk stale closures.
+  return (
+    prevProps.transaction === nextProps.transaction &&
+    prevProps.currency === nextProps.currency &&
+    prevProps.disabled === nextProps.disabled
+  );
+});
+
 interface TransactionManagerProps {
   transactions: Transaction[];
   categories: string[];
@@ -494,51 +569,14 @@ export function TransactionManager({
               </thead>
               <tbody>
                 {filteredTransactions.map((transaction) => (
-                  <tr 
+                  <TransactionRow
                     key={transaction.id}
-                    className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="px-4 py-3 text-xs text-white/70">
-                      {new Date(transaction.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-white font-medium">{transaction.description}</div>
-                      {transaction.recurring && (
-                        <div className="text-[10px] text-cyan-400 mt-1">
-                          ↻ {transaction.recurringFrequency}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-block px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                        {transaction.category}
-                      </span>
-                    </td>
-                    <td className={cn(
-                      "px-4 py-3 text-right text-sm font-bold tabular-nums",
-                      transaction.type === 'income' ? 'text-emerald-400' : 'text-red-400'
-                    )}>
-                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, currency)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleOpenEditModal(transaction)}
-                          disabled={disabled}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white disabled:opacity-50 transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDeleteTransaction(transaction.id)}
-                          disabled={disabled}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 disabled:opacity-50 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    transaction={transaction}
+                    currency={currency}
+                    disabled={disabled}
+                    onEdit={handleOpenEditModal}
+                    onDelete={onDeleteTransaction}
+                  />
                 ))}
               </tbody>
             </table>
