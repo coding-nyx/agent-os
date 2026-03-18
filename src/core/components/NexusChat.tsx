@@ -118,7 +118,7 @@ export function NexusChat({
     //    b. OR the AI is explicitly in an acting state (performing an internal action)
     // )
     const isInitialThinking = (messages.length === 0 || messages[messages.length - 1].role === 'user') && !hasVisibleStream;
-    const isActuallyThinking = isProcessing && (isInitialThinking || aiState?.isActing);
+    const isActuallyThinking = isProcessing && (isInitialThinking || !!aiState?.isActing);
 
     // Sync phase: AI has finished its entire stream (public + internal) but 
     // background handlers (database writes, resonance synthesis) are still running.
