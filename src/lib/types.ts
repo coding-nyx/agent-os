@@ -586,7 +586,7 @@ export interface CyclePhase {
   name: string;
   durationDays: number;
   notes?: string;
-  /** e.g. dosage for supplement cycles */
+  /** @deprecated e.g. dosage for supplement cycles. Moving to Soma in Sprint 8. */
   dosage?: string;
   trainingModifier?: 'increase' | 'maintain' | 'reduce' | 'rest';
 }
@@ -603,9 +603,9 @@ export interface CycleEntry {
   currentPhaseStartDate: string;
   status: 'active' | 'completed' | 'paused';
   notes?: string;
-  /** For hormonal cycles: typical cycle length in days */
+  /** @deprecated For hormonal cycles: typical cycle length in days. Moving to Soma in Sprint 8. */
   cycleLength?: number;
-  /** For hormonal cycles: date of last period */
+  /** @deprecated For hormonal cycles: date of last period. Moving to Soma in Sprint 8. */
   lastPeriodDate?: string;
   /** Routine IDs this training cycle is linked to. */
   linkedRoutineIds?: string[];
@@ -708,6 +708,7 @@ export interface TitanProfile {
   history: TitanHistory;
   summary: string;
   routines: Routine[];
+  // TODO: Deprecated — Moving to Soma module in Sprint 8 (read-only mirror for now).
   sleepLog?: SleepEntry[];
   cycles?: CycleEntry[];
   workoutSessions?: WorkoutSession[];
