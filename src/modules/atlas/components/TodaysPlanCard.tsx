@@ -72,7 +72,9 @@ interface TaskItemProps {
   onAskModule?: () => void;
 }
 
-function TaskItem({ title, energyCost, status, blockedReason, blockedSource, onAskModule }: TaskItemProps) {
+// ⚡ Bolt Optimization: Memoized TaskItem to prevent O(N) re-renders
+// when the parent TodaysPlanCard updates non-task related state (e.g. energy budget).
+const TaskItem = React.memo(function TaskItem({ title, energyCost, status, blockedReason, blockedSource, onAskModule }: TaskItemProps) {
   const isBlocked = status === 'blocked';
   const isDone = status === 'done' || status === 'complete';
 
@@ -136,7 +138,7 @@ function TaskItem({ title, energyCost, status, blockedReason, blockedSource, onA
       )}
     </div>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // HabitStreakRow — single habit streak
@@ -150,7 +152,9 @@ interface HabitStreakProps {
   lastLogHoursAgo?: number;
 }
 
-function HabitStreakRow({ name, emoji, days, atRisk, lastLogHoursAgo }: HabitStreakProps) {
+// ⚡ Bolt Optimization: Memoized HabitStreakRow to prevent unnecessary re-renders
+// during parent state updates, ensuring smooth list performance.
+const HabitStreakRow = React.memo(function HabitStreakRow({ name, emoji, days, atRisk, lastLogHoursAgo }: HabitStreakProps) {
   return (
     <div
       className="flex items-center gap-3"
@@ -172,7 +176,7 @@ function HabitStreakRow({ name, emoji, days, atRisk, lastLogHoursAgo }: HabitStr
       )}
     </div>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // TodaysPlanCard — Main Export

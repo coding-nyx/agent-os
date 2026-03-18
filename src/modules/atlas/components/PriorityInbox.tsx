@@ -90,7 +90,9 @@ interface PriorityTaskRowProps {
   onDefer: (taskId: string) => void;
 }
 
-function PriorityTaskRow({
+// ⚡ Bolt Optimization: Wrap row in React.memo to prevent O(N) evaluation and
+// DOM reconciliation of all tasks when the parent's generic state (like chat input) updates.
+const PriorityTaskRow = React.memo(function PriorityTaskRow({
   task,
   rank,
   energyBudget,
@@ -156,7 +158,7 @@ function PriorityTaskRow({
       </div>
     </motion.div>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // PriorityInbox — Main Export
