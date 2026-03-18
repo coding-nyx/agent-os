@@ -20,6 +20,15 @@ export interface AIContextType {
     onChunk: (chunk: StreamChunk) => void,
     signal?: AbortSignal
   ) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
+  generateJSON: <T = any>(
+    prompt: string,
+    options?: { systemPrompt?: string; temperature?: number; maxTokens?: number; signal?: AbortSignal; model?: string }
+  ) => Promise<T>;
+  analyzeImage: (
+    imageDataUrl: string,
+    prompt: string,
+    options?: { model?: string; temperature?: number; maxTokens?: number; signal?: AbortSignal; format?: 'json_object' | 'text' }
+  ) => Promise<string>;
   isInitialized: boolean;
   /** True when initialization timed out or failed; agent will be null. */
   initFailed: boolean;
@@ -52,6 +61,7 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
             grokKey,
             googleKey,
             preferredModelId: localStorage.getItem('preferred_model') || undefined,
+            preferredProvider: (localStorage.getItem('nexus_debug_provider') as 'openrouter' | 'grok' | 'google' | null) || undefined,
             isMockMode: !openrouterKey && !grokKey && !googleKey,
             freeModelsOnly: guestMode
         };
@@ -118,9 +128,19 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
       return result;
   }, [agent, degradedResponse]);
 
+  const generateJSON = useCallback(async (prompt: string, options?: any) => {
+    if (!agent) throw new Error('AI agent unavailable');
+    return agent.generateJSON(prompt, options);
+  }, [agent]);
+
+  const analyzeImage = useCallback(async (imageDataUrl: string, prompt: string, options?: any) => {
+    if (!agent) throw new Error('AI agent unavailable');
+    return agent.analyzeImage(imageDataUrl, prompt, options);
+  }, [agent]);
+
   const aiContextValue = useMemo(
-    () => ({ sendMessage, streamMessage, isInitialized, initFailed }),
-    [sendMessage, streamMessage, isInitialized, initFailed]
+    () => ({ sendMessage, streamMessage, generateJSON, analyzeImage, isInitialized, initFailed }),
+    [sendMessage, streamMessage, generateJSON, analyzeImage, isInitialized, initFailed]
   );
 
   return (

@@ -27,7 +27,7 @@ export const NSV_OWNERSHIP: Record<ModuleId, NSVMetricPath[]> = {
   orchestrator: [],
   agnes: ['emotional.emotionalResilience', 'emotional.stressLoad', 'emotional.moodTrend', 'emotional.traumaMarkers'],
   titan: ['biological.cnsFatigue', 'biological.sleepQuality', 'biological.recoveryScore', 'biological.hormonalContext'],
-  soma: [],
+  soma: ['biological.recoveryScore'],
   ledger: ['resource.financialFriction', 'resource.resonanceROI'],
   atlas: ['cognitive.energyBudget', 'cognitive.focusScore', 'cognitive.activeLoad', 'cognitive.planningLoad', 'cognitive.taskCompletionRate', 'planning.streakHealth', 'planning.deadlinePressure'],
   scout: [],
@@ -97,7 +97,13 @@ export const NSV_READ_PERMISSIONS: Record<ModuleId, NSVMetricPath[]> = {
     'emotional.moodTrend',            // absorbed from Soma reads — mood affects recovery
     'cognitive.energyBudget'          // total energy available for physical output
   ],
-  soma: [],
+  soma: [
+    // Soma is the biological authority — reads bio signals to correlate with medical data
+    'biological.cnsFatigue',          // CNS fatigue context for readiness scoring
+    'biological.sleepQuality',        // sleep quality cross-reference
+    'biological.recoveryScore',       // primary domain — Soma computes and reads this
+    'biological.hormonalContext',     // hormonal state affects lab and biomarker interpretation
+  ],
   atlas: [
     // Cognitive planner — needs broad picture to schedule intelligently
     // Does NOT receive traumaMarkers — scheduling is not a clinical activity

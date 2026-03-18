@@ -134,6 +134,7 @@ Sprint 7 execution plan at `workitems/sprints/SPRINT_7.md`. Key items:
 - [ ] **Atlas Failure Notification Loop:** Spine-driven cross-module escalation when Atlas detects missed workouts (→ Titan) or missed sessions (→ Agnes).
 
 ## 6. Research & Knowledge (Scout)
+- [ ] **Scout Background Automation (Cloud Functions):** Implement missing Scheduled Cloud Functions for background digests (`generateScheduledDigests`), async job processing for scheduled research (`processResearchJobs`), and automated database cleanup for expired jobs/digests.
 - [ ] **Module Review & Refinement:** Comprehensive review, implementation of missing core features, UI/UX refinement, and overall enhancement of the Scout module.
 - [ ] **Scout Search Proxy Service:** (NEW) Implement/stabilize a separate Node.js or Cloudflare Worker proxy for Tavily search to securely handle API keys outside the browser bundle (currently running in direct-to-Tavily dev mode).
 - [ ] **Information Firewall (Signal):** Active curation of news/trends to protect cognitive focus.

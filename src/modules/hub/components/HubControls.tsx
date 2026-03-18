@@ -91,26 +91,26 @@ export function ReactiveGauge({ label, value, colorClass, icon: Icon, trend }: R
 
   return (
     <div
-      className="flex flex-col min-w-[80px]"
+      className="flex flex-col md:min-w-[80px]"
       role="meter"
       aria-label={label}
       aria-valuenow={numericValue ?? undefined}
       aria-valuemin={0}
       aria-valuemax={100}
     >
-      <span className="text-[10px] text-white/50 uppercase font-bold tracking-wider mb-1 flex items-center gap-1.5 min-w-0">
-        <Icon className="w-3 h-3 shrink-0" /> <span className="truncate">{label}</span>
+      <span className="text-[9px] sm:text-[10px] text-white/50 uppercase font-bold tracking-wider mb-1 flex items-center gap-1.5 min-w-0">
+        <Icon className="w-3 h-3 shrink-0" /> <span className="truncate hidden sm:inline">{label}</span>
       </span>
       <span className={cn(
-        "text-xl md:text-2xl font-bold leading-none transition-all duration-300 flex items-center gap-1.5",
+        "text-sm sm:text-base md:text-2xl font-bold leading-none transition-all duration-300 flex items-center gap-1 sm:gap-1.5",
         isEmpty ? "text-white/40" : colorClass,
         !isEmpty && isSyncing && "animate-pulse scale-110 blur-[1px] brightness-150"
       )}>
         {displayValue}
         {trend && !isEmpty && <TrendArrow trend={trend} size="sm" />}
       </span>
-      {/* Progress bar */}
-      <div className="h-1 w-full bg-white/5 rounded-full mt-2 overflow-hidden">
+      {/* Progress bar — hidden on mobile to save vertical space */}
+      <div className="hidden sm:block h-1 w-full bg-white/5 rounded-full mt-2 overflow-hidden">
         {numericValue !== null && (
           <motion.div
             className={cn("h-full rounded-full", colorClass.replace('text-', 'bg-'))}
@@ -140,7 +140,7 @@ export function HubBottomDashboard({
 }: HubBottomDashboardProps) {
   return (
     <div className="mt-auto pb-4 sm:pb-10 px-2 sm:px-6 md:px-12 pointer-events-auto relative z-20 w-full max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 bg-black/60 backdrop-blur-3xl border border-white/10 p-2 rounded-[32px] shadow-2xl">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 sm:gap-4 bg-black/60 backdrop-blur-3xl border border-white/10 p-2 sm:p-2 rounded-3xl md:rounded-[32px] shadow-2xl">
         {lockedModules.length > 0 ? (
           <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-4 px-4 sm:px-6 py-3 bg-amber-500/5 rounded-[24px] border border-amber-500/10">
             <Lock className="w-5 h-5 text-amber-400 shrink-0" />
@@ -155,14 +155,14 @@ export function HubBottomDashboard({
             </NeuralButton>
           </div>
         ) : (
-          <div className="flex-1 px-4">
+          <div className="flex-1 px-3 sm:px-4 py-1 sm:py-0">
             <NeuralIntegrity mode="global" onUpgrade={() => openAuth('global')} />
           </div>
         )}
 
         <div className="hidden md:block w-px h-12 bg-white/5" />
 
-        <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-8 px-2 sm:px-8 py-3">
+        <div className="flex flex-row justify-between md:justify-center items-center gap-4 sm:gap-8 px-4 sm:px-8 py-2 sm:py-3 border-t md:border-t-0 border-white/5 md:border-none">
           <ReactiveGauge label="Wellness" value={wellnessGauge} colorClass="text-indigo-400" icon={Sparkles} />
           <div className="w-px h-8 bg-white/5 shrink-0 hidden sm:block" />
           <ReactiveGauge label="Stability" value={stabilityGauge} colorClass="text-orange-400" icon={Activity} />

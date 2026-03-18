@@ -37,6 +37,7 @@ interface NexusChatProps {
     renderCustomActions?: () => ReactNode;
     renderMessageActions?: (message: Message, index: number) => ReactNode;
     moduleId?: string;
+    onUploadDocument?: (file: File) => void;
 }
 
 export function NexusChat({ 
@@ -52,6 +53,7 @@ export function NexusChat({
     renderCustomActions,
     renderMessageActions,
     moduleId,
+    onUploadDocument,
 }: NexusChatProps) {
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
@@ -73,12 +75,19 @@ export function NexusChat({
                      data: { agent: agentName }
                  });
             } else if (latestMessage.role === 'assistant') {
+                 const contentStr = typeof latestMessage.content === 'string' 
+                    ? latestMessage.content 
+                    : latestMessage.content.filter(p => p.type === 'text').map(p => (p as any).text).join(' ');
+                 const { publicText } = stripInternalTags(contentStr);
                  Spine.publish({
                      type: 'NEURAL_RESONANCE_RECEIVED' as any,
                      domain: moduleId === 'agnes' ? 'E' : moduleId === 'titan' ? 'B' : moduleId === 'atlas' ? 'C' : 'system',
                      source: moduleId || 'nexus',
                      priority: 'info',
-                     data: { agent: agentName }
+                     data: { 
+                         agent: agentName,
+                         content: publicText
+                     }
                  });
             }
         }
@@ -145,6 +154,7 @@ export function NexusChat({
                 renderCustomActions={renderCustomActions}
                 renderMessageActions={renderMessageActions}
                 moduleId={moduleId}
+                onUploadDocument={onUploadDocument}
                 headerActions={headerActions}
                 pendingRequest={pendingRequest}
                 onRecoverPendingRequest={() => {

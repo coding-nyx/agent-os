@@ -48,6 +48,7 @@ export interface EngineConfig {
   grokKey?: string;
   googleKey?: string;
   preferredModelId?: string;
+  preferredProvider?: 'openrouter' | 'grok' | 'google';
   isMockMode?: boolean;
   freeModelsOnly?: boolean;
 }

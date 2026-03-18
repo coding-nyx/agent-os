@@ -83,22 +83,31 @@ service cloud.firestore {
     // Scout (Research Extension)
     match /scout_knowledge/{userId} {
       allow read, write: if isOwner(userId);
-    }
-
-    // Scout Sources Library (subcollection per user)
-    match /scout_sources/{userId} {
-      allow read, write: if isOwner(userId);
-
-      match /items/{sourceId} {
+      match /nodes/{nodeId} {
         allow read, write: if isOwner(userId);
       }
     }
 
-    // Scout Digests (subcollection per user, capped at 10, 30-day TTL)
+    // Scout Sources Library
+    match /scout_sources/{userId} {
+      allow read, write: if isOwner(userId);
+      match /sources/{sourceId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Scout Research Sessions
+    match /scout_sessions/{userId} {
+      allow read, write: if isOwner(userId);
+      match /sessions/{sessionId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Scout Digests
     match /scout_digests/{userId} {
       allow read, write: if isOwner(userId);
-
-      match /items/{digestId} {
+      match /digests/{digestId} {
         allow read, write: if isOwner(userId);
       }
     }

@@ -25,7 +25,7 @@ export interface ActionContext {
 
 export type ActionHandler = (context: ActionContext) => Promise<void> | void;
 
-const NSV_READ_ONLY_MODULES = new Set(['scout', 'forge']);
+const NSV_READ_ONLY_MODULES = new Set(['forge']);
 
 /**
  * Action types that constitute a direct NSV/soul write.

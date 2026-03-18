@@ -29,6 +29,14 @@ interface ORModel {
   pricing: { prompt: string; completion: string };
 }
 
+interface GoogleModel {
+  name: string;
+  displayName?: string;
+  inputTokenLimit?: number;
+  outputTokenLimit?: number;
+  supportedGenerationMethods?: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -64,36 +72,102 @@ export function ModelSelector() {
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // ── Fetch OpenRouter model catalogue ──
-  const fetchModels = useCallback(async () => {
+  const fetchOpenRouterModels = useCallback(async () => {
     const apiKey =
       localStorage.getItem('VITE_OPENROUTER_API_KEY') ||
       (import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined);
     if (!apiKey) return;
-    setLoading(true);
-    try {
-      const res = await fetch('https://openrouter.ai/api/v1/models', {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'HTTP-Referer': window.location.origin,
-        },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      const data: ORModel[] = (json.data ?? []).sort((a: ORModel, b: ORModel) =>
-        a.name.localeCompare(b.name),
-      );
-      setModels(data);
-    } catch (e) {
-      console.warn('ModelSelector: fetch failed', e);
-    } finally {
-      setLoading(false);
-    }
+    const res = await fetch('https://openrouter.ai/api/v1/models', {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': window.location.origin,
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const data: ORModel[] = (json.data ?? []).sort((a: ORModel, b: ORModel) =>
+      a.name.localeCompare(b.name),
+    );
+    setModels(data);
+  }, []);
+
+  const fetchGoogleModels = useCallback(async () => {
+    const apiKey =
+      localStorage.getItem('VITE_GOOGLE_API_KEY') ||
+      (import.meta.env.VITE_GOOGLE_API_KEY as string | undefined);
+    if (!apiKey) return;
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const raw: GoogleModel[] = json.models ?? [];
+    const filtered = raw.filter((m) =>
+      (m.supportedGenerationMethods ?? []).includes('generateContent'),
+    );
+    const data: ORModel[] = filtered.map((m) => {
+      const id = m.name?.replace(/^models\//, '') ?? '';
+      return {
+        id,
+        name: m.displayName || id,
+        context_length: m.inputTokenLimit ?? 0,
+        pricing: { prompt: '0', completion: '0' },
+      };
+    });
+    setModels(data);
+  }, []);
+
+  const fetchGrokModels = useCallback(async () => {
+    const apiKey =
+      localStorage.getItem('VITE_GROK_API_KEY') ||
+      (import.meta.env.VITE_GROK_API_KEY as string | undefined);
+    if (!apiKey) return;
+    const res = await fetch('https://api.x.ai/v1/models', {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const raw = json.data ?? [];
+    const data: ORModel[] = raw.map((m: any) => ({
+      id: m.id,
+      name: m.id,
+      context_length: m.context_length ?? 0,
+      pricing: { prompt: '0', completion: '0' },
+    }));
+    setModels(data);
   }, []);
 
   useEffect(() => {
-    if (provider === 'openrouter') void fetchModels();
-  }, [provider, fetchModels]);
+    const load = async () => {
+      setLoading(true);
+      try {
+        if (provider === 'openrouter') {
+          await fetchOpenRouterModels();
+        } else if (provider === 'google') {
+          await fetchGoogleModels();
+        } else if (provider === 'grok') {
+          await fetchGrokModels();
+        }
+      } catch (e) {
+        console.warn('ModelSelector: fetch failed', e);
+        if (provider === 'google') {
+          setModels([
+            { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', context_length: 0, pricing: { prompt: '0', completion: '0' } },
+          ]);
+        } else if (provider === 'grok') {
+          setModels([
+            { id: 'grok-2', name: 'Grok 2', context_length: 0, pricing: { prompt: '0', completion: '0' } },
+          ]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+  }, [provider, fetchOpenRouterModels, fetchGoogleModels, fetchGrokModels]);
 
   // ── Provider change ──
   const setProvider = useCallback((p: ProviderId) => {
@@ -152,104 +226,106 @@ export function ModelSelector() {
         </div>
       </div>
 
-      {/* ── Model selector (OpenRouter only) ── */}
-      {provider === 'openrouter' && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
-              Model
-            </p>
-            <button
-              onClick={() => void fetchModels()}
-              disabled={loading}
-              className="text-[9px] text-amber-400/60 hover:text-amber-400 transition-colors flex items-center gap-1"
-            >
-              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-
-          {/* Trigger */}
+      {/* ── Model selector ── */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+            Model
+          </p>
           <button
-            onClick={() => setIsOpen(o => !o)}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-white/10 bg-black/30 hover:border-amber-500/30 transition-colors text-left"
+            onClick={() => {
+              if (provider === 'openrouter') return fetchOpenRouterModels();
+              if (provider === 'google') return fetchGoogleModels();
+              return fetchGrokModels();
+            }}
+            disabled={loading}
+            className="text-[9px] text-amber-400/60 hover:text-amber-400 transition-colors flex items-center gap-1"
           >
-            <span className="text-xs text-white/70 truncate">{displayName}</span>
-            <ChevronDown
-              className={`w-3.5 h-3.5 text-white/30 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-            />
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </button>
+        </div>
 
-          {/* Dropdown */}
-          <AnimatePresence>
-            {isOpen && (
-              <motion.div
-                key="model-list"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-              >
-                <div className="mt-2 rounded-xl border border-white/10 bg-black/40 overflow-hidden">
-                  {/* Search */}
-                  <div className="p-2 border-b border-white/5">
-                    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-black/30 border border-white/5">
-                      <Search className="w-3 h-3 text-white/30 shrink-0" />
-                      <input
-                        type="text"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Search models…"
-                        className="w-full text-xs bg-transparent text-white/80 placeholder:text-white/20 outline-none"
-                        autoFocus
-                      />
-                    </div>
-                  </div>
+        {/* Trigger */}
+        <button
+          onClick={() => setIsOpen(o => !o)}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-white/10 bg-black/30 hover:border-amber-500/30 transition-colors text-left"
+        >
+          <span className="text-xs text-white/70 truncate">{displayName}</span>
+          <ChevronDown
+            className={`w-3.5 h-3.5 text-white/30 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
 
-                  {/* List */}
-                  <div className="max-h-64 overflow-y-auto">
-                    {loading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="w-4 h-4 text-amber-400/60 animate-spin" />
-                      </div>
-                    ) : filtered.length === 0 ? (
-                      <div className="py-6 text-center text-[10px] text-white/30">
-                        No models found
-                      </div>
-                    ) : (
-                      filtered.map(m => (
-                        <button
-                          key={m.id}
-                          onClick={() => selectModel(m.id)}
-                          className={`w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors ${
-                            selectedModel === m.id ? 'bg-amber-500/10' : ''
-                          }`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-white/75 truncate">{m.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[9px] text-white/25 font-mono truncate">
-                                {m.id}
-                              </span>
-                              <span className="text-[9px] text-white/20 shrink-0">
-                                {formatCtx(m.context_length)} ctx
-                              </span>
-                            </div>
-                          </div>
-                          {selectedModel === m.id && (
-                            <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                          )}
-                        </button>
-                      ))
-                    )}
+        {/* Dropdown */}
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              key="model-list"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-2 rounded-xl border border-white/10 bg-black/40 overflow-hidden">
+                {/* Search */}
+                <div className="p-2 border-b border-white/5">
+                  <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-black/30 border border-white/5">
+                    <Search className="w-3 h-3 text-white/30 shrink-0" />
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder="Search models…"
+                      className="w-full text-xs bg-transparent text-white/80 placeholder:text-white/20 outline-none"
+                      autoFocus
+                    />
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
+
+                {/* List */}
+                <div className="max-h-64 overflow-y-auto">
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-4 h-4 text-amber-400/60 animate-spin" />
+                    </div>
+                  ) : filtered.length === 0 ? (
+                    <div className="py-6 text-center text-[10px] text-white/30">
+                      No models found
+                    </div>
+                  ) : (
+                    filtered.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => selectModel(m.id)}
+                        className={`w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors ${
+                          selectedModel === m.id ? 'bg-amber-500/10' : ''
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-white/75 truncate">{m.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[9px] text-white/25 font-mono truncate">
+                              {m.id}
+                            </span>
+                            <span className="text-[9px] text-white/20 shrink-0">
+                              {formatCtx(m.context_length)} ctx
+                            </span>
+                          </div>
+                        </div>
+                        {selectedModel === m.id && (
+                          <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Current selection summary */}
       <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/20 border border-white/5">

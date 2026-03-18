@@ -1,4 +1,4 @@
-import { MessageContentPart } from '../types';
+import { CognitiveAgent } from '@/llm-engine/engine/CognitiveAgent';
 
 export type VisionAnalysisMode = 'medical_report' | 'financial_document';
 
@@ -7,6 +7,9 @@ export interface VisionAnalysisResult {
   rawJson: Record<string, unknown>;
   error?: string;
 }
+
+const VISION_MODEL_KEY = 'preferred_vision_model';
+const DEFAULT_VISION_MODEL = 'openai/gpt-4o-mini';
 
 const EXTRACTION_PROMPTS: Record<VisionAnalysisMode, string> = {
   medical_report: `Extract clinical data from this medical report image. Return ONLY valid JSON (no markdown, no action tags, no prose) with the following structure:
@@ -50,110 +53,6 @@ function stripActionTagsAndMarkdown(text: string): string {
   return cleaned.trim();
 }
 
-async function attemptVisionCall(
-  imageDataUrl: string,
-  mode: VisionAnalysisMode,
-  openrouterKey: string,
-  modelId: string
-): Promise<Record<string, unknown>> {
-  const prompt = EXTRACTION_PROMPTS[mode];
-
-  const content: MessageContentPart[] = [
-    {
-      type: 'image_url',
-      image_url: {
-        url: imageDataUrl,
-        detail: 'auto'
-      }
-    },
-    {
-      type: 'text',
-      text: prompt
-    }
-  ];
-
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${openrouterKey}`,
-      'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://agnes.ai'
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages: [
-        {
-          role: 'user',
-          content
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 2000
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Vision API error: ${response.status} ${error}`);
-  }
-
-  const data = await response.json();
-  const text = data.choices?.[0]?.message?.content || '';
-  const cleaned = stripActionTagsAndMarkdown(text);
-
-  return JSON.parse(cleaned);
-}
-
-async function attemptVisionTextCall(
-  imageDataUrl: string,
-  prompt: string,
-  openrouterKey: string,
-  modelId: string
-): Promise<string> {
-  const content: MessageContentPart[] = [
-    {
-      type: 'image_url',
-      image_url: {
-        url: imageDataUrl,
-        detail: 'auto'
-      }
-    },
-    {
-      type: 'text',
-      text: prompt
-    }
-  ];
-
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${openrouterKey}`,
-      'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://agnes.ai'
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages: [
-        {
-          role: 'user',
-          content
-        }
-      ],
-      temperature: 0.2,
-      max_tokens: 2000
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Vision API error: ${response.status} ${error}`);
-  }
-
-  const data = await response.json();
-  const text = data.choices?.[0]?.message?.content || '';
-  return stripActionTagsAndMarkdown(text);
-}
-
 function resolveOpenRouterKey(explicitKey?: string) {
   if (explicitKey) return explicitKey;
   if (typeof window !== 'undefined') {
@@ -163,46 +62,81 @@ function resolveOpenRouterKey(explicitKey?: string) {
   return import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined;
 }
 
+function resolveVisionModel(explicit?: string): string {
+  if (explicit && explicit.trim().length > 0) return explicit;
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem(VISION_MODEL_KEY);
+    if (stored && stored.trim().length > 0) return stored;
+  }
+  return DEFAULT_VISION_MODEL;
+}
+
+function validateImagePayload(imageDataUrl: string): void {
+  if (!imageDataUrl || typeof imageDataUrl !== 'string') {
+    throw new Error('Invalid image payload for vision OCR.');
+  }
+  if (!imageDataUrl.startsWith('data:image/')) {
+    throw new Error('Invalid image payload for vision OCR.');
+  }
+  if (imageDataUrl.length < 100) {
+    throw new Error('Invalid image payload for vision OCR.');
+  }
+}
+
 export async function analyzeImageWithVision(
   imageDataUrl: string,
   mode: VisionAnalysisMode,
-  openrouterKey: string,
+  openrouterKey?: string,
   modelId: string = 'openai/gpt-4o'
 ): Promise<VisionAnalysisResult> {
-  const maxRetries = 2;
-  let lastError: Error | null = null;
+  validateImagePayload(imageDataUrl);
+  const key = resolveOpenRouterKey(openrouterKey);
+  const agent = new CognitiveAgent({ openrouterKey: key });
+  const prompt = EXTRACTION_PROMPTS[mode];
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const rawJson = await attemptVisionCall(imageDataUrl, mode, openrouterKey, modelId);
-      return {
-        success: true,
-        rawJson
-      };
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      if (attempt < maxRetries) {
-        // Brief delay before retry
-        await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
-      }
-    }
+  try {
+    const text = await agent.analyzeImage(imageDataUrl, prompt, { 
+      model: modelId,
+      temperature: 0.3,
+      format: 'json_object'
+    } as any);
+    
+    const cleaned = stripActionTagsAndMarkdown(text);
+    return {
+      success: true,
+      rawJson: JSON.parse(cleaned)
+    };
+  } catch (error) {
+    return {
+      success: false,
+      rawJson: {},
+      error: error instanceof Error ? error.message : String(error)
+    };
   }
-
-  return {
-    success: false,
-    rawJson: {},
-    error: lastError?.message || 'Unknown error during vision analysis'
-  };
 }
 
 export async function extractTextWithVision(
   imageDataUrl: string,
   openrouterKey?: string,
-  modelId: string = 'openai/gpt-4o'
+  modelId?: string
 ): Promise<string> {
+  validateImagePayload(imageDataUrl);
   const key = resolveOpenRouterKey(openrouterKey);
-  if (!key) {
-    throw new Error('OpenRouter API key is required for vision OCR.');
+  const resolvedModel = resolveVisionModel(modelId);
+  const agent = new CognitiveAgent({ openrouterKey: key });
+
+  try {
+    const text = await agent.analyzeImage(imageDataUrl, DOCUMENT_OCR_PROMPT, {
+      model: resolvedModel,
+      temperature: 0.2,
+      format: 'text'
+    });
+    const cleaned = stripActionTagsAndMarkdown(text);
+    if (!cleaned || cleaned.trim().length === 0) {
+      throw new Error('Vision OCR returned an empty response.');
+    }
+    return cleaned;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error(String(error));
   }
-  return attemptVisionTextCall(imageDataUrl, DOCUMENT_OCR_PROMPT, key, modelId);
 }

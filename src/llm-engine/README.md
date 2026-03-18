@@ -50,20 +50,31 @@ llm-engine/
 import { useAI } from '@/llm-engine/ai-context';
 
 function MyComponent() {
-  const { sendMessage, streamMessage, isInitialized } = useAI();
+  const { sendMessage, streamMessage, generateJSON, analyzeImage, isInitialized } = useAI();
   
+  // 1. Conversational Chat
   const handleSend = async () => {
     const response = await sendMessage({
       userMessage: 'Hello',
       systemPrompt: 'You are a helpful assistant',
-      history: previousMessages,
-      onToolCall: async (toolCall) => {
-        // Handle action execution
-        return { success: true };
-      }
+      history: previousMessages
     });
-    
-    console.log(response.content);
+  };
+
+  // 2. Structured Data Generation (JSON Mode)
+  const handleSynthesis = async () => {
+    const data = await generateJSON<{ claim: string }>('Analyze these results...', {
+      systemPrompt: 'Respond with JSON only.'
+    });
+    console.log(data.claim);
+  };
+
+  // 3. Vision / Multi-modal Analysis
+  const handleOCR = async (url: string) => {
+    const text = await analyzeImage(url, 'Extract text from this image', {
+      format: 'text'
+    });
+    console.log(text);
   };
 }
 ```
@@ -200,15 +211,13 @@ const response = await sendMessage({
 ### Model Providers
 
 The engine supports multiple LLM providers:
-- **OpenRouter** (default: DeepSeek-V3, Grok-Beta, Gemini-Flash)
-- **Direct Grok API**
-- **Direct Google Gemini API**
+- **OpenRouter** (primary: DeepSeek-V3, Grok-Beta, Gemini-Flash)
+- **Direct Grok API** (optional fallback)
 
 **Configuration:** API keys from `.env.local` or `localStorage`:
 ```
 VITE_OPENROUTER_API_KEY=...
 VITE_GROK_API_KEY=...
-VITE_GOOGLE_API_KEY=...
 ```
 
 ### Persona System

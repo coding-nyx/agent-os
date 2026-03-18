@@ -78,6 +78,55 @@ ${ctx.longTermSummary || 'New conversation.'}
       `.trim();
   }
 
+  async generateJSON<T = any>(
+    prompt: string,
+    options: { systemPrompt?: string; temperature?: number; maxTokens?: number; signal?: AbortSignal; model?: string } = {}
+  ): Promise<T> {
+    const messages: Message[] = [];
+    if (options.systemPrompt) {
+      messages.push({ role: 'system', content: options.systemPrompt });
+    }
+    messages.push({ role: 'user', content: prompt });
+
+    const response = await this.orchestrator.executeStructuredRequest(messages, options);
+    const content = response.choices?.[0]?.message?.content || '';
+
+    // Clean markdown code fences if present
+    const cleaned = content
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/, '')
+      .trim();
+
+    try {
+      return JSON.parse(cleaned) as T;
+    } catch (e) {
+      throw new Error(`Failed to parse structured LLM response as JSON: ${content.slice(0, 100)}...`);
+    }
+  }
+
+  async analyzeImage(
+    imageDataUrl: string,
+    prompt: string,
+    options: { model?: string; temperature?: number; maxTokens?: number; signal?: AbortSignal; format?: 'json_object' | 'text' } = {}
+  ): Promise<string> {
+    const messages: Message[] = [
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: imageDataUrl, detail: 'auto' } },
+          { type: 'text', text: prompt }
+        ] as any
+      }
+    ];
+
+    const response = await this.orchestrator.executeStructuredRequest(messages, {
+      format: 'text', // Default to text for vision unless JSON requested
+      ...options,
+    });
+
+    return response.choices?.[0]?.message?.content || '';
+  }
+
   getOrchestratorState() {
       return this.orchestrator.getState();
   }

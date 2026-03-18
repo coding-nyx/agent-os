@@ -2,8 +2,6 @@
  * useSources.ts
  *
  * React hook for the Scout Source Library.
- * Loads sources once on mount; updates local state optimistically on mutations.
- * Guest mode: returns empty sources, all mutations are no-ops.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -13,7 +11,6 @@ import {
   updateSource,
   archiveSource,
   filterSources,
-  getSourcesByNode,
   type SourceEntryDecrypted,
   type AddSourceInput,
 } from '../services/scout-sources-service';
@@ -31,14 +28,10 @@ interface UseSourcesReturn {
   addSource: (input: AddSourceInput) => Promise<SourceEntryDecrypted | null>;
   updateSource: (
     id: string,
-    patch: Partial<Pick<SourceEntryDecrypted, 'isStarred' | 'readAt' | 'nodeId' | 'tags' | 'title' | 'snippet'>>,
+    patch: Partial<SourceEntryDecrypted>,
   ) => Promise<void>;
   archiveSource: (id: string) => Promise<void>;
-  /** Client-side text search — returns filtered copy, does not mutate `sources` */
   searchSources: (query: string) => SourceEntryDecrypted[];
-  /** Filter sources by knowledge node ID */
-  getSourcesByNode: (nodeId: string) => SourceEntryDecrypted[];
-  /** Reload sources from Firestore */
   refresh: () => Promise<void>;
 }
 
@@ -99,7 +92,7 @@ export function useSources({ userId, encryptionKey }: SourceContext): UseSources
   const handleUpdateSource = useCallback(
     async (
       id: string,
-      patch: Partial<Pick<SourceEntryDecrypted, 'isStarred' | 'readAt' | 'nodeId' | 'tags' | 'title' | 'snippet'>>,
+      patch: Partial<SourceEntryDecrypted>,
     ): Promise<void> => {
       if (!userId || !encryptionKey) return;
 
@@ -111,7 +104,6 @@ export function useSources({ userId, encryptionKey }: SourceContext): UseSources
       try {
         await updateSource(id, patch, ctx);
       } catch (err) {
-        // Revert on failure
         await load();
         setError(err instanceof Error ? err.message : 'Failed to update source');
       }
@@ -123,26 +115,20 @@ export function useSources({ userId, encryptionKey }: SourceContext): UseSources
     async (id: string): Promise<void> => {
       if (!userId) return;
 
-      // Optimistic removal from list
       setSources((prev) => prev.filter((s) => s.id !== id));
 
       try {
-        await archiveSource(id, ctx);
+        await archiveSource(id, { userId });
       } catch (err) {
         await load();
         setError(err instanceof Error ? err.message : 'Failed to archive source');
       }
     },
-    [ctx, userId, load],
+    [userId, load],
   );
 
   const searchSourcesFn = useCallback(
     (query: string) => filterSources(sources, query),
-    [sources],
-  );
-
-  const getSourcesByNodeFn = useCallback(
-    (nodeId: string) => getSourcesByNode(sources, nodeId),
     [sources],
   );
 
@@ -155,7 +141,6 @@ export function useSources({ userId, encryptionKey }: SourceContext): UseSources
     updateSource: handleUpdateSource,
     archiveSource: handleArchiveSource,
     searchSources: searchSourcesFn,
-    getSourcesByNode: getSourcesByNodeFn,
     refresh: load,
   };
 }

@@ -44,9 +44,9 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { id: 'uploading',  label: 'Uploading',        description: 'Sending document to server' },
-  { id: 'extracting', label: 'Extracting Text',   description: 'Reading document content'   },
-  { id: 'analysing',  label: 'Analysing with AI', description: 'AI processing your data'    },
+  { id: 'uploading',  label: 'Uploading',        description: 'Securing and transferring your document' },
+  { id: 'extracting', label: 'Extracting Text',   description: 'Reading pages, OCR where needed'        },
+  { id: 'analysing',  label: 'Analysing with AI', description: 'Structuring biomarkers and drafting clinical summary' },
 ];
 
 const PHASE_ORDER: Record<AnalysisPhase, number> = {
@@ -170,7 +170,7 @@ export function DiagnosisProgressCard({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3"
+            className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3"
           >
             <motion.div
               animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
@@ -178,7 +178,12 @@ export function DiagnosisProgressCard({
             >
               <Sparkles className="w-5 h-5 text-emerald-400" />
             </motion.div>
-            <p className="text-sm font-medium text-emerald-300">Analysing your document…</p>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-emerald-300">Analysing with AI…</p>
+              <p className="text-xs text-emerald-200/60">
+                Running OCR → extracting fields → generating clinical summary
+              </p>
+            </div>
           </motion.div>
         ) : phase === 'uploading' ? (
           <motion.div key="upload-bar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>

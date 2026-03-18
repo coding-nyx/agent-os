@@ -8,6 +8,7 @@ import { EpisodicMemoryService } from '../services/episodic-memory-service';
 import { SemanticMemoryService } from '../services/semantic-memory-service';
 import { NSV_READ_PERMISSIONS } from '../services/nsv-ownership';
 import { formatNSVForModulePrompt, formatNSVForAtlasPlanner, normalizeNSV } from '../services/nsv-service';
+import { WebCrawlerService } from '../services/web-crawler-service';
 import type { ModuleId } from '../module-manifest';
 
 function safeNumber(value: unknown): number | undefined {
@@ -187,6 +188,27 @@ export function registerCoreActions() {
       }
       if (Object.keys(patch).length === 0) return;
       await CoreProfileService.updatePersonality(userId, patch);
+    },
+
+    web_search: async ({ payload, pushAssistantMessage }) => {
+      const query = typeof payload?.query === 'string' ? payload.query : '';
+      if (!query.trim()) return;
+
+      pushAssistantMessage?.(`🌐 Consulting external records for: "${query}"...`);
+
+      try {
+        const response = await WebCrawlerService.search(query, { maxResults: 5, includeImages: true });
+        if (response.results.length === 0) {
+          pushAssistantMessage?.(`I couldn't find any recent external data for "${query}".`);
+          return;
+        }
+
+        const summary = response.results.slice(0, 3).map((r, i) => `${i + 1}. **${r.title}** - ${r.url}`).join('\n');
+        pushAssistantMessage?.(`Found several relevant sources:\n\n${summary}\n\n${response.answer || ''}`);
+      } catch (err) {
+        console.error('[web_search] Global handler failed:', err);
+        pushAssistantMessage?.(`⚠️ Error connecting to external research engine.`);
+      }
     },
 
     search_memory: async ({ userId, payload, pushAssistantMessage }) => {

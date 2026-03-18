@@ -11,6 +11,7 @@ import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import type { AuthMode } from '@/core/components/UnifiedAuthModal';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { SpineMobileBar } from '@/core/components/SpineMobileBar';
 
 interface SingleAgentLayoutProps {
   moduleId: string;
@@ -34,6 +35,10 @@ interface SingleAgentLayoutProps {
   mobileBreakpoint?: number;
   /** Optional secondary action button (e.g. FAB) to show next to chat trigger */
   primaryAction?: React.ReactNode;
+  onUploadDocument?: (file: File) => void;
+  // External control for layout intelligence
+  isChatCollapsed?: boolean;
+  onToggleChat?: (collapsed: boolean) => void;
 }
 
 export function SingleAgentLayout({
@@ -46,13 +51,23 @@ export function SingleAgentLayout({
   authMode,
   chatWidth = 'clamp(320px, 32vw, 520px)',
   mobileBreakpoint = 1024,
-  primaryAction
+  primaryAction,
+  onUploadDocument,
+  isChatCollapsed: externalIsChatCollapsed,
+  onToggleChat
 }: SingleAgentLayoutProps) {
   const navigate = useNavigate();
+  const [internalIsChatCollapsed, setInternalIsChatCollapsed] = useState(false);
+  
+  const isChatCollapsed = externalIsChatCollapsed ?? internalIsChatCollapsed;
+  const toggleChat = (val: boolean) => {
+    if (onToggleChat) onToggleChat(val);
+    else setInternalIsChatCollapsed(val);
+  };
+
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < mobileBreakpoint : false
   );
-  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const setChatOverlayOpen = useUIStore((s) => s.setChatOverlayOpen);
   const setActiveLayout = useUIStore((s) => s.setActiveLayout);
 
@@ -87,12 +102,18 @@ export function SingleAgentLayout({
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < mobileBreakpoint;
-      setIsMobile(mobile);
-      if (mobile) setIsChatCollapsed(true);
+      setIsMobile((prev) => {
+        // Only auto-collapse if we just transitioned from desktop to mobile mode.
+        // This prevents the chat from closing on mobile when the virtual keyboard 
+        // triggers a window resize event.
+        if (mobile && !prev) {
+          toggleChat(true);
+        }
+        return mobile;
+      });
     };
 
     window.addEventListener('resize', handleResize);
-    handleResize(); // Initial check
     return () => window.removeEventListener('resize', handleResize);
   }, [mobileBreakpoint]);
 
@@ -117,7 +138,10 @@ export function SingleAgentLayout({
   const currentTheme = themeClasses[themeColor] || themeClasses.white;
 
   return (
-    <div className="h-full flex overflow-hidden relative">
+    <div
+      className="h-full flex overflow-hidden relative"
+      style={{ '--spine-sidebar-width': isChatCollapsed ? '0px' : chatWidth } as React.CSSProperties}
+    >
       {/* ── Action Bar (Mobile) ── */}
       {isMobile && isChatCollapsed && (
         <div className="fixed bottom-6 left-4 right-4 flex gap-3 z-[var(--z-fab)]">
@@ -126,7 +150,7 @@ export function SingleAgentLayout({
             animate={{ opacity: 1, scale: 1, x: 0 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setIsChatCollapsed(false)}
+            onClick={() => toggleChat(false)}
             className={cn(
               'flex-1 flex items-center gap-3 border backdrop-blur-xl shadow-2xl transition-all duration-300',
               currentTheme.btnBg,
@@ -157,7 +181,7 @@ export function SingleAgentLayout({
           animate={{ opacity: 1, scale: 1, x: 0 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setIsChatCollapsed(false)}
+          onClick={() => toggleChat(false)}
           className={cn(
             'z-[var(--z-fab)] absolute top-6 right-6 flex items-center gap-3 border backdrop-blur-xl shadow-2xl transition-all duration-300 px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-[0.1em]',
             currentTheme.btnBg,
@@ -208,6 +232,7 @@ export function SingleAgentLayout({
               authMode={authMode}
               showInternalSignals={false}
               onClearHistory={ai.clearSession}
+              onUploadDocument={onUploadDocument}
             />
             {/* Routing suggestion — inline below chat input */}
             <RoutingSuggestion
@@ -222,7 +247,7 @@ export function SingleAgentLayout({
           {/* Collapse Handle */}
           {!isChatCollapsed && (
             <button
-              onClick={() => setIsChatCollapsed(true)}
+              onClick={() => toggleChat(true)}
               className={cn(
                 'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-[var(--z-fab)] w-6 h-12 flex items-center justify-center border transition-all rounded-l-xl backdrop-blur-xl',
                 currentTheme.btnBg,
@@ -248,7 +273,8 @@ export function SingleAgentLayout({
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="fixed inset-0 z-[var(--z-modal)] bg-[#020205] flex flex-col h-[100dvh]"
             >
-              <div className={cn("flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b", currentTheme.sidebarBorder)}>
+              <div className={cn("relative flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b", currentTheme.sidebarBorder)}>
+                <SpineMobileBar accentColor={undefined} />
                 <div className="flex items-center gap-3">
                   <div className={cn("w-2 h-2 rounded-full animate-pulse", 
                     themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
@@ -258,7 +284,7 @@ export function SingleAgentLayout({
                   </span>
                 </div>
                 <button
-                  onClick={() => setIsChatCollapsed(true)}
+                  onClick={() => toggleChat(true)}
                   className={cn(
                     "p-2 rounded-xl border transition-all",
                     currentTheme.btnBg,

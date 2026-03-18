@@ -183,11 +183,20 @@ class SomaDataServiceImpl {
       return record && typeof record.value === 'number' ? record.value : undefined;
     };
 
-    const result = computeReadinessScore({
+    const readinessInputs = {
       restingHeartRate: findBiomarkerValue('resting heart rate') ?? findBiomarkerValue('restingHeartRate'),
       sleepQuality: findBiomarkerValue('sleep quality') ?? findBiomarkerValue('sleepQuality'),
       energyLevel: findBiomarkerValue('energy level') ?? findBiomarkerValue('energyLevel'),
       stressPhysical: findBiomarkerValue('physical stress') ?? findBiomarkerValue('stressPhysical'),
+    };
+
+    const hasReadinessData = Object.values(readinessInputs).some((v) => v != null);
+    if (!hasReadinessData) {
+      return { score: 0, level: 'unknown', breakdown: { vitals: 0, sleep: 0, energy: 0, stress: 0 } };
+    }
+
+    const result = computeReadinessScore({
+      ...readinessInputs,
     });
 
     return {

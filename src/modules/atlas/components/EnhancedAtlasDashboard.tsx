@@ -63,9 +63,10 @@ import { QuickAddForm } from './QuickAddForm';
 import { QuickCaptureBar } from './QuickCaptureBar';
 import { JournalTab } from './journal/JournalTab';
 import { ManualEnergyLog } from './ManualEnergyLog';
-import { BookOpen } from 'lucide-react';
+import { AtlasAnalytics } from './AtlasAnalytics';
+import { BookOpen, BarChart2 } from 'lucide-react';
 
-type AtlasTab = 'dashboard' | 'backlog' | 'routines' | 'journal' | 'fields' | 'review';
+type AtlasTab = 'dashboard' | 'backlog' | 'routines' | 'journal' | 'analytics' | 'fields' | 'review';
 type AtlasView = 'today' | 'week' | 'month' | 'focus';
 
 interface EnhancedAtlasDashboardProps {
@@ -178,6 +179,7 @@ export function EnhancedAtlasDashboard({
     { id: 'backlog', label: 'Backlog', icon: Inbox, badge: queuedCount || undefined },
     { id: 'routines', label: 'Routines & Habits', icon: Clock },
     { id: 'journal', label: 'Journal', icon: BookOpen },
+    { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'fields', label: 'Fields', icon: SlidersHorizontal },
     {
       id: 'review',
@@ -682,6 +684,11 @@ export function EnhancedAtlasDashboard({
             isLocked={isLocked}
             onSendMessage={onSendMessage}
           />
+        )}
+
+        {/* ══════════════ ANALYTICS TAB ══════════════ */}
+        {activeTab === 'analytics' && (
+          <AtlasAnalytics profile={profile} />
         )}
 
         {/* ══════════════ FIELDS TAB ══════════════ */}

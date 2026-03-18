@@ -166,8 +166,11 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   GOAL_COMPLETED: 'Goal achieved',
   FINANCIAL_HEALTH_CHECK: 'Financial health checked',
   RISK_DETECTED: 'Financial risk detected',
-  // Titan Workout Events
+  // Titan Workout / Body Composition Events
   WORKOUT_COMPLETED: 'Workout session logged',
+  TITAN_BODY_WEIGHT_LOGGED: 'Body weight logged',
+  TITAN_RECOVERY_NEEDED: 'Recovery needed',
+  TITAN_TRAINING_STREAK: 'Training streak milestone',
   SPENDING_DETECTED: 'Spending detected',
   CONFLICT_DETECTED: 'Conflict detected',
   CONFLICT_RESOLVED: 'Conflict resolved',

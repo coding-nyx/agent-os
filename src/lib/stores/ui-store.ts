@@ -28,6 +28,9 @@ interface UIStore {
   // Height (px) of a module-specific bottom bar, so the FAB can float above it
   moduleBottomBarHeight: number;
   setModuleBottomBarHeight: (height: number) => void;
+  // Spine overlay visibility preference (persisted to localStorage)
+  spineVisible: boolean;
+  setSpineVisible: (val: boolean) => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -44,6 +47,13 @@ export const useUIStore = create<UIStore>((set) => ({
   clearFabActions: () => set({ fabActions: [] }),
   moduleBottomBarHeight: 0,
   setModuleBottomBarHeight: (height) => set({ moduleBottomBarHeight: height }),
+  spineVisible: typeof window !== 'undefined'
+    ? localStorage.getItem('spineVisible') !== 'false'
+    : true,
+  setSpineVisible: (val) => {
+    if (typeof window !== 'undefined') localStorage.setItem('spineVisible', String(val));
+    set({ spineVisible: val });
+  },
 }));
 
 // Fine-grained selector hooks — use these instead of the whole store
@@ -56,3 +66,5 @@ export const useSetLeftRailVisible = () => useUIStore(s => s.setLeftRailVisible)
 export const useSetRightRailVisible = () => useUIStore(s => s.setRightRailVisible);
 export const useSetChatOverlayOpen = () => useUIStore(s => s.setChatOverlayOpen);
 export const useSetActiveLayout = () => useUIStore(s => s.setActiveLayout);
+export const useSpineVisible = () => useUIStore(s => s.spineVisible);
+export const useSetSpineVisible = () => useUIStore(s => s.setSpineVisible);

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
+import { useAI } from '@/llm-engine/ai-context';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { LedgerDashboard } from './components/LedgerDashboard';
@@ -53,12 +54,15 @@ import { computeResonanceROI } from './services/resonance-roi-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { ledgerDiagnosisSpec } from './diagnosis/ledger-diagnosis-spec';
-import { useDocumentIntelligence } from '@/lib/hooks/use-document-intelligence';
+import { runDocumentPipeline } from '@/lib/services/document-pipeline';
+import { ledgerDocumentPolicy, type LedgerDocumentProposal } from './services/ledger-document-policy';
 import { registerLedgerFieldActions } from '@/modules/ledger/actions/ledger-field-actions';
 import { registerLedgerTransactionActions } from '@/modules/ledger/actions/transaction-actions';
 import { registerLedgerCascadeRules } from '@/lib/spine/cascade-rules';
 import { useLedgerCrossVerify } from './hooks/use-ledger-cross-verify';
 import { TaxTracker } from './components/TaxTracker';
+import { QuickLogPanel } from './components/QuickLogPanel';
+import { AnalyticsTab } from './components/AnalyticsTab';
 import { SchemaRegistry } from '@/lib/schema-registry';
 import type { FieldDefinition } from '@/lib/field-system/types';
 import { FieldType } from '@/lib/field-system/types';
@@ -97,7 +101,7 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
   };
 }
 
-type LedgerTab = 'overview' | 'budget' | 'goals' | 'transactions' | 'fields' | 'tax';
+type LedgerTab = 'overview' | 'budget' | 'goals' | 'transactions' | 'fields' | 'tax' | 'analytics';
 
 /** Shape expected by handleApplyBudgetTemplate */
 interface BudgetTemplate {
@@ -109,6 +113,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
   const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('ledger');
+  const { sendMessage } = useAI();
 
   // Cross-verification: coherence checks + NSV sync + Spine events
   const { coherenceReport } = useLedgerCrossVerify(profile);
@@ -131,21 +136,57 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
   const [isVisionAnalyzing, setIsVisionAnalyzing] = useState(false);
   const [visionReviewData, setVisionReviewData] = useState<Record<string, unknown> | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [docProposal, setDocProposal] = useState<LedgerDocumentProposal | null>(null);
+  const [docProposalSummary, setDocProposalSummary] = useState<string | null>(null);
+  const [isDocReviewOpen, setIsDocReviewOpen] = useState(false);
 
   const handleOpenDocuments = useCallback(() => {
     ai.handleSendMessage(
       'Open embedded financial document intelligence mode. Ask me to upload a statement, receipt, or invoice for structured extraction.'
     );
-  }, [ai]);
-
-  const { parseDocument: parseDoc } = useDocumentIntelligence();
+  }, [ai, sendMessage]);
 
   /**
    * Receipt / financial document picker (S10-003 migration).
-   * Delegates text extraction and field parsing to the shared
-   * document-intelligence-service, then forwards the structured result to the
-   * Ledger AI agent as a formatted prompt.
+   * Delegates parsing + analysis to the shared document pipeline, then
+   * surfaces a proposal for explicit user confirmation before updates.
    */
+  const handleDocumentFile = useCallback(async (file: File) => {
+    const llmPrimary = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'You are a financial document analysis engine. Return only valid JSON as instructed.',
+        memoryContext: [],
+        summary: 'Financial document analysis.',
+        history: [],
+      });
+      return response.publicText;
+    };
+    const llmFallback = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'Return only valid JSON as instructed.',
+        memoryContext: [],
+        summary: 'Document analysis fallback.',
+        history: [],
+      });
+      return response.publicText;
+    };
+
+    try {
+      const result = await runDocumentPipeline({
+        file,
+        policy: ledgerDocumentPolicy,
+        sendMessage: llmPrimary,
+        sendMessageFallback: llmFallback,
+      });
+      setDocProposal(result.proposal);
+      setDocProposalSummary(result.summary);
+      setIsDocReviewOpen(true);
+    } catch (err) {
+      ai.handleSendMessage('Document intake failed. Please try again with a PDF, image, or text file.');
+      console.error('[Ledger] Document pipeline failed:', err);
+    }
+  }, [ai]);
+
   const openDocumentPicker = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -155,35 +196,12 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
-      const result = await parseDoc(file, { domain: 'receipt', moduleId: 'ledger' });
+      await handleDocumentFile(file);
       input.value = '';
-
-      if (!result) {
-        ai.handleSendMessage('Document intake failed. Please try again with a PDF, image, or text file.');
-        return;
-      }
-
-      const fieldLines = Object.entries(result.fields)
-        .filter(([, v]) => v.length > 0)
-        .map(([k, v]) => `  ${k}: ${v}`)
-        .join('\n');
-
-      const prompt = [
-        'Financial document receipt parsed. Map this into budgeting, cashflow, categories, and anomalies.',
-        `File: ${file.name} | Type: ${result.type} | Confidence: ${(result.confidence * 100).toFixed(0)}%`,
-        fieldLines.length > 0 ? `Extracted fields:\n${fieldLines}` : null,
-        result.rawText.length > 0
-          ? `Full extracted text:\n${result.rawText.slice(0, 3000)}${result.rawText.length > 3000 ? '\n[truncated]' : ''}`
-          : 'No text could be extracted from this file.',
-      ]
-        .filter(Boolean)
-        .join('\n\n');
-
-      ai.handleSendMessage(prompt);
     };
 
     input.click();
-  }, [parseDoc, ai]);
+  }, [handleDocumentFile]);
 
   const handleDocumentCapture = useCallback(
     async (dataUrl: string) => {
@@ -226,6 +244,31 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
     setIsReviewModalOpen(false);
     setVisionReviewData(null);
   }, [visionReviewData, ai]);
+
+  const handleStructuredDocCommit = useCallback(() => {
+    if (!docProposal) return;
+    const fieldLines = Object.entries(docProposal.fields)
+      .filter(([, v]) => v.length > 0)
+      .map(([k, v]) => `  ${k}: ${v}`)
+      .join('\n');
+
+    const prompt = [
+      'Financial document receipt parsed. Map this into budgeting, cashflow, categories, and anomalies.',
+      docProposalSummary ? `Summary: ${docProposalSummary}` : null,
+      fieldLines.length > 0 ? `Extracted fields:\n${fieldLines}` : null,
+      docProposal.rawTextPreview.length > 0
+        ? `Full extracted text (preview):\n${docProposal.rawTextPreview}${docProposal.rawTextPreview.length >= 2400 ? '\n[truncated]' : ''}`
+        : 'No text could be extracted from this file.',
+      'User has confirmed this data. Now emit: <action type="parse_financial_document">...(include extracted data)</action>'
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    ai.handleSendMessage(prompt);
+    setIsDocReviewOpen(false);
+    setDocProposal(null);
+    setDocProposalSummary(null);
+  }, [docProposal, docProposalSummary, ai]);
 
   const persistUpdate = useCallback((nextProfile: LedgerIntakeProfile) => {
      nextProfile.updatedAt = new Date().toISOString();
@@ -548,6 +591,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
       ai={ai}
       authMode="ledger"
       placeholder="Ask for budgeting or savings optimization..."
+      onUploadDocument={handleDocumentFile}
       primaryAction={
         activeTab === 'transactions' && (
           <button
@@ -607,6 +651,54 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
         </div>
       </NeuralModal>
 
+      <NeuralModal
+        isOpen={isDocReviewOpen}
+        onClose={() => {
+          setIsDocReviewOpen(false);
+          setDocProposal(null);
+          setDocProposalSummary(null);
+        }}
+        title="Review Document Analysis"
+        themeColor="cyan"
+        maxWidth="2xl"
+      >
+        <div className="space-y-6">
+          {docProposal && (
+            <div className="space-y-4">
+              <p className="text-sm text-white/70">{docProposalSummary ?? 'Document analysis ready for review.'}</p>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Extracted Fields</h4>
+                {Object.entries(docProposal.fields).filter(([, v]) => v.length > 0).length === 0 ? (
+                  <p className="text-xs text-white/40 italic">No structured fields detected.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-white/70">
+                    {Object.entries(docProposal.fields)
+                      .filter(([, v]) => v.length > 0)
+                      .map(([k, v]) => (
+                        <div key={k} className="flex justify-between gap-3">
+                          <span className="text-white/50">{k}</span>
+                          <span className="font-mono text-cyan-300">{v}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+              <div className="bg-black/30 border border-white/10 rounded-xl p-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Text Preview</h4>
+                <pre className="text-[11px] text-white/50 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                  {docProposal.rawTextPreview}
+                  {docProposal.rawTextPreview.length >= 2400 ? '\n[truncated]' : ''}
+                </pre>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-3 pt-4 border-t border-white/10">
+            <button onClick={handleStructuredDocCommit} className="flex-1 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs rounded-lg">Apply</button>
+            <button onClick={() => setIsDocReviewOpen(false)} className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-bold text-xs rounded-lg">Discard</button>
+          </div>
+        </div>
+      </NeuralModal>
+
       <div className="flex flex-col h-full overflow-hidden">
         <div className="px-4 md:px-8 pt-4 md:pt-8 pb-2 md:pb-4">
           <SectionHeader
@@ -619,7 +711,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
 
         <div className="flex items-center justify-between border-b border-white/10">
           <div className="flex gap-1 px-4 md:px-8">
-            {(['overview', 'budget', 'goals', 'transactions', 'fields'] as const).map(t => (
+            {(['overview', 'transactions', 'budget', 'goals', 'analytics', 'tax', 'fields'] as const).map(t => (
               <button
                 key={t}
                 type="button"
@@ -647,9 +739,20 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
           {activeTab === 'overview' && (
             <>
               {coherenceReport && coherenceReport.issues.length > 0 && (
-                <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm">
-                  <span className="text-amber-400 font-medium">Data coherence: {coherenceReport.score}/100</span>
-                  <span className="text-white/60 ml-2">{coherenceReport.issues.length} issue(s) detected</span>
+                <div className="mb-4 px-4 md:px-8">
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm">
+                    <span className="text-amber-400 font-medium">Data coherence: {coherenceReport.score}/100</span>
+                    <span className="text-white/60 ml-2">{coherenceReport.issues.length} issue(s) detected</span>
+                  </div>
+                </div>
+              )}
+              {profile && (
+                <div className="px-4 md:px-8 mb-4">
+                  <QuickLogPanel
+                    categories={categories}
+                    currency={profile.currency}
+                    onAddTransaction={handleAddTransaction}
+                  />
                 </div>
               )}
               <LedgerDashboard
@@ -736,6 +839,13 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
                 onDeleteField={handleDeleteField}
               />
             </div>
+          )}
+
+          {activeTab === 'analytics' && profile && (
+            <AnalyticsTab
+              profile={profile}
+              onAskAI={(question) => ai.handleSendMessage(question)}
+            />
           )}
 
           {activeTab === 'tax' && profile && (

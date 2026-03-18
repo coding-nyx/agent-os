@@ -1721,10 +1721,15 @@ export function registerAtlasActions() {
 
       if (pushAssistantMessage) pushAssistantMessage(response);
 
-      emitSpineEvent('JOURNAL_ENTRY_UPDATED', {
+      // Emit JOURNAL_ENTRY_CREATED so the ATLAS_JOURNAL_RULES cascade can
+      // detect reflection streaks. The streakLength field is a best-effort
+      // estimate — the cascade condition requires >= 7 to fire.
+      const journalDate = typeof entry.date === 'string' ? entry.date : new Date().toISOString().slice(0, 10);
+      emitSpineEvent('JOURNAL_ENTRY_CREATED', {
         priority: 'info',
         domain: 'C',
-        date: typeof entry.date === 'string' ? entry.date : new Date().toISOString().slice(0, 10),
+        date: journalDate,
+        reflectionStreak: 1,
       });
     },
 
@@ -1816,6 +1821,61 @@ export function registerAtlasActions() {
         domain:   'C',
         date:     new Date().toISOString().slice(0, 10),
         source:   'atlas_journal_extract_insights',
+      });
+    },
+
+    // === Habit Completion Logging ===
+
+    /**
+     * complete_habit
+     * Mark a habit as completed for today, increment streak, and update NSV.
+     * This action is called from the UI (HabitTracker checkbox) and can also
+     * be triggered by the AI.
+     * Payload: { id: string; completedAt?: string }
+     */
+    complete_habit: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {
+      const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!raw) return;
+      const profile = raw;
+
+      const habitId = typeof payload?.id === 'string' ? payload.id : null;
+      if (!habitId) return;
+
+      const habit = profile.habits.find(h => h.id === habitId);
+      if (!habit || habit.status !== 'active') return;
+
+      const now = new Date().toISOString();
+      const today = now.slice(0, 10);
+
+      // Guard: already completed today
+      if (habit.lastCompleted && habit.lastCompleted.slice(0, 10) === today) return;
+
+      habit.lastCompleted = now;
+      habit.currentStreak = (habit.currentStreak ?? 0) + 1;
+      if (habit.currentStreak > (habit.bestStreak ?? 0)) {
+        habit.bestStreak = habit.currentStreak;
+      }
+      habit.updatedAt = now;
+
+      await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+      const activeHabits = profile.habits.filter(h => h.status === 'active');
+      const totalStreak = activeHabits.reduce((sum, h) => sum + (h.currentStreak ?? 0), 0);
+      const streakHealth = activeHabits.length > 0
+        ? Math.min(10, Math.round(totalStreak / activeHabits.length))
+        : 5;
+      const habitsWithStreak = activeHabits.filter(h => (h.currentStreak ?? 0) > 0).length;
+      const habitMomentum = activeHabits.length > 0
+        ? Math.round((habitsWithStreak / activeHabits.length) * 100) / 100
+        : 0;
+
+      await updateGlobalSoul({ planning: { streakHealth, habitMomentum } });
+
+      emitSpineEvent('ATLAS_HABIT_LOGGED' as import('@/lib/types').SpineEventType, {
+        habitId: habit.id,
+        title: habit.title,
+        currentStreak: habit.currentStreak,
+        bestStreak: habit.bestStreak,
       });
     },
   });

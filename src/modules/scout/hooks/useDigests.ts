@@ -2,8 +2,6 @@
  * useDigests.ts
  *
  * React hook for Scout on-demand digest generation and history.
- * Loads existing digests on mount. Generates new digests via callStructuredLLM.
- * Guest mode: returns empty digests, generation is a no-op.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -12,10 +10,9 @@ import {
   generateDigest,
   deleteDigest,
   type ScoutDigestDecrypted,
-  type ScoutDigest,
 } from '../services/scout-digest-service';
-import type { ScoutProfile } from '../services/scout-knowledge-service';
-import type { SourceEntryDecrypted } from '../services/scout-sources-service';
+import { ScoutDigest, ScoutKnowledgeNode } from '../types';
+import type { SourceEntryDecrypted } from './useSources';
 
 type DigestContext = {
   userId?: string | null;
@@ -29,17 +26,17 @@ interface UseDigestsReturn {
   error: string | null;
   latestDigest: ScoutDigestDecrypted | null;
   generateDigest: (
-    profile: ScoutProfile,
-    triggerSource: ScoutDigest['triggerSource'],
-    sources?: SourceEntryDecrypted[],
+    interests: string[],
+    nodes: ScoutKnowledgeNode[],
+    sources: SourceEntryDecrypted[],
+    triggerSource: ScoutDigest['generationType'],
   ) => Promise<ScoutDigestDecrypted | null>;
   deleteDigest: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
 export function useDigests(
-  { userId, encryptionKey }: DigestContext,
-  sourcesForGeneration?: SourceEntryDecrypted[],
+  { userId, encryptionKey }: DigestContext
 ): UseDigestsReturn {
   const [digests, setDigests] = useState<ScoutDigestDecrypted[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,15 +68,16 @@ export function useDigests(
 
   const handleGenerateDigest = useCallback(
     async (
-      profile: ScoutProfile,
-      triggerSource: ScoutDigest['triggerSource'],
-      sources: SourceEntryDecrypted[] = sourcesForGeneration ?? [],
+      interests: string[],
+      nodes: ScoutKnowledgeNode[],
+      sources: SourceEntryDecrypted[],
+      triggerSource: ScoutDigest['generationType'],
     ): Promise<ScoutDigestDecrypted | null> => {
       if (!userId || !encryptionKey) return null;
       setIsGenerating(true);
       setError(null);
       try {
-        const result = await generateDigest(profile, sources, triggerSource, ctx);
+        const result = await generateDigest(interests, nodes, sources, triggerSource, ctx);
         if (result) {
           setDigests((prev) => [result, ...prev].slice(0, 10));
         }
@@ -91,13 +89,12 @@ export function useDigests(
         setIsGenerating(false);
       }
     },
-    [ctx, userId, encryptionKey, sourcesForGeneration],
+    [ctx, userId, encryptionKey],
   );
 
   const handleDeleteDigest = useCallback(
     async (id: string): Promise<void> => {
       if (!userId) return;
-      // Optimistic
       setDigests((prev) => prev.filter((d) => d.id !== id));
       try {
         await deleteDigest(id, ctx);

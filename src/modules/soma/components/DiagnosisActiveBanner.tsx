@@ -86,7 +86,7 @@ export function DiagnosisActiveBanner({
             <span className="font-semibold text-white">
               {fileName ?? 'Medical Document'}
             </span>
-            {' · '}Analysing…
+            {' · '}Analysing with AI (OCR → extract → summary)…
           </>
         ) : (
           <>

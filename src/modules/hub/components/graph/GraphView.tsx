@@ -1,12 +1,30 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Orbit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toneClass, toneTextClass, CORE_MODULES, type NodeCardProps, type OrchestratorNode, type ModuleStat } from '../../constants';
 
+// ─── Responsive Hook ─────────────────────────────────────────────────────────
+
+function useIsMobile(breakpoint = 1024) {
+  const [isMobile, setIsMobile] = useState(() => 
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    setIsMobile(mql.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
 const NodeCard = React.memo(function NodeCard({
-  node, stat, canEnter, isHovered, onClick, onMouseEnter, onMouseLeave
-}: NodeCardProps) {
+  node, stat, canEnter, isHovered, onClick, onMouseEnter, onMouseLeave, isMobile
+}: NodeCardProps & { isMobile: boolean }) {
   const Icon = node.icon;
   const title = node.title;
   const isLeft = node.x < 50;
@@ -19,63 +37,89 @@ const NodeCard = React.memo(function NodeCard({
       onMouseEnter={() => { onMouseEnter(); setShowTooltip(true); }}
       onMouseLeave={() => { onMouseLeave(); setShowTooltip(false); }}
       initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: isPlugin ? 0.85 : 1 }}
-      whileHover={{ y: -2, scale: isPlugin ? 0.9 : 1.02, transition: { duration: 0.2 } }}
-      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto group focus:outline-none focus:ring-2 focus:ring-violet-500/50 rounded-2xl"
+      animate={{ opacity: 1, scale: isMobile ? (isHovered ? 1.15 : 1) : (isPlugin ? 0.85 : 1) }}
+      whileHover={{ y: -2, scale: isMobile ? 1.2 : (isPlugin ? 0.9 : 1.02), transition: { duration: 0.2 } }}
+      className={cn(
+        "absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto group focus:outline-none focus:ring-2 focus:ring-violet-500/50",
+        isMobile ? "rounded-full" : "rounded-2xl"
+      )}
       style={{ left: `${node.x}%`, top: `${node.y}%`, zIndex: isHovered ? 100 : isPlugin ? 5 : 10 }}
     >
       <div className={cn(
-        "relative transition-all duration-300",
-        isPlugin ? "p-2 rounded-xl w-[140px]" : "p-3 rounded-2xl w-[185px]",
-        "bg-[#05050a]/70 backdrop-blur-xl",
-        isHovered ? "border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.05)] bg-white/[0.02] border" : "border-white/10 shadow-xl border",
-        !canEnter && "opacity-60",
-        isPlugin && !isHovered && "opacity-40"
+        "relative transition-all duration-500 flex items-center justify-center overflow-hidden",
+        isMobile 
+          ? "w-12 h-12 rounded-full bg-[#05050a]/80 backdrop-blur-2xl border-2" 
+          : (isPlugin ? "p-2 rounded-xl w-[140px] bg-[#05050a]/70 backdrop-blur-xl border" : "p-3 rounded-2xl w-[185px] bg-[#05050a]/70 backdrop-blur-xl border"),
+        isHovered 
+          ? "border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.1)] bg-white/[0.05]" 
+          : "border-white/10 shadow-xl",
+        !canEnter && "opacity-60 grayscale-[0.5]",
+        isPlugin && !isHovered && !isMobile && "opacity-40"
       )}>
-        <div className="flex gap-2.5 items-center">
-          <div className={cn(
-            "rounded-xl flex items-center justify-center shrink-0 border transition-colors",
-            isPlugin ? "w-7 h-7" : "w-8 h-8",
-            isHovered ? "bg-white/10 border-white/20" : "bg-white/5 border-white/10"
-          )}>
-            <Icon className={isPlugin ? "w-3.5 h-3.5" : "w-4 h-4"} style={{ color: node.color }} />
-          </div>
-          <div className="flex-1 min-w-0 text-left">
-            <div className="flex items-center gap-1.5">
-              <span className={cn("font-bold uppercase tracking-wider text-white/90 truncate", isPlugin ? "text-[9px]" : "text-[10px]")}>
-                {title}
-              </span>
-              {!canEnter && <Lock className="w-2.5 h-2.5 text-white/50" />}
-            </div>
-            {stat && !isPlugin ? (
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <div className={cn("w-1 h-1 rounded-full", toneClass(stat.tone))} />
-                <span className={cn("text-[9px] font-mono", toneTextClass(stat.tone))}>{stat.display}</span>
-              </div>
-            ) : (
-              <p className="text-[8px] text-white/50 uppercase tracking-tight truncate mt-0.5">{node.description}</p>
+        {/* Mobile: Icon Only */}
+        {isMobile ? (
+          <div className="relative z-10 flex items-center justify-center">
+            <Icon className="w-6 h-6" style={{ color: node.color }} />
+            {/* Pulsing indicator if stat is good */}
+            {stat?.tone === 'good' && (
+              <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-75" />
             )}
           </div>
-        </div>
+        ) : (
+          /* Desktop: Full Card */
+          <div className="flex gap-2.5 items-center w-full">
+            <div className={cn(
+              "rounded-xl flex items-center justify-center shrink-0 border transition-colors",
+              isPlugin ? "w-7 h-7" : "w-8 h-8",
+              isHovered ? "bg-white/10 border-white/20" : "bg-white/5 border-white/10"
+            )}>
+              <Icon className={isPlugin ? "w-3.5 h-3.5" : "w-4 h-4"} style={{ color: node.color }} />
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <div className="flex items-center gap-1.5">
+                <span className={cn("font-bold uppercase tracking-wider text-white/90 truncate", isPlugin ? "text-[9px]" : "text-[10px]")}>
+                  {title}
+                </span>
+                {!canEnter && <Lock className="w-2.5 h-2.5 text-white/50" />}
+              </div>
+              {stat && !isPlugin ? (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className={cn("w-1 h-1 rounded-full", toneClass(stat.tone))} />
+                  <span className={cn("text-[9px] font-mono", toneTextClass(stat.tone))}>{stat.display}</span>
+                </div>
+              ) : (
+                <p className="text-[8px] text-white/50 uppercase tracking-tight truncate mt-0.5">{node.description}</p>
+              )}
+            </div>
+          </div>
+        )}
 
-        {/* Hover tooltip with expanded info */}
+        {/* Glossy overlay for mobile orb */}
+        {isMobile && (
+          <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.05] to-transparent pointer-events-none" />
+        )}
+
+        {/* Hover tooltip with expanded info (also works on mobile tap/hold) */}
         <AnimatePresence>
-          {showTooltip && !isPlugin && (
+          {showTooltip && (
             <motion.div
               initial={{ opacity: 0, y: 4, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 4, scale: 0.95 }}
-              className="absolute left-1/2 -translate-x-1/2 w-52 p-3 rounded-xl bg-[#05050a]/90 backdrop-blur-xl border border-white/15 shadow-2xl z-50"
+              className="absolute left-1/2 -translate-x-1/2 w-52 p-3 rounded-xl bg-[#05050a]/95 backdrop-blur-2xl border border-white/20 shadow-2xl z-50 pointer-events-none text-left"
               style={{ top: node.y > 50 ? 'auto' : '100%', bottom: node.y > 50 ? '100%' : 'auto', marginTop: node.y > 50 ? undefined : '8px', marginBottom: node.y > 50 ? '8px' : undefined }}
             >
+              <div className="flex items-center gap-2 mb-2">
+                <Icon className="w-3 h-3" style={{ color: node.color }} />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white">{title}</span>
+              </div>
               <p className="text-[10px] text-white/60 leading-relaxed mb-2">{node.description}</p>
               {stat && (
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between border-t border-white/5 pt-2">
                   <span className="text-[9px] uppercase tracking-wider text-white/40">{stat.label}</span>
                   <span className={cn("text-[10px] font-bold", toneTextClass(stat.tone))}>{stat.display}</span>
                 </div>
               )}
-              <p className="text-[8px] text-white/50 mt-2 uppercase tracking-wider">Click to enter →</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -109,6 +153,7 @@ export function GraphView({
   onModuleNavigate, setHoveredNodeId
 }: GraphViewProps) {
   const [showNexusStats, setShowNexusStats] = useState(false);
+  const isMobile = useIsMobile(1024);
   
   // Aggregate stats from core modules for nexus display
   const nexusStats = ['agnes', 'titan', 'ledger']
@@ -261,6 +306,7 @@ export function GraphView({
             stat={moduleStats[node.id]}
             canEnter={moduleAccess[node.id]}
             isHovered={hoveredNodeId === node.id}
+            isMobile={isMobile}
             onClick={() => onModuleNavigate(node.id, node.route)}
             onMouseEnter={() => setHoveredNodeId(node.id)}
             onMouseLeave={() => setHoveredNodeId(null)}

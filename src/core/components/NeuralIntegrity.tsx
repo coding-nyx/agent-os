@@ -30,21 +30,22 @@ export function NeuralIntegrity({ mode, onUpgrade }: NeuralIntegrityProps) {
   const themeColor = themes[mode];
 
   return (
-    <div className="flex flex-col gap-2 w-full max-w-[240px]">
+    <div className="flex flex-col gap-1.5 sm:gap-2 w-full max-w-[240px]">
       <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {status === 'obstructed' ? (
-            <AlertTriangle className="w-3 h-3 text-red-500 animate-pulse" />
+            <AlertTriangle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-red-500 animate-pulse" />
           ) : score > 70 ? (
-            <ShieldCheck className={`w-3 h-3 ${themeColor}`} />
+            <ShieldCheck className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${themeColor}`} />
           ) : (
-            <Zap className="w-3 h-3 text-amber-400" />
+            <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400" />
           )}
-          <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
-            Neural Integrity: <span className={status === 'obstructed' ? 'text-red-500' : 'text-white'}>{label}</span>
+          <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-white/40">
+            <span className="hidden sm:inline">Neural Integrity: </span>
+            <span className={status === 'obstructed' ? 'text-red-500' : 'text-white'}>{label}</span>
           </span>
         </div>
-        <span className="text-[9px] font-bold text-white/40">{Math.round(score)}%</span>
+        <span className="text-[8px] sm:text-[9px] font-bold text-white/40">{Math.round(score)}%</span>
       </div>
       
       <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">

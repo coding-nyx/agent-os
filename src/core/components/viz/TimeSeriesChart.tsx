@@ -115,6 +115,14 @@ export function TimeSeriesChart({
     );
   }
 
+  if (data.length < 2) {
+    return (
+      <div className={cn('flex items-center justify-center', className)} style={{ height }}>
+        <p className="text-sm text-white/40">Add more readings to see a trend</p>
+      </div>
+    );
+  }
+
   return (
     <div className={cn('relative w-full', className)}>
       {/* Header */}

@@ -34,7 +34,7 @@ export function AgnesTelemetryHeader() {
   ];
 
   return (
-    <div className="flex items-center gap-3 sm:gap-6 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/[0.03] border border-white/5 backdrop-blur-xl overflow-x-auto no-scrollbar">
+    <div className="w-full flex items-center gap-3 sm:gap-6 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/[0.03] border border-white/5 backdrop-blur-xl overflow-x-auto no-scrollbar">
       {metrics.map((m, i) => (
         <div key={i} className="flex items-center gap-2.5 group">
           <div className={`p-1.5 rounded-lg ${m.bg} ${m.color} transition-transform group-hover:scale-110`}>

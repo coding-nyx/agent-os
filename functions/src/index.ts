@@ -1,189 +1,96 @@
 import { setGlobalOptions } from "firebase-functions/v2";
-import { onRequest, type Request } from "firebase-functions/v2/https";
+// import { onRequest, type Request } from "firebase-functions/v2/https";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import { getFirestore } from "firebase-admin/firestore";
 import { initializeApp } from "firebase-admin/app";
 import { getMessaging, type SendResponse } from "firebase-admin/messaging";
-import type { Response } from "express";
+// import type { Response } from "express";
 import type { FirestoreEvent, QueryDocumentSnapshot } from "firebase-functions/v2/firestore";
-import { defineSecret } from "firebase-functions/params";
-import vm from "node:vm";
+// import vm from "node:vm";
 
 setGlobalOptions({ maxInstances: 10 });
 
-const tavilySecret = defineSecret("TAVILY_API_KEY");
-
 initializeApp();
 
-/** Single Tavily query — reusable by both the single-query and batch paths. */
-async function tavilySearch(
-  tavilyKey: string,
-  query: string,
-  maxResults: number,
-): Promise<{ query: string; results: unknown[]; answer?: string }> {
-  const response = await fetch("https://api.tavily.com/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      api_key: tavilyKey,
-      query,
-      max_results: maxResults,
-      include_answer: true,
-      include_raw_content: false,
-    }),
-  });
+export { webCrawler } from "./webCrawler";
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`Tavily error (${response.status}): ${text || response.statusText}`);
-  }
-
-  const data = await response.json();
-  return {
-    query,
-    results: Array.isArray(data?.results) ? data.results : [],
-    answer: data?.answer,
-  };
-}
-
-export const scoutWebSearch = onRequest({ cors: true, secrets: [tavilySecret] }, async (req: Request, res: Response) => {
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
-
-  const tavilyKey = tavilySecret.value();
-  if (!tavilyKey) {
-    res.status(500).json({ error: "Tavily API key not configured" });
-    return;
-  }
-
-  // ── Batch path: { queries: string[], maxResults?: number } ───────────────
-  const queriesRaw = req.body?.queries;
-  if (Array.isArray(queriesRaw)) {
-    const maxResults = typeof req.body?.maxResults === "number" ? Math.max(1, Math.min(10, req.body.maxResults)) : 5;
-    const queries: string[] = queriesRaw
-      .filter((q): q is string => typeof q === "string" && q.trim().length > 0)
-      .slice(0, 10); // cap at 10 sub-queries per batch
-
-    if (queries.length === 0) {
-      res.status(400).json({ error: "queries array is empty or contains no valid strings" });
-      return;
-    }
-
-    try {
-      const results = await Promise.allSettled(
-        queries.map((q) => tavilySearch(tavilyKey, q, maxResults)),
-      );
-      res.status(200).json({
-        batch: results.map((r) =>
-          r.status === "fulfilled"
-            ? { ok: true, ...r.value }
-            : { ok: false, error: r.reason?.message ?? "Search failed" },
-        ),
-      });
-    } catch (error) {
-      logger.error("Scout batch web search failure", error);
-      res.status(500).json({ error: "Batch search failed" });
-    }
-    return;
-  }
-
-  // ── Single query path (backward compatible): { query: string, maxResults?: number } ──
-  const query = typeof req.body?.query === "string" ? req.body.query : "";
-  const maxResults = typeof req.body?.maxResults === "number" ? Math.max(1, Math.min(10, req.body.maxResults)) : 5;
-
-  if (!query.trim()) {
-    res.status(400).json({ error: "Missing query or queries" });
-    return;
-  }
-
-  try {
-    const result = await tavilySearch(tavilyKey, query, maxResults);
-    res.status(200).json(result);
-  } catch (error) {
-    logger.error("Scout web search failure", error);
-    res.status(500).json({ error: "Search failed" });
-  }
-});
-
-export const forgeExecute = onRequest({ cors: true }, async (req: Request, res: Response) => {
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
-
-  const code = typeof req.body?.code === "string" ? req.body.code : "";
-  const language = typeof req.body?.language === "string" ? req.body.language : "javascript";
-
-  if (!code.trim()) {
-    res.status(400).json({ error: "Missing code" });
-    return;
-  }
-
-  if (code.length > 20000) {
-    res.status(413).json({ error: "Code payload too large" });
-    return;
-  }
-
-  if (language !== "javascript" && language !== "js") {
-    res.status(400).json({ error: "Only JavaScript execution is supported" });
-    return;
-  }
-
-  const logs: string[] = [];
-  const sandboxConsole = {
-    log: (...args: unknown[]) => {
-      if (logs.length > 200) return;
-      logs.push(args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "));
-    }
-  };
-
-  const sandbox = {
-    console: sandboxConsole,
-    Math,
-    Date,
-    JSON,
-    Array,
-    Object,
-    Number,
-    String,
-    Boolean,
-    RegExp
-  };
-
-  const start = Date.now();
-  try {
-    const script = new vm.Script(code);
-    let result = script.runInNewContext(sandbox, { timeout: 1200 });
-
-    if (result && typeof (result as Promise<unknown>).then === "function") {
-      result = await Promise.race([
-        result as Promise<unknown>,
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Execution timed out")), 1200))
-      ]);
-    }
-
-    const durationMs = Date.now() - start;
-    const resultText = typeof result === "string" ? result : result === undefined ? "" : JSON.stringify(result);
-    res.status(200).json({
-      status: "success",
-      logs,
-      result: resultText,
-      durationMs
-    });
-  } catch (error) {
-    const durationMs = Date.now() - start;
-    const message = error instanceof Error ? error.message : "Execution failed";
-    res.status(200).json({
-      status: "error",
-      logs,
-      error: message,
-      durationMs
-    });
-  }
-});
+// export const forgeExecute = onRequest({ cors: true }, async (req: Request, res: Response) => {
+//   if (req.method !== "POST") {
+//     res.status(405).json({ error: "Method not allowed" });
+//     return;
+//   }
+// 
+//   const code = typeof req.body?.code === "string" ? req.body.code : "";
+//   const language = typeof req.body?.language === "string" ? req.body.language : "javascript";
+// 
+//   if (!code.trim()) {
+//     res.status(400).json({ error: "Missing code" });
+//     return;
+//   }
+// 
+//   if (code.length > 20000) {
+//     res.status(413).json({ error: "Code payload too large" });
+//     return;
+//   }
+// 
+//   if (language !== "javascript" && language !== "js") {
+//     res.status(400).json({ error: "Only JavaScript execution is supported" });
+//     return;
+//   }
+// 
+//   const logs: string[] = [];
+//   const sandboxConsole = {
+//     log: (...args: unknown[]) => {
+//       if (logs.length > 200) return;
+//       logs.push(args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "));
+//     }
+//   };
+// 
+//   const sandbox = {
+//     console: sandboxConsole,
+//     Math,
+//     Date,
+//     JSON,
+//     Array,
+//     Object,
+//     Number,
+//     String,
+//     Boolean,
+//     RegExp
+//   };
+// 
+//   const start = Date.now();
+//   try {
+//     const script = new vm.Script(code);
+//     let result = script.runInNewContext(sandbox, { timeout: 1200 });
+// 
+//     if (result && typeof (result as Promise<unknown>).then === "function") {
+//       result = await Promise.race([
+//         result as Promise<unknown>,
+//         new Promise((_, reject) => setTimeout(() => reject(new Error("Execution timed out")), 1200))
+//       ]);
+//     }
+// 
+//     const durationMs = Date.now() - start;
+//     const resultText = typeof result === "string" ? result : result === undefined ? "" : JSON.stringify(result);
+//     res.status(200).json({
+//       status: "success",
+//       logs,
+//       result: resultText,
+//       durationMs
+//     });
+//   } catch (error) {
+//     const durationMs = Date.now() - start;
+//     const message = error instanceof Error ? error.message : "Execution failed";
+//     res.status(200).json({
+//       status: "error",
+//       logs,
+//       error: message,
+//       durationMs
+//     });
+//   }
+// });
 
 export const bridgeSpineEvents = onDocumentCreated(
   "spine_events/{uid}/events/{eventId}",

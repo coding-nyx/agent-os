@@ -2,50 +2,21 @@
  * scout-digest-service.ts
  *
  * Generates and persists on-demand research digests for Scout.
- * Firestore path: scout_digests/{userId}/items/{digestId}
- *
- * Caps at 10 digests per user (oldest deleted on create).
- * 30-day TTL enforced by a `expiresAt` field (Cloud Function cleanup or client-side filter).
- *
- * Encryption: `sections` is encrypted; `createdAt`, `triggerSource`,
- * `nodeCount`, `sourceCount` are plaintext for querying.
+ * Firestore path: scout_digests/{userId}/digests/{digestId}
  */
 
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { callStructuredLLM } from '@/lib/ai-adapters/call-structured-llm';
+import { CognitiveAgent } from '@/llm-engine/engine/CognitiveAgent';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import type { ScoutProfile } from './scout-knowledge-service';
-import type { SourceEntryDecrypted } from './scout-sources-service';
+import { ScoutDigest, ScoutKnowledgeNode } from '../types';
+import { SourceEntryDecrypted } from './scout-sources-service';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export interface DigestSections {
-  executiveSummary: string;
-  keyThemes: string[];
-  knowledgeGaps: string[];
-  recommendedActions: string[];
-  /** Optional condensed source list narrative */
-  sourceSummary?: string;
-}
-
-export interface ScoutDigest {
-  id: string;
-  userId: string;
-  createdAt: string;
-  expiresAt: string;
-  triggerSource: 'manual' | 'scheduled' | 'deep-research';
-  nodeCount: number;
-  sourceCount: number;
-  /** Encrypted digest content */
-  encryptedData?: string;
-  iv?: string;
-}
-
-export interface ScoutDigestDecrypted extends Omit<ScoutDigest, 'encryptedData' | 'iv'> {
-  sections: DigestSections;
+export interface ScoutDigestDecrypted extends ScoutDigest {
 }
 
 type DigestContext = {
@@ -54,71 +25,37 @@ type DigestContext = {
 };
 
 const MAX_DIGESTS = 10;
-const TTL_DAYS = 30;
 
 // ---------------------------------------------------------------------------
 // Collection path helper
 // ---------------------------------------------------------------------------
 
 function digestsCollection(userId: string): string {
-  return `scout_digests/${userId}/items`;
-}
-
-function addDays(isoDate: string, days: number): string {
-  const d = new Date(isoDate);
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
+  return `scout_digests/${userId}/digests`;
 }
 
 // ---------------------------------------------------------------------------
 // Encrypt / Decrypt helpers
 // ---------------------------------------------------------------------------
 
-async function encryptSections(
-  sections: DigestSections,
+async function encryptDigest(
+  digest: ScoutDigestDecrypted,
   key: CryptoKey,
 ): Promise<{ encryptedData: string; iv: string }> {
-  const result = await encryptWithKey(JSON.stringify(sections), key);
+  const { encryptedData: _ed, iv: _iv, ...payload } = digest;
+  const result = await encryptWithKey(JSON.stringify(payload), key);
   return { encryptedData: result.ciphertext, iv: result.iv };
 }
 
-async function decryptSections(
+async function decryptDigest(
+  id: string,
+  userId: string,
   encryptedData: string,
   iv: string,
   key: CryptoKey,
-): Promise<DigestSections> {
-  const json = await decryptWithKey({ ciphertext: encryptedData, iv }, key);
-  return JSON.parse(json) as DigestSections;
-}
-
-async function decryptDigest(
-  raw: ScoutDigest,
-  key: CryptoKey,
 ): Promise<ScoutDigestDecrypted> {
-  const base = {
-    id: raw.id,
-    userId: raw.userId,
-    createdAt: raw.createdAt,
-    expiresAt: raw.expiresAt,
-    triggerSource: raw.triggerSource,
-    nodeCount: raw.nodeCount,
-    sourceCount: raw.sourceCount,
-  };
-
-  if (raw.encryptedData && raw.iv) {
-    const sections = await decryptSections(raw.encryptedData, raw.iv, key);
-    return { ...base, sections };
-  }
-
-  return {
-    ...base,
-    sections: {
-      executiveSummary: 'Digest content unavailable.',
-      keyThemes: [],
-      knowledgeGaps: [],
-      recommendedActions: [],
-    },
-  };
+  const json = await decryptWithKey({ ciphertext: encryptedData, iv }, key);
+  return { ...JSON.parse(json), id, userId, encryptedData, iv };
 }
 
 // ---------------------------------------------------------------------------
@@ -126,66 +63,71 @@ async function decryptDigest(
 // ---------------------------------------------------------------------------
 
 function buildDigestPrompt(
-  profile: ScoutProfile,
+  interests: string[],
+  nodes: ScoutKnowledgeNode[],
   sources: SourceEntryDecrypted[],
 ): string {
-  const nodes = profile.knowledgeNodes.slice(0, 30);
-  const topSources = sources.slice(0, 20);
-
   const nodesSummary = nodes
+    .slice(0, 30)
     .map(
       (n, i) =>
-        `${i + 1}. [${n.status.toUpperCase()}] ${n.title}: "${n.claim}" (confidence: ${n.confidence.toFixed(2)})`,
+        `${i + 1}. [${n.status.toUpperCase()}] claim: "${n.claim}" (confidence: ${n.confidence.toFixed(2)})`,
     )
     .join('\n');
 
-  const sourcesSummary = topSources
-    .map((s, i) => `${i + 1}. ${s.title} — ${s.domain}`)
+  const sourcesSummary = sources
+    .slice(0, 20)
+    .map((s, i) => `${i + 1}. ${s.title} (${s.domain}) - ${s.snippet?.slice(0, 100)}`)
     .join('\n');
 
-  return `You are a research intelligence assistant generating a structured digest.
+  return `You are a research intelligence assistant generating a structured newsletter digest.
 
-## Research Focus
-${profile.researchFocus.join(', ') || 'General research'}
+## Research Interests
+${interests.join(', ') || 'General research'}
 
-## Knowledge Nodes (${nodes.length} of ${profile.knowledgeNodes.length} shown)
-${nodesSummary || 'No knowledge nodes yet.'}
+## Knowledge Findings
+${nodesSummary || 'No knowledge findings yet.'}
 
-## Saved Sources (${topSources.length} of ${sources.length} shown)
+## Key Sources
 ${sourcesSummary || 'No sources saved yet.'}
 
 Generate a JSON digest with this exact structure:
 {
-  "executiveSummary": "2-3 sentence summary of the overall research state",
-  "keyThemes": ["theme 1", "theme 2", "theme 3"],
-  "knowledgeGaps": ["gap 1", "gap 2"],
-  "recommendedActions": ["action 1", "action 2", "action 3"],
-  "sourceSummary": "1-2 sentence summary of the sources landscape"
+  "periodStart": "ISO Date",
+  "periodEnd": "ISO Date",
+  "summary": {
+    "totalNodes": number,
+    "newNodesThisPeriod": number,
+    "verifiedCount": number,
+    "contestedCount": number
+  },
+  "topClaims": [
+    { "nodeId": "string", "claim": "string", "confidence": number, "evidenceCount": number }
+  ],
+  "trendingInterests": [
+    { "topic": "string", "score": number, "trend": "rising|steady|cooling" }
+  ],
+  "synthesizedContent": "2-3 paragraphs of Markdown synthesized from the findings, styled like a professional intelligence newsletter."
 }
 
-Be specific and actionable. Reference actual topics from the research focus and nodes.
-Respond with JSON only — no preamble, no markdown.`;
+Respond with JSON only.`;
 }
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * Generate a new digest from the current research profile and sources.
- * Emits Spine events for UI state management.
- * Saves to Firestore, enforcing the 10-digest cap.
- */
 export async function generateDigest(
-  profile: ScoutProfile,
+  interests: string[],
+  nodes: ScoutKnowledgeNode[],
   sources: SourceEntryDecrypted[],
-  triggerSource: ScoutDigest['triggerSource'],
+  triggerSource: ScoutDigest['generationType'],
   { userId, encryptionKey }: DigestContext,
 ): Promise<ScoutDigestDecrypted | null> {
   if (!userId || !encryptionKey) return null;
 
-  Spine.publish({
-    type: 'DIGEST_GENERATION_STARTED',
+  Spine.emit({
+    type: 'DIGEST_GENERATION_STARTED' as any,
     source: 'scout',
     domain: 'C',
     priority: 'info',
@@ -193,75 +135,81 @@ export async function generateDigest(
   });
 
   try {
-    const prompt = buildDigestPrompt(profile, sources);
+    const prompt = buildDigestPrompt(interests, nodes, sources);
 
-    const { data: sections } = await callStructuredLLM<DigestSections>(prompt, {
-      systemPrompt:
-        'You are a precise research intelligence assistant. ' +
-        'Always respond with valid JSON matching the requested schema exactly.',
+    // Initialize engine agent manually for one-off service call
+    const openrouterKey = localStorage.getItem('VITE_OPENROUTER_API_KEY') || (import.meta.env.VITE_OPENROUTER_API_KEY as string);
+    const agent = new CognitiveAgent({ openrouterKey });
+
+    const response = await agent.generateJSON<any>(prompt, {
+      systemPrompt: 'You are a professional research intelligence analyst. Respond with valid JSON matching the schema.',
       temperature: 0.4,
-      maxOutputTokens: 1024,
     });
+
+    if (!response) throw new Error('Empty response from intelligence engine');
+
+    // Robust parsing: handle if model wrapped the digest object
+    let rawDigest = response;
+    if (response && typeof response === 'object' && !response.synthesizedContent && !response.topClaims) {
+      const possibleDigest = response.digest || response.newsletter || response.report || response.data;
+      if (possibleDigest && typeof possibleDigest === 'object') {
+        rawDigest = possibleDigest;
+      } else {
+        // Check if ANY value in the object looks like a digest (has synthesizedContent or topClaims)
+        const values = Object.values(response);
+        const foundDigest = values.find(v => v && typeof v === 'object' && ((v as any).synthesizedContent || (v as any).topClaims));
+        if (foundDigest) rawDigest = foundDigest;
+      }
+    }
 
     const now = new Date().toISOString();
     const id = `digest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    const { encryptedData, iv } = await encryptSections(sections, encryptionKey);
-
-    const digest: ScoutDigest = {
+    const digest: ScoutDigestDecrypted = {
+      ...rawDigest,
       id,
       userId,
-      createdAt: now,
-      expiresAt: addDays(now, TTL_DAYS),
-      triggerSource,
-      nodeCount: profile.knowledgeNodes.length,
-      sourceCount: sources.length,
-      encryptedData,
-      iv,
+      generatedAt: now,
+      generationType: triggerSource,
     };
 
-    await saveDigest(digest, { userId, encryptionKey });
+    const { encryptedData, iv } = await encryptDigest(digest, encryptionKey);
 
-    Spine.publish({
-      type: 'DIGEST_GENERATED',
+    await saveDigest({ ...digest, encryptedData, iv }, { userId, encryptionKey });
+
+    Spine.emit({
+      type: 'DIGEST_GENERATED' as any,
       source: 'scout',
       domain: 'C',
       priority: 'info',
-      data: { digestId: id, createdAt: now },
+      data: { digestId: id, generatedAt: now },
     });
 
-    return { ...digest, sections };
+    return digest;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Digest generation failed';
-
-    Spine.publish({
-      type: 'DIGEST_GENERATION_FAILED',
+    console.error('[ScoutDigestService] Failed to generate digest:', error);
+    Spine.emit({
+      type: 'DIGEST_GENERATION_FAILED' as any,
       source: 'scout',
       domain: 'C',
       priority: 'alert',
-      data: { error: message },
+      data: { error: String(error) },
     });
-
-    throw error;
+    return null;
   }
 }
 
-/**
- * Persist a digest to Firestore, enforcing the 10-digest cap.
- * Deletes the oldest digest(s) when the cap would be exceeded.
- */
 export async function saveDigest(
-  digest: ScoutDigest,
-  { userId, encryptionKey }: DigestContext,
+  digest: any,
+  { userId }: DigestContext,
 ): Promise<void> {
-  if (!userId || !encryptionKey) return;
-
+  if (!userId) return;
   const dataLayer = getNexusDataLayer();
   const col = digestsCollection(userId);
 
-  const existing = await dataLayer.listDocuments<ScoutDigest>(col);
+  const existing = await dataLayer.listDocuments<any>(col);
   if (existing.length >= MAX_DIGESTS) {
-    const sorted = [...existing].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const sorted = [...existing].sort((a, b) => (a.generatedAt || a.createdAt).localeCompare(b.generatedAt || b.createdAt));
     const toDelete = sorted.slice(0, existing.length - MAX_DIGESTS + 1);
     await Promise.all(toDelete.map((d) => dataLayer.deleteDocument(col, d.id)));
   }
@@ -269,39 +217,29 @@ export async function saveDigest(
   await dataLayer.setDocument(col, digest.id, digest);
 }
 
-/** Load all non-expired digests for the user, decrypted, newest first. */
 export async function loadDigests(
   { userId, encryptionKey }: DigestContext,
 ): Promise<ScoutDigestDecrypted[]> {
   if (!userId || !encryptionKey) return [];
-
   const dataLayer = getNexusDataLayer();
-
   try {
-    const docs = await dataLayer.listDocuments<ScoutDigest>(digestsCollection(userId));
+    const docs = await dataLayer.listDocuments<any>(digestsCollection(userId));
     if (!docs || docs.length === 0) return [];
 
-    const now = new Date().toISOString();
-    const valid = docs.filter((d) => !d.expiresAt || d.expiresAt > now);
-
     const decrypted = await Promise.allSettled(
-      valid.map((d) => decryptDigest(d, encryptionKey)),
+      docs.map((d) => decryptDigest(d.id, userId, d.encryptedData, d.iv, encryptionKey)),
     );
 
     return decrypted
       .filter((r): r is PromiseFulfilledResult<ScoutDigestDecrypted> => r.status === 'fulfilled')
       .map((r) => r.value)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      .sort((a, b) => b.generatedAt.localeCompare(a.generatedAt));
   } catch {
     return [];
   }
 }
 
-/** Delete a specific digest. */
-export async function deleteDigest(
-  id: string,
-  { userId }: DigestContext,
-): Promise<void> {
+export async function deleteDigest(id: string, { userId }: DigestContext): Promise<void> {
   if (!userId) return;
   const dataLayer = getNexusDataLayer();
   await dataLayer.deleteDocument(digestsCollection(userId), id);

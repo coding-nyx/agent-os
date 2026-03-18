@@ -9,6 +9,9 @@ import { SomaSnapshotWidget } from './components/SomaSnapshotWidget';
 import { ClearanceBanner } from './components/ClearanceBanner';
 import { ProgressTab } from './components/ProgressTab';
 import { PRBoard } from './components/PRBoard';
+import { BodyWeightTracker } from './components/BodyWeightTracker';
+import { CardioLogger } from './components/CardioLogger';
+import { AnalyticsTab } from './components/AnalyticsTab';
 import { TrainingCalendar } from './components/TrainingCalendar';
 import { QuickLogDrawer } from './components/QuickLogDrawer';
 import type { QuickLogPayload } from './components/QuickLogDrawer';
@@ -23,7 +26,7 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
-import { TitanProfile, Routine, Exercise, WorkoutSession, PersonalRecord, SomaProfile, ExerciseLog, SleepEntry, CycleEntry } from '@/lib/types';
+import { TitanProfile, Routine, Exercise, WorkoutSession, PersonalRecord, SomaProfile, ExerciseLog, SleepEntry, CycleEntry, BodyWeightEntry, CardioSession, CustomField } from '@/lib/types';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { buildTitanSessionPrompt } from './prompts/titan-session-prompt';
 import { loadTitanProfile, saveTitanProfile, subscribeTitanProfile, syncGuestTitanProfileToUser } from './services/titan-profile-service';
@@ -32,7 +35,7 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
-import { Activity, BarChart3, RefreshCw, Zap, X, Plus, Moon, ShieldAlert } from 'lucide-react';
+import { Activity, BarChart3, RefreshCw, Zap, X, Plus, Moon, ShieldAlert, TrendingUp, Scale, Dumbbell } from 'lucide-react';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
@@ -47,13 +50,13 @@ import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { titanDiagnosisSpec } from './diagnosis/titan-diagnosis-spec';
 import { TITAN_PERSONA } from './personas';
 
-type TitanTab = 'training' | 'progress' | 'cycles' | 'sleep';
+type TitanTab = 'training' | 'analytics' | 'progress' | 'cycles' | 'sleep';
 
 registerDiagnosisSpec(titanDiagnosisSpec);
 
 function resolveInitialTab(searchParams: URLSearchParams): TitanTab {
   const param = searchParams.get('tab');
-  if (param === 'training' || param === 'progress' || param === 'cycles' || param === 'sleep') return param;
+  if (param === 'training' || param === 'analytics' || param === 'progress' || param === 'cycles' || param === 'sleep') return param;
   return 'training';
 }
 
@@ -125,8 +128,9 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       mode: 'training',
       recoveryScore: globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null,
       hormonalContext: globalSoul?.crossFunctionalState?.biological?.hormonalContext ?? null,
+      somaProfile,
     });
-  }, [profile, globalSoul?.crossFunctionalState?.biological?.recoveryScore, globalSoul?.crossFunctionalState?.biological?.hormonalContext]);
+  }, [profile, globalSoul?.crossFunctionalState?.biological?.recoveryScore, globalSoul?.crossFunctionalState?.biological?.hormonalContext, somaProfile]);
 
   const ai = useModuleAI({
     moduleId: 'titan',
@@ -199,6 +203,34 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       `[System] Financial stress detected at ${stressLevel}/10. ` +
       `This is a cortisol contributor that compresses recovery capacity. ` +
       `Please factor this into today's training intensity and recovery recommendations.`
+    );
+  }, [profile?.onboardingComplete, ai.handleSendMessage]));
+
+  // Atlas recovery day scheduled → Titan reduces load for that window
+  useSpineEvent('REDUCE_TRAINING_LOAD', useCallback((event) => {
+    if (!profile?.onboardingComplete) return;
+    const eventKey = `reduce-load-${event.id}`;
+    if (handledSpineEventsRef.current.has(eventKey)) return;
+    handledSpineEventsRef.current.add(eventKey);
+    const reason = event.data?.reason as string | undefined;
+    const capacity = event.data?.capacityPercent as number | undefined;
+    const contextMsg = reason === 'atlas_recovery_day'
+      ? `Atlas has scheduled a recovery day. Training capacity is capped at ${capacity ?? 50}% today.`
+      : reason === 'high_rpe_session'
+      ? `Your last session had very high RPE. Your next session should be at ${capacity ?? 60}% capacity — prioritise technique, mobility, or active recovery.`
+      : `A load reduction signal was received (${reason ?? 'system'}, ${capacity ?? 60}% capacity). Recommend adjusting today's training accordingly.`;
+    ai.handleSendMessage(`[System] ${contextMsg} Please update my plan for today or tomorrow.`);
+  }, [profile?.onboardingComplete, ai.handleSendMessage]));
+
+  // Recovery window confirmed — positive signal to acknowledge and optimise
+  useSpineEvent('RECOVERY_AVAILABLE', useCallback((event) => {
+    if (!profile?.onboardingComplete) return;
+    const eventKey = `recovery-available-${event.id}`;
+    if (handledSpineEventsRef.current.has(eventKey)) return;
+    handledSpineEventsRef.current.add(eventKey);
+    ai.handleSendMessage(
+      '[System] Recovery metrics have improved — a performance window is open. ' +
+      'Based on my current readiness, what high-quality training session do you recommend for today?'
     );
   }, [profile?.onboardingComplete, ai.handleSendMessage]));
 
@@ -555,11 +587,47 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     }
   }, [profile, encryptionKey, user, pendingLogEntries]);
 
+  // ── Direct-write handlers for new tracking features ───────────────────────
+  const handleDirectSaveBodyWeight = useCallback(async (entry: BodyWeightEntry) => {
+    if (!profile || !encryptionKey || !user) return;
+    const updated: TitanProfile = {
+      ...profile,
+      bodyWeightLog: [entry, ...(profile.bodyWeightLog ?? [])].slice(0, 1000),
+      updatedAt: new Date().toISOString(),
+    };
+    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+  }, [profile, encryptionKey, user]);
+
+  const handleDirectSaveCardio = useCallback(async (session: CardioSession) => {
+    if (!profile || !encryptionKey || !user) return;
+    const updated: TitanProfile = {
+      ...profile,
+      cardioLog: [session, ...(profile.cardioLog ?? [])].slice(0, 500),
+      updatedAt: new Date().toISOString(),
+    };
+    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+  }, [profile, encryptionKey, user]);
+
+  const handleDirectCreateMacros = useCallback(async (fields: CustomField[]) => {
+    if (!profile || !encryptionKey || !user) return;
+    const existing = profile.customFields ?? [];
+    const existingNames = new Set(existing.map(f => f.name.toLowerCase()));
+    const newFields = fields.filter(f => !existingNames.has(f.name.toLowerCase()));
+    if (newFields.length === 0) return;
+    const updated: TitanProfile = {
+      ...profile,
+      customFields: [...existing, ...newFields].slice(0, 20),
+      updatedAt: new Date().toISOString(),
+    };
+    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+  }, [profile, encryptionKey, user]);
+
   // Tab data
   const activeCycleCount = (profile?.cycles ?? []).filter(c => c.status === 'active').length;
 
   const tabs: NeuralTabItem<TitanTab>[] = [
     { id: 'training', label: 'Training', icon: Activity },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'progress', label: 'Progress', icon: BarChart3, badge: (profile?.personalRecords ? Object.keys(profile.personalRecords).length : undefined) },
     { id: 'sleep', label: 'Sleep', icon: Moon, badge: (profile?.sleepLog?.length) || undefined },
     { id: 'cycles', label: 'Cycles', icon: RefreshCw, badge: activeCycleCount || undefined },
@@ -567,6 +635,9 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'analytics':
+        return <AnalyticsTab profile={profile} />;
+
       case 'progress':
         return (
           <div className="px-4 md:px-8 pb-8 pt-4 space-y-6">
@@ -577,6 +648,20 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             <ProgressTab
               profile={profile}
               encryptionKey={encryptionKey}
+            />
+            {/* Body composition tracker — below session history */}
+            <BodyWeightTracker
+              bodyWeightLog={profile?.bodyWeightLog ?? []}
+              onAnalyze={directWrite ? undefined : (prompt) => ai.handleSendMessage(prompt)}
+              directWriteMode={directWrite}
+              onDirectSave={handleDirectSaveBodyWeight}
+            />
+            {/* Cardio tracker */}
+            <CardioLogger
+              cardioLog={profile?.cardioLog ?? []}
+              onAnalyze={directWrite ? undefined : (prompt) => ai.handleSendMessage(prompt)}
+              directWriteMode={directWrite}
+              onDirectSave={handleDirectSaveCardio}
             />
           </div>
         );
@@ -656,17 +741,28 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               {/* Quick Log CTA — prominent button to open drawer for today */}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-white/40 uppercase tracking-wider">This Week</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuickLogDate(new Date());
-                    setIsQuickLogOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 text-xs font-semibold transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Quick Log
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('progress')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 text-xs font-semibold transition-colors"
+                    title="Log a cardio session"
+                  >
+                    <Dumbbell className="w-3.5 h-3.5" />
+                    Cardio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickLogDate(new Date());
+                      setIsQuickLogOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 text-xs font-semibold transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Quick Log
+                  </button>
+                </div>
               </div>
               <TrainingCalendar
                 workoutLogs={profile?.workoutLogs ?? []}
@@ -802,6 +898,9 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                 <CustomFieldManager
                   currentValues={profile.nutrition || {}}
                   onSubmitForApproval={handleSubmitCustomFieldsForApproval}
+                  customFields={profile.customFields}
+                  onDirectCreateMacros={directWrite ? handleDirectCreateMacros : undefined}
+                  onAICreateMacros={directWrite ? undefined : ai.handleSendMessage}
                 />
               </div>
             )}

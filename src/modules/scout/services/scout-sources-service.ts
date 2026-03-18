@@ -2,47 +2,19 @@
  * scout-sources-service.ts
  *
  * Manages the Scout Source Library — per-user collection of saved research sources.
- * Firestore path: scout_sources/{userId}/items/{sourceId}
- *
- * Encryption model: the sensitive `metadata` field (title, snippet, tags) is
- * encrypted with the user's module key. The `url`, `domain`, `savedAt`, `nodeId`,
- * `isStarred`, and `isArchived` fields are plaintext for querying.
+ * Firestore path: scout_sources/{userId}/sources/{sourceId}
  */
 
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
+import { SourceEntry } from '../types';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export interface SourceEntry {
-  id: string;
-  userId: string;
-  /** Links this source to a knowledge node */
-  nodeId?: string;
-  url: string;
-  /** URL normalized for deduplication (lowercase, no trailing slash, no UTM params) */
-  normalizedUrl: string;
-  /** Plaintext — used for display without decryption */
-  domain: string;
-  /** ISO 8601 */
-  savedAt: string;
-  /** ISO 8601, set when user marks as read */
-  readAt?: string;
-  isStarred: boolean;
-  /** Archived sources are hidden but not deleted */
-  isArchived: boolean;
-  /** Encrypted metadata */
-  encryptedData?: string;
-  iv?: string;
-}
-
 /** Decrypted view — what the app works with */
 export interface SourceEntryDecrypted extends Omit<SourceEntry, 'encryptedData' | 'iv'> {
-  title: string;
-  snippet?: string;
-  tags: string[];
 }
 
 /** Input when adding a source */
@@ -51,9 +23,12 @@ export interface AddSourceInput {
   title: string;
   domain?: string;
   snippet?: string;
+  imageUrl?: string;
+  favicon?: string;
   tags?: string[];
   nodeId?: string;
   savedAt?: string;
+  discoveredVia?: SourceEntry['discoveredVia'];
 }
 
 type SourceContext = {
@@ -97,6 +72,8 @@ export function extractDomain(rawUrl: string): string {
 interface SourceMetadata {
   title: string;
   snippet?: string;
+  imageUrl?: string;
+  favicon?: string;
   tags: string[];
 }
 
@@ -118,26 +95,34 @@ async function decryptMetadata(
 }
 
 async function decryptSource(
-  raw: SourceEntry,
+  raw: any,
   key: CryptoKey,
 ): Promise<SourceEntryDecrypted> {
-  const base = {
+  const base: any = {
     id: raw.id,
-    userId: raw.userId,
-    nodeId: raw.nodeId,
     url: raw.url,
     normalizedUrl: raw.normalizedUrl,
     domain: raw.domain,
-    savedAt: raw.savedAt,
-    readAt: raw.readAt,
-    isStarred: raw.isStarred,
-    isArchived: raw.isArchived,
+    addedAt: raw.addedAt || raw.savedAt,
+    lastAccessedAt: raw.lastAccessedAt,
+    discoveredVia: raw.discoveredVia || 'search',
+    readStatus: raw.readStatus || (raw.readAt ? 'read' : 'unread'),
+    starred: raw.starred ?? raw.isStarred ?? false,
+    archived: raw.archived ?? raw.isArchived ?? false,
+    citingNodeIds: raw.citingNodeIds || (raw.nodeId ? [raw.nodeId] : []),
   };
 
   if (raw.encryptedData && raw.iv) {
     try {
       const meta = await decryptMetadata(raw.encryptedData, raw.iv, key);
-      return { ...base, title: meta.title, snippet: meta.snippet, tags: meta.tags ?? [] };
+      return { 
+        ...base, 
+        title: meta.title, 
+        snippet: meta.snippet, 
+        imageUrl: meta.imageUrl,
+        favicon: meta.favicon,
+        tags: meta.tags ?? [] 
+      };
     } catch {
       return { ...base, title: raw.domain || raw.url, snippet: undefined, tags: [] };
     }
@@ -151,7 +136,7 @@ async function decryptSource(
 // ---------------------------------------------------------------------------
 
 function sourcesCollection(userId: string): string {
-  return `scout_sources/${userId}/items`;
+  return `scout_sources/${userId}/sources`;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,7 +145,6 @@ function sourcesCollection(userId: string): string {
 
 /**
  * Add a new source to the library.
- * Deduplicates by normalizedUrl — silently returns the existing source if already present.
  */
 export async function addSource(
   input: AddSourceInput,
@@ -176,28 +160,36 @@ export async function addSource(
 
   // Check for duplicate
   const existing = await loadSources({ userId, encryptionKey });
-  const dup = existing.find((s) => s.normalizedUrl === normalizedUrl && !s.isArchived);
-  if (dup) return dup;
+  const dup = existing.find((s) => s.normalizedUrl === normalizedUrl);
+  if (dup) {
+    if (input.nodeId && !dup.citingNodeIds.includes(input.nodeId)) {
+      await updateSource(dup.id, { citingNodeIds: [...dup.citingNodeIds, input.nodeId] }, { userId, encryptionKey });
+    }
+    return dup;
+  }
 
   const id = `src_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   const meta: SourceMetadata = {
     title: input.title,
     snippet: input.snippet,
+    imageUrl: input.imageUrl,
+    favicon: input.favicon,
     tags: input.tags ?? [],
   };
   const { encryptedData, iv } = await encryptMetadata(meta, encryptionKey);
 
-  const entry: SourceEntry = {
+  const entry: any = {
     id,
-    userId,
-    nodeId: input.nodeId,
     url: input.url,
     normalizedUrl,
     domain,
-    savedAt: now,
-    isStarred: false,
-    isArchived: false,
+    addedAt: now,
+    discoveredVia: input.discoveredVia || 'search',
+    readStatus: 'unread',
+    starred: false,
+    archived: false,
+    citingNodeIds: input.nodeId ? [input.nodeId] : [],
     encryptedData,
     iv,
   };
@@ -215,19 +207,19 @@ export async function loadSources(
   const dataLayer = getNexusDataLayer();
 
   try {
-    const docs = await dataLayer.listDocuments<SourceEntry>(sourcesCollection(userId));
+    const docs = await dataLayer.listDocuments<any>(sourcesCollection(userId));
     if (!docs || docs.length === 0) return [];
 
     const decrypted = await Promise.allSettled(
       docs
-        .filter((d) => !d.isArchived)
+        .filter((d) => !d.archived && !d.isArchived)
         .map((d) => decryptSource(d, encryptionKey)),
     );
 
     return decrypted
       .filter((r): r is PromiseFulfilledResult<SourceEntryDecrypted> => r.status === 'fulfilled')
       .map((r) => r.value)
-      .sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+      .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
   } catch {
     return [];
   }
@@ -236,20 +228,20 @@ export async function loadSources(
 /** Update mutable fields on an existing source. */
 export async function updateSource(
   id: string,
-  patch: Partial<Pick<SourceEntryDecrypted, 'isStarred' | 'readAt' | 'nodeId' | 'tags' | 'title' | 'snippet'>>,
+  patch: Partial<SourceEntryDecrypted>,
   { userId, encryptionKey }: SourceContext,
 ): Promise<void> {
   if (!userId || !encryptionKey) return;
 
   const dataLayer = getNexusDataLayer();
   const col = sourcesCollection(userId);
-  const raw = await dataLayer.getDocument<SourceEntry>(col, id);
+  const raw = await dataLayer.getDocument<any>(col, id);
   if (!raw) return;
 
   let encryptedData = raw.encryptedData;
   let iv = raw.iv;
 
-  if (patch.title !== undefined || patch.snippet !== undefined || patch.tags !== undefined) {
+  if (patch.title !== undefined || patch.snippet !== undefined || patch.tags !== undefined || patch.imageUrl !== undefined || patch.favicon !== undefined) {
     const currentMeta: SourceMetadata = raw.encryptedData && raw.iv
       ? await decryptMetadata(raw.encryptedData, raw.iv, encryptionKey).catch(() => ({
           title: '',
@@ -261,6 +253,8 @@ export async function updateSource(
     const updatedMeta: SourceMetadata = {
       title: patch.title ?? currentMeta.title,
       snippet: patch.snippet !== undefined ? patch.snippet : currentMeta.snippet,
+      imageUrl: patch.imageUrl !== undefined ? patch.imageUrl : currentMeta.imageUrl,
+      favicon: patch.favicon !== undefined ? patch.favicon : currentMeta.favicon,
       tags: patch.tags !== undefined ? patch.tags : currentMeta.tags,
     };
 
@@ -269,11 +263,13 @@ export async function updateSource(
     iv = encrypted.iv;
   }
 
-  const updated: SourceEntry = {
+  const updated: any = {
     ...raw,
-    isStarred: patch.isStarred !== undefined ? patch.isStarred : raw.isStarred,
-    readAt: patch.readAt !== undefined ? patch.readAt : raw.readAt,
-    nodeId: patch.nodeId !== undefined ? patch.nodeId : raw.nodeId,
+    readStatus: patch.readStatus !== undefined ? patch.readStatus : (raw.readStatus || (raw.readAt ? 'read' : 'unread')),
+    starred: patch.starred !== undefined ? patch.starred : (raw.starred ?? raw.isStarred ?? false),
+    archived: patch.archived !== undefined ? patch.archived : (raw.archived ?? raw.isArchived ?? false),
+    citingNodeIds: patch.citingNodeIds !== undefined ? patch.citingNodeIds : (raw.citingNodeIds || (raw.nodeId ? [raw.nodeId] : [])),
+    lastAccessedAt: patch.lastAccessedAt !== undefined ? patch.lastAccessedAt : raw.lastAccessedAt,
     encryptedData,
     iv,
   };
@@ -281,7 +277,7 @@ export async function updateSource(
   await dataLayer.setDocument(col, id, updated);
 }
 
-/** Soft-delete: set isArchived = true. */
+/** Soft-delete: set archived = true. */
 export async function archiveSource(
   id: string,
   { userId }: SourceContext,
@@ -289,12 +285,12 @@ export async function archiveSource(
   if (!userId) return;
   const dataLayer = getNexusDataLayer();
   const col = sourcesCollection(userId);
-  const raw = await dataLayer.getDocument<SourceEntry>(col, id);
+  const raw = await dataLayer.getDocument<any>(col, id);
   if (!raw) return;
-  await dataLayer.setDocument(col, id, { ...raw, isArchived: true });
+  await dataLayer.setDocument(col, id, { ...raw, archived: true });
 }
 
-/** Client-side text search over decrypted sources (title + domain + snippet + tags). */
+/** Client-side text search over decrypted sources. */
 export function filterSources(
   sources: SourceEntryDecrypted[],
   query: string,
@@ -309,13 +305,3 @@ export function filterSources(
       s.tags.some((t) => t.toLowerCase().includes(q)),
   );
 }
-
-/** Filter sources by knowledge node ID. */
-export function getSourcesByNode(
-  sources: SourceEntryDecrypted[],
-  nodeId: string,
-): SourceEntryDecrypted[] {
-  return sources.filter((s) => s.nodeId === nodeId);
-}
-
-

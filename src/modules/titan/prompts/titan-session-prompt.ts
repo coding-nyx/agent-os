@@ -1,4 +1,4 @@
-import { Routine, TitanProfile, BiomarkerRecord, ClearanceRecord, LabSummaryRecord, SleepEntry, CycleEntry, WorkoutSession } from '@/lib/types';
+import { Routine, TitanProfile, BiomarkerRecord, ClearanceRecord, LabSummaryRecord, SleepEntry, CycleEntry, WorkoutSession, SomaProfile } from '@/lib/types';
 import type { ContextPolicy } from '@/lib/types';
 import { SchemaRegistry } from '@/lib/schema-registry';
 import { serializeSomaExtensionFields, SOMA_MEDICAL_DISCLAIMER } from '@/modules/soma/prompts/soma-prompt-builder';
@@ -10,6 +10,7 @@ interface TitanSessionPromptOptions {
   mode?: TitanSessionMode;
   recoveryScore?: number | null;
   hormonalContext?: string | null;
+  somaProfile?: SomaProfile | null;
 }
 
 // ============================================================================
@@ -376,6 +377,49 @@ Allergies: ${profile.allergies?.length ? profile.allergies.join(', ') : 'None re
 - For emergencies or acute symptoms, instruct immediate local emergency care.`;
 }
 
+/**
+ * Build a compact [MEDICAL CONTEXT] block from SomaProfile data.
+ * Injected into Titan's prompt so it has awareness of the user's medical state
+ * without duplicating Soma's full domain.
+ */
+function buildSomaMedicalBridge(somaProfile: SomaProfile): string {
+  const conditions = somaProfile.knownConditions?.length
+    ? somaProfile.knownConditions.join(', ')
+    : 'None reported';
+  const medications = somaProfile.medications?.length
+    ? somaProfile.medications.join(', ')
+    : 'None reported';
+  const allergies = somaProfile.allergies?.length
+    ? somaProfile.allergies.join(', ')
+    : 'None reported';
+
+  const activeDenied = (somaProfile.clearances ?? []).filter(
+    c => c.status === 'denied' || c.status === 'conditional'
+  );
+  const clearanceLines = activeDenied.length > 0
+    ? activeDenied.map(c => `- ${c.activity}: ${c.status.toUpperCase()}${c.reason ? ` — ${c.reason}` : ''}`).join('\n')
+    : 'No active restrictions';
+
+  const readiness = somaProfile.readinessScore != null
+    ? `${somaProfile.readinessScore}/100`
+    : 'Not computed';
+
+  return `
+
+[MEDICAL CONTEXT — SOMA]
+${SOMA_MEDICAL_DISCLAIMER}
+
+Known Conditions: ${conditions}
+Current Medications: ${medications}
+Allergies: ${allergies}
+Soma Readiness Score: ${readiness}
+
+Active Clearance Restrictions:
+${clearanceLines}
+
+You MUST factor all medical context into workout programming and advice.`;
+}
+
 export function buildTitanSessionPrompt(
   profile: TitanProfile,
   options: TitanSessionPromptOptions = {}
@@ -402,6 +446,8 @@ You maintain a persistent neural link — you do NOT lose memory between session
     ? buildMedicalMode(profile)
     : buildTrainingMode(profile, options);
 
+  const somaBlock = options.somaProfile ? buildSomaMedicalBridge(options.somaProfile) : '';
+
   const guidelines = `[GUIDELINES]
 - Start every response with <thought> to assess context before responding.
 - Be clinical, direct, and data-driven. Ask concise follow-ups.
@@ -410,7 +456,7 @@ You maintain a persistent neural link — you do NOT lose memory between session
 - Even when emitting an action, you MUST provide a concise public response summarizing your decision or the action taken for the user.
 - Do NOT output raw tool call envelopes.`;
 
-  return `${formatProtocol}\n\n${identity}\n\n${modeBlock}\n\n${profileContext}\n\n${guidelines}`.trim();
+  return `${formatProtocol}\n\n${identity}\n\n${modeBlock}\n\n${profileContext}${somaBlock}\n\n${guidelines}`.trim();
 }
 
 // ============================================================================

@@ -28,7 +28,9 @@ import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useSchemaRegistry } from '@/lib/hooks/use-schema-registry';
 import { AtlasOnboarding } from './onboarding/AtlasOnboarding';
+import { PostOnboardingWelcome, hasSeenWelcome, markWelcomeSeen } from './components/PostOnboardingWelcome';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import {
   loadJournalEntry,
   saveJournalEntry,
@@ -66,6 +68,9 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
   const [activeView, setActiveView] = useState<any>('today');
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [weeklyReviewPending, setWeeklyReviewPending] = useState<boolean>(false);
+  const [showWelcomeCard, setShowWelcomeCard] = useState<boolean>(() =>
+    !!(profile?.onboardingComplete && !hasSeenWelcome(user?.uid))
+  );
   // S9-007: Morning / Evening intelligence cadence — driven by Spine events.
   const [showMorningBrief, setShowMorningBrief] = useState(false);
   const [showEveningCheckin, setShowEveningCheckin] = useState(false);
@@ -182,6 +187,17 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       ]);
     }
   }, [profile?.onboardingComplete, ai.messages.length, ai.isProcessing, ai.streamingText, agentAlias, ai.setMessages]);
+
+  // Consume any pending Nexus handoff (e.g. "plan your week" delegated from Nexus).
+  // Runs once after AI is ready and profile is loaded.
+  useEffect(() => {
+    if (!profile?.onboardingComplete || ai.isProcessing) return;
+    const handoff = NexusHandoffService.consume('atlas');
+    if (handoff?.content) {
+      ai.handleSendMessage(handoff.content);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.onboardingComplete]);
 
   // Extension field management via SchemaRegistry
   const {
@@ -504,9 +520,35 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
         )
       }
     >
-      <EnhancedAtlasDashboard
-        soul={globalSoul}
-        profile={profile}
+      <>
+        {showWelcomeCard && profile && (
+          <PostOnboardingWelcome
+            profile={profile}
+            userId={user?.uid}
+            onDismiss={() => {
+              markWelcomeSeen(user?.uid);
+              setShowWelcomeCard(false);
+            }}
+            onLogEnergy={() => {
+              markWelcomeSeen(user?.uid);
+              setShowWelcomeCard(false);
+              setActiveTab('dashboard');
+            }}
+            onAddHabit={() => {
+              markWelcomeSeen(user?.uid);
+              setShowWelcomeCard(false);
+              setActiveTab('routines');
+            }}
+            onCreateGoal={() => {
+              markWelcomeSeen(user?.uid);
+              setShowWelcomeCard(false);
+              setActiveTab('backlog');
+            }}
+          />
+        )}
+        <EnhancedAtlasDashboard
+          soul={globalSoul}
+          profile={profile}
         isLocked={isLocked}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -542,7 +584,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
         eveningCheckinVisible={showEveningCheckin}
         onEveningCheckinDismiss={handleEveningCheckinDismiss}
         preferenceMode={profile?.preferenceMode ?? 'conversational'}
-        onTogglePreferenceMode={() => {
+          onTogglePreferenceMode={() => {
           if (!profile) return;
           const next: AtlasProfile = {
             ...profile,
@@ -551,7 +593,8 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
           };
           persistUpdate(next);
         }}
-      />
+        />
+      </>
     </SingleAgentLayout>
   );
 }

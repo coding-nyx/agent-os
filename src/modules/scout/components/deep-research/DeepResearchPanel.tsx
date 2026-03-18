@@ -1,7 +1,10 @@
 /**
  * DeepResearchPanel.tsx
  *
- * Portaled overlay for the multi-step deep research workflow.
+ * Right-side slide-over for the multi-step deep research workflow.
+ * Replaces the old centered modal (max-w-2xl max-h-[85vh]) with a full-height
+ * slide-over that gives each workflow step room to breathe.
+ *
  * States: form → reviewing → searching → synthesizing → complete
  */
 
@@ -140,50 +143,72 @@ export function DeepResearchPanel({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div
+      className="fixed inset-0 z-50 flex"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Deep Research Panel"
+    >
+      {/* Backdrop — click to close (with in-progress guard) */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={handleClose}
+        aria-hidden="true"
+      />
+
+      {/* Slide-over panel — full height, right-anchored.
+           Mobile: full width.  md+: fixed 600px.  lg+: 680px.
+           Slides in from the right so the user keeps spatial context of the
+           research workspace behind it.                                        */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-2xl bg-[#0a0c11] border border-white/10 rounded-2xl flex flex-col max-h-[85vh] overflow-hidden"
+        initial={{ opacity: 0, x: '100%' }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: '100%' }}
+        transition={{ type: 'spring', stiffness: 320, damping: 32, mass: 0.8 }}
+        className="relative ml-auto w-full md:w-[600px] lg:w-[680px] bg-[#0a0c11] border-l border-white/10 flex flex-col h-full overflow-hidden shadow-2xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/8">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.08] flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
               <Brain className="w-4 h-4 text-violet-400" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white/80 uppercase tracking-widest">Deep Research</h2>
-              <p className="text-xs text-white/30">Multi-angle investigation with synthesis</p>
+              <h2 className="text-sm font-bold text-white/90 uppercase tracking-widest">Deep Research</h2>
+              <p className="text-xs text-white/30 mt-0.5">Multi-angle investigation with synthesis</p>
             </div>
           </div>
-          <button onClick={handleClose} className="p-2 rounded-xl hover:bg-white/5 text-white/30 hover:text-white/60">
+          <button
+            onClick={handleClose}
+            className="p-2 rounded-xl hover:bg-white/5 text-white/30 hover:text-white/60 transition-colors"
+            aria-label="Close deep research panel"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        {/* Body — full remaining height, scrollable */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
 
           {/* ── Idle / Form ─────────────────────────────────────────────── */}
           {(deepResearch.status === 'idle' || deepResearch.status === 'error') && (
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs text-white/40 uppercase tracking-wider">Research Query</label>
-                <div className="flex gap-2">
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">Research Query</label>
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <input
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/25"
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/40 focus:bg-white/[0.07] transition-all"
                     placeholder="What do you want to research deeply?"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleStart(); }}
                     autoFocus
+                    aria-label="Research query"
                   />
                   <button
                     onClick={handleStart}
                     disabled={!query.trim()}
-                    className="px-5 py-3 text-sm font-bold text-black bg-white rounded-xl hover:bg-white/90 disabled:opacity-40 flex items-center gap-2"
+                    className="px-6 py-3 text-sm font-bold text-black bg-white rounded-xl hover:bg-white/90 disabled:opacity-40 flex items-center justify-center gap-2 flex-shrink-0 transition-opacity"
                   >
                     <Zap className="w-3.5 h-3.5" />
                     Research
@@ -192,19 +217,31 @@ export function DeepResearchPanel({
               </div>
 
               {deepResearch.error && (
-                <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                <div className="flex items-start gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
                   <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-300">{deepResearch.error}</p>
+                  <p className="text-xs text-red-300 leading-relaxed">{deepResearch.error}</p>
                 </div>
               )}
 
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
-                <p className="text-xs font-medium text-white/40 uppercase tracking-wider">How it works</p>
-                <div className="space-y-1.5 text-xs text-white/30">
-                  <div className="flex items-center gap-2"><Brain className="w-3 h-3 text-violet-400/60" /> AI generates targeted sub-questions</div>
-                  <div className="flex items-center gap-2"><Edit2 className="w-3 h-3 text-blue-400/60" /> You review and edit the questions</div>
-                  <div className="flex items-center gap-2"><Search className="w-3 h-3 text-emerald-400/60" /> Parallel web searches for each question</div>
-                  <div className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-amber-400/60" /> AI synthesizes a research node from all results</div>
+              <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-3">
+                <p className="text-xs font-bold text-white/40 uppercase tracking-wider">How it works</p>
+                <div className="space-y-2.5 text-xs text-white/30">
+                  <div className="flex items-center gap-2.5">
+                    <Brain className="w-3.5 h-3.5 text-violet-400/60 flex-shrink-0" />
+                    <span>AI generates targeted sub-questions</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <Edit2 className="w-3.5 h-3.5 text-blue-400/60 flex-shrink-0" />
+                    <span>You review and edit the questions</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <Search className="w-3.5 h-3.5 text-emerald-400/60 flex-shrink-0" />
+                    <span>Parallel web searches for each question</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle className="w-3.5 h-3.5 text-amber-400/60 flex-shrink-0" />
+                    <span>AI synthesizes a research node from all results</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -212,12 +249,12 @@ export function DeepResearchPanel({
 
           {/* ── Generating questions ─────────────────────────────────────── */}
           {deepResearch.status === 'generating_questions' && (
-            <div className="flex flex-col items-center justify-center gap-4 py-12">
-              <div className="w-12 h-12 rounded-2xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
-                <Brain className="w-6 h-6 text-violet-400 animate-pulse" />
+            <div className="flex flex-col items-center justify-center gap-5 py-20">
+              <div className="w-14 h-14 rounded-2xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+                <Brain className="w-7 h-7 text-violet-400 animate-pulse" />
               </div>
-              <div className="text-center space-y-1">
-                <p className="text-sm font-medium text-white/70">Generating sub-questions…</p>
+              <div className="text-center space-y-1.5">
+                <p className="text-sm font-semibold text-white/70">Generating sub-questions…</p>
                 <p className="text-xs text-white/30">Decomposing "{query}" into targeted angles</p>
               </div>
             </div>
@@ -225,9 +262,9 @@ export function DeepResearchPanel({
 
           {/* ── Reviewing sub-questions ───────────────────────────────────── */}
           {deepResearch.status === 'reviewing' && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-white/70">Review sub-questions</p>
+                <p className="text-sm font-semibold text-white/80">Review sub-questions</p>
                 <p className="text-xs text-white/30">Edit any question, then confirm to start searching</p>
               </div>
               <div className="space-y-2">
@@ -247,7 +284,7 @@ export function DeepResearchPanel({
 
           {/* ── Searching ─────────────────────────────────────────────────── */}
           {deepResearch.status === 'searching' && (
-            <div className="space-y-5">
+            <div className="space-y-6">
               <SearchProgress
                 current={deepResearch.progress.current}
                 total={deepResearch.progress.total}
@@ -271,12 +308,12 @@ export function DeepResearchPanel({
 
           {/* ── Synthesizing ─────────────────────────────────────────────── */}
           {deepResearch.status === 'synthesizing' && (
-            <div className="flex flex-col items-center justify-center gap-4 py-12">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-amber-400 animate-pulse" />
+            <div className="flex flex-col items-center justify-center gap-5 py-20">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                <Zap className="w-7 h-7 text-amber-400 animate-pulse" />
               </div>
-              <div className="text-center space-y-1">
-                <p className="text-sm font-medium text-white/70">Synthesising results…</p>
+              <div className="text-center space-y-1.5">
+                <p className="text-sm font-semibold text-white/70">Synthesising results…</p>
                 <p className="text-xs text-white/30">Building knowledge node from {deepResearch.results.length} search sets</p>
               </div>
             </div>
@@ -284,16 +321,16 @@ export function DeepResearchPanel({
 
           {/* ── Complete ─────────────────────────────────────────────────── */}
           {deepResearch.status === 'complete' && deepResearch.result && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-emerald-400" />
-                <p className="text-sm font-medium text-emerald-300/80">Research complete</p>
+                <p className="text-sm font-semibold text-emerald-300/80">Research complete</p>
               </div>
 
-              <div className="p-4 rounded-xl border border-white/10 bg-white/[0.04] space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-medium text-white/80">{deepResearch.result.synthesisNode.title}</h3>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.04] space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-white/90 leading-snug">{deepResearch.result.synthesisNode.title}</h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${
                     deepResearch.result.synthesisNode.status === 'verified'
                       ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
                       : 'text-amber-400 border-amber-500/30 bg-amber-500/10'
@@ -302,7 +339,7 @@ export function DeepResearchPanel({
                   </span>
                 </div>
                 <p className="text-xs text-white/60 leading-relaxed">{deepResearch.result.synthesisNode.claim}</p>
-                <div className="flex items-center gap-4 text-xs text-white/30">
+                <div className="flex items-center gap-4 text-xs text-white/30 pt-1 border-t border-white/5">
                   <span>Confidence: {Math.round((deepResearch.result.synthesisNode.confidence ?? 0) * 100)}%</span>
                   <span>{deepResearch.result.capturedSources.length} sources captured</span>
                 </div>
@@ -313,7 +350,7 @@ export function DeepResearchPanel({
         </div>
 
         {/* Footer actions */}
-        <div className="border-t border-white/8 p-4 flex items-center justify-end gap-2">
+        <div className="border-t border-white/[0.08] px-6 py-4 flex items-center justify-end gap-2 flex-shrink-0">
           {deepResearch.status === 'reviewing' && (
             <>
               <button

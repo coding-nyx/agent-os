@@ -15,7 +15,7 @@ import { SpineOverlay } from './core/components/SpineOverlay';
 import { SpineToastProvider } from './core/components/SpineToast';
 import { NexusRouteBanner } from './core/components/NexusRouteBanner';
 import { Spine } from './lib/spine/spine-event-bus';
-import { CORE_CASCADE_RULES, ATLAS_CASCADE_RULES, AGNES_CASCADE_RULES, ATLAS_FAILURE_RULES } from './lib/spine/cascade-rules';
+import { CORE_CASCADE_RULES, ATLAS_CASCADE_RULES, ATLAS_PLANNING_CASCADE_RULES, AGNES_CASCADE_RULES, ATLAS_FAILURE_RULES, SOMA_CASCADE_RULES, TITAN_CASCADE_RULES } from './lib/spine/cascade-rules';
 import { useEffect } from 'react';
 import { DataLayerProvider } from './lib/data-layer/provider';
 
@@ -43,8 +43,11 @@ function SpineRuntimeBootstrap() {
   useEffect(() => {
     Spine.registerCascadeRules(CORE_CASCADE_RULES);
     Spine.registerCascadeRules(ATLAS_CASCADE_RULES);
+    Spine.registerCascadeRules(ATLAS_PLANNING_CASCADE_RULES);
     Spine.registerCascadeRules(AGNES_CASCADE_RULES);
     Spine.registerCascadeRules(ATLAS_FAILURE_RULES);
+    Spine.registerCascadeRules(SOMA_CASCADE_RULES);
+    Spine.registerCascadeRules(TITAN_CASCADE_RULES);
   }, []);
 
   useEffect(() => {

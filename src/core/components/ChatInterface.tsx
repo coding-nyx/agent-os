@@ -56,11 +56,12 @@ interface ChatInterfaceProps {
   pendingRequest?: PendingRequestState | null;
   onRecoverPendingRequest?: () => void;
   onDismissPendingRequest?: () => void;
+  onUploadDocument?: (file: File) => void;
 }
 
 const THEMES = {
   indigo: {
-    bubble: 'bg-white/[0.03] border-white/5 text-indigo-50 rounded-2xl rounded-tl-sm',
+    bubble: 'bg-white/[0.03] border-white/5 text-indigo-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-indigo-400/20',
     userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-indigo-400',
     glow: 'shadow-xl shadow-indigo-500/10',
@@ -68,15 +69,15 @@ const THEMES = {
     btn: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'
   },
   orange: {
-    bubble: 'bg-white/[0.03] border-white/5 text-orange-50 rounded-none border-l-2 border-orange-500/30',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-none border-r-2 border-white/20',
+    bubble: 'bg-white/[0.03] border-white/5 text-orange-50 rounded-2xl rounded-tl-sm border-l-2 border-l-orange-500/30',
+    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-orange-400',
     glow: 'shadow-xl shadow-orange-500/10',
     bgGlow: 'bg-orange-500/30',
     btn: 'bg-orange-600 hover:bg-orange-500 shadow-orange-500/20'
   },
   cyan: {
-    bubble: 'bg-white/[0.03] border-white/5 text-cyan-50 rounded-2xl rounded-tl-sm',
+    bubble: 'bg-white/[0.03] border-white/5 text-cyan-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-cyan-400/20',
     userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-cyan-400',
     glow: 'shadow-xl shadow-cyan-500/10',
@@ -84,7 +85,7 @@ const THEMES = {
     btn: 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-500/20'
   },
   violet: {
-    bubble: 'bg-white/[0.03] border-white/5 text-violet-50 rounded-2xl rounded-tl-sm',
+    bubble: 'bg-white/[0.03] border-white/5 text-violet-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-violet-400/20',
     userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-violet-400',
     glow: 'shadow-xl shadow-violet-500/10',
@@ -92,7 +93,7 @@ const THEMES = {
     btn: 'bg-violet-600 hover:bg-violet-500 shadow-violet-500/20'
   },
   emerald: {
-    bubble: 'bg-white/[0.03] border-white/5 text-emerald-50 rounded-2xl rounded-tl-sm',
+    bubble: 'bg-white/[0.03] border-white/5 text-emerald-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-emerald-400/20',
     userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-emerald-400',
     glow: 'shadow-xl shadow-emerald-500/10',
@@ -100,7 +101,7 @@ const THEMES = {
     btn: 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
   },
   sky: {
-    bubble: 'bg-white/[0.03] border-white/5 text-sky-50 rounded-2xl rounded-tl-sm',
+    bubble: 'bg-white/[0.03] border-white/5 text-sky-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-sky-400/20',
     userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-sky-400',
     glow: 'shadow-xl shadow-sky-500/10',
@@ -108,7 +109,7 @@ const THEMES = {
     btn: 'bg-sky-600 hover:bg-sky-500 shadow-sky-500/20'
   },
   lime: {
-    bubble: 'bg-white/[0.03] border-white/5 text-lime-50 rounded-2xl rounded-tl-sm',
+    bubble: 'bg-white/[0.03] border-white/5 text-lime-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-lime-400/20',
     userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-lime-400',
     glow: 'shadow-xl shadow-lime-500/10',
@@ -116,7 +117,7 @@ const THEMES = {
     btn: 'bg-lime-600 hover:bg-lime-500 shadow-lime-500/20'
   },
   rose: {
-    bubble: 'bg-white/[0.03] border-white/5 text-rose-50 rounded-2xl rounded-tl-sm',
+    bubble: 'bg-white/[0.03] border-white/5 text-rose-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-rose-400/20',
     userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-rose-400',
     glow: 'shadow-xl shadow-rose-500/10',
@@ -124,7 +125,7 @@ const THEMES = {
     btn: 'bg-rose-600 hover:bg-rose-500 shadow-rose-500/20'
   },
   fuchsia: {
-    bubble: 'bg-white/[0.03] border-white/5 text-fuchsia-50 rounded-2xl rounded-tl-sm',
+    bubble: 'bg-white/[0.03] border-white/5 text-fuchsia-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-fuchsia-400/20',
     userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-fuchsia-400',
     glow: 'shadow-xl shadow-fuchsia-500/10',
@@ -132,7 +133,7 @@ const THEMES = {
     btn: 'bg-fuchsia-600 hover:bg-fuchsia-500 shadow-fuchsia-500/20'
   },
   slate: {
-    bubble: 'bg-white/[0.03] border-white/5 text-slate-50 rounded-2xl rounded-tl-sm',
+    bubble: 'bg-white/[0.03] border-white/5 text-slate-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-slate-400/20',
     userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-slate-400',
     glow: 'shadow-xl shadow-slate-500/10',
@@ -227,7 +228,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                     : cn("p-3.5 sm:p-5", theme.bubble, theme.glow)
                 )}>
                     <div className={cn(
-                      "max-w-none",
+                      "max-w-none break-words prose-a:break-all",
                       isAgnes
                         ? "prose prose-invert prose-base agnes-prose prose-p:leading-[1.85] prose-p:text-white/90 prose-strong:text-white prose-strong:font-semibold prose-li:text-white/85 prose-li:leading-relaxed prose-blockquote:border-indigo-400/40 prose-blockquote:text-white/70 prose-blockquote:italic"
                         : "prose prose-invert prose-sm prose-p:leading-relaxed prose-strong:text-white prose-strong:font-black prose-p:text-white/90"
@@ -285,6 +286,7 @@ export const ChatInterface = React.memo(function ChatInterface({
   pendingRequest,
   onRecoverPendingRequest,
   onDismissPendingRequest,
+  onUploadDocument,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -365,7 +367,20 @@ export const ChatInterface = React.memo(function ChatInterface({
   };
 
   const theme = THEMES[themeColor];
-  const canUploadDocs = moduleId ? ['scout', 'forge', 'soma', 'ledger'].includes(moduleId) : false;
+  const canShowUpload = typeof onUploadDocument === 'function';
+
+  const handleUploadDocClick = useCallback(() => {
+    if (!onUploadDocument) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.md,.markdown';
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) onUploadDocument(file);
+      input.value = '';
+    };
+    input.click();
+  }, [onUploadDocument]);
   const isAgnes = moduleId === 'agnes';
 
   const hasMessages = messages.some((msg) => msg.role !== 'system');
@@ -618,9 +633,12 @@ export const ChatInterface = React.memo(function ChatInterface({
                 exit={{ opacity: 0, y: 20, scale: 0.95 }}
                 className="absolute bottom-full mb-4 left-0 w-80 bg-[#0a0a0f]/90 backdrop-blur-3xl border border-white/10 rounded-card p-6 shadow-2xl grid grid-cols-2 gap-3"
               >
-                {canUploadDocs && (
+                {canShowUpload && (
                   <>
-                    <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+                    <button
+                      onClick={handleUploadDocClick}
+                      className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group"
+                    >
                        <FileText className="w-6 h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Upload Doc</span>
                     </button>
@@ -645,7 +663,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                 "relative flex items-end bg-[#05050a]/60 border border-white/10 rounded-panel p-2 backdrop-blur-3xl group-focus-within:border-white/40 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.6)]",
                 (error || quota?.isHardLocked) && "opacity-20 grayscale pointer-events-none"
             )}>
-              {(canUploadDocs || renderCustomActions) && (
+              {(canShowUpload || renderCustomActions) && (
                 <button 
                   type="button"
                   onClick={() => setIsDrawerOpen(!isDrawerOpen)}

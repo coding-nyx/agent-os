@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, Terminal } from 'lucide-react';
+import { ArrowLeft, Shield, Terminal, Sparkles } from 'lucide-react';
 import { ModuleSwitcherPopover } from '@/core/components/ModuleSwitcherPopover';
 import { SyncTransition } from '@/core/components/SyncTransition';
 import { SystemCommandCenter } from '@/core/components/SystemCommandCenter';
@@ -217,8 +217,22 @@ export function ModuleLayout({
 
             <div className="flex items-center gap-4 md:gap-8">
               <TelemetryTicker debugMode={debugMode} />
-              {/* Single unified nav button — Nexus + all modules */}
-              <ModuleSwitcherPopover currentModuleId={moduleId} />
+              
+              <div className="flex items-center gap-2">
+                {/* Nexus Trigger — mobile only (replaced by FAB on desktop) */}
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-nexus'))}
+                  className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+                  aria-label="Open Nexus Proxy"
+                >
+                  <Sparkles className="w-4 h-4 text-violet-400" />
+                </button>
+
+                {/* Single unified nav button — Nexus + all modules */}
+                <ModuleSwitcherPopover currentModuleId={moduleId} />
+              </div>
+
               <button
                 type="button"
                 onClick={openSecurityProtocol}

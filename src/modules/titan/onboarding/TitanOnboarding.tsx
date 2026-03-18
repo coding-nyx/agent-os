@@ -5,7 +5,7 @@ import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
 import { cn } from '@/lib/utils';
-import { TitanProfile, TitanPrivacyLevel, EquipmentType } from '@/lib/types';
+import { TitanProfile, TitanPrivacyLevel, EquipmentType, BodyWeightEntry } from '@/lib/types';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { useAuth } from '@/lib/auth-context';
 import { buildTitanOnboardingPrompt } from '../prompts/titan-onboarding-prompt';
@@ -196,6 +196,10 @@ export function TitanOnboarding({
   const [fastInjuries, setFastInjuries] = useState('');
   const [fastTrackError, setFastTrackError] = useState<string | null>(null);
   const [isValidatingFastTrack, setIsValidatingFastTrack] = useState(false);
+  // Physical baseline
+  const [baselineWeight, setBaselineWeight] = useState('');
+  const [baselineWeightUnit, setBaselineWeightUnit] = useState<'kg' | 'lbs'>('kg');
+  const [baselineHeight, setBaselineHeight] = useState('');
   const { validateFastTrack } = useFastTrackValidation('titan');
 
   const handleFastTrack = async () => {
@@ -218,6 +222,24 @@ export function TitanOnboarding({
       : 'no specific equipment listed';
     const summary = `I want to ${goalLabel.toLowerCase()}. I am ${fastExperience} level, training ${daysPerWeek} days/week. Equipment available: ${equipmentLabel}. Generate my training program.`;
 
+    // Physical baseline — convert weight to kg if needed
+    const rawWeight = baselineWeight ? parseFloat(baselineWeight) : null;
+    const weightKg = rawWeight != null && !isNaN(rawWeight) && rawWeight > 0
+      ? (baselineWeightUnit === 'lbs' ? Math.round((rawWeight / 2.20462) * 100) / 100 : rawWeight)
+      : null;
+    const heightCm = baselineHeight ? parseFloat(baselineHeight) : null;
+
+    // Build first BodyWeightEntry if weight was provided
+    const firstBodyWeightEntry: BodyWeightEntry | null =
+      weightKg != null && weightKg >= 20 && weightKg <= 300
+        ? {
+            id: crypto.randomUUID(),
+            date: now.slice(0, 10),
+            weight: weightKg,
+            recordedAt: now,
+          }
+        : null;
+
     const profile: TitanProfile = {
       onboardingComplete: true,
       privacyLevel,
@@ -225,7 +247,9 @@ export function TitanOnboarding({
       nutrition: { supplements: supplements.map(name => ({ name })) },
       activity: {
         workoutsPerWeek: daysPerWeek,
-        ...(mappedEquipment.length > 0 ? { equipment: mappedEquipment } : {})
+        ...(mappedEquipment.length > 0 ? { equipment: mappedEquipment } : {}),
+        ...(weightKg != null ? { baselineWeight: weightKg } : {}),
+        ...(heightCm != null && !isNaN(heightCm) && heightCm > 0 ? { baselineHeight: heightCm } : {}),
       },
       history: {
         goals: [fastGoal],
@@ -234,6 +258,7 @@ export function TitanOnboarding({
       },
       summary,
       routines: [],
+      ...(firstBodyWeightEntry ? { bodyWeightLog: [firstBodyWeightEntry] } : {}),
       createdAt: now,
       updatedAt: now,
       // Deprecated medical fields — kept as empty stubs during dual-write phase
@@ -667,6 +692,42 @@ export function TitanOnboarding({
                     {chip.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Physical baseline */}
+            <div className="space-y-2">
+              <p className="text-[9px] text-white/40 uppercase tracking-wider">Physical Baseline (optional)</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min={baselineWeightUnit === 'kg' ? 20 : 44}
+                    max={baselineWeightUnit === 'kg' ? 300 : 660}
+                    placeholder={baselineWeightUnit === 'kg' ? 'Weight (kg)' : 'Weight (lbs)'}
+                    value={baselineWeight}
+                    onChange={e => setBaselineWeight(e.target.value)}
+                    className="flex-1 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-orange-500/50 tabular-nums"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBaselineWeightUnit(u => u === 'kg' ? 'lbs' : 'kg')}
+                    className="px-2 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-white/50 hover:bg-white/10 transition-colors"
+                  >
+                    {baselineWeightUnit}
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  step="0.1"
+                  min={100}
+                  max={250}
+                  placeholder="Height (cm)"
+                  value={baselineHeight}
+                  onChange={e => setBaselineHeight(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-orange-500/50 tabular-nums"
+                />
               </div>
             </div>
 

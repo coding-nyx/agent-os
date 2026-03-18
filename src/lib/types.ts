@@ -76,6 +76,15 @@ export interface NeuralStateVector {
     sleepQuality: number | null;
     recoveryScore?: number | null;
     hormonalContext?: string | null;
+    /** Body weight in kilograms — written by Titan log_body_weight action. */
+    weight?: number | null;
+    /** Body fat percentage (0–100) — written by Titan when available. */
+    bodyFatPct?: number | null;
+    /**
+     * Aerobic load index (0–10) derived from recent cardio sessions.
+     * Updated by Titan log_cardio_session. High values signal cardiovascular stress.
+     */
+    aerobicLoad?: number | null;
   };
   emotional: {
     emotionalResilience: number | null;
@@ -278,6 +287,13 @@ export type SpineEventType =
   | 'CYCLE_COMPLETED'
   // Titan Workout Events
   | 'WORKOUT_COMPLETED'
+  // Titan Body Composition / Recovery Events
+  /** Emitted whenever a body weight entry is committed (direct-write or AI action). */
+  | 'TITAN_BODY_WEIGHT_LOGGED'
+  /** Emitted when accumulated cnsFatigue crosses the critical threshold (≥ 8). */
+  | 'TITAN_RECOVERY_NEEDED'
+  /** Emitted when consecutive training days reach a milestone (7, 14, 21, 30). */
+  | 'TITAN_TRAINING_STREAK'
   // AI Validation Events
   | 'ai_validation_suggestion'
   | 'ai_contextual_validation'
@@ -677,6 +693,56 @@ export interface PersonalRecord {
 }
 
 /**
+ * A single body weight / composition measurement entry.
+ * Stored in TitanProfile.bodyWeightLog (newest first).
+ */
+export interface BodyWeightEntry {
+  id: string;
+  /** ISO YYYY-MM-DD */
+  date: string;
+  /** Body weight in kilograms. */
+  weight: number;
+  /** Optional body fat percentage (0–100). */
+  bodyFatPct?: number;
+  /** Optional circumference measurements in centimetres. */
+  measurements?: {
+    waist?: number;
+    hips?: number;
+    chest?: number;
+    leftArm?: number;
+    rightArm?: number;
+    leftLeg?: number;
+    rightLeg?: number;
+  };
+  notes?: string;
+  recordedAt: string;
+}
+
+/** Cardio activity type union. */
+export type CardioSessionType =
+  | 'run' | 'bike' | 'swim' | 'row'
+  | 'hike' | 'elliptical' | 'jump_rope' | 'other';
+
+/**
+ * A single cardiovascular conditioning session.
+ * Stored in TitanProfile.cardioLog (newest first).
+ */
+export interface CardioSession {
+  id: string;
+  date: string;
+  type: CardioSessionType;
+  durationMinutes: number;
+  distanceKm?: number;
+  avgHeartRate?: number;
+  calories?: number;
+  notes?: string;
+  /** Rate of perceived exertion 1–10. */
+  rpe?: number;
+  status: 'completed' | 'partial';
+  recordedAt: string;
+}
+
+/**
  * A user-defined custom tracking field stored in TitanProfile.customFields.
  * Created / deleted by the AI via the `create_field` / `delete_field` actions.
  */
@@ -722,6 +788,10 @@ export interface TitanProfile {
   directWriteMode?: boolean;
   /** User-defined custom tracking fields created via AI `create_field` action. Max 20. */
   customFields?: CustomField[];
+  /** Body weight / composition log — newest first, capped at 1 000 entries. */
+  bodyWeightLog?: BodyWeightEntry[];
+  /** Cardiovascular session log — newest first, capped at 500 entries. */
+  cardioLog?: CardioSession[];
   createdAt: string;
   updatedAt: string;
   traits?: string[];

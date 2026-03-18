@@ -1,5 +1,5 @@
 import { ScoutNewsBrief } from './scout-knowledge-service';
-import { WebSearchService } from '@/lib/services/web-search-service';
+import { WebCrawlerService as WebSearchService } from '@/lib/services/web-crawler-service';
 
 /** Returns true when at least one search backend is resolvable. */
 export function isSearchAvailable(): boolean {

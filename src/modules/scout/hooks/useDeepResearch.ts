@@ -5,15 +5,15 @@
  *
  * Flow: idle → generating_questions → reviewing → searching → synthesizing → complete | error
  *
- * - Sub-question generation and synthesis use callStructuredLLM (Gemini)
+ * - Sub-question generation and synthesis use callStructuredLLM (OpenRouter)
  * - Parallel web searches use WebSearchService.searchBatch()
  * - Results are surfaced as a synthesis ScoutKnowledgeNode for the user to accept/discard
  * - AbortController supports cancellation at any stage
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { callStructuredLLM } from '@/lib/ai-adapters/call-structured-llm';
-import { WebSearchService, type WebSearchResponse } from '@/lib/services/web-search-service';
+import { useAI } from '@/llm-engine/ai-context';
+import { WebCrawlerService as WebSearchService, type WebCrawlerResponse as WebSearchResponse } from '@/lib/services/web-crawler-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { ScoutKnowledgeNode } from '../services/scout-knowledge-service';
 import type { SourceEntryDecrypted } from '../services/scout-sources-service';
@@ -100,7 +100,7 @@ const INITIAL_STATE: DeepResearchState = {
 const SUB_QUESTION_SYSTEM_PROMPT = `You are an expert research strategist.
 Given a research topic, generate 3-5 targeted sub-questions that together provide comprehensive coverage.
 Each question should explore a different angle: definitions, evidence, applications, criticisms, future directions.
-Respond with a JSON array: [{"id":"q1","question":"...","rationale":"..."}]`;
+Respond with a JSON array strictly: [{"id":"q1","question":"...","rationale":"..."}]`;
 
 const SYNTHESIS_SYSTEM_PROMPT = `You are a research analyst synthesizing multiple web search results into a single knowledge node.
 Respond with a JSON object matching the ScoutKnowledgeNode schema exactly.`;
@@ -109,6 +109,7 @@ export function useDeepResearch({
   onComplete,
   onProgress,
 }: UseDeepResearchOptions = {}): UseDeepResearchReturn {
+  const { generateJSON } = useAI();
   const [state, setState] = useState<DeepResearchState>(INITIAL_STATE);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -150,21 +151,42 @@ export function useDeepResearch({
       });
 
       try {
-        const { data: questions } = await callStructuredLLM<SubQuestion[]>(
+        const response = await generateJSON<any>(
           `Research topic: "${query}"\n\nGenerate 3-5 targeted sub-questions as a JSON array.`,
           {
             systemPrompt: SUB_QUESTION_SYSTEM_PROMPT,
             temperature: 0.4,
-            maxOutputTokens: 512,
+            maxTokens: 512,
             signal: controller.signal,
           },
         );
 
         if (controller.signal.aborted) return;
 
-        const validQuestions = Array.isArray(questions)
-          ? questions.filter((q): q is SubQuestion => typeof q?.question === 'string')
-          : [];
+        // Robust parsing: Handle if model wrapped array in an object (e.g. { "subquestions": [...] })
+        let rawQuestions: any[] = [];
+        if (Array.isArray(response)) {
+          rawQuestions = response;
+        } else if (response && typeof response === 'object') {
+          // Look for common wrapper keys
+          const possibleArray = response.subquestions || response.questions || response.items || response.sub_questions;
+          if (Array.isArray(possibleArray)) {
+            rawQuestions = possibleArray;
+          } else {
+            // Check if ANY value in the object is an array
+            const values = Object.values(response);
+            const foundArray = values.find(v => Array.isArray(v));
+            if (foundArray) rawQuestions = foundArray as any[];
+          }
+        }
+
+        const validQuestions = rawQuestions
+          .filter((q): q is SubQuestion => typeof q?.question === 'string')
+          .map((q, i) => ({
+            id: q.id || `q_${i}`,
+            question: q.question,
+            rationale: q.rationale || '',
+          }));
 
         if (validQuestions.length === 0) {
           throw new Error('No sub-questions were generated. Please rephrase the query and try again.');
@@ -183,7 +205,7 @@ export function useDeepResearch({
         });
       }
     },
-    [updateState],
+    [updateState, generateJSON],
   );
 
   // ── Confirm sub-questions and run searches ────────────────────────────────
@@ -266,26 +288,41 @@ Synthesize these results into a single ScoutKnowledgeNode JSON object:
 Base confidence on source quality and consensus. Respond with JSON only.`;
 
       try {
-        const { data: synthesisNode } = await callStructuredLLM<ScoutKnowledgeNode>(
+        const response = await generateJSON<any>(
           synthesisPrompt,
           {
             systemPrompt: SYNTHESIS_SYSTEM_PROMPT,
             temperature: 0.3,
-            maxOutputTokens: 1024,
+            maxTokens: 1024,
             signal: controller.signal,
           },
         );
 
         if (controller.signal.aborted) return;
 
+        // Robust parsing: handle if model wrapped the node object
+        let synthesisNode = response;
+        if (response && typeof response === 'object' && !response.claim && !response.title) {
+          const possibleNode = response.node || response.knowledgeNode || response.finding || response.data;
+          if (possibleNode && typeof possibleNode === 'object') {
+            synthesisNode = possibleNode;
+          } else {
+            // Check if ANY value in the object looks like a node (has claim or title)
+            const values = Object.values(response);
+            const foundNode = values.find(v => v && typeof v === 'object' && ((v as any).claim || (v as any).title));
+            if (foundNode) synthesisNode = foundNode;
+          }
+        }
+
         // Build captured sources list for auto-save into source library
         const capturedSources: AddSourceInput[] = results
           .flatMap((r) =>
-            r.searchResponse.results.slice(0, 3).map((res) => ({
+            r.searchResponse.results.slice(0, 3).map((res, i) => ({
               url: res.url,
               title: res.title,
               snippet: res.content?.slice(0, 300),
-              nodeId: synthesisNode.id,
+              imageUrl: r.searchResponse.images?.[i] || r.searchResponse.images?.[0], // Try to match by index or fallback to first
+              nodeId: synthesisNode.id || `deep_${Date.now()}`,
             })),
           )
           .filter((s) => s.url);
@@ -298,7 +335,7 @@ Base confidence on source quality and consensus. Respond with JSON only.`;
             ...synthesisNode,
             id: synthesisNode.id ?? `deep_${Date.now()}`,
             updatedAt: synthesisNode.updatedAt ?? new Date().toISOString(),
-            status: synthesisNode.status ?? 'pending',
+            status: (synthesisNode.status as any) ?? 'pending',
             confidence: Math.min(1, Math.max(0, synthesisNode.confidence ?? 0.6)),
           },
           capturedSources,

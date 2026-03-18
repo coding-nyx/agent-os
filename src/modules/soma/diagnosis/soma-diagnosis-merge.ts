@@ -10,6 +10,7 @@ export async function mergeSomaDiagnosisData(
   userId: string,
   items: ExtractedDataItem[],
   encryptionKey?: CryptoKey | null,
+  suggestedMedications: string[] = [],
 ): Promise<void> {
   const profile = await loadSomaProfile({ userId, encryptionKey: encryptionKey ?? null });
   if (!profile) {
@@ -125,6 +126,20 @@ export async function mergeSomaDiagnosisData(
         };
         break;
       }
+    }
+  }
+
+  if (suggestedMedications.length > 0) {
+    const formatted = suggestedMedications
+      .filter((m) => typeof m === 'string' && m.trim().length > 0)
+      .map((m) => `Suggested: ${m.trim()} (discuss with provider)`);
+    const existing = new Set(next.medications.map((m) => m.trim().toLowerCase()));
+    const toAdd = formatted.filter((m) => !existing.has(m.trim().toLowerCase()));
+    if (toAdd.length > 0) {
+      next = {
+        ...next,
+        medications: [...next.medications, ...toAdd],
+      };
     }
   }
 

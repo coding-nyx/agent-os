@@ -364,6 +364,37 @@ function fieldsToRecord(fields: DocumentField[]): Record<string, string> {
 }
 
 /**
+ * Analyze raw document text without re-parsing a File.
+ * Uses LLM extraction if sendMessage is provided, otherwise regex fallback.
+ */
+export async function analyzeRawText(
+  rawText: string,
+  hints: DocumentParseHints,
+  sendMessage?: (prompt: string) => Promise<string>,
+): Promise<{ fields: Record<string, string>; confidence: number }> {
+  if (!rawText || rawText.length === 0) {
+    return { fields: {}, confidence: 0 };
+  }
+
+  if (sendMessage) {
+    const llmFields = await parseDocumentWithLLM(rawText, hints, sendMessage);
+    if (llmFields.length > 0) {
+      const fields = fieldsToRecord(llmFields);
+      const confidence =
+        llmFields.reduce((sum, f) => sum + f.confidence, 0) / llmFields.length;
+      return { fields, confidence };
+    }
+  }
+
+  const regexFields = extractFieldsByRegex(rawText, hints.domain);
+  const filled = Object.values(regexFields).filter((v) => v.length > 0).length;
+  const total = Object.keys(regexFields).length;
+  const regexConfidence = total > 0 ? filled / total : 0;
+
+  return { fields: regexFields, confidence: regexConfidence };
+}
+
+/**
  * Full document intelligence pipeline:
  *
  * 1. Infer file type (PDF / image / plain text)

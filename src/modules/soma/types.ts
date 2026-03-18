@@ -38,6 +38,25 @@ export interface SomaHealthSnapshot {
   readonly snapshotAt: string;
 }
 
+export interface SomaDiagnosisSummary {
+  reportType: string;
+  summary: string;
+  comparisons: Array<{
+    item: string;
+    value?: string;
+    referenceRange?: string;
+    status?: 'below' | 'within' | 'above' | 'unknown';
+    note?: string;
+  }>;
+  whatItMeans: string[];
+  recommendedActions: string[];
+  suggestedMedications: string[];
+  /** Overall confidence in the clinical interpretation of this report. */
+  confidenceLevel: 'high' | 'moderate' | 'low';
+  /** 1–2 sentence rationale explaining what drives the confidence assessment. */
+  confidenceRationale: string;
+}
+
 /**
  * Input payload for computing Soma readiness scores.
  * Used by readiness algorithms and Spine event emitters.

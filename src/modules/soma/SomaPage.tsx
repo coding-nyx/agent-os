@@ -1,12 +1,15 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
+import { useAI } from '@/llm-engine/ai-context';
+import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SomaDashboard } from './components/SomaDashboard';
-import type { VitalReading, PhysicalAssessment } from './components/SomaDashboard';
+import type { VitalReading as UIVitalReading, PhysicalAssessment as UIPhysicalAssessment } from './components/SomaDashboard';
 import type { PhysicalAssessment as StoredPhysicalAssessment } from '@/lib/types';
+import type { MessageContent } from '@/llm-engine/types';
 import {
   loadSomaProfile,
   saveSomaProfile,
@@ -17,7 +20,8 @@ import {
 } from './services/soma-profile-service';
 import { useSomaHealth } from './hooks/use-soma-health';
 import { SomaProfile } from './types';
-import { SOMA_MEDICAL_DISCLAIMER } from './prompts/soma-prompt-builder';
+import { buildSomaAgentSystemPrompt, SOMA_MEDICAL_DISCLAIMER } from './prompts/soma-prompt-builder';
+import { SomaOnboarding } from './onboarding/SomaOnboarding';
 
 import { registerSomaFieldActions } from './actions/soma-field-actions';
 
@@ -31,23 +35,47 @@ interface SomaContentProps {
 
 function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
   const { user } = useAuth();
+  const { sendMessage } = useAI();
+  const { globalSoul } = useGlobalSoul();
+  const [queuedUpload, setQueuedUpload] = React.useState<File | null>(null);
+
+  const latestVital = profile?.vitalReadings?.slice(-1)[0];
+  const systemPrompt = buildSomaAgentSystemPrompt({
+    coreFields: {
+      restingHeartRate: latestVital?.heartRate ?? profile?.restingHeartRate,
+      bloodPressure: latestVital?.bloodPressure ?? profile?.bloodPressure,
+      weight: latestVital?.weight ?? profile?.weight,
+      readinessScore: profile?.readinessScore,
+      clearanceStatus: profile?.clearanceStatus,
+      lastCheckup: profile?.lastCheckup,
+    },
+    extensionFields: [],
+    nsvBiological: (globalSoul?.crossFunctionalState?.biological as Record<string, unknown>) ?? undefined,
+    clearanceStatus: profile?.clearanceStatus ?? undefined,
+    lastCheckup: profile?.lastCheckup,
+    knownConditions: profile?.knownConditions,
+    medications: profile?.medications,
+  });
+
   const ai = useModuleAI({
     moduleId: 'soma',
-    systemPrompt: `IDENTITY: You are SOMA, the biological authority of the Nexus ecosystem. 
-          Your tone is objective, analytical, and supportive but medically conservative.
-          You help users understand your biomarkers, labs, and recovery state.
-          
-          [CAPABILITIES]
-          - Analyze biomarker trends over time and flag notable changes
-          - Explain lab values in plain language with reference ranges
-          - Correlate multiple biomarkers to surface potential patterns
-          - Suggest specific areas the user should discuss with their doctor
-          - Extract and structure data from lab reports and medical images
-          - Issue readiness scores and clearance recommendations
-          
-          ${SOMA_MEDICAL_DISCLAIMER}`,
+    systemPrompt,
     encryptionKey
   });
+
+  const handleAnalyzeDocument = useCallback(async (content: MessageContent): Promise<string> => {
+    try {
+      const { response } = await sendMessage(content, {
+        systemPrompt: 'You are a medical document analysis engine. Return only valid JSON as instructed.',
+        memoryContext: [],
+        summary: 'Document analysis.',
+        history: [],
+      });
+      return response.publicText;
+    } catch {
+      return '';
+    }
+  }, [sendMessage]);
 
   useEffect(() => {
     if (ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
@@ -60,23 +88,16 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
     }
   }, [ai.messages.length, ai.isProcessing, ai.streamingText, agentAlias, ai.setMessages]);
 
-  // Fix 3: Wire useSomaHealth hook — was never called before
+  // All hooks must be above any conditional returns (React rules of hooks)
   const { readinessScore } = useSomaHealth(user?.uid, encryptionKey);
 
-  // Fix 2: Local in-session history state (real schema does not persist these arrays yet)
-  const [vitalHistory, setVitalHistory] = useState<VitalReading[]>([]);
-  const [assessmentHistory, setAssessmentHistory] = useState<PhysicalAssessment[]>([]);
-
-  // Fix 2: Wire onUpdateProfile to actually save to Firestore
   const handleUpdateProfile = useCallback(async (updates: Partial<SomaProfile>) => {
     if (!profile || !user?.uid || !encryptionKey) return;
     const updated: SomaProfile = { ...profile, ...updates, updatedAt: new Date().toISOString() };
     await saveSomaProfile(updated, { userId: user.uid, encryptionKey });
   }, [profile, user?.uid, encryptionKey]);
 
-  // Fix 2: Wire onAddVitalReading to update local session state AND persist to Firestore
-  const handleAddVitalReading = useCallback(async (reading: VitalReading) => {
-    setVitalHistory(prev => [...prev, reading]);
+  const handleAddVitalReading = useCallback(async (reading: UIVitalReading) => {
     if (user?.uid && encryptionKey) {
       const { timestamp: _ts, ...fields } = reading;
       await addVitalReading(user.uid, fields, encryptionKey).catch(err =>
@@ -85,11 +106,45 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
     }
   }, [user?.uid, encryptionKey]);
 
-  // Fix 2: Wire onAddAssessment to update local session state AND persist to Firestore
-  const handleAddAssessment = useCallback(async (assessment: PhysicalAssessment) => {
-    setAssessmentHistory(prev => [...prev, assessment]);
+  // Deduplicate Spine events across re-renders
+  const handledSpineEventsRef = useRef<Set<string>>(new Set());
+
+  // ── Titan → Soma physical data sync ────────────────────────────────────────
+  // When Titan commits a body weight entry, mirror the weight into Soma's own
+  // VitalReading log so the vitals panel and readiness score stay in sync
+  // without the user having to re-enter data in two places.
+  useSpineEvent('TITAN_BODY_WEIGHT_LOGGED', useCallback((event) => {
+    const eventKey = `titan-weight-${event.id}`;
+    if (handledSpineEventsRef.current.has(eventKey)) return;
+    handledSpineEventsRef.current.add(eventKey);
+
+    const weight = event.data?.weight as number | undefined;
+    if (typeof weight !== 'number' || !user?.uid || !encryptionKey) return;
+
+    handleAddVitalReading({ timestamp: Date.now(), weight });
+  }, [handleAddVitalReading, user?.uid, encryptionKey]));
+
+  // When a strength or cardio workout completes at high RPE, give Soma context
+  // so its readiness assessment reflects the actual training load.
+  useSpineEvent('WORKOUT_COMPLETED', useCallback((event) => {
+    if (!profile?.medicalOnboardingComplete) return;
+    const eventKey = `workout-${event.id}`;
+    if (handledSpineEventsRef.current.has(eventKey)) return;
+    handledSpineEventsRef.current.add(eventKey);
+
+    const rpe = event.data?.rpe as number | undefined;
+    if (rpe == null || rpe < 8) return;
+
+    const isCardio = event.data?.isCardio === true;
+    const label = isCardio ? 'cardio' : 'strength';
+    ai.handleSendMessage(
+      `[System] Titan logged a hard ${label} session (RPE ${rpe}/10) today. ` +
+      `Please factor this training load into today's readiness assessment and adjust any recommendations accordingly.`
+    );
+  }, [profile?.medicalOnboardingComplete, ai.handleSendMessage]));
+
+  const handleAddAssessment = useCallback(async (assessment: UIPhysicalAssessment) => {
     if (user?.uid && encryptionKey) {
-      // Map UI PhysicalAssessment shape → stored PhysicalAssessment shape
       const storedFields: Omit<StoredPhysicalAssessment, 'timestamp'> = {
         ...(assessment.measurements?.vo2max != null ? { vo2Max: assessment.measurements.vo2max } : {}),
         ...(assessment.measurements?.weight != null ? { weight: assessment.measurements.weight } : {}),
@@ -106,7 +161,19 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
     }
   }, [user?.uid, encryptionKey]);
 
-  const { globalSoul } = useGlobalSoul();
+  // Show onboarding if profile not set up — must be after all hooks
+  if (user?.uid && encryptionKey && !profile?.medicalOnboardingComplete) {
+    return (
+      <div className="h-full">
+        <SomaOnboarding
+          profile={profile}
+          userId={user.uid}
+          encryptionKey={encryptionKey}
+          onComplete={() => {}}
+        />
+      </div>
+    );
+  }
 
   return (
     <SingleAgentLayout
@@ -116,6 +183,7 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
       ai={ai}
       authMode="soma"
       placeholder="Ask about biomarkers, labs, or recovery..."
+      onUploadDocument={(file) => setQueuedUpload(file)}
     >
       <div className="h-full overflow-y-auto no-scrollbar pb-20">
         <SomaDashboard
@@ -123,11 +191,12 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
           soul={globalSoul}
           isLocked={false}
           readinessScore={readinessScore}
-          vitalHistory={vitalHistory}
-          assessmentHistory={assessmentHistory}
           onUpdateProfile={handleUpdateProfile}
           onAddVitalReading={handleAddVitalReading}
           onAddAssessment={handleAddAssessment}
+          onAnalyzeDocument={handleAnalyzeDocument}
+          queuedUpload={queuedUpload}
+          onQueuedUploadHandled={() => setQueuedUpload(null)}
         />
       </div>
     </SingleAgentLayout>

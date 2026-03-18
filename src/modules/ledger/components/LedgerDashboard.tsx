@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon, Activity, FileText, Info, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { AlertTriangle, CreditCard, Lock, Upload, TrendingUp, Target, PieChart as PieChartIcon, Activity, FileText, Info, Zap, ArrowUpRight, ArrowDownRight, ShieldCheck } from 'lucide-react';
 import * as Switch from '@radix-ui/react-switch';
 import { GlobalProjection } from '@/lib/types';
 import type { SpineEvent } from '@/lib/types';
@@ -52,6 +52,30 @@ export function LedgerDashboard({
   const hasSoul = Boolean(soul);
   const resource = soul?.crossFunctionalState?.resource || {};
   const lastUpdated = soul?.crossFunctionalState?.lastUpdated || {};
+
+  // Financial health score (lightweight, derived from profile)
+  const healthScore = useMemo(() => {
+    if (!profile) return null;
+    const txs = profile.transactions ?? [];
+    const metrics = computeDashboardMetrics(txs, (profile.debtItems ?? []).reduce((s, d) => s + d.balance, 0));
+    const savingsRate = metrics.savingsRate ?? 0;
+    const savingsScore = Math.min(30, Math.round(savingsRate * 30));
+    const actuals = computeBudgetActuals(txs, profile.budgetCategories ?? []);
+    const overBudget = actuals.filter(a => a.status === 'over').length;
+    const budgetScore = Math.round(25 * (1 - overBudget / Math.max(actuals.length, 1)));
+    const goals = profile.financialGoals ?? [];
+    const avgGoalProg = goals.length === 0 ? 0.5
+      : goals.reduce((s, g) => s + Math.min(1, g.currentAmount / Math.max(g.targetAmount, 1)), 0) / goals.length;
+    const goalScore = Math.round(20 * avgGoalProg);
+    const totalDebt = (profile.debtItems ?? []).reduce((s, d) => s + d.balance, 0);
+    const monthlyIncome = metrics.currentMonthIncome || profile.monthlyIncome || 1;
+    const dti = totalDebt / (monthlyIncome * 12);
+    const debtScore = dti === 0 ? 15 : Math.max(0, Math.round(15 * (1 - Math.min(1, dti / 2))));
+    const cashFlowScore = metrics.currentMonthNet >= 0 ? 10 : 0;
+    const total = savingsScore + budgetScore + goalScore + debtScore + cashFlowScore;
+    const grade = total >= 85 ? 'A' : total >= 70 ? 'B' : total >= 55 ? 'C' : total >= 40 ? 'D' : 'F';
+    return { score: total, grade };
+  }, [profile]);
 
   // --- Real computed metrics from transaction history ---
 
@@ -334,6 +358,40 @@ export function LedgerDashboard({
               </motion.section>
             )}
           </AnimatePresence>
+
+          {/* Financial Health Score pill */}
+          {healthScore && (
+            <div className={cn(
+              'flex items-center gap-3 px-4 py-2.5 rounded-xl border',
+              healthScore.grade === 'A' || healthScore.grade === 'B'
+                ? 'bg-emerald-500/5 border-emerald-500/20'
+                : healthScore.grade === 'C'
+                ? 'bg-amber-500/5 border-amber-500/20'
+                : 'bg-rose-500/5 border-rose-500/20'
+            )}>
+              <ShieldCheck className={cn('w-4 h-4 shrink-0', {
+                'text-emerald-400': healthScore.grade === 'A' || healthScore.grade === 'B',
+                'text-amber-400': healthScore.grade === 'C',
+                'text-rose-400': healthScore.grade === 'D' || healthScore.grade === 'F',
+              })} />
+              <div className="flex-1">
+                <p className="text-[10px] text-white/50 uppercase tracking-wider">Financial Health Score</p>
+                <p className={cn('text-sm font-bold', {
+                  'text-emerald-300': healthScore.grade === 'A' || healthScore.grade === 'B',
+                  'text-amber-300': healthScore.grade === 'C',
+                  'text-rose-300': healthScore.grade === 'D' || healthScore.grade === 'F',
+                })}>
+                  Grade {healthScore.grade} — {healthScore.score}/100
+                </p>
+              </div>
+              <button
+                onClick={() => onAskAI?.('What does my financial health score mean and how can I improve it?')}
+                className="text-[10px] text-white/30 hover:text-white/60 transition-colors font-semibold"
+              >
+                Explain →
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <StatCard

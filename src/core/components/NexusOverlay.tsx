@@ -5,10 +5,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
+import { useAI } from '@/llm-engine/ai-context';
 import { ORCHESTRATOR_PERSONA } from '@/modules/orchestrator/personas';
 import { NexusChat } from '@/core/components/NexusChat';
 import { NexusSubModulePanel } from '@/core/components/NexusSubModulePanel';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { NeuralModal } from '@/core/components/NeuralModal';
+import { runDocumentPipeline, type DocumentPipelinePolicy } from '@/lib/services/document-pipeline';
 
 interface SubModuleState {
   moduleId: string;
@@ -23,9 +26,12 @@ export function NexusOverlay() {
   const { hasVault, isUnlocked } = useVault();
   const location = useLocation();
   const navigate = useNavigate();
+  const { sendMessage } = useAI();
   const [open, setOpen] = useState(false);
   const [subModule, setSubModule] = useState<SubModuleState | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [docReviewOpen, setDocReviewOpen] = useState(false);
+  const [docProposal, setDocProposal] = useState<{ summary: string; preview: string } | null>(null);
   // Allow external components to open Nexus via a custom DOM event
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -46,6 +52,60 @@ export function NexusOverlay() {
     systemPrompt: ORCHESTRATOR_PERSONA,
     navigateTo: handleDelegation
   });
+
+  const nexusPolicy: DocumentPipelinePolicy<{ summary: string }, { summary: string; preview: string }> = {
+    id: 'nexus-generic-document',
+    context: { moduleId: 'orchestrator', domain: 'general' },
+    analyze: async ({ parsed }, llmSend) => {
+      const prompt = [
+        `Document received: "${parsed.fileName}"`,
+        `Type: ${parsed.fileType.toUpperCase()} | Words: ${parsed.wordCount.toLocaleString()}`,
+        'Provide a concise summary (4-6 sentences) and list 3-5 key points as bullets.',
+        'Do NOT emit action tags.',
+        '',
+        '---BEGIN DOCUMENT---',
+        parsed.rawText,
+        '---END DOCUMENT---',
+      ].join('\\n');
+      const response = await llmSend(prompt);
+      return { summary: response.trim() || 'No summary returned.' };
+    },
+    buildProposal: (analysis, parsed) => ({
+      summary: analysis.summary,
+      preview: parsed.rawText.slice(0, 2000),
+    }),
+    summarizeProposal: (proposal) => proposal.summary,
+  };
+
+  const handleUploadDocument = useCallback(async (file: File) => {
+    const llmPrimary = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'You are a neutral document analyst. Follow the instructions exactly.',
+        memoryContext: [],
+        summary: 'Nexus document analysis.',
+        history: [],
+      });
+      return response.publicText;
+    };
+    const llmFallback = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'Return a concise summary and key points. No action tags.',
+        memoryContext: [],
+        summary: 'Nexus document fallback.',
+        history: [],
+      });
+      return response.publicText;
+    };
+
+    const result = await runDocumentPipeline({
+      file,
+      policy: nexusPolicy,
+      sendMessage: llmPrimary,
+      sendMessageFallback: llmFallback,
+    });
+    setDocProposal({ summary: result.summary, preview: result.proposal.preview });
+    setDocReviewOpen(true);
+  }, [sendMessage]);
 
   const handleNavigateToModule = useCallback((path: string) => {
     setSubModule(null);
@@ -78,7 +138,7 @@ export function NexusOverlay() {
             height: NEXUS_COLLAPSED_WIDTH,
             minWidth: NEXUS_COLLAPSED_WIDTH,
           }}
-          className="fixed bottom-4 left-4 z-[var(--z-fab)] flex items-center justify-center rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] shadow-lg shadow-black/20 transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:border-white/[0.12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40"
+          className="fixed bottom-6 left-6 z-[var(--z-fab)] hidden lg:flex items-center justify-center rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] shadow-lg shadow-black/20 transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:border-white/[0.12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40"
           aria-label="Open Nexus overlay"
         >
           <Sparkles className="w-5 h-5 text-white/35 shrink-0" />
@@ -152,6 +212,7 @@ export function NexusOverlay() {
                   themeColor="indigo"
                   placeholder="Consult the master node..."
                   showInternalSignals={false}
+                  onUploadDocument={handleUploadDocument}
                 />
 
                 <AnimatePresence>
@@ -165,6 +226,61 @@ export function NexusOverlay() {
                   )}
                 </AnimatePresence>
               </div>
+
+              <NeuralModal
+                isOpen={docReviewOpen}
+                onClose={() => {
+                  setDocReviewOpen(false);
+                  setDocProposal(null);
+                }}
+                title="Review Document Analysis"
+                themeColor="indigo"
+                maxWidth="2xl"
+              >
+                <div className="space-y-6">
+                  {docProposal && (
+                    <div className="space-y-4">
+                      <div className="bg-black/30 border border-white/10 rounded-xl p-3">
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Summary</h4>
+                        <pre className="text-[12px] text-white/70 whitespace-pre-wrap max-h-60 overflow-y-auto">
+                          {docProposal.summary}
+                        </pre>
+                      </div>
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Text Preview</h4>
+                        <pre className="text-[11px] text-white/50 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                          {docProposal.preview}
+                          {docProposal.preview.length >= 2000 ? '\\n[truncated]' : ''}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-3 pt-4 border-t border-white/10">
+                    <button
+                      onClick={() => {
+                        if (!docProposal) return;
+                        ai.handleSendMessage(
+                          `User approved the document analysis. Provide a brief response only, no action tags.\\n\\n${docProposal.summary}`
+                        );
+                        setDocReviewOpen(false);
+                        setDocProposal(null);
+                      }}
+                      className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg"
+                    >
+                      Send Summary
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDocReviewOpen(false);
+                        setDocProposal(null);
+                      }}
+                      className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-bold text-xs rounded-lg"
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </div>
+              </NeuralModal>
             </motion.aside>
           </>
         )}

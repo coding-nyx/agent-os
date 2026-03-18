@@ -564,28 +564,74 @@ Required JSON shape:
   "unrecognisedContent": "string or null"
 }
 
-EXTRACTION RULES:
-1. Extract ALL quantified health values you can identify with confidence ≥ 0.5
-2. Set confidence = 0.0 for any value you are uncertain about — do NOT guess
-3. Confidence guide: 1.0 = explicitly stated with clear label, 0.8 = strongly implied, 0.6 = inferred from context
-4. MANDATORY PII EXCLUSION: Do NOT extract patient name, date of birth, address, phone number, NHS/insurance/SSN numbers, or any identifying information
-5. If a reference range is printed in the document, capture it verbatim in referenceRange
-6. For blood pressure, create TWO fields: systolicBP and diastolicBP
-7. For unrecognisable documents (receipts, legal docs, non-medical), return empty extractedFields and set unrecognisedContent to a brief description of what the document appears to be
-8. detectedPanels should list the named test panels or report sections you identified (e.g. "Complete Blood Count", "Lipid Panel", "GP Visit Summary")
+DOCUMENT TEXT:
+---
+${truncated}
+---`;
+}
 
-SUPPORTED DOCUMENT TYPES:
-- Blood/haematology panels (CBC, FBC)
-- Lipid panels (cholesterol, triglycerides, LDL, HDL)
-- Metabolic panels (glucose, HbA1c, electrolytes, kidney function)
-- Thyroid panels (TSH, T3, T4)
-- Hormone panels (testosterone, oestrogen, cortisol, DHEA)
-- Liver function tests (ALT, AST, bilirubin, albumin)
-- Renal function (creatinine, eGFR, urea)
-- Urinalysis
-- Cardiac markers (troponin, BNP, CK)
-- Imaging reports (extract measurements, findings, conclusions — NOT diagnoses)
-- GP visit notes (extract vitals and quantified findings only)
+// ============================================================================
+// Diagnosis Summary Prompt
+// ============================================================================
+
+export function buildDiagnosisSummaryPrompt(params: {
+  rawText: string;
+  documentType: string;
+  detectedPanels: string[];
+  extractedFields: Array<{
+    fieldName: string;
+    value: string | number;
+    unit?: string;
+    referenceRange?: string;
+    category?: string;
+  }>;
+}): string {
+  const truncated =
+    params.rawText.length > MAX_RAW_TEXT_CHARS
+      ? params.rawText.slice(0, MAX_RAW_TEXT_CHARS) + '\n[... document truncated for analysis ...]'
+      : params.rawText;
+
+  return `You are Soma — a clinical analysis engine. Your role is to interpret medical documents with the directness and confidence of a senior clinician reviewing results. State findings plainly. Do not hedge or soften clinical facts with unnecessary disclaimers in the body of your analysis. A single disclaimer appears at the end.
+
+Return ONLY valid JSON matching the schema below — no prose, no markdown, no explanation outside the JSON.
+
+DOCUMENT TYPE: ${params.documentType}
+DETECTED PANELS: ${params.detectedPanels.join(', ') || 'none'}
+EXTRACTED FIELDS: ${JSON.stringify(params.extractedFields)}
+
+REQUIRED JSON SCHEMA:
+{
+  "reportType": "lab|imaging|prescription|clinical_note|other",
+  "summary": "3–5 sentence direct clinical interpretation. State what the results mean. Call out abnormal findings explicitly. Do NOT soften with 'may' or 'could possibly' — if a value is high, say it is high and what it indicates.",
+  "confidenceLevel": "high|moderate|low",
+  "confidenceRationale": "1–2 sentences. Explain what drives the confidence — e.g. 'All key panels have reference ranges and values are unambiguous.' or 'Document quality is poor with partial values only.'",
+  "comparisons": [
+    {
+      "item": "exact biomarker or finding name",
+      "value": "exact value from document",
+      "referenceRange": "reference range or population average",
+      "status": "below|within|above|unknown",
+      "note": "direct clinical note — what this value means clinically"
+    }
+  ],
+  "whatItMeans": ["direct bullet — what each key finding means for this person's health"],
+  "recommendedActions": ["specific next step — include urgency if warranted"],
+  "suggestedMedications": ["medication name and indication — flag as 'discuss with prescriber'"]
+}
+
+CONFIDENCE RULES:
+- "high": values are unambiguous, reference ranges available, document is clean and complete
+- "moderate": some values lack reference ranges, or document has partial data, or findings are borderline
+- "low": document quality is poor, values are inferred, or findings are too minimal to interpret reliably
+
+INTERPRETATION RULES:
+1. State abnormal findings directly: "LDL at 182 mg/dL is elevated — consistent with hyperlipidemia."
+2. For imaging: state whether findings are normal or abnormal and what the clinical implication is.
+3. For prescriptions: identify each medication, its class, and its clinical purpose.
+4. Comparisons must cover every extracted field that has a reference range.
+5. suggestedMedications are for discussion with a prescriber — label them as such in the note.
+6. If data is insufficient for a confident interpretation, set confidenceLevel to "low" and explain in confidenceRationale. Still provide the best available interpretation.
+7. End the summary field with exactly this sentence: "⚕ This analysis is for informational purposes only and is not a substitute for professional medical advice."
 
 DOCUMENT TEXT:
 ---

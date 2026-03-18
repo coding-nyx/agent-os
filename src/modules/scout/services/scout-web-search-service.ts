@@ -1,5 +1,5 @@
 export {
-  WebSearchService as ScoutWebSearchService,
-  type WebSearchResult as ScoutWebResult,
-  type WebSearchResponse as ScoutWebSearchResponse
-} from '@/lib/services/web-search-service';
+  WebCrawlerService as ScoutWebSearchService,
+  type WebCrawlerResult as ScoutWebResult,
+  type WebCrawlerResponse as ScoutWebSearchResponse
+} from '@/lib/services/web-crawler-service';

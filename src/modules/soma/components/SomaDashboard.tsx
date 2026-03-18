@@ -7,7 +7,7 @@
  * Fix 6: AI insights from real data only
  */
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
@@ -26,10 +26,17 @@ import {
   Wind,
   Plus,
   X,
+  ChevronDown,
+  ChevronRight,
+  MessageSquare,
+  List,
+  FileText,
 } from 'lucide-react';
 import { GlobalProjection } from '@/lib/types';
 // Fix 1: Import the real SomaProfile — no more local conflicting definition
 import type { SomaProfile } from '../types';
+import type { PhysicalAssessment as StoredPhysicalAssessment } from '@/lib/types';
+import type { MessageContent } from '@/llm-engine/types';
 import { addVitalReading } from '../services/soma-profile-service';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
@@ -47,6 +54,7 @@ import { DiagnosisProgressCard } from './DiagnosisProgressCard';
 import { DiagnosisResultsScreen } from './DiagnosisResultsScreen';
 import { DiagnosisActiveBanner } from './DiagnosisActiveBanner';
 import { DiagnosisCloseModal } from './DiagnosisCloseModal';
+import { DiagnosisChatPanel } from './DiagnosisChatPanel';
 import {
   startDiagnosisSession,
   triggerParse,
@@ -54,6 +62,7 @@ import {
   closeDiagnosis,
 } from '../services/diagnosis-session-service';
 import type { DocumentAnalysisResult } from '@/lib/services/document-analysis-service';
+import type { SomaDiagnosisSummary } from '../types';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 
@@ -85,13 +94,13 @@ interface SomaDashboardProps {
   isLocked?: boolean;
   /** Readiness score from useSomaHealth hook — Fix 3 */
   readinessScore?: number | null;
-  /** In-session vital readings (local state, not persisted to real schema yet) */
-  vitalHistory?: VitalReading[];
-  /** In-session assessment records (local state, not persisted to real schema yet) */
-  assessmentHistory?: PhysicalAssessment[];
   onUpdateProfile?: (updates: Partial<SomaProfile>) => void;
   onAddVitalReading?: (reading: VitalReading) => void;
   onAddAssessment?: (assessment: PhysicalAssessment) => void;
+  /** Raw LLM callback for document analysis — accepts multimodal content for images */
+  onAnalyzeDocument?: (content: MessageContent) => Promise<string>;
+  queuedUpload?: File | null;
+  onQueuedUploadHandled?: () => void;
 }
 
 const noop = () => {};
@@ -115,6 +124,22 @@ const QUICK_ENTRY_CHIPS: ChipConfig[] = [
   { key: 'weight',    label: 'Weight',     icon: Scale,  unit: 'kg',  min: 0,   max: 500, step: 0.1 },
   { key: 'spo2',      label: 'SpO₂',       icon: Wind,   unit: '%',   min: 70,  max: 100, step: 1   },
 ];
+
+function useIsMobile(breakpoint = 1024) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false,
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    setIsMobile(mql.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [breakpoint]);
+
+  return isMobile;
+}
 
 interface QuickEntryChipsProps {
   uid: string | null;
@@ -314,11 +339,12 @@ export const SomaDashboard = React.memo(function SomaDashboard({
   profile,
   isLocked = false,
   readinessScore: externalReadinessScore,
-  vitalHistory = [],
-  assessmentHistory = [],
   onUpdateProfile: _onUpdateProfile = noop,
   onAddVitalReading = noop,
   onAddAssessment = noop,
+  onAnalyzeDocument,
+  queuedUpload = null,
+  onQueuedUploadHandled = noop,
 }: SomaDashboardProps) {
   const [activeView, setActiveView] = useState<SomaView>('dashboard');
   const [showAIPanel, setShowAIPanel] = useState(false);
@@ -326,23 +352,33 @@ export const SomaDashboard = React.memo(function SomaDashboard({
 
   // ── Auth / Vault ────────────────────────────────────────────────────────────
   const { user } = useAuth();
-  const { getModuleKey } = useVault();
+  const { getModuleKey, isUnlocked } = useVault();
   const uid = user?.uid ?? null;
+  const isMobile = useIsMobile();
 
   // ── Diagnosis tab state ─────────────────────────────────────────────────────
   const [diagnosisPhase, setDiagnosisPhase] = useState<'idle' | 'uploading' | 'parsing' | 'reviewed' | 'error'>('idle');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<DocumentAnalysisResult | null>(null);
+  const [diagnosisSummary, setDiagnosisSummary] = useState<SomaDiagnosisSummary | null>(null);
   const [selectedFieldIds, setSelectedFieldIds] = useState<string[]>([]);
+  const [resultsExpanded, setResultsExpanded] = useState(true);
+  const [diagnosisActiveTab, setDiagnosisActiveTab] = useState<'findings' | 'analysis'>('findings');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [diagnosisError, setDiagnosisError] = useState<string | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [isClosingDiagnosis, setIsClosingDiagnosis] = useState(false);
 
+  // Stable ref so the restore effect can call the LLM callback without
+  // adding onAnalyzeDocument to the effect's dependency array.
+  const onAnalyzeDocumentRef = useRef(onAnalyzeDocument);
+  useEffect(() => { onAnalyzeDocumentRef.current = onAnalyzeDocument; }, [onAnalyzeDocument]);
+
   // On mount: restore any active diagnosis session from Firestore.
   useEffect(() => {
-    if (!uid) return;
+    // Wait until the vault is unlocked — getModuleKey returns null while locked.
+    if (!uid || !isUnlocked) return;
     let cancelled = false;
     (async () => {
       const encryptionKey = await getModuleKey('soma');
@@ -353,12 +389,30 @@ export const SomaDashboard = React.memo(function SomaDashboard({
         setActiveSessionId(session.id);
         if (session.status === 'reviewed' && session.analysisResult) {
           setAnalysisResult(session.analysisResult);
+          if (session.diagnosisSummary) {
+            setDiagnosisSummary(session.diagnosisSummary);
+          }
           setSelectedFieldIds(
             session.analysisResult.extractedFields.map((_, i) => String(i)),
           );
           setDiagnosisPhase('reviewed');
-        } else if (session.status === 'parsing' || session.status === 'uploading') {
+        } else if (session.status === 'uploaded' || session.status === 'parsing') {
+          // File was uploaded but parsing was interrupted by the page reload.
+          // Re-trigger the analysis pipeline automatically.
           setDiagnosisPhase('parsing');
+          const llmCallback = onAnalyzeDocumentRef.current ?? (async () => '');
+          try {
+            const result = await triggerParse(uid, session.id, encryptionKey, llmCallback);
+            if (cancelled) return;
+            setAnalysisResult(result.analysis);
+            setDiagnosisSummary(result.summary);
+            setSelectedFieldIds(result.analysis.extractedFields.map((_, i) => String(i)));
+            setDiagnosisPhase('reviewed');
+          } catch (parseErr) {
+            if (cancelled) return;
+            setDiagnosisPhase('error');
+            setDiagnosisError(parseErr instanceof Error ? parseErr.message : 'Re-analysis failed. Please try again.');
+          }
         }
       } catch {
         // Silently ignore session-restore errors — they are non-critical.
@@ -366,7 +420,14 @@ export const SomaDashboard = React.memo(function SomaDashboard({
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid]);
+  }, [uid, isUnlocked]);
+
+  useEffect(() => {
+    if (diagnosisPhase === 'reviewed') {
+      setResultsExpanded(!isMobile);
+      setDiagnosisActiveTab('findings');
+    }
+  }, [diagnosisPhase, isMobile]);
 
   // ── Diagnosis handlers ──────────────────────────────────────────────────────
 
@@ -384,17 +445,22 @@ export const SomaDashboard = React.memo(function SomaDashboard({
       const sessionId = await startDiagnosisSession(uid, file, encryptionKey);
       setActiveSessionId(sessionId);
       setDiagnosisPhase('parsing');
-      // llmCallback is a stub — DocumentAnalysisService.parseAnalysisResponse
-      // handles an empty string gracefully by returning empty extractedFields.
-      const result = await triggerParse(uid, sessionId, encryptionKey, async (_prompt: string) => '');
-      setAnalysisResult(result);
-      setSelectedFieldIds(result.extractedFields.map((_, i) => String(i)));
+      const llmCallback = onAnalyzeDocument ?? (async (_content: MessageContent) => '');
+      const result = await triggerParse(uid, sessionId, encryptionKey, llmCallback, file);
+      setAnalysisResult(result.analysis);
+      setDiagnosisSummary(result.summary);
+      setSelectedFieldIds(result.analysis.extractedFields.map((_, i) => String(i)));
       setDiagnosisPhase('reviewed');
     } catch (err) {
       setDiagnosisPhase('error');
       setDiagnosisError(err instanceof Error ? err.message : 'Upload failed.');
     }
   }, [uid, getModuleKey]);
+
+  useEffect(() => {
+    if (!queuedUpload) return;
+    void handleFileSelected(queuedUpload).finally(() => onQueuedUploadHandled());
+  }, [queuedUpload, handleFileSelected, onQueuedUploadHandled]);
 
   const handleCloseDiagnosis = useCallback(async (merge: boolean) => {
     if (!activeSessionId || !uid) return;
@@ -409,6 +475,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
       setDiagnosisPhase('idle');
       setActiveSessionId(null);
       setAnalysisResult(null);
+      setDiagnosisSummary(null);
       setSelectedFieldIds([]);
       setShowCloseModal(false);
     } catch (err) {
@@ -421,26 +488,44 @@ export const SomaDashboard = React.memo(function SomaDashboard({
   // Fix 3: Use readinessScore from useSomaHealth hook; fall back to 0 when not yet loaded
   const readinessScore = externalReadinessScore ?? 0;
 
-  // Prepare chart data from in-session vital history (separate from stored profile)
+  const hasReadinessData = useMemo(() => {
+    if (!profile) return false;
+    const names = new Set([
+      'resting heart rate',
+      'restingheartrate',
+      'sleep quality',
+      'sleepquality',
+      'energy level',
+      'energylevel',
+      'physical stress',
+      'stressphysical',
+    ]);
+    return profile.biomarkers.some((b) => {
+      const key = typeof b.name === 'string' ? b.name.toLowerCase().replace(/\s+/g, '') : '';
+      return names.has(key) && typeof b.value === 'number';
+    });
+  }, [profile]);
+
+  // Chart data sourced from live profile (updated by Firestore subscription)
   const heartRateHistory = useMemo(() => {
-    return vitalHistory
+    return (profile?.vitalReadings ?? [])
       .filter(v => v.heartRate !== undefined)
       .map(v => ({
         date: new Date(v.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         value: v.heartRate!,
       }))
       .slice(-14);
-  }, [vitalHistory]);
+  }, [profile?.vitalReadings]);
 
   const weightHistory = useMemo(() => {
-    return vitalHistory
+    return (profile?.vitalReadings ?? [])
       .filter(v => v.weight !== undefined)
       .map(v => ({
         date: new Date(v.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         value: v.weight!,
       }))
       .slice(-30);
-  }, [vitalHistory]);
+  }, [profile?.vitalReadings]);
 
   // Fix 6: AI insights based on real SomaProfile fields (biomarkers, clearances, labs).
   // Old code used non-existent fields like restingHeartRate, sleepHours, hydrationLevel.
@@ -530,7 +615,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
       <QuickEntryChips
         uid={uid}
         getModuleKey={getModuleKey}
-        allReadings={[...(profile.vitalReadings ?? []), ...vitalHistory]}
+        allReadings={profile.vitalReadings ?? []}
         onAddVitalReading={onAddVitalReading}
       />
 
@@ -554,13 +639,19 @@ export const SomaDashboard = React.memo(function SomaDashboard({
 
         <div className="flex items-center gap-8">
           <div className="flex-shrink-0">
-            <ProgressRing
-              percentage={readinessScore}
-              size={140}
-              strokeWidth={12}
-              label="Readiness"
-              color={readinessScore >= 80 ? 'green' : readinessScore >= 60 ? 'amber' : 'orange'}
-            />
+            {hasReadinessData ? (
+              <ProgressRing
+                percentage={readinessScore}
+                size={140}
+                strokeWidth={12}
+                label="Readiness"
+                color={readinessScore >= 80 ? 'green' : readinessScore >= 60 ? 'amber' : 'orange'}
+              />
+            ) : (
+              <div className="w-[140px] h-[140px] rounded-full border border-white/10 bg-white/[0.02] flex items-center justify-center text-xs text-white/40 text-center px-4">
+                No readiness data yet
+              </div>
+            )}
           </div>
 
           {/* Real data summary stats */}
@@ -734,14 +825,13 @@ export const SomaDashboard = React.memo(function SomaDashboard({
         )}
       </SurfaceCard>
 
-      {/* Session Heart Rate Trend (from locally entered vitals) */}
       {heartRateHistory.length > 0 && (
         <SurfaceCard className="p-6">
           <div className="flex items-center gap-3 mb-6">
             <Heart className="w-6 h-6 text-cyan-400" />
             <div>
               <h2 className="text-xl font-bold text-white tracking-tight font-display">Heart Rate Trend</h2>
-              <p className="text-sm text-white/60">From this session's vitals entries</p>
+              <p className="text-sm text-white/60">Last {heartRateHistory.length} reading(s)</p>
             </div>
           </div>
           <TimeSeriesChart
@@ -760,7 +850,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
             <BarChart3 className="w-6 h-6 text-purple-400" />
             <div>
               <h2 className="text-xl font-bold text-white tracking-tight font-display">Weight Trend</h2>
-              <p className="text-sm text-white/60">From this session's vitals entries</p>
+              <p className="text-sm text-white/60">Last {weightHistory.length} reading(s)</p>
             </div>
           </div>
           <TimeSeriesChart
@@ -810,12 +900,23 @@ export const SomaDashboard = React.memo(function SomaDashboard({
     />
   );
 
-  const renderHistory = () => (
-    <BiometricHistory
-      vitalHistory={vitalHistory}
-      assessmentHistory={assessmentHistory}
-    />
-  );
+  const renderHistory = () => {
+    const profileVitals: VitalReading[] = profile?.vitalReadings ?? [];
+    const profileAssessments: PhysicalAssessment[] = (profile?.physicalAssessments ?? []).map((a: StoredPhysicalAssessment, i: number) => ({
+      id: `pa-${a.timestamp}-${i}`,
+      timestamp: a.timestamp,
+      type: (a.strength != null ? 'strength' : a.flexibility != null ? 'flexibility' : a.endurance != null ? 'endurance' : 'general') as PhysicalAssessment['type'],
+      score: a.strength ?? a.flexibility ?? a.endurance ?? 0,
+      measurements: {
+        ...(a.weight != null ? { weight: a.weight } : {}),
+        ...(a.bmi != null ? { bmi: a.bmi } : {}),
+        ...(a.bodyFatPercentage != null ? { bodyFat: a.bodyFatPercentage } : {}),
+        ...(a.muscleMass != null ? { muscleMass: a.muscleMass } : {}),
+        ...(a.vo2Max != null ? { vo2max: a.vo2Max } : {}),
+      },
+    }));
+    return <BiometricHistory vitalHistory={profileVitals} assessmentHistory={profileAssessments} />;
+  };
 
   const renderLabs = () => {
     if (diagnosisPhase === 'idle') {
@@ -846,14 +947,174 @@ export const SomaDashboard = React.memo(function SomaDashboard({
       );
     }
     if (diagnosisPhase === 'reviewed' && analysisResult) {
+      const resultsCount = analysisResult.extractedFields.length;
       return (
-        <DiagnosisResultsScreen
-          sessionId={activeSessionId!}
-          detectedPanels={analysisResult.detectedPanels}
-          extractedFields={analysisResult.extractedFields}
-          onSelectionChange={setSelectedFieldIds}
-          onClose={() => setShowCloseModal(true)}
-        />
+        <div className="flex flex-col gap-3">
+
+          {/* ── Inline session header — replaces floating DiagnosisActiveBanner ─────────
+               Embedded in the workspace flow (no z-50 / fixed positioning).
+               Shows file stats + merge/discard trigger at a glance.              ── */}
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-emerald-500/[0.06] border border-emerald-500/20 backdrop-blur-sm"
+            role="status"
+            aria-label="Active diagnosis session"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0"
+                aria-hidden="true"
+              >
+                <FileText className="w-3.5 h-3.5 text-emerald-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-black uppercase tracking-widest text-emerald-400">
+                  Active Analysis
+                </p>
+                <p className="text-[11px] text-white/40 mt-0.5">
+                  {resultsCount} field{resultsCount !== 1 ? 's' : ''} extracted
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCloseModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-[11px] font-bold hover:bg-emerald-500/25 transition-all flex-shrink-0"
+              aria-label="Merge or discard diagnosis results"
+            >
+              Merge / Close
+            </button>
+          </motion.div>
+
+          {/* ── Mobile workspace: tab switcher (hidden on lg+) ───────────────────────
+               Single-panel view eliminates the 60vh + 60vh scroll nightmare.
+               Tabs slide between Findings list and the AI Analysis chat.         ── */}
+          <div className="lg:hidden flex flex-col gap-3">
+            {/* Tab bar */}
+            <div
+              className="flex rounded-xl bg-white/[0.04] border border-white/[0.08] p-1 gap-1"
+              role="tablist"
+              aria-label="Diagnosis workspace tabs"
+            >
+              <button
+                role="tab"
+                id="soma-diag-tab-findings"
+                aria-selected={diagnosisActiveTab === 'findings'}
+                aria-controls="soma-diag-panel-findings"
+                onClick={() => setDiagnosisActiveTab('findings')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all min-h-[40px]',
+                  diagnosisActiveTab === 'findings'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                    : 'text-white/40 hover:text-white/60 hover:bg-white/[0.03]',
+                )}
+              >
+                <List className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+                <span>Findings</span>
+                <span
+                  className={cn(
+                    'px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none',
+                    diagnosisActiveTab === 'findings'
+                      ? 'bg-emerald-500/30 text-emerald-300'
+                      : 'bg-white/10 text-white/40',
+                  )}
+                >
+                  {resultsCount}
+                </span>
+              </button>
+              <button
+                role="tab"
+                id="soma-diag-tab-analysis"
+                aria-selected={diagnosisActiveTab === 'analysis'}
+                aria-controls="soma-diag-panel-analysis"
+                onClick={() => setDiagnosisActiveTab('analysis')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all min-h-[40px]',
+                  diagnosisActiveTab === 'analysis'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                    : 'text-white/40 hover:text-white/60 hover:bg-white/[0.03]',
+                )}
+              >
+                <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+                <span>Analysis</span>
+              </button>
+            </div>
+
+            {/* Tab panels — AnimatePresence drives cross-fade + slide */}
+            <AnimatePresence mode="wait" initial={false}>
+              {diagnosisActiveTab === 'findings' ? (
+                <motion.div
+                  key="findings"
+                  id="soma-diag-panel-findings"
+                  role="tabpanel"
+                  aria-labelledby="soma-diag-tab-findings"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  className="min-h-[65dvh]"
+                >
+                  <DiagnosisResultsScreen
+                    sessionId={activeSessionId!}
+                    detectedPanels={analysisResult.detectedPanels}
+                    extractedFields={analysisResult.extractedFields}
+                    onSelectionChange={setSelectedFieldIds}
+                    onClose={() => setShowCloseModal(true)}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="analysis"
+                  id="soma-diag-panel-analysis"
+                  role="tabpanel"
+                  aria-labelledby="soma-diag-tab-analysis"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  className="min-h-[60dvh]"
+                >
+                  {diagnosisSummary ? (
+                    <DiagnosisChatPanel
+                      summary={diagnosisSummary}
+                      sessionId={activeSessionId!}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                      <MessageSquare className="w-8 h-8 text-white/10" aria-hidden="true" />
+                      <p className="text-sm text-white/30">Analysis initialising…</p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* ── Desktop two-column layout (lg+) ─────────────────────────────────────
+               Results on the left (flex-1), chat panel fixed width on the right.
+               items-start prevents the shorter column from stretching unnaturally.  ── */}
+          <div className="hidden lg:flex gap-4 items-start">
+            <div className="flex-1 min-w-0">
+              <DiagnosisResultsScreen
+                sessionId={activeSessionId!}
+                detectedPanels={analysisResult.detectedPanels}
+                extractedFields={analysisResult.extractedFields}
+                onSelectionChange={setSelectedFieldIds}
+                onClose={() => setShowCloseModal(true)}
+              />
+            </div>
+            {diagnosisSummary && (
+              <div className="w-[400px] xl:w-[460px] flex-shrink-0">
+                <DiagnosisChatPanel
+                  summary={diagnosisSummary}
+                  sessionId={activeSessionId!}
+                />
+              </div>
+            )}
+          </div>
+
+        </div>
       );
     }
     if (diagnosisPhase === 'error') {
@@ -876,8 +1137,10 @@ export const SomaDashboard = React.memo(function SomaDashboard({
 
   return (
     <div className="flex flex-col">
-      {/* Diagnosis active banner — shown above tab content when a session is live */}
-      {activeSessionId && (
+      {/* Diagnosis active banner — only shown when the user is NOT on the labs tab.
+           When on the labs tab, the inline workspace header provides the same info
+           without the z-50 float. This keeps the banner useful as a cross-tab signal. */}
+      {activeSessionId && activeView !== 'labs' && (
         <DiagnosisActiveBanner
           sessionId={activeSessionId}
           phase={
@@ -936,6 +1199,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
           sessionId={activeSessionId!}
           selectedItemCount={selectedFieldIds.length}
           totalItemCount={analysisResult?.extractedFields.length ?? 0}
+          suggestedMedicationCount={diagnosisSummary?.suggestedMedications?.length ?? 0}
           onMerge={() => handleCloseDiagnosis(true)}
           onDiscard={() => handleCloseDiagnosis(false)}
           onCancel={() => setShowCloseModal(false)}

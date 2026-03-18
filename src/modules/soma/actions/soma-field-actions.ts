@@ -15,6 +15,9 @@ import { ActionHub } from '@/lib/actions/action-hub';
 import { SchemaRegistry } from '@/lib/schema-registry';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { FieldDefinition } from '@/lib/field-system/types';
+import { loadSomaProfile, saveSomaProfile, addVitalReading } from '../services/soma-profile-service';
+import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import type { BiomarkerRecord, ClearanceRecord, LabSummaryRecord } from '@/lib/types';
 
 // ============================================================================
 // Soma Spine Event Types
@@ -499,7 +502,7 @@ export function registerSomaFieldActions(): void {
     },
 
     // ── Compute Readiness ───────────────────────────────────────────────
-    compute_readiness: async ({ payload, pushAssistantMessage }) => {
+    compute_readiness: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
       const readinessPayload: ComputeReadinessPayload = {
         restingHeartRate:
           typeof payload?.restingHeartRate === 'number'
@@ -522,29 +525,231 @@ export function registerSomaFieldActions(): void {
       const result = computeReadinessScore(readinessPayload);
       emitReadinessUpdated(result);
 
-      const levelEmoji =
-        result.level === 'optimal'
-          ? '🟢'
-          : result.level === 'good'
-            ? '🔵'
-            : result.level === 'fair'
-              ? '🟡'
-              : '🔴';
+      // Persist readiness score to SomaProfile and NSV
+      if (userId && encryptionKey) {
+        try {
+          const profile = await loadSomaProfile({ userId, encryptionKey });
+          if (profile) {
+            await saveSomaProfile(
+              { ...profile, readinessScore: result.score, updatedAt: new Date().toISOString() },
+              { userId, encryptionKey }
+            );
+          }
+          await GlobalProjectionService.updateCrossFunctionalState(userId, {
+            biological: { recoveryScore: result.score / 10 },
+          });
+        } catch (err) {
+          console.error('[SomaFieldActions] compute_readiness persist failed:', err);
+        }
+      }
+
+      const levelLabel =
+        result.level === 'optimal' ? 'Optimal' :
+        result.level === 'good' ? 'Good' :
+        result.level === 'fair' ? 'Fair' : 'Poor';
 
       const recsText =
         result.recommendations.length > 0
-          ? `\n\nRecommendations:\n${result.recommendations.map((r) => `• ${r}`).join('\n')}`
+          ? `\n\nRecommendations:\n${result.recommendations.map((r) => `- ${r}`).join('\n')}`
           : '';
 
       pushAssistantMessage?.(
-        `${levelEmoji} **Readiness Score: ${result.score}/100 (${result.level})**\n\n` +
+        `Readiness Score: ${result.score}/100 (${levelLabel})\n\n` +
           `Breakdown:\n` +
-          `• Vitals: ${result.breakdown.vitals}/100 (40%)\n` +
-          `• Sleep: ${result.breakdown.sleep}/100 (30%)\n` +
-          `• Energy: ${result.breakdown.energy}/100 (20%)\n` +
-          `• Stress: ${result.breakdown.stress}/100 (10%)` +
+          `- Vitals: ${result.breakdown.vitals}/100 (40%)\n` +
+          `- Sleep: ${result.breakdown.sleep}/100 (30%)\n` +
+          `- Energy: ${result.breakdown.energy}/100 (20%)\n` +
+          `- Stress: ${result.breakdown.stress}/100 (10%)` +
           recsText
       );
+    },
+
+    // ── Commit Biomarker ────────────────────────────────────────────────
+    commit_biomarker: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to save biomarker: vault is locked.');
+        return;
+      }
+      const name = typeof payload?.name === 'string' ? payload.name.trim() : '';
+      if (!name || payload?.value === undefined) {
+        pushAssistantMessage?.('Invalid biomarker payload: name and value are required.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to save biomarker: profile not found.');
+        return;
+      }
+      const record: BiomarkerRecord = {
+        id: `bm-${Date.now()}`,
+        name,
+        value: payload.value as number | string,
+        unit: typeof payload.unit === 'string' ? payload.unit : undefined,
+        source: typeof payload.source === 'string' ? payload.source : 'ai',
+        recordedAt: typeof payload.recordedAt === 'string' ? payload.recordedAt : new Date().toISOString(),
+      };
+      await saveSomaProfile(
+        { ...profile, biomarkers: [...profile.biomarkers, record], updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      Spine.emit({
+        type: SomaSpineEvents.BIOMARKER_COMMITTED,
+        source: 'soma',
+        domain: 'B',
+        data: { moduleId: 'soma', fieldId: record.id, newValue: record.value, fieldName: record.name, timestamp: Date.now() },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+      pushAssistantMessage?.(
+        `Biomarker recorded: ${record.name} = ${record.value}${record.unit ? ` ${record.unit}` : ''}.`
+      );
+    },
+
+    // ── Log Vital ───────────────────────────────────────────────────────
+    log_vital: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to log vital: vault is locked.');
+        return;
+      }
+      const fields: Record<string, number | string> = {};
+      if (typeof payload?.heartRate === 'number') fields.heartRate = payload.heartRate;
+      if (typeof payload?.weight === 'number') fields.weight = payload.weight;
+      if (typeof payload?.spo2 === 'number') fields.spo2 = payload.spo2;
+      if (typeof payload?.temperature === 'number') fields.temperature = payload.temperature;
+      if (typeof payload?.bloodPressure === 'string') fields.bloodPressure = payload.bloodPressure;
+
+      if (Object.keys(fields).length === 0) {
+        pushAssistantMessage?.('No vital fields provided. Include heartRate, weight, spo2, temperature, or bloodPressure.');
+        return;
+      }
+      await addVitalReading(userId, fields, encryptionKey);
+      Spine.emit({
+        type: SomaSpineEvents.VITAL_LOGGED,
+        source: 'soma',
+        domain: 'B',
+        data: { moduleId: 'soma', fields, timestamp: Date.now() },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+      const summary = Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join(', ');
+      pushAssistantMessage?.(`Vital reading recorded: ${summary}.`);
+    },
+
+    // ── Issue Clearance ─────────────────────────────────────────────────
+    issue_clearance: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to issue clearance: vault is locked.');
+        return;
+      }
+      const activity = typeof payload?.activity === 'string' ? payload.activity.trim() : '';
+      if (!activity) {
+        pushAssistantMessage?.('Clearance requires an activity name.');
+        return;
+      }
+      const validStatuses = ['granted', 'denied', 'conditional'] as const;
+      const status: ClearanceRecord['status'] = validStatuses.includes(payload?.status as ClearanceRecord['status'])
+        ? (payload.status as ClearanceRecord['status'])
+        : 'conditional';
+
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to issue clearance: profile not found.');
+        return;
+      }
+      const record: ClearanceRecord = {
+        id: `cl-${Date.now()}`,
+        activity,
+        status,
+        reason: typeof payload?.reason === 'string' ? payload.reason : '',
+        issuedAt: new Date().toISOString(),
+      };
+      await saveSomaProfile(
+        { ...profile, clearances: [...profile.clearances, record], updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      emitClearanceChanged(record.id, 'issued', activity);
+      pushAssistantMessage?.(
+        `Clearance issued for "${activity}": ${status}.${record.reason ? ` Reason: ${record.reason}` : ''}`
+      );
+    },
+
+    // ── Parse Lab Report ────────────────────────────────────────────────
+    parse_lab_report: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to save lab report: vault is locked.');
+        return;
+      }
+      const panel = typeof payload?.panel === 'string' ? payload.panel.trim() : '';
+      if (!panel) {
+        pushAssistantMessage?.('Lab report requires a panel name.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to save lab report: profile not found.');
+        return;
+      }
+      const record: LabSummaryRecord = {
+        id: `lab-${Date.now()}`,
+        panel,
+        findings: Array.isArray(payload?.findings) ? (payload.findings as string[]) : [],
+        flags: Array.isArray(payload?.flags) ? (payload.flags as string[]) : [],
+        recordedAt: new Date().toISOString(),
+      };
+      await saveSomaProfile(
+        { ...profile, labSummaries: [...profile.labSummaries, record], updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      Spine.emit({
+        type: SomaSpineEvents.LAB_REPORT_PARSED,
+        source: 'soma',
+        domain: 'B',
+        data: { moduleId: 'soma', panel, flagCount: record.flags.length, timestamp: Date.now() },
+        cascadeDepth: 0,
+        priority: record.flags.length > 0 ? 'alert' : 'info',
+      });
+      pushAssistantMessage?.(
+        `Lab report saved: ${panel}. ${record.findings.length} finding(s), ${record.flags.length} flag(s).`
+      );
+    },
+
+    // ── Update Conditions / Medications / Allergies ─────────────────────
+    update_conditions: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to update conditions: vault is locked.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to update conditions: profile not found.');
+        return;
+      }
+      const updates: { knownConditions?: string[]; medications?: string[]; allergies?: string[] } = {};
+      if (Array.isArray(payload?.knownConditions)) updates.knownConditions = payload.knownConditions as string[];
+      if (Array.isArray(payload?.medications)) updates.medications = payload.medications as string[];
+      if (Array.isArray(payload?.allergies)) updates.allergies = payload.allergies as string[];
+
+      if (Object.keys(updates).length === 0) {
+        pushAssistantMessage?.('No conditions, medications, or allergies provided to update.');
+        return;
+      }
+      await saveSomaProfile(
+        { ...profile, ...updates, updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      Spine.emit({
+        type: SomaSpineEvents.PROFILE_UPDATED,
+        source: 'soma',
+        domain: 'B',
+        data: { moduleId: 'soma', updatedFields: Object.keys(updates), timestamp: Date.now() },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+      const parts: string[] = [];
+      if (updates.knownConditions) parts.push(`${updates.knownConditions.length} condition(s)`);
+      if (updates.medications) parts.push(`${updates.medications.length} medication(s)`);
+      if (updates.allergies) parts.push(`${updates.allergies.length} allerg(ies)`);
+      pushAssistantMessage?.(`Medical profile updated: ${parts.join(', ')}.`);
     },
 
     // ── Approve a single health entry ──────────────────────────────────

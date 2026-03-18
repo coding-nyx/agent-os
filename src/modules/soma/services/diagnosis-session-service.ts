@@ -24,7 +24,7 @@
 //     exists for binary blob storage).
 //   - Firestore session documents use getNexusDataLayer() (NexusDataLayer boundary).
 
-import { ref, uploadBytes, deleteObject, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, deleteObject, getBytes } from 'firebase/storage';
 import { getFirebase } from '@/lib/firebase';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { encryptWithKey, decryptWithKey } from '@/lib/encryption';
@@ -32,11 +32,13 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import type { SpineEventType } from '@/lib/types';
 import type { ExtractedDataItem } from '@/core/diagnosis/types';
 import { mergeSomaDiagnosisData } from '../diagnosis/soma-diagnosis-merge';
-import {
-  DocumentAnalysisService,
-  type DocumentAnalysisResult,
-  type ExtractedField,
-} from '@/lib/services/document-analysis-service';
+import type { DocumentAnalysisResult, ExtractedField } from '@/lib/services/document-analysis-service';
+import { runDocumentPipeline } from '@/lib/services/document-pipeline';
+import { somaDocumentPolicy } from './soma-document-policy';
+import { NexusLogger } from '@/lib/nexus-logger';
+import { buildDiagnosisSummaryPrompt } from '../prompts/soma-prompt-builder';
+import { sanitizeJsonPayload } from '@/lib/ai-adapters/sanitize';
+import type { SomaDiagnosisSummary } from '../types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,24 @@ const STORAGE_PREFIX = 'diagnoses';
 
 /** Sessions expire after 24 hours — a safety TTL in case the user abandons. */
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Max attempts for Firebase Storage download before giving up. */
+const MAX_STORAGE_RETRIES = 2;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => reject(new Error(message)), ms);
+    promise
+      .then((value) => {
+        clearTimeout(timeoutId);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timeoutId);
+        reject(err);
+      });
+  });
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -77,12 +97,15 @@ export interface SomaDiagnosisSession {
   // ── Error info (plaintext, no PHI) ───────────────────────────────────────
   parseError?: string;
   /** uploadedAt + 24 h — TTL safety net so orphaned sessions self-expire. */
-  expiresAt: string;
+  expiresAt?: string | null;
 }
 
 /** Stored inside the AES-GCM encrypted envelope — never persisted in plaintext. */
 interface DiagnosisEncryptedPayload {
   extractedFields: ExtractedField[];
+  detectedPanels?: string[];
+  documentType?: string;
+  diagnosisSummary?: SomaDiagnosisSummary;
   /** SHA-256 hex digest of the raw document text. Used for deduplication only. */
   rawTextHash: string;
   analysedAt: string;
@@ -224,6 +247,8 @@ export async function startDiagnosisSession(
  * @param sessionId     - Session ID returned by startDiagnosisSession.
  * @param encryptionKey - Vault AES-GCM key for encrypting the analysis result.
  * @param llmCallback   - Async function that accepts a prompt string and returns the LLM response.
+ * @param sourceFile    - If provided, used directly (skips storage download). Pass when the file
+ *                        is still in memory from the upload step to avoid a CORS re-download.
  * @returns The fully parsed DocumentAnalysisResult (rawText is in-memory only).
  * @throws  If storage download, text extraction, or Firestore write fails.
  */
@@ -232,7 +257,8 @@ export async function triggerParse(
   sessionId: string,
   encryptionKey: CryptoKey,
   llmCallback: (prompt: string) => Promise<string>,
-): Promise<DocumentAnalysisResult> {
+  sourceFile?: File,
+): Promise<{ analysis: DocumentAnalysisResult; summary: SomaDiagnosisSummary }> {
   const dataLayer = getNexusDataLayer();
 
   // Load session metadata.
@@ -255,55 +281,94 @@ export async function triggerParse(
   await updateSessionStatus(uid, sessionId, 'parsing');
 
   try {
-    // ── 1. Download file from Firebase Storage ────────────────────────────
-    const { storage } = getFirebase();
-    if (!storage) {
-      throw new Error('[DiagnosisSessionService] Firebase Storage is not initialised.');
+    // ── 1. Resolve the File object ────────────────────────────────────────
+    // Use sourceFile directly if provided (avoids a CORS-blocked re-download
+    // in local dev and is more efficient in production).
+    // Falls back to a storage download for restored sessions (page reload).
+    let reconstructedFile: File;
+    if (sourceFile) {
+      reconstructedFile = sourceFile;
+    } else {
+      const { storage } = getFirebase();
+      if (!storage) {
+        throw new Error('[DiagnosisSessionService] Firebase Storage is not initialised.');
+      }
+      const storageRef = ref(storage, session.sourceStoragePath);
+      let bytes: ArrayBuffer | undefined;
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= MAX_STORAGE_RETRIES; attempt++) {
+        try {
+          bytes = await getBytes(storageRef);
+          break;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      if (bytes === undefined) {
+        throw lastError ?? new Error('[DiagnosisSessionService] Failed to download file from Storage.');
+      }
+      reconstructedFile = new File([bytes], session.fileName, {
+        type: session.mimeType || 'application/octet-stream',
+      });
     }
 
-    const storageRef = ref(storage, session.sourceStoragePath);
-    const downloadUrl = await getDownloadURL(storageRef);
-    const response = await fetch(downloadUrl);
-    if (!response.ok) {
-      throw new Error(`[DiagnosisSessionService] Failed to fetch file from Storage: HTTP ${response.status}`);
-    }
+    // ── 2. Parse + analyze with shared pipeline ───────────────────────────
+    const pipeline = await withTimeout(
+      runDocumentPipeline({
+        file: reconstructedFile,
+        policy: somaDocumentPolicy,
+        sendMessage: llmCallback,
+      }),
+      60_000,
+      'Diagnosis analysis timed out. Please try again.'
+    );
+    const analysisResult = pipeline.analysis;
 
-    const blob = await response.blob();
-    const reconstructedFile = new File([blob], session.fileName, {
-      type: session.mimeType || blob.type,
+    // ── 5. Build diagnosis summary (LLM) ──────────────────────────────────
+    const summaryPrompt = buildDiagnosisSummaryPrompt({
+      rawText: analysisResult.rawText,
+      documentType: analysisResult.documentType,
+      detectedPanels: analysisResult.detectedPanels ?? [],
+      extractedFields: analysisResult.extractedFields.map((f) => ({
+        fieldName: f.fieldName,
+        value: f.value,
+        unit: f.unit,
+        referenceRange: f.referenceRange,
+        category: f.category,
+      })),
     });
 
-    // ── 2. Extract text ───────────────────────────────────────────────────
-    const { text: rawText, type: docType } = await DocumentAnalysisService.extractText(
-      reconstructedFile,
+    const summaryRaw = await withTimeout(
+      llmCallback(summaryPrompt),
+      30_000,
+      'Diagnosis summary timed out. Please try again.'
     );
+    const summary = parseDiagnosisSummary(summaryRaw);
+    if (!summary) {
+      throw new Error('Diagnosis summary could not be generated.');
+    }
 
-    // ── 3. Build prompt and call LLM ──────────────────────────────────────
-    const prompt = DocumentAnalysisService.buildAnalysisPrompt(rawText);
-    const llmResponse = await llmCallback(prompt);
-
-    // ── 4. Parse LLM response ─────────────────────────────────────────────
-    const analysisResult = DocumentAnalysisService.parseAnalysisResponse(llmResponse, rawText);
-    // Patch the documentType from extractText (the LLM doesn't determine this).
-    analysisResult.documentType = docType;
-
-    // ── 5. Build encrypted payload ────────────────────────────────────────
-    const rawTextHash = await computeTextHash(rawText);
+    // ── 6. Build encrypted payload ────────────────────────────────────────
+    const rawTextHash = await computeTextHash(analysisResult.rawText);
     const payload: DiagnosisEncryptedPayload = {
       extractedFields: analysisResult.extractedFields,
+      detectedPanels: analysisResult.detectedPanels ?? [],
+      documentType: analysisResult.documentType,
+      diagnosisSummary: summary,
       rawTextHash,
       analysedAt: analysisResult.analysedAt,
     };
 
     const { encryptedData, iv } = await encryptPayload(payload, encryptionKey);
 
-    // ── 6. Persist encrypted result + transition to 'reviewed' ────────────
-    await updateSessionStatus(uid, sessionId, 'reviewed', { encryptedData, iv });
+    // ── 7. Persist encrypted result + transition to 'reviewed' ────────────
+    await updateSessionStatus(uid, sessionId, 'reviewed', { encryptedData, iv, expiresAt: null });
 
-    return analysisResult;
+    return { analysis: analysisResult, summary };
   } catch (parseError) {
     const message =
       parseError instanceof Error ? parseError.message : 'Unknown parse error';
+    NexusLogger.error('[SomaDiagnosisParse]', parseError);
     await updateSessionStatus(uid, sessionId, 'error', {
       parseError: message.slice(0, 500), // truncate to avoid bloating Firestore
     }).catch(() => {
@@ -328,32 +393,39 @@ export async function triggerParse(
 export async function getActiveDiagnosisSession(
   uid: string,
   encryptionKey: CryptoKey,
-): Promise<(SomaDiagnosisSession & { analysisResult?: DocumentAnalysisResult }) | null> {
+): Promise<(SomaDiagnosisSession & { analysisResult?: DocumentAnalysisResult; diagnosisSummary?: SomaDiagnosisSummary }) | null> {
   const dataLayer = getNexusDataLayer();
 
+  // Fetch the most recent session ordered by uploadedAt, then filter client-side.
+  // NOTE: Firestore rejects a `!=` filter combined with `orderBy` on a *different*
+  // field (requires a composite index that we don't maintain). Fetching a small
+  // window and filtering locally is simpler and avoids any index requirement.
   const results = await dataLayer.query<SomaDiagnosisSession>({
     collection: SESSIONS_COLLECTION(uid),
-    where: [{ field: 'status', op: '!=', value: 'error' }],
     orderBy: [{ field: 'uploadedAt', direction: 'desc' }],
-    limit: 1,
+    limit: 5,
   });
 
   if (results.length === 0) return null;
 
-  const session = results[0] as SomaDiagnosisSession;
+  // Find the most recent non-error session.
+  const activeRecord = results.find((r) => (r as SomaDiagnosisSession).status !== 'error');
+  if (!activeRecord) return null;
+
+  const session = activeRecord as SomaDiagnosisSession;
 
   // If the session has a parsed result, decrypt and attach it.
   if (session.status === 'reviewed' && session.encryptedData && session.iv) {
     const payload = await decryptPayload(session.encryptedData, session.iv, encryptionKey);
     if (payload) {
       const analysisResult: DocumentAnalysisResult = {
-        documentType: 'text', // file type metadata not re-derived; callers can update if needed
-        detectedPanels: [],   // not stored in encrypted payload — only extractedFields are
+        documentType: (payload.documentType as DocumentAnalysisResult['documentType']) ?? 'text',
+        detectedPanels: payload.detectedPanels ?? [],
         extractedFields: payload.extractedFields,
-        rawText: '',          // rawText is NEVER stored — returned as empty string
+        rawText: '',
         analysedAt: payload.analysedAt,
       };
-      return { ...session, analysisResult };
+      return { ...session, analysisResult, diagnosisSummary: payload.diagnosisSummary };
     }
   }
 
@@ -399,10 +471,22 @@ export async function closeDiagnosis(
 
   // ── 1. Merge (if requested) ───────────────────────────────────────────────
   if (merge) {
+    let suggestedMeds: string[] = [];
+    if (sessionRecord && (sessionRecord as SomaDiagnosisSession).encryptedData && (sessionRecord as SomaDiagnosisSession).iv) {
+      const payload = await decryptPayload(
+        (sessionRecord as SomaDiagnosisSession).encryptedData!,
+        (sessionRecord as SomaDiagnosisSession).iv!,
+        encryptionKey,
+      );
+      if (payload?.diagnosisSummary?.suggestedMedications?.length) {
+        suggestedMeds = payload.diagnosisSummary.suggestedMedications;
+      }
+    }
     await mergeSomaDiagnosisData(
       uid,
       selectedItems as ExtractedDataItem[],
       encryptionKey,
+      suggestedMeds,
     );
   }
 
@@ -465,4 +549,34 @@ export async function discardDiagnosis(
   encryptionKey: CryptoKey,
 ): Promise<void> {
   return closeDiagnosis(uid, sessionId, [], encryptionKey, false);
+}
+
+// ── Summary parsing ──────────────────────────────────────────────────────────
+
+function parseDiagnosisSummary(raw: string): SomaDiagnosisSummary | null {
+  if (!raw || typeof raw !== 'string') return null;
+  try {
+    const cleaned = sanitizeJsonPayload(raw);
+    const parsed = JSON.parse(cleaned) as Partial<SomaDiagnosisSummary>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    const summary = typeof parsed.summary === 'string' ? parsed.summary.trim() : '';
+    if (!summary) return null;
+    const VALID_CONFIDENCE = new Set(['high', 'moderate', 'low']);
+    const confidenceLevel = VALID_CONFIDENCE.has(parsed.confidenceLevel as string)
+      ? (parsed.confidenceLevel as SomaDiagnosisSummary['confidenceLevel'])
+      : 'moderate';
+    return {
+      reportType: typeof parsed.reportType === 'string' ? parsed.reportType : 'other',
+      summary,
+      comparisons: Array.isArray(parsed.comparisons) ? parsed.comparisons as SomaDiagnosisSummary['comparisons'] : [],
+      whatItMeans: Array.isArray(parsed.whatItMeans) ? parsed.whatItMeans as string[] : [],
+      recommendedActions: Array.isArray(parsed.recommendedActions) ? parsed.recommendedActions as string[] : [],
+      suggestedMedications: Array.isArray(parsed.suggestedMedications) ? parsed.suggestedMedications as string[] : [],
+      confidenceLevel,
+      confidenceRationale: typeof parsed.confidenceRationale === 'string' ? parsed.confidenceRationale.trim() : '',
+    };
+  } catch (err) {
+    NexusLogger.error('SomaDiagnosisSummary', err);
+    return null;
+  }
 }

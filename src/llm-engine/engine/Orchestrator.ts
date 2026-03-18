@@ -24,15 +24,27 @@ export class Orchestrator {
 
   constructor(config: EngineConfig) {
     this.config = config;
+    const resolvedProvider = this.resolveProvider(config.preferredProvider);
+    const resolvedModel = this.resolveModelForProvider(
+      resolvedProvider,
+      config.freeModelsOnly ? GUEST_MODEL : (config.preferredModelId || '')
+    );
     this.state = {
-      activeModelId: config.freeModelsOnly ? GUEST_MODEL : (config.preferredModelId || 'deepseek/deepseek-chat'),
-      provider: 'openrouter'
+      activeModelId: resolvedModel,
+      provider: config.freeModelsOnly ? 'openrouter' : resolvedProvider
     };
   }
 
   setFreeModelsOnly(enabled: boolean): void {
     this.config.freeModelsOnly = enabled;
-    this.state.activeModelId = enabled ? GUEST_MODEL : (this.config.preferredModelId || 'deepseek/deepseek-chat');
+    if (enabled) {
+      this.state.provider = 'openrouter';
+      this.state.activeModelId = GUEST_MODEL;
+    } else {
+      const provider = this.resolveProvider(this.config.preferredProvider);
+      this.state.provider = provider;
+      this.state.activeModelId = this.resolveModelForProvider(provider, this.config.preferredModelId || '');
+    }
   }
 
   async sendMessage(messages: Message[], onChunk?: (chunk: StreamChunk) => void, signal?: AbortSignal): Promise<StructuredResponse> {
@@ -317,11 +329,83 @@ export class Orchestrator {
     throw lastError ?? new Error('Request failed after retries');
   }
 
+  async executeStructuredRequest(
+    messages: Message[],
+    options: { model?: string; temperature?: number; maxTokens?: number; signal?: AbortSignal; format?: 'json_object' | 'text' } = {}
+  ): Promise<any> {
+    if (this.config.isMockMode) {
+      return { choices: [{ message: { content: '{}', role: 'assistant' } }] };
+    }
+
+    const provider = this.state.provider;
+    const model = options.model || this.state.activeModelId;
+
+    if (provider === 'google') {
+      return this.executeGoogleRequest(messages, model, options.signal);
+    }
+
+    if (provider === 'grok') {
+      return this.executeGrokRequest(messages, model, options.signal);
+    }
+
+    const url = 'https://openrouter.ai/api/v1/chat/completions';
+    
+    const body = JSON.stringify({
+      model,
+      messages,
+      temperature: options.temperature ?? 0.3,
+      max_tokens: options.maxTokens ?? 2048,
+      ...(options.format === 'text' ? {} : { response_format: { type: 'json_object' } })
+    });
+
+    const response = await this.executeWithRetry(() => fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.config.openrouterKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://agnes.ai',
+        'X-Title': 'Nexus Neural Engine',
+      },
+      body,
+      signal: options.signal,
+    }), 3, options.signal);
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`OpenRouter JSON API error (${response.status}): ${errorText || response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
   private async executeRawRequest(messages: Message[], onChunk?: (chunk: StreamChunk) => void, forceNoTools?: boolean, signal?: AbortSignal, modelOverride?: string): Promise<any> {
+    const provider = this.state.provider;
+    const model = modelOverride ?? this.state.activeModelId;
+
+    if (provider === 'google') {
+      const response = await this.executeGoogleRequest(messages, model, signal);
+      const content = response.choices?.[0]?.message?.content || '';
+      if (onChunk) {
+        const sanitized = stripInternalTags(content, { retainSpacings: true });
+        onChunk({ delta: sanitized.publicText, isThinking: false, isActing: false, currentActionType: null });
+      }
+      return response;
+    }
+
+    if (provider === 'grok') {
+      const response = await this.executeGrokRequest(messages, model, signal);
+      const content = response.choices?.[0]?.message?.content || '';
+      if (onChunk) {
+        const sanitized = stripInternalTags(content, { retainSpacings: true });
+        onChunk({ delta: sanitized.publicText, isThinking: false, isActing: false, currentActionType: null });
+      }
+      return response;
+    }
+
     const url = 'https://openrouter.ai/api/v1/chat/completions';
     const body = JSON.stringify({
-      model: modelOverride ?? this.state.activeModelId,
-      messages: messages,
+      model,
+      messages,
       stream: !!onChunk,
     });
 
@@ -356,6 +440,102 @@ export class Orchestrator {
     } else {
         return await response.json();
     }
+  }
+
+  private resolveProvider(preferred?: 'openrouter' | 'grok' | 'google'): OrchestratorState['provider'] {
+    if (this.config.freeModelsOnly) return 'openrouter';
+    const hasGoogle = !!this.config.googleKey;
+    const hasGrok = !!this.config.grokKey;
+    const hasOpenRouter = !!this.config.openrouterKey;
+
+    if (preferred === 'google' && hasGoogle) return 'google';
+    if (preferred === 'grok' && hasGrok) return 'grok';
+    if (preferred === 'openrouter' && hasOpenRouter) return 'openrouter';
+
+    if (hasGoogle) return 'google';
+    if (hasGrok) return 'grok';
+    if (hasOpenRouter) return 'openrouter';
+    return 'mock';
+  }
+
+  private resolveModelForProvider(provider: OrchestratorState['provider'], modelId: string): string {
+    if (this.config.freeModelsOnly) return GUEST_MODEL;
+    if (modelId && modelId.trim().length > 0) {
+      return this.normalizeModelForProvider(provider, modelId);
+    }
+    if (provider === 'google') return 'gemini-2.0-flash-exp';
+    if (provider === 'grok') return 'grok-2';
+    return 'deepseek/deepseek-chat';
+  }
+
+  private normalizeModelForProvider(provider: OrchestratorState['provider'], modelId: string): string {
+    if (provider === 'openrouter') return modelId;
+    if (provider === 'google') {
+      return modelId.replace(/^google\//i, '').replace(/:free$/i, '');
+    }
+    if (provider === 'grok') {
+      const parts = modelId.split('/');
+      return parts[parts.length - 1];
+    }
+    return modelId;
+  }
+
+  private async executeGoogleRequest(messages: Message[], modelId: string, signal?: AbortSignal): Promise<any> {
+    if (!this.config.googleKey) throw new Error('Google API key not configured.');
+    const normalized = this.normalizeModelForProvider('google', modelId);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${normalized}:generateContent?key=${this.config.googleKey}`;
+    const contents = messages.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }],
+    }));
+    const body = JSON.stringify({
+      contents,
+      generationConfig: {
+        temperature: 0.2,
+      },
+    });
+    const response = await this.executeWithRetry(() => fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal,
+    }), 3, signal);
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`Google API Error: ${response.status} ${text}`);
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || '').join('') || '';
+    return { choices: [{ message: { content: text, role: 'assistant' } }] };
+  }
+
+  private async executeGrokRequest(messages: Message[], modelId: string, signal?: AbortSignal): Promise<any> {
+    if (!this.config.grokKey) throw new Error('Grok API key not configured.');
+    const normalized = this.normalizeModelForProvider('grok', modelId);
+    const url = 'https://api.x.ai/v1/chat/completions';
+    const body = JSON.stringify({
+      model: normalized,
+      messages,
+      stream: false,
+    });
+    const response = await this.executeWithRetry(() => fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.config.grokKey}`,
+        'Content-Type': 'application/json',
+      },
+      body,
+      signal,
+    }), 3, signal);
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`Grok API Error: ${response.status} ${text}`);
+    }
+
+    return await response.json();
   }
 
   private async handleToolCall(_toolCall: ToolCall): Promise<unknown> {

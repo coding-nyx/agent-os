@@ -35,6 +35,7 @@ import { ModuleMemoryService } from '@/lib/services/module-memory-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
+import { useUIStore } from '@/lib/stores/ui-store';
 
 type AgnesState = 'selecting' | 'session' | 'somatic';
 
@@ -98,12 +99,13 @@ function AgnesContent({
   setSessionActive
 }: AgnesContentProps) {
   const { globalSoul, updateCrossFunctionalState } = useGlobalSoul();
+
   const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
   const navigate = useNavigate();
   const isAccessible = isModuleAccessible('agnes');
-
   const [currentState, setCurrentState] = useState<AgnesState>('selecting');
+
   const [sessionType, setSessionType] = useState<'impromptu' | 'new' | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isClosingSession, setIsClosingSession] = useState(false);
@@ -626,27 +628,31 @@ function AgnesContent({
                       animate={{ opacity: 1 }}
                       className="flex-1 flex flex-col min-h-0"
                     >
+                      {/* Session Telemetry & Control Bar - Persistent above chat to prevent clipping */}
+                      <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/5 bg-black/40 backdrop-blur-2xl z-20">
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <AgnesTelemetryHeader />
+                        </div>
+                        <div className="shrink-0 ml-4">
+                          <NeuralButton 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={endSession} 
+                            loading={isSummarizing} 
+                            className="flex items-center gap-2 px-4 rounded-full border-white/5 hover:border-rose-500/20 hover:text-rose-400"
+                          >
+                            <LogOut className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline font-bold uppercase tracking-widest text-[10px] ml-2">End</span>
+                          </NeuralButton>
+                        </div>
+                      </div>
+
                       <NexusChat
                         ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
                         agentName={sessionType === 'impromptu' ? 'Emergency Agent' : agentAlias}
                         themeColor="indigo"
                         placeholder="Communicate..."
                         authMode="agnes"
-                        headerActions={
-                          <div className="flex items-center gap-4">
-                            <AgnesTelemetryHeader />
-                            <div className="h-6 w-px bg-white/5" />
-                            <NeuralButton 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={endSession} 
-                              loading={isSummarizing} 
-                              className="flex items-center gap-2 px-4 rounded-full border-white/5 hover:border-rose-500/20 hover:text-rose-400"
-                            >
-                              <LogOut className="w-3 h-3" /> End
-                            </NeuralButton>
-                          </div>
-                        }
                       />
                     </motion.div>
                   )}

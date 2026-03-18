@@ -29,6 +29,7 @@ export interface DiagnosisCloseModalProps {
   sessionId: string;
   selectedItemCount: number;
   totalItemCount: number;
+  suggestedMedicationCount?: number;
   onMerge: () => Promise<void>;
   onDiscard: () => Promise<void>;
   onCancel: () => void;
@@ -46,6 +47,7 @@ export function DiagnosisCloseModal({
   sessionId: _sessionId,
   selectedItemCount,
   totalItemCount,
+  suggestedMedicationCount = 0,
   onMerge,
   onDiscard,
   onCancel,
@@ -194,6 +196,12 @@ export function DiagnosisCloseModal({
                   )}
 
                   {/* Warning */}
+                  {suggestedMedicationCount > 0 && (
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3.5 py-2.5 text-xs text-emerald-200/80">
+                      {suggestedMedicationCount} suggested medication{suggestedMedicationCount !== 1 ? 's' : ''} will be added as
+                      “Suggested: … (discuss with provider)”.
+                    </div>
+                  )}
                   <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3.5 py-2.5">
                     <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-amber-200/80 leading-relaxed">

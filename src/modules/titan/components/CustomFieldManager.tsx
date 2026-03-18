@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Plus, MessageSquare, Database, AlertCircle } from 'lucide-react';
+import { Plus, MessageSquare, Database, AlertCircle, Utensils, Zap } from 'lucide-react';
 import { DynamicFormBuilder } from '@/core/components/forms/DynamicFormBuilder';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
@@ -11,11 +11,26 @@ import { SurfaceCard } from '@/core/components/SurfaceCard';
 import type { FieldDefinition } from '@/lib/field-system/types';
 import { FieldType } from '@/lib/field-system/types';
 import { cn } from '@/lib/utils';
+import type { CustomField } from '@/lib/types';
+
+// Default macro fields used in the "Set Up Macros" one-tap prompt
+const DEFAULT_MACRO_FIELDS: Omit<CustomField, 'id' | 'createdAt'>[] = [
+  { name: 'Calories', type: 'number', unit: 'kcal', description: 'Daily calorie intake', range: [0, 10000] },
+  { name: 'Protein', type: 'number', unit: 'g', description: 'Daily protein intake', range: [0, 500] },
+  { name: 'Carbs', type: 'number', unit: 'g', description: 'Daily carbohydrate intake', range: [0, 1000] },
+  { name: 'Fat', type: 'number', unit: 'g', description: 'Daily fat intake', range: [0, 500] },
+];
 
 interface CustomFieldManagerProps {
   currentValues: Record<string, any>;
   /** Sends the field values to Titan AI for validation before they are committed. */
   onSubmitForApproval: (values: Record<string, any>, categoryLabel: string) => void;
+  /** AI-created custom fields on the profile — used to detect empty state. */
+  customFields?: CustomField[];
+  /** Direct-write: create macro fields instantly without AI gating. */
+  onDirectCreateMacros?: (fields: CustomField[]) => Promise<void>;
+  /** AI mode: send a message to create macro fields. */
+  onAICreateMacros?: (prompt: string) => void;
   className?: string;
 }
 
@@ -27,11 +42,45 @@ interface CustomFieldCategory {
   fields: FieldDefinition[];
 }
 
-export function CustomFieldManager({ currentValues, onSubmitForApproval, className }: CustomFieldManagerProps) {
+export function CustomFieldManager({
+  currentValues,
+  onSubmitForApproval,
+  customFields,
+  onDirectCreateMacros,
+  onAICreateMacros,
+  className,
+}: CustomFieldManagerProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('nutrition');
   const [formValues, setFormValues] = useState<Record<string, any>>(currentValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [macrosCreating, setMacrosCreating] = useState(false);
+
+  const hasMacroFields = (customFields?.length ?? 0) > 0;
+
+  const handleSetupMacros = useCallback(async () => {
+    if (macrosCreating) return;
+    setMacrosCreating(true);
+    try {
+      if (onDirectCreateMacros) {
+        const now = Date.now();
+        const fields: CustomField[] = DEFAULT_MACRO_FIELDS.map((f, i) => ({
+          ...f,
+          id: crypto.randomUUID(),
+          createdAt: now + i,
+        }));
+        await onDirectCreateMacros(fields);
+      } else if (onAICreateMacros) {
+        onAICreateMacros(
+          'Set up my daily macro tracking. Create four custom fields: ' +
+          '"Calories" (kcal, 0–10000), "Protein" (g, 0–500), "Carbs" (g, 0–1000), and "Fat" (g, 0–500). ' +
+          'Use the create_field action for each one.'
+        );
+      }
+    } finally {
+      setMacrosCreating(false);
+    }
+  }, [macrosCreating, onDirectCreateMacros, onAICreateMacros]);
 
   // Define custom field categories for Titan
   const customFieldCategories: CustomFieldCategory[] = [
@@ -250,7 +299,33 @@ export function CustomFieldManager({ currentValues, onSubmitForApproval, classNa
   );
 
   return (
-    <div className={className}>
+    <div className={cn('space-y-3', className)}>
+      {/* Macro defaults prompt — shown when no AI-created custom fields exist */}
+      {!hasMacroFields && (onDirectCreateMacros || onAICreateMacros) && (
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-orange-500/5 border border-orange-500/15">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
+              <Utensils className="w-4 h-4 text-orange-400" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white/80">Set Up Macro Tracking</p>
+              <p className="text-[10px] text-white/40 mt-0.5">
+                One tap creates Calories, Protein, Carbs &amp; Fat fields.
+              </p>
+            </div>
+          </div>
+          <NeuralButton
+            size="sm"
+            themeColor="orange"
+            onClick={handleSetupMacros}
+            disabled={macrosCreating}
+          >
+            <Zap className="w-3 h-3 mr-1.5" />
+            {macrosCreating ? 'Creating…' : 'Set Up'}
+          </NeuralButton>
+        </div>
+      )}
+
       <SurfaceCard className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
