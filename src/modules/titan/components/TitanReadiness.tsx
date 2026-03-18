@@ -35,7 +35,7 @@ function CalibrationPrompt() {
 
 interface HormonalContextCardProps {
   isLocked: boolean;
-  hormonalContext?: string;
+  hormonalContext?: string | null;
 }
 
 function HormonalContextCard({ isLocked, hormonalContext }: HormonalContextCardProps) {
