@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { SpineEvent } from '@/lib/types';
 import { useLocation } from 'react-router-dom';
+import { useActiveLayout } from '@/lib/stores/ui-store';
 
 type SpinePulse = SpineEvent & { uiId: string };
 
@@ -18,6 +19,7 @@ export function SpineOverlay() {
   const [pulses, setPulses] = useState<SpinePulse[]>([]);
   const location = useLocation();
   const isHub = location.pathname === '/hub';
+  const activeLayout = useActiveLayout();
 
   useEffect(() => {
     return Spine.on('*', (event) => {
@@ -38,11 +40,13 @@ export function SpineOverlay() {
 
   const spineTicks = useMemo(() => Array.from({ length: 6 }, (_, i) => i), []);
 
+  const rightOffset = activeLayout === 'split' ? 'calc(clamp(320px, 32vw, 520px) + 24px)' : '2.5rem';
+
   return (
     <motion.div
-      className="fixed inset-y-0 right-10 z-[var(--z-overlay)] pointer-events-none hidden lg:flex items-center"
-      animate={{ opacity: isHub ? 0 : 1 }}
-      transition={{ duration: 0.6 }}
+      className="fixed inset-y-0 z-[var(--z-overlay)] pointer-events-none hidden lg:flex items-center"
+      animate={{ opacity: isHub ? 0 : 1, right: rightOffset }}
+      transition={{ duration: 0.6, type: 'spring', stiffness: 300, damping: 30 }}
     >
       <div className="relative h-[70vh] w-2">
         <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-gradient-to-b from-white/5 via-white/20 to-white/5" />

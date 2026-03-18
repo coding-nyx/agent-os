@@ -32,6 +32,7 @@ interface ChatInterfaceProps {
   messages: Message[];
   onSendMessage: (content: string) => void;
   isLoading: boolean;
+  isSyncing?: boolean;
   isProcessing?: boolean;
   aiState?: {
     isThinking: boolean;
@@ -143,12 +144,10 @@ const THEMES = {
 type ThemeConfig = typeof THEMES[keyof typeof THEMES];
 
 const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading, isAgnes, debugMode, debugMeta, isStreaming, showInternalSignals }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean, debugMode?: boolean, debugMeta?: import('@/lib/types').MessageDebugMeta, isStreaming?: boolean, showInternalSignals?: boolean }) {
-    // Skip expensive regex only when actively streaming (content has no internal tags yet)
-    // By keeping the regex inside this React.memo component, we avoid running it on
-    // historical messages during parent re-renders (e.g. while user is typing).
-    const stripped = isStreaming
-      ? { publicText: content, internalText: '', isThinking: false, isActing: false, currentActionType: null }
-      : stripInternalTags(content, { retainSpacings: true });
+    // Run the stripping logic even during streaming so internal tags like <thought>
+    // are filtered out in real-time. The stripInternalTags function handles 
+    // unclosed/partial tags at the end of the stream.
+    const stripped = stripInternalTags(content, { retainSpacings: true });
     const { publicText, internalText, isThinking, isActing, currentActionType } = stripped;
     const [showInternal, setShowInternal] = useState(false);
     const hasPublicContent = publicText.length > 0;
@@ -266,6 +265,7 @@ export const ChatInterface = React.memo(function ChatInterface({
   messages, 
   onSendMessage, 
   isLoading, 
+  isSyncing,
   isProcessing,
   aiState,
   themeColor, 
@@ -671,13 +671,21 @@ export const ChatInterface = React.memo(function ChatInterface({
               />
               
               <button type="submit" aria-label="Send message" disabled={effectiveIsProcessing || !input.trim() || !!error || quota?.isHardLocked} className={cn("w-11 h-11 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl", theme.btn)}>
-                <Send className="w-5 h-5 text-white" />
+                {isSyncing ? (
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5 text-white" />
+                )}
               </button>
             </div>
 
             <div className="mt-1 flex justify-between items-center px-2 sm:px-4 text-white">
               <div className="flex gap-8">
-                  {isGuestTrial ? (
+                  {isSyncing ? (
+                      <span className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-3">
+                          <RefreshCw className="w-3 h-3 animate-spin" /> RESONANCE_STABILIZING_SYNC
+                      </span>
+                  ) : isGuestTrial ? (
                       <span className="text-[9px] font-semibold text-orange-400 uppercase tracking-[0.12em] flex items-center gap-2">
                           <Zap className="w-3 h-3 animate-pulse" /> GUEST_QUOTA: {quota?.totalTurnsUsed} / {quota?.maxTurnsAllowed}
                       </span>
