@@ -17,7 +17,7 @@ export const ModuleCard = React.memo(function ModuleCard({
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={cn(
         "group relative rounded-[32px] border transition-all text-left overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/50",
-        isPlugin ? "p-6 w-full sm:w-[280px] shrink-0" : "p-6 sm:p-8",
+        isPlugin ? "p-6 w-full shrink-0" : "p-6 sm:p-8",
         isLocked
           ? "bg-white/[0.03] border-white/[0.07] opacity-60 hover:opacity-75"
           : "bg-black/60 backdrop-blur-3xl border-white/20 hover:border-white/30 hover:bg-white/[0.05] shadow-2xl"
@@ -35,7 +35,7 @@ export const ModuleCard = React.memo(function ModuleCard({
           <Icon className={isPlugin ? "w-5 h-5" : "w-8 h-8"} style={{ color: isLocked ? '#666' : color }} />
         </div>
         <h3 className={cn(
-          "font-bold tracking-[0.1em] text-white mb-3 uppercase font-display transition-colors",
+          "font-bold tracking-[0.1em] text-white mb-3 uppercase font-display transition-colors truncate",
           isPlugin ? "text-lg" : "text-2xl",
           !isLocked && "group-hover:text-white"
         )}>
@@ -114,7 +114,7 @@ export function CardsView({ modules, moduleAccess, moduleStats, displayNames, on
           <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-white/40 italic drop-shadow-sm">Synaptic Plugins</h2>
           <div className="h-px flex-1 bg-gradient-to-r from-white/20 to-transparent" aria-hidden="true" />
         </div>
-        <div className="flex flex-wrap justify-center gap-6 pb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 pb-8">
           {modules.filter(m => m.isPlugin).map((m) => (
             <div key={m.id}>
               <ModuleCard

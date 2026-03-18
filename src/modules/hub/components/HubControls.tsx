@@ -98,8 +98,8 @@ export function ReactiveGauge({ label, value, colorClass, icon: Icon, trend }: R
       aria-valuemin={0}
       aria-valuemax={100}
     >
-      <span className="text-[10px] text-white/50 uppercase font-bold tracking-wider mb-1 flex items-center gap-1.5">
-        <Icon className="w-3 h-3" /> {label}
+      <span className="text-[10px] text-white/50 uppercase font-bold tracking-wider mb-1 flex items-center gap-1.5 min-w-0">
+        <Icon className="w-3 h-3 shrink-0" /> <span className="truncate">{label}</span>
       </span>
       <span className={cn(
         "text-xl md:text-2xl font-bold leading-none transition-all duration-300 flex items-center gap-1.5",
@@ -142,15 +142,15 @@ export function HubBottomDashboard({
     <div className="mt-auto pb-4 sm:pb-10 px-2 sm:px-6 md:px-12 pointer-events-auto relative z-20 w-full max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 bg-black/60 backdrop-blur-3xl border border-white/10 p-2 rounded-[32px] shadow-2xl">
         {lockedModules.length > 0 ? (
-          <div className="flex-1 flex items-center gap-4 px-6 py-3 bg-amber-500/5 rounded-[24px] border border-amber-500/10">
+          <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-4 px-4 sm:px-6 py-3 bg-amber-500/5 rounded-[24px] border border-amber-500/10">
             <Lock className="w-5 h-5 text-amber-400 shrink-0" />
-            <div className="flex-1">
-            <span className="text-[11px] font-bold text-amber-400 tracking-[0.08em] block mb-0.5">Vault Encrypted</span>
-            <p className="text-[11px] text-white/60 leading-relaxed">
+            <div className="flex-1 min-w-0">
+            <span className="text-[11px] font-bold text-amber-400 tracking-[0.08em] block mb-0.5 truncate">Vault Encrypted</span>
+            <p className="text-[11px] text-white/60 leading-relaxed truncate">
               {lockedModules.length} module{lockedModules.length > 1 ? 's' : ''} locked — unlock to sync.
             </p>
             </div>
-            <NeuralButton size="sm" onClick={() => openAuth(primaryLockedModule ?? 'global')} className="bg-amber-600 hover:bg-amber-500 shrink-0">
+            <NeuralButton size="sm" onClick={() => openAuth(primaryLockedModule ?? 'global')} className="bg-amber-600 hover:bg-amber-500 shrink-0 w-full sm:w-auto">
               Sync Now
             </NeuralButton>
           </div>

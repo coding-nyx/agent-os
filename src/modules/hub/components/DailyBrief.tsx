@@ -14,7 +14,6 @@ import {
   generateBriefSentence
 } from '@/lib/state-display-config';
 import type { StatusTone } from '../constants';
-import { useNsvTrends } from '@/modules/orchestrator/hooks/useNsvTrends';
 
 // ---------------------------------------------------------------------------
 // Pillar Card — one per domain (Body, Mind, Heart, Flow)
@@ -74,14 +73,16 @@ function PillarCard({
       role="status"
       aria-label={`${label}: ${word}, ${trend === 'up' ? 'trending up' : trend === 'down' ? 'trending down' : trend === 'stable' ? 'stable' : 'not calibrated'}`}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Icon className={cn('w-4 h-4', TONE_TEXT[tone])} />
-          <span className="text-[10px] uppercase tracking-[0.2em] font-black text-white/50">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Icon className={cn('w-4 h-4 shrink-0', TONE_TEXT[tone])} />
+          <span className="text-[10px] uppercase tracking-[0.2em] font-black text-white/50 truncate">
             {label}
           </span>
         </div>
-        <TrendArrow trend={trend} size="sm" />
+        <div className="shrink-0">
+          <TrendArrow trend={trend} size="sm" />
+        </div>
       </div>
       <div className="flex items-center gap-2 min-w-0">
         <div
