@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { TitanDashboard } from './components/TitanReadiness';
 import { TitanRoutinePanel } from './components/TitanRoutinePanel';
+import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
 import { CustomFieldManager } from './components/CustomFieldManager';
 import { RoutineProgress } from './components/RoutineProgress';
 import { CycleManager } from './components/CycleManager';
@@ -1173,6 +1174,7 @@ export default function TitanPage() {
       renderContent={({ profile, encryptionKey }) => (
         <TitanContent profile={profile} encryptionKey={encryptionKey} />
       )}
+      renderRightRail={() => <TitanNotificationSettingsPanel />}
     />
   );
 }

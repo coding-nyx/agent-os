@@ -284,6 +284,9 @@ export type SpineEventType =
   | 'HEALTH_CONTEXT_STALE'
   // Module profile refresh (emitted by useModuleAI after a profile write)
   | 'MODULE_PROFILE_UPDATED'
+  // Module reminders (cross-device scheduling via bridge + scheduler)
+  | 'MODULE_REMINDER_DUE'
+  | 'MODULE_REMINDER_COMPLETED'
   // Titan Cycle Events
   | 'CYCLE_STARTED'
   | 'CYCLE_COMPLETED'

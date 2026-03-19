@@ -140,7 +140,12 @@ export const bridgeSpineEvents = onDocumentCreated(
 
     const truncatedTokens = tokens.slice(0, 500);
     const title = `Spine Alert · ${String(payload.type).replace(/_/g, " ")}`;
-    const bodySource = typeof payload.data?.reason === "string" ? payload.data.reason : typeof payload.data?.note === "string" ? payload.data.note : "Neural signal update.";
+    // Prefer stable `payload.data.note` for reminder notifications; fall back to `reason` for legacy events.
+    const bodySource = typeof payload.data?.note === "string"
+      ? payload.data.note
+      : typeof payload.data?.reason === "string"
+        ? payload.data.reason
+        : "Neural signal update.";
     const response = await getMessaging().sendEachForMulticast({
       tokens: truncatedTokens,
       notification: {
@@ -150,7 +155,11 @@ export const bridgeSpineEvents = onDocumentCreated(
       data: {
         type: String(payload.type),
         source: String(payload.source || ""),
-        priority: eventPriority
+        priority: eventPriority,
+        deepLink:
+          payload.data && typeof payload.data.deepLink === "object"
+            ? JSON.stringify(payload.data.deepLink)
+            : ""
       }
     });
 
@@ -184,3 +193,5 @@ export const bridgeSpineEvents = onDocumentCreated(
   }
   }
 );
+
+export { scheduleReminder, deliverReminder } from './reminder-tasks';

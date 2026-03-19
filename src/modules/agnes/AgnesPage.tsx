@@ -36,6 +36,7 @@ import { IntakeBaseContextService } from '@/lib/services/intake-base-context-ser
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { AgnesNotificationSettingsPanel } from './components/AgnesNotificationSettingsPanel';
 
 type AgnesState = 'selecting' | 'session' | 'somatic';
 
@@ -767,6 +768,7 @@ export default function AgnesPage() {
       renderLeftRail={({ profile, persistProfile }) => (
         <AgnesSidebar profile={profile} agentAlias={agentAlias} onSave={persistProfile} />
       )}
+      renderRightRail={() => <AgnesNotificationSettingsPanel />}
     />
   );
 }

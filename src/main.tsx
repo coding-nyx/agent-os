@@ -1,5 +1,12 @@
 
 import React from 'react'
+// Dev-only FCM diagnostics — call window.__diagnoseFCM() in the browser console
+if (import.meta.env.DEV) {
+  import('./lib/services/bridge-service').then(({ diagnoseFCM }) => {
+    (window as unknown as Record<string, unknown>).__diagnoseFCM = diagnoseFCM;
+    console.log('[Dev] FCM diagnostics available: call window.__diagnoseFCM()');
+  });
+}
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'

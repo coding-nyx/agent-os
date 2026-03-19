@@ -70,16 +70,34 @@ self.addEventListener('notificationclick', function (event) {
     clients
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then(function (clientList) {
-        // If an app tab is already open, focus it
+        var data = event.notification && event.notification.data ? event.notification.data : {};
+        var deepLinkRoute = '/';
+        if (data.deepLink && typeof data.deepLink === 'string') {
+          try {
+            var parsed = JSON.parse(data.deepLink);
+            if (parsed && typeof parsed.route === 'string' && parsed.route.length > 0) {
+              deepLinkRoute = parsed.route;
+            }
+          } catch (e) {}
+        } else if (typeof data.deepLinkRoute === 'string' && data.deepLinkRoute.length > 0) {
+          deepLinkRoute = data.deepLinkRoute;
+        }
+
+        var targetUrl = self.location.origin + deepLinkRoute;
+
+        // If an app tab is already open, navigate it to the deep link and focus
         for (var i = 0; i < clientList.length; i++) {
           var client = clientList[i];
+          if ('navigate' in client && 'focus' in client) {
+            return client.navigate(targetUrl).then(function (c) { return c && c.focus(); });
+          }
           if ('focus' in client) {
             return client.focus();
           }
         }
-        // Otherwise open a new tab
+        // Otherwise open a new tab at the deep link
         if (clients.openWindow) {
-          return clients.openWindow('/');
+          return clients.openWindow(targetUrl);
         }
       })
   );

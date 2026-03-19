@@ -16,6 +16,8 @@ import { SpineToastProvider } from './core/components/SpineToast';
 import { NexusRouteBanner } from './core/components/NexusRouteBanner';
 import { ConflictResolutionOverlay } from './core/components/ConflictResolutionOverlay';
 import { useIntelligencePipeline } from './lib/services/intelligence-pipeline';
+import { BridgeService } from './lib/services/bridge-service';
+import { ReminderScheduler } from './lib/notifications/reminder-scheduler-service';
 import { Spine } from './lib/spine/spine-event-bus';
 import { CORE_CASCADE_RULES, ATLAS_CASCADE_RULES, ATLAS_PLANNING_CASCADE_RULES, AGNES_CASCADE_RULES, ATLAS_FAILURE_RULES, SOMA_CASCADE_RULES, TITAN_CASCADE_RULES } from './lib/spine/cascade-rules';
 import { useEffect } from 'react';
@@ -89,11 +91,32 @@ function IntelligencePipelineMount() {
   return null;
 }
 
+function BridgeMount() {
+  const { user, isGuest } = useAuth();
+
+  useEffect(() => {
+    if (!user || isGuest) return;
+
+    BridgeService.start(user.uid).catch((err) =>
+      console.warn('[Bridge] Start failed:', err)
+    );
+    ReminderScheduler.start(user.uid);
+
+    return () => {
+      BridgeService.stop();
+      ReminderScheduler.stop();
+    };
+  }, [user?.uid, isGuest]);
+
+  return null;
+}
+
 function AppContent() {
   return (
     <Suspense fallback={<BootLoader />}>
       <SpineRuntimeBootstrap />
       <IntelligencePipelineMount />
+      <BridgeMount />
       <NexusOverlay />
       <SpineOverlay />
       <NeuralDraftPanel />

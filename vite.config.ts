@@ -1,9 +1,43 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import path from 'path'
+import fs from 'fs'
+
+/**
+ * Injects VITE_FIREBASE_* env vars into the FCM service worker after build,
+ * replacing __FIREBASE_*__ tokens. The service worker cannot use ES modules
+ * so it cannot access import.meta.env — this is the standard workaround.
+ */
+function firebaseSwInject(): Plugin {
+  return {
+    name: 'firebase-sw-inject',
+    closeBundle() {
+      const swSrc = path.resolve(__dirname, 'public/firebase-messaging-sw.js')
+      const swOut = path.resolve(__dirname, 'out/firebase-messaging-sw.js')
+      if (!fs.existsSync(swSrc) || !fs.existsSync(path.resolve(__dirname, 'out'))) return
+
+      const env = loadEnv('production', __dirname, 'VITE_')
+      let content = fs.readFileSync(swSrc, 'utf-8')
+      content = content
+        .replace(/__FIREBASE_API_KEY__/g, env.VITE_FIREBASE_API_KEY ?? '')
+        .replace(/__FIREBASE_AUTH_DOMAIN__/g, env.VITE_FIREBASE_AUTH_DOMAIN ?? '')
+        .replace(/__FIREBASE_PROJECT_ID__/g, env.VITE_FIREBASE_PROJECT_ID ?? '')
+        .replace(/__FIREBASE_STORAGE_BUCKET__/g, env.VITE_FIREBASE_STORAGE_BUCKET ?? '')
+        .replace(/__FIREBASE_MESSAGING_SENDER_ID__/g, env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? '')
+        .replace(/__FIREBASE_APP_ID__/g, env.VITE_FIREBASE_APP_ID ?? '')
+
+      fs.writeFileSync(swOut, content, 'utf-8')
+      console.log('[firebase-sw-inject] Service worker written with real config.')
+    },
+  }
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), basicSsl(), firebaseSwInject()],
+  server: {
+    https: {},
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

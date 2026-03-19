@@ -9,6 +9,7 @@ import { SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { ATLAS_PERSONA } from './personas';
 import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
+import { AtlasNotificationSettingsPanel } from './components/AtlasNotificationSettingsPanel';
 import { QuickAddForm } from './components/QuickAddForm';
 import type { EveningCheckInSubmitData } from './components/EveningCheckIn';
 import {
@@ -642,6 +643,7 @@ export default function AtlasPage() {
           isLocked={isLocked}
         />
       )}
+      renderRightRail={() => <AtlasNotificationSettingsPanel />}
     />
   );
 }

@@ -52,6 +52,7 @@ import { LEDGER_PERSONA } from './personas';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { computeResonanceROI } from './services/resonance-roi-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
+import { LedgerNotificationSettingsPanel } from './components/LedgerNotificationSettingsPanel';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { ledgerDiagnosisSpec } from './diagnosis/ledger-diagnosis-spec';
 import { runDocumentPipeline } from '@/lib/services/document-pipeline';
@@ -895,6 +896,7 @@ export default function LedgerPage() {
       renderContent={({ profile, encryptionKey }) => (
         <LedgerContent profile={profile} encryptionKey={encryptionKey} />
       )}
+      renderRightRail={() => <LedgerNotificationSettingsPanel />}
     />
   );
 }
