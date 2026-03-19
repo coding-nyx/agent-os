@@ -130,6 +130,22 @@ const NOTIFICATION_ICON = '/assets/images/soma.png';
 // Oldest excess tokens are evicted on each update.
 const MAX_FCM_TOKENS = 5;
 
+// Log FCM "push service unavailable" only once per page load (e.g. localhost).
+let fcmUnavailableLogged = false;
+
+function isPushServiceError(err: unknown): boolean {
+  if (err instanceof Error) {
+    const msg = (err.message || '').toLowerCase();
+    const name = (err.name || '').toLowerCase();
+    return (
+      name === 'aborterror' ||
+      msg.includes('push service error') ||
+      msg.includes('registration failed')
+    );
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // BridgeService singleton
 // ---------------------------------------------------------------------------
@@ -347,7 +363,22 @@ class BridgeServiceClass {
         this.showNativeNotification(title, body, payload.data ?? {});
       });
     } catch (err) {
-      console.error('[Bridge] FCM init failed:', err);
+      if (isPushServiceError(err)) {
+        if (!fcmUnavailableLogged) {
+          fcmUnavailableLogged = true;
+          const isLocalhost =
+            typeof window !== 'undefined' &&
+            (window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1');
+          console.warn(
+            '[Bridge] Push notifications unavailable in this environment.',
+            isLocalhost
+              ? 'Expected on localhost; reminders and FCM will work when deployed over HTTPS.'
+              : 'Check browser permissions and that the app is served over HTTPS.'
+          );
+        }
+      } else {
+        console.error('[Bridge] FCM init failed:', err);
+      }
     }
   }
 

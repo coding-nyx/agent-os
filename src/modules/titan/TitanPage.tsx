@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { TitanDashboard } from './components/TitanReadiness';
 import { TitanRoutinePanel } from './components/TitanRoutinePanel';
-import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
 import { CustomFieldManager } from './components/CustomFieldManager';
 import { RoutineProgress } from './components/RoutineProgress';
 import { CycleManager } from './components/CycleManager';
@@ -50,6 +49,9 @@ import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/se
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { titanDiagnosisSpec } from './diagnosis/titan-diagnosis-spec';
 import { TITAN_PERSONA } from './personas';
+import { useUIStore } from '@/lib/stores/ui-store';
+import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
+import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 
 type TitanTab = 'training' | 'analytics' | 'progress' | 'cycles' | 'sleep';
 
@@ -73,7 +75,14 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams));
+  const setModuleBottomBarHeight = useUIStore((s) => s.setModuleBottomBarHeight);
   const [calendarSelectedRoutine, setCalendarSelectedRoutine] = useState<Routine | null>(null);
+  useEffect(() => {
+    // Reserve space for GlobalFAB when quick-log footer is mounted.
+    setModuleBottomBarHeight(activeTab === 'training' ? 92 : 0);
+    return () => setModuleBottomBarHeight(0);
+  }, [activeTab, setModuleBottomBarHeight]);
+
   const [somaProfile, setSomaProfile] = useState<SomaProfile | null>(null);
   const [somaEncryptionKey, setSomaEncryptionKey] = useState<CryptoKey | null>(null);
 
@@ -932,8 +941,14 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               subtitle="Elite physical performance optimization and biometric clearance."
               accentClassName="text-orange-400"
             />
-            {/* Direct Write / Logbook Mode toggle */}
+            {/* Header controls */}
             <div className="flex items-center gap-2 text-xs mt-1 shrink-0">
+              <ModuleReminderEntry
+                title="Titan"
+                themeColor="orange"
+                panel={<TitanNotificationSettingsPanel />}
+                compact
+              />
               <span className="text-white/40">{directWrite ? 'Logbook' : 'Coach'}</span>
               <NeuralToggle
                 checked={directWrite}
@@ -1174,7 +1189,6 @@ export default function TitanPage() {
       renderContent={({ profile, encryptionKey }) => (
         <TitanContent profile={profile} encryptionKey={encryptionKey} />
       )}
-      renderRightRail={() => <TitanNotificationSettingsPanel />}
     />
   );
 }

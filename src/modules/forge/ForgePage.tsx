@@ -60,6 +60,11 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
   const [editorStatus, setEditorStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [editorOutput, setEditorOutput] = useState('');
   const [selectedMode, setSelectedMode] = useState<ForgeMode>('code');
+  const [isMobile, setIsMobile] = useState(
+    () => (typeof window !== 'undefined' ? window.innerWidth < 768 : false)
+  );
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
 
   const activeOverlay = FORGE_MODES.find((m) => m.id === selectedMode)?.overlay ?? FORGE_CODE_OVERLAY;
   const systemPrompt = `${FORGE_PERSONA}\n\n${activeOverlay}`;
@@ -85,6 +90,12 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
       ]);
     }
   }, [messages.length, isProcessing, streamingText, profile?.onboardingComplete, setMessages, agentAlias]);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const pushSession = useCallback(
     (session: ForgeExecutionRecord) => {
@@ -256,7 +267,24 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
 
   return (
     <div className="h-full flex flex-col md:flex-row overflow-hidden">
-      <div className="w-full md:w-1/2 lg:w-[40%] max-h-[50vh] md:h-full md:max-h-none border-b md:border-b-0 md:border-r border-white/5 overflow-y-auto no-scrollbar">
+      {isMobile && (
+        <div className="sticky top-0 z-20 flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-black/60 backdrop-blur-xl">
+          <button
+            type="button"
+            onClick={() => setShowDashboard((v) => !v)}
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60"
+          >
+            {showDashboard ? 'Hide Dashboard' : 'Show Dashboard'}
+          </button>
+          <div className="min-w-0 overflow-x-auto no-scrollbar">{modePillSelector}</div>
+        </div>
+      )}
+      <div
+        className={cn(
+          'w-full md:w-1/2 lg:w-[40%] max-h-[50vh] md:h-full md:max-h-none border-b md:border-b-0 md:border-r border-white/5 overflow-y-auto no-scrollbar',
+          isMobile && !showDashboard && 'hidden'
+        )}
+      >
           <ForgeDashboard soul={globalSoul} profile={profile} isLocked={isLocked} onModeSelect={handleModeSelect} />
           <div className="px-8 pb-8">
             <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6 space-y-4">
@@ -274,12 +302,23 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
                 </select>
               </div>
 
-              <textarea
-                value={editorCode}
-                onChange={(event) => setEditorCode(event.target.value)}
-                placeholder="Write a JavaScript snippet to execute in Forge cloud..."
-                className="w-full min-h-[180px] rounded-2xl border border-white/10 bg-black/50 text-xs text-white/80 font-mono p-4 focus:outline-none focus:border-rose-500/40"
-              />
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={() => setShowEditor((v) => !v)}
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60"
+                >
+                  {showEditor ? 'Collapse Editor' : 'Expand Editor'}
+                </button>
+              )}
+              {(!isMobile || showEditor) && (
+                <textarea
+                  value={editorCode}
+                  onChange={(event) => setEditorCode(event.target.value)}
+                  placeholder="Write a JavaScript snippet to execute in Forge cloud..."
+                  className="w-full min-h-[180px] rounded-2xl border border-white/10 bg-black/50 text-xs text-white/80 font-mono p-4 focus:outline-none focus:border-rose-500/40"
+                />
+              )}
 
               <div className="flex items-center justify-between gap-4">
                 <span
@@ -326,7 +365,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
             agentName={agentAlias}
             themeColor="cyan"
             placeholder="Describe the implementation task, repository target, or command sequence..."
-            headerActions={modePillSelector}
+            headerActions={isMobile ? undefined : modePillSelector}
           />
         </div>
       </div>

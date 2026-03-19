@@ -7,6 +7,7 @@ import { EmptyState } from '@/core/components/EmptyState';
 import { Skeleton } from '@/core/components/Skeleton';
 import { GuestModePanel } from '@/core/components/GuestModePanel';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
+import { RemindersCard } from '@/core/components/RemindersCard';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useModuleProfile, UseModuleProfileOptions } from '@/lib/hooks/use-module-profile';
@@ -223,6 +224,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                 {RenderDashboard && (
                     <div className="w-full lg:w-[400px] xl:w-[450px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 overflow-y-auto no-scrollbar scrollbar-ghost bg-black/20 backdrop-blur-md">
                         <RenderDashboard profile={profile} encryptionKey={encryptionKey} />
+                        <RemindersCard moduleId={moduleId} />
                     </div>
                 )}
                 <div className="flex-1 flex flex-col min-h-0 min-w-0">
@@ -235,7 +237,10 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
             <div className="flex-1 flex flex-col lg:flex-row h-full">
                 <div className="flex-1 border-b lg:border-b-0 lg:border-r border-white/5 overflow-y-auto no-scrollbar scrollbar-ghost p-8 bg-black/10 backdrop-blur-sm">
                     {RenderDashboard ? (
-                      <RenderDashboard profile={profile} encryptionKey={encryptionKey} />
+                      <>
+                        <RenderDashboard profile={profile} encryptionKey={encryptionKey} />
+                        <RemindersCard moduleId={moduleId} />
+                      </>
                     ) : (
                       <EmptyState
                         title="Diagnostic Stage Pending"

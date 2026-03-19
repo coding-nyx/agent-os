@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, Terminal, Sparkles } from 'lucide-react';
+import { ArrowLeft, Shield, Terminal, Bell } from 'lucide-react';
 import { ModuleSwitcherPopover } from '@/core/components/ModuleSwitcherPopover';
 import { SyncTransition } from '@/core/components/SyncTransition';
 import { SystemCommandCenter } from '@/core/components/SystemCommandCenter';
@@ -19,6 +19,8 @@ import { NexusLogger } from '@/lib/nexus-logger';
 import { useCrossModuleHintListener } from '@/lib/hooks/use-cross-module-hint-listener';
 import { DataSyncToast } from '@/core/components/DataSyncToast';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { useAuth } from '@/lib/auth-context';
+import { useDataLayer } from '@/lib/data-layer/provider';
 
 interface ModuleLayoutProps {
   children: React.ReactNode;
@@ -65,17 +67,68 @@ function TelemetryTicker({ debugMode }: TelemetryTickerProps) {
     }, [debugMode]);
 
     return (
-        <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-lg hidden sm:flex">
-            <Terminal className="w-2.5 h-2.5 text-white/40" />
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-lg max-w-[180px] overflow-hidden">
+            <Terminal className="w-2.5 h-2.5 text-white/40 shrink-0" />
             <motion.span 
                 key={log}
                 initial={{ opacity: 0, x: 5 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="text-[8px] font-mono text-white/40 tracking-wider"
+                className="text-[8px] font-mono text-white/40 tracking-wider truncate"
             >
                 {log}
             </motion.span>
         </div>
+    );
+}
+
+function NotificationBell() {
+    const { user, isGuest } = useAuth();
+    const dataLayer = useDataLayer();
+    const navigate = useNavigate();
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        if (!user || isGuest) return;
+
+        const unsub = dataLayer.subscribeToQuery<{ read: boolean }>(
+            {
+                collection: `users/${user.uid}/notification_inbox`,
+                orderBy: [{ field: 'createdAt', direction: 'desc' }],
+                limit: 100,
+            },
+            (docs) => {
+                setUnreadCount(docs.filter((d) => !d.read).length);
+            },
+        );
+
+        return () => unsub?.();
+    }, [dataLayer, isGuest, user]);
+
+    return (
+        <button
+            type="button"
+            onClick={() => navigate('/notifications')}
+            aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
+            className="relative w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 shrink-0"
+        >
+            <Bell className="w-4 h-4 text-white/50" />
+            <AnimatePresence>
+                {unreadCount > 0 && (
+                    <motion.span
+                        key="badge"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+                        className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-indigo-500 border-2 border-[#010103] flex items-center justify-center"
+                    >
+                        <span className="text-[9px] font-black text-white leading-none">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                    </motion.span>
+                )}
+            </AnimatePresence>
+        </button>
     );
 }
 
@@ -98,20 +151,6 @@ export function ModuleLayout({
   const reducedMotion = useReducedMotion();
   const { isLeftRailVisible, isRightRailVisible } = useUIStore();
   const { debugMode } = useDebugMode();
-
-  // Reactive active-model reader for debug subtext (Change 1)
-  const [activeModel, setActiveModel] = useState<string>(
-    () => localStorage.getItem('preferred_model') ?? 'deepseek/deepseek-chat'
-  );
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'preferred_model') {
-        setActiveModel(e.newValue ?? 'deepseek/deepseek-chat');
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
 
   // Contextual Inference Engine — S10-008
   const { activeHint, dismissHint, confirmHint } = useCrossModuleHintListener();
@@ -184,70 +223,62 @@ export function ModuleLayout({
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
-            className="sticky top-0 z-[var(--z-header)] border-b border-white/5 bg-black/50 backdrop-blur-2xl px-4 md:px-8 py-3 md:py-4 flex items-center justify-between"
+            className="sticky top-0 z-[var(--z-header)] border-b border-white/5 bg-black/50 backdrop-blur-2xl px-4 md:px-6 py-3 flex items-center justify-between gap-2"
           >
-            <div className="flex items-center gap-3 md:gap-6">
+            {/* Left cluster: back + title */}
+            <div className="flex items-center gap-2 md:gap-4 min-w-0">
               {!hideBack && (
                 <button 
                   onClick={handleExit}
                   aria-label="Back to Hub"
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all group shrink-0"
+                  className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all group shrink-0"
                 >
-                  <ArrowLeft className="w-5 h-5 text-white/40 group-hover:text-white" />
+                  <ArrowLeft className="w-4 h-4 text-white/40 group-hover:text-white" />
                 </button>
               )}
-              <div className="flex flex-col">
-                {/* Title row */}
-                <div className="flex items-center gap-2">
-                  <h1 className={`text-sm sm:text-lg md:text-xl font-bold tracking-[0.08em] sm:tracking-[0.15em] uppercase font-display ${theme.accent} truncate max-w-[160px] sm:max-w-[200px] md:max-w-xs`}>{title}</h1>
-                </div>
-                {/* Subtitle row — replaced by ModelBadge pill when debug mode is on */}
-                <div className="hidden sm:flex items-center gap-2">
-                    <div className={`w-1 h-1 rounded-full animate-pulse ${debugMode ? 'bg-amber-400' : 'bg-emerald-500'}`} />
-                    {debugMode ? (
-                      <ModelBadge debugMode={debugMode} />
-                    ) : (
-                      <span className="text-[9px] font-medium text-white/40 uppercase tracking-[0.1em] truncate font-mono">
-                          Link Stable // Secure Tunnel
-                      </span>
-                    )}
+              <div className="flex flex-col min-w-0">
+                <h1 className={`text-sm md:text-base font-bold tracking-[0.08em] md:tracking-[0.15em] uppercase font-display ${theme.accent} truncate max-w-[130px] sm:max-w-[180px] md:max-w-[220px] lg:max-w-xs`}>{title}</h1>
+                {/* Subtitle — sm+ only */}
+                <div className="hidden sm:flex items-center gap-1.5">
+                  <div className={`w-1 h-1 rounded-full animate-pulse shrink-0 ${debugMode ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+                  {debugMode ? (
+                    <ModelBadge debugMode={debugMode} />
+                  ) : (
+                    <span className="text-[9px] font-medium text-white/40 uppercase tracking-[0.1em] truncate font-mono">
+                      Link Stable // Secure Tunnel
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 md:gap-8">
+            {/* Right cluster: ticker → bell → modules → security → divider → avatar */}
+            <div className="flex items-center gap-2 md:gap-3 shrink-0">
               <TelemetryTicker debugMode={debugMode} />
-              
-              <div className="flex items-center gap-2">
-                {/* Nexus Trigger — mobile only (replaced by FAB on desktop) */}
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent('open-nexus'))}
-                  className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
-                  aria-label="Open Nexus Proxy"
-                >
-                  <Sparkles className="w-4 h-4 text-violet-400" />
-                </button>
 
-                {/* Single unified nav button — Nexus + all modules */}
+              {/* Notification bell — always visible */}
+              <NotificationBell />
+
+              {/* Module switcher — md+ */}
+              <div className="hidden md:block">
                 <ModuleSwitcherPopover currentModuleId={moduleId} />
               </div>
 
+              {/* Security protocol — lg+ */}
               <button
                 type="button"
                 onClick={openSecurityProtocol}
                 className="hidden lg:flex flex-col items-end text-left focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg px-2 py-1 hover:bg-white/5 transition-colors"
               >
                 <span className="text-[9px] font-semibold text-white/40 uppercase tracking-wider mb-1 leading-none">Security Protocol</span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <Shield className={`w-3 h-3 ${theme.accent}`} />
                   <span className="text-[10px] font-medium text-white/60 tracking-tight leading-none uppercase font-mono">E2EE_Active</span>
                 </div>
               </button>
-              <div className="w-px h-8 bg-white/5 hidden md:block" />
-              <div className="flex items-center gap-2">
-                <SystemCommandCenter />
-              </div>
+
+              <div className="w-px h-6 bg-white/5 hidden sm:block" />
+              <SystemCommandCenter />
             </div>
           </motion.header>
         )}

@@ -37,6 +37,7 @@ import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { AgnesNotificationSettingsPanel } from './components/AgnesNotificationSettingsPanel';
+import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 
 type AgnesState = 'selecting' | 'session' | 'somatic';
 
@@ -469,11 +470,19 @@ function AgnesContent({
                 </div>
               ) : (
               <motion.div 
-                className="w-full bg-black/20 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-8 min-[620px]:p-16 shadow-2xl space-y-12"
+                className="w-full bg-black/20 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-6 sm:p-10 lg:p-16 shadow-2xl space-y-12"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.1 }}
               >
+                <div className="flex justify-end">
+                  <ModuleReminderEntry
+                    title="Agnes"
+                    themeColor="indigo"
+                    panel={<AgnesNotificationSettingsPanel />}
+                    compact
+                  />
+                </div>
                 <div className="text-center space-y-4">
                   <motion.div 
                     initial={{ opacity: 0, y: 20 }}
@@ -491,20 +500,20 @@ function AgnesContent({
                 </div>
 
                 {/* Session Cards - Primary on Mobile */}
-                <div className="grid grid-cols-1 min-[620px]:grid-cols-2 gap-4 min-[620px]:gap-8 w-full">
+                <div className="grid grid-cols-1 min-[620px]:grid-cols-2 gap-5 min-[620px]:gap-8 w-full">
                   <motion.button 
                     whileHover={{ scale: 1.02, y: -4 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => startSession('impromptu')} 
-                    className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
+                    className="p-8 md:p-12 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
                   >
                     <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
                         <ShieldAlert className="w-20 h-24 text-orange-400" />
                     </div>
                     <div className="relative z-10">
-                        <ShieldAlert className="w-10 h-10 text-orange-400 mb-6" />
+                        <ShieldAlert className="w-10 h-10 text-orange-400 mb-4 sm:mb-6" />
                         <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white">Quick Support</h3>
-                        <p className="text-xs text-white/40 leading-relaxed font-medium max-w-[200px]">Private, off-the-record support. Nothing is saved — no context, no trace.</p>
+                        <p className="text-xs text-white/40 leading-relaxed font-medium">Private, off-the-record support. Nothing is saved — no context, no trace.</p>
                         <div className="mt-6 flex items-center gap-2 text-orange-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
                             <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
                             <ArrowRight className="w-4 h-4" />
@@ -518,7 +527,7 @@ function AgnesContent({
                         whileHover={{ scale: 1.02, y: -4 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => startSession('continue')} 
-                        className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-indigo-500/10 border-2 border-indigo-500/40 hover:bg-indigo-500/20 transition-all text-left group relative overflow-hidden backdrop-blur-md shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]"
+                        className="p-8 md:p-12 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-indigo-500/10 border-2 border-indigo-500/40 hover:bg-indigo-500/20 transition-all text-left group relative overflow-hidden backdrop-blur-md shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]"
                       >
                         <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity">
                             <Sparkles className="w-20 h-24 text-indigo-400 animate-pulse" />
@@ -541,15 +550,15 @@ function AgnesContent({
                         whileHover={{ scale: 1.02, y: -4 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => startSession('new')} 
-                        className="p-8 min-[620px]:p-10 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-indigo-500/5 border border-indigo-500/20 hover:bg-indigo-500/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
+                        className="p-8 md:p-12 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-indigo-500/5 border border-indigo-500/20 hover:bg-indigo-500/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
                       >
                         <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Sparkles className="w-20 h-24 text-indigo-400" />
                         </div>
                         <div className="relative z-10">
-                            <Sparkles className="w-10 h-10 text-indigo-400 mb-6" />
+                            <Sparkles className="w-10 h-10 text-indigo-400 mb-4 sm:mb-6" />
                             <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white">New Session</h3>
-                            <p className="text-xs text-indigo-200/40 leading-relaxed font-medium max-w-[200px]">Initialize a deep baseline synchronization.</p>
+                            <p className="text-xs text-indigo-200/40 leading-relaxed font-medium">Initialize a deep baseline synchronization.</p>
                             <div className="mt-6 flex items-center gap-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
                                 <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
                                 <ArrowRight className="w-4 h-4" />
@@ -560,7 +569,7 @@ function AgnesContent({
                       <div className="p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] bg-white/[0.01] border border-white/5 opacity-40 cursor-not-allowed text-left backdrop-blur-sm">
                         <ShieldAlert className="w-10 h-10 text-white/20 mb-6" />
                         <h3 className="text-xl md:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white/20">Locked</h3>
-                        <p className="text-xs text-white/10 leading-relaxed font-medium max-w-[200px]">Unlock vault to access encrypted neural sessions.</p>
+                        <p className="text-xs text-white/10 leading-relaxed font-medium">Unlock vault to access encrypted neural sessions.</p>
                       </div>
                     )
                   )}
@@ -634,7 +643,13 @@ function AgnesContent({
                         <div className="flex-1 min-w-0 overflow-hidden">
                           <AgnesTelemetryHeader />
                         </div>
-                        <div className="shrink-0 ml-4">
+                        <div className="shrink-0 ml-4 flex items-center gap-2">
+                          <ModuleReminderEntry
+                            title="Agnes"
+                            themeColor="indigo"
+                            panel={<AgnesNotificationSettingsPanel />}
+                            compact
+                          />
                           <NeuralButton 
                             size="sm" 
                             variant="ghost" 
@@ -768,7 +783,6 @@ export default function AgnesPage() {
       renderLeftRail={({ profile, persistProfile }) => (
         <AgnesSidebar profile={profile} agentAlias={agentAlias} onSave={persistProfile} />
       )}
-      renderRightRail={() => <AgnesNotificationSettingsPanel />}
     />
   );
 }

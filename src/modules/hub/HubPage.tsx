@@ -31,6 +31,10 @@ export default function HubPage() {
     return (saved === '3D' || saved === 'GRAPH' || saved === 'CARDS') ? saved : 'CARDS';
   });
   const [webglError, setWebglError] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    () => (typeof window !== 'undefined' ? window.innerWidth < 768 : false)
+  );
+  const [showBottomDashboard, setShowBottomDashboard] = useState(false);
 
   useEffect(() => {
     if (viewMode === '3D' && webglError) {
@@ -77,6 +81,12 @@ export default function HubPage() {
   useEffect(() => {
     if (viewMode !== '3D') document.body.style.cursor = 'default';
   }, [viewMode]);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const moduleAccess = useMemo(() => {
     return modules.reduce<Record<string, boolean>>((acc, module) => {
@@ -227,14 +237,36 @@ export default function HubPage() {
 
           {/* Bottom Dashboard */}
           <div className="shrink-0 max-h-[30vh] md:max-h-none overflow-y-auto pointer-events-auto">
-            <HubBottomDashboard
-              lockedModules={lockedModules}
-              wellnessGauge={wellnessGauge}
-              stabilityGauge={stabilityGauge}
-              resilienceGauge={resilienceGauge}
-              openAuth={openAuth}
-              primaryLockedModule={primaryLockedModule}
-            />
+            {isMobile ? (
+              <div className="px-4 pb-4">
+                <button
+                  type="button"
+                  onClick={() => setShowBottomDashboard((v) => !v)}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55"
+                >
+                  {showBottomDashboard ? 'Hide System Status' : 'Show System Status'}
+                </button>
+                {showBottomDashboard && (
+                  <HubBottomDashboard
+                    lockedModules={lockedModules}
+                    wellnessGauge={wellnessGauge}
+                    stabilityGauge={stabilityGauge}
+                    resilienceGauge={resilienceGauge}
+                    openAuth={openAuth}
+                    primaryLockedModule={primaryLockedModule}
+                  />
+                )}
+              </div>
+            ) : (
+              <HubBottomDashboard
+                lockedModules={lockedModules}
+                wellnessGauge={wellnessGauge}
+                stabilityGauge={stabilityGauge}
+                resilienceGauge={resilienceGauge}
+                openAuth={openAuth}
+                primaryLockedModule={primaryLockedModule}
+              />
+            )}
           </div>
         </div>
       </div>

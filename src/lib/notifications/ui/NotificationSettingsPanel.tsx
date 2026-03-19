@@ -306,8 +306,14 @@ export function NotificationSettingsPanel({
             await scheduleReminder({ scheduleId });
           }
         } catch (err) {
+          const maybe = err as { code?: string; message?: string; details?: unknown };
           // Non-fatal — reminder will still be scheduled on next data-logging event
-          console.warn('[NotificationSettingsPanel] Bootstrap scheduleReminder failed:', err);
+          console.warn('[NotificationSettingsPanel] Bootstrap scheduleReminder failed:', {
+            scheduleId,
+            code: maybe?.code,
+            message: maybe?.message,
+            details: maybe?.details,
+          });
         }
       }
     },

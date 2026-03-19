@@ -38,6 +38,7 @@ import {
   createEmptyJournalEntry,
   mergeCheckInData,
 } from './services/journal-service';
+import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 
 function buildRecoveryWindow(reason: string): RecoveryWindow {
   const now = Date.now();
@@ -508,7 +509,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       authMode="atlas"
       placeholder="Share task pressure or schedule constraints..."
       primaryAction={
-        activeTab === 'dashboard' && activeView !== 'focus' && profile?.preferenceMode !== 'structured' && (
+        activeTab === 'dashboard' && activeView !== 'focus' && profile?.preferenceMode !== 'structured' ? (
           <QuickAddForm
             projects={profile?.projects ?? []}
             onCreateTask={handleCreateTask}
@@ -518,10 +519,18 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
             onOpenChange={setIsQuickAddOpen}
             isFluid
           />
-        )
+        ) : undefined
       }
     >
       <>
+        <div className="px-4 md:px-8 pt-2 flex justify-end">
+          <ModuleReminderEntry
+            title="Atlas"
+            themeColor="sky"
+            panel={<AtlasNotificationSettingsPanel />}
+            compact
+          />
+        </div>
         {showWelcomeCard && profile && (
           <PostOnboardingWelcome
             profile={profile}
@@ -643,7 +652,6 @@ export default function AtlasPage() {
           isLocked={isLocked}
         />
       )}
-      renderRightRail={() => <AtlasNotificationSettingsPanel />}
     />
   );
 }

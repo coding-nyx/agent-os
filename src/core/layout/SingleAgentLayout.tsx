@@ -50,14 +50,14 @@ export function SingleAgentLayout({
   placeholder = "Communicate with agent...",
   authMode,
   chatWidth = 'clamp(320px, 32vw, 520px)',
-  mobileBreakpoint = 1024,
+  mobileBreakpoint = 768,
   primaryAction,
   onUploadDocument,
   isChatCollapsed: externalIsChatCollapsed,
   onToggleChat
 }: SingleAgentLayoutProps) {
   const navigate = useNavigate();
-  const [internalIsChatCollapsed, setInternalIsChatCollapsed] = useState(false);
+  const [internalIsChatCollapsed, setInternalIsChatCollapsed] = useState(true);
   
   const isChatCollapsed = externalIsChatCollapsed ?? internalIsChatCollapsed;
   const toggleChat = (val: boolean) => {
@@ -142,9 +142,9 @@ export function SingleAgentLayout({
       className="h-full flex overflow-hidden relative"
       style={{ '--spine-sidebar-width': isChatCollapsed ? '0px' : chatWidth } as React.CSSProperties}
     >
-      {/* ── Action Bar (Mobile) ── */}
+      {/* ── Mobile chat trigger (floating pill, bottom-right) ── */}
       {isMobile && isChatCollapsed && (
-        <div className="fixed bottom-6 left-4 right-4 flex gap-3 z-[var(--z-fab)]">
+        <div className="fixed bottom-6 right-4 flex items-center gap-3 z-[var(--z-fab)]">
           <motion.button
             initial={{ opacity: 0, scale: 0.9, x: 20 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
@@ -152,15 +152,15 @@ export function SingleAgentLayout({
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleChat(false)}
             className={cn(
-              'flex-1 flex items-center gap-3 border backdrop-blur-xl shadow-2xl transition-all duration-300',
+              'flex items-center gap-3 border backdrop-blur-xl shadow-2xl transition-all duration-300',
               currentTheme.btnBg,
               currentTheme.btnBorder,
               currentTheme.btnText,
-              'px-5 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.1em] justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)]'
+              'px-4 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-[0.1em] justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)]'
             )}
           >
             <MessageSquare className="w-5 h-5" />
-            <span>Link {agentName}</span>
+            <span>Chat {agentName}</span>
             <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", 
               themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
             )} />
@@ -183,17 +183,22 @@ export function SingleAgentLayout({
           whileTap={{ scale: 0.95 }}
           onClick={() => toggleChat(false)}
           className={cn(
-            'z-[var(--z-fab)] absolute top-6 right-6 flex items-center gap-3 border backdrop-blur-xl shadow-2xl transition-all duration-300 px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-[0.1em]',
+            'z-[var(--z-fab)] absolute top-6 right-4 md:right-3 lg:right-6 border backdrop-blur-xl shadow-2xl transition-all duration-300 rounded-2xl font-bold uppercase tracking-[0.1em]',
             currentTheme.btnBg,
             currentTheme.btnBorder,
             currentTheme.btnText
           )}
         >
-          <MessageSquare className="w-4 h-4" />
-          <span>Link {agentName}</span>
-          <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", 
-            themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
-          )} />
+          <div className="hidden lg:flex items-center gap-3 px-5 py-3 text-[10px]">
+            <MessageSquare className="w-4 h-4" />
+            <span>Chat {agentName}</span>
+            <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", 
+              themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
+            )} />
+          </div>
+          <div className="flex lg:hidden items-center justify-center w-10 h-10">
+            <MessageSquare className="w-4 h-4" />
+          </div>
         </motion.button>
       )}
 

@@ -46,6 +46,95 @@ function deliverReminderUrl(): string {
   return `https://${loc}-${proj}.cloudfunctions.net/deliverReminder`;
 }
 
+/** Resolve the service account email to use for Cloud Task OIDC when invoking deliverReminder. */
+let cachedOidcServiceAccount: string | null = null;
+
+async function oidcServiceAccountEmail(): Promise<string> {
+  if (cachedOidcServiceAccount) return cachedOidcServiceAccount;
+  const explicit = process.env.TASKS_OIDC_SERVICE_ACCOUNT;
+  if (typeof explicit === "string" && explicit.length > 0) {
+    cachedOidcServiceAccount = explicit;
+    return cachedOidcServiceAccount;
+  }
+  // App Engine default SA often doesn't exist (no App Engine). Use the runtime (compute) SA.
+  try {
+    const metaRes = await fetch(
+      "http://metadata.google.internal/computeMetadata/v1/project/numeric-project-id",
+      { headers: { "Metadata-Flavor": "Google" } }
+    );
+    if (metaRes.ok) {
+      const projectNumber = await metaRes.text();
+      if (projectNumber && /^\d+$/.test(projectNumber)) {
+        cachedOidcServiceAccount = `${projectNumber.trim()}-compute@developer.gserviceaccount.com`;
+        return cachedOidcServiceAccount;
+      }
+    }
+  } catch {
+    // Fall back to appspot if metadata unavailable (e.g. emulator).
+  }
+  cachedOidcServiceAccount = `${projectId()}@appspot.gserviceaccount.com`;
+  return cachedOidcServiceAccount;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function mapCloudTasksError(error: unknown): HttpsError {
+  if (error instanceof HttpsError) return error;
+
+  const code = isRecord(error) && typeof error.code === "number" ? error.code : null;
+  const message = isRecord(error) && typeof error.message === "string" ? error.message : "Cloud Tasks request failed.";
+  const queuePath = tasksQueueName();
+  const details = {
+    cloudTasksCode: code,
+    cloudTasksMessage: message,
+    queue: queuePath,
+    targetUrl: deliverReminderUrl(),
+    projectId: projectId(),
+    location: process.env.TASKS_LOCATION || "us-central1",
+    queueName: process.env.TASKS_QUEUE || "reminder-delivery",
+  };
+
+  // gRPC 5 = NOT_FOUND (often queue missing or wrong region)
+  if (code === 5) {
+    return new HttpsError(
+      "not-found",
+      `Reminder queue not found at ${queuePath}. List queues: gcloud tasks queues list --project=${details.projectId} --location=${details.location}`,
+      details
+    );
+  }
+
+  // gRPC 7 = PERMISSION_DENIED (missing IAM on Cloud Tasks enqueue)
+  if (code === 7) {
+    return new HttpsError(
+      "permission-denied",
+      "Permission denied creating Cloud Task. Verify function runtime IAM for Cloud Tasks.",
+      details
+    );
+  }
+
+  // gRPC 3 = INVALID_ARGUMENT (bad queue/URL/task fields)
+  if (code === 3) {
+    return new HttpsError(
+      "invalid-argument",
+      "Invalid Cloud Task configuration. Verify target URL and task payload fields.",
+      details
+    );
+  }
+
+  // gRPC 6 = ALREADY_EXISTS (same task ID). Treat idempotently.
+  if (code === 6) {
+    return new HttpsError(
+      "already-exists",
+      "Reminder occurrence already scheduled.",
+      details
+    );
+  }
+
+  return new HttpsError("internal", "Failed to enqueue reminder task.", details);
+}
+
 // ---------------------------------------------------------------------------
 // scheduleReminder — callable from the client after a logging event
 // ---------------------------------------------------------------------------
@@ -54,78 +143,129 @@ export const scheduleReminder = onCall(
   { enforceAppCheck: false },
   async (request) => {
     const uid = request.auth?.uid;
-    if (!uid) throw new HttpsError("unauthenticated", "Must be signed in.");
-
     const scheduleId = request.data?.scheduleId;
-    if (typeof scheduleId !== "string" || !scheduleId) {
-      throw new HttpsError("invalid-argument", "scheduleId required.");
-    }
 
-    const db = getFirestore();
-    const scheduleSnap = await db.doc(`users/${uid}/notification_schedules/${scheduleId}`).get();
-    if (!scheduleSnap.exists) {
-      throw new HttpsError("not-found", `Schedule ${scheduleId} not found.`);
-    }
+    try {
+      if (!uid) throw new HttpsError("unauthenticated", "Must be signed in.");
+      if (typeof scheduleId !== "string" || !scheduleId) {
+        throw new HttpsError("invalid-argument", "scheduleId required.");
+      }
 
-    const schedule = scheduleSnap.data() as Record<string, unknown>;
-    if (schedule.enabled !== true) {
-      return { skipped: true, reason: "disabled" };
-    }
+      const db = getFirestore();
+      const scheduleSnap = await db.doc(`users/${uid}/notification_schedules/${scheduleId}`).get();
+      if (!scheduleSnap.exists) {
+        throw new HttpsError("not-found", `Schedule ${scheduleId} not found.`);
+      }
 
-    const moduleId = typeof schedule.moduleId === "string" ? schedule.moduleId : null;
-    if (!moduleId) throw new HttpsError("internal", "Schedule missing moduleId.");
+      const schedule = scheduleSnap.data() as Record<string, unknown>;
+      if (schedule.enabled !== true) {
+        return { skipped: true, reason: "disabled" };
+      }
 
-    const dueAtMs = nextDue(schedule.recurrence, Date.now());
-    if (dueAtMs === null) {
-      logger.warn("[scheduleReminder] Could not compute next due time", { uid, scheduleId });
-      return { skipped: true, reason: "no_next_occurrence" };
-    }
+      const moduleId = typeof schedule.moduleId === "string" ? schedule.moduleId : null;
+      if (!moduleId) throw new HttpsError("internal", "Schedule missing moduleId.");
 
-    const dueAtIso = new Date(dueAtMs).toISOString();
-    const occId = occurrenceId(moduleId, scheduleId, dueAtIso);
+      const dueAtMs = nextDue(schedule.recurrence, Date.now());
+      if (dueAtMs === null) {
+        logger.warn("[scheduleReminder] Could not compute next due time", { uid, scheduleId });
+        return { skipped: true, reason: "no_next_occurrence" };
+      }
 
-    // Check for existing occurrence to prevent duplicates
-    const occRef = db.doc(`users/${uid}/notification_occurrences/${occId}`);
-    const occSnap = await occRef.get();
-    if (occSnap.exists) {
-      return { skipped: true, reason: "already_scheduled", dueAt: dueAtIso };
-    }
+      const dueAtIso = new Date(dueAtMs).toISOString();
+      const occId = occurrenceId(moduleId, scheduleId, dueAtIso);
 
-    // Write occurrence record immediately (status: pending)
-    await occRef.set({
-      occurrenceId: occId,
-      scheduleId,
-      moduleId,
-      dueAt: dueAtIso,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+      // Check for existing occurrence to prevent duplicates
+      const occRef = db.doc(`users/${uid}/notification_occurrences/${occId}`);
+      const occSnap = await occRef.get();
+      if (occSnap.exists) {
+        return { skipped: true, reason: "already_scheduled", dueAt: dueAtIso };
+      }
 
-    // Enqueue Cloud Task to fire at dueAtMs
-    const client = new CloudTasksClient();
+      // Write occurrence record immediately (status: pending)
+      await occRef.set({
+        occurrenceId: occId,
+        scheduleId,
+        moduleId,
+        dueAt: dueAtIso,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
 
-    const payload = JSON.stringify({ uid, scheduleId, moduleId, occurrenceId: occId, dueAt: dueAtIso });
+      // Enqueue Cloud Task to fire at dueAtMs
+      const client = new CloudTasksClient();
+      const queueName = tasksQueueName();
+      const targetUrl = deliverReminderUrl();
+      const payload = JSON.stringify({ uid, scheduleId, moduleId, occurrenceId: occId, dueAt: dueAtIso });
+      const projId = projectId();
 
-    await client.createTask({
-      parent: tasksQueueName(),
-      task: {
-        name: `${tasksQueueName()}/tasks/${occId}`,
-        scheduleTime: { seconds: Math.floor(dueAtMs / 1000) },
-        httpRequest: {
-          httpMethod: "POST" as const,
-          url: deliverReminderUrl(),
-          headers: { "Content-Type": "application/json" },
-          body: Buffer.from(payload).toString("base64"),
-          oidcToken: {
-            serviceAccountEmail: `${projectId()}@appspot.gserviceaccount.com`,
+      try {
+        // Pre-flight: verify the queue is visible to the function (API enabled + IAM).
+        await client.getQueue({ name: queueName });
+      } catch (preflightErr: unknown) {
+        const code = isRecord(preflightErr) && typeof (preflightErr as { code?: number }).code === "number"
+          ? (preflightErr as { code: number }).code
+          : null;
+        if (code === 5) {
+          logger.error("[scheduleReminder] Queue not visible to function", {
+            queue: queueName,
+            projectId: projId,
+            hint: "Enable Cloud Tasks API and grant the function service account roles/cloudtasks.enqueuer",
+          });
+          throw new HttpsError(
+            "not-found",
+            "Reminder queue not visible. Enable Cloud Tasks API: gcloud services enable cloudtasks.googleapis.com --project=" +
+              projId +
+              ". Then grant IAM: gcloud projects add-iam-policy-binding " +
+              projId +
+              " --member=serviceAccount:" +
+              projId +
+              "@appspot.gserviceaccount.com --role=roles/cloudtasks.enqueuer",
+            { queue: queueName, projectId: projId }
+          );
+        }
+        throw preflightErr;
+      }
+
+      const oidcEmail = await oidcServiceAccountEmail();
+      try {
+        await client.createTask({
+          parent: queueName,
+          task: {
+            name: `${queueName}/tasks/${occId}`,
+            scheduleTime: { seconds: Math.floor(dueAtMs / 1000) },
+            httpRequest: {
+              httpMethod: "POST" as const,
+              url: targetUrl,
+              headers: { "Content-Type": "application/json" },
+              body: Buffer.from(payload).toString("base64"),
+              oidcToken: {
+                serviceAccountEmail: oidcEmail,
+              },
+            },
           },
-        },
-      },
-    });
+        });
+      } catch (error) {
+        logger.error("[scheduleReminder] Cloud Tasks enqueue failed", {
+          uid,
+          scheduleId,
+          occId,
+          queue: queueName,
+          targetUrl,
+          error,
+        });
+        throw mapCloudTasksError(error);
+      }
 
-    logger.info("[scheduleReminder] Task enqueued", { uid, scheduleId, dueAt: dueAtIso, occId });
-    return { scheduled: true, dueAt: dueAtIso };
+      logger.info("[scheduleReminder] Task enqueued", { uid, scheduleId, dueAt: dueAtIso, occId });
+      return { scheduled: true, dueAt: dueAtIso };
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      logger.error("[scheduleReminder] Unexpected failure", { uid, scheduleId, error });
+      throw new HttpsError("internal", "scheduleReminder failed unexpectedly.");
+    }
   }
 );
 

@@ -43,6 +43,8 @@ export interface ConflictResult {
 
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 const ONE_HOUR_MS   = 60 * 60 * 1000;
+const SURFACED_KEY_PREFIX = 'nss_s_';
+const RESOLUTION_KEY_PREFIX = 'nss_r_';
 
 /** Returns the numeric NSV value or -1 when missing / null. */
 function n(v: number | null | undefined): number {
@@ -60,6 +62,10 @@ class NexusSynthesisServiceClass {
   /** Records the user's resolution choice for each active conflict. Entries
    *  are automatically pruned after 1 hour so conflicts can re-emerge. */
   private readonly resolutions = new Map<string, ConflictResolutionChoice>();
+
+  constructor() {
+    this.hydrateFromSessionStorage();
+  }
 
   // -------------------------------------------------------------------------
   // detectConflicts — pure detection, no side-effects
@@ -278,11 +284,17 @@ class NexusSynthesisServiceClass {
   /**
    * Decides whether a detected conflict should be shown to the user.
    *
-   * - `block` severity → always surface
+   * - `block` severity → surface unless user has a live resolution window
    * - `warn`  severity → surface at most once per 4 hours per conflict type
    */
   shouldSurface(conflict: ConflictResult): boolean {
-    if (conflict.severity === 'block') return true;
+    if (conflict.severity === 'block') {
+      const resolution = this.resolutions.get(conflict.id);
+      // Any explicit user resolution (proceed/defer) should suppress
+      // re-surfacing during its active 1-hour window.
+      if (resolution === 'defer' || resolution === 'proceed') return false;
+      return true;
+    }
     const lastSeen = this.surfacedAt.get(conflict.id) ?? 0;
     return Date.now() - lastSeen >= FOUR_HOURS_MS;
   }
@@ -292,7 +304,9 @@ class NexusSynthesisServiceClass {
    * throttle can be enforced, and emits a CONFLICT_DETECTED Spine event.
    */
   markSurfaced(conflict: ConflictResult): void {
-    this.surfacedAt.set(conflict.id, Date.now());
+    const now = Date.now();
+    this.surfacedAt.set(conflict.id, now);
+    this.writeSurfaced(conflict.id, now);
     Spine.publish({
       type: 'CONFLICT_DETECTED',
       source: 'nexus-synthesis',
@@ -319,6 +333,7 @@ class NexusSynthesisServiceClass {
    */
   resolveConflict(conflictId: string, resolution: ConflictResolutionChoice): void {
     this.resolutions.set(conflictId, resolution);
+    this.writeResolution(conflictId, resolution, Date.now() + ONE_HOUR_MS);
 
     Spine.publish({
       type: 'CONFLICT_RESOLVED',
@@ -336,6 +351,7 @@ class NexusSynthesisServiceClass {
     // the underlying NSV conditions persist.
     window.setTimeout(() => {
       this.resolutions.delete(conflictId);
+      this.removeResolution(conflictId);
     }, ONE_HOUR_MS);
   }
 
@@ -385,6 +401,73 @@ class NexusSynthesisServiceClass {
         data: { reason: `conflict_reroute:${conflictId}` },
       });
     }
+  }
+
+  private hydrateFromSessionStorage(): void {
+    if (typeof window === 'undefined') return;
+    const now = Date.now();
+    for (let i = 0; i < window.sessionStorage.length; i += 1) {
+      const key = window.sessionStorage.key(i);
+      if (!key) continue;
+
+      if (key.startsWith(SURFACED_KEY_PREFIX)) {
+        const id = key.slice(SURFACED_KEY_PREFIX.length);
+        const raw = window.sessionStorage.getItem(key);
+        const ts = raw ? Number(raw) : NaN;
+        if (!Number.isFinite(ts) || ts <= 0) {
+          window.sessionStorage.removeItem(key);
+          continue;
+        }
+        this.surfacedAt.set(id, ts);
+        continue;
+      }
+
+      if (key.startsWith(RESOLUTION_KEY_PREFIX)) {
+        const id = key.slice(RESOLUTION_KEY_PREFIX.length);
+        const raw = window.sessionStorage.getItem(key);
+        if (!raw) {
+          window.sessionStorage.removeItem(key);
+          continue;
+        }
+        try {
+          const parsed = JSON.parse(raw) as { choice?: ConflictResolutionChoice; expiresAt?: number };
+          if (
+            !parsed.choice ||
+            (parsed.choice !== 'proceed' && parsed.choice !== 'defer' && parsed.choice !== 'reroute') ||
+            typeof parsed.expiresAt !== 'number' ||
+            parsed.expiresAt <= now
+          ) {
+            window.sessionStorage.removeItem(key);
+            continue;
+          }
+          this.resolutions.set(id, parsed.choice);
+          window.setTimeout(() => {
+            this.resolutions.delete(id);
+            this.removeResolution(id);
+          }, Math.max(0, parsed.expiresAt - now));
+        } catch {
+          window.sessionStorage.removeItem(key);
+        }
+      }
+    }
+  }
+
+  private writeSurfaced(conflictId: string, at: number): void {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(`${SURFACED_KEY_PREFIX}${conflictId}`, String(at));
+  }
+
+  private writeResolution(conflictId: string, resolution: ConflictResolutionChoice, expiresAt: number): void {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(
+      `${RESOLUTION_KEY_PREFIX}${conflictId}`,
+      JSON.stringify({ choice: resolution, expiresAt })
+    );
+  }
+
+  private removeResolution(conflictId: string): void {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.removeItem(`${RESOLUTION_KEY_PREFIX}${conflictId}`);
   }
 }
 

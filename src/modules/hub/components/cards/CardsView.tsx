@@ -95,7 +95,7 @@ export function CardsView({ modules, moduleAccess, moduleStats, displayNames, on
           <h2 className="text-[11px] font-black uppercase tracking-[0.6em] text-white/60 italic drop-shadow-sm">Soul Core Interface</h2>
           <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/20 to-transparent" aria-hidden="true" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
           {modules.filter(m => !m.isPlugin).map((m) => (
             <ModuleCard
               key={m.id}

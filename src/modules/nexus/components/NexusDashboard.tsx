@@ -57,6 +57,9 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     sendMessage = undefined;
   }
   const [briefCollapsed, setBriefCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    () => (typeof window !== 'undefined' ? window.innerWidth < 768 : false)
+  );
   const [routingSuggestion, setRoutingSuggestion] = useState<{
     target: ModuleId;
     reason?: string;
@@ -80,6 +83,13 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
       setBriefCollapsed(true);
     }
   }, [conversationDepth]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    if (window.innerWidth < 768) setBriefCollapsed(true);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const handleActionParsed = useCallback((type: string, payload: Record<string, unknown>) => {
     if (type === 'delegate_to_module' && typeof payload?.moduleId === 'string') {
@@ -247,22 +257,35 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Daily Brief — above chat, collapsible, constrained on mobile */}
       <div className="shrink-0 px-4 pt-3 pb-2 space-y-3 max-h-[40vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
-        <NexusErrorBoundary name="DailyBrief">
-          <DailyBriefSection
-            collapsed={briefCollapsed}
-            onToggleCollapse={() => setBriefCollapsed(!briefCollapsed)}
-            onAskAboutDomain={handleAskAboutDomain}
-          />
-        </NexusErrorBoundary>
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setBriefCollapsed((v) => !v)}
+            className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left text-[10px] font-bold uppercase tracking-[0.16em] text-white/55"
+          >
+            {briefCollapsed ? 'Show Brief' : 'Hide Brief'}
+          </button>
+        )}
+        {(!isMobile || !briefCollapsed) && (
+          <>
+            <NexusErrorBoundary name="DailyBrief">
+              <DailyBriefSection
+                collapsed={briefCollapsed}
+                onToggleCollapse={() => setBriefCollapsed(!briefCollapsed)}
+                onAskAboutDomain={handleAskAboutDomain}
+              />
+            </NexusErrorBoundary>
 
-        {/* Synthesis Panel — below brief, above chat */}
-        <NexusErrorBoundary name="SynthesisPanel">
-          <SynthesisPanel
-            onInjectChat={handleInjectChat}
-            onConsultModule={handleConsultModule}
-            onNavigate={(path) => navigate(path)}
-          />
-        </NexusErrorBoundary>
+            {/* Synthesis Panel — below brief, above chat */}
+            <NexusErrorBoundary name="SynthesisPanel">
+              <SynthesisPanel
+                onInjectChat={handleInjectChat}
+                onConsultModule={handleConsultModule}
+                onNavigate={(path) => navigate(path)}
+              />
+            </NexusErrorBoundary>
+          </>
+        )}
       </div>
 
       {/* Chat area — fills remaining space; relative for FAB positioning */}
@@ -283,7 +306,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
         </NexusErrorBoundary>
 
         {/* ⌘K discoverability hint */}
-        <div className="absolute top-2 right-3 z-10 pointer-events-none">
+        <div className="absolute top-2 right-3 z-10 pointer-events-none hidden sm:block">
           <kbd className="text-[10px] font-mono text-white/20 bg-white/5 px-1.5 py-0.5 rounded border border-white/10 select-none">
             ⌘K
           </kbd>

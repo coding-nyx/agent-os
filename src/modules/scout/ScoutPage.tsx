@@ -419,7 +419,12 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
         <div className="flex-1 overflow-y-auto no-scrollbar pt-4 md:pt-6">
           {activeView === 'research' ? (
-            <div className="h-full flex flex-col p-8 space-y-6">
+            <div
+              className={cn(
+                'h-full flex flex-col space-y-6',
+                activeSessionId ? 'p-2 md:p-4' : 'p-8'
+              )}
+            >
                {activeSessionId ? (
                  <ActiveResearchWorkspace 
                    session={sessions.find(s => s.id === activeSessionId)!}

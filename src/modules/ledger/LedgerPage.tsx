@@ -18,6 +18,7 @@ import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 
 import { SectionHeader } from '@/core/components/SectionHeader';
+import { NeuralTabGroup } from '@/core/components/NeuralTabGroup';
 import { Camera, FileUp, FolderOpen, Plus } from 'lucide-react';
 
 /** Deterministic color palette for budget categories — no Math.random(). */
@@ -52,7 +53,6 @@ import { LEDGER_PERSONA } from './personas';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { computeResonanceROI } from './services/resonance-roi-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
-import { LedgerNotificationSettingsPanel } from './components/LedgerNotificationSettingsPanel';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { ledgerDiagnosisSpec } from './diagnosis/ledger-diagnosis-spec';
 import { runDocumentPipeline } from '@/lib/services/document-pipeline';
@@ -64,10 +64,12 @@ import { useLedgerCrossVerify } from './hooks/use-ledger-cross-verify';
 import { TaxTracker } from './components/TaxTracker';
 import { QuickLogPanel } from './components/QuickLogPanel';
 import { AnalyticsTab } from './components/AnalyticsTab';
+import { LedgerNotificationSettingsPanel } from './components/LedgerNotificationSettingsPanel';
 import { SchemaRegistry } from '@/lib/schema-registry';
 import type { FieldDefinition } from '@/lib/field-system/types';
 import { FieldType } from '@/lib/field-system/types';
 import type { DebtItem } from './services/ledger-intake-service';
+import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 
 registerDiagnosisSpec(ledgerDiagnosisSpec);
 registerLedgerFieldActions();
@@ -103,6 +105,16 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
 }
 
 type LedgerTab = 'overview' | 'budget' | 'goals' | 'transactions' | 'fields' | 'tax' | 'analytics';
+
+const LEDGER_TABS: { id: LedgerTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'transactions', label: 'Transactions' },
+  { id: 'budget', label: 'Budget' },
+  { id: 'goals', label: 'Goals' },
+  { id: 'analytics', label: 'Analytics' },
+  { id: 'tax', label: 'Tax' },
+  { id: 'fields', label: 'Fields' },
+];
 
 /** Shape expected by handleApplyBudgetTemplate */
 interface BudgetTemplate {
@@ -710,26 +722,23 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
           />
         </div>
 
-        <div className="flex items-center justify-between border-b border-white/10">
-          <div className="flex gap-1 px-4 md:px-8">
-            {(['overview', 'transactions', 'budget', 'goals', 'analytics', 'tax', 'fields'] as const).map(t => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setActiveTab(t)}
-                className={cn(
-                  "px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px",
-                  activeTab === t
-                    ? "border-emerald-400 text-emerald-400"
-                    : "border-transparent text-white/40 hover:text-white/70"
-                )}
-              >
-                {t}
-              </button>
-            ))}
+        <div className="flex items-center justify-between border-b border-white/10 px-4 md:px-8 pb-2">
+          <div className="min-w-0 flex-1">
+            <NeuralTabGroup
+              tabs={LEDGER_TABS}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              themeColor="cyan"
+            />
           </div>
 
-          <div className="flex gap-2 px-4 md:px-8 pb-1">
+          <div className="flex gap-2 pb-1 shrink-0">
+            <ModuleReminderEntry
+              title="Ledger"
+              themeColor="cyan"
+              panel={<LedgerNotificationSettingsPanel />}
+              compact
+            />
             <button onClick={() => setIsCaptureModalOpen(true)} className="p-1.5 md:p-2 rounded-xl bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-violet-400 transition-all"><Camera size={14} className="md:w-4 md:h-4" /></button>
             <button onClick={openDocumentPicker} className="p-1.5 md:p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-cyan-400 transition-all"><FileUp size={14} className="md:w-4 md:h-4" /></button>
             <button onClick={handleOpenDocuments} className="p-1.5 md:p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/60 transition-all"><FolderOpen size={14} className="md:w-4 md:h-4" /></button>
@@ -896,7 +905,6 @@ export default function LedgerPage() {
       renderContent={({ profile, encryptionKey }) => (
         <LedgerContent profile={profile} encryptionKey={encryptionKey} />
       )}
-      renderRightRail={() => <LedgerNotificationSettingsPanel />}
     />
   );
 }
