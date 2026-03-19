@@ -14,7 +14,7 @@ import { NeuralDraftPanel } from './core/components/NeuralDraftPanel';
 import { SpineOverlay } from './core/components/SpineOverlay';
 import { SpineToastProvider } from './core/components/SpineToast';
 import { NexusRouteBanner } from './core/components/NexusRouteBanner';
-import { ConflictResolutionOverlay } from './core/components/ConflictResolutionOverlay';
+// import { ConflictResolutionOverlay } from './core/components/ConflictResolutionOverlay';
 import { useIntelligencePipeline } from './lib/services/intelligence-pipeline';
 import { BridgeService } from './lib/services/bridge-service';
 import { ReminderScheduler } from './lib/notifications/reminder-scheduler-service';
@@ -126,7 +126,7 @@ function AppContent() {
       <NeuralDraftPanel />
       <SpineToastProvider />
       <NexusRouteBanner />
-      <ConflictResolutionOverlay />
+      {/* <ConflictResolutionOverlay /> Temporarily disabled while conflict UX is iterated */}
       <Routes>
         <Route path="/" element={<LandingPage />} />
 

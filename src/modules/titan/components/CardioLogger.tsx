@@ -146,6 +146,8 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
       calories: calories ? parseInt(calories as string) : undefined,
       rpe,
       notes: notes.trim() || undefined,
+      status: 'completed',
+      recordedAt: new Date().toISOString(),
     };
 
     try {

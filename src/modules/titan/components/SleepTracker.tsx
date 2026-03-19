@@ -87,6 +87,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
       awakenings: awakenings || undefined,
       notes: notes.trim() || undefined,
       tags: selectedTags.length > 0 ? selectedTags : undefined,
+      recordedAt: new Date().toISOString(),
     };
 
     try {

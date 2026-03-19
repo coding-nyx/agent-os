@@ -456,7 +456,7 @@ function AgnesContent({
                   agentAlias={agentAlias}
                   userName={(typeof profile?.baseContext?.identity === 'object' 
                     ? profile?.baseContext?.identity?.name 
-                    : profile?.baseContext?.identity) || user?.displayName || 'User'}
+                    : profile?.baseContext?.identity) || (user as unknown as { displayName?: string })?.displayName || 'User'}
                   somaticEnabled={somaticEnabled}
                   onSomaticToggle={handleSomaticToggle}
                   isAccessible={isAccessible}
@@ -681,7 +681,7 @@ export default function AgnesPage() {
       renderMobileFooter={() => (
         <div className="flex items-center justify-center p-3">
           <button
-            onClick={() => setIsSettingsOpen(true)}
+            onClick={() => window.dispatchEvent(new Event('agnes:open-settings'))}
             className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all"
           >
             <Settings size={14} />
