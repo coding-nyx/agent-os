@@ -97,7 +97,7 @@ export function SystemCommandCenter() {
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute right-0 mt-3 w-[calc(100vw-32px)] sm:w-80 z-10 max-w-sm origin-top-right"
+              className="fixed top-14 md:top-16 right-4 w-[calc(100vw-32px)] sm:w-80 z-[var(--z-modal)] max-w-sm origin-top-right"
             >
               <GlassCard className="p-4 border-white/20 shadow-2xl overflow-hidden bg-[#020205]/90 backdrop-blur-2xl max-h-[85vh] overflow-y-auto scrollbar-ghost">
                 <AnimatePresence mode="wait">

@@ -100,7 +100,7 @@ export function GlobalFAB() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={() => setIsExpanded(false)}
-            className="fixed inset-0 z-[calc(var(--z-fab)-1)]"
+            className="fixed inset-0 z-[var(--z-fab)]"
             aria-hidden="true"
           />
         )}

@@ -28,6 +28,7 @@ import { TaskCard } from './TaskCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { ConfirmDialog } from '@/core/components/ConfirmDialog';
 
 interface TaskManagerProps {
   tasks: AtlasTask[];
@@ -59,6 +60,7 @@ export function TaskManager({
   const [editingTask, setEditingTask] = useState<AtlasTask | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showDependencyGraph, setShowDependencyGraph] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   // ── Form state ──
   const [formData, setFormData] = useState<Partial<AtlasTask>>({
@@ -392,11 +394,9 @@ export function TaskManager({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm(`Delete task "${task.title}"?`)) {
-                      onDeleteTask(task.id);
-                    }
+                    setDeleteTarget({ id: task.id, title: task.title });
                   }}
-                  className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400 transition-colors"
+                                    className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400 transition-colors"
                   aria-label={`Delete ${task.title}`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -606,6 +606,20 @@ export function TaskManager({
       </AnimatePresence>,
       document.body
     )}
+    </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) onDeleteTask(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        title={`Delete "${deleteTarget?.title}"?`}
+        description="This action cannot be undone."
+        variant="danger"
+        confirmLabel="Delete"
+      />
     </div>
   );
 }

@@ -59,6 +59,9 @@ export default function ProfilePage() {
               {activeTab === 'identity' && (
                 <motion.div
                   key="identity"
+                  role="tabpanel"
+                  id="tab-panel-identity"
+                  aria-labelledby="tab-identity"
                   variants={tabVariants}
                   initial="enter"
                   animate="center"
@@ -70,6 +73,9 @@ export default function ProfilePage() {
               {activeTab === 'security' && (
                 <motion.div
                   key="security"
+                  role="tabpanel"
+                  id="tab-panel-security"
+                  aria-labelledby="tab-security"
                   variants={tabVariants}
                   initial="enter"
                   animate="center"
@@ -81,6 +87,9 @@ export default function ProfilePage() {
               {activeTab === 'system' && (
                 <motion.div
                   key="system"
+                  role="tabpanel"
+                  id="tab-panel-system"
+                  aria-labelledby="tab-system"
                   variants={tabVariants}
                   initial="enter"
                   animate="center"
@@ -92,6 +101,9 @@ export default function ProfilePage() {
               {activeTab === 'data' && (
                 <motion.div
                   key="data"
+                  role="tabpanel"
+                  id="tab-panel-data"
+                  aria-labelledby="tab-data"
                   variants={tabVariants}
                   initial="enter"
                   animate="center"

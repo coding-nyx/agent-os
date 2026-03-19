@@ -233,7 +233,7 @@ export function QuickLogDrawer({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[calc(var(--z-modal)-1)] bg-black/60 backdrop-blur-sm"
             aria-hidden="true"
           />
 
@@ -249,7 +249,7 @@ export function QuickLogDrawer({
             transition={{ type: 'spring', damping: 32, stiffness: 320 }}
             onKeyDown={handleKeyDown}
             className={[
-              'fixed right-0 top-0 h-full z-50',
+              'fixed right-0 top-0 h-full z-[var(--z-modal)]',
               'w-72 sm:w-80',
               'flex flex-col',
               'bg-[#0c0c10]/95 backdrop-blur-xl',

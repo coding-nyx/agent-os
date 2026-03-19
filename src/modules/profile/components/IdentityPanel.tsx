@@ -148,7 +148,7 @@ export function IdentityPanel() {
                   <button
                     onClick={() => setIsEditing(true)}
                     aria-label="Edit display name"
-                    className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-violet-500/20 hover:border-violet-400/30 transition-all"
+                    className="opacity-60 hover:opacity-100 w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-violet-500/20 hover:border-violet-400/30 transition-all"
                   >
                     <Edit3 className="w-3.5 h-3.5 text-white/60" />
                   </button>

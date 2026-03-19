@@ -89,7 +89,7 @@ export function DataSyncToast({
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 20, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 340, damping: 28 }}
-      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50"
+      className="fixed bottom-40 left-1/2 -translate-x-1/2 z-[var(--z-toast)]"
       onPointerEnter={cancelTimer}
       role="alertdialog"
       aria-live="polite"

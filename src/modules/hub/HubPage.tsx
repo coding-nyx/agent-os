@@ -226,14 +226,16 @@ export default function HubPage() {
           </AnimatePresence>
 
           {/* Bottom Dashboard */}
-          <HubBottomDashboard
-            lockedModules={lockedModules}
-            wellnessGauge={wellnessGauge}
-            stabilityGauge={stabilityGauge}
-            resilienceGauge={resilienceGauge}
-            openAuth={openAuth}
-            primaryLockedModule={primaryLockedModule}
-          />
+          <div className="shrink-0 max-h-[30vh] md:max-h-none overflow-y-auto pointer-events-auto">
+            <HubBottomDashboard
+              lockedModules={lockedModules}
+              wellnessGauge={wellnessGauge}
+              stabilityGauge={stabilityGauge}
+              resilienceGauge={resilienceGauge}
+              openAuth={openAuth}
+              primaryLockedModule={primaryLockedModule}
+            />
+          </div>
         </div>
       </div>
       <UnifiedAuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} mode={authMode} />

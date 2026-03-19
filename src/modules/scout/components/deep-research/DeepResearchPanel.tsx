@@ -12,6 +12,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Brain, Search, CheckCircle, AlertCircle, RefreshCw, Edit2, ArrowRight, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UseDeepResearchReturn, SubQuestion, DeepResearchResult } from '../../hooks/useDeepResearch';
+import { ConfirmDialog } from '@/core/components/ConfirmDialog';
 
 interface DeepResearchPanelProps {
   isOpen: boolean;
@@ -107,6 +108,7 @@ export function DeepResearchPanel({
 }: DeepResearchPanelProps) {
   const [query, setQuery] = useState(initialQuery);
   const [editedQuestions, setEditedQuestions] = useState<SubQuestion[]>([]);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   useEffect(() => {
     if (initialQuery) setQuery(initialQuery);
@@ -120,9 +122,15 @@ export function DeepResearchPanel({
 
   const handleClose = () => {
     if (deepResearch.status !== 'idle' && deepResearch.status !== 'complete' && deepResearch.status !== 'error') {
-      if (!window.confirm('Research is in progress. Are you sure you want to stop?')) return;
-      deepResearch.abort();
+      setShowStopConfirm(true);
+      return;
     }
+    onClose();
+  };
+
+  const handleStopAndClose = () => {
+    deepResearch.abort();
+    setShowStopConfirm(false);
     onClose();
   };
 
@@ -398,6 +406,16 @@ export function DeepResearchPanel({
           )}
         </div>
       </motion.div>
+
+      <ConfirmDialog
+        isOpen={showStopConfirm}
+        onClose={() => setShowStopConfirm(false)}
+        onConfirm={handleStopAndClose}
+        title="Stop research?"
+        description="Research is in progress. Are you sure you want to stop?"
+        variant="warning"
+        confirmLabel="Stop"
+      />
     </div>
   );
 }

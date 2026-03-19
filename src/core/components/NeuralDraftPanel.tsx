@@ -78,7 +78,7 @@ export function NeuralDraftPanel() {
         initial={{ x: 420, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: 420, opacity: 0 }}
-        className="fixed top-24 right-6 z-[var(--z-toast)] w-[360px] rounded-3xl border border-cyan-500/30 bg-[#05050a]/95 p-5 backdrop-blur-xl shadow-[0_0_40px_rgba(6,182,212,0.2)]"
+        className="fixed top-24 left-4 lg:left-auto lg:right-6 z-[var(--z-toast)] w-[min(360px,calc(100vw-2rem))] rounded-3xl border border-cyan-500/30 bg-[#05050a]/95 p-5 backdrop-blur-xl shadow-[0_0_40px_rgba(6,182,212,0.2)]"
         role="alert"
       >
         <div className="flex items-center justify-between">

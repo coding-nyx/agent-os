@@ -453,10 +453,7 @@ export function GoalTracker({
                   {!isAchieved && (
                     <NeuralButton
                       onClick={() => {
-                        const amount = prompt(`Add contribution to ${goal.name} (in ${currency}):`);
-                        if (amount && !isNaN(parseFloat(amount))) {
-                          handleAddContribution(goal.id, parseFloat(amount));
-                        }
+                        setContributionTarget({ goalId: goal.id, name: goal.name });
                       }}
                       variant="secondary"
                       size="sm"

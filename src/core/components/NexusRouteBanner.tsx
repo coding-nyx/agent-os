@@ -66,7 +66,7 @@ export function NexusRouteBanner() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        className="fixed bottom-24 left-1/2 z-[120] w-[92vw] max-w-xl -translate-x-1/2 rounded-3xl border border-white/10 bg-[#05050a]/95 px-5 py-4 backdrop-blur-xl shadow-[0_0_40px_rgba(139,92,246,0.18)]"
+        className="fixed bottom-6 left-1/2 z-[var(--z-toast)] w-[92vw] max-w-xl -translate-x-1/2 rounded-3xl border border-white/10 bg-[#05050a]/95 px-5 py-4 backdrop-blur-xl shadow-[0_0_40px_rgba(139,92,246,0.18)]"
         role="alert"
       >
         <div className="flex items-start justify-between gap-4">

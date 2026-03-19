@@ -121,11 +121,11 @@ export function SpineToastProvider() {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-[var(--z-toast)] flex flex-col-reverse gap-2 max-w-[380px] pointer-events-none"
+      className="fixed bottom-20 right-4 z-[var(--z-toast)] flex flex-col-reverse gap-2 max-w-[min(380px,calc(100vw-3rem))] pb-[env(safe-area-inset-bottom,0px)] pointer-events-none"
       aria-label="Notifications"
     >
       <AnimatePresence>
-        {toasts.map((toast) => {
+        {toasts.map((toast, index) => {
           const style = PRIORITY_STYLES[toast.event.priority];
           const isCascade = toast.event.source.startsWith('cascade:');
           const sourceName = getEventModuleSource(toast.event, moduleNames);
@@ -142,7 +142,8 @@ export function SpineToastProvider() {
               className={cn(
                 'pointer-events-auto rounded-2xl border backdrop-blur-xl p-4 shadow-2xl',
                 style.border,
-                style.bg
+                style.bg,
+                index >= 2 && 'hidden sm:block'
               )}
             >
               <div className="flex items-start gap-3">

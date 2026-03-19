@@ -24,6 +24,7 @@ import type { AtlasHabit } from '../services/atlas-profile-service';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { ConfirmDialog } from '@/core/components/ConfirmDialog';
 import { HabitTracker } from './HabitTracker';
 
 interface HabitBuilderProps {
@@ -127,6 +128,7 @@ export function HabitBuilder({
   const [showForm, setShowForm] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [editingHabit, setEditingHabit] = useState<AtlasHabit | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   // ── Form state ──
   const [formData, setFormData] = useState<Partial<AtlasHabit>>({
@@ -358,9 +360,7 @@ export function HabitBuilder({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`Delete habit "${habit.title}"?`)) {
-                        onDeleteHabit(habit.id);
-                      }
+                      setDeleteTarget({ id: habit.id, title: habit.title });
                     }}
                     className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400 transition-colors"
                     aria-label={`Delete ${habit.title}`}
@@ -597,6 +597,20 @@ export function HabitBuilder({
       </AnimatePresence>,
       document.body
     )}
+    </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) onDeleteHabit(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        title={`Delete "${deleteTarget?.title}"?`}
+        description="This action cannot be undone."
+        variant="danger"
+        confirmLabel="Delete"
+      />
     </div>
   );
 }

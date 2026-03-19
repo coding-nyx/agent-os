@@ -24,6 +24,7 @@ import type { AtlasGoal, AtlasMilestone, AtlasTask } from '../services/atlas-pro
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
+import { ConfirmDialog } from '@/core/components/ConfirmDialog';
 import { GoalProgress } from './GoalProgress';
 
 interface GoalTrackerProps {
@@ -51,6 +52,7 @@ export function GoalTracker({
   const [filter, setFilter] = useState<GoalFilter>('all');
   const [showForm, setShowForm] = useState(false);
   const [editingGoal, setEditingGoal] = useState<AtlasGoal | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   // ── Form state ──
   const [formData, setFormData] = useState<Partial<AtlasGoal>>({
@@ -266,9 +268,7 @@ export function GoalTracker({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`Delete goal "${goal.title}"?`)) {
-                        onDeleteGoal(goal.id);
-                      }
+                      setDeleteTarget({ id: goal.id, title: goal.title });
                     }}
                     className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400 transition-colors"
                     aria-label={`Delete ${goal.title}`}
@@ -515,6 +515,20 @@ export function GoalTracker({
       </AnimatePresence>,
       document.body
     )}
+    </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) onDeleteGoal(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        title={`Delete "${deleteTarget?.title}"?`}
+        description="This action cannot be undone."
+        variant="danger"
+        confirmLabel="Delete"
+      />
     </div>
   );
 }
