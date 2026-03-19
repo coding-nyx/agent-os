@@ -1,7 +1,7 @@
 import React, { useRef, useMemo, useEffect, useCallback, useState, Suspense } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
-import { useGLTF, Float, Environment, ContactShadows, OrbitControls, Html, useProgress } from '@react-three/drei';
+import { useGLTF, Float, ContactShadows, OrbitControls, Html, useProgress } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { Sparkles, Loader2 } from 'lucide-react';
@@ -355,9 +355,9 @@ export default function ThreeDView({ podLayout, moduleAccess, globalSoul, onModu
       makeDefault
     />
     <Suspense fallback={<Hub3DLoader />}>
-      <Environment preset="city" />
-
-      <ambientLight intensity={0.1} />
+      <ambientLight intensity={0.12} />
+      <hemisphereLight args={['#ddd6fe', '#020205', 0.55]} />
+      <directionalLight position={[6, 8, 4]} intensity={0.35} color="#c4b5fd" />
       <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1.2} color="#ede9fe" />
       <spotLight position={[-8, -6, -5]} angle={0.3} penumbra={1} intensity={0.4} color="#7c3aed" />
       <pointLight position={[0, 0, 0]} intensity={0.8} color="#7c3aed" distance={10} decay={2} />
