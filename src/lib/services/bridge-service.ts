@@ -126,6 +126,10 @@ const RULE_MAP = new Map<SpineEventType, AlertRule>(
 // ---------------------------------------------------------------------------
 const NOTIFICATION_ICON = '/assets/images/soma.png';
 
+// Maximum number of FCM tokens retained per user in bridge_config.
+// Oldest excess tokens are evicted on each update.
+const MAX_FCM_TOKENS = 5;
+
 // ---------------------------------------------------------------------------
 // BridgeService singleton
 // ---------------------------------------------------------------------------
@@ -134,6 +138,7 @@ class BridgeServiceClass {
   private unsubscribers: Array<() => void> = [];
   private swRegistration: ServiceWorkerRegistration | null = null;
   private fcmUnsubscribe: (() => void) | null = null;
+  private tokenRefreshUnsub: (() => void) | null = null;
   private userId: string | null = null;
   private started = false;
 
@@ -151,14 +156,53 @@ class BridgeServiceClass {
 
     console.log('[Bridge] Starting for user:', userId);
 
-    // 1. Register service worker
+    // 1. Register service worker (always — needed for background push regardless of permission)
     await this.registerServiceWorker();
 
-    // 2. Request notification permission + get FCM token
-    await this.initFCM();
+    // 2. If permission is already granted (returning user), init FCM immediately.
+    //    If permission is 'default', defer until the user explicitly enables a reminder
+    //    via requestPermissionAndInit() so we don't hit browser prompt-blocking heuristics.
+    if ('Notification' in window && Notification.permission === 'granted') {
+      await this.initFCM();
+    } else {
+      console.log('[Bridge] Notification permission not yet granted — FCM deferred until user action.');
+    }
 
-    // 3. Subscribe to Spine events
+    // 3. Subscribe to Spine events regardless of notification permission state.
     this.subscribeToSpineEvents();
+  }
+
+  /**
+   * Request OS notification permission and complete FCM initialisation.
+   * Should be called in response to a direct user gesture (e.g. enabling a
+   * reminder in NotificationSettingsPanel) to satisfy browser prompt policies.
+   */
+  async requestPermissionAndInit(): Promise<boolean> {
+    if (!this.userId) {
+      console.warn('[Bridge] requestPermissionAndInit called before start()');
+      return false;
+    }
+
+    if (!('Notification' in window)) return false;
+
+    if (Notification.permission === 'denied') {
+      console.warn('[Bridge] Notification permission was previously denied.');
+      return false;
+    }
+
+    if (Notification.permission === 'default') {
+      let granted: NotificationPermission;
+      try {
+        granted = await Notification.requestPermission();
+      } catch (err) {
+        console.warn('[Bridge] Permission request failed:', err);
+        return false;
+      }
+      if (granted !== 'granted') return false;
+    }
+
+    await this.initFCM();
+    return true;
   }
 
   stop(): void {
@@ -170,6 +214,11 @@ class BridgeServiceClass {
     if (this.fcmUnsubscribe) {
       this.fcmUnsubscribe();
       this.fcmUnsubscribe = null;
+    }
+
+    if (this.tokenRefreshUnsub) {
+      this.tokenRefreshUnsub();
+      this.tokenRefreshUnsub = null;
     }
 
     this.userId = null;
@@ -203,25 +252,8 @@ class BridgeServiceClass {
   // -------------------------------------------------------------------------
 
   private async initFCM(): Promise<void> {
-    // Check browser permission
-    if (!('Notification' in window)) {
-      console.warn('[Bridge] Notification API not available.');
-      return;
-    }
-
-    let permission = Notification.permission;
-
-    if (permission === 'default') {
-      try {
-        permission = await Notification.requestPermission();
-      } catch (err) {
-        console.warn('[Bridge] Permission request failed:', err);
-        return;
-      }
-    }
-
-    if (permission !== 'granted') {
-      console.warn('[Bridge] Notification permission denied — OS notifications disabled.');
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+      console.warn('[Bridge] initFCM called without granted permission — skipping.');
       return;
     }
 
@@ -256,40 +288,29 @@ class BridgeServiceClass {
       const token = await getToken(messaging, tokenOptions);
       console.log('[Bridge] FCM token acquired.');
 
-      // Persist token to Firestore so Cloud Functions can target this device.
-      // bridge_config/{uid} is what bridgeSpineEvents reads to find push tokens.
       if (this.userId && token) {
-        const dl = getNexusDataLayer();
-
-        // Keep the raw token record for auditability
-        await dl.setDocument(`users/${this.userId}/fcm_tokens`, 'primary', {
-          token,
-          updatedAt: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-        });
-
-        // Upsert bridge_config with push channel enabled and this token registered.
-        // Uses data-layer merge so existing custom eventTypes / minPriority are preserved.
-        const existing = await dl.getDocument<{
-          channels?: { push?: { tokens?: string[]; enabled?: boolean; eventTypes?: string[]; minPriority?: string } };
-        }>('bridge_config', this.userId);
-        const existingTokens: string[] = existing?.channels?.push?.tokens ?? [];
-        const mergedTokens = Array.from(new Set([...existingTokens, token]));
-
-        await dl.setDocument('bridge_config', this.userId, {
-          channels: {
-            push: {
-              enabled: true,
-              tokens: mergedTokens,
-              minPriority: existing?.channels?.push?.minPriority ?? 'info',
-              eventTypes: existing?.channels?.push?.eventTypes ?? [],
-            },
-          },
-          updatedAt: new Date().toISOString(),
-        });
-
-        console.log('[Bridge] FCM token saved and bridge_config updated.');
+        await this.persistFCMToken(token);
       }
+
+      // The modular Firebase SDK does not expose an onTokenRefresh listener.
+      // Re-fetch the token on each tab-focus event — this is low-cost (getToken
+      // returns the cached value immediately if the token is still valid) and
+      // ensures long-lived sessions always have a fresh token in Firestore.
+      const handleVisibilityChange = async () => {
+        if (document.visibilityState !== 'visible') return;
+        try {
+          const refreshed = await getToken(messaging, tokenOptions);
+          if (this.userId && refreshed && refreshed !== token) {
+            await this.persistFCMToken(refreshed);
+            console.log('[Bridge] FCM token refreshed on focus.');
+          }
+        } catch (err) {
+          console.warn('[Bridge] Token refresh on focus failed:', err);
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      this.tokenRefreshUnsub = () =>
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
 
       // Handle foreground FCM messages (server-pushed).
       // SpineToast already handles Spine events; this handles messages pushed
@@ -302,10 +323,22 @@ class BridgeServiceClass {
         const title = payload.notification?.title ?? 'Nexus Reminder';
         const body = payload.notification?.body ?? '';
 
-        // Foreground path: render an in-app toast/card for module reminders.
+        // Foreground path
         if (document.visibilityState === 'visible') {
           if (fcmType === 'MODULE_REMINDER_DUE' && moduleId) {
+            // Reminder: show custom in-app card with "Log now" CTA.
             this.showInAppReminderToast({ title, body, moduleId });
+          } else if (fcmType) {
+            // Other server-pushed alert (e.g. BURNOUT_WARNING sent directly via FCM).
+            // Re-publish onto the local Spine bus so SpineToast renders it —
+            // SpineToast only listens to Spine, not to the FCM onMessage stream.
+            Spine.publish({
+              type: fcmType as import('@/lib/types').SpineEventType,
+              source: moduleId || 'bridge',
+              domain: 'system',
+              priority: (payload.data?.priority as import('@/lib/types').SpineEvent['priority']) || 'alert',
+              data: payload.data ?? {},
+            });
           }
           return;
         }
@@ -316,6 +349,45 @@ class BridgeServiceClass {
     } catch (err) {
       console.error('[Bridge] FCM init failed:', err);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // FCM Token Persistence
+  // -------------------------------------------------------------------------
+
+  private async persistFCMToken(token: string): Promise<void> {
+    if (!this.userId) return;
+    const dl = getNexusDataLayer();
+
+    await dl.setDocument(`users/${this.userId}/fcm_tokens`, 'primary', {
+      token,
+      updatedAt: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+    });
+
+    const existing = await dl.getDocument<{
+      channels?: { push?: { tokens?: string[]; enabled?: boolean; eventTypes?: string[]; minPriority?: string } };
+    }>('bridge_config', this.userId);
+
+    const existingTokens: string[] = existing?.channels?.push?.tokens ?? [];
+
+    // Deduplicate, promote current token to front, then cap to MAX_FCM_TOKENS.
+    const deduped = [token, ...existingTokens.filter((t) => t !== token)];
+    const cappedTokens = deduped.slice(0, MAX_FCM_TOKENS);
+
+    await dl.setDocument('bridge_config', this.userId, {
+      channels: {
+        push: {
+          enabled: true,
+          tokens: cappedTokens,
+          minPriority: existing?.channels?.push?.minPriority ?? 'info',
+          eventTypes: existing?.channels?.push?.eventTypes ?? [],
+        },
+      },
+      updatedAt: new Date().toISOString(),
+    });
+
+    console.log('[Bridge] FCM token saved and bridge_config updated.');
   }
 
   // -------------------------------------------------------------------------

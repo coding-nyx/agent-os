@@ -18,6 +18,7 @@ import { ConflictResolutionOverlay } from './core/components/ConflictResolutionO
 import { useIntelligencePipeline } from './lib/services/intelligence-pipeline';
 import { BridgeService } from './lib/services/bridge-service';
 import { ReminderScheduler } from './lib/notifications/reminder-scheduler-service';
+import { SchedulerService } from './lib/spine/scheduler-service';
 import { Spine } from './lib/spine/spine-event-bus';
 import { CORE_CASCADE_RULES, ATLAS_CASCADE_RULES, ATLAS_PLANNING_CASCADE_RULES, AGNES_CASCADE_RULES, ATLAS_FAILURE_RULES, SOMA_CASCADE_RULES, TITAN_CASCADE_RULES } from './lib/spine/cascade-rules';
 import { useEffect } from 'react';
@@ -35,6 +36,7 @@ const AtlasPage = lazy(() => import('./modules/atlas/AtlasPage'));
 const ScoutPage = lazy(() => import('./modules/scout/ScoutPage'));
 const ForgePage = lazy(() => import('./modules/forge/ForgePage'));
 const ProfilePage = lazy(() => import('./modules/profile/ProfilePage'));
+const NotificationsPage = lazy(() => import('./modules/notifications/NotificationsPage'));
 
 function AIWrapper({ children }: { children: React.ReactNode }) {
   const { isGuest } = useAuth();
@@ -101,10 +103,12 @@ function BridgeMount() {
       console.warn('[Bridge] Start failed:', err)
     );
     ReminderScheduler.start(user.uid);
+    SchedulerService.start();
 
     return () => {
       BridgeService.stop();
       ReminderScheduler.stop();
+      SchedulerService.stop();
     };
   }, [user?.uid, isGuest]);
 
@@ -186,6 +190,12 @@ function AppContent() {
         <Route path="/profile" element={
           <ProtectedRoute>
             <ProfilePage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/notifications" element={
+          <ProtectedRoute>
+            <NotificationsPage />
           </ProtectedRoute>
         } />
 

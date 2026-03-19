@@ -12,135 +12,7 @@ import * as logger from "firebase-functions/logger";
 import { getFirestore } from "firebase-admin/firestore";
 import { CloudTasksClient } from "@google-cloud/tasks";
 import crypto from "node:crypto";
-
-// ---------------------------------------------------------------------------
-// Recurrence types (mirrors src/lib/notifications/types.ts)
-// ---------------------------------------------------------------------------
-
-type Recurrence =
-  | { kind: "every_n_days"; intervalDays: number; dtStart: string; timezone?: string }
-  | { kind: "hourly"; intervalHours: number; dtStart: string; timezone?: string }
-  | { kind: "weekly_by_days"; intervalWeeks: number; daysOfWeek: number[]; timeOfDay: string; startAt: string; timezone?: string }
-  | { kind: "daily_window"; startAt: string; timezone?: string; windowStart: string; windowEnd: string; intervalMinutes: number }
-  | { kind: "rrule"; rrule: string; dtStart: string; timezone?: string };
-
-// ---------------------------------------------------------------------------
-// Recurrence evaluation — compute the single next due time from now
-// ---------------------------------------------------------------------------
-
-function parseHHmm(value: unknown): { h: number; m: number } | null {
-  if (typeof value !== "string") return null;
-  const match = value.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  const h = Number(match[1]);
-  const m = Number(match[2]);
-  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return { h, m };
-}
-
-function toMs(iso: unknown): number | null {
-  if (typeof iso !== "string") return null;
-  const ms = Date.parse(iso);
-  return Number.isFinite(ms) ? ms : null;
-}
-
-/**
- * Returns the next due timestamp (ms) strictly after `afterMs`,
- * or null if the recurrence cannot be evaluated.
- */
-function nextDue(recurrence: unknown, afterMs: number): number | null {
-  const rec = recurrence as Recurrence | undefined;
-  if (!rec || typeof rec !== "object" || !("kind" in rec)) return null;
-
-  // Search forward up to 60 days in 1-minute windows to find the first occurrence.
-  const windowMs = 60 * 1000;
-  const maxMs = afterMs + 60 * 24 * 60 * 60 * 1000;
-
-  let cursor = afterMs;
-  while (cursor < maxMs) {
-    const hits = computeInRange(rec, cursor, cursor + windowMs);
-    const future = hits.filter((t) => t > afterMs);
-    if (future.length > 0) return Math.min(...future);
-    cursor += windowMs;
-  }
-  return null;
-}
-
-function computeInRange(rec: Recurrence, startMs: number, endMs: number): number[] {
-  switch (rec.kind) {
-    case "every_n_days": {
-      const anchor = toMs(rec.dtStart);
-      if (anchor === null) return [];
-      const interval = rec.intervalDays * 86400000;
-      if (interval <= 0) return [];
-      const due: number[] = [];
-      const k0 = Math.floor((startMs - anchor) / interval);
-      for (let k = k0 - 1; k <= k0 + 2; k++) {
-        const t = anchor + k * interval;
-        if (t >= startMs && t <= endMs) due.push(t);
-      }
-      return due;
-    }
-
-    case "hourly": {
-      const anchor = toMs(rec.dtStart);
-      if (anchor === null) return [];
-      const interval = rec.intervalHours * 3600000;
-      if (interval <= 0) return [];
-      const due: number[] = [];
-      const k0 = Math.floor((startMs - anchor) / interval);
-      for (let k = k0 - 1; k <= k0 + 2; k++) {
-        const t = anchor + k * interval;
-        if (t >= startMs && t <= endMs) due.push(t);
-      }
-      return due;
-    }
-
-    case "weekly_by_days": {
-      const tod = parseHHmm(rec.timeOfDay);
-      if (!tod) return [];
-      const due: number[] = [];
-      // Scan each day in range
-      const dayMs = 86400000;
-      let d = new Date(startMs);
-      d.setHours(0, 0, 0, 0);
-      while (d.getTime() <= endMs + dayMs) {
-        if (rec.daysOfWeek.includes(d.getDay())) {
-          const t = new Date(d).setHours(tod.h, tod.m, 0, 0);
-          if (t >= startMs && t <= endMs) due.push(t);
-        }
-        d = new Date(d.getTime() + dayMs);
-      }
-      return due;
-    }
-
-    case "daily_window": {
-      const ws = parseHHmm(rec.windowStart);
-      const we = parseHHmm(rec.windowEnd);
-      if (!ws || !we) return [];
-      const interval = rec.intervalMinutes * 60000;
-      if (interval <= 0) return [];
-      const due: number[] = [];
-      const dayMs = 86400000;
-      let d = new Date(startMs);
-      d.setHours(0, 0, 0, 0);
-      while (d.getTime() <= endMs + dayMs) {
-        const wStartMs = new Date(d).setHours(ws.h, ws.m, 0, 0);
-        const wEndMs = new Date(d).setHours(we.h, we.m, 0, 0);
-        let t = wStartMs;
-        while (t <= wEndMs) {
-          if (t >= startMs && t <= endMs) due.push(t);
-          t += interval;
-        }
-        d = new Date(d.getTime() + dayMs);
-      }
-      return due;
-    }
-
-    default:
-      return [];
-  }
-}
+import { nextDue } from "./reminder-evaluation.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -164,9 +36,13 @@ function tasksQueueName(): string {
 }
 
 function deliverReminderUrl(): string {
+  // Prefer an explicit override so the URL never silently targets the wrong
+  // region when TASKS_LOCATION and the actual deployment region differ.
+  if (process.env.TASKS_TARGET_URL) {
+    return process.env.TASKS_TARGET_URL;
+  }
   const loc = process.env.TASKS_LOCATION || "us-central1";
   const proj = projectId();
-  // Cloud Functions v2 URL pattern
   return `https://${loc}-${proj}.cloudfunctions.net/deliverReminder`;
 }
 
@@ -317,30 +193,55 @@ export const deliverReminder = onRequest(async (req, res) => {
       ? schedule.deepLink
       : { route: `/${moduleId}` };
 
-  const spineEventId = occId;
-  const spineEventRef = db.doc(`spine_events/${uid}/events/${spineEventId}`);
+  // Read channel preferences — default to os:true, inApp:false if missing.
+  const channelPrefs = (
+    schedule?.channelPrefs &&
+    typeof schedule.channelPrefs === "object" &&
+    schedule.channelPrefs !== null
+  )
+    ? (schedule.channelPrefs as { os?: boolean; inApp?: boolean })
+    : { os: true, inApp: false };
+
+  const osEnabled = channelPrefs.os !== false;
+  const inAppEnabled = channelPrefs.inApp === true;
+
+  const now = new Date().toISOString();
+  const eventPayload = {
+    type: "MODULE_REMINDER_DUE",
+    source: moduleId,
+    domain: "system",
+    priority,
+    timestamp: Date.now(),
+    cascadeDepth: 0,
+    data: { note, title, deepLink, scheduleId, moduleId, occurrenceId: occId, dueAt },
+  };
+
+  const spineEventRef = db.doc(`spine_events/${uid}/events/${occId}`);
+  const occurrenceRef = db.doc(`users/${uid}/notification_occurrences/${occId}`);
 
   await db.runTransaction(async (tx) => {
     const existing = await tx.get(spineEventRef);
-    if (existing.exists) return; // already delivered
 
-    tx.create(spineEventRef, {
-      type: "MODULE_REMINDER_DUE",
-      source: moduleId,
-      domain: "system",
-      priority,
-      timestamp: Date.now(),
-      cascadeDepth: 0,
-      data: { note, title, deepLink, scheduleId, moduleId, occurrenceId: occId, dueAt },
-    });
+    // Write FCM-triggering Spine event only if the OS push channel is enabled.
+    if (osEnabled && !existing.exists) {
+      tx.create(spineEventRef, eventPayload);
+    }
 
-    tx.set(
-      db.doc(`users/${uid}/notification_occurrences/${occId}`),
-      { status: "delivered", updatedAt: new Date().toISOString() },
-      { merge: true }
-    );
+    tx.set(occurrenceRef, { status: "delivered", updatedAt: now }, { merge: true });
   });
 
-  logger.info("[deliverReminder] Spine event written", { uid, moduleId, occId });
+  // Write an in-app inbox record when the inApp channel is enabled.
+  // The client reads users/{uid}/notification_inbox to surface unread reminders.
+  if (inAppEnabled) {
+    await db.doc(`users/${uid}/notification_inbox/${occId}`).set({
+      ...eventPayload,
+      scheduleId,
+      occurrenceId: occId,
+      read: false,
+      createdAt: now,
+    }, { merge: true });
+  }
+
+  logger.info("[deliverReminder] Reminder delivered", { uid, moduleId, occId, osEnabled, inAppEnabled });
   res.status(200).send("ok");
 });

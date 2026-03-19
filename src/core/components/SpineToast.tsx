@@ -53,7 +53,8 @@ const SUPPRESSED_TYPES = new Set([
   'DRAFT_PROPOSED',  // These use NeuralDraftPanel
   'DRAFT_APPROVED',
   'DRAFT_DISMISSED',
-  'SECURITY_POLICY_UPDATED'
+  'SECURITY_POLICY_UPDATED',
+  'MODULE_REMINDER_DUE', // BridgeService handles reminder display via showInAppReminderToast
 ]);
 
 function getEventModuleSource(event: SpineEvent, moduleNames: Record<string, string>): string {

@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
+import { getFirebase } from '@/lib/firebase';
+import { BridgeService } from '@/lib/services/bridge-service';
 import type { ModuleId } from '@/lib/module-manifest';
 import type { NotificationScheduleConfig, Recurrence } from '../types';
 import { RecurrenceEditor } from './RecurrenceEditor';
@@ -282,6 +285,31 @@ export function NotificationSettingsPanel({
         scheduleId,
         next,
       );
+
+      // Request OS notification permission the first time a user enables a schedule.
+      // This ties the permission prompt to a clear user intent rather than firing on login.
+      if (next.enabled && 'Notification' in window && Notification.permission !== 'granted') {
+        await BridgeService.requestPermissionAndInit();
+      }
+
+      // Bootstrap the first Cloud Task whenever a schedule is saved as enabled,
+      // so the user doesn't have to log data to trigger the first reminder.
+      if (next.enabled) {
+        try {
+          const { app } = getFirebase();
+          if (app) {
+            const functions = getFunctions(app);
+            const scheduleReminder = httpsCallable<{ scheduleId: string }, unknown>(
+              functions,
+              'scheduleReminder',
+            );
+            await scheduleReminder({ scheduleId });
+          }
+        } catch (err) {
+          // Non-fatal — reminder will still be scheduled on next data-logging event
+          console.warn('[NotificationSettingsPanel] Bootstrap scheduleReminder failed:', err);
+        }
+      }
     },
     [dataLayer, isGuest, user],
   );

@@ -17,6 +17,11 @@
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
+// Activate this SW immediately on install and take control of all clients
+// so notification click handlers work on first load without waiting for a tab reload.
+self.addEventListener('install', function () { self.skipWaiting(); });
+self.addEventListener('activate', function (event) { event.waitUntil(clients.claim()); });
+
 // Firebase config — injected at build time by Vite plugin.
 // In development, the dev server writes a processed copy with real values.
 var firebaseConfig = {
@@ -71,7 +76,7 @@ self.addEventListener('notificationclick', function (event) {
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then(function (clientList) {
         var data = event.notification && event.notification.data ? event.notification.data : {};
-        var deepLinkRoute = '/';
+        var deepLinkRoute = '/notifications';
         if (data.deepLink && typeof data.deepLink === 'string') {
           try {
             var parsed = JSON.parse(data.deepLink);
@@ -85,17 +90,16 @@ self.addEventListener('notificationclick', function (event) {
 
         var targetUrl = self.location.origin + deepLinkRoute;
 
-        // If an app tab is already open, navigate it to the deep link and focus
+        // If an app tab is already open, navigate it to the deep link and focus.
+        // client.navigate() is preferred; if unsupported we open a new window
+        // so the deep link route is never silently dropped.
         for (var i = 0; i < clientList.length; i++) {
           var client = clientList[i];
-          if ('navigate' in client && 'focus' in client) {
+          if ('navigate' in client) {
             return client.navigate(targetUrl).then(function (c) { return c && c.focus(); });
           }
-          if ('focus' in client) {
-            return client.focus();
-          }
         }
-        // Otherwise open a new tab at the deep link
+        // No existing tab or navigate() not supported — open a new window.
         if (clients.openWindow) {
           return clients.openWindow(targetUrl);
         }
