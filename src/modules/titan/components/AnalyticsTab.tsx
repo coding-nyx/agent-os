@@ -428,7 +428,7 @@ function RecoveryTrendPanel({ sleepLog }: { sleepLog: SleepEntry[] }) {
       <div className="flex gap-6">
         <div>
           <p className="text-[9px] uppercase tracking-wider text-white/40">Avg Quality</p>
-          <p className="text-lg font-black text-cyan-400">{avgQuality.toFixed(1)}<span className="text-xs text-white/40">/10</span></p>
+          <p className="text-lg font-black text-orange-400">{avgQuality.toFixed(1)}<span className="text-xs text-white/40">/10</span></p>
         </div>
         <div>
           <p className="text-[9px] uppercase tracking-wider text-white/40">Avg Duration</p>
@@ -454,12 +454,12 @@ function RecoveryTrendPanel({ sleepLog }: { sleepLog: SleepEntry[] }) {
         <polygon points={toArea(durationPts)} fill="url(#durGrad)" />
         <polygon points={toArea(qualityPts)} fill="url(#qualGrad)" />
         <polyline points={toPolyline(durationPts)} stroke="#6366f1" strokeWidth="1.5" fill="none" strokeDasharray="4 2" strokeLinecap="round" />
-        <polyline points={toPolyline(qualityPts)} stroke="#22d3ee" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={toPolyline(qualityPts)} stroke="#f97316" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
 
       <div className="flex items-center gap-4 text-[9px]">
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5 bg-cyan-400 rounded" />
+          <div className="w-4 h-0.5 bg-orange-400 rounded" />
           <span className="text-white/40">Sleep Quality (0–10)</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -486,10 +486,10 @@ function AnalyticsPanel({
   children: React.ReactNode;
 }) {
   return (
-    <SurfaceCard className="p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Icon className="w-4 h-4 text-orange-400" />
-        <h3 className="text-sm font-black uppercase tracking-wider text-white/80">{title}</h3>
+    <SurfaceCard className="p-4 sm:p-5 md:p-6">
+      <div className="flex items-center gap-2 mb-3 sm:mb-4">
+        <Icon className="w-4 h-4 text-orange-400 shrink-0" />
+        <h3 className="text-[13px] sm:text-sm font-black uppercase tracking-wider text-white/80">{title}</h3>
       </div>
       {children}
     </SurfaceCard>
@@ -506,7 +506,7 @@ export function AnalyticsTab({ profile }: AnalyticsTabProps) {
   const personalRecords = profile?.personalRecords ?? {};
 
   return (
-    <div className="px-4 md:px-8 pb-8 pt-4 space-y-6">
+    <div className="px-4 sm:px-6 md:px-8 pb-5 sm:pb-6 md:pb-8 pt-4 sm:pt-5 space-y-5 sm:space-y-6 md:space-y-8">
       <AnalyticsPanel icon={TrendingUp} title="Strength Progression">
         <StrengthProgressionChart sessions={sessions} personalRecords={personalRecords} />
       </AnalyticsPanel>

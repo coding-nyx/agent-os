@@ -32,6 +32,7 @@ export function GlobalFAB() {
   const [isHovered, setIsHovered] = useState(false);
 
   const isChatOverlayOpen = useUIStore((s) => s.isChatOverlayOpen);
+  const hideGlobalFAB = useUIStore((s) => s.hideGlobalFAB);
   const fabActions = useUIStore((s) => s.fabActions);
   const moduleBottomBarHeight = useUIStore((s) => s.moduleBottomBarHeight);
 
@@ -40,9 +41,9 @@ export function GlobalFAB() {
   const fabBottom = 16 + (moduleBottomBarHeight > 0 ? moduleBottomBarHeight + 8 : 0);
 
   const isVisible = useMemo(() => {
-    if (!user || !isOnboardingComplete) return false;
+    if (!user || !isOnboardingComplete || hideGlobalFAB) return false;
     return location.pathname !== '/' && location.pathname !== '/nexus';
-  }, [user, isOnboardingComplete, location.pathname]);
+  }, [user, isOnboardingComplete, hideGlobalFAB, location.pathname]);
 
   const hasActions = fabActions.length > 0;
 

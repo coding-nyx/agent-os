@@ -11,7 +11,7 @@ interface PanelLabelProps {
 
 /**
  * PanelLabel - Standardized sub-header for panel sections.
- * Enforces text-chip (12px) styling and consistent visual rhythm.
+ * Even spacing and typography across breakpoints.
  */
 export function PanelLabel({
   label,
@@ -21,21 +21,27 @@ export function PanelLabel({
   metadataClassName
 }: PanelLabelProps) {
   return (
-    <div 
-      className={cn('flex items-center justify-between', className)}
-      style={{ marginBottom: 'var(--panel-section-gap)' }}
+    <div
+      className={cn(
+        'flex items-center justify-between gap-2 min-h-[1.5rem] mb-3 sm:mb-4',
+        className
+      )}
     >
-      <span className={cn(
-        'text-chip text-white/50 tracking-[0.25em]',
-        labelClassName
-      )}>
+      <span
+        className={cn(
+          'text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em] text-white/50 leading-tight',
+          labelClassName
+        )}
+      >
         {label}
       </span>
       {metadata && (
-        <span className={cn(
-          'text-[10px] font-mono uppercase text-white/30 tracking-widest',
-          metadataClassName
-        )}>
+        <span
+          className={cn(
+            'text-[11px] sm:text-xs uppercase tracking-wider text-white/40 tabular-nums shrink-0',
+            metadataClassName
+          )}
+        >
           {metadata}
         </span>
       )}

@@ -55,7 +55,7 @@ export function VitalsGrid({ metrics, columns = 4, isLocked = false, onCalibrate
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.1 }}
-                        className="p-4 border border-white/5 rounded-2xl bg-white/[0.02] space-y-3"
+                        className="p-3 sm:p-4 border border-white/5 rounded-2xl bg-white/[0.02] space-y-2 sm:space-y-3 flex flex-col justify-between"
                     >
                         <div className="flex items-center justify-between">
                             <Icon className={cn("w-4 h-4", isLocked ? "text-amber-300/60" : metric.colorClass)} />

@@ -344,6 +344,7 @@ export function CustomFieldManager({
 
           <NeuralButton
             size="sm"
+            themeColor="orange"
             onClick={() => setIsModalOpen(true)}
           >
             <Plus className="w-3 h-3 mr-1.5" />

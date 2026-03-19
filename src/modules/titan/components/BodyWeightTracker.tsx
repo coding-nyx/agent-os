@@ -292,7 +292,7 @@ export function BodyWeightTracker({
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-4 sm:space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">
           <PanelLabel
@@ -357,20 +357,20 @@ export function BodyWeightTracker({
               label="Change"
               value={delta != null ? (delta >= 0 ? `+${unit === 'kg' ? delta : kgToLbs(Math.abs(delta))}` : `${unit === 'kg' ? delta : `-${kgToLbs(Math.abs(delta))}`}`) : '—'}
               unit={delta != null ? unit : ''}
-              color={delta == null ? 'orange' : delta < 0 ? 'emerald' : delta > 0 ? 'orange' : 'cyan'}
+              color={delta == null ? 'orange' : delta < 0 ? 'emerald' : delta > 0 ? 'orange' : 'orange'}
               trendDirection={delta == null ? 'stable' : delta < 0 ? 'down' : delta > 0 ? 'up' : 'stable'}
             />
             <MetricCard
               label="7-Day Rate"
               value={weekRate != null ? (weekRate >= 0 ? `+${unit === 'kg' ? weekRate : kgToLbs(Math.abs(weekRate))}` : `${unit === 'kg' ? weekRate : `-${kgToLbs(Math.abs(weekRate))}`}`) : '—'}
               unit={weekRate != null ? `${unit}/wk` : ''}
-              color={weekRate == null ? 'orange' : weekRate < 0 ? 'emerald' : weekRate > 0.5 ? 'orange' : 'cyan'}
+              color={weekRate == null ? 'orange' : weekRate < 0 ? 'emerald' : weekRate > 0.5 ? 'orange' : 'orange'}
               trendDirection={trendDir}
             />
             <MetricCard
               label="Entries"
               value={bodyWeightLog?.length ?? 0}
-              color="cyan"
+              color="orange"
               trendDirection="stable"
             />
           </div>

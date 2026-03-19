@@ -80,7 +80,7 @@ export function NeuralModal({
                     <Dialog.Close asChild>
                       <button
                         aria-label="Close dialog"
-                        className="absolute top-6 right-6 text-white/20 hover:text-white transition-colors z-20"
+                        className="absolute top-4 right-4 sm:top-6 sm:right-6 p-3 -m-3 text-white/20 hover:text-white transition-colors z-20 flex items-center justify-center"
                       >
                         <X className="w-5 h-5" />
                       </button>

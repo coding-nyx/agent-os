@@ -61,7 +61,7 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
   if (routines.length === 0) return null;
 
   return (
-    <div className={cn('space-y-6', className)}>
+    <div className={cn('space-y-5 sm:space-y-6 md:space-y-8', className)}>
       <SectionHeader
         label="Training Progress"
         title="Routine Analytics"
@@ -70,7 +70,7 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
       />
 
       {/* Key metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <MetricCard
           label="Training Days"
           value={routines.length}
@@ -89,7 +89,7 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
             label="Total Volume Lifted"
             value={stats.totalActualVolume}
             unit="kg"
-            color="cyan"
+            color="orange"
             trendDirection="up"
           />
         ) : (
@@ -97,7 +97,7 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
             label="Planned Volume"
             value={stats.totalPlannedReps}
             unit="reps"
-            color="cyan"
+            color="orange"
             trendDirection="stable"
           />
         )}
@@ -159,19 +159,19 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
 
       {/* Recent sessions list */}
       {sessions.length > 0 && (
-        <SurfaceCard className="p-5">
-          <h3 className="text-sm font-black uppercase tracking-wide text-white/90 mb-4">
+        <SurfaceCard className="p-4 sm:p-5 md:p-6">
+          <h3 className="text-[13px] sm:text-sm font-black uppercase tracking-wide text-white/90 mb-3 sm:mb-4">
             Recent Sessions
           </h3>
           <div className="space-y-2">
             {sessions.slice(0, 7).map((session, idx) => (
               <div
                 key={session.id || idx}
-                className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5"
+                className="flex items-center justify-between p-3 min-h-[2.75rem] rounded-xl bg-white/[0.02] border border-white/5 gap-3"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-bold text-white/80 truncate">{session.routineName}</span>
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <span className="text-[11px] sm:text-xs font-bold text-white/80 truncate">{session.routineName}</span>
                     <span className={cn(
                       'px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider',
                       session.status === 'completed' ? 'bg-emerald-500/10 text-emerald-300' :
@@ -181,7 +181,7 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
                       {session.status}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-[10px] text-white/40">
+                  <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] text-white/40 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {session.date}
@@ -217,8 +217,8 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
 
       {/* Routine details (fallback when no session data) */}
       {sessions.length === 0 && (
-        <SurfaceCard className="p-5">
-          <h3 className="text-sm font-black uppercase tracking-wide text-white/90 mb-4">
+        <SurfaceCard className="p-4 sm:p-5 md:p-6">
+          <h3 className="text-[13px] sm:text-sm font-black uppercase tracking-wide text-white/90 mb-3 sm:mb-4">
             Routine Details
           </h3>
           <div className="space-y-2">
@@ -227,15 +227,15 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
               return (
                 <div
                   key={routine.id || idx}
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5"
+                  className="flex items-center justify-between p-3 min-h-[2.75rem] rounded-xl bg-white/[0.02] border border-white/5 gap-3"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-white/30 w-10">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white/30 w-9 sm:w-10 shrink-0">
                       {routine.weekday?.slice(0, 3).toUpperCase() || '—'}
                     </span>
-                    <div>
-                      <div className="text-xs font-bold text-white/80">{routine.name}</div>
-                      <div className="text-[10px] text-white/40 mt-0.5">
+                    <div className="min-w-0">
+                      <div className="text-[11px] sm:text-xs font-bold text-white/80 truncate">{routine.name}</div>
+                      <div className="text-[10px] sm:text-[11px] text-white/40 mt-0.5">
                         {routine.exercises.length} ex · {vol} planned reps
                       </div>
                     </div>

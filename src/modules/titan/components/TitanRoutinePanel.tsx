@@ -72,7 +72,7 @@ export function TitanRoutinePanel({
   if (sorted.length === 0) {
     return (
       <>
-        <div className="px-6 pt-3 pb-5 bg-black/40 border-b border-white/5 backdrop-blur-xl">
+        <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-5 pb-5 sm:pb-6 bg-black/40 border-b border-white/5 backdrop-blur-xl">
           <EmptyState
             title="No Training Plan Yet"
             description="Build your weekly routine manually, or let Titan generate one based on your goals and recovery state."
@@ -133,9 +133,9 @@ export function TitanRoutinePanel({
   // ── Populated state ──
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-6 pt-3 pb-8 bg-black/40 border-b border-white/5 backdrop-blur-xl">
-        <SurfaceCard className="p-4">
-          <div className="flex items-center justify-between mb-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 md:gap-6 px-4 sm:px-6 md:px-8 pt-4 sm:pt-5 pb-5 sm:pb-6 md:pb-8 bg-black/40 border-b border-white/5 backdrop-blur-xl">
+        <SurfaceCard className="p-3 sm:p-4 md:p-5">
+          <div className="flex items-center justify-between gap-2">
             <PanelLabel label="Weekly Plan" metadata={`${sorted.length} days`} />
             <NeuralButton size="sm" themeColor="orange" onClick={handleOpenCreate}>
               <Plus className="w-3 h-3 mr-1.5" />
@@ -147,7 +147,7 @@ export function TitanRoutinePanel({
               <div
                 key={`${routine.weekday}-${routine.id}`}
                 className={cn(
-                  'w-full flex items-center justify-between text-xs px-3 py-3 rounded-xl transition-all group',
+                  'w-full flex items-center gap-2 text-[11px] sm:text-xs px-3 sm:px-3.5 py-3 min-h-[2.75rem] sm:min-h-[3rem] rounded-xl transition-all group min-w-0',
                   routine.weekday === today
                     ? 'text-orange-300 font-bold bg-orange-500/10'
                     : 'text-white/60 bg-white/[0.02]'
@@ -156,27 +156,27 @@ export function TitanRoutinePanel({
                 <button
                   type="button"
                   onClick={() => setSelectedRoutine(routine)}
-                  className="flex-1 flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
+                  className="flex-1 flex items-center gap-2 text-left hover:opacity-80 transition-opacity min-w-0"
                 >
-                  <span className="uppercase tracking-wider">{routine.weekday}</span>
+                  <span className="uppercase tracking-wider shrink-0">{routine.weekday}</span>
                   <span className="text-white/40 truncate">{routine.name}</span>
                 </button>
-                <div className="flex items-center gap-1">
-                  <span className="text-white/40 mr-1">{routine.exercises.length} ex</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-white/40 tabular-nums w-8 text-right">{routine.exercises.length} ex</span>
                   {onStartSession && (
                     <NeuralButton
                       size="sm"
                       onClick={() => onStartSession(routine)}
-                      className="shrink-0"
+                      className="min-w-[7.25rem] justify-center"
                     >
-                      <Play className="w-3 h-3 mr-1.5" />
+                      <Play className="w-3 h-3 mr-1.5 shrink-0" />
                       Log Session
                     </NeuralButton>
                   )}
                   <button
                     type="button"
                     onClick={() => handleOpenEdit(routine)}
-                    className="p-1 rounded-lg text-white/30 hover:text-orange-400 hover:bg-orange-500/10 transition-all opacity-0 group-hover:opacity-100"
+                    className="p-1.5 rounded-lg text-white/30 hover:text-orange-400 hover:bg-orange-500/10 transition-all opacity-0 group-hover:opacity-100 md:opacity-70"
                     title="Edit routine"
                   >
                     <Pencil className="w-3 h-3" />
@@ -184,7 +184,8 @@ export function TitanRoutinePanel({
                   <button
                     type="button"
                     onClick={() => setSelectedRoutine(routine)}
-                    className="text-white/30 hover:text-white/50 transition-colors"
+                    className="p-1 rounded-lg text-white/40 hover:text-white/70 transition-colors shrink-0"
+                    aria-label="View details"
                   >
                     <ChevronRight className="w-3 h-3" />
                   </button>
@@ -194,16 +195,16 @@ export function TitanRoutinePanel({
           </div>
         </SurfaceCard>
 
-        <SurfaceCard className="p-4">
+        <SurfaceCard className="p-3 sm:p-4 md:p-5">
           <PanelLabel label="Today's Protocol" metadata={today} />
           {!todayRoutine ? (
-            <div className="flex flex-col items-center text-center py-6 space-y-3">
-              <p className="text-sm text-white/40 italic">Rest day — no protocol scheduled.</p>
+            <div className="flex flex-col items-center text-center py-5 sm:py-6 space-y-3">
+              <p className="text-[13px] sm:text-sm text-white/40 italic">Rest day — no protocol scheduled.</p>
               {onGeneratePlan && (
                 <button
                   type="button"
                   onClick={onGeneratePlan}
-                  className="text-xs text-orange-400/70 hover:text-orange-300 transition-colors font-medium"
+                  className="text-[11px] sm:text-xs text-orange-400/70 hover:text-orange-300 transition-colors font-medium min-h-[2.25rem]"
                 >
                   Request a session →
                 </button>
@@ -216,16 +217,16 @@ export function TitanRoutinePanel({
                   key={`${todayRoutine.id}-${idx}`}
                   type="button"
                   onClick={() => setSelectedRoutine(todayRoutine)}
-                  className="w-full flex items-center justify-between text-xs text-white/60 px-3 py-3 rounded-xl hover:bg-white/5 transition-all"
+                  className="w-full flex items-center justify-between text-[11px] sm:text-xs text-white/60 px-3 py-3 min-h-[2.75rem] rounded-xl hover:bg-white/5 transition-all"
                 >
-                  <span className="font-medium">{ex.name}</span>
-                  <span className="text-white/40 tabular-nums">{ex.sets}×{ex.reps}</span>
+                  <span className="font-medium truncate mr-2">{ex.name}</span>
+                  <span className="text-white/40 tabular-nums shrink-0">{ex.sets}×{ex.reps}</span>
                 </button>
               ))}
               <button
                 type="button"
                 onClick={() => handleOpenEdit(todayRoutine)}
-                className="w-full text-[10px] text-orange-400/60 hover:text-orange-300 transition-colors pt-1 text-center"
+                className="w-full text-[11px] sm:text-xs text-orange-400/60 hover:text-orange-300 transition-colors pt-2 pb-0.5 text-center min-h-[2.25rem]"
               >
                 Edit today's routine →
               </button>

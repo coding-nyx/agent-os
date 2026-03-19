@@ -25,13 +25,21 @@ function createId() {
   return `routine_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 }
 
+/** Data-driven fallback for routine name when missing (uses weekday from profile when available). */
+function routineDisplayName(routine: Routine): string {
+  if (routine.name && routine.name.trim()) return routine.name.trim();
+  const w = routine.weekday;
+  if (w) return `${w.charAt(0).toUpperCase() + w.slice(1)} Routine`;
+  return 'Unnamed Routine';
+}
+
 export function normalizeRoutines(routines: Routine[]): Routine[] {
   return (routines || []).map((routine) => ({
     id: routine.id || createId(),
-    name: routine.name || 'Personalized Routine',
+    name: routineDisplayName(routine),
     timeframe: routine.timeframe || 'daily',
     status: routine.status || 'active',
-    rationale: routine.rationale || 'Generated routine.',
+    rationale: routine.rationale ?? '',
     weekday: routine.weekday?.toLowerCase() as Weekday,
     exercises: routine.exercises || []
   }));

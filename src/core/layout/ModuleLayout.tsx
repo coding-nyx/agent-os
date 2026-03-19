@@ -273,7 +273,7 @@ export function ModuleLayout({
                 <span className="text-[9px] font-semibold text-white/40 uppercase tracking-wider mb-1 leading-none">Security Protocol</span>
                 <div className="flex items-center gap-1.5">
                   <Shield className={`w-3 h-3 ${theme.accent}`} />
-                  <span className="text-[10px] font-medium text-white/60 tracking-tight leading-none uppercase font-mono">E2EE_Active</span>
+                  <span className="text-[10px] font-medium text-white/60 tracking-tight leading-none uppercase font-mono">Device: Synced</span>
                 </div>
               </button>
 

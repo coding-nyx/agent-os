@@ -80,7 +80,7 @@ export function SystemCommandCenter() {
         
         <div className="hidden md:flex flex-col items-start pr-2 text-left">
           <span className="text-xs font-black text-white uppercase tracking-widest leading-none mb-1">
-            {user?.email ? user.email.split('@')[0] : 'Incognito'}
+            {profile?.preferredName || (user?.email ? user.email.split('@')[0] : 'Incognito')}
           </span>
           <span className="text-[9px] font-bold text-white/60 uppercase tracking-[0.2em]">
             {identityLabel}

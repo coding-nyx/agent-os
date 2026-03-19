@@ -4,7 +4,7 @@ import {
   Send, Bot, User, Loader2, Sparkles, Shield,
   Activity as ActivityIcon, Terminal, ChevronDown, Lock, Zap,
   ArrowRight, Plus, FileText, BarChart3, Image as ImageIcon, X,
-  Search, Calculator, BrainCircuit, Trash2, RefreshCw, AlertTriangle
+  Search, Calculator, BrainCircuit, Trash2, RefreshCw, AlertTriangle, MoreVertical
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
@@ -403,15 +403,24 @@ export const ChatInterface = React.memo(function ChatInterface({
 
       {/* Clear session button */}
       {onClearHistory && (
-        <div className="shrink-0 flex justify-end px-3 sm:px-6 py-2 sm:py-3 border-b border-white/5">
-          <button
-            onClick={onClearHistory}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 transition-all group"
-            title="Clear Session History"
-          >
-            <Trash2 className="w-3.5 h-3.5 group-hover:text-rose-400 transition-colors" />
-            <span className="text-[9px] font-semibold uppercase tracking-wider">Clear Link</span>
-          </button>
+        <div className="shrink-0 flex justify-end px-3 sm:px-6 py-2 sm:py-3 border-b border-white/5 relative z-10">
+          <details className="relative group">
+            <summary className="list-none p-2 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/10 cursor-pointer transition-all focus:outline-none [&::-webkit-details-marker]:hidden" title="Chat Options">
+              <MoreVertical className="w-4 h-4" />
+            </summary>
+            <div className="absolute right-0 top-full mt-1 w-40 p-1 bg-[#0a0a0f] border border-white/10 rounded-xl shadow-2xl">
+              <button
+                onClick={(e) => {
+                  e.currentTarget.closest('details')?.removeAttribute('open');
+                  onClearHistory();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-rose-500/10 text-white/40 hover:text-rose-400 transition-all text-left"
+              >
+                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider">Clear Link</span>
+              </button>
+            </div>
+          </details>
         </div>
       )}
 

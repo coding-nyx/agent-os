@@ -76,12 +76,24 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams));
   const setModuleBottomBarHeight = useUIStore((s) => s.setModuleBottomBarHeight);
+  const setHideGlobalFAB = useUIStore((s) => s.setHideGlobalFAB);
   const [calendarSelectedRoutine, setCalendarSelectedRoutine] = useState<Routine | null>(null);
+
   useEffect(() => {
-    // Reserve space for GlobalFAB when quick-log footer is mounted.
-    setModuleBottomBarHeight(activeTab === 'training' ? 92 : 0);
-    return () => setModuleBottomBarHeight(0);
-  }, [activeTab, setModuleBottomBarHeight]);
+    // Hide GlobalFAB on training tab because UnifiedIntelligenceBar handles it.
+    // For other tabs, show GlobalFAB and reset bottom bar height.
+    if (activeTab === 'training') {
+      setModuleBottomBarHeight(64);
+      setHideGlobalFAB(true);
+    } else {
+      setModuleBottomBarHeight(0);
+      setHideGlobalFAB(false);
+    }
+    return () => {
+      setModuleBottomBarHeight(0);
+      setHideGlobalFAB(false);
+    };
+  }, [activeTab, setModuleBottomBarHeight, setHideGlobalFAB]);
 
   const [somaProfile, setSomaProfile] = useState<SomaProfile | null>(null);
   const [somaEncryptionKey, setSomaEncryptionKey] = useState<CryptoKey | null>(null);
@@ -635,12 +647,14 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   // Tab data
   const activeCycleCount = (profile?.cycles ?? []).filter(c => c.status === 'active').length;
 
+  const prCount = Object.keys(profile?.personalRecords ?? {}).length;
+
   const tabs: NeuralTabItem<TitanTab>[] = [
     { id: 'training', label: 'Training', icon: Activity },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'progress', label: 'Progress', icon: BarChart3, badge: (profile?.personalRecords ? Object.keys(profile.personalRecords).length : undefined) },
-    { id: 'sleep', label: 'Sleep', icon: Moon, badge: (profile?.sleepLog?.length) || undefined },
-    { id: 'cycles', label: 'Cycles', icon: RefreshCw, badge: activeCycleCount || undefined },
+    { id: 'progress', label: 'Progress', icon: BarChart3, badge: prCount > 0 ? prCount : undefined },
+    { id: 'sleep', label: 'Sleep', icon: Moon, badge: (profile?.sleepLog?.length && profile.sleepLog.length > 0) ? profile.sleepLog.length : undefined },
+    { id: 'cycles', label: 'Cycles', icon: RefreshCw, badge: activeCycleCount > 0 ? activeCycleCount : undefined },
   ];
 
   const renderTabContent = () => {
@@ -650,7 +664,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
       case 'progress':
         return (
-          <div className="px-4 md:px-8 pb-8 pt-4 space-y-6">
+          <div className="px-4 sm:px-6 md:px-8 pb-5 sm:pb-6 md:pb-8 pt-4 sm:pt-5 space-y-5 sm:space-y-6 md:space-y-8">
             <PRBoard
               personalRecords={Object.values(profile?.personalRecords ?? {})}
               workoutLogs={profile?.workoutLogs ?? []}
@@ -678,7 +692,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
       case 'cycles':
         return (
-          <div className="px-8 pb-8 pt-4">
+          <div className="px-4 sm:px-6 md:px-8 pb-5 sm:pb-6 md:pb-8 pt-4 sm:pt-5">
             <CycleManager
               cycles={profile?.cycles ?? []}
               onSubmitForApproval={ai.handleSendMessage}
@@ -707,7 +721,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
       case 'sleep':
         return (
-          <div className="pb-8">
+          <div className="pb-5 sm:pb-6 md:pb-8">
             <SleepTracker
               sleepLog={profile?.sleepLog ?? []}
               onAnalyze={directWrite ? undefined : (prompt: string) => { ai.handleSendMessage(prompt); }}
@@ -736,9 +750,9 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="mx-4 md:mx-8 mb-3 flex items-start justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20"
+                  className="mx-4 sm:mx-6 md:mx-8 mb-3 sm:mb-4 flex items-start justify-between p-3 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/20"
                 >
-                  <p className="text-xs text-amber-300">{advisoryBanner}</p>
+                  <p className="text-[11px] sm:text-xs text-amber-300 leading-relaxed">{advisoryBanner}</p>
                   <button type="button" onClick={() => setAdvisoryBanner(null)} className="ml-3 text-white/30 hover:text-white/60">
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -747,39 +761,14 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             </AnimatePresence>
 
             {/* 7-day calendar — primary training view */}
-            <div className="px-4 md:px-8 pb-4 pt-2">
-              {/* Quick Log CTA — prominent button to open drawer for today */}
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-white/40 uppercase tracking-wider">This Week</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('progress')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 text-xs font-semibold transition-colors"
-                    title="Log a cardio session"
-                  >
-                    <Dumbbell className="w-3.5 h-3.5" />
-                    Cardio
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuickLogDate(new Date());
-                      setIsQuickLogOpen(true);
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 text-xs font-semibold transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Quick Log
-                  </button>
-                </div>
+            <div className="px-4 sm:px-6 md:px-8 pb-4 sm:pb-5 pt-2 sm:pt-3">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <span className="text-[11px] sm:text-xs font-bold text-white/40 uppercase tracking-wider">This Week</span>
               </div>
               <TrainingCalendar
                 workoutLogs={profile?.workoutLogs ?? []}
                 sessions={profile?.workoutSessions}
                 onQuickLog={(isoDate) => {
-                  // QuickLogDrawer expects a Date; parse the ISO string at noon
-                  // local time to avoid midnight UTC-offset shifts.
                   setQuickLogDate(new Date(`${isoDate}T12:00:00`));
                   setIsQuickLogOpen(true);
                 }}
@@ -788,15 +777,15 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
             {/* Quick session logger for calendar-selected routine */}
             {calendarSelectedRoutine && (
-              <div className="px-8 pb-4 pt-0">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-white/40 uppercase tracking-wider font-bold">
+              <div className="px-4 sm:px-6 md:px-8 pb-4 sm:pb-5 pt-0">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <span className="text-[11px] sm:text-xs text-white/40 uppercase tracking-wider font-bold truncate mr-2">
                     Session: {calendarSelectedRoutine.name}
                   </span>
                   <button
                     type="button"
                     onClick={() => setCalendarSelectedRoutine(null)}
-                    className="text-[10px] text-white/30 hover:text-white/60 transition-colors"
+                    className="text-[11px] sm:text-xs text-white/30 hover:text-white/60 transition-colors shrink-0 min-h-[2.25rem] min-w-[2.25rem] flex items-center justify-center"
                   >
                     ✕ Dismiss
                   </button>
@@ -836,7 +825,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             )}
 
             {/* Soma health snapshot — deep-links to Soma module */}
-            <div className="px-4 md:px-8 mb-2">
+            <div className="px-4 sm:px-6 md:px-8 mb-2 sm:mb-3">
               <SomaSnapshotWidget
                 clearanceStatus={somaProfile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined ?? null}
                 lastBiomarkerDate={somaProfile?.biomarkers?.[0]?.recordedAt ?? null}
@@ -846,7 +835,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             {/* Clearance warning banner — only shown when denied/pending */}
             <ClearanceBanner
               status={somaProfile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined}
-              className="mx-4 md:mx-8 mb-4"
+              className="mx-4 sm:mx-6 md:mx-8 mb-3 sm:mb-4"
             />
 
             {/* Readiness first — sets daily training context */}
@@ -864,7 +853,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
             {/* Session logger — shows all routines when no specific routine is selected via Start Session */}
             {!calendarSelectedRoutine && profile?.routines && profile.routines.length > 0 && (
-              <div className="px-8 pb-4 pt-4">
+              <div className="px-4 sm:px-6 md:px-8 pb-4 sm:pb-5 md:pb-6 pt-4 sm:pt-5">
                 <WorkoutSessionLogger
                   routines={profile.routines}
                   recentSessions={profile?.workoutSessions ?? []}
@@ -897,14 +886,17 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
             {/* Volume analytics */}
             {profile?.routines && profile.routines.length > 0 && (
-              <div className="px-8 pb-4 pt-4">
-                <RoutineProgress routines={profile.routines} workoutSessions={profile.workoutSessions} />
+              <div className="px-4 sm:px-6 md:px-8 pb-4 sm:pb-5 md:pb-6 pt-4 sm:pt-5">
+                <RoutineProgress
+                  routines={profile.routines}
+                  workoutSessions={profile.workoutSessions ?? []}
+                />
               </div>
             )}
 
             {/* Custom tracking fields */}
             {profile && (
-              <div className="px-8 pb-8 pt-2">
+              <div className="px-4 sm:px-6 md:px-8 pb-5 sm:pb-6 md:pb-8 pt-2 sm:pt-3">
                 <CustomFieldManager
                   currentValues={profile.nutrition || {}}
                   onSubmitForApproval={handleSubmitCustomFieldsForApproval}
@@ -933,7 +925,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         placeholder="Input training data or queries..."
       >
         <div className="flex flex-col h-full overflow-hidden">
-          <div className="px-4 md:px-8 pt-4 md:pt-8 pb-2 md:pb-4">
+          <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-3 sm:pb-4 md:pb-5">
           <div className="flex items-start justify-between gap-3">
             <SectionHeader
               label="Performance Domain"
@@ -941,33 +933,37 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               subtitle="Elite physical performance optimization and biometric clearance."
               accentClassName="text-orange-400"
             />
-            {/* Header controls */}
-            <div className="flex items-center gap-2 text-xs mt-1 shrink-0">
-              <ModuleReminderEntry
-                title="Titan"
-                themeColor="orange"
-                panel={<TitanNotificationSettingsPanel />}
-                compact
-              />
-              <span className="text-white/40">{directWrite ? 'Logbook' : 'Coach'}</span>
-              <NeuralToggle
-                checked={directWrite}
-                onChange={handleToggleDirectWrite}
-                color="orange"
-                label={directWrite ? 'Logbook Mode: sessions save instantly' : 'Coach Mode: AI reviews your sessions'}
-              />
-              <Zap className={cn('w-3 h-3 transition-colors', directWrite ? 'text-orange-400' : 'text-white/30')} />
-            </div>
           </div>
         </div>
 
-        <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5">
-          <NeuralTabGroup
-            tabs={tabs}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            themeColor="orange"
-          />
+        <div className="px-4 sm:px-6 md:px-8 pb-3 sm:pb-4 md:pb-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-4 relative">
+          <div className="relative overflow-x-auto no-scrollbar mask-edges-horizontal">
+            <NeuralTabGroup
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              themeColor="orange"
+            />
+          </div>
+
+          {/* Module controls */}
+          <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs shrink-0 self-start xl:self-auto px-1 min-h-[2.75rem]">
+            <ModuleReminderEntry
+              title="Titan"
+              themeColor="orange"
+              panel={<TitanNotificationSettingsPanel />}
+              compact
+            />
+            <div className="w-px h-4 bg-white/10 hidden sm:block" />
+            <span className="text-white/40">{directWrite ? 'Logbook' : 'Coach'}</span>
+            <NeuralToggle
+              checked={directWrite}
+              onChange={handleToggleDirectWrite}
+              color="orange"
+              label={directWrite ? 'Logbook Mode: sessions save instantly' : 'Coach Mode: AI reviews your sessions'}
+            />
+            <Zap className={cn('w-3 h-3 transition-colors', directWrite ? 'text-orange-400' : 'text-white/30')} />
+          </div>
         </div>
 
         <div
@@ -975,7 +971,8 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           id={`tab-panel-${activeTab}`}
           aria-labelledby={`tab-${activeTab}`}
           className={cn(
-            "flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pt-4 md:pt-6"
+            "flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pt-4 sm:pt-5 md:pt-6",
+            activeTab === 'training' && "md:pb-[calc(5rem+env(safe-area-inset-bottom,0px))]"
           )}>
           {renderTabContent()}
         </div>
@@ -1004,6 +1001,11 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               value={quickLogBarInput}
               onChange={setQuickLogBarInput}
               onSubmit={handleQuickLogBarSubmit}
+              onManualLog={() => {
+                setQuickLogDate(new Date());
+                setIsQuickLogOpen(true);
+              }}
+              onCardioLog={() => setActiveTab('progress')}
               recentSessions={profile?.workoutSessions ?? []}
               disabled={pendingLogEntries.length > 0}
             />
@@ -1158,6 +1160,7 @@ export default function TitanPage() {
   return (
     <UnifiedModulePage<TitanProfile>
       moduleId="titan"
+      noContainer={true}
       profileOptions={{
         loadProfile: loadTitanProfile,
         saveProfile: saveTitanProfile,

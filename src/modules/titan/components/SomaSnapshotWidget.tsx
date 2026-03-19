@@ -27,27 +27,27 @@ export function SomaSnapshotWidget({ clearanceStatus, lastBiomarkerDate, classNa
       animate={{ opacity: 1, y: 0 }}
       onClick={() => navigate('/soma')}
       className={cn(
-        'w-full flex items-center justify-between px-4 py-2.5 rounded-xl border text-left transition-all hover:brightness-110',
+        'w-full flex items-center justify-between px-3 sm:px-4 py-3 min-h-[2.75rem] sm:min-h-[3rem] rounded-xl border text-left transition-all hover:brightness-110',
         config ? config.bg : 'bg-white/5 border-white/10',
         className
       )}
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 min-w-0">
         {config ? (
-          <config.icon className={cn('w-4 h-4', `text-${config.color}-400`)} />
+          <config.icon className={cn('w-4 h-4 shrink-0', `text-${config.color}-400`)} />
         ) : (
-          <Activity className="w-4 h-4 text-white/40" />
+          <Activity className="w-4 h-4 shrink-0 text-white/40" />
         )}
-        <div>
-          <p className="text-xs font-bold text-white/80">{config?.label ?? 'Soma Health'}</p>
+        <div className="min-w-0">
+          <p className="text-[11px] sm:text-xs font-bold text-white/80 truncate">{config?.label ?? 'Soma Health'}</p>
           {lastBiomarkerDate && (
-            <p className="text-[10px] text-white/40">
+            <p className="text-[11px] text-white/40 truncate">
               Last check: {new Date(lastBiomarkerDate).toLocaleDateString()}
             </p>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 text-[10px] text-white/30">
+      <div className="flex items-center gap-1 text-[11px] sm:text-xs text-white/30 shrink-0">
         <span>View Soma</span>
         <ExternalLink className="w-3 h-3" />
       </div>

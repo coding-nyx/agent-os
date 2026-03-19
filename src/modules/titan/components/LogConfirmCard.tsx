@@ -199,9 +199,9 @@ export function LogConfirmCard({
       aria-label="Workout log preview — review before saving"
       // ── Visual treatment ────────────────────────────────────────────
       className={cn(
-        'mx-4 mb-0 rounded-2xl overflow-hidden',
-        'bg-[#0c0c10]/95 backdrop-blur-2xl',
-        'border border-orange-500/20',
+        'mx-4 mb-4 rounded-2xl overflow-hidden',
+        'bg-[#12121a]/95 backdrop-blur-2xl',
+        'border border-orange-500/30',
         'shadow-[0_-4px_40px_rgba(0,0,0,0.65),0_0_1px_rgba(249,115,22,0.12)]',
         'max-h-[62vh] flex flex-col',
         // Drag handle affordance: subtle top bar

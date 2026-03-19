@@ -156,12 +156,13 @@ export function NexusOverlay() {
   })();
 
   const isChatOverlayOpen = useUIStore((s) => s.isChatOverlayOpen);
+  const hideGlobalFAB = useUIStore((s) => s.hideGlobalFAB);
 
   if (!isVisible) return null;
 
   return (
     <>
-      {!isChatOverlayOpen && (
+      {!isChatOverlayOpen && !hideGlobalFAB && (
         <motion.button
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}

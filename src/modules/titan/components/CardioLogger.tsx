@@ -1,18 +1,10 @@
 /**
  * CardioLogger — Log and review cardiovascular conditioning sessions.
- *
- * Features:
- *  - Type selector: run / bike / swim / row / hike / elliptical / jump_rope / other
- *  - Fields: duration, distance, avg HR, calories, RPE, notes
- *  - Recent sessions list (last 7)
- *  - Weekly volume stats: total duration + total distance
- *  - Supports direct-write (logbook) and AI (coach) modes
  */
 
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  Activity, Plus, Timer, MapPin, Heart, Flame,
-  Zap, MessageSquare, Wind,
+  Activity, Plus, MessageSquare, Wind,
 } from 'lucide-react';
 import type { CardioSession, CardioSessionType } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -39,20 +31,12 @@ const CARDIO_TYPES: { value: CardioSessionType; label: string; emoji: string }[]
   { value: 'other',      label: 'Other',      emoji: '⚡' },
 ];
 
-// ---------------------------------------------------------------------------
-// Public interface
-// ---------------------------------------------------------------------------
-
 export interface CardioLoggerProps {
   cardioLog: CardioSession[];
   onAnalyze?: (prompt: string) => void;
   directWriteMode?: boolean;
   onDirectSave?: (session: CardioSession) => Promise<void>;
 }
-
-// ---------------------------------------------------------------------------
-// Pure helpers
-// ---------------------------------------------------------------------------
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -75,10 +59,6 @@ function rpeColor(rpe: number): string {
   if (rpe >= 5) return 'text-amber-400';
   return 'text-emerald-400';
 }
-
-// ---------------------------------------------------------------------------
-// Session Row
-// ---------------------------------------------------------------------------
 
 function SessionRow({ session }: { session: CardioSession }) {
   const meta = CARDIO_TYPES.find(t => t.value === session.type);
@@ -104,70 +84,53 @@ function SessionRow({ session }: { session: CardioSession }) {
       <div className="flex items-center gap-4 shrink-0">
         {session.distanceKm != null && (
           <div className="text-right hidden sm:block">
-            <div className="text-xs font-black text-cyan-400 tabular-nums">{session.distanceKm} km</div>
+            <div className="text-xs font-black text-orange-400 tabular-nums">{session.distanceKm} km</div>
             <div className="text-[9px] text-white/40">dist</div>
           </div>
         )}
-        {session.avgHeartRate != null && (
-          <div className="text-right hidden sm:block">
-            <div className="text-xs font-black text-rose-400 tabular-nums">{session.avgHeartRate}</div>
-            <div className="text-[9px] text-white/40">bpm</div>
-          </div>
-        )}
-        {session.rpe != null && (
-          <div className="text-right">
-            <div className={cn('text-xs font-black tabular-nums', rpeColor(session.rpe))}>
-              {session.rpe}<span className="text-[9px] text-white/40">/10</span>
-            </div>
-            <div className="text-[9px] text-white/40">rpe</div>
-          </div>
-        )}
         <div className="text-right">
-          <div className="text-sm font-black text-white/80 tabular-nums">{formatDuration(session.durationMinutes)}</div>
+          <div className="text-xs font-black text-white/80 tabular-nums">
+            {formatDuration(session.durationMinutes)}
+          </div>
+          <div className="text-[9px] text-white/40 uppercase">time</div>
         </div>
       </div>
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main Component
-// ---------------------------------------------------------------------------
-
-export function CardioLogger({
-  cardioLog,
-  onAnalyze,
-  directWriteMode = false,
-  onDirectSave,
-}: CardioLoggerProps) {
+export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSave }: CardioLoggerProps) {
   const [showModal, setShowModal] = useState(false);
-
-  // Form state
-  const [date, setDate] = useState(getTodayIso);
+  const [date, setDate] = useState(getTodayIso());
   const [type, setType] = useState<CardioSessionType>('run');
-  const [durationHours, setDurationHours] = useState('');
-  const [durationMins, setDurationMins] = useState('');
-  const [distance, setDistance] = useState('');
-  const [avgHR, setAvgHR] = useState('');
-  const [calories, setCalories] = useState('');
+  const [durationHours, setDurationHours] = useState<string | number>('');
+  const [durationMins, setDurationMins] = useState<string | number>('30');
+  const [distance, setDistance] = useState<string | number>('');
+  const [avgHR, setAvgHR] = useState<string | number>('');
+  const [calories, setCalories] = useState<string | number>('');
   const [rpe, setRpe] = useState<number>(6);
   const [notes, setNotes] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const totalDurationMins = useMemo(() => {
-    const h = parseInt(durationHours, 10) || 0;
-    const m = parseInt(durationMins, 10) || 0;
-    return h * 60 + m;
-  }, [durationHours, durationMins]);
+  const recent = useMemo(() => [...cardioLog].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7), [cardioLog]);
+
+  const weeklyStats = useMemo(() => {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const last7 = cardioLog.filter(s => new Date(s.date) >= sevenDaysAgo);
+    return {
+      sessions: last7.length,
+      totalDuration: last7.reduce((sum, s) => sum + s.durationMinutes, 0),
+      totalDistance: Math.round(last7.reduce((sum, s) => sum + (s.distanceKm || 0), 0) * 10) / 10,
+    };
+  }, [cardioLog]);
+
+  const totalDurationMins = (parseInt(durationHours as string) || 0) * 60 + (parseInt(durationMins as string) || 0);
 
   const handleSave = useCallback(async () => {
     if (totalDurationMins <= 0) {
-      setFormError('Enter a duration.');
-      return;
-    }
-    if (totalDurationMins > 600) {
-      setFormError('Duration cannot exceed 10 hours.');
+      setFormError('Duration must be greater than 0.');
       return;
     }
     setFormError(null);
@@ -178,72 +141,45 @@ export function CardioLogger({
       date,
       type,
       durationMinutes: totalDurationMins,
-      distanceKm: distance ? parseFloat(distance) : undefined,
-      avgHeartRate: avgHR ? parseInt(avgHR, 10) : undefined,
-      calories: calories ? parseInt(calories, 10) : undefined,
-      notes: notes.trim() || undefined,
+      distanceKm: distance ? parseFloat(distance as string) : undefined,
+      avgHeartRate: avgHR ? parseInt(avgHR as string) : undefined,
+      calories: calories ? parseInt(calories as string) : undefined,
       rpe,
-      status: 'completed',
-      recordedAt: new Date().toISOString(),
+      notes: notes.trim() || undefined,
     };
 
     try {
       if (directWriteMode && onDirectSave) {
         await onDirectSave(session);
       } else if (onAnalyze) {
-        const typeMeta = CARDIO_TYPES.find(t => t.value === type);
-        const distStr = session.distanceKm ? ` Distance: ${session.distanceKm} km.` : '';
-        const hrStr = session.avgHeartRate ? ` Avg HR: ${session.avgHeartRate} bpm.` : '';
-        const calStr = session.calories ? ` Calories: ${session.calories} kcal.` : '';
-        onAnalyze(
-          `Log my ${typeMeta?.label ?? type} session for ${date}: ` +
-          `${formatDuration(totalDurationMins)} at RPE ${rpe}/10.${distStr}${hrStr}${calStr}` +
-          (notes.trim() ? ` Notes: "${notes.trim()}".` : '') +
-          ' Save this and give me a brief cardiovascular performance note.'
-        );
+        const typeLabel = CARDIO_TYPES.find(t => t.value === type)?.label || type;
+        const msg = `Log cardio session: ${typeLabel} for ${formatDuration(totalDurationMins)} on ${date}. ` +
+          (distance ? `Distance: ${distance}km. ` : '') +
+          (avgHR ? `Avg HR: ${avgHR}bpm. ` : '') +
+          (calories ? `Calories: ${calories}. ` : '') +
+          `RPE: ${rpe}/10. ` +
+          (notes ? `Notes: ${notes}` : '');
+        onAnalyze(msg);
       }
       setShowModal(false);
-      setDistance('');
-      setAvgHR('');
-      setCalories('');
-      setNotes('');
-      setDurationHours('');
-      setDurationMins('');
+    } catch (err) {
+      setFormError('Failed to save session.');
     } finally {
       setSaving(false);
     }
-  }, [totalDurationMins, date, type, distance, avgHR, calories, rpe, notes, directWriteMode, onDirectSave, onAnalyze]);
-
-  // Weekly stats (last 7 days)
-  const weeklyStats = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 7);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-    const recent = (cardioLog ?? []).filter(s => s.date >= cutoffStr);
-    return {
-      totalDuration: recent.reduce((s, c) => s + c.durationMinutes, 0),
-      totalDistance: Math.round(recent.reduce((s, c) => s + (c.distanceKm ?? 0), 0) * 10) / 10,
-      sessions: recent.length,
-    };
-  }, [cardioLog]);
-
-  const recent = (cardioLog ?? []).slice(0, 7);
+  }, [date, type, totalDurationMins, distance, avgHR, calories, rpe, notes, directWriteMode, onDirectSave, onAnalyze]);
 
   return (
     <>
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <PanelLabel
-            label="Cardio & Conditioning"
-            metadata={cardioLog?.length ? `${cardioLog.length} sessions logged` : 'No sessions yet'}
-          />
+      <div className="pb-5 sm:pb-6 space-y-4 sm:space-y-5">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <PanelLabel label="Cardio & Conditioning" metadata={recent.length ? `${recent.length} recent sessions` : 'No sessions yet'} />
           <div className="flex items-center gap-2">
             {recent.length > 0 && onAnalyze && (
               <NeuralButton
                 size="sm"
                 variant="ghost"
-                themeColor="cyan"
+                themeColor="orange"
                 onClick={() => onAnalyze(
                   `Analyze my cardio performance from the last ${recent.length} sessions and provide insights on my aerobic fitness trend.`
                 )}
@@ -252,21 +188,20 @@ export function CardioLogger({
                 Analyze
               </NeuralButton>
             )}
-            <NeuralButton size="sm" themeColor="cyan" onClick={() => setShowModal(true)}>
+            <NeuralButton size="sm" themeColor="orange" onClick={() => setShowModal(true)}>
               <Plus className="w-3 h-3 mr-1.5" />
               Log Session
             </NeuralButton>
           </div>
         </div>
 
-        {/* Empty state */}
         {!cardioLog?.length && (
           <EmptyState
             icon={Activity}
             title="No cardio sessions yet"
             description="Track your runs, rides, swims and more. Titan uses cardio data to balance your aerobic and anaerobic training load."
             action={
-              <NeuralButton themeColor="cyan" onClick={() => setShowModal(true)}>
+              <NeuralButton themeColor="orange" onClick={() => setShowModal(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Log First Session
               </NeuralButton>
@@ -274,32 +209,30 @@ export function CardioLogger({
           />
         )}
 
-        {/* Weekly stats */}
         {cardioLog?.length > 0 && (
           <div className="grid grid-cols-3 gap-3">
             <MetricCard
               label="Sessions (7d)"
               value={weeklyStats.sessions}
-              color="cyan"
+              color="orange"
               trendDirection="stable"
             />
             <MetricCard
               label="Duration (7d)"
               value={formatDuration(weeklyStats.totalDuration)}
-              color="cyan"
+              color="orange"
               trendDirection="stable"
             />
             <MetricCard
               label="Distance (7d)"
               value={weeklyStats.totalDistance > 0 ? weeklyStats.totalDistance : '—'}
               unit={weeklyStats.totalDistance > 0 ? 'km' : ''}
-              color="cyan"
+              color="orange"
               trendDirection="stable"
             />
           </div>
         )}
 
-        {/* Recent sessions */}
         {recent.length > 0 && (
           <SurfaceCard className="p-4">
             <PanelLabel label="Recent Sessions" metadata="last 7" />
@@ -312,29 +245,26 @@ export function CardioLogger({
         )}
       </div>
 
-      {/* Log Session Modal */}
       <NeuralModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title="Log Cardio Session"
         subtitle="Track your conditioning work"
         icon={Activity}
-        themeColor="cyan"
+        themeColor="orange"
         maxWidth="lg"
       >
         <div className="space-y-5">
-          {/* Date */}
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Date</label>
             <input
               type="date"
               value={date}
               onChange={e => setDate(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-cyan-500/50 transition-all"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all"
             />
           </div>
 
-          {/* Type selector */}
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Activity Type</label>
             <div className="flex flex-wrap gap-2">
@@ -346,7 +276,7 @@ export function CardioLogger({
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border',
                     type === ct.value
-                      ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
+                      ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
                       : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
                   )}
                 >
@@ -357,11 +287,10 @@ export function CardioLogger({
             </div>
           </div>
 
-          {/* Duration */}
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Duration</label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 relative">
+            <div className="flex items-center gap-3">
+              <div className="flex flex-1 items-center bg-white/5 border border-white/10 rounded-xl focus-within:border-orange-500/50 transition-all px-4 py-2.5">
                 <input
                   type="number"
                   min={0}
@@ -369,29 +298,26 @@ export function CardioLogger({
                   placeholder="0"
                   value={durationHours}
                   onChange={e => setDurationHours(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all tabular-nums"
+                  className="w-8 bg-transparent text-sm text-white placeholder:text-white/20 focus:outline-none text-right tabular-nums [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/40">h</span>
-              </div>
-              <div className="flex-1 relative">
+                <span className="text-white/40 mx-1.5 font-bold">:</span>
                 <input
                   type="number"
                   min={0}
                   max={59}
-                  placeholder="30"
+                  placeholder="00"
                   value={durationMins}
                   onChange={e => setDurationMins(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all tabular-nums"
+                  className="w-8 bg-transparent text-sm text-white placeholder:text-white/20 focus:outline-none text-left tabular-nums [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/40">min</span>
+                <span className="ml-auto text-[10px] text-white/40 font-semibold tracking-wider">HH:MM</span>
               </div>
               {totalDurationMins > 0 && (
-                <span className="text-sm font-black text-cyan-400 shrink-0">{formatDuration(totalDurationMins)}</span>
+                <span className="text-sm font-black text-orange-400 shrink-0 min-w-[60px] text-right">{formatDuration(totalDurationMins)}</span>
               )}
             </div>
           </div>
 
-          {/* Distance + HR + Calories */}
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Distance (km)</label>
@@ -402,7 +328,7 @@ export function CardioLogger({
                 placeholder="—"
                 value={distance}
                 onChange={e => setDistance(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all tabular-nums"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
               />
             </div>
             <div className="space-y-2">
@@ -414,7 +340,7 @@ export function CardioLogger({
                 placeholder="—"
                 value={avgHR}
                 onChange={e => setAvgHR(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all tabular-nums"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
               />
             </div>
             <div className="space-y-2">
@@ -425,21 +351,11 @@ export function CardioLogger({
                 placeholder="—"
                 value={calories}
                 onChange={e => setCalories(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all tabular-nums"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
               />
             </div>
           </div>
 
-          {/* Computed pace if applicable */}
-          {distance && totalDurationMins > 0 && (type === 'run' || type === 'hike') && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyan-500/5 border border-cyan-500/10">
-              <Wind className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-xs text-cyan-300 font-black">{paceStr(parseFloat(distance), totalDurationMins)}</span>
-              <span className="text-xs text-white/40">avg pace</span>
-            </div>
-          )}
-
-          {/* RPE */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Effort (RPE)</label>
@@ -454,11 +370,10 @@ export function CardioLogger({
               step={1}
               value={rpe}
               onChange={e => setRpe(Number(e.target.value))}
-              className="w-full accent-cyan-400"
+              className="w-full accent-orange-400"
             />
           </div>
 
-          {/* Notes */}
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Notes (optional)</label>
             <textarea
@@ -466,7 +381,7 @@ export function CardioLogger({
               onChange={e => setNotes(e.target.value)}
               placeholder="Route, conditions, how it felt..."
               rows={2}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-500/50 transition-all resize-none"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 transition-all resize-none"
             />
           </div>
 
@@ -477,11 +392,11 @@ export function CardioLogger({
           )}
 
           <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-            <NeuralButton variant="ghost" themeColor="cyan" onClick={() => setShowModal(false)}>
+            <NeuralButton variant="ghost" themeColor="orange" onClick={() => setShowModal(false)}>
               Cancel
             </NeuralButton>
             <NeuralButton
-              themeColor="cyan"
+              themeColor="orange"
               onClick={handleSave}
               disabled={saving || (!directWriteMode && !onAnalyze)}
             >

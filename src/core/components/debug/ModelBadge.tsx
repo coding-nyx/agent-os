@@ -51,7 +51,7 @@ function ModelBadgeInner() {
     return () => clearInterval(id);
   }, []);
 
-  const label = showModel ? `⚡ ${modelName}` : '↔ linked';
+  const label = showModel ? `⚡ ENGINE_ACTIVE` : '↔ CONNECTED';
 
   return (
     <span

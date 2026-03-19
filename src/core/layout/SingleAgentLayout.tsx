@@ -137,14 +137,25 @@ export function SingleAgentLayout({
 
   const currentTheme = themeClasses[themeColor] || themeClasses.white;
 
+  const moduleBottomBarHeight = useUIStore(s => s.moduleBottomBarHeight);
+  const hideGlobalFAB = useUIStore(s => s.hideGlobalFAB);
+
   return (
     <div
       className="h-full flex overflow-hidden relative"
       style={{ '--spine-sidebar-width': isChatCollapsed ? '0px' : chatWidth } as React.CSSProperties}
     >
-      {/* ── Mobile chat trigger (floating pill, bottom-right) ── */}
+      {/* ── Mobile chat trigger (floating circular FAB) ── */}
       {isMobile && isChatCollapsed && (
-        <div className="fixed bottom-6 right-4 flex items-center gap-3 z-[var(--z-fab)]">
+        <div 
+          className="fixed right-4 flex flex-col items-end gap-3 z-[var(--z-fab)] transition-all duration-300"
+          style={{ bottom: `calc(${Math.max(24, moduleBottomBarHeight + 24)}px + env(safe-area-inset-bottom, 0px))` }}
+        >
+          {primaryAction && (
+            <div className="shrink-0 flex items-center justify-center">
+              {primaryAction}
+            </div>
+          )}
           <motion.button
             initial={{ opacity: 0, scale: 0.9, x: 20 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
@@ -152,25 +163,19 @@ export function SingleAgentLayout({
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleChat(false)}
             className={cn(
-              'flex items-center gap-3 border backdrop-blur-xl shadow-2xl transition-all duration-300',
+              'relative flex items-center justify-center border backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.6)] transition-all duration-300',
               currentTheme.btnBg,
               currentTheme.btnBorder,
               currentTheme.btnText,
-              'px-4 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-[0.1em] justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)]'
+              'w-14 h-14 rounded-full'
             )}
+            aria-label={`Chat ${agentName}`}
           >
-            <MessageSquare className="w-5 h-5" />
-            <span>Chat {agentName}</span>
-            <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", 
+            <MessageSquare className="w-6 h-6" />
+            <div className={cn("absolute top-3 right-3 w-2.5 h-2.5 rounded-full border-2 border-black animate-pulse",
               themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
             )} />
           </motion.button>
-          
-          {primaryAction && (
-             <div className="shrink-0 flex items-center justify-center">
-                {primaryAction}
-             </div>
-          )}
         </div>
       )}
 
@@ -183,11 +188,12 @@ export function SingleAgentLayout({
           whileTap={{ scale: 0.95 }}
           onClick={() => toggleChat(false)}
           className={cn(
-            'z-[var(--z-fab)] absolute top-6 right-4 md:right-3 lg:right-6 border backdrop-blur-xl shadow-2xl transition-all duration-300 rounded-2xl font-bold uppercase tracking-[0.1em]',
+            'z-[var(--z-fab)] fixed right-4 md:right-3 lg:right-6 border backdrop-blur-xl shadow-2xl transition-all duration-300 rounded-2xl font-bold uppercase tracking-[0.1em]',
             currentTheme.btnBg,
             currentTheme.btnBorder,
             currentTheme.btnText
           )}
+          style={{ bottom: `calc(${Math.max(24, moduleBottomBarHeight + 24)}px + env(safe-area-inset-bottom, 0px))` }}
         >
           <div className="hidden lg:flex items-center gap-3 px-5 py-3 text-[10px]">
             <MessageSquare className="w-4 h-4" />
@@ -206,7 +212,7 @@ export function SingleAgentLayout({
       <div className="flex-1 min-w-0 h-full flex flex-col relative overflow-hidden bg-black/5">
         <div className={cn(
           "flex-1 overflow-y-auto no-scrollbar scroll-smooth flex flex-col",
-          isMobile && isChatCollapsed && "pb-24"
+          isMobile && isChatCollapsed && !hideGlobalFAB && "pb-24"
         )}>
           {children}
         </div>

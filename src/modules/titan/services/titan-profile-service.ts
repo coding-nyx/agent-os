@@ -1,6 +1,7 @@
 import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
 import { LoadContext } from '@/lib/types/encrypted-document';
 import { TitanProfile, CustomField } from '@/lib/types';
+import { normalizeRoutines } from '../utils';
 
 const GUEST_PROFILE_KEY = 'nexus_titan_profile_guest';
 
@@ -30,6 +31,13 @@ export function createEmptyTitanProfile(): TitanProfile {
     // Exercise identity / workout log fields
     workoutLogs: [],
     exerciseLibrary: [],
+    // Data logs (empty by default; components rely on these being arrays)
+    workoutSessions: [],
+    sleepLog: [],
+    cycles: [],
+    personalRecords: {},
+    bodyWeightLog: [],
+    cardioLog: [],
   };
 }
 
@@ -47,7 +55,7 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
     activity: data.activity && typeof data.activity === 'object' ? (data.activity as TitanProfile['activity']) : base.activity,
     history: data.history && typeof data.history === 'object' ? (data.history as TitanProfile['history']) : base.history,
     summary: typeof data.summary === 'string' ? data.summary : '',
-    routines: Array.isArray(data.routines) ? (data.routines as TitanProfile['routines']) : base.routines,
+    routines: Array.isArray(data.routines) ? normalizeRoutines(data.routines as TitanProfile['routines']) : base.routines,
     sleepLog: Array.isArray(data.sleepLog) ? (data.sleepLog as NonNullable<TitanProfile['sleepLog']>).slice(0, 730) : base.sleepLog,
     cycles: Array.isArray(data.cycles) ? (data.cycles as TitanProfile['cycles']) : base.cycles,
     workoutSessions: Array.isArray(data.workoutSessions) ? (data.workoutSessions as NonNullable<TitanProfile['workoutSessions']>).slice(0, 500) : base.workoutSessions,

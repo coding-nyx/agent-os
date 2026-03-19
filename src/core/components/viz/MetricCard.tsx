@@ -128,7 +128,7 @@ export function MetricCard({
             {typeof value === 'number' ? value.toLocaleString() : value}
           </motion.span>
           {unit && (
-            <span className="text-sm font-semibold text-white/40 mb-2">
+            <span className="text-xl font-bold text-white/60 tracking-tight">
               {unit}
             </span>
           )}

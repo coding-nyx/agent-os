@@ -1,29 +1,10 @@
 /**
  * QuickLogBar.tsx — Persistent natural-language workout entry bar.
- *
- * Lives at the bottom of the Training tab. The user types:
- *   "3x5 squat @100kg, 3x8 bench @80kg, 3x10 lat pulldown @55"
- * and the bar parses it instantly into a structured workout log.
- *
- * Design: dark glassmorphism, orange/amber Titan theme, thumb-reachable.
- * Position: static footer at bottom of left content panel (not fixed to viewport).
- *
- * Interaction contract:
- *  - onSubmit fires with the raw input string; caller owns parsing.
- *  - disabled=true when the LogConfirmCard is open (prevents double-submit).
- *  - onAcceptHistory accepts a pre-formed string from the history suggestion.
- *
- * Accessibility:
- *  - Input has explicit aria-label.
- *  - History suggestion is a real <button> (not a div).
- *  - Submit button has aria-label.
- *  - Shake animation is triggered via CSS class, does not affect focus.
- *  - Ghost text overlay is aria-hidden.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronUp, Clock, Zap } from 'lucide-react';
+import { ChevronUp, Clock, Plus, Dumbbell, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildHistorySuggestion } from '../utils/quick-log-parser';
 import type { WorkoutSession } from '@/lib/types';
@@ -35,6 +16,10 @@ export interface QuickLogBarProps {
   onChange: (value: string) => void;
   /** Called when user submits — parent runs the parser */
   onSubmit: (input: string) => void;
+  /** Called when user taps the manual + button */
+  onManualLog?: () => void;
+  /** Called when user taps the cardio button */
+  onCardioLog?: () => void;
   /** Workout sessions ordered newest-first, used for history suggestion */
   recentSessions: WorkoutSession[];
   /** True while LogConfirmCard is open — blurs bar and disables submit */
@@ -74,6 +59,8 @@ export function QuickLogBar({
   value,
   onChange,
   onSubmit,
+  onManualLog,
+  onCardioLog,
   recentSessions,
   disabled = false,
   className,
@@ -82,6 +69,7 @@ export function QuickLogBar({
   const [isFocused, setIsFocused] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [showActions, setShowActions] = useState(false);
 
   // ── Placeholder rotation ────────────────────────────────────────────────
   useEffect(() => {
@@ -99,7 +87,6 @@ export function QuickLogBar({
   const handleSubmit = useCallback(() => {
     if (disabled) return;
     if (!value.trim()) {
-      // Shake animation to signal "empty is not valid"
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500);
       return;
@@ -117,7 +104,10 @@ export function QuickLogBar({
     [handleSubmit],
   );
 
-  // ── Accept history suggestion ───────────────────────────────────────────
+  const handleNexusClick = () => {
+    window.dispatchEvent(new Event('open-nexus'));
+  };
+
   const handleAcceptHistory = useCallback(() => {
     if (!historySuggestion) return;
     onChange(historySuggestion.text);
@@ -126,134 +116,159 @@ export function QuickLogBar({
 
   const hasInput = value.trim().length > 0;
 
-  // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <div
       className={cn(
-        // Anchored to bottom of its flex-column parent (not fixed to viewport)
-        'w-full shrink-0',
-        'pb-[env(safe-area-inset-bottom,0px)]',
-        // Glass treatment
-        'bg-[#0c0c10]/90 backdrop-blur-2xl',
-        'border-t border-orange-500/15',
-        'shadow-[0_-8px_40px_rgba(0,0,0,0.5)]',
-        // Disabled state: dim when confirm card is open
-        disabled && 'opacity-60 pointer-events-none',
-        // Focus ring on the whole bar
-        isFocused && 'border-t-orange-500/30 shadow-[0_-8px_40px_rgba(249,115,22,0.08)]',
-        'transition-all duration-200',
+        'w-full shrink-0 z-[var(--z-fab)] mt-auto',
+        'pb-0 sm:pb-[env(safe-area-inset-bottom,0px)]',
+        disabled && 'opacity-0 pointer-events-none translate-y-4',
+        'transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]',
         className,
       )}
-      role="search"
-      aria-label="Quick workout log"
     >
-      <div className="px-4 pt-3 pb-3 flex flex-col gap-1.5">
-        {/* ── Input row ── */}
-        <div
-          className={cn(
-            'flex items-center gap-2',
-            isShaking && 'animate-[quicklog-shake_0.4s_ease-in-out]',
-          )}
-        >
-          {/* Leading icon */}
-          <div
-            aria-hidden="true"
-            className={cn(
-              'shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-200',
-              hasInput
-                ? 'bg-orange-500/25 border border-orange-500/35'
-                : 'bg-orange-500/15 border border-orange-500/20',
-            )}
-          >
-            <Zap className="w-3.5 h-3.5 text-orange-400" />
-          </div>
-
-          {/* Text input */}
-          <input
-            ref={inputRef}
-            type="text"
-            aria-label="Log exercises — type 3x5 squat @100kg, 3x8 bench @80kg"
-            enterKeyHint="go"
-            inputMode="text"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            placeholder={PLACEHOLDERS[placeholderIdx]}
-            disabled={disabled}
-            className={cn(
-              'flex-1 bg-transparent text-sm text-white/90',
-              'placeholder:text-white/25 caret-orange-400',
-              'focus:outline-none min-h-[44px] py-0',
-              'transition-colors duration-150',
-            )}
-          />
-
-          {/* Submit button */}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={disabled}
-            aria-label="Preview workout log"
-            className={cn(
-              'shrink-0 w-9 h-9 rounded-xl flex items-center justify-center',
-              'transition-all duration-150 active:scale-95',
-              'focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:outline-none',
-              hasInput
-                ? 'bg-orange-500/30 border border-orange-500/40 text-orange-300 shadow-[0_0_12px_rgba(249,115,22,0.2)]'
-                : 'bg-orange-500/15 border border-orange-500/20 text-orange-400/60',
-            )}
-          >
-            <ChevronUp className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* ── History suggestion chip ── */}
+      <div className="w-full relative px-2 md:px-0 overflow-hidden">
+        {/* History Suggestion Chip (Above the bar) — constrained so it doesn't overflow */}
         <AnimatePresence>
           {isFocused && historySuggestion && !hasInput && (
             <motion.div
-              key="history-chip"
-              initial={{ opacity: 0, y: 4, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, y: 4, height: 0 }}
-              transition={{ duration: 0.15 }}
-              className="flex items-center gap-2 px-1 overflow-hidden"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute bottom-full left-2 right-2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-10 mb-1 flex justify-center"
             >
-              <Clock
-                aria-hidden="true"
-                className="w-3 h-3 text-white/25 shrink-0"
-              />
-              <span className="text-[11px] text-white/30 shrink-0">
-                Last session:
-              </span>
               <button
                 type="button"
                 onClick={handleAcceptHistory}
-                title={historySuggestion.text}
-                aria-label={`Pre-fill with last session from ${relativeDate(historySuggestion.date)}: ${historySuggestion.text}`}
                 className={cn(
-                  'text-[11px] text-orange-400/60 hover:text-orange-400',
-                  'font-semibold truncate max-w-[200px]',
-                  'underline decoration-dotted underline-offset-2',
-                  'transition-colors duration-150',
+                  'flex items-center gap-2 min-h-[44px] px-3 py-2.5 sm:px-4 sm:py-2',
+                  'bg-black/60 backdrop-blur-xl border border-white/10 rounded-full',
+                  'text-[11px] text-white/50 hover:text-orange-400 hover:border-orange-500/30',
+                  'transition-all shadow-xl max-w-[min(280px,calc(100vw-2rem))]',
                 )}
               >
-                {historySuggestion.text}
+                <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                <span className="font-bold text-orange-500/60 uppercase tracking-wider shrink-0">Reuse:</span>
+                <span className="truncate min-w-0 text-left">{historySuggestion.text}</span>
               </button>
-              <span
-                aria-hidden="true"
-                className="text-[10px] text-white/20 shrink-0 ml-auto"
-              >
-                {relativeDate(historySuggestion.date)}
-              </span>
             </motion.div>
           )}
         </AnimatePresence>
+
+        <div
+          className={cn(
+            'flex items-center w-full transition-all duration-300 overflow-hidden',
+            'bg-white/[0.08] backdrop-blur-2xl border-t border-white/10 shadow-[0_-20px_40px_rgba(0,0,0,0.4)]',
+            isFocused && 'border-orange-500/40 bg-white/[0.1]',
+            isShaking && 'animate-[quicklog-shake_0.4s_ease-in-out]',
+          )}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 w-full py-2.5 px-2 sm:py-3 sm:px-4 min-w-0">
+            {/* Nexus Anchor — hidden on very narrow to prioritize input */}
+            <button
+              type="button"
+              onClick={handleNexusClick}
+              title="Consult Nexus"
+              aria-label="Consult Nexus"
+              className={cn(
+                'shrink-0 min-w-[48px] min-h-[48px] w-12 h-12 rounded-2xl',
+                'flex items-center justify-center',
+                'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400',
+                'hover:bg-indigo-500/20 hover:border-indigo-500/40 transition-all active:scale-95',
+                'focus:outline-none focus:ring-1 focus:ring-indigo-400/40 focus:ring-offset-2 focus:ring-offset-transparent',
+                'max-[380px]:hidden',
+              )}
+            >
+              <Sparkles className="w-5 h-5 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]" aria-hidden />
+            </button>
+
+            {/* Intelligence Input — visible boundary, min-w-0 so flex doesn't overflow */}
+            <input
+              ref={inputRef}
+              type="text"
+              aria-label="Unified entry — log workout or ask Nexus"
+              enterKeyHint="go"
+              inputMode="text"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              value={value}
+              onChange={e => onChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => {
+                setIsFocused(false);
+                setTimeout(() => setShowActions(false), 200);
+              }}
+              placeholder={PLACEHOLDERS[placeholderIdx]}
+              className={cn(
+                'flex-1 min-w-0 text-sm sm:text-[14px] text-white/90',
+                'bg-black/20 border border-white/10 rounded-xl',
+                'px-3 sm:px-4 py-3 min-h-[44px] sm:min-h-[48px]',
+                'placeholder:text-white/30 placeholder:truncate caret-orange-500',
+                'focus:outline-none focus:border-orange-500/30 focus:ring-1 focus:ring-orange-500/20',
+              )}
+            />
+
+            {/* Dynamic Actions + Submit/Plus */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <AnimatePresence>
+                {showActions && !hasInput && (
+                  <motion.div
+                    initial={{ width: 0, opacity: 0, x: 20 }}
+                    animate={{ width: 'auto', opacity: 1, x: 0 }}
+                    exit={{ width: 0, opacity: 0, x: 20 }}
+                    className="flex items-center gap-1.5 sm:gap-2 overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      onClick={onCardioLog}
+                      title="Log Cardio"
+                      aria-label="Log Cardio"
+                      className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl flex items-center justify-center bg-black/20 border border-white/10 text-white/50 hover:text-orange-400 hover:bg-orange-500/10 hover:border-orange-500/20 transition-all active:scale-95 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    >
+                      <Dumbbell className="w-4 h-4" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onManualLog}
+                      title="Manual Log"
+                      aria-label="Manual log"
+                      className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl flex items-center justify-center bg-black/20 border border-white/10 text-white/50 hover:text-orange-400 hover:bg-orange-500/10 hover:border-orange-500/20 transition-all active:scale-95 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    >
+                      <Plus className="w-5 h-5" aria-hidden />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {hasInput ? (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  aria-label="Submit log"
+                  className="min-w-[48px] min-h-[48px] w-12 h-12 rounded-2xl flex items-center justify-center bg-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:scale-105 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-orange-400/50 focus:ring-offset-2 focus:ring-offset-transparent"
+                >
+                  <ChevronUp className="w-6 h-6 stroke-[3px]" aria-hidden />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowActions(!showActions)}
+                  aria-label={showActions ? 'Close actions' : 'Show actions'}
+                  className={cn(
+                    'min-w-[48px] min-h-[48px] w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-95 border focus:outline-none focus:ring-1 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-transparent',
+                    showActions
+                      ? 'bg-black/30 border-white/20 text-white'
+                      : 'bg-black/20 border-white/10 text-white/40 hover:text-white/80 hover:bg-black/30 hover:border-white/15',
+                  )}
+                >
+                  <Plus className={cn('w-5 h-5 transition-transform duration-300', showActions && 'rotate-45')} aria-hidden />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
