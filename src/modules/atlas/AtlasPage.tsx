@@ -380,6 +380,58 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     ActionHub.execute('atlas', 'set_daily_intention', buildActionContext(updates));
   }, [buildActionContext]);
 
+  /** Persist a weekly review snapshot to profile.reviews so the Review tab shows it. */
+  const handleSaveWeeklyReview = useCallback(() => {
+    if (!profile) return;
+    const d = new Date();
+    const weekStart = new Date(d);
+    weekStart.setDate(d.getDate() - d.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const weekStartStr = weekStart.toISOString().slice(0, 10);
+    const weekEndStr = weekEnd.toISOString().slice(0, 10);
+    const weekMsStart = weekStart.getTime();
+    const weekMsEnd = weekEnd.getTime() + 86400000;
+    const thisWeekScheduled = (profile.scheduledTasks ?? []).filter((s) => {
+      const t = new Date(s.scheduledAt).getTime();
+      return t >= weekMsStart && t < weekMsEnd;
+    });
+    const totalScheduled = thisWeekScheduled.length;
+    const totalCompleted = thisWeekScheduled.filter((s) => s.status === 'done').length;
+    const completionRate = totalScheduled > 0 ? totalCompleted / totalScheduled : 0;
+    const cognitive = globalSoul?.crossFunctionalState?.cognitive ?? {};
+    const habitSummary = (profile.habits ?? []).map((h) => ({
+      habitId: h.id,
+      habitTitle: h.title ?? '',
+      streak: h.currentStreak ?? 0,
+      completions: 0,
+      status: h.status,
+    }));
+    const goalProgress = (profile.goals ?? []).map((g) => ({
+      goalId: g.id,
+      goalTitle: g.title ?? '',
+      progressPercent: g.progressPercent ?? 0,
+      milestonesCompleted: (g.milestones ?? []).filter((m) => m.completed).length,
+      milestonesTotal: (g.milestones ?? []).length || 1,
+    }));
+    ActionHub.execute('atlas', 'temporal_review', buildActionContext({
+      scope: 'weekly',
+      periodStart: weekStartStr,
+      periodEnd: weekEndStr,
+      totalScheduled,
+      totalCompleted,
+      completionRate,
+      habitSummary,
+      goalProgress,
+      energyBudgetAvg: typeof cognitive.energyBudget === 'number' ? cognitive.energyBudget : 5,
+      focusScoreAvg: typeof cognitive.focusScore === 'number' ? cognitive.focusScore : 5,
+      resilienceTrend: 'stable',
+      insights: [],
+    }));
+    handleReviewOpened();
+  }, [profile, globalSoul?.crossFunctionalState?.cognitive, buildActionContext, handleReviewOpened]);
+
   // S-journal-01: Morning brief dismiss — record today's date so JournalTab
   // can pre-populate the morningIntent placeholder.
   const handleMorningBriefDismiss = useCallback(() => {
@@ -523,7 +575,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       }
     >
       <>
-        <div className="px-4 md:px-8 pt-2 flex justify-end">
+        <div className="px-[var(--atlas-space-page-x)] pt-[var(--atlas-space-block)] flex justify-end">
           <ModuleReminderEntry
             title="Atlas"
             themeColor="sky"
@@ -589,6 +641,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
         predictiveDisplay={predictiveDisplay}
         weeklyReviewPending={weeklyReviewPending}
         onReviewOpened={handleReviewOpened}
+        onSaveWeeklyReview={handleSaveWeeklyReview}
         morningBriefVisible={showMorningBrief}
         onMorningBriefDismiss={handleMorningBriefDismiss}
         eveningCheckinVisible={showEveningCheckin}

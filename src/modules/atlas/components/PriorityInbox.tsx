@@ -205,10 +205,11 @@ export function PriorityInbox({
     );
   };
 
-  // Empty state — no eligible tasks at all
+  // Empty state — no eligible tasks at all (positive state: use Inbox icon, not alert)
   if (eligibleCount === 0) {
     return (
       <EmptyState
+        icon={Inbox}
         title="Inbox clear"
         description="No queued tasks. Add something to work on."
       />

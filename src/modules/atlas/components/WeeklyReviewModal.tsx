@@ -27,6 +27,8 @@ interface WeeklyReviewModalProps {
   energyWave: EnergyWavePoint[];
   scheduledTasks: ScheduledTask[];
   predictiveDisplay: AtlasStateDisplay;
+  /** Called when user completes the review — persists snapshot to profile.reviews */
+  onCompleteReview?: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -214,6 +216,7 @@ export function WeeklyReviewModal({
   energyWave,
   scheduledTasks,
   predictiveDisplay,
+  onCompleteReview,
 }: WeeklyReviewModalProps) {
   const [capacityPct, setCapacityPct] = useState(100);
   const [recoveryScheduled, setRecoveryScheduled] = useState(false);
@@ -379,7 +382,23 @@ export function WeeklyReviewModal({
         <div className="border-t border-white/5" />
 
         {/* ── CTA ──────────────────────────────────────────────────────── */}
-        <section>
+        <section className="space-y-3">
+          {onCompleteReview && (
+            <button
+              onClick={() => {
+                onCompleteReview();
+                onClose();
+              }}
+              className={cn(
+                'w-full py-3 px-6 rounded-xl border text-sm font-black uppercase tracking-widest',
+                'border-sky-500/40 bg-sky-500/10 text-sky-300',
+                'hover:bg-sky-500/20 hover:border-sky-500/60 transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50'
+              )}
+            >
+              Complete review & save
+            </button>
+          )}
           {recoveryScheduled ? (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
               <p className="text-sm font-black text-emerald-400">

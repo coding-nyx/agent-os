@@ -104,6 +104,8 @@ interface EnhancedAtlasDashboardProps {
   weeklyReviewPending?: boolean;
   /** S9-005: Called when user opens the review tab */
   onReviewOpened?: () => void;
+  /** Persist weekly review to profile.reviews (Run Weekly Review → Complete review) */
+  onSaveWeeklyReview?: () => void;
   /** S9-007: Set true to force-show the morning brief card (from Spine event) */
   morningBriefVisible?: boolean;
   /** S9-007: Called when the morning brief card is dismissed from the parent */
@@ -155,6 +157,7 @@ export function EnhancedAtlasDashboard({
   encryptionKey = null,
   weeklyReviewPending = false,
   onReviewOpened = noop,
+  onSaveWeeklyReview,
   morningBriefVisible = false,
   onMorningBriefDismiss = noop,
   eveningCheckinVisible = false,
@@ -211,10 +214,9 @@ export function EnhancedAtlasDashboard({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* ── Header ── */}
-      <div className="px-4 md:px-8 pt-4 md:pt-8 pb-2 md:pb-4 flex items-start justify-between gap-4">
-        {/* S9-001: Title + predictive state badge */}
-        <div className="flex flex-col gap-1.5">
+      {/* ── Header: token-based padding, responsive ── */}
+      <header className="px-[var(--atlas-space-page-x)] pt-[var(--atlas-space-page-y)] pb-[var(--atlas-space-block)] flex items-start justify-between gap-4 flex-shrink-0">
+        <div className="flex flex-col gap-[var(--atlas-space-block)] min-w-0">
           <SectionHeader
             label="Cognitive Domain"
             title="Atlas Energy & Planning"
@@ -223,7 +225,7 @@ export function EnhancedAtlasDashboard({
           />
           <span
             className={cn(
-              'self-start inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-white/10 bg-white/5',
+              'self-start inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[length:var(--atlas-type-label)] font-semibold border border-white/10 bg-white/5',
               predictiveDisplay.color
             )}
             title={predictiveDisplay.description}
@@ -237,21 +239,24 @@ export function EnhancedAtlasDashboard({
             {predictiveDisplay.label}
           </span>
         </div>
-        {/* S9-006: Preference mode toggle */}
         <button
           type="button"
           onClick={onTogglePreferenceMode}
           title={preferenceMode === 'structured' ? 'Switch to conversational mode' : 'Switch to structured mode'}
-          className="mt-1 shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-sky-300 transition-colors text-xs"
+          className="shrink-0 flex items-center gap-1.5 min-h-[var(--atlas-space-touch)] px-3 py-2 rounded-[var(--atlas-radius-pill)] border border-white/10 bg-white/5 hover:bg-white/10 text-[length:var(--atlas-type-caption)] text-[var(--atlas-text-secondary)] hover:text-sky-300 transition-colors"
         >
-          <Settings2 className="h-3.5 w-3.5" />
+          <Settings2 className="h-3.5 w-3.5" aria-hidden />
           <span className="hidden sm:inline">{preferenceMode === 'structured' ? 'Structured' : 'Conversational'}</span>
         </button>
-      </div>
+      </header>
 
-      {/* ── Tab Navigation ── */}
-      <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5 overflow-x-auto no-scrollbar">
-        <NeuralTabGroup
+      {/* ── Tab Navigation: scroll padding so first tab isn't clipped on narrow viewports ── */}
+      <div
+        className="border-b border-white/5 overflow-x-auto no-scrollbar flex-shrink-0"
+        style={{ scrollPaddingLeft: 'var(--atlas-space-page-x)' }}
+      >
+        <div className="px-[var(--atlas-space-page-x)] pb-[var(--atlas-space-section)]">
+          <NeuralTabGroup
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={(tab) => {
@@ -262,11 +267,12 @@ export function EnhancedAtlasDashboard({
           }}
           themeColor="sky"
         />
+        </div>
       </div>
 
       {/* ── Dashboard view switcher — always visible on dashboard tab ── */}
       {activeTab === 'dashboard' && (
-        <div className="shrink-0 px-4 md:px-8 pt-4 pb-2">
+        <div className="shrink-0 px-[var(--atlas-space-page-x)] pt-[var(--atlas-space-section)] pb-[var(--atlas-space-block)]">
           <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />
         </div>
       )}
@@ -275,7 +281,7 @@ export function EnhancedAtlasDashboard({
       <div className="flex-1 overflow-hidden flex">
         {/* S9-006: Structured mode — persistent sidebar QuickAdd panel (hidden in focus mode) */}
         {preferenceMode === 'structured' && activeTab === 'dashboard' && activeView !== 'focus' && (
-          <aside className="hidden md:flex shrink-0 w-72 border-r border-white/5 overflow-y-auto p-4 no-scrollbar">
+          <aside className="hidden md:flex shrink-0 w-72 border-r border-white/5 overflow-y-auto no-scrollbar" style={{ padding: 'var(--atlas-space-section)' }}>
             <QuickAddForm
               projects={profile?.projects ?? []}
               onCreateTask={onCreateTask}
@@ -302,9 +308,12 @@ export function EnhancedAtlasDashboard({
           </div>
         )}
 
-        {/* ── Normal scroll container — hidden while focus mode is active ── */}
+        {/* ── Normal scroll container: token-based padding, section spacing ── */}
         {!(activeTab === 'dashboard' && activeView === 'focus') && (
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-2 md:pt-4 space-y-6 no-scrollbar">
+        <div
+          className="flex-1 overflow-y-auto no-scrollbar space-y-[var(--atlas-space-section)]"
+          style={{ padding: 'var(--atlas-space-page-y) var(--atlas-space-page-x)' }}
+        >
         {/* ══════════════ DASHBOARD TAB ══════════════ */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
@@ -771,7 +780,7 @@ export function EnhancedAtlasDashboard({
             ) : (
               <EmptyState
                 title="No reviews yet"
-                description="Click 'Run Weekly Review' above to create your first review."
+                description="Run your first weekly review using the button above to save a snapshot to this list."
                 icon={History}
                 size="lg"
               />
@@ -790,6 +799,7 @@ export function EnhancedAtlasDashboard({
         energyWave={energyWave}
         scheduledTasks={profile?.scheduledTasks ?? []}
         predictiveDisplay={predictiveDisplay}
+        onCompleteReview={onSaveWeeklyReview}
       />
     </div>
   );

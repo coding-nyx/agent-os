@@ -63,6 +63,25 @@
     --space-lg: 1.5rem;
     --space-xl: 2rem;
 
+    /* ── Atlas module: unified spacing & typography ── */
+    --atlas-space-page-x: clamp(0.75rem, 4vw, 2rem);
+    --atlas-space-page-y: clamp(0.5rem, 2vw, 1.5rem);
+    --atlas-space-section: clamp(0.75rem, 3vw, 1.5rem);
+    --atlas-space-block: clamp(0.5rem, 2vw, 1rem);
+    --atlas-space-touch: 2.75rem;
+    --atlas-radius-card: var(--radius-card);
+    --atlas-radius-pill: 1.25rem;
+    --atlas-type-label: 0.6875rem;
+    --atlas-type-caption: 0.75rem;
+    --atlas-type-body: 0.8125rem;
+    --atlas-type-subhead: 0.9375rem;
+    --atlas-type-title: 1.125rem;
+    --atlas-type-hero: clamp(1.25rem, 4vw, 1.875rem);
+    --atlas-text-primary: var(--text-primary);
+    --atlas-text-secondary: var(--text-secondary);
+    --atlas-text-muted: var(--text-muted);
+    --atlas-container-max: 90rem;
+
     /* ── Z-Index Layer Contract ── */
     --z-base: 0;
     --z-content: 10;

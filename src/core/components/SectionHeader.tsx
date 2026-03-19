@@ -25,7 +25,7 @@ export function SectionHeader({
           <div className={cn('text-[11px] sm:text-xs font-semibold uppercase tracking-[0.15em] font-display', accentClassName)}>{label}</div>
         )}
         <div className="text-xl sm:text-2xl md:text-3xl font-bold uppercase tracking-tight text-white font-display">{title}</div>
-        {subtitle && <p className="text-[11px] sm:text-xs md:text-sm text-white/50 max-w-xl leading-relaxed">{subtitle}</p>}
+        {subtitle && <p className="text-[11px] sm:text-xs md:text-sm text-white/60 max-w-xl leading-relaxed">{subtitle}</p>}
       </div>
       {action}
     </div>
