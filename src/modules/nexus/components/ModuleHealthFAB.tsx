@@ -112,12 +112,17 @@ export function ModuleHealthFAB() {
     ? { duration: 0 }
     : { type: 'spring' as const, stiffness: 500, damping: 32 };
 
-  const tileTransition = (i: number) => shouldReduceMotion
-    ? { duration: 0 }
-    : { delay: i * 0.025, duration: 0.2 };
+  const tileTransition = (i: number) =>
+    shouldReduceMotion ? { duration: 0 } : { delay: i * 0.025, duration: 0.2 };
 
   return (
-    <div ref={containerRef} className="absolute bottom-4 left-4 z-[var(--z-fab)]">
+    <div
+      ref={containerRef}
+      className={cn(
+        // Lifted until layout has space on left (lg+). At middle widths chat is still full-width.
+        'absolute left-4 z-[var(--z-fab)] bottom-28 lg:bottom-4'
+      )}
+    >
       {/* ── Popover Grid ── */}
       <AnimatePresence>
         {isOpen && (

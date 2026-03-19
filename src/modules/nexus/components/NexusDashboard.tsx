@@ -300,7 +300,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
             </section>
           </div>
         )}
-        {/* Module Health FAB — floats bottom-right inside chat area */}
+        {/* Module Health FAB — floats bottom-left inside chat area. */}
         <NexusErrorBoundary name="ModuleHealth">
           <ModuleHealthFAB />
         </NexusErrorBoundary>
