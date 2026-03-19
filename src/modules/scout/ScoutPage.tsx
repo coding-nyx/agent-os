@@ -1,56 +1,70 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
-import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useAI } from '@/llm-engine/ai-context';
 import type { MessageContent } from '@/lib/types';
-import { SCOUT_PERSONA, getScoutSystemPrompt } from './personas';
+import { getScoutSystemPrompt } from './personas';
 import { ScoutDashboard } from './components/ScoutDashboard';
 import { ScoutUploadZone } from './components/ScoutUploadZone';
-import { buildDocumentAnalysisPrompt, parseDocument as parseScoutDocument, validateFile as validateScoutFile } from './services/scout-document-service';
+import {
+  buildDocumentAnalysisPrompt,
+  parseDocument as parseScoutDocument,
+  validateFile as validateScoutFile,
+} from './services/scout-document-service';
 import type { DocumentParseResult } from './services/scout-document-service';
 import {
-  ScoutProfile,
+  type ScoutProfile,
   loadScoutProfile,
   saveScoutProfile,
   subscribeScoutProfile,
   syncGuestScoutProfileToUser,
   loadKnowledgeNodes,
-  addKnowledgeNode
+  addKnowledgeNode,
 } from './services/scout-knowledge-service';
 import { generateNewsBriefs } from './services/scout-news-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
-import { FileUp, Plus, X, Search, LayoutDashboard, AlertTriangle, BookMarked, FileText } from 'lucide-react';
+import {
+  AlertTriangle,
+  BookMarked,
+  FileText,
+  LayoutDashboard,
+  PanelLeft,
+  Plus,
+  Search,
+  X,
+} from 'lucide-react';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { scoutDiagnosisSpec } from './diagnosis/scout-diagnosis-spec';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/core/components/SectionHeader';
-import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
+import { NeuralTabGroup, type NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { ScoutOnboarding } from './onboarding/ScoutOnboarding';
-
-// Scout v2 hooks
 import { useSources } from './hooks/useSources';
 import { useDigests } from './hooks/useDigests';
 import { useDeepResearch } from './hooks/useDeepResearch';
 import { useSessions } from './hooks/useSessions';
 import { useKnowledgeNodes } from './hooks/useKnowledgeNodes';
-
-// Scout v2 components
 import { SourceLibraryPane } from './components/sources/SourceLibraryPane';
 import { DigestViewer } from './components/digest/DigestViewer';
 import { DeepResearchPanel } from './components/deep-research/DeepResearchPanel';
 import { ExportDialog } from './components/ExportDialog';
 import { ActiveResearchWorkspace } from './components/ActiveResearchWorkspace';
+import { ScoutResearchArtifactsPanel } from './components/ScoutResearchArtifactsPanel';
+import { ScoutSessionList } from './components/ScoutSessionList';
 import type { ExportTarget } from './services/scout-export-service';
 import type { DeepResearchResult } from './hooks/useDeepResearch';
 import { runDocumentPipeline, type DocumentParsed } from '@/lib/services/document-pipeline';
 import { scoutDocumentPolicy, type ScoutDocumentProposal } from './services/scout-document-policy';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NewSessionDialog } from './components/NewSessionDialog';
+import {
+  SCOUT_SHELL_BREAKPOINTS,
+  resolveScoutShellState,
+  type ScoutTopLevelView,
+} from './scout-shell-layout';
 
 registerDiagnosisSpec(scoutDiagnosisSpec);
 
@@ -67,23 +81,19 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   const { globalSoul } = useGlobalSoul();
   const agentAlias = globalSoul?.displayNames?.scout || 'Scout';
   const { sendMessage } = useAI();
-  
-  const [activeView, setActiveView] = useState<'research' | 'dashboard' | 'sources' | 'digest'>('research');
+
+  const [selectedView, setSelectedView] = useState<ScoutTopLevelView>('research');
   const [showUploadZone, setShowUploadZone] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
-  
-  // Dynamic layout: collapse chat when deep in research workspace
-  useEffect(() => {
-    if (activeView === 'research' && activeSessionId) {
-      setIsChatCollapsed(true);
-    } else {
-      setIsChatCollapsed(false);
-    }
-  }, [activeView, activeSessionId]);
-  
-  // v2 state
+  const [isSessionSheetOpen, setIsSessionSheetOpen] = useState(false);
+  const [isArtifactsSheetOpen, setIsArtifactsSheetOpen] = useState(false);
+  const [isArtifactsDockedOpen, setIsArtifactsDockedOpen] = useState(true);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : SCOUT_SHELL_BREAKPOINTS.desktop,
+  );
+
   const [deepResearchOpen, setDeepResearchOpen] = useState(false);
   const [deepResearchInitialQuery, setDeepResearchInitialQuery] = useState('');
   const [exportTarget, setExportTarget] = useState<ExportTarget | null>(null);
@@ -93,6 +103,59 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   const [docProposalParsed, setDocProposalParsed] = useState<DocumentParseResult | null>(null);
   const [docReviewOpen, setDocReviewOpen] = useState(false);
   const [isNewSessionDialogOpen, setIsNewSessionDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const shellState = useMemo(
+    () =>
+      resolveScoutShellState({
+        viewportWidth,
+        selectedView,
+        activeSessionId,
+        isSessionSheetOpen,
+        isArtifactsSheetOpen,
+        isArtifactsDockedOpen,
+      }),
+    [viewportWidth, selectedView, activeSessionId, isSessionSheetOpen, isArtifactsSheetOpen, isArtifactsDockedOpen],
+  );
+
+  useEffect(() => {
+    if (shellState.shouldCollapseChat) {
+      setIsChatCollapsed(true);
+    }
+  }, [shellState.shouldCollapseChat]);
+
+  useEffect(() => {
+    if (shellState.viewport === 'desktop') {
+      setIsSessionSheetOpen(false);
+      setIsArtifactsSheetOpen(false);
+    }
+  }, [shellState.viewport]);
+
+  useEffect(() => {
+    if (!shellState.hasActiveResearchSession) {
+      setIsArtifactsSheetOpen(false);
+    }
+  }, [shellState.hasActiveResearchSession]);
+
+  const hasShellOverlayOpen = shellState.isSessionSheetVisible || shellState.artifactsVisibility === 'sheet';
+
+  useEffect(() => {
+    if (!hasShellOverlayOpen || typeof document === 'undefined') {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [hasShellOverlayOpen]);
 
   const ctx = useMemo(
     () => ({ userId: user?.uid, encryptionKey }),
@@ -124,17 +187,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     deleteSession: deleteSessionFn,
   } = useSessions({ userId: user?.uid });
 
-  const {
-    knowledgeNodes,
-    refresh: refreshKnowledge,
-  } = useKnowledgeNodes(ctx);
+  const { knowledgeNodes } = useKnowledgeNodes(ctx);
 
   const deepResearch = useDeepResearch({
     userId: user?.uid,
     encryptionKey,
   });
 
-  // Stable refs for values used in Spine event callbacks
   const profileRef = useRef(profile);
   profileRef.current = profile;
   const sourcesRef = useRef(sources);
@@ -142,40 +201,83 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   const digestsRef = useRef(digests);
   digestsRef.current = digests;
 
+  const activeSession = useMemo(
+    () => sessions.find((session) => session.id === activeSessionId) ?? null,
+    [sessions, activeSessionId],
+  );
+
+  useEffect(() => {
+    if (activeSessionId && !activeSession) {
+      setActiveSessionId(null);
+      setIsArtifactsSheetOpen(false);
+    }
+  }, [activeSessionId, activeSession]);
+
   const openExportDialog = useCallback((target: ExportTarget) => {
     setExportTarget(target);
     setExportDialogOpen(true);
   }, []);
 
+  const handleSelectSession = useCallback(
+    (sessionId: string) => {
+      setActiveSessionId(sessionId);
+      setSelectedView('research');
+      if (!shellState.isSessionRailDocked) {
+        setIsSessionSheetOpen(false);
+      }
+    },
+    [shellState.isSessionRailDocked],
+  );
+
+  const handleViewChange = useCallback((view: ScoutTopLevelView) => {
+    setSelectedView(view);
+    setIsSessionSheetOpen(false);
+    if (view !== 'research') {
+      setIsArtifactsSheetOpen(false);
+    }
+  }, []);
+
+  const handleToggleArtifacts = useCallback(() => {
+    if (!activeSessionId || selectedView !== 'research') {
+      return;
+    }
+
+    if (shellState.viewport === 'desktop') {
+      setIsArtifactsDockedOpen((current) => !current);
+      return;
+    }
+
+    setIsSessionSheetOpen(false);
+    setIsArtifactsSheetOpen((current) => !current);
+  }, [activeSessionId, selectedView, shellState.viewport]);
+
   const handleDeepResearchAccepted = useCallback(async (result: DeepResearchResult) => {
     if (!profileRef.current || !encryptionKey) return;
-    
-    // Persist the synthesized node
+
     try {
-      const evidenceSourceIds = result.capturedSources.map((_, i) => `source_temp_${i}`); // Wait, addSourceFn doesn't return the ID cleanly if we map it before adding. Let's wait for adds.
-      
       const addedSourceIds: string[] = [];
       for (const src of result.capturedSources) {
         const added = await addSourceFn(src).catch(() => null);
         if (added) addedSourceIds.push(added.id);
       }
-      
-      await addKnowledgeNode({
-        ...result.synthesisNode,
-        evidence: addedSourceIds,
-        parentSessionId: activeSessionId || undefined
-      }, { userId: user?.uid, encryptionKey });
-      
+
+      await addKnowledgeNode(
+        {
+          ...result.synthesisNode,
+          evidence: addedSourceIds,
+          parentSessionId: activeSessionId || undefined,
+        },
+        { userId: user?.uid, encryptionKey },
+      );
     } catch (err) {
       console.error('Failed to persist deep research node', err);
     }
-    
+
     deepResearch.reset();
     setDeepResearchOpen(false);
-    setActiveView('research');
+    setSelectedView('research');
   }, [encryptionKey, addSourceFn, deepResearch, user?.uid, activeSessionId]);
 
-  // Spine listeners for AI-triggered UI events
   useEffect(() => {
     const unsubDeepResearch = Spine.subscribe('DEEP_RESEARCH_STARTED' as any, (event) => {
       const query = (event.data?.query as string) ?? '';
@@ -185,18 +287,16 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
     const unsubExport = Spine.subscribe('EXPORT_REQUESTED' as any, (event) => {
       const exportType = event.data?.exportType as string;
-      const p = profileRef.current;
       const s = sourcesRef.current;
       const d = digestsRef.current;
       if (exportType === 'full-library') {
-        // Need to load nodes for export
-        loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then(nodes => {
+        loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then((nodes) => {
           openExportDialog({ type: 'full-library', nodes, digests: d, sources: s });
         });
       } else if (exportType === 'sources') {
         openExportDialog({ type: 'sources', sources: s });
       } else if (exportType === 'nodes') {
-        loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then(nodes => {
+        loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then((nodes) => {
           openExportDialog({ type: 'nodes', nodes });
         });
       } else if (exportType === 'digest' && d[0]) {
@@ -205,13 +305,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     });
 
     const unsubDigest = Spine.subscribe('DIGEST_GENERATION_STARTED' as any, () => {
-      setActiveView('digest');
+      setSelectedView('briefings');
     });
 
     const unsubSession = Spine.subscribe('SESSION_STARTED' as any, (event) => {
       if (typeof event.data?.sessionId === 'string') {
         setActiveSessionId(event.data.sessionId);
-        setActiveView('research');
+        setSelectedView('research');
       }
     });
 
@@ -223,17 +323,12 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     };
   }, [openExportDialog, user?.uid, encryptionKey]);
 
-  const activeSession = useMemo(
-    () => sessions.find((s) => s.id === activeSessionId),
-    [sessions, activeSessionId]
-  );
-
   const ai = useModuleAI({
     moduleId: 'scout',
     systemPrompt: getScoutSystemPrompt(activeSession?.topic),
     encryptionKey,
     sessionId: activeSessionId || 'default',
-    persistencePolicy: 'scout-research'
+    persistencePolicy: 'scout-research',
   });
 
   const handleUploadSubmit = useCallback(async (result: DocumentParseResult) => {
@@ -291,7 +386,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to process document. Please try again.');
     }
-  }, [ai, onActionParsed, sendMessage]);
+  }, [sendMessage]);
 
   const handleChatUpload = useCallback(async (file: File) => {
     const validation = validateScoutFile(file);
@@ -322,22 +417,22 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       ai.setMessages([
         {
           role: 'assistant',
-          content: `Research protocol active. I am ${agentAlias}. How can I assist your inquiry?`
-        }
+          content: `Research protocol active. I am ${agentAlias}. How can I assist your inquiry?`,
+        },
       ]);
     }
   }, [profile?.onboardingComplete, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages, agentAlias]);
 
-  const tabs: NeuralTabItem<'research' | 'dashboard' | 'sources' | 'digest'>[] = [
-    { id: 'research', label: 'Inquiry', icon: Search },
-    { id: 'dashboard', label: 'Telemetry', icon: LayoutDashboard },
-    { id: 'sources', label: 'Library', icon: BookMarked },
-    { id: 'digest', label: 'Newsletter', icon: FileText },
+  const tabs: NeuralTabItem<ScoutTopLevelView>[] = [
+    { id: 'research', label: 'Research', icon: Search },
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'sources', label: 'Sources', icon: BookMarked },
+    { id: 'briefings', label: 'Briefings', icon: FileText },
   ];
 
   const handleSendMessageWrapped = useCallback(async (
     content: MessageContent,
-    onAction?: (actionType: string, payload: Record<string, unknown>) => void
+    onAction?: (actionType: string, payload: Record<string, unknown>) => void,
   ) => {
     setErrorMessage(null);
     try {
@@ -362,7 +457,8 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       const session = await createSessionFn(topic);
       if (session) {
         setActiveSessionId(session.id);
-        setActiveView('research');
+        setSelectedView('research');
+        setIsSessionSheetOpen(false);
         if (isDeepResearch) {
           setDeepResearchInitialQuery(topic);
           setDeepResearchOpen(true);
@@ -373,6 +469,179 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     }
   }, [createSessionFn]);
 
+  const renderNewSessionButton = () => (
+    <button
+      type="button"
+      onClick={handleStartSession}
+      className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-lime-500/25 bg-lime-500/12 px-4 py-2.5 text-[12px] font-semibold text-lime-200 transition-colors hover:bg-lime-500/20"
+    >
+      <Plus className="h-4 w-4" aria-hidden="true" />
+      <span>New session</span>
+    </button>
+  );
+
+  const sessionPanel = (
+    <section className="surface-foundation flex min-h-[20rem] min-w-0 flex-col overflow-hidden p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3 border-b border-white/8 pb-4">
+        <div className="min-w-0">
+          <p className="text-chip-soft text-white/45">Sessions</p>
+          <h3 className="mt-1 text-panel-heading text-white">Research history</h3>
+          <p className="mt-1 text-body-secondary">Open a session to continue an inquiry or review the latest status.</p>
+        </div>
+        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/60">
+          {sessions.length}
+        </span>
+      </div>
+
+      <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
+        <button
+          type="button"
+          onClick={handleStartSession}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-lime-500/20 bg-lime-500/10 px-4 py-2.5 text-[12px] font-semibold text-lime-200 transition-colors hover:bg-lime-500/18"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          <span>Start new session</span>
+        </button>
+
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <div className="scrollbar-ghost h-full overflow-y-auto pr-1">
+            {sessionsLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-20 rounded-2xl border border-white/8 bg-white/[0.03] skeleton" />
+                ))}
+              </div>
+            ) : (
+              <ScoutSessionList
+                sessions={sessions}
+                onSelect={handleSelectSession}
+                onDelete={deleteSessionFn}
+                activeSessionId={activeSessionId ?? undefined}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
+  const artifactsPanel = activeSession ? (
+    <ScoutResearchArtifactsPanel
+      session={activeSession}
+      knowledgeNodes={knowledgeNodes}
+      sources={sources}
+      className="h-full"
+    />
+  ) : null;
+
+  const renderResearchView = () => {
+    if (activeSession) {
+      return (
+        <ActiveResearchWorkspace
+          session={activeSession}
+          encryptionKey={encryptionKey}
+          onStartDeepResearch={(query) => {
+            setDeepResearchInitialQuery(query);
+            setDeepResearchOpen(true);
+          }}
+          onSendMessage={(text) => ai.handleSendMessage(text, onActionParsed)}
+          onUpdateSession={updateSessionFn}
+          onAddSource={addSourceFn}
+          knowledgeNodes={knowledgeNodes}
+          sources={sources}
+          messages={ai.messages}
+          isProcessing={ai.isProcessing}
+          aiState={ai.aiState}
+          streamingText={ai.streamingText}
+          error={ai.error}
+          quota={ai.quota}
+          artifactsMode={shellState.artifactsVisibility}
+          artifactsPanel={artifactsPanel}
+          onToggleArtifacts={handleToggleArtifacts}
+        />
+      );
+    }
+
+    return (
+      <section className="surface-foundation-raised flex min-h-[24rem] flex-col items-center justify-center px-6 py-12 text-center sm:px-10">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/8 bg-white/[0.03] text-white/20">
+          <Search className="h-8 w-8" aria-hidden="true" />
+        </div>
+        <div className="mt-6 max-w-md space-y-2">
+          <h3 className="text-section-heading text-white">No active research session</h3>
+          <p className="text-body-secondary">
+            Start a new session or open one from the session drawer to keep the workspace focused on a single inquiry.
+          </p>
+        </div>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          {renderNewSessionButton()}
+          {!shellState.isSessionRailDocked && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsArtifactsSheetOpen(false);
+                setIsSessionSheetOpen(true);
+              }}
+              className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[12px] font-semibold text-white/70 transition-colors hover:border-white/20 hover:text-white"
+            >
+              <PanelLeft className="h-4 w-4" aria-hidden="true" />
+              <span>Open sessions</span>
+            </button>
+          )}
+        </div>
+      </section>
+    );
+  };
+
+  const pageContent = (() => {
+    switch (selectedView) {
+      case 'research':
+        return renderResearchView();
+      case 'sources':
+        return (
+          <SourceLibraryPane
+            sources={sources}
+            isLoading={sourcesLoading}
+            onAddSource={addSourceFn}
+            onUpdateSource={updateSourceFn}
+            onArchiveSource={archiveSourceFn}
+            onExportSources={() => openExportDialog({ type: 'sources', sources })}
+          />
+        );
+      case 'briefings':
+        return (
+          <DigestViewer
+            digests={digests}
+            isLoading={digestsLoading}
+            isGenerating={isGeneratingDigest}
+            error={digestError}
+            profile={profile}
+            onGenerate={() => {
+              loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then((nodes) => {
+                generateDigestFn(profile?.interests.map((interest) => interest.topic) || [], nodes, sources, 'manual');
+              });
+            }}
+            onDelete={deleteDigestFn}
+            onExport={(digest) => openExportDialog({ type: 'digest', digest })}
+          />
+        );
+      case 'overview':
+      default:
+        return (
+          <ScoutDashboard
+            soul={globalSoul}
+            profile={profile}
+            sessions={sessions}
+            activeSessionId={activeSessionId || undefined}
+            onSelectSession={handleSelectSession}
+            onDeleteSession={deleteSessionFn}
+            onRefreshNews={onRefreshNews}
+            isRefreshingNews={isRefreshingNews}
+          />
+        );
+    }
+  })();
+
   return (
     <SingleAgentLayout
       moduleId="scout"
@@ -381,266 +650,287 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       ai={aiProp}
       authMode="scout"
       placeholder="Discuss research strategy..."
+      dockChatBreakpoint={SCOUT_SHELL_BREAKPOINTS.desktop}
       onUploadDocument={handleChatUpload}
       isChatCollapsed={isChatCollapsed}
       onToggleChat={setIsChatCollapsed}
+      contentClassName="min-h-0"
     >
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="px-4 md:px-8 pt-4 md:pt-8 pb-2 md:pb-4">
-          <SectionHeader
-            label="Intelligence Domain"
-            title="Scout Protocol"
-            subtitle="Deep research, fact-checking, and knowledge synthesis."
-            accentClassName="text-lime-400"
-          />
-        </div>
-
-        {errorMessage && (
-          <div className="mx-4 md:mx-8 mb-3 flex items-start gap-3 px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300">
-            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-            <p className="text-xs leading-relaxed">{errorMessage}</p>
-            <button
-              onClick={() => setErrorMessage(null)}
-              className="ml-auto shrink-0 text-red-400/60 hover:text-red-300 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
-
-        <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5">
-          <NeuralTabGroup
-            tabs={tabs}
-            activeTab={activeView}
-            onTabChange={setActiveView}
-            themeColor="lime"
-          />
-        </div>
-
-        <div className="flex-1 overflow-y-auto no-scrollbar pt-4 md:pt-6">
-          {activeView === 'research' ? (
-            <div
-              className={cn(
-                'h-full flex flex-col space-y-6',
-                activeSessionId ? 'p-2 md:p-4' : 'p-8'
-              )}
-            >
-               {activeSessionId ? (
-                 <ActiveResearchWorkspace 
-                   session={sessions.find(s => s.id === activeSessionId)!}
-                   encryptionKey={encryptionKey}
-                   onStartDeepResearch={(query) => {
-                     setDeepResearchInitialQuery(query);
-                     setDeepResearchOpen(true);
-                   }}
-                   onSendMessage={(text) => ai.handleSendMessage(text, onActionParsed)}
-                   onUpdateSession={updateSessionFn}
-                   onAddSource={addSourceFn}
-                   knowledgeNodes={knowledgeNodes}
-                   sources={sources}
-                   messages={ai.messages}
-                   isProcessing={ai.isProcessing}
-                   aiState={ai.aiState}
-                   streamingText={ai.streamingText}
-                   error={ai.error}
-                   quota={ai.quota}
-                 />
-               ) : (
-                 <div className="h-full flex flex-col space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white/40">Research Stream</h3>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={handleStartSession}
-                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 hover:bg-lime-500/20 transition-all text-xs font-bold"
-                        >
-                          <Plus size={16} />
-                          New Session
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex-1 rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center text-center p-12 space-y-6 bg-white/[0.01]">
-                        <div className="w-20 h-20 rounded-full bg-white/[0.02] flex items-center justify-center text-white/10">
-                          <Search size={40} />
-                        </div>
-                        <div className="max-w-xs space-y-2">
-                          <h4 className="text-md font-bold text-white/60">No active inquiry</h4>
-                          <p className="text-xs text-white/30 leading-relaxed">
-                            Select a session from Telemetry or start a new one to begin deep research.
-                          </p>
-                        </div>
-                        <button
-                          onClick={handleStartSession}
-                          className="px-8 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-all text-xs font-black uppercase tracking-widest"
-                        >
-                          Initialize Scout
-                        </button>
-                    </div>
-                 </div>
-               )}
-            </div>
-          ) : activeView === 'sources' ? (
-            <SourceLibraryPane
-              sources={sources}
-              isLoading={sourcesLoading}
-              onAddSource={addSourceFn}
-              onUpdateSource={updateSourceFn}
-              onArchiveSource={archiveSourceFn}
-              onExportSources={() => openExportDialog({ type: 'sources', sources })}
-            />
-          ) : activeView === 'digest' ? (
-            <DigestViewer
-              digests={digests}
-              isLoading={digestsLoading}
-              isGenerating={isGeneratingDigest}
-              error={digestError}
-              profile={profile}
-              onGenerate={() => {
-                loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then(nodes => {
-                  generateDigestFn(profile?.interests.map(i => i.topic) || [], nodes, sources, 'manual');
-                });
-              }}
-              onDelete={deleteDigestFn}
-              onExport={(digest) => openExportDialog({ type: 'digest', digest })}
-            />
-          ) : (
-            <ScoutDashboard 
-              soul={globalSoul} 
-              profile={profile} 
-              sessions={sessions}
-              activeSessionId={activeSessionId || undefined}
-              onSelectSession={(id) => {
-                setActiveSessionId(id);
-                setActiveView('research');
-              }}
-              onDeleteSession={deleteSessionFn}
-              onRefreshNews={onRefreshNews}
-              isRefreshingNews={isRefreshingNews}
-            />
-          )}
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {deepResearchOpen && (
-          <DeepResearchPanel
-            isOpen={deepResearchOpen}
-            onClose={() => setDeepResearchOpen(false)}
-            initialQuery={deepResearchInitialQuery}
-            onResultAccepted={handleDeepResearchAccepted}
-            deepResearch={deepResearch}
-          />
-        )}
-      </AnimatePresence>
-
-      <ExportDialog
-        isOpen={exportDialogOpen}
-        onClose={() => { setExportDialogOpen(false); setExportTarget(null); }}
-        target={exportTarget}
-      />
-      <NeuralModal
-        isOpen={docReviewOpen}
-        onClose={() => {
-          setDocReviewOpen(false);
-          setDocProposal(null);
-          setDocProposalSummary(null);
-          setDocProposalParsed(null);
-        }}
-        title="Document Evidence Detected"
-        themeColor="emerald"
-        maxWidth="2xl"
-      >
-        <div className="space-y-6">
-          {docProposal && (
-            <div className="space-y-4">
-              <p className="text-sm text-white/70">{docProposalSummary ?? 'Document analysis ready for review.'}</p>
-              <div className="bg-black/30 border border-white/10 rounded-xl p-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Analysis Summary</h4>
-                <pre className="text-[12px] text-white/70 whitespace-pre-wrap max-h-60 overflow-y-auto">
-                  {docProposal.summary}
-                </pre>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Text Preview</h4>
-                <pre className="text-[11px] text-white/50 whitespace-pre-wrap max-h-48 overflow-y-auto">
-                  {docProposal.rawTextPreview}
-                  {docProposal.rawTextPreview.length >= 2400 ? '\n[truncated]' : ''}
-                </pre>
-              </div>
-            </div>
-          )}
-          <div className="flex gap-3 pt-4 border-t border-white/10">
-            <button onClick={handleDocProposalCommit} className="flex-1 px-4 py-2 bg-lime-600 hover:bg-lime-500 text-white font-bold text-xs rounded-lg">Apply</button>
-            <button onClick={() => setDocReviewOpen(false)} className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-bold text-xs rounded-lg">Discard</button>
-          </div>
-        </div>
-      </NeuralModal>
-
-      <AnimatePresence>
-        {showUploadZone && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowUploadZone(false); }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-lg bg-[#05050a] border border-white/10 rounded-3xl p-6 shadow-2xl"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-sm font-black uppercase tracking-widest text-lime-300">Evidence Vault</h2>
-                  <p className="text-xs text-white/40 mt-1">Extract research evidence from documents</p>
+      <div className="mx-auto flex w-full min-w-0 max-w-[var(--shell-content-max)] flex-col">
+        <div className="sticky top-0 z-[var(--z-header)] border-b border-white/5 bg-[#020205]/85 backdrop-blur-xl">
+          <div className="px-[var(--shell-page-gutter)] py-4 sm:py-5">
+            <SectionHeader
+              label="Intelligence domain"
+              title="Scout protocol"
+              subtitle="Research, evidence review, and synthesis with explicit workspace, session, and overlay ownership."
+              accentClassName="text-lime-400"
+              action={
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {!shellState.isSessionRailDocked && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsArtifactsSheetOpen(false);
+                        setIsSessionSheetOpen(true);
+                      }}
+                      className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[12px] font-semibold text-white/70 transition-colors hover:border-white/20 hover:text-white"
+                    >
+                      <PanelLeft className="h-4 w-4" aria-hidden="true" />
+                      <span>Sessions</span>
+                    </button>
+                  )}
+                  {renderNewSessionButton()}
                 </div>
+              }
+            />
+
+            {errorMessage && (
+              <div className="mt-4 flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-300">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                <p className="text-xs leading-relaxed">{errorMessage}</p>
                 <button
-                  onClick={() => setShowUploadZone(false)}
-                  className="p-2 rounded-xl hover:bg-white/10 text-white/40 transition-colors"
+                  type="button"
+                  onClick={() => setErrorMessage(null)}
+                  className="ml-auto shrink-0 rounded-xl p-1 text-red-400/70 transition-colors hover:text-red-200"
                 >
-                  <X size={18} />
+                  <X size={14} />
                 </button>
               </div>
-              <ScoutUploadZone
-                onSubmit={handleUploadSubmit}
-                onCancel={() => setShowUploadZone(false)}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            )}
 
-      <NewSessionDialog
-        isOpen={isNewSessionDialogOpen}
-        onClose={() => setIsNewSessionDialogOpen(false)}
-        onSubmit={handleNewSessionSubmit}
-      />
+            <div className="mt-4">
+              <NeuralTabGroup
+                tabs={tabs}
+                activeTab={selectedView}
+                onTabChange={handleViewChange}
+                themeColor="lime"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-4 px-[var(--shell-page-gutter)] py-4 sm:py-5 lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-6">
+          {shellState.isSessionRailDocked && (
+            <aside className="hidden w-[300px] shrink-0 lg:block">
+              <div className="max-h-[calc(100dvh-12rem)]">{sessionPanel}</div>
+            </aside>
+          )}
+
+          <main className="min-w-0 pb-[calc(var(--space-8)+env(safe-area-inset-bottom,0px))] lg:flex-1">
+            {pageContent}
+          </main>
+        </div>
+
+        <AnimatePresence>
+          {shellState.isSessionSheetVisible && (
+            <motion.div
+              key="scout-session-sheet"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[var(--z-overlay)] bg-black/70 backdrop-blur-sm"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setIsSessionSheetOpen(false);
+                }
+              }}
+            >
+              <motion.div
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Research sessions"
+                className="flex h-full w-full max-w-[24rem] flex-col overflow-hidden border-r border-white/10 bg-[#05050a]/95 shadow-2xl"
+              >
+                <div className="flex items-center justify-between border-b border-white/8 px-4 py-4 sm:px-5">
+                  <div>
+                    <p className="text-chip-soft text-lime-300">Scout sessions</p>
+                    <h3 className="mt-1 text-panel-heading text-white">Switch inquiries</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSessionSheetOpen(false)}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] p-2 text-white/70 transition-colors hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1 p-4 sm:p-5">{sessionPanel}</div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {shellState.artifactsVisibility === 'sheet' && artifactsPanel && activeSession && (
+            <motion.div
+              key="scout-artifacts-sheet"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[var(--z-overlay)] bg-black/70 backdrop-blur-sm"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setIsArtifactsSheetOpen(false);
+                }
+              }}
+            >
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                role="dialog"
+                aria-modal="true"
+                aria-label={`${activeSession.topic} artifacts`}
+                className="absolute inset-x-0 bottom-0 flex max-h-[var(--shell-overlay-max-height)] min-h-[22rem] flex-col overflow-hidden rounded-t-[2rem] border-t border-white/10 bg-[#05050a]/95 shadow-2xl"
+              >
+                <div className="flex items-center justify-between border-b border-white/8 px-4 py-4 sm:px-5">
+                  <div>
+                    <p className="text-chip-soft text-lime-300">Session artifacts</p>
+                    <h3 className="mt-1 text-panel-heading text-white">{activeSession.topic}</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsArtifactsSheetOpen(false)}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] p-2 text-white/70 transition-colors hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1 p-4 sm:p-5">{artifactsPanel}</div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {deepResearchOpen && (
+            <DeepResearchPanel
+              isOpen={deepResearchOpen}
+              onClose={() => setDeepResearchOpen(false)}
+              initialQuery={deepResearchInitialQuery}
+              onResultAccepted={handleDeepResearchAccepted}
+              deepResearch={deepResearch}
+            />
+          )}
+        </AnimatePresence>
+
+        <ExportDialog
+          isOpen={exportDialogOpen}
+          onClose={() => {
+            setExportDialogOpen(false);
+            setExportTarget(null);
+          }}
+          target={exportTarget}
+        />
+
+        <NeuralModal
+          isOpen={docReviewOpen}
+          onClose={() => {
+            setDocReviewOpen(false);
+            setDocProposal(null);
+            setDocProposalSummary(null);
+            setDocProposalParsed(null);
+          }}
+          title="Document Evidence Detected"
+          themeColor="emerald"
+          maxWidth="2xl"
+        >
+          <div className="space-y-6">
+            {docProposal && (
+              <div className="space-y-4">
+                <p className="text-sm text-white/70">{docProposalSummary ?? 'Document analysis ready for review.'}</p>
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/50">Analysis Summary</h4>
+                  <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap text-[12px] text-white/70">
+                    {docProposal.summary}
+                  </pre>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/50">Text Preview</h4>
+                  <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap text-[11px] text-white/50">
+                    {docProposal.rawTextPreview}
+                    {docProposal.rawTextPreview.length >= 2400 ? '\n[truncated]' : ''}
+                  </pre>
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3 border-t border-white/10 pt-4">
+              <button onClick={handleDocProposalCommit} className="flex-1 rounded-lg bg-lime-600 px-4 py-2 text-xs font-bold text-white hover:bg-lime-500">Apply</button>
+              <button onClick={() => setDocReviewOpen(false)} className="flex-1 rounded-lg bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10">Discard</button>
+            </div>
+          </div>
+        </NeuralModal>
+
+        <AnimatePresence>
+          {showUploadZone && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) setShowUploadZone(false);
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#05050a] p-6 shadow-2xl"
+              >
+                <div className="mb-6 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-black uppercase tracking-widest text-lime-300">Evidence Vault</h2>
+                    <p className="mt-1 text-xs text-white/40">Extract research evidence from documents</p>
+                  </div>
+                  <button
+                    onClick={() => setShowUploadZone(false)}
+                    className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/10"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <ScoutUploadZone
+                  onSubmit={handleUploadSubmit}
+                  onCancel={() => setShowUploadZone(false)}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <NewSessionDialog
+          isOpen={isNewSessionDialogOpen}
+          onClose={() => setIsNewSessionDialogOpen(false)}
+          onSubmit={handleNewSessionSubmit}
+        />
+      </div>
     </SingleAgentLayout>
   );
 }
 
 export default function ScoutPage() {
-  const { globalSoul } = useGlobalSoul();
   const { user } = useAuth();
-  const { isModuleAccessible } = useVault();
-  const isLocked = !isModuleAccessible('scout');
   const [isRefreshingNews, setIsRefreshingNews] = useState(false);
-  
+
   const [activeProfile, setActiveProfile] = useState<ScoutProfile | null>(null);
 
   const handleRefreshNews = useCallback(async (profile: ScoutProfile | null, encryptionKey: CryptoKey | null) => {
     if (!profile || profile.interests.length === 0 || isRefreshingNews) return;
     setIsRefreshingNews(true);
     try {
-      const topics = profile.interests.map(i => i.topic);
+      const topics = profile.interests.map((interest) => interest.topic);
       const briefs = await generateNewsBriefs(topics, { maxTopics: 5 });
       const now = new Date().toISOString();
       const next: ScoutProfile = {
         ...profile,
         newsBriefs: briefs,
-        updatedAt: now
+        updatedAt: now,
       };
       await saveScoutProfile(next, { userId: user?.uid, encryptionKey });
     } catch (err) {
@@ -656,23 +946,23 @@ export default function ScoutPage() {
       workspaceType="command"
       profileOptions={{
         loadProfile: async (params) => {
-          const p = await loadScoutProfile(params);
-          setActiveProfile(p);
-          return p;
+          const loadedProfile = await loadScoutProfile(params);
+          setActiveProfile(loadedProfile);
+          return loadedProfile;
         },
         saveProfile: saveScoutProfile,
         subscribeProfile: (params, onUpdate) => {
-           return subscribeScoutProfile(params, (p) => {
-              setActiveProfile(p);
-              onUpdate(p);
-           });
+          return subscribeScoutProfile(params, (loadedProfile) => {
+            setActiveProfile(loadedProfile);
+            onUpdate(loadedProfile);
+          });
         },
         refreshProfile: async (params) => {
-          const p = await loadScoutProfile(params);
-          setActiveProfile(p);
-          return p;
+          const loadedProfile = await loadScoutProfile(params);
+          setActiveProfile(loadedProfile);
+          return loadedProfile;
         },
-        syncGuestProfile: syncGuestScoutProfileToUser as any
+        syncGuestProfile: syncGuestScoutProfileToUser as any,
       }}
       renderOnboarding={(props) => (
         <ScoutOnboarding
@@ -680,19 +970,10 @@ export default function ScoutPage() {
           onComplete={props.onComplete}
         />
       )}
-      renderDashboard={({ encryptionKey }) => (
-        <ScoutDashboard 
-          soul={globalSoul} 
-          profile={activeProfile} 
-          isLocked={isLocked}
-          isRefreshingNews={isRefreshingNews}
-          onRefreshNews={() => handleRefreshNews(activeProfile, encryptionKey)}
-        />
-      )}
       renderContent={({ encryptionKey }) => (
-        <ScoutContent 
-          profile={activeProfile} 
-          encryptionKey={encryptionKey} 
+        <ScoutContent
+          profile={activeProfile}
+          encryptionKey={encryptionKey}
           isRefreshingNews={isRefreshingNews}
           onRefreshNews={() => handleRefreshNews(activeProfile, encryptionKey)}
         />

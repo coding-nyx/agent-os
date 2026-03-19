@@ -12,6 +12,7 @@ import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import type { AuthMode } from '@/core/components/UnifiedAuthModal';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { SpineMobileBar } from '@/core/components/SpineMobileBar';
+import { ModuleSwitcherPopover } from '@/core/components/ModuleSwitcherPopover';
 
 interface SingleAgentLayoutProps {
   moduleId: string;
@@ -33,6 +34,8 @@ interface SingleAgentLayoutProps {
   authMode?: AuthMode;
   chatWidth?: string;
   mobileBreakpoint?: number;
+  dockChatBreakpoint?: number;
+  contentClassName?: string;
   /** Optional secondary action button (e.g. FAB) to show next to chat trigger */
   primaryAction?: React.ReactNode;
   onUploadDocument?: (file: File) => void;
@@ -51,6 +54,8 @@ export function SingleAgentLayout({
   authMode,
   chatWidth = 'clamp(320px, 32vw, 520px)',
   mobileBreakpoint = 768,
+  dockChatBreakpoint = mobileBreakpoint,
+  contentClassName,
   primaryAction,
   onUploadDocument,
   isChatCollapsed: externalIsChatCollapsed,
@@ -58,33 +63,45 @@ export function SingleAgentLayout({
 }: SingleAgentLayoutProps) {
   const navigate = useNavigate();
   const [internalIsChatCollapsed, setInternalIsChatCollapsed] = useState(true);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : dockChatBreakpoint
+  );
   
   const isChatCollapsed = externalIsChatCollapsed ?? internalIsChatCollapsed;
-  const toggleChat = (val: boolean) => {
+  const toggleChat = useCallback((val: boolean) => {
     if (onToggleChat) onToggleChat(val);
     else setInternalIsChatCollapsed(val);
-  };
+  }, [onToggleChat]);
 
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < mobileBreakpoint : false
-  );
+  const canDockChat = viewportWidth >= dockChatBreakpoint;
   const setChatOverlayOpen = useUIStore((s) => s.setChatOverlayOpen);
   const setActiveLayout = useUIStore((s) => s.setActiveLayout);
 
   // Sync overlay state to global store so NexusOverlay FAB hides
-  const isMobileChatOpen = isMobile && !isChatCollapsed;
+  const isOverlayChatOpen = !canDockChat && !isChatCollapsed;
   useEffect(() => {
-    setChatOverlayOpen(isMobileChatOpen);
+    setChatOverlayOpen(isOverlayChatOpen);
     return () => setChatOverlayOpen(false);
-  }, [isMobileChatOpen, setChatOverlayOpen]);
+  }, [isOverlayChatOpen, setChatOverlayOpen]);
 
   // Sync layout mode for dynamic positioning
   useEffect(() => {
-    if (isMobileChatOpen) setActiveLayout('overlay');
-    else if (!isMobile && !isChatCollapsed) setActiveLayout('split');
+    if (isOverlayChatOpen) setActiveLayout('overlay');
+    else if (canDockChat && !isChatCollapsed) setActiveLayout('split');
     else setActiveLayout('full');
     return () => setActiveLayout('full');
-  }, [isMobile, isChatCollapsed, isMobileChatOpen, setActiveLayout]);
+  }, [canDockChat, isChatCollapsed, isOverlayChatOpen, setActiveLayout]);
+
+  useEffect(() => {
+    if (!isOverlayChatOpen || typeof document === 'undefined') return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOverlayChatOpen]);
 
   const handleRouteConfirm = useCallback(() => {
     if (!ai.routingSuggestion) return;
@@ -101,55 +118,72 @@ export function SingleAgentLayout({
 
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < mobileBreakpoint;
-      setIsMobile((prev) => {
+      const width = window.innerWidth;
+      const mobile = width < mobileBreakpoint;
+      setViewportWidth((prevWidth) => {
         // Only auto-collapse if we just transitioned from desktop to mobile mode.
         // This prevents the chat from closing on mobile when the virtual keyboard 
         // triggers a window resize event.
-        if (mobile && !prev) {
+        if (mobile && prevWidth >= mobileBreakpoint) {
           toggleChat(true);
         }
-        return mobile;
+        return width;
       });
     };
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [mobileBreakpoint]);
+  }, [mobileBreakpoint, toggleChat]);
 
   const themeClasses: Record<NeuralThemeColor, { 
     btnBg: string, 
     btnBorder: string, 
     btnText: string,
-    sidebarBorder: string
+    sidebarBorder: string,
+    indicatorBg: string
   }> = {
-    lime: { btnBg: 'bg-lime-600/20', btnBorder: 'border-lime-500/20', btnText: 'text-lime-400', sidebarBorder: 'border-lime-500/10' },
-    sky: { btnBg: 'bg-sky-600/20', btnBorder: 'border-sky-500/20', btnText: 'text-sky-400', sidebarBorder: 'border-sky-500/10' },
-    orange: { btnBg: 'bg-orange-600/20', btnBorder: 'border-orange-500/20', btnText: 'text-orange-400', sidebarBorder: 'border-orange-500/10' },
-    cyan: { btnBg: 'bg-cyan-600/20', btnBorder: 'border-cyan-500/20', btnText: 'text-cyan-400', sidebarBorder: 'border-cyan-500/10' },
-    purple: { btnBg: 'bg-purple-600/20', btnBorder: 'border-purple-500/20', btnText: 'text-purple-400', sidebarBorder: 'border-purple-500/10' },
-    rose: { btnBg: 'bg-rose-600/20', btnBorder: 'border-rose-500/20', btnText: 'text-rose-400', sidebarBorder: 'border-rose-500/10' },
-    amber: { btnBg: 'bg-amber-600/20', btnBorder: 'border-amber-500/20', btnText: 'text-amber-400', sidebarBorder: 'border-amber-500/10' },
-    indigo: { btnBg: 'bg-indigo-600/20', btnBorder: 'border-indigo-500/20', btnText: 'text-indigo-400', sidebarBorder: 'border-indigo-500/10' },
-    emerald: { btnBg: 'bg-emerald-600/20', btnBorder: 'border-emerald-500/20', btnText: 'text-emerald-400', sidebarBorder: 'border-emerald-500/10' },
-    white: { btnBg: 'bg-white/10', btnBorder: 'border-white/20', btnText: 'text-white/60', sidebarBorder: 'border-white/10' }
+    lime: { btnBg: 'bg-lime-600/20', btnBorder: 'border-lime-500/20', btnText: 'text-lime-400', sidebarBorder: 'border-lime-500/10', indicatorBg: 'bg-lime-400' },
+    sky: { btnBg: 'bg-sky-600/20', btnBorder: 'border-sky-500/20', btnText: 'text-sky-400', sidebarBorder: 'border-sky-500/10', indicatorBg: 'bg-sky-400' },
+    orange: { btnBg: 'bg-orange-600/20', btnBorder: 'border-orange-500/20', btnText: 'text-orange-400', sidebarBorder: 'border-orange-500/10', indicatorBg: 'bg-orange-400' },
+    cyan: { btnBg: 'bg-cyan-600/20', btnBorder: 'border-cyan-500/20', btnText: 'text-cyan-400', sidebarBorder: 'border-cyan-500/10', indicatorBg: 'bg-cyan-400' },
+    purple: { btnBg: 'bg-purple-600/20', btnBorder: 'border-purple-500/20', btnText: 'text-purple-400', sidebarBorder: 'border-purple-500/10', indicatorBg: 'bg-purple-400' },
+    rose: { btnBg: 'bg-rose-600/20', btnBorder: 'border-rose-500/20', btnText: 'text-rose-400', sidebarBorder: 'border-rose-500/10', indicatorBg: 'bg-rose-400' },
+    amber: { btnBg: 'bg-amber-600/20', btnBorder: 'border-amber-500/20', btnText: 'text-amber-400', sidebarBorder: 'border-amber-500/10', indicatorBg: 'bg-amber-400' },
+    indigo: { btnBg: 'bg-indigo-600/20', btnBorder: 'border-indigo-500/20', btnText: 'text-indigo-400', sidebarBorder: 'border-indigo-500/10', indicatorBg: 'bg-indigo-400' },
+    emerald: { btnBg: 'bg-emerald-600/20', btnBorder: 'border-emerald-500/20', btnText: 'text-emerald-400', sidebarBorder: 'border-emerald-500/10', indicatorBg: 'bg-emerald-400' },
+    white: { btnBg: 'bg-white/10', btnBorder: 'border-white/20', btnText: 'text-white/60', sidebarBorder: 'border-white/10', indicatorBg: 'bg-white' }
   };
 
   const currentTheme = themeClasses[themeColor] || themeClasses.white;
 
   const moduleBottomBarHeight = useUIStore(s => s.moduleBottomBarHeight);
   const hideGlobalFAB = useUIStore(s => s.hideGlobalFAB);
+  const floatingBottom = `calc(${Math.max(24, moduleBottomBarHeight + 24)}px + env(safe-area-inset-bottom, 0px))`;
+  const floatingInlineEnd = 'calc(var(--space-4) + env(safe-area-inset-right, 0px))';
 
   return (
     <div
-      className="h-full flex overflow-hidden relative"
+      className="relative flex h-full w-full min-w-0 max-w-full overflow-hidden"
       style={{ '--spine-sidebar-width': isChatCollapsed ? '0px' : chatWidth } as React.CSSProperties}
     >
+      {/* Mobile module switcher */}
+      {!canDockChat && (
+        <div
+          className="fixed z-[var(--z-fab)] md:hidden"
+          style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+            right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
+          }}
+        >
+          <ModuleSwitcherPopover currentModuleId={moduleId} />
+        </div>
+      )}
+
       {/* ── Mobile chat trigger (floating circular FAB) ── */}
-      {isMobile && isChatCollapsed && (
+      {!canDockChat && isChatCollapsed && (
         <div 
-          className="fixed right-4 flex flex-col items-end gap-3 z-[var(--z-fab)] transition-all duration-300"
-          style={{ bottom: `calc(${Math.max(24, moduleBottomBarHeight + 24)}px + env(safe-area-inset-bottom, 0px))` }}
+          className="fixed z-[var(--z-fab)] flex flex-col items-end gap-3 transition-all duration-300"
+          style={{ right: floatingInlineEnd, bottom: floatingBottom }}
         >
           {primaryAction && (
             <div className="shrink-0 flex items-center justify-center">
@@ -173,14 +207,14 @@ export function SingleAgentLayout({
           >
             <MessageSquare className="w-6 h-6" />
             <div className={cn("absolute top-3 right-3 w-2.5 h-2.5 rounded-full border-2 border-black animate-pulse",
-              themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
+              currentTheme.indicatorBg
             )} />
           </motion.button>
         </div>
       )}
 
       {/* ── Open Chat Floating Button (Desktop) ── */}
-      {!isMobile && isChatCollapsed && (
+      {canDockChat && isChatCollapsed && (
         <motion.button
           initial={{ opacity: 0, scale: 0.9, x: 20 }}
           animate={{ opacity: 1, scale: 1, x: 0 }}
@@ -188,18 +222,18 @@ export function SingleAgentLayout({
           whileTap={{ scale: 0.95 }}
           onClick={() => toggleChat(false)}
           className={cn(
-            'z-[var(--z-fab)] fixed right-4 md:right-3 lg:right-6 border backdrop-blur-xl shadow-2xl transition-all duration-300 rounded-2xl font-bold uppercase tracking-[0.1em]',
+            'z-[var(--z-fab)] fixed border backdrop-blur-xl shadow-2xl transition-all duration-300 rounded-2xl font-semibold tracking-[0.04em]',
             currentTheme.btnBg,
             currentTheme.btnBorder,
             currentTheme.btnText
           )}
-          style={{ bottom: `calc(${Math.max(24, moduleBottomBarHeight + 24)}px + env(safe-area-inset-bottom, 0px))` }}
+          style={{ right: floatingInlineEnd, bottom: floatingBottom }}
         >
-          <div className="hidden lg:flex items-center gap-3 px-5 py-3 text-[10px]">
+          <div className="hidden lg:flex items-center gap-3 px-5 py-3 text-[12px]">
             <MessageSquare className="w-4 h-4" />
             <span>Chat {agentName}</span>
-            <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", 
-              themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
+            <div className={cn("h-1.5 w-1.5 rounded-full animate-pulse", 
+              currentTheme.indicatorBg
             )} />
           </div>
           <div className="flex lg:hidden items-center justify-center w-10 h-10">
@@ -209,17 +243,19 @@ export function SingleAgentLayout({
       )}
 
       {/* ── Main Dashboard Content ── */}
-      <div className="flex-1 min-w-0 h-full flex flex-col relative overflow-hidden bg-black/5">
+      <div className="relative flex h-full flex-1 min-w-0 max-w-full flex-col overflow-hidden bg-black/5">
         <div className={cn(
-          "flex-1 overflow-y-auto no-scrollbar scroll-smooth flex flex-col",
-          isMobile && isChatCollapsed && !hideGlobalFAB && "pb-24"
+          "flex min-h-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden no-scrollbar scroll-smooth",
+          !canDockChat && isChatCollapsed && !hideGlobalFAB && "pb-24"
         )}>
-          {children}
+          <div className={cn("flex w-full min-w-0 flex-1 flex-col", contentClassName)}>
+            {children}
+          </div>
         </div>
       </div>
 
       {/* ── Agent Sidebar (Desktop) ── */}
-      {!isMobile && (
+      {canDockChat && (
         <motion.aside
           initial={false}
           animate={{
@@ -229,7 +265,7 @@ export function SingleAgentLayout({
           }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className={cn(
-            "h-full border-l bg-black/20 backdrop-blur-md flex flex-col relative shrink-0",
+            "relative flex h-full shrink-0 flex-col border-l bg-black/20 backdrop-blur-md",
             currentTheme.sidebarBorder
           )}
         >
@@ -272,8 +308,8 @@ export function SingleAgentLayout({
         </motion.aside>
       )}
 
-      {/* ── Agent Overlay (Mobile) — portaled to body to escape stacking context ── */}
-      {isMobile && createPortal(
+      {/* ── Agent Overlay (Mobile/Tablet) — portaled to body to escape stacking context ── */}
+      {!canDockChat && createPortal(
         <AnimatePresence>
           {!isChatCollapsed && (
             <motion.div
@@ -282,49 +318,61 @@ export function SingleAgentLayout({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed inset-0 z-[var(--z-modal)] bg-[#020205] flex flex-col h-[100dvh]"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${agentName} chat`}
+              className="fixed inset-0 z-[var(--z-modal)] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[#020205]/95 backdrop-blur-xl"
             >
-              <div className={cn("relative flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b", currentTheme.sidebarBorder)}>
-                <SpineMobileBar accentColor={undefined} />
-                <div className="flex items-center gap-3">
-                  <div className={cn("w-2 h-2 rounded-full animate-pulse", 
-                    themeColor === 'white' ? 'bg-white' : `bg-${themeColor}-400`
-                  )} />
-                  <span className={cn("font-bold text-xs uppercase tracking-[0.12em] font-display", currentTheme.btnText)}>
-                    {agentName} Resonance
-                  </span>
-                </div>
-                <button
-                  onClick={() => toggleChat(true)}
-                  className={cn(
-                    "p-2 rounded-xl border transition-all",
-                    currentTheme.btnBg,
-                    currentTheme.btnBorder,
-                    currentTheme.btnText
-                  )}
+              <div className={cn("shell-overlay-panel relative flex min-h-0 flex-1 flex-col", currentTheme.sidebarBorder)}>
+                <div
+                  className={cn("relative flex items-center justify-between border-b px-4 py-3 sm:px-6 sm:py-4", currentTheme.sidebarBorder)}
+                  style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + var(--space-3))' }}
                 >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="flex-1 min-h-0 flex flex-col relative">
-                <NexusChat
-                  moduleId={moduleId}
-                  ai={ai}
-                  agentName={agentName}
-                  themeColor={themeColor as any}
-                  placeholder={placeholder}
-                  authMode={authMode}
-                  showInternalSignals={false}
-                  onClearHistory={ai.clearSession}
-                />
-                {/* Routing suggestion — inline below chat input */}
-                <RoutingSuggestion
-                  target={ai.routingSuggestion?.target || 'agnes'}
-                  reason={ai.routingSuggestion?.reason}
-                  onConfirm={handleRouteConfirm}
-                  onDismiss={handleRouteDismiss}
-                  visible={ai.routingSuggestion !== undefined && ai.routingSuggestion !== null}
-                />
+                  <SpineMobileBar accentColor={undefined} />
+                  <div className="flex items-center gap-3">
+                    <div className={cn("h-2 w-2 rounded-full animate-pulse", 
+                      currentTheme.indicatorBg
+                    )} />
+                    <span className={cn("font-display text-[12px] font-semibold tracking-[0.04em]", currentTheme.btnText)}>
+                      {agentName} Resonance
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => toggleChat(true)}
+                    className={cn(
+                      "p-2 rounded-xl border transition-all",
+                      currentTheme.btnBg,
+                      currentTheme.btnBorder,
+                      currentTheme.btnText
+                    )}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div
+                  className="flex min-h-0 flex-1 flex-col"
+                  style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+                >
+                  <NexusChat
+                    moduleId={moduleId}
+                    ai={ai}
+                    agentName={agentName}
+                    themeColor={themeColor as any}
+                    placeholder={placeholder}
+                    authMode={authMode}
+                    showInternalSignals={false}
+                    onClearHistory={ai.clearSession}
+                    onUploadDocument={onUploadDocument}
+                  />
+                  {/* Routing suggestion — inline below chat input */}
+                  <RoutingSuggestion
+                    target={ai.routingSuggestion?.target || 'agnes'}
+                    reason={ai.routingSuggestion?.reason}
+                    onConfirm={handleRouteConfirm}
+                    onDismiss={handleRouteDismiss}
+                    visible={ai.routingSuggestion !== undefined && ai.routingSuggestion !== null}
+                  />
+                </div>
               </div>
             </motion.div>
           )}

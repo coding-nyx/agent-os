@@ -178,8 +178,9 @@ export function NeuralTabGroup<T extends string = string>({
   return (
     <nav
       role="tablist"
+      aria-orientation="horizontal"
       className={cn(
-        "inline-flex items-center gap-1 rounded-2xl p-1 overflow-x-auto no-scrollbar max-w-full transition-all duration-500",
+        "flex w-full min-w-0 max-w-full items-center gap-1.5 overflow-x-auto overscroll-x-contain rounded-2xl p-1.5 no-scrollbar transition-[background-color,border-color,box-shadow] duration-300",
         variant === 'pill' && "bg-black/20 backdrop-blur-md border border-white/[0.05] shadow-inner",
         className
       )}
@@ -203,8 +204,8 @@ export function NeuralTabGroup<T extends string = string>({
             onClick={() => onTabChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, tab.id)}
             className={cn(
-              'relative flex items-center gap-1.5 md:gap-2 px-3.5 md:px-4 py-2 md:py-2.5 rounded-xl text-[10px] md:text-[11px] font-bold uppercase tracking-[0.08em] md:tracking-[0.12em] transition-all duration-500 whitespace-nowrap shrink-0',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
+              'relative flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-[12px] md:text-[13px] font-semibold tracking-[0.02em] whitespace-nowrap transition-[color,background-color,opacity,transform] duration-300',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
               isActive ? theme.activeText : 'text-white/30 hover:text-white/60 hover:bg-white/[0.02]',
               isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'
             )}
@@ -213,13 +214,13 @@ export function NeuralTabGroup<T extends string = string>({
               textShadow: isActive ? `0 0 15px ${theme.underline}30` : 'none'
             } as React.CSSProperties}
           >
-            {Icon && <Icon className={cn("w-3 md:w-3.5 h-3 md:h-3.5", isActive ? theme.activeText : "text-white/40")} aria-hidden />}
+            {Icon && <Icon className={cn("h-4 w-4 md:h-[1.125rem] md:w-[1.125rem]", isActive ? theme.activeText : "text-white/40")} aria-hidden />}
             <span>{tab.label}</span>
 
             {/* Badges */}
             {tab.badge !== undefined && (
               <span className={cn(
-                "ml-0.5 md:ml-1 inline-flex items-center justify-center min-w-[14px] md:min-w-[18px] h-[14px] md:h-[18px] rounded-full border text-[8px] md:text-[9px] font-bold tabular-nums px-1 md:px-1.5",
+                "ml-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full border px-1.5 text-[11px] font-semibold tabular-nums",
                 tab.badgeVariant && tab.badgeVariant !== 'default' 
                   ? VARIANT_BADGE_COLORS[tab.badgeVariant] 
                   : cn(theme.badgeBg, theme.badgeBorder, theme.badgeText)

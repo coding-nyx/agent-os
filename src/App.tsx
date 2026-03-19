@@ -10,6 +10,7 @@ import { AppErrorBoundary } from './core/components/AppErrorBoundary';
 import { ProtectedRoute } from './core/components/ProtectedRoute';
 import { AppVaultGate } from './core/components/AppVaultGate';
 import { NexusOverlay } from './core/components/NexusOverlay';
+import { GlobalFAB } from './core/components/GlobalFAB';
 import { NeuralDraftPanel } from './core/components/NeuralDraftPanel';
 import { SpineOverlay } from './core/components/SpineOverlay';
 import { SpineToastProvider } from './core/components/SpineToast';
@@ -122,6 +123,7 @@ function AppContent() {
       <IntelligencePipelineMount />
       <BridgeMount />
       <NexusOverlay />
+      <GlobalFAB />
       <SpineOverlay />
       <NeuralDraftPanel />
       <SpineToastProvider />

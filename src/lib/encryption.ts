@@ -132,9 +132,24 @@ export async function encryptWithKey(text: string, key: CryptoKey): Promise<Omit
 }
 
 export async function decryptWithKey(data: { ciphertext: string; iv: string }, key: CryptoKey): Promise<string> {
+  if (!key) {
+    throw new Error("Decryption failed: No encryption key provided.");
+  }
+  if (!data.ciphertext || !data.iv) {
+    throw new Error("Decryption failed: Missing ciphertext or IV.");
+  }
+
   try {
     const iv = base64ToUint8Array(data.iv);
     const ciphertext = base64ToUint8Array(data.ciphertext);
+    const ciphertextBuffer = ciphertext.buffer.slice(
+      ciphertext.byteOffset,
+      ciphertext.byteOffset + ciphertext.byteLength,
+    ) as ArrayBuffer;
+
+    if (iv.length !== 12) {
+      console.warn(`[Encryption] Warning: IV length is ${iv.length} bytes (expected 12 for AES-GCM). Base64 string was ${data.iv.length} chars.`);
+    }
 
     const decryptedContent = await window.crypto.subtle.decrypt(
       {
@@ -142,13 +157,31 @@ export async function decryptWithKey(data: { ciphertext: string; iv: string }, k
         iv: iv 
       } as AesGcmParams,
       key,
-      ciphertext as any
+      ciphertextBuffer
     );
 
     const dec = new TextDecoder();
     return dec.decode(decryptedContent);
   } catch (error) {
-    console.error("Decryption failed:", error);
+    const errorMsg = error instanceof Error ? (error.message || error.name) : String(error);
+    const keyAlgo = (key as any).algorithm?.name || 'unknown';
+    const keyUsages = (key as any).usages?.join(',') || 'none';
+    
+    // Diagnostic snippet (first 12 chars)
+    const ivSnippet = data.iv.slice(0, 12);
+    const ctSnippet = data.ciphertext.slice(0, 12);
+    
+    const ivBytes = base64ToUint8Array(data.iv).length;
+    const ctBytes = base64ToUint8Array(data.ciphertext).length;
+
+    console.error(
+      `[Encryption] Decryption failed (${errorMsg}). ` +
+      `Algo: ${keyAlgo}, Usages: [${keyUsages}], ` +
+      `Data: ${ctSnippet}... (${ctBytes} bytes), ` +
+      `IV: ${ivSnippet}... (${ivBytes} bytes)`
+    );
+    
+    // Maintain the stable error message for the Vault UI logic
     throw new Error("Invalid Vault Password.");
   }
 }

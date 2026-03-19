@@ -137,14 +137,16 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         if (snap && snap.salt) {
             salt = base64ToUint8Array(snap.salt);
             canary = snap.canary ?? null;
+        } else if (snap) {
+            // Document exists but no salt? This is a corruption state.
+            // Do NOT generate a new salt as it will orphan all existing data.
+            console.error('[Vault] Vault document exists but is missing salt field. Recovery required.');
+            throw new Error("Vault corruption detected. Please contact support.");
         } else {
+            // Truly new user - generate first salt
             salt = window.crypto.getRandomValues(new Uint8Array(16));
             const saltBase64 = window.btoa(String.fromCharCode(...salt));
-            if (snap) {
-                await dataLayer.updateDocument(VAULT_COLLECTION, user.uid, { salt: saltBase64 });
-            } else {
-                await dataLayer.setDocument(VAULT_COLLECTION, user.uid, { salt: saltBase64 });
-            }
+            await dataLayer.setDocument(VAULT_COLLECTION, user.uid, { salt: saltBase64 });
         }
 
         const key = await deriveKey(password, salt);

@@ -16,6 +16,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { cn } from '@/lib/utils';
+import { NeuralModal } from '@/core/components/NeuralModal';
+import { ConfirmDialog } from '@/core/components/ConfirmDialog';
 import { JournalVaultGate } from './JournalVaultGate';
 import { JournalEntryEditor } from './JournalEntryEditor';
 import { JournalHistoryList } from './JournalHistoryList';
@@ -27,6 +29,7 @@ import {
 } from '../../services/journal-service';
 import type { AtlasProfile } from '../../services/atlas-profile-service';
 import type { JournalEntry } from '@/lib/types';
+import type { JournalSaveFeedback } from './JournalEntryEditor';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,6 +47,20 @@ export interface JournalTabProps {
 
 function todayDateString(): string {
   return new Date().toISOString().split('T')[0];
+}
+
+function formatFullDate(dateStr: string): string {
+  try {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
 }
 
 /** Compute reflection streak: consecutive days (including today) with entries. */
@@ -88,20 +105,23 @@ export function JournalTab({
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
   const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState<JournalSaveFeedback | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [isLoadingEntries, setIsLoadingEntries] = useState(true);
+  const [isRegisteredModalOpen, setIsRegisteredModalOpen] = useState(false);
+  const [registeredQuote, setRegisteredQuote] = useState<string>('');
+  const [registeredEntryDateLabel, setRegisteredEntryDateLabel] = useState<string>('');
+  const [isOverwriteConfirmOpen, setIsOverwriteConfirmOpen] = useState(false);
+  const [pendingOverwriteEntry, setPendingOverwriteEntry] = useState<JournalEntry | null>(null);
+  const skipOverwriteConfirmRef = useRef(false);
 
   // Track if we've already requested an AI prompt this session.
   const promptRequestedRef = useRef(false);
 
-  // ── Vault gate ──────────────────────────────────────────────────────────────
-  if (isLocked || !encryptionKey || !userId) {
-    return <JournalVaultGate />;
-  }
-
   // ── Load today's entry on mount ─────────────────────────────────────────────
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
+    if (isLocked || !encryptionKey || !userId) return;
+
     let cancelled = false;
     const today = todayDateString();
 
@@ -117,12 +137,15 @@ export function JournalTab({
 
     return () => { cancelled = true; };
   // userId and encryptionKey are stable references within a session
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, encryptionKey, isLocked]);
 
   // ── Subscribe to entries list ───────────────────────────────────────────────
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
+    if (isLocked || !encryptionKey || !userId) {
+      setIsLoadingEntries(false);
+      return () => {};
+    }
+
     setIsLoadingEntries(true);
     const unsubscribe = subscribeJournalEntries({
       userId,
@@ -133,11 +156,9 @@ export function JournalTab({
       },
     });
     return unsubscribe;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, encryptionKey, isLocked]);
 
   // ── AI prompt: request on freeform view switch ──────────────────────────────
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (activeView === 'freeform' && !promptRequestedRef.current) {
       promptRequestedRef.current = true;
@@ -156,18 +177,46 @@ export function JournalTab({
       return () => clearTimeout(timer);
     }
     return undefined;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeView]);
+  }, [activeView, onSendMessage]);
+
+  // ── Vault gate ──────────────────────────────────────────────────────────────
+  if (isLocked || !encryptionKey || !userId) {
+    return <JournalVaultGate />;
+  }
 
   // ── Handle save ─────────────────────────────────────────────────────────────
   const handleSave = useCallback(
     async (updated: JournalEntry) => {
       if (!userId || !encryptionKey) return;
+
+      // The journal is stored 1 entry per day (doc id is YYYY-MM-DD).
+      // If an entry already exists for this date, saving again overwrites it.
+      if (skipOverwriteConfirmRef.current) {
+        skipOverwriteConfirmRef.current = false;
+      } else {
+        const existingForDay = entries.some((e) => e.id === updated.id);
+        const isTodayEditor = activeView === 'today' || activeView === 'freeform';
+        if (existingForDay && isTodayEditor && updated.date === todayDateString()) {
+          setPendingOverwriteEntry(updated);
+          setIsOverwriteConfirmOpen(true);
+          return;
+        }
+      }
+
       setIsSaving(true);
+      setSaveFeedback(null);
+      setIsRegisteredModalOpen(false);
 
       try {
         const isNew = !entries.find((e) => e.id === updated.id);
-        await saveJournalEntry(updated, { userId, encryptionKey });
+        const saved = await saveJournalEntry(updated, { userId, encryptionKey });
+        if (!saved) {
+          setSaveFeedback({
+            tone: 'warning',
+            message: 'Nothing to save.',
+          });
+          return;
+        }
 
         // Update local today entry if it's today's date
         if (updated.date === todayDateString()) {
@@ -176,6 +225,17 @@ export function JournalTab({
 
         const streak = computeStreak([updated, ...entries.filter((e) => e.id !== updated.id)]);
 
+        // Optimistically update in-memory history so the UI reflects creation immediately.
+        setEntries((prev) => {
+          const filtered = prev.filter((e) => e.id !== updated.id);
+          const next = [updated, ...filtered];
+          next.sort((a, b) => b.date.localeCompare(a.date));
+          return next;
+        });
+        if (selectedEntry?.id === updated.id) {
+          setSelectedEntry(updated);
+        }
+
         Spine.publish({
           type: isNew ? 'JOURNAL_ENTRY_CREATED' : 'JOURNAL_ENTRY_UPDATED',
           source: 'atlas-journal',
@@ -183,14 +243,46 @@ export function JournalTab({
           priority: 'info',
           data: { date: updated.date, reflectionStreak: streak },
         });
+
+        // UX: clear editor content + navigate to history + show modal.
+        if (updated.date === todayDateString()) {
+          // JournalEntryEditor keeps local draft unless entry.id changes; switching tabs
+          // immediately unmounts it, so the user sees cleared state after we return later.
+          setTodayEntry(createEmptyJournalEntry(todayDateString()));
+        }
+        setSelectedEntry(null);
+        setActiveView('history');
+        const quotes = [
+          'Small honesty, big momentum.',
+          'What you name becomes what you can work with.',
+          'Reflection is training for clarity.',
+          'You showed up for yourself today.',
+        ];
+        const pick = quotes[Math.floor(Math.random() * quotes.length)] ?? quotes[0];
+        setRegisteredQuote(pick);
+        setRegisteredEntryDateLabel(formatFullDate(updated.date));
+        setIsRegisteredModalOpen(true);
       } catch (err) {
         console.error('[JournalTab] Failed to save journal entry:', err);
+        setSaveFeedback({
+          tone: 'error',
+          message: 'Save failed. Try again.',
+        });
       } finally {
         setIsSaving(false);
       }
     },
-    [userId, encryptionKey, entries],
+    [userId, encryptionKey, entries, selectedEntry, activeView],
   );
+
+  const handleConfirmOverwrite = useCallback(async () => {
+    if (!pendingOverwriteEntry) return;
+    setIsOverwriteConfirmOpen(false);
+    const entryToSave = pendingOverwriteEntry;
+    setPendingOverwriteEntry(null);
+    skipOverwriteConfirmRef.current = true;
+    await handleSave(entryToSave);
+  }, [pendingOverwriteEntry, handleSave]);
 
   // ── Regenerate prompt ────────────────────────────────────────────────────────
   const handleRegeneratePrompt = useCallback(() => {
@@ -209,6 +301,18 @@ export function JournalTab({
     // No cleanup needed here since this is a one-shot callback.
     void timer;
   }, [onSendMessage]);
+
+  // Clear feedback after a short delay
+  const saveFeedbackTimeoutId = useRef<number | null>(null);
+  useEffect(() => {
+    if (!saveFeedback) return;
+    if (saveFeedbackTimeoutId.current) clearTimeout(saveFeedbackTimeoutId.current);
+    saveFeedbackTimeoutId.current = window.setTimeout(() => setSaveFeedback(null), 2200);
+    return () => {
+      if (saveFeedbackTimeoutId.current) clearTimeout(saveFeedbackTimeoutId.current);
+      saveFeedbackTimeoutId.current = null;
+    };
+  }, [saveFeedback]);
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const habits = profile?.habits ?? [];
@@ -271,6 +375,7 @@ export function JournalTab({
                 aiPrompt={null}
                 isLoadingPrompt={false}
                 isSaving={isSaving}
+                saveFeedback={saveFeedback}
                 onSave={handleSave}
                 onRegeneratePrompt={handleRegeneratePrompt}
               />
@@ -293,6 +398,7 @@ export function JournalTab({
                 aiPrompt={aiPrompt}
                 isLoadingPrompt={isLoadingPrompt}
                 isSaving={isSaving}
+                saveFeedback={saveFeedback}
                 onSave={handleSave}
                 onRegeneratePrompt={handleRegeneratePrompt}
               />
@@ -342,6 +448,7 @@ export function JournalTab({
                 aiPrompt={null}
                 isLoadingPrompt={false}
                 isSaving={isSaving}
+                saveFeedback={saveFeedback}
                 onSave={handleSave}
                 onRegeneratePrompt={handleRegeneratePrompt}
               />
@@ -349,6 +456,41 @@ export function JournalTab({
           )}
         </AnimatePresence>
       </div>
+
+      <ConfirmDialog
+        isOpen={isOverwriteConfirmOpen}
+        onClose={() => {
+          setIsOverwriteConfirmOpen(false);
+          setPendingOverwriteEntry(null);
+        }}
+        onConfirm={() => {
+          void handleConfirmOverwrite();
+        }}
+        title="Overwrite today's journal entry?"
+        description="You already have an entry for this date. Saving again will replace it."
+        confirmLabel="Overwrite"
+        cancelLabel="Cancel"
+        variant="warning"
+      />
+
+      <NeuralModal
+        isOpen={isRegisteredModalOpen}
+        onClose={() => setIsRegisteredModalOpen(false)}
+        title="Successfully registered your journal entry"
+        subtitle={registeredEntryDateLabel ? `For ${registeredEntryDateLabel}` : 'For today'}
+        icon={BookOpen}
+        themeColor="emerald"
+        maxWidth="sm"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-white/80 leading-relaxed">
+            {registeredQuote}
+          </p>
+          <p className="text-[11px] text-white/40 uppercase tracking-widest">
+            Journal History Updated
+          </p>
+        </div>
+      </NeuralModal>
     </div>
   );
 }

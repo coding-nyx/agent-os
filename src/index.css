@@ -56,12 +56,56 @@
     --radius-xl: 1.25rem;
     --radius-2xl: 1.6rem;
 
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+
     --space-xxs: 0.25rem;
     --space-xs: 0.5rem;
     --space-sm: 0.75rem;
     --space-md: 1rem;
     --space-lg: 1.5rem;
     --space-xl: 2rem;
+
+    --type-page-title-size: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+    --type-page-title-line: 1.1;
+    --type-section-heading-size: 1.25rem;
+    --type-section-heading-line: 1.2;
+    --type-panel-heading-size: 1.125rem;
+    --type-panel-heading-line: 1.25;
+    --type-item-title-size: 1rem;
+    --type-item-title-line: 1.35;
+    --type-body-size: 0.875rem;
+    --type-body-line: 1.6;
+    --type-body-secondary-size: 0.8125rem;
+    --type-body-secondary-line: 1.55;
+    --type-meta-size: 0.75rem;
+    --type-meta-line: 1.35;
+
+    --foundation-surface-app: var(--void);
+    --foundation-surface-primary: rgba(255, 255, 255, 0.03);
+    --foundation-surface-raised: rgba(255, 255, 255, 0.06);
+    --foundation-border-subtle: rgba(255, 255, 255, 0.08);
+    --foundation-border-strong: rgba(255, 255, 255, 0.16);
+    --foundation-text-primary: var(--text-primary);
+    --foundation-text-secondary: var(--text-secondary);
+    --foundation-text-tertiary: var(--text-muted);
+    --foundation-radius-control: var(--radius-lg);
+    --foundation-radius-card: var(--radius-xl);
+    --foundation-radius-panel: var(--radius-2xl);
+    --foundation-motion-fast: var(--duration-micro);
+    --foundation-motion-base: var(--duration-small);
+    --foundation-motion-panel: var(--duration-medium);
+
+    --shell-page-gutter: clamp(var(--space-4), 3vw, var(--space-8));
+    --shell-content-max: 96rem;
+    --shell-safe-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    --shell-overlay-max-height: var(--shell-safe-height);
 
     /* ── Atlas module: unified spacing & typography ── */
     --atlas-space-page-x: clamp(0.75rem, 4vw, 2rem);
@@ -162,12 +206,26 @@
     color: var(--text-primary);
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: var(--font-sans);
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100dvh;
+    overflow-x: hidden;
     padding-top: env(safe-area-inset-top, 0);
     padding-bottom: env(safe-area-inset-bottom, 0);
     padding-left: env(safe-area-inset-left, 0);
     padding-right: env(safe-area-inset-right, 0);
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
   }
 }
 
@@ -294,6 +352,23 @@
     box-shadow: var(--shadow-soft);
   }
 
+  .surface-foundation {
+    background: var(--foundation-surface-primary);
+    border: 1px solid var(--foundation-border-subtle);
+    border-radius: var(--foundation-radius-card);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .surface-foundation-raised {
+    background: var(--foundation-surface-raised);
+    border: 1px solid var(--foundation-border-strong);
+    border-radius: var(--foundation-radius-panel);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow: var(--shadow-soft);
+  }
+
   /* Standard Spacing Tokens */
   :root {
     --panel-section-gap: 1.25rem;
@@ -368,6 +443,53 @@
     font-family: var(--font-display);
     letter-spacing: -0.01em;
     line-height: 1.15;
+  }
+
+  .text-page-title {
+    font-size: var(--type-page-title-size);
+    line-height: var(--type-page-title-line);
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .text-section-heading {
+    font-size: var(--type-section-heading-size);
+    line-height: var(--type-section-heading-line);
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .text-panel-heading {
+    font-size: var(--type-panel-heading-size);
+    line-height: var(--type-panel-heading-line);
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+
+  .text-item-title {
+    font-size: var(--type-item-title-size);
+    line-height: var(--type-item-title-line);
+    font-weight: 600;
+  }
+
+  .text-body {
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-line);
+  }
+
+  .text-body-secondary {
+    font-size: var(--type-body-secondary-size);
+    line-height: var(--type-body-secondary-line);
+    color: var(--foundation-text-secondary);
+  }
+
+  .text-meta {
+    font-size: var(--type-meta-size);
+    line-height: var(--type-meta-line);
+    color: var(--foundation-text-tertiary);
+    letter-spacing: 0.02em;
   }
 }
 
@@ -477,6 +599,35 @@
 
   .font-display {
     font-family: var(--font-display);
+  }
+
+  .shell-page {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .shell-safe-gutter {
+    padding-inline: var(--shell-page-gutter);
+  }
+
+  .shell-safe-width {
+    width: min(100%, var(--shell-content-max));
+    min-width: 0;
+    margin-inline: auto;
+  }
+
+  .shell-scroll-region {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+
+  .shell-overlay-panel {
+    max-height: var(--shell-overlay-max-height);
+    min-height: 0;
   }
 }
 

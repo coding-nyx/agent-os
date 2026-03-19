@@ -20,6 +20,13 @@ import {
   saveAtlasProfile
 } from './atlas-profile-service';
 
+import {
+  createEmptyJournalEntry,
+  loadJournalEntry,
+  mergeCheckInData,
+  saveJournalEntry
+} from './journal-service';
+
 let registered = false;
 
 function parseBoundedScore(value: unknown, fallback = 5): number {
@@ -1383,6 +1390,39 @@ export function registerAtlasActions() {
       if (energyRating !== undefined) {
         const energyBudget = Math.round((energyRating / 5) * 10);
         await updateGlobalSoul({ cognitive: { energyBudget } });
+      }
+
+      // End-to-end journal integration:
+      // Persist encrypted journal fields so JournalTab can show morningIntent /
+      // eveningReflection without requiring the user to retype.
+      try {
+        if (userId && encryptionKey) {
+          const existing = await loadJournalEntry(dateOnly, { userId, encryptionKey });
+          const base = existing ?? createEmptyJournalEntry(dateOnly);
+
+          const patch: Parameters<typeof mergeCheckInData>[1] = {};
+
+          if (energyRating !== undefined) patch.energyLevel = energyRating;
+          if (moodRating !== undefined) patch.mood = moodRating;
+
+          if (type === 'morning' && typeof checkInEntry.intention === 'string') {
+            patch.morningIntent = checkInEntry.intention;
+          }
+          if (type === 'evening' && typeof checkInEntry.reflection === 'string') {
+            patch.eveningReflection = checkInEntry.reflection;
+          }
+
+          const updated = mergeCheckInData(base, patch);
+
+          const sourceTag = type === 'morning' ? 'checkin-morning' : 'checkin-evening';
+          updated.tags = Array.from(new Set([...(updated.tags ?? []), sourceTag]));
+
+          // If the journal is still empty after merging, saveJournalEntry returns false
+          // and we simply skip writing.
+          await saveJournalEntry(updated, { userId, encryptionKey });
+        }
+      } catch (err) {
+        console.error('[Atlas] Failed to persist journal from check-in:', err);
       }
     },
 

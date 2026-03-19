@@ -259,7 +259,10 @@ export function ModuleLayout({
               {/* Notification bell — always visible */}
               <NotificationBell />
 
-              {/* Module switcher — md+ */}
+              {/* Module switcher — mobile + md+ */}
+              <div className="block md:hidden">
+                <ModuleSwitcherPopover currentModuleId={moduleId} />
+              </div>
               <div className="hidden md:block">
                 <ModuleSwitcherPopover currentModuleId={moduleId} />
               </div>

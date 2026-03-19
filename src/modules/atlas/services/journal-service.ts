@@ -43,6 +43,25 @@ interface PersistedJournalDoc {
   };
 }
 
+function journalEntryHasSignificantContent(entry: JournalEntry): boolean {
+  const hasText =
+    entry.freeform.trim().length > 0 ||
+    entry.morningIntent.trim().length > 0 ||
+    entry.eveningReflection.trim().length > 0 ||
+    entry.blockers.trim().length > 0 ||
+    (entry.gratitude?.length ?? 0) > 0 ||
+    (entry.habitsReflection?.length ?? 0) > 0 ||
+    (entry.goalsReflection?.length ?? 0) > 0;
+
+  const hasRatings = entry.mood !== 3 || entry.energyLevel !== 3;
+
+  // Tags represent provenance (e.g. check-in). They also prevent saving
+  // placeholder "check-in" entries without any user-visible content.
+  const hasTags = (entry.tags?.length ?? 0) > 0;
+
+  return hasText || hasRatings || hasTags;
+}
+
 function entriesColPath(userId: string) {
   return `atlas_journals/${userId}/entries`;
 }
@@ -55,6 +74,11 @@ async function decryptEntry(
   raw: PersistedJournalDoc,
   encryptionKey: CryptoKey,
 ): Promise<JournalEntry | null> {
+  if (!raw.encryptedData || !raw.iv) {
+    console.warn('[JournalService] Skipping malformed entry — missing encryptedData or IV');
+    return null;
+  }
+
   try {
     const plaintext = await decryptWithKey(
       { ciphertext: raw.encryptedData, iv: raw.iv },
@@ -62,8 +86,21 @@ async function decryptEntry(
     );
     return JSON.parse(plaintext) as JournalEntry;
   } catch (err) {
-    console.error('[JournalService] Failed to decrypt entry — skipping:', err);
-    return null;
+    const errorMsg = err instanceof Error ? (err.message || err.name) : String(err);
+    const date = raw.metadata?.date || 'unknown date';
+    
+    console.error(`[JournalService] Failed to decrypt entry for ${date}: ${errorMsg}`);
+    
+    // If it's a cryptographic failure, return a "Locked" placeholder
+    // This allows the UI to show that an entry EXISTS but cannot be read.
+    const fallback = createEmptyJournalEntry(date);
+    return {
+      ...fallback,
+      mood: raw.metadata?.mood ?? fallback.mood,
+      freeform: `[This entry is locked behind a different encryption key and cannot be decrypted with your current master key.]`,
+      updatedAt: raw.metadata?.updatedAt || fallback.updatedAt,
+      tags: [...fallback.tags, 'locked-entry'],
+    };
   }
 }
 
@@ -81,12 +118,20 @@ async function decryptEntry(
 export async function saveJournalEntry(
   entry: JournalEntry,
   opts: { userId: string; encryptionKey: CryptoKey },
-): Promise<void> {
+): Promise<boolean> {
   const { userId, encryptionKey } = opts;
   const { db } = getFirebase();
   if (!db) {
     console.error('[JournalService] Firestore is unavailable — cannot save entry.');
-    return;
+    return false;
+  }
+
+  if (!journalEntryHasSignificantContent(entry)) {
+    console.info('[JournalService] Skipping save — entry has no significant content.', {
+      date: entry.date,
+      id: entry.id,
+    });
+    return false;
   }
 
   const encrypted = await encryptWithKey(JSON.stringify(entry), encryptionKey);
@@ -103,6 +148,7 @@ export async function saveJournalEntry(
 
   const ref = doc(db, entryDocPath(userId, entry.id));
   await setDoc(ref, payload);
+  return true;
 }
 
 /**
@@ -267,8 +313,10 @@ export function mergeCheckInData(
   entry: JournalEntry,
   checkIn: Partial<{
     energyLevel: number;
+    mood: number;
     blockers: string;
     morningIntent: string;
+    eveningReflection: string;
   }>,
 ): JournalEntry {
   const updated: JournalEntry = { ...entry };
@@ -277,12 +325,23 @@ export function mergeCheckInData(
     updated.energyLevel = checkIn.energyLevel;
   }
 
+  if (checkIn.mood !== undefined && entry.mood === 3) {
+    updated.mood = checkIn.mood;
+  }
+
   if (checkIn.blockers !== undefined && entry.blockers === '') {
     updated.blockers = checkIn.blockers;
   }
 
   if (checkIn.morningIntent !== undefined && entry.morningIntent === '') {
     updated.morningIntent = checkIn.morningIntent;
+  }
+
+  if (
+    checkIn.eveningReflection !== undefined &&
+    entry.eveningReflection === ''
+  ) {
+    updated.eveningReflection = checkIn.eveningReflection;
   }
 
   updated.updatedAt = new Date().toISOString();

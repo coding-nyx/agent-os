@@ -29,8 +29,16 @@ export interface JournalEntryEditorProps {
   aiPrompt: string | null;
   isLoadingPrompt: boolean;
   isSaving: boolean;
+  saveFeedback: JournalSaveFeedback | null;
   onSave: (entry: JournalEntry) => void;
   onRegeneratePrompt: () => void;
+}
+
+export type JournalSaveFeedbackTone = 'success' | 'warning' | 'error';
+
+export interface JournalSaveFeedback {
+  tone: JournalSaveFeedbackTone;
+  message: string;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -57,6 +65,7 @@ export function JournalEntryEditor({
   aiPrompt,
   isLoadingPrompt,
   isSaving,
+  saveFeedback,
   onSave,
   onRegeneratePrompt,
 }: JournalEntryEditorProps) {
@@ -281,6 +290,21 @@ export function JournalEntryEditor({
         >
           {isSaving ? 'Saving…' : 'Save Entry'}
         </NeuralButton>
+
+        {saveFeedback && (
+          <p
+            role="status"
+            aria-live="polite"
+            className={cn(
+              'mt-2 text-[11px] font-semibold tracking-wide',
+              saveFeedback.tone === 'success' && 'text-emerald-300/80',
+              saveFeedback.tone === 'warning' && 'text-amber-300/80',
+              saveFeedback.tone === 'error' && 'text-rose-300/80',
+            )}
+          >
+            {saveFeedback.message}
+          </p>
+        )}
       </div>
     </motion.div>
   );

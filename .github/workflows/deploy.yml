@@ -31,6 +31,7 @@ jobs:
           echo "VITE_OPENROUTER_API_KEY=${{ secrets.VITE_OPENROUTER_API_KEY }}" >> .env.local
           echo "VITE_GROK_API_KEY=${{ secrets.VITE_GROK_API_KEY }}" >> .env.local
           echo "VITE_GOOGLE_API_KEY=${{ secrets.VITE_GOOGLE_API_KEY }}" >> .env.local
+          echo "VITE_FIREBASE_VAPID_KEY=${{ secrets.VITE_FIREBASE_VAPID_KEY }}" >> .env.local
         
       - name: Build
         run: npm run build
