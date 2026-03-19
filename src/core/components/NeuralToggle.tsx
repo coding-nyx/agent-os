@@ -5,7 +5,7 @@ interface NeuralToggleProps {
   checked: boolean;
   onChange: (value: boolean) => void;
   disabled?: boolean;
-  color?: 'indigo' | 'orange' | 'emerald' | 'rose';
+  color?: 'indigo' | 'orange' | 'amber' | 'emerald' | 'rose';
   size?: 'sm' | 'md';
   label?: string;
   className?: string;
@@ -14,6 +14,7 @@ interface NeuralToggleProps {
 const COLOR_MAP = {
   indigo: 'bg-indigo-500/80',
   orange: 'bg-orange-500/70',
+  amber: 'bg-amber-500/80',
   emerald: 'bg-emerald-500/60',
   rose: 'bg-rose-500/70',
 };

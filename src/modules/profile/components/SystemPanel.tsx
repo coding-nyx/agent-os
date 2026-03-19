@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
 import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { useDebugMode, type DebugFlags } from '@/lib/hooks/use-debug-mode';
 import { ModelSelector } from './ModelSelector';
@@ -221,24 +222,12 @@ export function SystemPanel() {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={debugMode}
-                aria-label="Toggle Debug Mode"
-                onClick={toggleDebugMode}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:ring-offset-2 focus:ring-offset-black ${
-                  debugMode
-                    ? 'bg-amber-500 border-amber-400'
-                    : 'bg-white/10 border-white/20'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg transform transition-transform duration-200 ease-in-out mt-0.5 ${
-                    debugMode ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
+              <NeuralToggle
+                checked={debugMode}
+                onChange={() => { toggleDebugMode(); }}
+                color="amber"
+                label="Toggle Debug Mode"
+              />
             </div>
 
             {/* Granular sub-flag toggles — visible only when debug is ON */}
@@ -262,24 +251,13 @@ export function SystemPanel() {
                           <p className="text-xs font-bold text-white/75">{label}</p>
                           <p className="text-[9px] text-white/35 mt-0.5 leading-tight">{description}</p>
                         </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={debugFlags[key]}
-                          aria-label={`Toggle ${label}`}
-                          onClick={() => { setDebugFlag(key, !debugFlags[key]); }}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:ring-offset-1 focus:ring-offset-black ${
-                            debugFlags[key]
-                              ? 'bg-amber-500 border-amber-400'
-                              : 'bg-white/10 border-white/20'
-                          }`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow transform transition-transform duration-200 ease-in-out mt-px ${
-                              debugFlags[key] ? 'translate-x-4' : 'translate-x-0.5'
-                            }`}
-                          />
-                        </button>
+                        <NeuralToggle
+                          checked={debugFlags[key]}
+                          onChange={(v) => { setDebugFlag(key, v); }}
+                          color="amber"
+                          size="sm"
+                          label={`Toggle ${label}`}
+                        />
                       </div>
                     ))}
                     {/* Test notification */}

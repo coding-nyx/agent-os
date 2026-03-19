@@ -3,8 +3,14 @@ import { motion } from 'framer-motion';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { UnifiedAuthModal } from '@/core/components/UnifiedAuthModal';
 import { ArrowRight, Brain, ClipboardList, Dumbbell, Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
+
+/** Returns `path` if it is a safe relative URL (starts with `/`), else `fallback`. */
+function safeReturnTo(path: string | null, fallback: string): string {
+  if (path && path.startsWith('/') && !path.startsWith('//')) return path;
+  return fallback;
+}
 
 const FEATURE_CARDS = [
   {
@@ -40,16 +46,19 @@ export default function LandingPage() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const { isAuthenticated, enterGuestMode } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/nexus', { replace: true });
+      const destination = safeReturnTo(searchParams.get('returnTo'), '/nexus');
+      navigate(destination, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, searchParams]);
 
   const goHub = () => {
     if (isAuthenticated) {
-      navigate('/nexus');
+      const destination = safeReturnTo(searchParams.get('returnTo'), '/nexus');
+      navigate(destination);
       return;
     }
     setIsAuthOpen(true);
