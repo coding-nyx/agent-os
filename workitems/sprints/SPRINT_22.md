@@ -291,6 +291,8 @@ The upload/action drawer is `absolute bottom-full mb-4 left-0 w-80` = 320px fixe
 - `src/modules/scout/components/deep-research/DeepResearchPanel.tsx` (line 123 — `window.confirm()`)
 - `src/modules/ledger/components/GoalTracker.tsx` (line 456 — `prompt()`)
 
+**Status:** done
+
 **Problem:**
 Native browser `confirm()` and `prompt()` are theme-breaking, inaccessible on mobile, and not keyboard-navigable. The product has a fully capable `ConfirmDialog` component that should be used instead.
 
@@ -300,10 +302,10 @@ Native browser `confirm()` and `prompt()` are theme-breaking, inaccessible on mo
 - Wire cancel/confirm handlers in each case
 
 **Acceptance Criteria:**
-- [ ] Zero `confirm()` / `prompt()` calls remain in any `.tsx` file
-- [ ] Delete confirmations use `ConfirmDialog` with danger variant
-- [ ] Ledger contribution input uses `NeuralModal` with `NeuralInput`
-- [ ] All dialogs keyboard-navigable and mobile-friendly
+- [x] Zero `confirm()` / `prompt()` calls remain in any `.tsx` file
+- [x] Delete confirmations use `ConfirmDialog` with danger variant
+- [x] Ledger contribution input uses `NeuralModal` with `NeuralInput`
+- [x] All dialogs keyboard-navigable and mobile-friendly
 
 ---
 
