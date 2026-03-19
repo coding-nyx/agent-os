@@ -5,18 +5,19 @@ interface NeuralToggleProps {
   checked: boolean;
   onChange: (value: boolean) => void;
   disabled?: boolean;
-  color?: 'indigo' | 'orange' | 'amber' | 'emerald' | 'rose';
+  color?: 'indigo' | 'orange' | 'amber' | 'emerald' | 'rose' | 'module';
   size?: 'sm' | 'md';
   label?: string;
   className?: string;
 }
 
-const COLOR_MAP = {
+const COLOR_MAP: Record<string, string> = {
   indigo: 'bg-indigo-500/80',
   orange: 'bg-orange-500/70',
   amber: 'bg-amber-500/80',
   emerald: 'bg-emerald-500/60',
   rose: 'bg-rose-500/70',
+  module: 'bg-[var(--module-accent)]',
 };
 
 /**
@@ -28,7 +29,7 @@ export function NeuralToggle({
   checked,
   onChange,
   disabled,
-  color = 'indigo',
+  color = 'module',
   size = 'md',
   label,
   className,

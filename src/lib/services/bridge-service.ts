@@ -139,11 +139,31 @@ function isPushServiceError(err: unknown): boolean {
     const name = (err.name || '').toLowerCase();
     return (
       name === 'aborterror' ||
+      msg.includes('abort') ||
+      msg.includes('service worker') ||
       msg.includes('push service error') ||
-      msg.includes('registration failed')
+      msg.includes('registration failed') ||
+      msg.includes('unsubscribe failed')
     );
   }
   return false;
+}
+
+function describeError(err: unknown): Record<string, string> {
+  if (err instanceof Error) {
+    const withCode = err as Error & { code?: string };
+    return {
+      name: withCode.name || 'Error',
+      code: withCode.code || '',
+      message: withCode.message || '',
+    };
+  }
+
+  return {
+    name: typeof err,
+    code: '',
+    message: String(err),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -297,11 +317,12 @@ class BridgeServiceClass {
       const tokenOptions: { vapidKey: string; serviceWorkerRegistration?: ServiceWorkerRegistration } = {
         vapidKey,
       };
-      if (this.swRegistration) {
-        tokenOptions.serviceWorkerRegistration = this.swRegistration;
+      const readyRegistration = await this.ensureServiceWorkerReady();
+      if (readyRegistration) {
+        tokenOptions.serviceWorkerRegistration = readyRegistration;
       }
 
-      const token = await getToken(messaging, tokenOptions);
+      const token = await this.getTokenWithRetry(messaging, tokenOptions);
       console.log('[Bridge] FCM token acquired.');
 
       if (this.userId && token) {
@@ -363,6 +384,7 @@ class BridgeServiceClass {
         this.showNativeNotification(title, body, payload.data ?? {});
       });
     } catch (err) {
+      const details = describeError(err);
       if (isPushServiceError(err)) {
         if (!fcmUnavailableLogged) {
           fcmUnavailableLogged = true;
@@ -375,11 +397,82 @@ class BridgeServiceClass {
               ? 'Expected on localhost; reminders and FCM will work when deployed over HTTPS.'
               : 'Check browser permissions and that the app is served over HTTPS.'
           );
+          console.warn('[Bridge] FCM init error details:', details);
         }
       } else {
-        console.error('[Bridge] FCM init failed:', err);
+        console.error('[Bridge] FCM init failed:', details, err);
       }
     }
+  }
+
+  private async ensureServiceWorkerReady(): Promise<ServiceWorkerRegistration | null> {
+    if (!('serviceWorker' in navigator)) return null;
+
+    const registration = this.swRegistration;
+    if (!registration) return null;
+
+    if (registration.active) return registration;
+
+    const worker = registration.installing ?? registration.waiting;
+    if (worker) {
+      await new Promise<void>((resolve) => {
+        const timeout = window.setTimeout(resolve, 5000);
+        const handleStateChange = () => {
+          if (worker.state === 'activated' || worker.state === 'redundant') {
+            worker.removeEventListener('statechange', handleStateChange);
+            window.clearTimeout(timeout);
+            resolve();
+          }
+        };
+
+        worker.addEventListener('statechange', handleStateChange);
+        handleStateChange();
+      });
+    }
+
+    try {
+      await Promise.race([
+        navigator.serviceWorker.ready.then(() => undefined),
+        new Promise<void>((resolve) => window.setTimeout(resolve, 5000)),
+      ]);
+    } catch (err) {
+      console.warn('[Bridge] Waiting for service worker readiness failed:', describeError(err));
+    }
+
+    const refreshed = await navigator.serviceWorker.getRegistration('/');
+    if (refreshed) {
+      this.swRegistration = refreshed;
+      return refreshed;
+    }
+
+    return this.swRegistration;
+  }
+
+  private async getTokenWithRetry(
+    messaging: ReturnType<typeof getMessaging>,
+    tokenOptions: { vapidKey: string; serviceWorkerRegistration?: ServiceWorkerRegistration }
+  ): Promise<string> {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        return await getToken(messaging, tokenOptions);
+      } catch (err) {
+        lastError = err;
+        if (attempt === 2 || !isPushServiceError(err)) {
+          throw err;
+        }
+
+        console.warn(
+          '[Bridge] FCM token request failed; retrying after service worker readiness check.',
+          describeError(err)
+        );
+        tokenOptions.serviceWorkerRegistration = (await this.ensureServiceWorkerReady()) ?? tokenOptions.serviceWorkerRegistration;
+        await new Promise((resolve) => window.setTimeout(resolve, 750));
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error('FCM token acquisition failed.');
   }
 
   // -------------------------------------------------------------------------

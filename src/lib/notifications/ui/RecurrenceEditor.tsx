@@ -1,5 +1,8 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralSelect } from '@/core/components/NeuralSelect';
 import type { Recurrence } from '../types';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
@@ -41,10 +44,8 @@ function TimeInput({
 }) {
   return (
     <div className="flex-1 space-y-1.5">
-      <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
-        {label}
-      </label>
-      <input
+      <NeuralInput
+        label={label}
         type="time"
         disabled={disabled}
         value={value}
@@ -71,19 +72,15 @@ export function RecurrenceEditor({
         <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
           Schedule
         </label>
-        <div className="relative">
-          <select
-            value={value.kind === 'rrule' ? 'every_n_days' : value.kind}
-            disabled={disabled}
-            onChange={(e) => onChange(defaultForKind(e.target.value as Recurrence['kind']))}
-            className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl h-11 pl-4 pr-10 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40 [color-scheme:dark]"
-          >
-            {KIND_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-        </div>
+        <NeuralSelect
+          value={value.kind === 'rrule' ? 'every_n_days' : value.kind}
+          disabled={disabled}
+          onChange={(e) => onChange(defaultForKind(e.target.value as Recurrence['kind']))}
+        >
+          {KIND_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </NeuralSelect>
       </div>
 
       {/* Every N days */}
@@ -208,12 +205,10 @@ export function RecurrenceEditor({
             <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
               Remind me
             </label>
-            <div className="relative">
-              <select
+            <NeuralSelect
                 disabled={disabled}
                 value={value.intervalMinutes}
                 onChange={(e) => onChange({ ...value, intervalMinutes: Number(e.target.value) })}
-                className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl h-11 pl-4 pr-10 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40 [color-scheme:dark]"
               >
                 <option value={30}>Every 30 minutes</option>
                 <option value={60}>Every hour</option>
@@ -221,9 +216,7 @@ export function RecurrenceEditor({
                 <option value={180}>Every 3 hours</option>
                 <option value={360}>Every 6 hours</option>
                 <option value={1440}>Once per day</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-            </div>
+              </NeuralSelect>
           </div>
         </div>
       )}

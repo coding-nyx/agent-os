@@ -128,7 +128,7 @@ function NotificationScheduleEditor({
               placeholder="Short reminder title"
               disabled={disabled}
             />
-            <textarea
+            <NeuralTextarea
               disabled={disabled}
               value={draft.messageTemplate.body}
               onChange={(e) => {
@@ -137,7 +137,7 @@ function NotificationScheduleEditor({
               }}
               placeholder="Optional longer message"
               rows={2}
-              className="w-full bg-black/40 border border-white/10 rounded-2xl p-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40 resize-none"
+              className="resize-none"
             />
           </div>
 
@@ -181,14 +181,14 @@ function NotificationScheduleEditor({
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-1">
-            <button
-              type="button"
+            <NeuralButton
+              variant="ghost"
+              size="sm"
               onClick={() => { setDraft(initial); setExpanded(false); dirtyRef.current = false; }}
               disabled={disabled || saving}
-              className="text-xs text-white/40 hover:text-white/70 transition-colors disabled:opacity-40"
             >
               Cancel
-            </button>
+            </NeuralButton>
             <NeuralButton
               size="sm"
               onClick={save}
@@ -342,6 +342,22 @@ export function NotificationSettingsPanel({
           </p>
           {hydrating && (
             <span className="text-[10px] text-white/30 uppercase tracking-widest">Loading…</span>
+          )}
+        </div>
+
+        {scheduleEditors.map((s) => (
+          <NotificationScheduleEditor
+            key={s.scheduleId}
+            scheduleId={s.scheduleId}
+            initial={s.initial}
+            onSave={(next) => saveSchedule(s.scheduleId, next)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+se tracking-widest">Loading…</span>
           )}
         </div>
 

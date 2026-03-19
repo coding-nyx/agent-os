@@ -3,7 +3,7 @@ import React from 'react';
 import { motion, HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-export type NeuralButtonThemeColor = 'indigo' | 'orange' | 'cyan' | 'lime' | 'rose' | 'amber' | 'emerald' | 'white';
+export type NeuralButtonThemeColor = 'indigo' | 'orange' | 'cyan' | 'lime' | 'rose' | 'amber' | 'emerald' | 'white' | 'module';
 
 interface NeuralButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onAnimationStart" | "onDragStart" | "onDragEnd" | "onDrag"> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -22,6 +22,7 @@ const THEME_STYLES: Record<NeuralButtonThemeColor, string> = {
   amber: 'bg-amber-600 text-white hover:bg-amber-500 border-amber-400/20 focus-visible:ring-amber-400',
   emerald: 'bg-emerald-600 text-white hover:bg-emerald-500 border-emerald-400/20 focus-visible:ring-emerald-400',
   white: 'bg-white text-black hover:bg-white/90 border-white/20 focus-visible:ring-white',
+  module: 'bg-[var(--module-accent)] text-white hover:bg-[var(--module-accent-hover)] border-[var(--module-accent-border)] focus-visible:ring-[var(--module-accent-ring)]',
 };
 
 export function NeuralButton({ 
@@ -29,7 +30,7 @@ export function NeuralButton({
   className, 
   variant = 'primary', 
   size = 'md', 
-  themeColor = 'indigo',
+  themeColor = 'module',
   loading, 
   disabled,
   as = 'button',

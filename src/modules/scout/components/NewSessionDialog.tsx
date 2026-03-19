@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Zap, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 
 export interface NewSessionDialogProps {
   isOpen: boolean;
@@ -51,35 +53,37 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
                 <h2 className="text-sm font-black uppercase tracking-widest text-lime-300">New Inquiry</h2>
                 <p className="text-xs text-white/40 mt-1">Initialize a new research thread</p>
               </div>
-              <button
+              <NeuralButton
+                variant="ghost"
                 onClick={handleClose}
-                className="p-2 rounded-xl hover:bg-white/10 text-white/40 transition-colors"
+                className="p-2 rounded-xl h-auto w-auto min-h-0 min-w-0 border-none hover:bg-white/10 text-white/40"
               >
                 <X size={18} />
-              </button>
+              </NeuralButton>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-white/60 uppercase tracking-widest">Research Topic</label>
-                <input
-                  type="text"
+                <NeuralInput
+                  label="Research Topic"
                   autoFocus
                   placeholder="e.g., Quantum Computing Trends"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-lime-500/50 transition-colors"
+                  className="bg-white/5 border-white/10 focus:border-lime-500/50"
                 />
               </div>
 
               <div className="space-y-3">
                 <label className="text-xs font-bold text-white/60 uppercase tracking-widest">Entry Point</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <button
+                  <NeuralButton
                     type="button"
                     onClick={() => setMode('standard')}
+                    variant={mode === 'standard' ? 'primary' : 'secondary'}
+                    themeColor="lime"
                     className={cn(
-                      "flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-center",
+                      "flex flex-col items-center gap-2 p-4 rounded-xl transition-all text-center h-auto",
                       mode === 'standard'
                         ? "bg-lime-500/10 border-lime-500/30 text-lime-300"
                         : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white/80"
@@ -90,13 +94,15 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
                       <div className="text-sm font-bold">Research Workbench</div>
                       <div className="text-[10px] leading-tight opacity-70">Initialize a collaborative research canvas</div>
                     </div>
-                  </button>
+                  </NeuralButton>
 
-                  <button
+                  <NeuralButton
                     type="button"
                     onClick={() => setMode('deep')}
+                    variant={mode === 'deep' ? 'primary' : 'secondary'}
+                    themeColor="indigo"
                     className={cn(
-                      "flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-center",
+                      "flex flex-col items-center gap-2 p-4 rounded-xl transition-all text-center h-auto",
                       mode === 'deep'
                         ? "bg-violet-500/10 border-violet-500/30 text-violet-300"
                         : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white/80"
@@ -107,25 +113,27 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
                       <div className="text-sm font-bold">Deep Protocol</div>
                       <div className="text-[10px] leading-tight opacity-70">Multi-step autonomous search & synthesis</div>
                     </div>
-                  </button>
+                  </NeuralButton>
                 </div>
               </div>
 
               <div className="pt-2 flex justify-end gap-3">
-                <button
+                <NeuralButton
                   type="button"
                   onClick={handleClose}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+                  variant="ghost"
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white/40 hover:text-white hover:bg-white/5 transition-colors h-auto"
                 >
                   Cancel
-                </button>
-                <button
+                </NeuralButton>
+                <NeuralButton
                   type="submit"
                   disabled={!topic.trim()}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-lime-400 text-black hover:bg-lime-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  themeColor="lime"
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-black hover:bg-lime-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-auto"
                 >
                   Start Inquiry
-                </button>
+                </NeuralButton>
               </div>
             </form>
           </motion.div>

@@ -161,6 +161,13 @@
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
     --radius: var(--radius-base);
+
+    --module-accent: rgb(99 102 241);
+    --module-accent-hover: rgb(129 140 248);
+    --module-accent-muted: rgb(99 102 241 / 0.10);
+    --module-accent-faint: rgb(99 102 241 / 0.05);
+    --module-accent-border: rgb(99 102 241 / 0.20);
+    --module-accent-ring: rgb(99 102 241 / 0.30);
   }
 
   .dark {

@@ -12,7 +12,7 @@ interface NeuralModalProps {
   subtitle?: string;
   icon?: LucideIcon;
   children: ReactNode;
-  themeColor?: 'indigo' | 'orange' | 'cyan' | 'emerald' | 'amber';
+  themeColor?: 'indigo' | 'orange' | 'cyan' | 'emerald' | 'amber' | 'module';
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
@@ -21,7 +21,8 @@ const themes = {
   orange: { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
   cyan: { color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
   emerald: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-  amber: { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' }
+  amber: { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+  module: { color: 'text-[var(--module-accent)]', bg: 'bg-[var(--module-accent-faint)]', border: 'border-[var(--module-accent-border)]' },
 };
 
 const widths = {
@@ -39,7 +40,7 @@ export function NeuralModal({
   subtitle,
   icon: Icon,
   children,
-  themeColor = 'indigo',
+  themeColor = 'module',
   maxWidth = 'md'
 }: NeuralModalProps) {
   const theme = themes[themeColor];

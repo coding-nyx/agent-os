@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
-export type NeuralThemeColor = 'lime' | 'sky' | 'orange' | 'cyan' | 'purple' | 'rose' | 'amber' | 'indigo' | 'emerald' | 'white';
+export type NeuralThemeColor = 'lime' | 'sky' | 'orange' | 'cyan' | 'purple' | 'rose' | 'amber' | 'indigo' | 'emerald' | 'white' | 'module';
 
 export interface NeuralTabItem<T extends string = string> {
   id: T;
@@ -121,6 +121,15 @@ const THEME_MAP: Record<NeuralThemeColor, {
     badgeBg: 'bg-emerald-500/20',
     badgeBorder: 'border-emerald-500/30',
     badgeText: 'text-emerald-300'
+  },
+  module: {
+    activeText: 'text-white',
+    pillBg: 'bg-[var(--module-accent-muted)]',
+    pillBorder: 'border-[var(--module-accent-border)]',
+    underline: 'bg-[var(--module-accent)]',
+    badgeBg: 'bg-[var(--module-accent-muted)]',
+    badgeBorder: 'border-[var(--module-accent-border)]',
+    badgeText: 'text-[var(--module-accent)]'
   }
 };
 
@@ -135,7 +144,7 @@ export function NeuralTabGroup<T extends string = string>({
   tabs,
   activeTab,
   onTabChange,
-  themeColor = 'white',
+  themeColor = 'module',
   className,
   layoutIdPrefix = 'neural-tab',
   variant = 'pill'

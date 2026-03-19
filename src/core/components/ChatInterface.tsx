@@ -13,6 +13,7 @@ import { Message, GuestQuota, MessageContent } from '@/lib/types';
 import { NeuralLinkAlert } from './NeuralLinkAlert';
 import { stripInternalTags } from '@/lib/ai-adapters/sanitize';
 import { NeuralButton } from './NeuralButton';
+import { NeuralTextarea } from './NeuralTextarea';
 import { EmptyState } from '@/core/components/EmptyState';
 import { getActionLabel } from '@/lib/actions/action-labels';
 import { PendingRequestState } from '@/lib/hooks/use-pending-recovery';
@@ -175,11 +176,12 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
         <div className="flex flex-col w-full max-w-[95%] sm:max-w-[85%] items-start">
             {(showProcessingPulse || showCompletedThought) && (
                 <div className="mb-3 w-full">
-                    <button 
+                    <NeuralButton 
+                        variant="ghost"
                         onClick={() => !showProcessingPulse && setShowInternal(!showInternal)}
                         disabled={showProcessingPulse}
                         className={cn(
-                            "flex items-center gap-3 px-4 py-2 rounded-2xl transition-all group border",
+                            "flex items-center gap-3 px-4 py-2 rounded-2xl transition-all group border h-auto",
                             showProcessingPulse ? "bg-white/[0.03] border-white/10 animate-pulse" : "bg-white/5 border-white/5 hover:bg-white/10"
                         )}
                     >
@@ -194,7 +196,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                         )}>
                             {effectiveIsThinking ? 'Processing Neural Signals...' : (effectiveIsActing ? `${getActionLabel(currentActionType || 'action')}...` : 'View Internal Signals')}
                         </span>
-                    </button>
+                    </NeuralButton>
                     
                     <AnimatePresence>
                         {showInternal && !showProcessingPulse && (
@@ -409,16 +411,17 @@ export const ChatInterface = React.memo(function ChatInterface({
               <MoreVertical className="w-4 h-4" />
             </summary>
             <div className="absolute right-0 top-full mt-1 w-40 p-1 bg-[#0a0a0f] border border-white/10 rounded-xl shadow-2xl">
-              <button
+              <NeuralButton
+                variant="ghost"
                 onClick={(e) => {
                   e.currentTarget.closest('details')?.removeAttribute('open');
                   onClearHistory();
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-rose-500/10 text-white/40 hover:text-rose-400 transition-all text-left"
+                className="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg hover:bg-rose-500/10 text-white/40 hover:text-rose-400 transition-all text-left h-auto"
               >
                 <Trash2 className="w-3.5 h-3.5 shrink-0" />
                 <span className="text-[10px] font-semibold uppercase tracking-wider">Clear Link</span>
-              </button>
+              </NeuralButton>
             </div>
           </details>
         </div>
@@ -553,13 +556,11 @@ export const ChatInterface = React.memo(function ChatInterface({
 
       <AnimatePresence>
         {(showScrollButton || hasNewCompletion) && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          <NeuralButton
+            variant="ghost"
             onClick={() => { scrollToBottom(); isNearBottomRef.current = true; setHasNewCompletion(false); }}
             className={cn(
-              "absolute bottom-36 left-1/2 -translate-x-1/2 z-[var(--z-toast)] flex items-center gap-3 px-5 py-2.5 rounded-full border backdrop-blur-xl transition-all shadow-2xl",
+              "absolute bottom-36 left-1/2 -translate-x-1/2 z-[var(--z-toast)] flex items-center gap-3 px-5 py-2.5 rounded-full border backdrop-blur-xl transition-all shadow-2xl h-auto",
               hasNewCompletion 
                 ? "bg-white/10 border-white/20 text-white animate-pulse" 
                 : "bg-black/80 border-white/10 text-white/60 hover:text-white hover:border-white/20",
@@ -573,7 +574,7 @@ export const ChatInterface = React.memo(function ChatInterface({
             {hasNewCompletion && (
               <div className={cn("w-1.5 h-1.5 rounded-full bg-current animate-ping")} />
             )}
-          </motion.button>
+          </NeuralButton>
         )}
       </AnimatePresence>
 
@@ -595,9 +596,9 @@ export const ChatInterface = React.memo(function ChatInterface({
                       {pendingRequest.status === 'failed' ? 'Connection Failed' : 'Unfinished Signal Detected'}
                     </span>
                   </div>
-                  <button onClick={onDismissPendingRequest} className="text-amber-400/50 hover:text-amber-400">
+                  <NeuralButton variant="ghost" size="sm" onClick={onDismissPendingRequest} className="text-amber-400/50 hover:text-amber-400 h-auto p-1">
                     <X className="w-4 h-4" />
-                  </button>
+                  </NeuralButton>
                 </div>
                 <p className="text-xs text-amber-400/80 italic leading-relaxed">
                   A neural transmission was interrupted. Would you like to recover and retransmit the following message?
@@ -649,21 +650,22 @@ export const ChatInterface = React.memo(function ChatInterface({
               >
                 {canShowUpload && (
                   <>
-                    <button
+                    <NeuralButton
+                      variant="ghost"
                       onClick={handleUploadDocClick}
-                      className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group"
+                      className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group h-auto"
                     >
                        <FileText className="w-6 h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Upload Doc</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+                    </NeuralButton>
+                    <NeuralButton variant="ghost" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group h-auto">
                        <BarChart3 className="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform" />
                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Data CSV</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+                    </NeuralButton>
+                    <NeuralButton variant="ghost" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group h-auto">
                        <Search className="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform" />
                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Web Research</span>
-                    </button>
+                    </NeuralButton>
                   </>
                 )}
                 {renderCustomActions && renderCustomActions()}
@@ -678,8 +680,9 @@ export const ChatInterface = React.memo(function ChatInterface({
                 (error || quota?.isHardLocked) && "opacity-20 grayscale pointer-events-none"
             )}>
               {(canShowUpload || renderCustomActions) && (
-                <button 
+                <NeuralButton 
                   type="button"
+                  variant="ghost"
                   onClick={() => setIsDrawerOpen(!isDrawerOpen)}
                   className={cn(
                     "w-11 h-11 rounded-panel flex items-center justify-center transition-all bg-white/5 border border-white/5 hover:bg-white/10 group/plus",
@@ -687,28 +690,28 @@ export const ChatInterface = React.memo(function ChatInterface({
                   )}
                 >
                   <Plus className="w-5 h-5 text-white/40 group-hover/plus:text-white transition-colors" />
-                </button>
+                </NeuralButton>
               )}
 
-              <textarea 
+              <NeuralTextarea 
                 ref={textareaRef}
                 value={input} 
                 onChange={(e) => setInput(e.target.value)} 
                 onKeyDown={handleKeyDown}
                 placeholder={error ? "Link severed..." : (quota?.isHardLocked ? "Trial Locked" : placeholder)} 
                 aria-label="Type your message"
-                className="flex-1 bg-transparent border-none outline-none px-3 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base text-white placeholder:text-white/10 resize-none min-h-[44px] max-h-40 leading-relaxed" 
+                className="flex-1 bg-transparent border-none outline-none px-3 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base text-white placeholder:text-white/10 resize-none min-h-[44px] max-h-40 leading-relaxed focus:ring-0 focus:border-none" 
                 disabled={effectiveIsProcessing || !!error || quota?.isHardLocked}
                 rows={1}
               />
               
-              <button type="submit" aria-label="Send message" disabled={effectiveIsProcessing || !input.trim() || !!error || quota?.isHardLocked} className={cn("w-11 h-11 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl", theme.btn)}>
+              <NeuralButton type="submit" aria-label="Send message" disabled={effectiveIsProcessing || !input.trim() || !!error || quota?.isHardLocked} className={cn("w-11 h-11 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl p-0", theme.btn)}>
                 {isSyncing ? (
                   <Loader2 className="w-5 h-5 text-white animate-spin" />
                 ) : (
                   <Send className="w-5 h-5 text-white" />
                 )}
-              </button>
+              </NeuralButton>
             </div>
 
             <div className="mt-1 flex justify-between items-center px-2 sm:px-4 text-white">

@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useModuleProfile, UseModuleProfileOptions } from '@/lib/hooks/use-module-profile';
 import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
+import { ModuleThemeProvider } from '@/core/theme/ModuleThemeContext';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/lib/stores/ui-store';
 
@@ -294,16 +295,18 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   );
 
   return (
-    <ModuleLayout 
-        title={title} 
-        themeColor={themeColor} 
-        moduleId={moduleId}
-        hideNavigation={hideNavigation}
-        renderLeftRail={renderLeftRail ? () => renderLeftRail({ profile, encryptionKey, persistProfile }) : undefined}
-        renderRightRail={renderRightRail ? () => renderRightRail({ profile, encryptionKey }) : undefined}
-        renderMobileFooter={renderMobileFooter ? () => renderMobileFooter({ profile, encryptionKey }) : undefined}
-    >
-      {workspaceContent}
-    </ModuleLayout>
+    <ModuleThemeProvider moduleId={moduleId}>
+      <ModuleLayout
+          title={title}
+          themeColor={themeColor}
+          moduleId={moduleId}
+          hideNavigation={hideNavigation}
+          renderLeftRail={renderLeftRail ? () => renderLeftRail({ profile, encryptionKey, persistProfile }) : undefined}
+          renderRightRail={renderRightRail ? () => renderRightRail({ profile, encryptionKey }) : undefined}
+          renderMobileFooter={renderMobileFooter ? () => renderMobileFooter({ profile, encryptionKey }) : undefined}
+      >
+        {workspaceContent}
+      </ModuleLayout>
+    </ModuleThemeProvider>
   );
 }

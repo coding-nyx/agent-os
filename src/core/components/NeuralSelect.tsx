@@ -15,7 +15,7 @@ export const NeuralSelect = React.forwardRef<HTMLSelectElement, NeuralSelectProp
           className={cn(
             'w-full appearance-none rounded-xl border border-white/10 bg-black/40 text-white/90',
             'px-4 py-2.5 pr-10 text-sm leading-relaxed',
-            'focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/10',
+            'focus:outline-none focus:border-[var(--module-accent-border)] focus:ring-1 focus:ring-[var(--module-accent-ring)]',
             'disabled:opacity-40 disabled:cursor-not-allowed',
             'transition-colors duration-200 backdrop-blur-sm cursor-pointer',
             '[&>option]:bg-[#0a0a0f] [&>option]:text-white',
