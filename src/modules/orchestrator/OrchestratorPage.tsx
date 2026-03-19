@@ -12,7 +12,6 @@ import { OrchestratorOnboarding } from './onboarding/OrchestratorOnboarding';
 import { GuestModePanel } from '@/core/components/GuestModePanel';
 import { NexusDashboard } from './components/NexusDashboard';
 import { VaultSetupNudge } from '@/core/components/VaultSetupNudge';
-import { ConflictResolutionOverlay } from '@/core/components/ConflictResolutionOverlay';
 
 type PageState = 'ONBOARDING' | 'DASHBOARD';
 
@@ -129,7 +128,6 @@ export default function OrchestratorPage() {
           ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage, clearSession }}
           agentName={profile?.agentPersonalityProvision?.orchestratorAlias || 'Nexus'}
         />
-        <ConflictResolutionOverlay />
         <AnimatePresence>
           {showNudge && (
             <VaultSetupNudge onClose={() => setShowNudge(false)} />

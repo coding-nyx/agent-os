@@ -14,6 +14,7 @@ import { NeuralDraftPanel } from './core/components/NeuralDraftPanel';
 import { SpineOverlay } from './core/components/SpineOverlay';
 import { SpineToastProvider } from './core/components/SpineToast';
 import { NexusRouteBanner } from './core/components/NexusRouteBanner';
+import { ConflictResolutionOverlay } from './core/components/ConflictResolutionOverlay';
 import { useIntelligencePipeline } from './lib/services/intelligence-pipeline';
 import { Spine } from './lib/spine/spine-event-bus';
 import { CORE_CASCADE_RULES, ATLAS_CASCADE_RULES, ATLAS_PLANNING_CASCADE_RULES, AGNES_CASCADE_RULES, ATLAS_FAILURE_RULES, SOMA_CASCADE_RULES, TITAN_CASCADE_RULES } from './lib/spine/cascade-rules';
@@ -98,6 +99,7 @@ function AppContent() {
       <NeuralDraftPanel />
       <SpineToastProvider />
       <NexusRouteBanner />
+      <ConflictResolutionOverlay />
       <Routes>
         <Route path="/" element={<LandingPage />} />
 

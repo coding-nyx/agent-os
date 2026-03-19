@@ -41,6 +41,14 @@ export interface DocumentPipelineResult<TAnalysis, TProposal> {
   warnings: string[];
 }
 
+export type DocumentPipelineStageId = 'parsing' | 'ocr' | 'analyzing' | 'finalizing' | 'done' | 'error';
+
+export type DocumentPipelineStage = {
+  id: DocumentPipelineStageId;
+  label: string;
+  progress?: number;
+};
+
 function inferFileType(file: File): DocumentFileType {
   const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
   if (file.type === 'application/pdf' || ext === '.pdf') return 'pdf';
@@ -158,30 +166,55 @@ export async function runDocumentPipeline<TAnalysis, TProposal>(params: {
   sendMessage?: (prompt: string) => Promise<string>;
   sendMessageFallback?: (prompt: string) => Promise<string>;
   parsedOverride?: DocumentParsed;
+  onStageChange?: (stage: DocumentPipelineStage) => void;
 }): Promise<DocumentPipelineResult<TAnalysis, TProposal>> {
-  const { file, policy, sendMessage, sendMessageFallback, parsedOverride } = params;
+  const { file, policy, sendMessage, sendMessageFallback, parsedOverride, onStageChange } = params;
 
   const warnings: string[] = [];
 
-  let parsed: DocumentParsed;
-  if (parsedOverride) {
-    parsed = parsedOverride;
-  } else if (policy.parse) {
-    parsed = await policy.parse(file);
-  } else {
-    const base = await defaultParse(file, policy.context);
-    parsed = base.parsed;
-    warnings.push(...base.warnings);
+  const emitStage = (stage: DocumentPipelineStage) => {
+    try {
+      onStageChange?.(stage);
+    } catch {
+      // UI callback should never break the pipeline.
+    }
+  };
+
+  emitStage({ id: 'parsing', label: 'Uploading document…', progress: 0 });
+
+  try {
+    let parsed: DocumentParsed;
+    emitStage({ id: 'parsing', label: 'Extracting text…', progress: 20 });
+    if (parsedOverride) {
+      parsed = parsedOverride;
+    } else if (policy.parse) {
+      parsed = await policy.parse(file);
+    } else {
+      const base = await defaultParse(file, policy.context);
+      parsed = base.parsed;
+      warnings.push(...base.warnings);
+    }
+
+    const willOCR = Boolean(policy.useOCRForImages && parsed.fileType === 'image');
+    if (willOCR) {
+      emitStage({ id: 'ocr', label: 'Running OCR (if needed)…', progress: 35 });
+    }
+    parsed = await applyOCRIfNeeded(parsed, file, policy.useOCRForImages, warnings, policy.ocrFailureMode);
+
+    emitStage({ id: 'analyzing', label: 'Analysing with AI…', progress: 70 });
+    const send = (prompt: string) => sendWithFallback(prompt, sendMessage, sendMessageFallback);
+    const analysis = await policy.analyze({ file, parsed }, send);
+
+    emitStage({ id: 'finalizing', label: 'Finalizing analysis…', progress: 90 });
+    const proposal = policy.buildProposal(analysis, parsed);
+    const summary = policy.summarizeProposal(proposal, parsed);
+
+    emitStage({ id: 'done', label: 'Document analyzed.', progress: 100 });
+    return { parsed, analysis, proposal, summary, warnings };
+  } catch (e) {
+    emitStage({ id: 'error', label: 'Analysis failed.' });
+    throw e;
   }
-
-  parsed = await applyOCRIfNeeded(parsed, file, policy.useOCRForImages, warnings, policy.ocrFailureMode);
-
-  const send = (prompt: string) => sendWithFallback(prompt, sendMessage, sendMessageFallback);
-  const analysis = await policy.analyze({ file, parsed }, send);
-  const proposal = policy.buildProposal(analysis, parsed);
-  const summary = policy.summarizeProposal(proposal, parsed);
-
-  return { parsed, analysis, proposal, summary, warnings };
 }
 
 export async function analyzeRawTextForDocument(

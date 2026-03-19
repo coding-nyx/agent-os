@@ -11,7 +11,9 @@ import { NexusChat } from '@/core/components/NexusChat';
 import { NexusSubModulePanel } from '@/core/components/NexusSubModulePanel';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { NeuralModal } from '@/core/components/NeuralModal';
-import { runDocumentPipeline, type DocumentPipelinePolicy } from '@/lib/services/document-pipeline';
+import { runDocumentPipeline, type DocumentPipelinePolicy, type DocumentPipelineStage } from '@/lib/services/document-pipeline';
+import { useNexusCrossModuleBlocker } from '@/lib/hooks/use-nexus-cross-module-blocker';
+import { useNexusConflictBlocker } from '@/lib/hooks/use-nexus-conflict-blocker';
 
 interface SubModuleState {
   moduleId: string;
@@ -27,11 +29,16 @@ export function NexusOverlay() {
   const location = useLocation();
   const navigate = useNavigate();
   const { sendMessage } = useAI();
+  const { isCrossModuleBusy, pendingTargets } = useNexusCrossModuleBlocker();
+  const { isConflictBlocking } = useNexusConflictBlocker();
   const [open, setOpen] = useState(false);
   const [subModule, setSubModule] = useState<SubModuleState | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [docReviewOpen, setDocReviewOpen] = useState(false);
   const [docProposal, setDocProposal] = useState<{ summary: string; preview: string } | null>(null);
+  const [docUploadBusy, setDocUploadBusy] = useState(false);
+  const [docUploadError, setDocUploadError] = useState<string | null>(null);
+  const [docStage, setDocStage] = useState<DocumentPipelineStage | null>(null);
   // Allow external components to open Nexus via a custom DOM event
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -97,14 +104,29 @@ export function NexusOverlay() {
       return response.publicText;
     };
 
-    const result = await runDocumentPipeline({
-      file,
-      policy: nexusPolicy,
-      sendMessage: llmPrimary,
-      sendMessageFallback: llmFallback,
-    });
-    setDocProposal({ summary: result.summary, preview: result.proposal.preview });
-    setDocReviewOpen(true);
+    setDocUploadError(null);
+    setDocUploadBusy(true);
+    setDocStage({ id: 'parsing', label: 'Uploading document…' });
+
+    try {
+      const result = await runDocumentPipeline({
+        file,
+        policy: nexusPolicy,
+        sendMessage: llmPrimary,
+        sendMessageFallback: llmFallback,
+        onStageChange: (stage) => setDocStage(stage),
+      });
+
+      setDocStage((prev) => prev ?? { id: 'done', label: 'Document analyzed.' });
+      setDocProposal({ summary: result.summary, preview: result.proposal.preview });
+      setDocReviewOpen(true);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Document analysis failed.';
+      setDocUploadError(message);
+      setDocStage({ id: 'error', label: 'Analysis failed.' });
+    } finally {
+      setDocUploadBusy(false);
+    }
   }, [sendMessage]);
 
   const handleNavigateToModule = useCallback((path: string) => {
@@ -118,6 +140,20 @@ export function NexusOverlay() {
     if (hasVault && !isUnlocked) return false;
     return location.pathname !== '/' && location.pathname !== '/orchestrator' && location.pathname !== '/vault-gate';
   }, [user, profile?.onboardingComplete, location.pathname, hasVault, isUnlocked]);
+
+  const isNexusBusy = isCrossModuleBusy || docUploadBusy || isConflictBlocking;
+  const busyLabel = (() => {
+    if (docUploadBusy) return docStage?.label ?? 'Uploading and analyzing…';
+    if (docUploadError) return docStage?.label ?? 'Analysis failed.';
+    if (isConflictBlocking) return 'Conflict active: resolve it in the overlay to continue…';
+    if (isCrossModuleBusy) {
+      const names = pendingTargets
+        .slice(0, 3)
+        .join(', ');
+      return pendingTargets.length > 0 ? `Waiting for module response: ${names}…` : 'Waiting for module response…';
+    }
+    return '';
+  })();
 
   const isChatOverlayOpen = useUIStore((s) => s.isChatOverlayOpen);
 
@@ -206,8 +242,21 @@ export function NexusOverlay() {
               </div>
 
               <div className="flex-1 overflow-hidden flex flex-col relative w-full h-full pb-4">
+                {isNexusBusy && (
+                  <div className="shrink-0 px-4 pt-3 pb-2">
+                    <section className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur px-4 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
+                        Nexus Busy
+                      </p>
+                      <p className="text-sm text-white/70 mt-1 break-words">{busyLabel}</p>
+                    </section>
+                  </div>
+                )}
                 <NexusChat
-                  ai={ai}
+                  ai={{
+                    ...ai,
+                    isProcessing: ai.isProcessing || isNexusBusy,
+                  }}
                   agentName="Nexus"
                   themeColor="indigo"
                   placeholder="Consult the master node..."

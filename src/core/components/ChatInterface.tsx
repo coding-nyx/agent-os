@@ -152,6 +152,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
     const { publicText, internalText, isThinking, isActing, currentActionType } = stripped;
     const [showInternal, setShowInternal] = useState(false);
     const hasPublicContent = publicText.length > 0;
+    const hasInternalContent = !!internalText && internalText.length > 0;
 
     // Only show internal signal UI if showInternalSignals is allowed
     const effectiveIsThinking = showInternalSignals ? isThinking : false;
@@ -160,6 +161,10 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
 
     const showProcessingPulse = effectiveIsThinking || effectiveIsActing;
     const showCompletedThought = debugMode && !!effectiveInternalText && !showProcessingPulse;
+    // When a model emits only internal/action tags, `publicText` becomes empty.
+    // In that case, show a minimal assistant bubble so the user never sees a "blank response".
+    const hasInternalOnlyCompletion = hasInternalContent && !hasPublicContent && !showProcessingPulse;
+    const bubbleText = hasPublicContent ? publicText : (hasInternalOnlyCompletion ? 'Processed.' : '');
 
     // Debug chips — actions and spine events
     const actionChips = debugMode ? (debugMeta?.actionTagsExtracted ?? []) : [];
@@ -220,7 +225,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                 </div>
             )}
 
-            {hasPublicContent && (
+            {(hasPublicContent || hasInternalOnlyCompletion) && (
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className={cn(
                   "border backdrop-blur-3xl transition-all",
                   isAgnes
@@ -235,7 +240,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                     )}>
                         {isStreaming ? (
                           // Plain text during streaming — no markdown parsing overhead
-                          <p className="whitespace-pre-wrap">{publicText}</p>
+                          <p className="whitespace-pre-wrap">{bubbleText}</p>
                         ) : (
                           <ReactMarkdown
                             rehypePlugins={[rehypeSanitize]}
@@ -244,7 +249,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                                 <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
                               )
                             }}
-                          >{publicText}</ReactMarkdown>
+                          >{bubbleText}</ReactMarkdown>
                         )}
                     </div>
                     {!isStreaming && (

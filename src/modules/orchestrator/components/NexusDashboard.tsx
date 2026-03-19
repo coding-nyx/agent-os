@@ -12,7 +12,9 @@ import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { OrchestratorErrorBoundary } from './OrchestratorErrorBoundary';
 import { useAI } from '@/llm-engine/ai-context';
-import { runDocumentPipeline, type DocumentPipelinePolicy } from '@/lib/services/document-pipeline';
+import { runDocumentPipeline, type DocumentPipelinePolicy, type DocumentPipelineStage } from '@/lib/services/document-pipeline';
+import { useNexusCrossModuleBlocker } from '@/lib/hooks/use-nexus-cross-module-blocker';
+import { useNexusConflictBlocker } from '@/lib/hooks/use-nexus-conflict-blocker';
 
 interface NexusDashboardProps {
   ai: {
@@ -38,6 +40,11 @@ function contentToText(content: MessageContent): string {
 export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
   const navigate = useNavigate();
   const { refreshGlobalSoul } = useGlobalSoul();
+  const { isCrossModuleBusy, pendingTargets } = useNexusCrossModuleBlocker();
+  const { isConflictBlocking } = useNexusConflictBlocker();
+  const [docUploadBusy, setDocUploadBusy] = useState(false);
+  const [docUploadError, setDocUploadError] = useState<string | null>(null);
+  const [docStage, setDocStage] = useState<DocumentPipelineStage | null>(null);
   // Some unit tests render this component without an `AIProvider`.
   // `useAI()` throws in that scenario, so we fall back to a no-op sender
   // (document-upload features won't be exercised by those tests).
@@ -166,6 +173,8 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     const nexusPolicy: DocumentPipelinePolicy<{ summary: string }, { summary: string; preview: string }> = {
       id: 'nexus-orchestrator-document',
       context: { moduleId: 'orchestrator', domain: 'general' },
+      useOCRForImages: true,
+      ocrFailureMode: 'warn',
       analyze: async ({ parsed }, llmSend) => {
         const prompt = [
           `Document received: "${parsed.fileName}"`,
@@ -188,17 +197,51 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
       summarizeProposal: (proposal) => proposal.summary
     };
 
-    const result = await runDocumentPipeline({
-      file,
-      policy: nexusPolicy,
-      sendMessage: llmPrimary,
-      sendMessageFallback: llmFallback
-    });
+    setDocUploadError(null);
+    setDocUploadBusy(true);
+    setDocStage({ id: 'parsing', label: 'Uploading document…' });
 
-    await ai.handleSendMessage(
-      `Document uploaded and analyzed.\n\nSummary:\n${result.summary}\n\nRespond in 2-4 sentences based only on this summary. Do NOT emit action tags.`
-    );
+    try {
+      const result = await runDocumentPipeline({
+        file,
+        policy: nexusPolicy,
+        sendMessage: llmPrimary,
+        sendMessageFallback: llmFallback,
+        onStageChange: (stage) => setDocStage(stage),
+      });
+
+      // `onStageChange` emits `done`; keep this as a defensive fallback.
+      setDocStage((prev) => prev ?? { id: 'done', label: 'Document analyzed.' });
+
+      // Do not inject "prompt instructions" into the user chat.
+      await ai.handleSendMessage(
+        `Document uploaded and analyzed.\n\nSummary:\n${result.summary}`
+      );
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Document analysis failed.';
+      setDocUploadError(message);
+      setDocStage({ id: 'error', label: 'Analysis failed.' });
+    } finally {
+      setDocUploadBusy(false);
+    }
   }, [ai, sendMessage]);
+
+  const isNexusBusy = isCrossModuleBusy || docUploadBusy || isConflictBlocking;
+  const busyLabel = (() => {
+    if (docUploadBusy) return docStage?.label ?? 'Uploading and analyzing…';
+    if (docUploadError) return docStage?.label ?? 'Analysis failed.';
+    if (isConflictBlocking) return 'Conflict active: resolve it in the overlay to continue…';
+    if (isCrossModuleBusy) {
+      const names = pendingTargets
+        .slice(0, 3)
+        .map((id) => MODULE_MANIFEST[id]?.alias || id)
+        .join(', ');
+      return pendingTargets.length > 0
+        ? `Waiting for module response: ${names}…`
+        : 'Waiting for module response…';
+    }
+    return '';
+  })();
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0">
@@ -224,6 +267,16 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
 
       {/* Chat area — fills remaining space; relative for FAB positioning */}
       <div className="flex-1 min-h-0 flex flex-col relative">
+        {isNexusBusy && (
+          <div className="shrink-0 px-3 pt-2 pb-3">
+            <section className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
+                Nexus Busy
+              </p>
+              <p className="text-sm text-white/70 mt-1 break-words">{busyLabel}</p>
+            </section>
+          </div>
+        )}
         {/* Module Health FAB — floats bottom-right inside chat area */}
         <OrchestratorErrorBoundary name="ModuleHealth">
           <ModuleHealthFAB />
@@ -240,6 +293,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
           ai={{
             ...ai,
             handleSendMessage: handleSendWithRouting,
+            isProcessing: ai.isProcessing || isNexusBusy,
           }}
           agentName={agentName}
           themeColor="cyan"
