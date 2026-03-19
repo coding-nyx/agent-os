@@ -7,7 +7,7 @@ import { useVault } from '@/lib/vault-context';
 import { AgnesOnboarding } from './onboarding/AgnesOnboarding';
 import { AGNES_PERSONA } from './personas';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield, ArrowRight, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
+import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield, ArrowRight, ChevronLeft, ChevronRight, Activity, Settings } from 'lucide-react';
 import { SomaticSessionPicker, type SomaticExerciseType } from './components/somatic/SomaticSessionPicker';
 import { BreathworkExercise } from './components/somatic/BreathworkExercise';
 import { GroundingExercise } from './components/somatic/GroundingExercise';
@@ -39,6 +39,10 @@ import { useUIStore } from '@/lib/stores/ui-store';
 import { AgnesNotificationSettingsPanel } from './components/AgnesNotificationSettingsPanel';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 
+import { SanctuaryBackground } from './components/SanctuaryBackground';
+import { AgnesSanctuarySidebar } from './components/AgnesSanctuarySidebar';
+import { AgnesSanctuaryContent } from './components/AgnesSanctuaryContent';
+
 type AgnesState = 'selecting' | 'session' | 'somatic';
 
 const AgnesSidebar = React.memo(function AgnesSidebar({
@@ -54,42 +58,12 @@ const AgnesSidebar = React.memo(function AgnesSidebar({
   const toggleCollapsed = React.useCallback(() => setCollapsed(c => !c), []);
 
   return (
-    <div className={cn(
-      "h-full flex flex-col transition-[width] duration-300 overflow-hidden",
-      collapsed ? "w-10" : "w-72"
-    )}>
-      {/* Collapse toggle */}
-      <div className={cn("flex shrink-0 pt-4 px-3", collapsed ? "justify-center" : "justify-end")}>
-        <button
-          onClick={toggleCollapsed}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-white/20 hover:text-white/50 hover:bg-white/5 transition-all"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
-      </div>
-
-      {!collapsed && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="flex-1 overflow-y-auto no-scrollbar mx-3 my-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] p-5 space-y-6"
-        >
-          <AgnesPersonalitySidebar
-            baseContext={profile?.baseContext}
-            naked
-          />
-          <div className="h-px w-full bg-white/[0.06]" />
-          <AgnesTherapistCard
-            baseContext={profile?.baseContext}
-            agentAlias={agentAlias}
-            naked
-          />
-
-        </motion.div>
-      )}
-    </div>
+    <AgnesSanctuarySidebar 
+      collapsed={collapsed} 
+      onToggle={toggleCollapsed} 
+      agentAlias={agentAlias} 
+      profile={profile}
+    />
   );
 });
 
@@ -119,6 +93,13 @@ function AgnesContent({
   // Somatic session state
   const [selectedSomaticExercise, setSelectedSomaticExercise] = useState<SomaticExerciseType | null>(null);
   const somaticStartedAt = useRef<number>(0);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenSettings = () => setIsSettingsOpen(true);
+    window.addEventListener('agnes:open-settings', handleOpenSettings);
+    return () => window.removeEventListener('agnes:open-settings', handleOpenSettings);
+  }, []);
 
   // Somatic preference toggle (mirrors AgnesSettingsPanel logic)
   const [somaticEnabled, setSomaticEnabled] = useState<boolean>(
@@ -445,168 +426,43 @@ function AgnesContent({
   }, []);
 
   return (
-    <div className="flex-1 flex min-h-0 relative p-0 min-[620px]:p-4 lg:p-6">
+    <div className="flex-1 flex flex-col min-h-0 relative">
+      <SanctuaryBackground />
+      
       <div className="absolute inset-0">
         <Agnes3DEnvironment activeSession={currentState === 'session'} isProcessing={isProcessing} />
       </div>
 
       <div className={cn(
-        "flex-1 flex flex-col min-h-0 relative z-10 !backdrop-blur-[1px] min-[620px]:rounded-panel w-full min-w-0"
+        "flex-1 flex flex-col min-h-0 relative z-10 w-full min-w-0"
       )}>
         <AnimatePresence mode="wait">
           {currentState === 'selecting' ? (
             <motion.div 
               key="selecting"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
-              className="min-h-full overflow-y-auto no-scrollbar flex flex-col items-center justify-start p-4 min-[620px]:p-12 min-[620px]:justify-center max-w-5xl mx-auto w-full space-y-12 pb-20"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 flex flex-col min-h-0"
             >
-              {/* s18-002: show spinner while hydrating to prevent accidental clearSession click */}
               {isHydrating ? (
-                <div className="flex flex-col items-center gap-4 text-white/30">
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/30">
                   <div className="w-8 h-8 rounded-full border-2 border-indigo-500/40 border-t-indigo-400 animate-spin" />
                   <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400/60">Restoring Session</span>
                 </div>
               ) : (
-              <motion.div 
-                className="w-full bg-black/20 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-6 sm:p-10 lg:p-16 shadow-2xl space-y-12"
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-              >
-                <div className="flex justify-end">
-                  <ModuleReminderEntry
-                    title="Agnes"
-                    themeColor="indigo"
-                    panel={<AgnesNotificationSettingsPanel />}
-                    compact
-                  />
-                </div>
-                <div className="text-center space-y-4">
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-indigo-400" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400/80 italic">Secure Neural Environment</span>
-                  </motion.div>
-                  <h2 className="text-4xl min-[620px]:text-7xl font-black italic tracking-tighter text-white uppercase leading-none">
-                    Neural <span className="text-indigo-400">Sync</span>
-                  </h2>
-                  <p className="text-white/40 text-xs min-[620px]:text-sm font-medium tracking-wide">Establish a high-fidelity link with your emotional telemetry.</p>
-                </div>
-
-                {/* Session Cards - Primary on Mobile */}
-                <div className="grid grid-cols-1 min-[620px]:grid-cols-2 gap-5 min-[620px]:gap-8 w-full">
-                  <motion.button 
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => startSession('impromptu')} 
-                    className="p-8 md:p-12 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
-                  >
-                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <ShieldAlert className="w-20 h-24 text-orange-400" />
-                    </div>
-                    <div className="relative z-10">
-                        <ShieldAlert className="w-10 h-10 text-orange-400 mb-4 sm:mb-6" />
-                        <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white">Quick Support</h3>
-                        <p className="text-xs text-white/40 leading-relaxed font-medium">Private, off-the-record support. Nothing is saved — no context, no trace.</p>
-                        <div className="mt-6 flex items-center gap-2 text-orange-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
-                            <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
-                            <ArrowRight className="w-4 h-4" />
-                        </div>
-                    </div>
-                  </motion.button>
-
-                  {(!isGuest) && (
-                    hasActiveSession ? (
-                      <motion.button 
-                        whileHover={{ scale: 1.02, y: -4 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => startSession('continue')} 
-                        className="p-8 md:p-12 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-indigo-500/10 border-2 border-indigo-500/40 hover:bg-indigo-500/20 transition-all text-left group relative overflow-hidden backdrop-blur-md shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]"
-                      >
-                        <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity">
-                            <Sparkles className="w-20 h-24 text-indigo-400 animate-pulse" />
-                        </div>
-                        <div className="relative z-10">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-400/20 border border-indigo-400/30 mb-6">
-                              <Shield className="w-3 h-3 text-indigo-400" />
-                              <span className="text-[8px] font-black uppercase tracking-widest text-indigo-300">Active Handshake</span>
-                            </div>
-                            <h3 className="text-xl min-[620px]:text-3xl font-black tracking-tighter uppercase mb-3 italic text-white">Reconnect Link</h3>
-                            <p className="text-xs text-indigo-200/60 leading-relaxed font-medium max-w-[240px]">Neural link interrupted. Re-establish secure tunnel to continue your session.</p>
-                            <div className="mt-8 flex items-center gap-3 text-indigo-400">
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Resume Session</span>
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                            </div>
-                        </div>
-                      </motion.button>
-                    ) : isAccessible ? (
-                      <motion.button 
-                        whileHover={{ scale: 1.02, y: -4 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => startSession('new')} 
-                        className="p-8 md:p-12 rounded-[2rem] min-[620px]:rounded-[2.5rem] bg-indigo-500/5 border border-indigo-500/20 hover:bg-indigo-500/10 transition-all text-left group relative overflow-hidden backdrop-blur-md"
-                      >
-                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Sparkles className="w-20 h-24 text-indigo-400" />
-                        </div>
-                        <div className="relative z-10">
-                            <Sparkles className="w-10 h-10 text-indigo-400 mb-4 sm:mb-6" />
-                            <h3 className="text-xl min-[620px]:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white">New Session</h3>
-                            <p className="text-xs text-indigo-200/40 leading-relaxed font-medium">Initialize a deep baseline synchronization.</p>
-                            <div className="mt-6 flex items-center gap-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
-                                <span className="text-[10px] font-black uppercase tracking-widest">Initialize</span>
-                                <ArrowRight className="w-4 h-4" />
-                            </div>
-                        </div>
-                      </motion.button>
-                    ) : (
-                      <div className="p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] bg-white/[0.01] border border-white/5 opacity-40 cursor-not-allowed text-left backdrop-blur-sm">
-                        <ShieldAlert className="w-10 h-10 text-white/20 mb-6" />
-                        <h3 className="text-xl md:text-2xl font-black tracking-tighter uppercase mb-3 italic text-white/20">Locked</h3>
-                        <p className="text-xs text-white/10 leading-relaxed font-medium">Unlock vault to access encrypted neural sessions.</p>
-                      </div>
-                    )
-                  )}
-                </div>
-
-                {/* Session preferences card — somatic toggle + somatic practice entry */}
-                {isAccessible && !isGuest && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 }}
-                    className="w-full rounded-[2rem] bg-white/[0.03] border border-white/[0.06] overflow-hidden"
-                  >
-                    {/* Somatic Awareness toggle */}
-                    <div className="flex items-start justify-between gap-3 p-6">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <Activity className="w-4 h-4 text-indigo-400/60 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-white/80 leading-none mb-1">Somatic Awareness</p>
-                          <p className="text-[11px] text-white/35 leading-relaxed">
-                            Agnes asks about physical sensations and body-based feelings during sessions.
-                          </p>
-                        </div>
-                      </div>
-                      <NeuralToggle
-                        checked={somaticEnabled}
-                        onChange={handleSomaticToggle}
-                        color="indigo"
-                        label="Somatic Awareness"
-                      />
-                    </div>
-
-
-                  </motion.div>
-                )}
-              </motion.div>
-              )} {/* end isHydrating gate */}
+                <AgnesSanctuaryContent
+                  onStartSession={startSession}
+                  agentAlias={agentAlias}
+                  userName={(typeof profile?.baseContext?.identity === 'object' 
+                    ? profile?.baseContext?.identity?.name 
+                    : profile?.baseContext?.identity) || user?.displayName || 'User'}
+                  somaticEnabled={somaticEnabled}
+                  onSomaticToggle={handleSomaticToggle}
+                  isAccessible={isAccessible}
+                  hasActiveSession={hasActiveSession}
+                />
+              )}
             </motion.div>
           ) : (
             <motion.div 
@@ -738,6 +594,45 @@ function AgnesContent({
             </div>
           </div>
         </NeuralModal>
+
+        <NeuralModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          title="Agnes Settings"
+          subtitle="Neural calibration and reminders"
+          icon={Settings}
+          maxWidth="lg"
+        >
+          <div className="space-y-8">
+             <div className="p-6 rounded-[2rem] bg-indigo-500/5 border border-indigo-500/10">
+                <div className="flex items-start gap-4 mb-6">
+                   <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                      <Activity className="w-5 h-5 text-indigo-400" />
+                   </div>
+                   <div className="flex-1">
+                      <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-1">Behavioral Core</h4>
+                      <p className="text-[10px] text-white/40 uppercase tracking-widest leading-relaxed">Adjust somatic feedback and identity linkage.</p>
+                   </div>
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                   <div className="flex flex-col">
+                      <span className="text-xs font-bold text-white/80">Somatic Awareness</span>
+                      <span className="text-[10px] text-white/30 uppercase tracking-widest font-medium">Physiological prompting</span>
+                   </div>
+                   <NeuralToggle
+                      checked={somaticEnabled}
+                      onChange={handleSomaticToggle}
+                      color="indigo"
+                      label="Somatic Awareness"
+                    />
+                </div>
+             </div>
+
+             <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/[0.06]">
+                <AgnesNotificationSettingsPanel />
+             </div>
+          </div>
+        </NeuralModal>
       </AnimatePresence>
     </div>
   );
@@ -782,6 +677,17 @@ export default function AgnesPage() {
       renderContent={AgnesContent}
       renderLeftRail={({ profile, persistProfile }) => (
         <AgnesSidebar profile={profile} agentAlias={agentAlias} onSave={persistProfile} />
+      )}
+      renderMobileFooter={() => (
+        <div className="flex items-center justify-center p-3">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all"
+          >
+            <Settings size={14} />
+            Agnes Settings
+          </button>
+        </div>
       )}
     />
   );
