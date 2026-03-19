@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import basicSsl from '@vitejs/plugin-basic-ssl'
 import path from 'path'
 import fs from 'fs'
 
@@ -34,10 +33,7 @@ function firebaseSwInject(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), basicSsl(), firebaseSwInject()],
-  server: {
-    https: {},
-  },
+  plugins: [react(), firebaseSwInject()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
