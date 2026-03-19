@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { GlobalProjection, NeuralStateVectorPatch } from './types';
 import { useAuth } from './auth-context';
 import { GlobalProjectionService } from './services/global-projection-service';
+import { DerivedInsightsService } from './services/derived-insights-service';
 import { ConversationContext } from '@/lib/ai-adapters/engine-types';
 import { formatNSVForPrompt, formatNSVForModulePrompt, formatNSVForAtlasPlanner, normalizeNSV } from './services/nsv-service';
 import { NSV_READ_PERMISSIONS, filterGlobalSoulForModule } from './services/nsv-ownership';
@@ -48,6 +49,8 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
   const setGlobalSoul = useGlobalSoulStore(s => s.setGlobalSoul);
   const setIsLoading = useGlobalSoulStore(s => s.setIsLoading);
   const globalSoul = useGlobalSoulStore(s => s.globalSoul);
+  const derivedWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDerivedSignatureRef = useRef<string>('');
 
   const refreshGlobalSoul = useCallback(async () => {
     if (!user) {
@@ -119,6 +122,53 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     refreshGlobalSoul();
   });
 
+  // Wire derived insights into `global_souls.{userId}.compactedInsights`
+  // so the orchestrator prompt augmentation can see them.
+  useEffect(() => {
+    if (!user || authLoading) return;
+
+    const unsubscribe = DerivedInsightsService.subscribeToInsights(user.uid, (insights) => {
+      const derivedLines = Array.from(
+        new Map(
+          insights.slice(0, 10).map((i) => {
+            const content = (i.content ?? '').slice(0, 220);
+            const line = `[DI:${i.id}] ${content}`;
+            return [i.id, line] as const;
+          }),
+        ).values(),
+      );
+
+      const signature = derivedLines.join('|');
+      if (signature === lastDerivedSignatureRef.current) return;
+      lastDerivedSignatureRef.current = signature;
+
+      // Preserve non-derived compacted insights (e.g. analysis summaries).
+      const current = useGlobalSoulStore.getState().globalSoul;
+      const existingNonDerived = (current?.compactedInsights ?? []).filter((s) => !s.startsWith('[DI:'));
+      const nextCompactedInsights = [...derivedLines, ...existingNonDerived].slice(0, 12);
+
+      if (derivedWriteTimerRef.current) clearTimeout(derivedWriteTimerRef.current);
+      derivedWriteTimerRef.current = setTimeout(() => {
+        dataLayer
+          .updateDocument('global_souls', user.uid, {
+            compactedInsights: nextCompactedInsights,
+            lastSync: new Date().toISOString(),
+          })
+          .catch((e: unknown) => {
+            console.error('[DerivedInsights] Failed to compact into global_souls:', e);
+          });
+      }, 350);
+    });
+
+    return () => {
+      unsubscribe();
+      if (derivedWriteTimerRef.current) {
+        clearTimeout(derivedWriteTimerRef.current);
+        derivedWriteTimerRef.current = null;
+      }
+    };
+  }, [user?.uid, authLoading, dataLayer]);
+
   const updateTherapeuticBaseline = useCallback(async (baseline: GlobalProjection['therapeuticBaseline']) => {
     if (!user) return;
     try {
@@ -189,8 +239,8 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
   }, [globalSoul, profile]);
 
   const getFilteredSoulForModule = useCallback((moduleId: ModuleId) => {
-    return filterGlobalSoulForModule(useGlobalSoulStore.getState().globalSoul, moduleId);
-  }, []);
+    return filterGlobalSoulForModule(globalSoul, moduleId);
+  }, [globalSoul]);
 
   const actionsValue = useMemo(() => ({
     refreshGlobalSoul,

@@ -116,6 +116,13 @@ export function ForgeDashboard({
 
   return (
     <div className="p-8 space-y-8">
+      <section className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-5 py-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-rose-300">Forge is in progress</p>
+        <p className="text-sm text-white/60 mt-1">
+          Runtime operations are being finalized. Attempts to write sensitive soul state may be safely ignored.
+        </p>
+      </section>
+
       <SectionHeader
         label="Technical Domain"
         title="Forge Runtime"

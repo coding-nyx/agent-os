@@ -110,7 +110,7 @@ type LoadContext = {
 };
 ```
 
-Obtain `encryptionKey` from `useVault().getModuleKey(moduleName)` — returns the master `CryptoKey` when unlocked, `null` when locked.
+Obtain `encryptionKey` from `useVault().getMasterKey()` — returns the master `CryptoKey` when unlocked, `null` when locked.
 
 ### 4.5 `payloadMode` Behaviour
 
@@ -176,7 +176,7 @@ Accessed via `useVault()` inside any component under `<VaultProvider>`.
 | `setPersistenceMode` | `(mode) => void` | Persists to `localStorage` under `nexus_vault_mode` |
 | `unlockVault` | `(password: string) => Promise<void>` | Derives key, verifies canary, sets master key ref |
 | `lockVault` | `() => void` | Nulls master key ref, clears session storage password |
-| `getModuleKey` | `(moduleName: string) => Promise<CryptoKey \| null>` | Returns master key (currently module-agnostic; name param reserved for future per-module keys) |
+| `getMasterKey` | `() => Promise<CryptoKey \| null>` | Returns the single vault master key when unlocked, else `null` |
 | `checkModuleVault` | `(collectionName: string) => Promise<boolean>` | Checks if a document exists in the given collection for this user |
 | `isModuleAccessible` | `(moduleId: ModuleId) => boolean` | Legacy access check based on `securityPreferences.vaultLocks`; **do not use for new enforcement** — use `isVaultGateVisible` + `ProtectedRoute` |
 | `refreshVaultStatus` | `() => Promise<void>` | Re-fetches `hasVault` from Firestore |

@@ -171,12 +171,13 @@ export function exportSourcesToMarkdown(
 function renderSource(s: SourceEntryDecrypted): string[] {
   const star = s.isStarred ? ' ⭐' : '';
   const read = s.readAt ? ' ✓' : '';
+  const savedAt = s.savedAt ?? s.addedAt;
   const lines: string[] = [
     `### ${s.title}${star}${read}`,
     '',
     `- **URL:** <${s.url}>`,
     `- **Domain:** ${s.domain}`,
-    `- **Saved:** ${isoToDisplayDate(s.savedAt)}`,
+    `- **Saved:** ${isoToDisplayDate(savedAt)}`,
   ];
 
   if (s.readAt) {

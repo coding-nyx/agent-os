@@ -1,4 +1,4 @@
-import { CognitiveAgent } from '@/llm-engine/engine/CognitiveAgent';
+import { analyzeImageWithVisionAgent } from '@/lib/ai-adapters/vision-agent';
 
 export type VisionAnalysisMode = 'medical_report' | 'financial_document';
 
@@ -59,7 +59,7 @@ function resolveOpenRouterKey(explicitKey?: string) {
     const fromLocal = localStorage.getItem('VITE_OPENROUTER_API_KEY');
     if (fromLocal) return fromLocal;
   }
-  return import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined;
+  return (import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined) ?? '';
 }
 
 function resolveVisionModel(explicit?: string): string {
@@ -91,15 +91,17 @@ export async function analyzeImageWithVision(
 ): Promise<VisionAnalysisResult> {
   validateImagePayload(imageDataUrl);
   const key = resolveOpenRouterKey(openrouterKey);
-  const agent = new CognitiveAgent({ openrouterKey: key });
   const prompt = EXTRACTION_PROMPTS[mode];
 
   try {
-    const text = await agent.analyzeImage(imageDataUrl, prompt, { 
+    const text = await analyzeImageWithVisionAgent({
+      imageDataUrl,
+      prompt,
+      openrouterKey: key,
       model: modelId,
       temperature: 0.3,
-      format: 'json_object'
-    } as any);
+      format: 'json_object',
+    });
     
     const cleaned = stripActionTagsAndMarkdown(text);
     return {
@@ -123,13 +125,15 @@ export async function extractTextWithVision(
   validateImagePayload(imageDataUrl);
   const key = resolveOpenRouterKey(openrouterKey);
   const resolvedModel = resolveVisionModel(modelId);
-  const agent = new CognitiveAgent({ openrouterKey: key });
 
   try {
-    const text = await agent.analyzeImage(imageDataUrl, DOCUMENT_OCR_PROMPT, {
+    const text = await analyzeImageWithVisionAgent({
+      imageDataUrl,
+      prompt: DOCUMENT_OCR_PROMPT,
+      openrouterKey: key,
       model: resolvedModel,
       temperature: 0.2,
-      format: 'text'
+      format: 'text',
     });
     const cleaned = stripActionTagsAndMarkdown(text);
     if (!cleaned || cleaned.trim().length === 0) {

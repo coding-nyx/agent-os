@@ -260,7 +260,7 @@ await globalSoul.updateInsights('{module}', [
 ### Pattern 1: Loading Profile with Vault
 ```typescript
 const { user } = useAuth();
-const { isUnlocked, getModuleKey } = useVault();
+const { isUnlocked, getMasterKey } = useVault();
 const [profile, setProfile] = useState<{Module}Profile | null>(null);
 
 useEffect(() => {

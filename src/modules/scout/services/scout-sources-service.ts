@@ -15,6 +15,12 @@ import { SourceEntry } from '../types';
 
 /** Decrypted view — what the app works with */
 export interface SourceEntryDecrypted extends Omit<SourceEntry, 'encryptedData' | 'iv'> {
+  // Aliases expected by export/UI layers.
+  // (Some older persisted shapes use `isStarred/readAt/savedAt/nodeId`.)
+  isStarred?: boolean;
+  readAt?: string;
+  savedAt?: string;
+  nodeId?: string;
 }
 
 /** Input when adding a source */
@@ -104,12 +110,17 @@ async function decryptSource(
     normalizedUrl: raw.normalizedUrl,
     domain: raw.domain,
     addedAt: raw.addedAt || raw.savedAt,
+    // Back-compat aliases used by export/UI layers.
+    savedAt: raw.savedAt || raw.addedAt,
     lastAccessedAt: raw.lastAccessedAt,
     discoveredVia: raw.discoveredVia || 'search',
     readStatus: raw.readStatus || (raw.readAt ? 'read' : 'unread'),
+    readAt: raw.readAt,
     starred: raw.starred ?? raw.isStarred ?? false,
+    isStarred: raw.starred ?? raw.isStarred ?? false,
     archived: raw.archived ?? raw.isArchived ?? false,
     citingNodeIds: raw.citingNodeIds || (raw.nodeId ? [raw.nodeId] : []),
+    nodeId: raw.nodeId ?? (Array.isArray(raw.citingNodeIds) ? raw.citingNodeIds[0] : undefined),
   };
 
   if (raw.encryptedData && raw.iv) {

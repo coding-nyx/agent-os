@@ -30,7 +30,7 @@ export const NSV_OWNERSHIP: Record<ModuleId, NSVMetricPath[]> = {
   soma: ['biological.recoveryScore'],
   ledger: ['resource.financialFriction', 'resource.resonanceROI'],
   atlas: ['cognitive.energyBudget', 'cognitive.focusScore', 'cognitive.activeLoad', 'cognitive.planningLoad', 'cognitive.taskCompletionRate', 'planning.streakHealth', 'planning.deadlinePressure'],
-  scout: [],
+  scout: ['cognitive.researchLoad', 'cognitive.interestDiversity'],
   forge: [],
   bridge: []
 };

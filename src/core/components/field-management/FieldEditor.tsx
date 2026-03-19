@@ -148,10 +148,14 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
       {/* Basic Info */}
       <div className="space-y-4">
         <div>
-          <label className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2">
+          <label
+            htmlFor="field-id"
+            className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2"
+          >
             Field ID *
           </label>
           <input
+            id="field-id"
             type="text"
             value={fieldId}
             onChange={(e) => setFieldId(e.target.value)}
@@ -175,10 +179,14 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
         </div>
 
         <div>
-          <label className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2">
+          <label
+            htmlFor="field-name"
+            className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2"
+          >
             Field Name *
           </label>
           <input
+            id="field-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -206,10 +214,14 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
         </div>
 
         <div>
-          <label className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2">
+          <label
+            htmlFor="field-type"
+            className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2"
+          >
             Field Type *
           </label>
           <select
+            id="field-type"
             value={type}
             onChange={(e) => setType(e.target.value as FieldType)}
             disabled={isEditing}
@@ -260,10 +272,14 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
             {(type === FieldType.TEXT || type === FieldType.TEXTAREA) && (
               <>
                 <div>
-                  <label className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2">
+                  <label
+                    htmlFor="min-length"
+                    className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2"
+                  >
                     Min Length
                   </label>
                   <input
+                    id="min-length"
                     type="number"
                     value={minLength}
                     onChange={(e) => setMinLength(e.target.value)}
@@ -272,10 +288,14 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2">
+                  <label
+                    htmlFor="max-length"
+                    className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2"
+                  >
                     Max Length
                   </label>
                   <input
+                    id="max-length"
                     type="number"
                     value={maxLength}
                     onChange={(e) => setMaxLength(e.target.value)}

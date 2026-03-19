@@ -51,6 +51,10 @@ export interface ScoutKnowledgeNode {
   claim: string;
   confidence: number;
   evidence: string[]; // Array of SourceEntry IDs
+  // Optional aliases used by export/UI layers.
+  // Some views treat these as either a single source URL/domain or a list.
+  source?: string;
+  sources?: string[];
   status: 'pending' | 'verified' | 'contested';
   updatedAt: string;
   parentSessionId?: string;

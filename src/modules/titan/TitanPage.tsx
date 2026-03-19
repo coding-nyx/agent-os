@@ -62,7 +62,7 @@ function resolveInitialTab(searchParams: URLSearchParams): TitanTab {
 
 function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null }) {
   const { globalSoul } = useGlobalSoul();
-  const { isModuleAccessible, getModuleKey, lockVault } = useVault();
+  const { isModuleAccessible, getMasterKey, lockVault } = useVault();
   const { user } = useAuth();
   const isLocked = !isModuleAccessible('titan');
 
@@ -103,16 +103,16 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
   // Resolve the Soma module's own encryption key independently of the Titan
   // key that TitanContent receives as a prop. Even though both currently
-  // resolve to the same master key, fetching it via getModuleKey('soma')
+  // resolve to the same master key, fetching it via getMasterKey()
   // keeps the subscription semantically correct and resilient to any future
   // per-module key derivation.
   useEffect(() => {
     let cancelled = false;
-    getModuleKey('soma').then((key) => {
+    getMasterKey().then((key) => {
       if (!cancelled) setSomaEncryptionKey(key);
     });
     return () => { cancelled = true; };
-  }, [getModuleKey]);
+  }, [getMasterKey]);
 
   useEffect(() => {
     if (!user?.uid) return;

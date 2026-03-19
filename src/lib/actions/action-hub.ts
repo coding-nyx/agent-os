@@ -2,6 +2,8 @@ import { GlobalProjection, NeuralStateVectorPatch, SpineEventType, Message } fro
 import { ConversationContext } from '@/lib/ai-adapters/engine-types';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { NexusLogger } from '@/lib/nexus-logger';
+import { type ModuleId } from '@/lib/module-manifest';
+import { NSV_OWNERSHIP, type NSVMetricPath } from '@/lib/services/nsv-ownership';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual' | 'ephemeral';
 
@@ -25,7 +27,59 @@ export interface ActionContext {
 
 export type ActionHandler = (context: ActionContext) => Promise<void> | void;
 
-const NSV_READ_ONLY_MODULES = new Set(['forge']);
+const NSV_READ_ONLY_MODULES = new Set(['forge', 'scout']);
+
+function getMetricValueFromPatch(patch: NeuralStateVectorPatch, metric: NSVMetricPath): unknown {
+  // NeuralStateVectorPatch supports both domain-based updates (e.g. `cognitive.researchLoad`)
+  // and legacy root aliases (e.g. `cnsFatigue`, `emotionalResilience`).
+  switch (metric) {
+    case 'biological.cnsFatigue': return patch.biological?.cnsFatigue ?? (patch as any).cnsFatigue;
+    case 'biological.sleepQuality': return patch.biological?.sleepQuality ?? (patch as any).sleepQuality;
+    case 'biological.recoveryScore': return patch.biological?.recoveryScore;
+    case 'biological.hormonalContext': return patch.biological?.hormonalContext ?? (patch as any).hormonalContext;
+    case 'emotional.emotionalResilience': return patch.emotional?.emotionalResilience ?? (patch as any).emotionalResilience;
+    case 'emotional.stressLoad': return patch.emotional?.stressLoad;
+    case 'emotional.moodTrend': return patch.emotional?.moodTrend;
+    case 'emotional.traumaMarkers': return patch.emotional?.traumaMarkers ?? (patch as any).traumaMarkers;
+    case 'cognitive.energyBudget': return patch.cognitive?.energyBudget;
+    case 'cognitive.focusScore': return patch.cognitive?.focusScore;
+    case 'cognitive.activeLoad': return patch.cognitive?.activeLoad;
+    case 'cognitive.researchLoad': return patch.cognitive?.researchLoad;
+    case 'cognitive.planningLoad': return patch.cognitive?.planningLoad;
+    case 'cognitive.taskCompletionRate': return patch.cognitive?.taskCompletionRate;
+    case 'cognitive.interestDiversity': return patch.cognitive?.interestDiversity;
+    case 'planning.streakHealth': return patch.planning?.streakHealth;
+    case 'planning.deadlinePressure': return patch.planning?.deadlinePressure;
+    case 'resource.financialFriction': return patch.resource?.financialFriction;
+    case 'resource.resonanceROI': return patch.resource?.resonanceROI;
+    default: return undefined;
+  }
+}
+
+function filterReadOnlyModuleNSVUpdate(
+  moduleId: string,
+  patch: NeuralStateVectorPatch,
+): NeuralStateVectorPatch | null {
+  const allowedPaths = NSV_OWNERSHIP[moduleId as ModuleId] ?? [];
+  if (allowedPaths.length === 0) return null;
+
+  const filtered: NeuralStateVectorPatch = {};
+  let wroteAny = false;
+
+  for (const metric of allowedPaths) {
+    const value = getMetricValueFromPatch(patch, metric);
+    if (value === undefined) continue;
+
+    const [domain, leaf] = metric.split('.') as ['biological' | 'emotional' | 'cognitive' | 'planning' | 'resource', string];
+    // Domain objects are optional; we only create them if we have a value to write.
+    const domainObj = (filtered as any)[domain] ?? {};
+    domainObj[leaf] = value;
+    (filtered as any)[domain] = domainObj;
+    wroteAny = true;
+  }
+
+  return wroteAny ? filtered : null;
+}
 
 /**
  * Action types that constitute a direct NSV/soul write.
@@ -80,18 +134,21 @@ class ModuleActionHub {
   async execute(moduleId: string, actionType: string, context: ActionContext): Promise<boolean> {
     // Hard guard: read-only modules must never dispatch explicit NSV-write actions.
     if (NSV_READ_ONLY_MODULES.has(moduleId) && NSV_WRITE_ACTION_TYPES.has(actionType)) {
-      throw new Error(
-        `[ActionHub] Module "${moduleId}" is NSV read-only — soul writes blocked`,
+      NexusLogger.warn(
+        'ActionHub',
+        `[ActionHub] Module "${moduleId}" is NSV read-only — action "${actionType}" ignored`,
       );
+      return true;
     }
 
     const scopedContext: ActionContext = {
       ...context,
       updateGlobalSoul: async (patch) => {
-        if (NSV_READ_ONLY_MODULES.has(moduleId)) {
-          throw new Error('Scout/Forge are NSV read-only');
-        }
-        return context.updateGlobalSoul(patch);
+        if (!NSV_READ_ONLY_MODULES.has(moduleId)) return context.updateGlobalSoul(patch);
+
+        const filtered = filterReadOnlyModuleNSVUpdate(moduleId, patch);
+        if (!filtered) return;
+        return context.updateGlobalSoul(filtered);
       },
     };
 

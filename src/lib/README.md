@@ -62,7 +62,7 @@ function MyComponent() {
 **Responsibilities:**
 - E2EE key derivation (PBKDF2)
 - Master key management
-- Module-specific key generation
+- Single master key (module-agnostic access)
 - Vault lock/unlock state
 - Canary verification
 
@@ -71,9 +71,9 @@ function MyComponent() {
 import { useVault } from '@/lib/vault-context';
 
 function MyComponent() {
-  const { isUnlocked, getModuleKey, unlockVault } = useVault();
+  const { isUnlocked, getMasterKey, unlockVault } = useVault();
   
-  const key = await getModuleKey('agnes');
+  const key = await getMasterKey();
   // Use key for encryption/decryption
 }
 ```
@@ -202,7 +202,7 @@ import { useVault } from '@/lib/vault-context';
 import { db } from '@/lib/firebase';
 
 async function saveProfile(userId: string, data: any) {
-  const key = await vault.getModuleKey('agnes');
+  const key = await vault.getMasterKey();
   const encrypted = await encryptWithKey(data, key);
   
   await db.collection('agnes_profiles').doc(userId).set({
@@ -214,7 +214,7 @@ async function saveProfile(userId: string, data: any) {
 
 async function loadProfile(userId: string) {
   const doc = await db.collection('agnes_profiles').doc(userId).get();
-  const key = await vault.getModuleKey('agnes');
+  const key = await vault.getMasterKey();
   
   return await decryptWithKey(doc.data().encryptedData, key, doc.data().iv);
 }
@@ -230,7 +230,7 @@ class MyService {
         if (!snapshot.exists) return;
         
         const encrypted = snapshot.data();
-        const key = await vault.getModuleKey('my_module');
+        const key = await vault.getMasterKey();
         const decrypted = await decryptWithKey(
           encrypted.encryptedData,
           key,

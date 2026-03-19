@@ -12,17 +12,41 @@ import { OrchestratorOnboarding } from './onboarding/OrchestratorOnboarding';
 import { GuestModePanel } from '@/core/components/GuestModePanel';
 import { NexusDashboard } from './components/NexusDashboard';
 import { VaultSetupNudge } from '@/core/components/VaultSetupNudge';
+import { ConflictResolutionOverlay } from '@/core/components/ConflictResolutionOverlay';
 
 type PageState = 'ONBOARDING' | 'DASHBOARD';
 
 export default function OrchestratorPage() {
   const { user, isGuest, profile, refreshProfile, initializeNewUser } = useAuth();
-  const { hasVault, isUnlocked, vaultSetupNudgeSeen, isLoading: vaultLoading } = useVault();
+  const { hasVault, isUnlocked, vaultSetupNudgeSeen, isLoading: vaultLoading, getMasterKey } = useVault();
   const navigate = useNavigate();
   const [pageState, setPageState] = useState<PageState>('ONBOARDING');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNudge, setShowNudge] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
+  const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!isUnlocked || isGuest) {
+      setEncryptionKey(null);
+      return;
+    }
+
+    getMasterKey()
+      .then((key) => {
+        if (cancelled) return;
+        setEncryptionKey(key);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEncryptionKey(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isUnlocked, isGuest, getMasterKey]);
 
   const {
     messages,
@@ -36,7 +60,8 @@ export default function OrchestratorPage() {
   } = useModuleAI({
     moduleId: 'orchestrator',
     systemPrompt: ORCHESTRATOR_PERSONA,
-    navigateTo: (path) => navigate(path)
+    navigateTo: (path) => navigate(path),
+    encryptionKey
   });
 
   useEffect(() => {
@@ -104,6 +129,7 @@ export default function OrchestratorPage() {
           ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage, clearSession }}
           agentName={profile?.agentPersonalityProvision?.orchestratorAlias || 'Nexus'}
         />
+        <ConflictResolutionOverlay />
         <AnimatePresence>
           {showNudge && (
             <VaultSetupNudge onClose={() => setShowNudge(false)} />

@@ -144,3 +144,6 @@ export function useSources({ userId, encryptionKey }: SourceContext): UseSources
     refresh: load,
   };
 }
+
+// Re-exported for consumers/hooks that need the same decrypted source type.
+export type { SourceEntryDecrypted } from '../services/scout-sources-service';

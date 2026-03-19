@@ -233,6 +233,9 @@ export function createEncryptedProfileService<
   // -------------------------------------------------------------------------
 
   function loadGuestInternal(): TProfile | null {
+    if (typeof localStorage === 'undefined' || typeof localStorage.getItem !== 'function') {
+      return null;
+    }
     const raw = localStorage.getItem(guestStorageKey);
     if (!raw) return null;
     try {
@@ -243,10 +246,16 @@ export function createEncryptedProfileService<
   }
 
   function saveGuestInternal(profile: TProfile): void {
+    if (typeof localStorage === 'undefined' || typeof localStorage.setItem !== 'function') {
+      return;
+    }
     localStorage.setItem(guestStorageKey, JSON.stringify(profile));
   }
 
   function clearGuestInternal(): void {
+    if (typeof localStorage === 'undefined' || typeof localStorage.removeItem !== 'function') {
+      return;
+    }
     localStorage.removeItem(guestStorageKey);
   }
 

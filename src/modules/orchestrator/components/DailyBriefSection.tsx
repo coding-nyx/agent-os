@@ -53,7 +53,8 @@ interface DailyBriefSectionProps {
 
 export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAboutDomain }: DailyBriefSectionProps) {
   const { globalSoul } = useGlobalSoul();
-  const { profile } = useAuth();
+  const auth = useAuth();
+  const profile = auth?.profile;
   const reducedMotion = useReducedMotion();
 
   const nsv = globalSoul?.crossFunctionalState ?? null;
@@ -102,6 +103,8 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
       transition={reducedMotion ? { duration: 0 } : { duration: 0.4 }}
       className="w-full"
       aria-label="Daily wellness brief"
+      data-testid="daily-brief"
+      data-collapsed={String(collapsed)}
     >
       {/* Header row */}
       <div className="flex items-center justify-between mb-4">

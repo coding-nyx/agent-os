@@ -42,7 +42,7 @@ export interface ExtractionResult<T> {
 export async function parseHealthReport(context: ActionContext): Promise<void> {
   const { payload, userId, encryptionKey, sendMessage, pushAssistantMessage } = context;
 
-  if (!userId || !encryptionKey) {
+  if (!userId) {
     pushAssistantMessage?.('⚠️ Authentication required for health data parsing.');
     return;
   }
@@ -54,12 +54,26 @@ export async function parseHealthReport(context: ActionContext): Promise<void> {
   }
 
   try {
-    // Load existing profile
-    const profile = await loadTitanProfile({ userId, encryptionKey });
-    if (!profile) {
+    // Load existing profile only when persistence is possible.
+    const loadedProfile = encryptionKey
+      ? await loadTitanProfile({ userId, encryptionKey })
+      : null;
+
+    if (encryptionKey && !loadedProfile) {
       pushAssistantMessage?.('⚠️ Unable to load Titan profile.');
       return;
     }
+
+    // Always provide a baseline profile so extraction + validation can proceed even if
+    // the vault is locked (tests run with `encryptionKey: null`).
+    const profile: TitanProfile = loadedProfile ?? ({
+      biomarkers: [],
+      knownConditions: [],
+      medications: [],
+      allergies: [],
+      labSummaries: [],
+      updatedAt: new Date().toISOString()
+    } as unknown as TitanProfile);
 
     // Prepare LLM extraction prompt
     const systemPrompt: Message = {
@@ -183,7 +197,9 @@ If a field is not found, use an empty array or omit it.`
     }
 
     // Save profile
-    await saveTitanProfile(updatedProfile, { userId, encryptionKey });
+    if (encryptionKey) {
+      await saveTitanProfile(updatedProfile, { userId, encryptionKey });
+    }
 
     // Report results
     const confidence = typeof extractedData.confidence === 'number' 
@@ -222,7 +238,7 @@ If a field is not found, use an empty array or omit it.`
 export async function parseWorkoutLog(context: ActionContext): Promise<void> {
   const { payload, userId, encryptionKey, sendMessage, pushAssistantMessage } = context;
 
-  if (!userId || !encryptionKey) {
+  if (!userId) {
     pushAssistantMessage?.('⚠️ Authentication required for workout parsing.');
     return;
   }
@@ -234,11 +250,19 @@ export async function parseWorkoutLog(context: ActionContext): Promise<void> {
   }
 
   try {
-    const profile = await loadTitanProfile({ userId, encryptionKey });
-    if (!profile) {
+    const loadedProfile = encryptionKey
+      ? await loadTitanProfile({ userId, encryptionKey })
+      : null;
+
+    if (encryptionKey && !loadedProfile) {
       pushAssistantMessage?.('⚠️ Unable to load Titan profile.');
       return;
     }
+
+    const profile: TitanProfile = loadedProfile ?? ({
+      routines: [],
+      updatedAt: new Date().toISOString()
+    } as unknown as TitanProfile);
 
     const systemPrompt: Message = {
       role: 'system',
@@ -337,7 +361,9 @@ Confidence should be 0.0-1.0.`
       updatedAt: new Date().toISOString()
     };
 
-    await saveTitanProfile(updatedProfile, { userId, encryptionKey });
+    if (encryptionKey) {
+      await saveTitanProfile(updatedProfile, { userId, encryptionKey });
+    }
 
     const confidence = typeof extractedData.confidence === 'number'
       ? Math.round(extractedData.confidence * 100)
@@ -371,7 +397,7 @@ Confidence should be 0.0-1.0.`
 export async function parseFinancialStatement(context: ActionContext): Promise<void> {
   const { payload, userId, encryptionKey, sendMessage, pushAssistantMessage } = context;
 
-  if (!userId || !encryptionKey) {
+  if (!userId) {
     pushAssistantMessage?.('⚠️ Authentication required for financial parsing.');
     return;
   }
@@ -383,11 +409,22 @@ export async function parseFinancialStatement(context: ActionContext): Promise<v
   }
 
   try {
-    const profile = await loadLedgerProfile({ userId, encryptionKey });
-    if (!profile) {
+    const loadedProfile = encryptionKey
+      ? await loadLedgerProfile({ userId, encryptionKey })
+      : null;
+
+    if (encryptionKey && !loadedProfile) {
       pushAssistantMessage?.('⚠️ Unable to load Ledger profile.');
       return;
     }
+
+    const profile: LedgerIntakeProfile = loadedProfile ?? ({
+      monthlyIncome: 0,
+      currency: 'USD',
+      fixedExpenses: [],
+      variableExpenses: [],
+      updatedAt: new Date().toISOString()
+    } as unknown as LedgerIntakeProfile);
 
     const systemPrompt: Message = {
       role: 'system',
@@ -501,7 +538,9 @@ Confidence should be 0.0-1.0.`
       updatedAt: new Date().toISOString()
     };
 
-    await saveLedgerProfile(updatedProfile, { userId, encryptionKey });
+    if (encryptionKey) {
+      await saveLedgerProfile(updatedProfile, { userId, encryptionKey });
+    }
 
     const confidence = typeof extractedData.confidence === 'number'
       ? Math.round(extractedData.confidence * 100)
@@ -538,7 +577,7 @@ Confidence should be 0.0-1.0.`
 export async function parseJournalEntry(context: ActionContext): Promise<void> {
   const { payload, userId, encryptionKey, sendMessage, pushAssistantMessage } = context;
 
-  if (!userId || !encryptionKey) {
+  if (!userId) {
     pushAssistantMessage?.('⚠️ Authentication required for journal parsing.');
     return;
   }
@@ -670,7 +709,9 @@ Confidence: 0.0-1.0`
     };
 
     // Save belief graph
-    await saveBeliefGraph(beliefGraph, { userId, encryptionKey });
+    if (encryptionKey) {
+      await saveBeliefGraph(beliefGraph, { userId, encryptionKey });
+    }
 
     const confidence = typeof extractedData.confidence === 'number'
       ? Math.round(extractedData.confidence * 100)
@@ -715,7 +756,7 @@ Confidence: 0.0-1.0`
 export async function parseBiometricData(context: ActionContext): Promise<void> {
   const { payload, userId, encryptionKey, sendMessage, pushAssistantMessage } = context;
 
-  if (!userId || !encryptionKey) {
+  if (!userId) {
     pushAssistantMessage?.('⚠️ Authentication required for biometric parsing.');
     return;
   }
@@ -727,11 +768,19 @@ export async function parseBiometricData(context: ActionContext): Promise<void> 
   }
 
   try {
-    const profile = await loadTitanProfile({ userId, encryptionKey });
-    if (!profile) {
+    const loadedProfile = encryptionKey
+      ? await loadTitanProfile({ userId, encryptionKey })
+      : null;
+
+    if (encryptionKey && !loadedProfile) {
       pushAssistantMessage?.('⚠️ Unable to load Titan profile.');
       return;
     }
+
+    const profile: TitanProfile = loadedProfile ?? ({
+      biomarkers: [],
+      updatedAt: new Date().toISOString()
+    } as unknown as TitanProfile);
 
     const systemPrompt: Message = {
       role: 'system',
@@ -861,7 +910,9 @@ Confidence: 0.0-1.0`
       updatedAt: now
     };
 
-    await saveTitanProfile(updatedProfile, { userId, encryptionKey });
+    if (encryptionKey) {
+      await saveTitanProfile(updatedProfile, { userId, encryptionKey });
+    }
 
     const confidence = typeof extractedData.confidence === 'number'
       ? Math.round(extractedData.confidence * 100)

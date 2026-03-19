@@ -42,5 +42,7 @@ todos.db
 playwright-report/
 test-results/
 
+.cursor/
+
 .gemini/
 gha-creds-*.json

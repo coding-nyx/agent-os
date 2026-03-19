@@ -96,7 +96,8 @@ const SAVE_DEBOUNCE_MS = 5_000;
  * survive page refreshes within a 24-hour window.
  */
 export function useNsvTrends(): Record<string, TrendDirection> {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const { globalSoul } = useGlobalSoul();
 
   const nsv = globalSoul?.crossFunctionalState ?? null;

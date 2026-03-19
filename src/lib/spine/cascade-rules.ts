@@ -149,8 +149,73 @@ export function registerLedgerCascadeRules(): void {
   Spine.registerCascadeRules(LEDGER_CASCADE_RULES);
 }
 
-/** Alias — core cascade rules used by App-level registration. */
-export const CORE_CASCADE_RULES = LEDGER_CASCADE_RULES;
+// ─────────────────────────────────────────────────────────────────────────────
+// Core Cascade Rules v2
+// (Burnout + energy-flatten wave logic is validated by `cascade-rules.test.ts`.)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CORE_ENERGY_WAVE_CASCADE_RULES: CascadeRule[] = [
+  {
+    id: 'burnout-warning',
+    trigger: 'VITAL_UPDATED' as SpineEventType,
+    condition: (event) => {
+      const data = event.data as Record<string, unknown>;
+      const cnsFatigue = data?.cnsFatigue;
+      const emotionalResilience = data?.emotionalResilience;
+      // Hot path: high fatigue + low resilience
+      return (
+        typeof cnsFatigue === 'number' &&
+        typeof emotionalResilience === 'number' &&
+        cnsFatigue >= 8 &&
+        emotionalResilience <= 3
+      );
+    },
+    transform: (event) => ({
+      type: 'BURNOUT_WARNING' as SpineEventType,
+      domain: 'system' as const,
+      source: 'spine-cascade:core',
+      priority: 'critical' as const,
+      target: 'orchestrator',
+      data: {
+        reason: 'high_fatigue_low_resilience',
+        cnsFatigue: (event.data as Record<string, unknown>)?.cnsFatigue,
+        emotionalResilience: (event.data as Record<string, unknown>)?.emotionalResilience
+      },
+    }),
+  },
+  {
+    id: 'burnout-flatten-wave',
+    trigger: 'BURNOUT_WARNING' as SpineEventType,
+    condition: () => true,
+    transform: () => ({
+      type: 'FLATTEN_ENERGY_WAVE' as SpineEventType,
+      domain: 'system' as const,
+      source: 'spine-cascade:core',
+      priority: 'alert' as const,
+      target: 'atlas',
+      data: { reason: 'burnout_warning' },
+    }),
+  },
+  {
+    id: 'intensity-flatten-wave',
+    trigger: 'BLOCK_HIGH_INTENSITY' as SpineEventType,
+    condition: () => true,
+    transform: (event) => ({
+      type: 'FLATTEN_ENERGY_WAVE' as SpineEventType,
+      domain: 'system' as const,
+      source: 'spine-cascade:core',
+      priority: 'alert' as const,
+      target: 'atlas',
+      data: { reason: typeof (event.data as any)?.reason === 'string' ? (event.data as any).reason : undefined },
+    }),
+  },
+];
+
+/** Core cascade rules used by App-level registration. */
+export const CORE_CASCADE_RULES: CascadeRule[] = [
+  ...CORE_ENERGY_WAVE_CASCADE_RULES,
+  ...LEDGER_CASCADE_RULES,
+];
 
 // ---------------------------------------------------------------------------
 // Atlas Weekly Review Cascade Rule (S9-005)

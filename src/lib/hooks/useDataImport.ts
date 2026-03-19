@@ -29,7 +29,7 @@ export interface UseDataImportReturn {
 
 export function useDataImport(): UseDataImportReturn {
   const { user } = useAuth();
-  const { getModuleKey } = useVault();
+  const { getMasterKey } = useVault();
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
@@ -58,7 +58,7 @@ export function useDataImport(): UseDataImportReturn {
       setImportError(null);
 
       try {
-        const encryptionKey = await getModuleKey('agnes');
+        const encryptionKey = await getMasterKey();
         if (!encryptionKey) {
           throw new Error('Vault is locked. Please unlock to preview import.');
         }
@@ -73,7 +73,7 @@ export function useDataImport(): UseDataImportReturn {
         return null;
       }
     },
-    [user?.uid, getModuleKey]
+    [user?.uid, getMasterKey]
   );
 
   const importFile = useCallback(
@@ -87,7 +87,7 @@ export function useDataImport(): UseDataImportReturn {
       setImportError(null);
 
       try {
-        const encryptionKey = await getModuleKey('agnes');
+        const encryptionKey = await getMasterKey();
         if (!encryptionKey) {
           throw new Error('Vault is locked. Please unlock to import data.');
         }
@@ -121,7 +121,7 @@ export function useDataImport(): UseDataImportReturn {
         setIsImporting(false);
       }
     },
-    [user?.uid, getModuleKey]
+    [user?.uid, getMasterKey]
   );
 
   const clearError = useCallback(() => {

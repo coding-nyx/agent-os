@@ -580,7 +580,7 @@ export function useModuleAI({
         // through VITAL_UPDATED and the GlobalSoul Firestore subscription instead.
         if (profileDirty && persistencePolicy !== 'ephemeral') {
           Spine.emit({
-            type: 'MODULE_PROFILE_UPDATED' as any,
+            type: 'MODULE_PROFILE_UPDATED',
             source: moduleId,
             domain: 'system',
             data: { moduleId, actionCount: response.actions.length },

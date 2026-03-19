@@ -282,6 +282,8 @@ export type SpineEventType =
   | 'SOMA_DIAGNOSIS_DISCARDED'
   // Soma Cascade Derived Events
   | 'HEALTH_CONTEXT_STALE'
+  // Module profile refresh (emitted by useModuleAI after a profile write)
+  | 'MODULE_PROFILE_UPDATED'
   // Titan Cycle Events
   | 'CYCLE_STARTED'
   | 'CYCLE_COMPLETED'

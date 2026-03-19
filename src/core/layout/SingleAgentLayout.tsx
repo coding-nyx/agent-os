@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { NexusChat } from '@/core/components/NexusChat';
 import { NeuralThemeColor } from '@/core/components/NeuralTabGroup';
-import { RoutingSuggestion } from '@/modules/orchestrator/components/RoutingSuggestion';
+import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import type { AuthMode } from '@/core/components/UnifiedAuthModal';

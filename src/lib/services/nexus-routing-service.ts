@@ -164,7 +164,7 @@ export const NexusRoutingService = {
       return {
         target: best.moduleId,
         confidence,
-        reason: `scored:${best.topTerm}(${best.score})`
+        reason: `matched:${best.topTerm}(${best.score})`
       };
     }
 

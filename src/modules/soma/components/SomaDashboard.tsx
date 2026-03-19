@@ -143,7 +143,7 @@ function useIsMobile(breakpoint = 1024) {
 
 interface QuickEntryChipsProps {
   uid: string | null;
-  getModuleKey: (module: string) => Promise<CryptoKey | null>;
+  getMasterKey: () => Promise<CryptoKey | null>;
   /** All readings (persisted + in-session) used to detect today's logged value */
   allReadings: VitalReading[];
   onAddVitalReading: (reading: VitalReading) => void;
@@ -154,7 +154,7 @@ interface QuickEntryChipsProps {
  * Each chip shows today's logged value (if any) or a "+" prompt.
  * Tapping expands an inline micro-form; saving persists via addVitalReading.
  */
-function QuickEntryChips({ uid, getModuleKey, allReadings, onAddVitalReading }: QuickEntryChipsProps) {
+function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: QuickEntryChipsProps) {
   const [expandedKey, setExpandedKey]   = useState<ChipKey | null>(null);
   const [inputValue,  setInputValue]    = useState('');
   const [isSaving,    setIsSaving]      = useState(false);
@@ -200,7 +200,7 @@ function QuickEntryChips({ uid, getModuleKey, allReadings, onAddVitalReading }: 
     setIsSaving(true);
     setSaveError(null);
     try {
-      const encKey = await getModuleKey('soma');
+      const encKey = await getMasterKey();
       if (!encKey) throw new Error('Vault is locked — unlock to save');
       await addVitalReading(uid, { [chip.key]: numVal }, encKey);
       const reading: VitalReading = { timestamp: Date.now(), [chip.key]: numVal };
@@ -214,7 +214,7 @@ function QuickEntryChips({ uid, getModuleKey, allReadings, onAddVitalReading }: 
     } finally {
       setIsSaving(false);
     }
-  }, [uid, getModuleKey, inputValue, onAddVitalReading]);
+  }, [uid, getMasterKey, inputValue, onAddVitalReading]);
 
   const activeChip = QUICK_ENTRY_CHIPS.find((c) => c.key === expandedKey) ?? null;
 
@@ -352,7 +352,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
 
   // ── Auth / Vault ────────────────────────────────────────────────────────────
   const { user } = useAuth();
-  const { getModuleKey, isUnlocked } = useVault();
+  const { getMasterKey, isUnlocked } = useVault();
   const uid = user?.uid ?? null;
   const isMobile = useIsMobile();
 
@@ -377,11 +377,11 @@ export const SomaDashboard = React.memo(function SomaDashboard({
 
   // On mount: restore any active diagnosis session from Firestore.
   useEffect(() => {
-    // Wait until the vault is unlocked — getModuleKey returns null while locked.
+    // Wait until the vault is unlocked — getMasterKey returns null while locked.
     if (!uid || !isUnlocked) return;
     let cancelled = false;
     (async () => {
-      const encryptionKey = await getModuleKey('soma');
+      const encryptionKey = await getMasterKey();
       if (!encryptionKey || cancelled) return;
       try {
         const session = await getActiveDiagnosisSession(uid, encryptionKey);
@@ -432,7 +432,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
   // ── Diagnosis handlers ──────────────────────────────────────────────────────
 
   const handleFileSelected = useCallback(async (file: File) => {
-    const encryptionKey = await getModuleKey('soma');
+    const encryptionKey = await getMasterKey();
     if (!uid || !encryptionKey) {
       setUploadError('Vault is locked. Please unlock your vault first.');
       return;
@@ -455,7 +455,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
       setDiagnosisPhase('error');
       setDiagnosisError(err instanceof Error ? err.message : 'Upload failed.');
     }
-  }, [uid, getModuleKey]);
+  }, [uid, getMasterKey]);
 
   useEffect(() => {
     if (!queuedUpload) return;
@@ -464,7 +464,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
 
   const handleCloseDiagnosis = useCallback(async (merge: boolean) => {
     if (!activeSessionId || !uid) return;
-    const encryptionKey = await getModuleKey('soma');
+    const encryptionKey = await getMasterKey();
     if (!encryptionKey) return;
     setIsClosingDiagnosis(true);
     try {
@@ -483,7 +483,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
     } finally {
       setIsClosingDiagnosis(false);
     }
-  }, [activeSessionId, uid, getModuleKey, analysisResult, selectedFieldIds]);
+  }, [activeSessionId, uid, getMasterKey, analysisResult, selectedFieldIds]);
 
   // Fix 3: Use readinessScore from useSomaHealth hook; fall back to 0 when not yet loaded
   const readinessScore = externalReadinessScore ?? 0;
@@ -614,7 +614,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
       {/* Quick Entry Chips — convenience shortcut to log today's physical vitals */}
       <QuickEntryChips
         uid={uid}
-        getModuleKey={getModuleKey}
+        getMasterKey={getMasterKey}
         allReadings={profile.vitalReadings ?? []}
         onAddVitalReading={onAddVitalReading}
       />
@@ -936,7 +936,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
           onCancel={() => {
             // Best-effort discard of the in-flight session.
             if (activeSessionId && uid) {
-              getModuleKey('soma').then(key => {
+              getMasterKey().then(key => {
                 if (key) closeDiagnosis(uid, activeSessionId, [], key, false).catch(() => {});
               }).catch(() => {});
             }

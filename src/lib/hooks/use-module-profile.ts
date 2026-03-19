@@ -23,7 +23,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
   syncGuestProfile
 }: UseModuleProfileOptions<TProfile>) {
   const { user, isGuest } = useAuth();
-  const { isUnlocked, getModuleKey } = useVault();
+  const { isUnlocked, getMasterKey } = useVault();
 
   const [profile, setProfile] = useState<TProfile | null>(null);
   const [isOnboarding, setIsOnboarding] = useState(true);
@@ -37,7 +37,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
   }, [moduleId]);
 
   // Listen for external sync events (e.g. from useModuleAI actions)
-  useSpineEvent('MODULE_PROFILE_UPDATED' as any, useCallback((event) => {
+  useSpineEvent('MODULE_PROFILE_UPDATED', useCallback((event) => {
     if (event.data?.moduleId === moduleId) {
       console.log(`[useModuleProfile] Refreshing ${moduleId} due to external sync event`);
       setRefreshNonce(n => n + 1);
@@ -77,7 +77,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       if (!hasLoadedOnce.current) {
         setIsLoading(true);
       }
-      const key = isUnlocked ? await getModuleKey(moduleId) : null;
+      const key = isUnlocked ? await getMasterKey() : null;
       if (!mounted) return;
       setEncryptionKey(key);
 
@@ -112,18 +112,18 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       mounted = false;
       if (unsubscribe) unsubscribe();
     };
-  }, [user?.uid, isGuest, isUnlocked, getModuleKey, moduleId, refreshNonce, resolveOnboardingGate]); // Added refreshNonce
+  }, [user?.uid, isGuest, isUnlocked, getMasterKey, moduleId, refreshNonce, resolveOnboardingGate]); // Added refreshNonce
 
   useEffect(() => {
     if (!user || !isUnlocked || hasSyncedGuest || !syncGuestProfileRef.current) return;
     (async () => {
-      const key = await getModuleKey(moduleId);
+      const key = await getMasterKey();
       if (!key) return;
       if (!syncGuestProfileRef.current) return;
       const synced = await syncGuestProfileRef.current({ userId: user.uid, encryptionKey: key });
       if (synced) setHasSyncedGuest(true);
     })();
-  }, [user?.uid, isUnlocked, hasSyncedGuest, getModuleKey, moduleId]);
+  }, [user?.uid, isUnlocked, hasSyncedGuest, getMasterKey, moduleId]);
 
   const persistProfile = useCallback(async (p: TProfile) => {
     if (!saveProfileRef.current || !user?.uid) return;
@@ -142,7 +142,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       return null;
     }
 
-    const key = isUnlocked ? await getModuleKey(moduleId) : null;
+    const key = isUnlocked ? await getMasterKey() : null;
     setEncryptionKey(key);
 
     const nextProfile = await refreshProfileRef.current({
@@ -153,7 +153,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
     setProfile(nextProfile);
     setIsOnboarding(resolveOnboardingGate(nextProfile));
     return nextProfile;
-  }, [user?.uid, isUnlocked, getModuleKey, moduleId, resolveOnboardingGate]);
+  }, [user?.uid, isUnlocked, getMasterKey, moduleId, resolveOnboardingGate]);
 
   return {
     profile,

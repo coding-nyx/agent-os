@@ -14,7 +14,21 @@
  * - No `any` — all pdfjs item types are narrowed via Record<string, unknown> guards.
  */
 
-import { sanitizeJsonPayload } from '@/llm-engine/sanitize';
+/**
+ * Minimal JSON "sanitizer" for LLM outputs.
+ *
+ * Guardrails disallow direct imports from `@/llm-engine/sanitize`, so we keep
+ * this service dependency-free and do best-effort cleanup locally.
+ */
+function sanitizeJsonPayload(input: string): string {
+  return input
+    .trim()
+    // Strip common markdown code fences.
+    .replace(/```(?:json)?/g, '')
+    .replace(/```/g, '')
+    // Remove ASCII control chars that can break JSON parsing.
+    .replace(/[\u0000-\u001F\u007F]/g, '');
+}
 
 // ---------------------------------------------------------------------------
 // Public types

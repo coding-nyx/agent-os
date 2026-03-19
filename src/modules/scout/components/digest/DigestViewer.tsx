@@ -149,8 +149,8 @@ function DigestCard({
               <section className="prose prose-invert prose-xs max-w-none">
                 <div className="relative">
                    <div className="absolute -left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-fuchsia-500/40 to-transparent" />
-                   <ReactMarkdown 
-                    className="text-white/70 leading-relaxed space-y-4"
+                  <div className="text-white/70 leading-relaxed space-y-4">
+                    <ReactMarkdown
                     components={{
                       p: ({children}) => <p className="text-sm leading-relaxed mb-4">{children}</p>,
                       h1: ({children}) => <h1 className="text-xl font-display font-bold text-white mb-6">{children}</h1>,
@@ -158,9 +158,10 @@ function DigestCard({
                       h3: ({children}) => <h3 className="text-md font-display font-bold text-white/80 mt-6 mb-3">{children}</h3>,
                       li: ({children}) => <li className="text-sm mb-2">{children}</li>,
                     }}
-                   >
-                     {digest.synthesizedContent}
-                   </ReactMarkdown>
+                    >
+                      {digest.synthesizedContent}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </section>
 

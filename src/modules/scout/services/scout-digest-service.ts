@@ -7,16 +7,32 @@
 
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { CognitiveAgent } from '@/llm-engine/engine/CognitiveAgent';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { ScoutDigest, ScoutKnowledgeNode } from '../types';
 import { SourceEntryDecrypted } from './scout-sources-service';
+import { generateJSONWithAgent } from '@/lib/ai-adapters/json-generation-agent';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface ScoutDigestDecrypted extends ScoutDigest {
+  // Encryption envelope (required by encrypt/decrypt helpers)
+  encryptedData: string;
+  iv: string;
+
+  // Export/UI convenience fields (derived if missing)
+  createdAt: string;
+  nodeCount: number;
+  sourceCount: number;
+  triggerSource: string;
+  sections: {
+    executiveSummary: string;
+    keyThemes: string[];
+    knowledgeGaps: string[];
+    recommendedActions: string[];
+    sourceSummary?: string;
+  };
 }
 
 type DigestContext = {
@@ -39,11 +55,10 @@ function digestsCollection(userId: string): string {
 // ---------------------------------------------------------------------------
 
 async function encryptDigest(
-  digest: ScoutDigestDecrypted,
+  digest: ScoutDigest,
   key: CryptoKey,
 ): Promise<{ encryptedData: string; iv: string }> {
-  const { encryptedData: _ed, iv: _iv, ...payload } = digest;
-  const result = await encryptWithKey(JSON.stringify(payload), key);
+  const result = await encryptWithKey(JSON.stringify(digest), key);
   return { encryptedData: result.ciphertext, iv: result.iv };
 }
 
@@ -55,7 +70,36 @@ async function decryptDigest(
   key: CryptoKey,
 ): Promise<ScoutDigestDecrypted> {
   const json = await decryptWithKey({ ciphertext: encryptedData, iv }, key);
-  return { ...JSON.parse(json), id, userId, encryptedData, iv };
+  const parsed = JSON.parse(json) as ScoutDigest;
+
+  const createdAt = (parsed as any).createdAt ?? (parsed as any).generatedAt ?? new Date().toISOString();
+  const nodeCount = parsed.summary?.totalNodes ?? 0;
+  const sourceCount = (parsed as any).sourceCount ?? 0;
+  const triggerSource = (parsed as any).triggerSource ?? parsed.generationType;
+
+  // The prompt currently produces `synthesizedContent` (newsletter Markdown) but the
+  // export layer expects a "sections" object. Provide a minimal derived mapping
+  // to keep export/UI layers type-safe and functional.
+  const sections = (parsed as any).sections ?? {
+    executiveSummary: parsed.synthesizedContent ?? '',
+    keyThemes: [],
+    knowledgeGaps: [],
+    recommendedActions: [],
+    sourceSummary: undefined,
+  };
+
+  return {
+    ...parsed,
+    id,
+    userId,
+    encryptedData,
+    iv,
+    createdAt,
+    nodeCount,
+    sourceCount,
+    triggerSource,
+    sections,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -137,11 +181,11 @@ export async function generateDigest(
   try {
     const prompt = buildDigestPrompt(interests, nodes, sources);
 
-    // Initialize engine agent manually for one-off service call
+    // Initialize engine agent via adapter for one-off service call
     const openrouterKey = localStorage.getItem('VITE_OPENROUTER_API_KEY') || (import.meta.env.VITE_OPENROUTER_API_KEY as string);
-    const agent = new CognitiveAgent({ openrouterKey });
-
-    const response = await agent.generateJSON<any>(prompt, {
+    const response = await generateJSONWithAgent<any>({
+      prompt,
+      openrouterKey,
       systemPrompt: 'You are a professional research intelligence analyst. Respond with valid JSON matching the schema.',
       temperature: 0.4,
     });
@@ -165,7 +209,7 @@ export async function generateDigest(
     const now = new Date().toISOString();
     const id = `digest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    const digest: ScoutDigestDecrypted = {
+    const digest: ScoutDigest = {
       ...rawDigest,
       id,
       userId,
@@ -175,7 +219,29 @@ export async function generateDigest(
 
     const { encryptedData, iv } = await encryptDigest(digest, encryptionKey);
 
-    await saveDigest({ ...digest, encryptedData, iv }, { userId, encryptionKey });
+    const createdAt = now;
+    const nodeCount = digest.summary?.totalNodes ?? 0;
+    const sourceCount = 0;
+    const sections = {
+      executiveSummary: digest.synthesizedContent ?? '',
+      keyThemes: [],
+      knowledgeGaps: [],
+      recommendedActions: [],
+      sourceSummary: undefined,
+    };
+
+    const decryptedDigest: ScoutDigestDecrypted = {
+      ...digest,
+      encryptedData,
+      iv,
+      createdAt,
+      nodeCount,
+      sourceCount,
+      triggerSource,
+      sections,
+    };
+
+    await saveDigest(decryptedDigest, { userId, encryptionKey });
 
     Spine.emit({
       type: 'DIGEST_GENERATED' as any,
@@ -185,7 +251,7 @@ export async function generateDigest(
       data: { digestId: id, generatedAt: now },
     });
 
-    return digest;
+    return decryptedDigest;
   } catch (error) {
     console.error('[ScoutDigestService] Failed to generate digest:', error);
     Spine.emit({

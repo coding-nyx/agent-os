@@ -63,7 +63,7 @@ export function useExtensionFieldValues(
   moduleId: string
 ): UseExtensionFieldValuesReturn {
   const { user } = useAuth();
-  const { getModuleKey } = useVault();
+  const { getMasterKey } = useVault();
 
   const [fieldValues, setFieldValues] = useState<Record<string, FieldValue>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -77,11 +77,11 @@ export function useExtensionFieldValues(
    */
   const getEncryptionKey = useCallback(async (): Promise<CryptoKey | null> => {
     try {
-      return await getModuleKey(moduleId);
+      return await getMasterKey();
     } catch {
       return null;
     }
-  }, [getModuleKey, moduleId]);
+  }, [getMasterKey]);
 
   /**
    * Load field values from Firestore

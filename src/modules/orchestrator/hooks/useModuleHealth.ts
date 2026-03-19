@@ -100,7 +100,8 @@ function deriveMetricTone(moduleId: ModuleId, nsv: Record<string, unknown> | nul
 }
 
 export function useModuleHealth(): UseModuleHealthReturn {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const { globalSoul } = useGlobalSoul();
   const vault = useVault();
   const { alerts } = useNexusSynthesis();

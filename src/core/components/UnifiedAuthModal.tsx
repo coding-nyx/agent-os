@@ -22,9 +22,25 @@ interface UnifiedAuthModalProps {
 type ModalState = 'IDENTITY_CHOICE' | 'LOGIN' | 'REGISTER' | 'VERIFY' | 'VAULT_HANDSHAKE';
 
 export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProps) {
-  const { login, register, enterGuestMode, user, reloadUser, sendVerification, logout, isGuest, refreshProfile } = useAuth();
+  const auth = useAuth() as any;
+  const noop = () => {};
+  const noopAsync = async () => {};
+
+  const login = auth?.login ?? noopAsync;
+  const register = auth?.register ?? noopAsync;
+  const enterGuestMode = auth?.enterGuestMode ?? noopAsync;
+  const user = auth?.user;
+  const reloadUser = auth?.reloadUser ?? noopAsync;
+  const sendVerification = auth?.sendVerification ?? noopAsync;
+  const logout = auth?.logout ?? noopAsync;
+  const isGuest = auth?.isGuest ?? false;
+  const refreshProfile = auth?.refreshProfile ?? noopAsync;
   const { refreshGlobalSoul } = useGlobalSoul();
-  const { unlockVault, isUnlocked, hasVault, lockVault } = useVault();
+  const vault = useVault() as any;
+  const unlockVault = vault?.unlockVault ?? noopAsync;
+  const isUnlocked = vault?.isUnlocked ?? false;
+  const hasVault = vault?.hasVault ?? false;
+  const lockVault = vault?.lockVault ?? noop;
   const navigate = useNavigate();
   
   const [view, setView] = useState<ModalState>('IDENTITY_CHOICE');

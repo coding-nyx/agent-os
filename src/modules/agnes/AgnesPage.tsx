@@ -16,7 +16,7 @@ import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { AnimatePresence, motion } from 'framer-motion';
 import { NexusChat } from '@/core/components/NexusChat';
-import { RoutingSuggestion } from '@/modules/orchestrator/components/RoutingSuggestion';
+import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { buildAgnesSessionPrompt } from './prompts/agnes-session-prompt';
 import { Agnes3DEnvironment } from './components/Agnes3DEnvironment';

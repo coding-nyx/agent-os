@@ -49,7 +49,11 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 async function googleEmbedding(text: string): Promise<number[] | null> {
-  const key = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY;
+  const storedKey =
+    typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function'
+      ? localStorage.getItem('VITE_GOOGLE_API_KEY')
+      : null;
+  const key = storedKey || import.meta.env.VITE_GOOGLE_API_KEY;
   if (!key) return null;
 
   try {

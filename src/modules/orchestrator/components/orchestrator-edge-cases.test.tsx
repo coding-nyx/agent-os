@@ -159,7 +159,7 @@ vi.mock('./CommandPalette', () => ({
   CommandPalette: () => null,
 }));
 
-vi.mock('./RoutingSuggestion', () => ({
+vi.mock('@/core/components/RoutingSuggestion', () => ({
   RoutingSuggestion: ({ visible, target }: { visible: boolean; target: string; reason?: string; onConfirm: () => void; onDismiss: () => void }) =>
     visible ? (
       <div data-testid="routing-suggestion" data-target={target}>

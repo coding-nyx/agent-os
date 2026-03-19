@@ -62,6 +62,27 @@
       ]
     },
     {
+      "collectionGroup": "nodes",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sources",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "addedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "digests",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "generatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "queue",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

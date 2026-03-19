@@ -26,7 +26,7 @@ export interface UseDataExportReturn {
 
 export function useDataExport(): UseDataExportReturn {
   const { user } = useAuth();
-  const { getModuleKey } = useVault();
+  const { getMasterKey } = useVault();
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -41,7 +41,7 @@ export function useDataExport(): UseDataExportReturn {
       setExportError(null);
 
       try {
-        const encryptionKey = await getModuleKey(moduleId);
+        const encryptionKey = await getMasterKey();
         if (!encryptionKey) {
           throw new Error('Vault is locked. Please unlock to export data.');
         }
@@ -57,7 +57,7 @@ export function useDataExport(): UseDataExportReturn {
         setIsExporting(false);
       }
     },
-    [user?.uid, getModuleKey]
+    [user?.uid, getMasterKey]
   );
 
   const exportAll = useCallback(
@@ -71,8 +71,8 @@ export function useDataExport(): UseDataExportReturn {
       setExportError(null);
 
       try {
-        // Get encryption key (using any module key since they're all the same master key)
-        const encryptionKey = await getModuleKey('agnes');
+        // Get encryption key (master key only)
+        const encryptionKey = await getMasterKey();
         if (!encryptionKey) {
           throw new Error('Vault is locked. Please unlock to export data.');
         }
@@ -88,7 +88,7 @@ export function useDataExport(): UseDataExportReturn {
         setIsExporting(false);
       }
     },
-    [user?.uid, getModuleKey]
+    [user?.uid, getMasterKey]
   );
 
   const downloadAsFile = useCallback(

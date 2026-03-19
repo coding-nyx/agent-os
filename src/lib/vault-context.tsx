@@ -17,6 +17,9 @@ interface VaultContextType {
   refreshVaultStatus: () => Promise<void>;
   unlockVault: (password: string) => Promise<void>;
   lockVault: () => void;
+  /** Canonical API: returns the single vault master key when unlocked, else `null`. */
+  getMasterKey: () => Promise<CryptoKey | null>;
+  /** @deprecated Use `getMasterKey()` instead. This returns the same master key. */
   getModuleKey: (moduleName: string) => Promise<CryptoKey | null>;
   checkModuleVault: (collectionName: string) => Promise<boolean>;
   isModuleAccessible: (moduleId: ModuleId) => boolean;
@@ -76,9 +79,13 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       return sessionStorage.getItem(SESSION_PWD_KEY);
   }, []);
 
-  const getModuleKey = useCallback(async (moduleName: string): Promise<CryptoKey | null> => {
+  const getMasterKey = useCallback(async (): Promise<CryptoKey | null> => {
     return masterKeyRef.current;
   }, []);
+
+  const getModuleKey = useCallback(async (_moduleName: string): Promise<CryptoKey | null> => {
+    return getMasterKey();
+  }, [getMasterKey]);
 
   const checkModuleVault = useCallback(async (collectionName: string): Promise<boolean> => {
     if (!user) return false;
@@ -308,6 +315,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     unlockVault,
     lockVault,
     getModuleKey,
+    getMasterKey,
     checkModuleVault,
     isModuleAccessible,
     setSessionPassword,
@@ -317,7 +325,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     dismissVaultSetupNudge,
     initializeVault,
   }), [isUnlocked, computedIsLoading, isHandshaking, hasVault, persistenceMode,
-      setPersistenceMode, refreshVaultStatus, unlockVault, lockVault, getModuleKey,
+      setPersistenceMode, refreshVaultStatus, unlockVault, lockVault, getModuleKey, getMasterKey,
       checkModuleVault, isModuleAccessible, setSessionPassword, getSessionPassword,
       isVaultGateVisible, nudgeSeen, dismissVaultSetupNudge, initializeVault]);
 
@@ -340,6 +348,7 @@ const VAULT_LOADING_FALLBACK: VaultContextType = {
   refreshVaultStatus: async () => {},
   unlockVault: async () => {},
   lockVault: () => {},
+  getMasterKey: async () => null,
   getModuleKey: async () => null,
   checkModuleVault: async () => false,
   isModuleAccessible: () => true,

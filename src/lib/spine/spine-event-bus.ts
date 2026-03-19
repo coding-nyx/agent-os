@@ -67,7 +67,7 @@ class SpineEventBus {
       timestamp: Date.now()
     };
 
-    const debounceKey = `${event.type}:${event.source}`;
+    const debounceKey = `${event.type}:${event.source}:${event.target ?? ''}`;
     if (this.debounceTimers.has(debounceKey)) return event;
 
     const timer = globalThis.setTimeout(() => {

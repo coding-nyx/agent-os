@@ -8,9 +8,11 @@ import { DailyBriefSection } from './DailyBriefSection';
 import { SynthesisPanel } from './SynthesisPanel';
 import { ModuleHealthFAB } from './ModuleHealthFAB';
 import { CommandPalette } from './CommandPalette';
-import { RoutingSuggestion } from './RoutingSuggestion';
+import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { OrchestratorErrorBoundary } from './OrchestratorErrorBoundary';
+import { useAI } from '@/llm-engine/ai-context';
+import { runDocumentPipeline, type DocumentPipelinePolicy } from '@/lib/services/document-pipeline';
 
 interface NexusDashboardProps {
   ai: {
@@ -36,6 +38,17 @@ function contentToText(content: MessageContent): string {
 export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
   const navigate = useNavigate();
   const { refreshGlobalSoul } = useGlobalSoul();
+  // Some unit tests render this component without an `AIProvider`.
+  // `useAI()` throws in that scenario, so we fall back to a no-op sender
+  // (document-upload features won't be exercised by those tests).
+  let sendMessage: ReturnType<typeof useAI>['sendMessage'] | undefined;
+  try {
+    // `useAI()` must still be invoked to preserve hook order.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    sendMessage = useAI().sendMessage;
+  } catch {
+    sendMessage = undefined;
+  }
   const [briefCollapsed, setBriefCollapsed] = useState(false);
   const [routingSuggestion, setRoutingSuggestion] = useState<{
     target: ModuleId;
@@ -126,6 +139,67 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     ai.handleSendMessage(`Tell me about my ${domain} state right now.`);
   }, [ai]);
 
+  const handleUploadDocument = useCallback(async (file: File) => {
+    if (!sendMessage) {
+      throw new Error('AI sendMessage unavailable (missing AIProvider).');
+    }
+    const llmPrimary = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'You are a neutral document analyst. Follow the instructions exactly. Do NOT emit action tags.',
+        memoryContext: [],
+        summary: 'Nexus document analysis.',
+        history: []
+      });
+      return response.publicText;
+    };
+
+    const llmFallback = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'Return a concise summary and key points. No action tags.',
+        memoryContext: [],
+        summary: 'Nexus document fallback.',
+        history: []
+      });
+      return response.publicText;
+    };
+
+    const nexusPolicy: DocumentPipelinePolicy<{ summary: string }, { summary: string; preview: string }> = {
+      id: 'nexus-orchestrator-document',
+      context: { moduleId: 'orchestrator', domain: 'general' },
+      analyze: async ({ parsed }, llmSend) => {
+        const prompt = [
+          `Document received: "${parsed.fileName}"`,
+          `Type: ${parsed.fileType.toUpperCase()} | Words: ${parsed.wordCount.toLocaleString()}`,
+          'Provide a concise summary (4-6 sentences) and list 3-5 key points as bullets.',
+          'Do NOT emit action tags.',
+          '',
+          '---BEGIN DOCUMENT---',
+          parsed.rawText,
+          '---END DOCUMENT---'
+        ].join('\\n');
+
+        const response = await llmSend(prompt);
+        return { summary: response.trim() || 'No summary returned.' };
+      },
+      buildProposal: (analysis, parsed) => ({
+        summary: analysis.summary,
+        preview: parsed.rawText.slice(0, 2000)
+      }),
+      summarizeProposal: (proposal) => proposal.summary
+    };
+
+    const result = await runDocumentPipeline({
+      file,
+      policy: nexusPolicy,
+      sendMessage: llmPrimary,
+      sendMessageFallback: llmFallback
+    });
+
+    await ai.handleSendMessage(
+      `Document uploaded and analyzed.\n\nSummary:\n${result.summary}\n\nRespond in 2-4 sentences based only on this summary. Do NOT emit action tags.`
+    );
+  }, [ai, sendMessage]);
+
   return (
     <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Daily Brief — above chat, collapsible, constrained on mobile */}
@@ -173,6 +247,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
           moduleId="orchestrator"
           onClearHistory={ai.clearSession}
           onActionParsed={handleActionParsed}
+          onUploadDocument={handleUploadDocument}
         />
 
         {/* Routing suggestion — inline below chat input */}

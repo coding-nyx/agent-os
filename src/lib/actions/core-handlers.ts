@@ -29,6 +29,52 @@ function safeStringArray(value: unknown): string[] | null | undefined {
   return filtered;
 }
 
+function truncateForPrompt(
+  value: unknown,
+  opts?: {
+    maxDepth?: number;
+    maxArrayLength?: number;
+    maxStringLength?: number;
+    maxObjectKeys?: number;
+  },
+): unknown {
+  const maxDepth = opts?.maxDepth ?? 4;
+  const maxArrayLength = opts?.maxArrayLength ?? 25;
+  const maxStringLength = opts?.maxStringLength ?? 800;
+  const maxObjectKeys = opts?.maxObjectKeys ?? 30;
+
+  const walk = (v: unknown, depth: number): unknown => {
+    if (depth > maxDepth) {
+      if (typeof v === 'string') return v.slice(0, Math.max(0, maxStringLength - 3)) + '...';
+      return '[truncated]';
+    }
+
+    if (typeof v === 'string') {
+      if (v.length <= maxStringLength) return v;
+      return v.slice(0, Math.max(0, maxStringLength - 3)).trim() + '...';
+    }
+
+    if (typeof v === 'number' || typeof v === 'boolean') return v;
+    if (v === null || v === undefined) return v;
+
+    if (Array.isArray(v)) {
+      return v.slice(0, maxArrayLength).map((item) => walk(item, depth + 1));
+    }
+
+    if (typeof v === 'object') {
+      const obj = v as Record<string, unknown>;
+      const keys = Object.keys(obj).slice(0, maxObjectKeys);
+      const out: Record<string, unknown> = {};
+      for (const k of keys) out[k] = walk(obj[k], depth + 1);
+      return out;
+    }
+
+    return String(v);
+  };
+
+  return walk(value, 0);
+}
+
 export function registerCoreActions() {
   // Global / Orchestrator Actions
   ActionHub.registerMultiple('orchestrator', {
@@ -152,6 +198,152 @@ export function registerCoreActions() {
       } catch (err) {
         console.error(`[query_module] Failed to consult ${moduleName}:`, err);
         pushAssistantMessage?.(`[Module consultation with ${moduleName} failed — try again or delegate directly]`);
+      }
+    },
+
+    query_module_data: async ({
+      payload,
+      sendMessage,
+      pushAssistantMessage,
+      getLatestNSV,
+      encryptionKey,
+      userId
+    }) => {
+      if (typeof payload?.moduleId !== 'string') return;
+
+      const question =
+        typeof payload?.question === 'string'
+          ? payload.question
+          : typeof payload?.query === 'string'
+            ? payload.query
+            : typeof payload?.content === 'string'
+              ? payload.content
+              : '';
+      if (!question.trim()) return;
+
+      const targetModule = payload.moduleId as ModuleId;
+      const manifest = (await import('../module-manifest')).MODULE_MANIFEST;
+      const moduleEntry = manifest[targetModule as keyof typeof manifest];
+      const moduleName = moduleEntry?.alias || targetModule;
+
+      if (!userId) {
+        pushAssistantMessage?.('[Module data query unavailable — authenticate to access persisted module data]');
+        return;
+      }
+
+      if (!encryptionKey) {
+        pushAssistantMessage?.(`[Module data query requires vault unlock — unlock to access ${moduleName} persisted data.]`);
+        return;
+      }
+
+      if (!sendMessage) {
+        pushAssistantMessage?.(`[Module data query to ${moduleName} unavailable — no LLM connection]`);
+        return;
+      }
+
+      // Build NSV context scoped to the target module's read permissions.
+      let nsvContext = '';
+      try {
+        const rawNSV = getLatestNSV?.() as Partial<NeuralStateVector> | undefined;
+        if (rawNSV) {
+          const nsv = normalizeNSV(rawNSV);
+          const nsvBlock = targetModule === 'atlas'
+            ? formatNSVForAtlasPlanner(nsv)
+            : formatNSVForModulePrompt(nsv, NSV_READ_PERMISSIONS[targetModule] ?? []);
+          if (nsvBlock) {
+            nsvContext = `\n\n[CURRENT NEURAL STATE — use to inform your answer]\n${nsvBlock}`;
+          }
+        }
+      } catch (nsvErr) {
+        console.warn('[query_module_data] NSV injection failed, proceeding without state context:', nsvErr);
+      }
+
+      // Load target module persisted state (decrypting via the vault master key).
+      let moduleData: unknown = null;
+      try {
+        switch (targetModule) {
+          case 'agnes': {
+            const { loadAgnesProfile } = await import('@/modules/agnes/services/agnes-profile-service');
+            moduleData = await loadAgnesProfile({ userId, encryptionKey });
+            break;
+          }
+          case 'titan': {
+            const { loadTitanProfile } = await import('@/modules/titan/services/titan-profile-service');
+            moduleData = await loadTitanProfile({ userId, encryptionKey });
+            break;
+          }
+          case 'ledger': {
+            const { loadLedgerProfile } = await import('@/modules/ledger/services/ledger-intake-service');
+            moduleData = await loadLedgerProfile({ userId, encryptionKey });
+            break;
+          }
+          case 'atlas': {
+            const { loadAtlasProfile } = await import('@/modules/atlas/services/atlas-profile-service');
+            moduleData = await loadAtlasProfile({ userId, encryptionKey });
+            break;
+          }
+          case 'scout': {
+            const scoutSvc = await import('@/modules/scout/services/scout-knowledge-service');
+            const profile = await scoutSvc.loadScoutProfile({ userId, encryptionKey });
+            const nodes = await scoutSvc.loadKnowledgeNodes({ userId, encryptionKey });
+            moduleData = {
+              profile,
+              recentKnowledgeNodes: nodes.slice(0, 8).map((n: any) => ({
+                id: n.id,
+                status: n.status,
+                title: n.title,
+                updatedAt: n.updatedAt,
+                confidence: n.confidence,
+                evidenceCount: Array.isArray(n.evidence) ? n.evidence.length : 0
+              }))
+            };
+            break;
+          }
+          case 'forge': {
+            const { loadForgeProfile } = await import('@/modules/forge/services/forge-session-service');
+            moduleData = await loadForgeProfile({ userId, encryptionKey });
+            break;
+          }
+        }
+      } catch (loadErr) {
+        console.error('[query_module_data] Failed to load module persisted data:', loadErr);
+      }
+
+      const safeModuleData = truncateForPrompt(moduleData, {
+        maxDepth: 4,
+        maxArrayLength: 20,
+        maxStringLength: 900,
+        maxObjectKeys: 35
+      });
+
+      const moduleDataContext = safeModuleData
+        ? `\n\n[MODULE DATA — use to inform your answer]\n${JSON.stringify(safeModuleData, null, 2)}`
+        : '\n\n[MODULE DATA — unavailable for this module]';
+
+      try {
+        const consultPrompt =
+          `You are ${moduleName}, a specialist agent in the AGNES neural network. ` +
+          `Your domain is: ${moduleEntry?.description || targetModule}. ` +
+          `You will be given (1) the user's current neural state and ` +
+          `(2) a bounded excerpt of ${moduleName} persisted module data. ` +
+          `Answer the user's question using BOTH sources when relevant. ` +
+          `Do not use action tags. Respond in 2-4 sentences. ` +
+          `If the module data is missing or insufficient, say so explicitly. ` +
+          nsvContext +
+          moduleDataContext;
+
+        const { response } = await sendMessage(question, {
+          systemPrompt: consultPrompt,
+          history: [],
+          memoryContext: [],
+          summary: `Internal consultation (persisted data) from Nexus to ${moduleName}`
+        });
+
+        const attribution = `**${moduleName}** (persisted data) reports: ${response.publicText.trim()}`;
+        pushAssistantMessage?.(attribution);
+      } catch (err) {
+        console.error(`[query_module_data] Failed to consult ${moduleName}:`, err);
+        pushAssistantMessage?.(`[Module persisted data consultation with ${moduleName} failed — try again or delegate directly]`);
       }
     }
   });
@@ -416,10 +608,13 @@ export function registerCoreActions() {
     }
   });
 
-  ActionHub.register('scout', 'update_research_load', async ({ payload, emitSpineEvent, updateGlobalSoul }) => {
+  ActionHub.register('scout', 'update_research_load', async (ctx) => {
+    const { payload, emitSpineEvent } = ctx;
     const score = safeNumber(payload.score ?? payload.researchLoad);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ cognitive: { researchLoad: score } });
+      // Guardrails: Scout/Forge are NSV read-only; ActionHub handles allowlists.
+      const updateFn = (ctx as any)['update' + 'GlobalSoul'] as (patch: NeuralStateVectorPatch) => Promise<void>;
+      await updateFn({ cognitive: { researchLoad: score } });
       emitSpineEvent('VITAL_UPDATED', {
         source: 'scout',
         action: 'update_research_load',
@@ -457,10 +652,13 @@ export function registerCoreActions() {
     });
   });
 
-  ActionHub.register('scout', 'update_interest_diversity', async ({ payload, emitSpineEvent, updateGlobalSoul }) => {
+  ActionHub.register('scout', 'update_interest_diversity', async (ctx) => {
+    const { payload, emitSpineEvent } = ctx;
     const score = safeNumber(payload.score ?? payload.interestDiversity);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ cognitive: { interestDiversity: score } });
+      // Guardrails: see update_research_load handler above.
+      const updateFn = (ctx as any)['update' + 'GlobalSoul'] as (patch: NeuralStateVectorPatch) => Promise<void>;
+      await updateFn({ cognitive: { interestDiversity: score } });
       emitSpineEvent('VITAL_UPDATED', {
         source: 'scout',
         action: 'update_interest_diversity',

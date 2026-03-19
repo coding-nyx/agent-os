@@ -14,7 +14,7 @@ const panelVariants = {
 };
 
 export function SecurityPanel() {
-  const { isUnlocked, hasVault, lockVault, persistenceMode, getModuleKey } = useVault();
+  const { isUnlocked, hasVault, lockVault, persistenceMode, getMasterKey } = useVault();
   const { user, isGuest, logout } = useAuth();
   const [vaultActionsExpanded, setVaultActionsExpanded] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -30,9 +30,9 @@ export function SecurityPanel() {
     setExportError(null);
 
     try {
-      // getModuleKey returns the master CryptoKey when vault is unlocked,
+      // getMasterKey returns the master CryptoKey when vault is unlocked,
       // or null when locked — gracefully degrade to metadata-only export.
-      const key = await getModuleKey('agnes');
+      const key = await getMasterKey();
       const vaultKey = key ?? undefined;
 
       const bundle = await exportUserData(user.uid, vaultKey);

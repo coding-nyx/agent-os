@@ -115,6 +115,7 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   SCHEMA_EXTENDED: 'Schema extended',
   SCHEMA_MODIFIED: 'Schema modified',
   SCHEMA_MIGRATED: 'Schema migrated',
+  MODULE_PROFILE_UPDATED: 'Module profile refreshed',
   FIELD_CREATED: 'Custom field created',
   FIELD_DELETED: 'Custom field deleted',
   FIELD_VALUE_UPDATED: 'Custom field value updated',

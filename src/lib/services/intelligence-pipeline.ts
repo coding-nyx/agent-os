@@ -1,4 +1,4 @@
-import { Spine, useSpineEvent } from '../spine/spine-event-bus';
+import { Spine } from '../spine/spine-event-bus';
 import { DerivedInsightsService } from './derived-insights-service';
 import { useAuth } from '../auth-context';
 import { useEffect } from 'react';
@@ -15,8 +15,10 @@ export const IntelligencePipeline = {
    * This is called once at the app root or inside the GlobalSoulProvider.
    */
   init(userId: string) {
+    const unsubs: Array<() => void> = [];
+
     // 1. Stress-Spending Detection (Ledger + Agnes correlation)
-    Spine.on('SPENDING_DETECTED', async (event) => {
+    unsubs.push(Spine.on('SPENDING_DETECTED', async (event) => {
        const { amount, category, stressLevelAtTime } = event.data;
        if (Number(stressLevelAtTime ?? 0) >= 7 && (amount as number) > 50) {
          await DerivedInsightsService.addInsight(userId, {
@@ -26,10 +28,10 @@ export const IntelligencePipeline = {
            severity: 'warning'
          });
        }
-    });
+    }));
 
     // 2. Overtraining Risk (Titan + Soma correlation)
-    Spine.on('SOMA_READINESS_UPDATED', async (event) => {
+    unsubs.push(Spine.on('SOMA_READINESS_UPDATED', async (event) => {
       const { score, level } = event.data;
       if (Number(score ?? 100) < 40 && level === 'critical') {
         await DerivedInsightsService.addInsight(userId, {
@@ -39,17 +41,27 @@ export const IntelligencePipeline = {
           severity: 'critical'
         });
       }
-    });
+    }));
 
     // 3. Burnout Momentum (Atlas + Spine events)
-    Spine.on('DEADLINE_CRUNCH', async (event) => {
+    unsubs.push(Spine.on('DEADLINE_CRUNCH', async (event) => {
        await DerivedInsightsService.addInsight(userId, {
          moduleId: 'atlas',
          type: 'deadline_crunch',
          content: `Multiple approaching deadlines detected. Schedule compression is mandatory to avoid burnout.`,
          severity: 'warning'
        });
-    });
+    }));
+
+    return () => {
+      unsubs.forEach((u) => {
+        try {
+          u();
+        } catch {
+          // Non-critical cleanup — ignore.
+        }
+      });
+    };
   }
 };
 
@@ -61,6 +73,6 @@ export function useIntelligencePipeline() {
 
   useEffect(() => {
     if (!user?.uid) return;
-    IntelligencePipeline.init(user.uid);
+    return IntelligencePipeline.init(user.uid);
   }, [user?.uid]);
 }
