@@ -624,7 +624,7 @@ async function deleteFieldAction(context: ActionContext): Promise<void> {
  */
 export function registerFieldSuggestionActions(): void {
   // Register for orchestrator (global actions)
-  ActionHub.registerMultiple('orchestrator', {
+  ActionHub.registerMultiple('nexus', {
     suggest_field: suggestFieldAction,
     create_field: createFieldAction,
     delete_field: deleteFieldAction,

@@ -3,6 +3,7 @@ import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Target, TrendingUp, Plus, Edit2, Trash2, PartyPopper, Lightbulb } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { ProgressRow } from '@/core/components/ProgressRow';
@@ -123,6 +124,8 @@ export function GoalTracker({
   const [editingGoal, setEditingGoal] = useState<FinancialGoal | null>(null);
   const [formData, setFormData] = useState<Partial<FinancialGoal>>({});
   const [showAchieved, setShowAchieved] = useState(false);
+  const [contributionTarget, setContributionTarget] = useState<{ goalId: string; name: string } | null>(null);
+  const [contributionAmount, setContributionAmount] = useState('');
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -641,6 +644,42 @@ export function GoalTracker({
               className="flex-1"
             >
               Cancel
+            </NeuralButton>
+          </div>
+        </div>
+      </NeuralModal>
+
+      {/* Contribution modal */}
+      <NeuralModal
+        isOpen={!!contributionTarget}
+        onClose={() => { setContributionTarget(null); setContributionAmount(''); }}
+        title={`Add contribution to ${contributionTarget?.name}`}
+      >
+        <div className="space-y-4">
+          <NeuralInput
+            type="number"
+            value={contributionAmount}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributionAmount(e.target.value)}
+            placeholder={`Amount in ${currency}`}
+            autoFocus
+          />
+          <div className="flex gap-3 justify-end">
+            <NeuralButton
+              variant="ghost"
+              onClick={() => { setContributionTarget(null); setContributionAmount(''); }}
+            >
+              Cancel
+            </NeuralButton>
+            <NeuralButton
+              onClick={() => {
+                if (contributionTarget && contributionAmount && !isNaN(parseFloat(contributionAmount))) {
+                  handleAddContribution(contributionTarget.goalId, parseFloat(contributionAmount));
+                }
+                setContributionTarget(null);
+                setContributionAmount('');
+              }}
+            >
+              Add
             </NeuralButton>
           </div>
         </div>

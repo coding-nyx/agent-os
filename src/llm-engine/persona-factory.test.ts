@@ -17,8 +17,8 @@ function makeMockProfile(overrides: Partial<PersonaUserProfile> = {}): PersonaUs
 
 function makeMockSoul(overrides: Partial<PersonaGlobalProjection> = {}): PersonaGlobalProjection {
   return {
-    displayNames: { agnes: 'Agnes', titan: 'Titan', orchestrator: 'Nexus' },
-    agentGenders: { agnes: 'female', titan: 'non-binary', orchestrator: 'female' },
+    displayNames: { agnes: 'Agnes', titan: 'Titan', nexus: 'Nexus' },
+    agentGenders: { agnes: 'female', titan: 'non-binary', nexus: 'female' },
     ...overrides,
   };
 }

@@ -15,7 +15,7 @@ type OrchestratorIntakeState = {
   stepProgress: number;
 };
 
-interface OrchestratorOnboardingProps {
+interface NexusOnboardingProps {
   profile: CoreUserProfile | null;
   isSubmitting: boolean;
   onComplete: (updates: Partial<CoreUserProfile>) => Promise<void>;
@@ -81,7 +81,7 @@ function compactProfileUpdates(updates: Partial<CoreUserProfile>): Partial<CoreU
   ) as Partial<CoreUserProfile>;
 }
 
-export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: OrchestratorOnboardingProps) {
+export function NexusOnboarding({ profile, isSubmitting, onComplete }: NexusOnboardingProps) {
   const existingProvision = profile?.agentPersonalityProvision ?? DEFAULT_PERSONALITY;
 
   const initialProfileUpdates = useMemo(() => compactProfileUpdates({
@@ -125,7 +125,7 @@ export function OrchestratorOnboarding({ profile, isSubmitting, onComplete }: Or
   };
 
   const config: IntakeModuleConfig<OrchestratorIntakeState, Partial<CoreUserProfile>> = {
-    moduleId: 'orchestrator',
+    moduleId: 'nexus',
     steps: ORCHESTRATOR_STEPS,
     updateActionType: 'update_orchestrator_intake',
     completeActionType: 'complete_orchestrator_onboarding',

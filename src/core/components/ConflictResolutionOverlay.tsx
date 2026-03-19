@@ -54,7 +54,7 @@ const DEBOUNCE_MS = 800;
 // ---------------------------------------------------------------------------
 
 const MODULE_ICON_MAP: Record<ModuleId, LucideIcon> = {
-  orchestrator: Sparkles,
+  nexus: Sparkles,
   agnes:        Brain,
   titan:        Activity,
   soma:         HeartPulse,
@@ -66,7 +66,7 @@ const MODULE_ICON_MAP: Record<ModuleId, LucideIcon> = {
 };
 
 const MODULE_COLOUR_MAP: Record<ModuleId, string> = {
-  orchestrator: 'bg-violet-500/20 text-violet-300 ring-violet-500/30',
+  nexus: 'bg-violet-500/20 text-violet-300 ring-violet-500/30',
   agnes:        'bg-indigo-500/20 text-indigo-300 ring-indigo-500/30',
   titan:        'bg-orange-500/20 text-orange-300 ring-orange-500/30',
   soma:         'bg-emerald-500/20 text-emerald-300 ring-emerald-500/30',
@@ -83,7 +83,7 @@ const MODULE_COLOUR_MAP: Record<ModuleId, string> = {
 
 function ModuleBadge({ moduleId }: { moduleId: ModuleId }) {
   const Icon = MODULE_ICON_MAP[moduleId] ?? Sparkles;
-  const colour = MODULE_COLOUR_MAP[moduleId] ?? MODULE_COLOUR_MAP.orchestrator;
+  const colour = MODULE_COLOUR_MAP[moduleId] ?? MODULE_COLOUR_MAP.nexus;
 
   return (
     <span

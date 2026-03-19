@@ -115,7 +115,7 @@ export default function HubPage() {
   const wellnessGauge = coreModulesAccessible ? globalSoul?.overallWellnessScore ?? null : null;
 
   return (
-    <ModuleLayout title="Neural Hub" themeColor="violet" hideBack={false} onExit={() => navigate('/orchestrator')}>
+    <ModuleLayout title="Neural Hub" themeColor="violet" hideBack={false} onExit={() => navigate('/nexus')}>
       <div className="flex-1 relative flex flex-col w-full h-full min-h-0 bg-[#020205]">
 
         {/* Breathing ambient background */}

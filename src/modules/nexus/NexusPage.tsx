@@ -8,14 +8,14 @@ import { ORCHESTRATOR_PERSONA, ORCHESTRATOR_WELCOME } from './personas';
 import { useNavigate } from 'react-router-dom';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { CoreUserProfile } from '@/lib/types';
-import { OrchestratorOnboarding } from './onboarding/OrchestratorOnboarding';
+import { NexusOnboarding } from './onboarding/NexusOnboarding';
 import { GuestModePanel } from '@/core/components/GuestModePanel';
 import { NexusDashboard } from './components/NexusDashboard';
 import { VaultSetupNudge } from '@/core/components/VaultSetupNudge';
 
 type PageState = 'ONBOARDING' | 'DASHBOARD';
 
-export default function OrchestratorPage() {
+export default function NexusPage() {
   const { user, isGuest, profile, refreshProfile, initializeNewUser } = useAuth();
   const { hasVault, isUnlocked, vaultSetupNudgeSeen, isLoading: vaultLoading, getMasterKey } = useVault();
   const navigate = useNavigate();
@@ -57,7 +57,7 @@ export default function OrchestratorPage() {
     handleSendMessage,
     clearSession
   } = useModuleAI({
-    moduleId: 'orchestrator',
+    moduleId: 'nexus',
     systemPrompt: ORCHESTRATOR_PERSONA,
     navigateTo: (path) => navigate(path),
     encryptionKey
@@ -90,9 +90,9 @@ export default function OrchestratorPage() {
 
   if (isGuest) {
     return (
-      <ModuleLayout title="Nexus" themeColor="cyan" moduleId="orchestrator" hideBack>
+      <ModuleLayout title="Nexus" themeColor="cyan" moduleId="nexus" hideBack>
         <GuestModePanel
-          moduleId="orchestrator"
+          moduleId="nexus"
           description="Guest links cannot initialize your core profile. Authenticate to unlock full orchestration."
           limitations={[
             'Core profile initialization is disabled in guest mode.',
@@ -123,7 +123,7 @@ export default function OrchestratorPage() {
 
   if (pageState === 'DASHBOARD') {
     return (
-      <ModuleLayout title="Nexus" themeColor="cyan" moduleId="orchestrator" hideBack>
+      <ModuleLayout title="Nexus" themeColor="cyan" moduleId="nexus" hideBack>
         <NexusDashboard
           ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage, clearSession }}
           agentName={profile?.agentPersonalityProvision?.orchestratorAlias || 'Nexus'}
@@ -138,8 +138,8 @@ export default function OrchestratorPage() {
   }
 
   return (
-    <ModuleLayout title="Nexus" themeColor="cyan" moduleId="orchestrator" hideBack>
-      <OrchestratorOnboarding profile={profile} isSubmitting={isSubmitting} onComplete={handleComplete} />
+    <ModuleLayout title="Nexus" themeColor="cyan" moduleId="nexus" hideBack>
+      <NexusOnboarding profile={profile} isSubmitting={isSubmitting} onComplete={handleComplete} />
       {onboardingError && (
         <div
           data-testid="onboarding-error"

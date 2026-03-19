@@ -77,7 +77,7 @@ function truncateForPrompt(
 
 export function registerCoreActions() {
   // Global / Orchestrator Actions
-  ActionHub.registerMultiple('orchestrator', {
+  ActionHub.registerMultiple('nexus', {
     propose_draft: ({ moduleId, payload }) => {
       Spine.emit({
         type: 'DRAFT_PROPOSED',
@@ -348,7 +348,7 @@ export function registerCoreActions() {
     }
   });
 
-  ActionHub.registerMultiple('orchestrator', {
+  ActionHub.registerMultiple('nexus', {
     update_global_identity: async ({ userId, payload }) => {
       if (!userId || !payload || typeof payload !== 'object') return;
       const patch: Record<string, unknown> = {};
@@ -417,7 +417,7 @@ export function registerCoreActions() {
 
       const moduleIds = Array.isArray(payload?.moduleIds)
         ? payload.moduleIds.filter((id: unknown) => typeof id === 'string')
-        : ['orchestrator'];
+        : ['nexus'];
       const topK = typeof payload?.topK === 'number' ? Math.max(1, Math.min(10, payload.topK)) : 5;
       const recencyWeight =
         typeof payload?.recencyWeight === 'number' ? Math.max(0, Math.min(1, payload.recencyWeight)) : 0.3;
@@ -691,7 +691,7 @@ export function registerCoreActions() {
 
   // sync_vitals — orchestrator override with required reason and staleness guard.
   // Only used for cross-module synchronisation when modules themselves are stale or unresponsive.
-  ActionHub.register('orchestrator', 'sync_vitals', async ({ payload, updateGlobalSoul, getLatestNSV }) => {
+  ActionHub.register('nexus', 'sync_vitals', async ({ payload, updateGlobalSoul, getLatestNSV }) => {
     if (!payload || typeof payload !== 'object') return;
 
     const VALID_SYNC_REASONS = new Set([
@@ -797,10 +797,10 @@ export function registerCoreActions() {
   // -------------------------------------------------------------------------
   // Contextual Inference Engine — S10-008
   // -------------------------------------------------------------------------
-  // Register under 'orchestrator' so it is resolved as the universal fallback
+  // Register under 'nexus' so it is resolved as the universal fallback
   // for any module that dispatches detect_data_hint (Agnes, Titan, Atlas, etc.).
   // The ActionHub.execute fallback chain always checks orchestrator last.
-  ActionHub.register('orchestrator', 'detect_data_hint', async ({ payload }) => {
+  ActionHub.register('nexus', 'detect_data_hint', async ({ payload }) => {
     const hint = (payload as unknown) as DataHint | undefined;
     if (!hint || typeof hint !== 'object') return;
     if (typeof hint.confidence !== 'number' || hint.confidence < 0.75) return;

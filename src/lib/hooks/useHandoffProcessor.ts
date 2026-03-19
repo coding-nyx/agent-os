@@ -68,7 +68,7 @@ export function useHandoffProcessor({
     recentMessages: Message[]
   ): Promise<RoutingResult> => {
     // Specialized modules handle their own routing; skip the LLM classifier entirely
-    if (moduleId === 'orchestrator' || moduleId === 'scout') return { shouldDelegate: false };
+    if (moduleId === 'nexus' || moduleId === 'scout') return { shouldDelegate: false };
 
     if (skipRoutingRef.current) {
       skipRoutingRef.current = false;
@@ -77,7 +77,7 @@ export function useHandoffProcessor({
 
     // 1. FAST PATH: Keyword-based classification
     const fastDecision = NexusRoutingService.classifyIntent(content);
-    if (fastDecision.target !== 'orchestrator' && fastDecision.target !== moduleId && fastDecision.confidence >= 0.7) {
+    if (fastDecision.target !== 'nexus' && fastDecision.target !== moduleId && fastDecision.confidence >= 0.7) {
       return {
         shouldDelegate: true,
         target: fastDecision.target,
@@ -89,7 +89,7 @@ export function useHandoffProcessor({
     // No actionable routing signal — skip LLM call entirely.
     // If fast path defaulted to orchestrator (no keywords) or matched the current module,
     // the answer is always shouldDelegate: false. Avoid a costly 10s LLM timeout.
-    if (fastDecision.target === 'orchestrator' || fastDecision.target === moduleId) {
+    if (fastDecision.target === 'nexus' || fastDecision.target === moduleId) {
       return { shouldDelegate: false };
     }
 
@@ -173,7 +173,7 @@ export function useHandoffProcessor({
 
     const queryContext = pendingQueryRef.current;
     pendingQueryRef.current = null;
-    const origin = queryContext.origin || 'orchestrator';
+    const origin = queryContext.origin || 'nexus';
 
     NexusHandoffService.store({
       moduleId: origin,
@@ -225,7 +225,7 @@ export function useHandoffProcessor({
     if (handoff.type === 'query' && handoff.content) {
       setMessages((prev) => (prev.length === 0 ? [{ role: 'assistant', content: handoffNote }] : prev));
       pendingQueryRef.current = {
-        origin: handoff.sourceModuleId || 'orchestrator',
+        origin: handoff.sourceModuleId || 'nexus',
         issuedAt: handoff.createdAt
       };
       queueMicrotask(() => {

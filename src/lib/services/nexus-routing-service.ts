@@ -109,7 +109,7 @@ ${Object.entries(MODULE_MANIFEST)
 
 Rules:
 - Pick exactly one moduleId from the list above.
-- If unclear, choose "orchestrator" with lower confidence.
+- If unclear, choose "nexus" with lower confidence.
 - Keep reason under 8 words.
 `.trim();
 
@@ -169,9 +169,9 @@ export const NexusRoutingService = {
     }
 
     return {
-      target: 'orchestrator',
+      target: 'nexus',
       confidence: 0.45,
-      reason: 'default_orchestrator'
+      reason: 'default_nexus'
     };
   },
 

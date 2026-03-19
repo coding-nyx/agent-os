@@ -50,7 +50,7 @@ export function InsightSourceBadge({
   const { globalSoul } = useGlobalSoul();
 
   const moduleId: ModuleId = sourceModuleId
-    ?? (metricPath ? getMetricOwner(metricPath) : 'orchestrator');
+    ?? (metricPath ? getMetricOwner(metricPath) : 'nexus');
 
   const manifest = MODULE_MANIFEST[moduleId];
   if (!manifest) return null;

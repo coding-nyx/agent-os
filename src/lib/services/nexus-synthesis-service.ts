@@ -157,7 +157,7 @@ class NexusSynthesisServiceClass {
       results.push({
         id: 'CONFLICT_RESILIENCE_DISPATCH',
         title: 'Agnes — Critical Resilience Floor Breached',
-        affectedModules: ['agnes', 'orchestrator'],
+        affectedModules: ['agnes', 'nexus'],
         severity: 'block',
         suggestedResolution:
           'Emotional resilience is critically low. Agnes must intervene before any other module takes action.',

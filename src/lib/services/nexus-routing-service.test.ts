@@ -39,11 +39,11 @@ describe('NexusRoutingService.classifyIntent', () => {
     expect(result.target).toBe('titan');
   });
 
-  it('defaults to orchestrator for unmatched queries', () => {
+  it('defaults to nexus for unmatched queries', () => {
     const result = NexusRoutingService.classifyIntent('Hello, how are you?');
-    expect(result.target).toBe('orchestrator');
+    expect(result.target).toBe('nexus');
     expect(result.confidence).toBe(0.45);
-    expect(result.reason).toBe('default_orchestrator');
+    expect(result.reason).toBe('default_nexus');
   });
 });
 
@@ -52,8 +52,8 @@ describe('NexusRoutingService.getRoute', () => {
     expect(NexusRoutingService.getRoute('agnes')).toBe('/agnes');
   });
 
-  it('returns correct route for orchestrator', () => {
-    expect(NexusRoutingService.getRoute('orchestrator')).toBe('/orchestrator');
+  it('returns correct route for nexus', () => {
+    expect(NexusRoutingService.getRoute('nexus')).toBe('/nexus');
   });
 
   it('returns empty string for bridge (no page)', () => {

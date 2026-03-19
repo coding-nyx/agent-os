@@ -29,7 +29,7 @@ export interface ModuleHealthStatus {
   moduleId: ModuleId;
   title: string;
   alias: string;
-  icon: typeof MODULE_MANIFEST.orchestrator.icon;
+  icon: typeof MODULE_MANIFEST["nexus"]["icon"];
   colorHex: string;
   route: string;
   isAccessible: boolean;

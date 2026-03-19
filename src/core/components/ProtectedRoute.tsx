@@ -38,8 +38,8 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
 
     // Redirect authenticated users into orchestrator until their core profile is initialized and complete
     if (isAuthenticated && !isGuest && requireOnboarding && (!profile || !profile.onboardingComplete)) {
-      if (location.pathname !== '/orchestrator') {
-        navigate('/orchestrator', { replace: true });
+      if (location.pathname !== '/nexus') {
+        navigate('/nexus', { replace: true });
       }
     }
   }, [isEverythingLoading, isAuthenticated, isGuest, hasVault, isUnlocked, isHandshaking, profile, navigate, location.pathname, requireOnboarding]);

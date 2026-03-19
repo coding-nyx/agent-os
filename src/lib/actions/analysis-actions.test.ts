@@ -15,8 +15,8 @@ describe('Analysis Actions', () => {
   });
 
   describe('Registration', () => {
-    it('should register all 5 analysis actions with orchestrator', () => {
-      const actions = ActionHub.getAllowedActions('orchestrator');
+    it('should register all 5 analysis actions with nexus', () => {
+      const actions = ActionHub.getAllowedActions('nexus');
       
       expect(actions).toContain('analyze_trends');
       expect(actions).toContain('compare_periods');
@@ -53,7 +53,7 @@ describe('Analysis Actions', () => {
       mockContext = {
         userId: 'test-user-123',
         isGuest: false,
-        moduleId: 'orchestrator',
+        moduleId: 'nexus',
         payload: {},
         encryptionKey: null,
         emitSpineEvent: vi.fn(),
@@ -86,7 +86,7 @@ describe('Analysis Actions', () => {
     });
 
     it('should handle analyze_trends action', async () => {
-      const executed = await ActionHub.execute('orchestrator', 'analyze_trends', {
+      const executed = await ActionHub.execute('nexus', 'analyze_trends', {
         ...mockContext,
         payload: {
           startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -101,7 +101,7 @@ describe('Analysis Actions', () => {
 
     it('should handle compare_periods action', async () => {
       const now = Date.now();
-      const executed = await ActionHub.execute('orchestrator', 'compare_periods', {
+      const executed = await ActionHub.execute('nexus', 'compare_periods', {
         ...mockContext,
         payload: {
           period1Start: new Date(now - 60 * 24 * 60 * 60 * 1000).toISOString(),
@@ -116,7 +116,7 @@ describe('Analysis Actions', () => {
     });
 
     it('should handle suggest_interventions action', async () => {
-      const executed = await ActionHub.execute('orchestrator', 'suggest_interventions', {
+      const executed = await ActionHub.execute('nexus', 'suggest_interventions', {
         ...mockContext,
         payload: {
           moduleIds: ['hub', 'atlas']
@@ -127,7 +127,7 @@ describe('Analysis Actions', () => {
     });
 
     it('should handle identify_correlations action', async () => {
-      const executed = await ActionHub.execute('orchestrator', 'identify_correlations', {
+      const executed = await ActionHub.execute('nexus', 'identify_correlations', {
         ...mockContext,
         payload: {
           moduleIds: ['hub', 'ledger', 'atlas']
@@ -138,7 +138,7 @@ describe('Analysis Actions', () => {
     });
 
     it('should handle generate_summary action', async () => {
-      const executed = await ActionHub.execute('orchestrator', 'generate_summary', {
+      const executed = await ActionHub.execute('nexus', 'generate_summary', {
         ...mockContext,
         payload: {
           startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -157,7 +157,7 @@ describe('Analysis Actions', () => {
       mockContext = {
         userId: undefined,
         isGuest: true,
-        moduleId: 'orchestrator',
+        moduleId: 'nexus',
         payload: {},
         encryptionKey: null,
         emitSpineEvent: vi.fn(),
@@ -168,7 +168,7 @@ describe('Analysis Actions', () => {
     });
 
     it('should handle missing userId gracefully', async () => {
-      await ActionHub.execute('orchestrator', 'analyze_trends', mockContext);
+      await ActionHub.execute('nexus', 'analyze_trends', mockContext);
       
       expect(mockContext.pushAssistantMessage).toHaveBeenCalledWith(
         expect.stringContaining('Authentication required')
@@ -191,7 +191,7 @@ describe('Analysis Actions', () => {
         })
       };
 
-      await ActionHub.execute('orchestrator', 'analyze_trends', contextWithUser);
+      await ActionHub.execute('nexus', 'analyze_trends', contextWithUser);
       
       // Should execute without throwing
       expect(contextWithUser.sendMessage).toHaveBeenCalled();
@@ -214,7 +214,7 @@ describe('Analysis Actions', () => {
         })
       };
 
-      await ActionHub.execute('orchestrator', 'analyze_trends', contextWithUser);
+      await ActionHub.execute('nexus', 'analyze_trends', contextWithUser);
       
       // Should use default modules
       expect(contextWithUser.sendMessage).toHaveBeenCalled();
@@ -239,7 +239,7 @@ describe('Analysis Actions', () => {
       const mockContext: ActionContext = {
         userId: 'test-user',
         isGuest: false,
-        moduleId: 'orchestrator',
+        moduleId: 'nexus',
         payload: {},
         encryptionKey: null,
         emitSpineEvent: vi.fn(),
@@ -269,7 +269,7 @@ describe('Analysis Actions', () => {
         })
       };
 
-      await ActionHub.execute('orchestrator', 'analyze_trends', mockContext);
+      await ActionHub.execute('nexus', 'analyze_trends', mockContext);
 
       // Should emit spine event for critical findings
       // Note: This may not be called if GlobalSoul data is not available
@@ -280,7 +280,7 @@ describe('Analysis Actions', () => {
       const mockContext: ActionContext = {
         userId: 'test-user',
         isGuest: false,
-        moduleId: 'orchestrator',
+        moduleId: 'nexus',
         payload: {},
         encryptionKey: null,
         emitSpineEvent: vi.fn(),
@@ -309,7 +309,7 @@ describe('Analysis Actions', () => {
         })
       };
 
-      await ActionHub.execute('orchestrator', 'generate_summary', mockContext);
+      await ActionHub.execute('nexus', 'generate_summary', mockContext);
 
       // Should attempt to update GlobalSoul
       // Actual update depends on data availability

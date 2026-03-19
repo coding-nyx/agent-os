@@ -190,7 +190,7 @@ export const GlobalProjectionService = {
     }, {});
 
     const displayNames: Record<string, string> = {
-      orchestrator: provision.orchestratorAlias,
+      nexus: provision.orchestratorAlias,
       ...manifestDefaults,
       ...provision.moduleAliases
     };

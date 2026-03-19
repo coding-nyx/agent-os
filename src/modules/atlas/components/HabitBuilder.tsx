@@ -597,8 +597,6 @@ export function HabitBuilder({
       </AnimatePresence>,
       document.body
     )}
-    </div>
-
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}

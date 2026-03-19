@@ -41,7 +41,7 @@ export function GlobalFAB() {
 
   const isVisible = useMemo(() => {
     if (!user || !isOnboardingComplete) return false;
-    return location.pathname !== '/' && location.pathname !== '/orchestrator';
+    return location.pathname !== '/' && location.pathname !== '/nexus';
   }, [user, isOnboardingComplete, location.pathname]);
 
   const hasActions = fabActions.length > 0;

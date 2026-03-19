@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { OrchestratorOnboarding } from './OrchestratorOnboarding';
+import { NexusOnboarding } from './NexusOnboarding';
 import { useAI } from '@/llm-engine/ai-context';
 import { useAuth } from '@/lib/auth-context';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -40,7 +40,7 @@ vi.mock('@/core/components/NexusChat', () => ({
   )
 }));
 
-describe('OrchestratorOnboarding', () => {
+describe('NexusOnboarding', () => {
   const mockStreamMessage = vi.fn();
   const mockOnComplete = vi.fn();
 
@@ -65,7 +65,7 @@ describe('OrchestratorOnboarding', () => {
     });
 
     render(
-      <OrchestratorOnboarding 
+      <NexusOnboarding 
         profile={null} 
         isSubmitting={false} 
         onComplete={mockOnComplete} 
@@ -86,7 +86,7 @@ describe('OrchestratorOnboarding', () => {
 
   it('renders initial state and greeting', () => {
     render(
-      <OrchestratorOnboarding 
+      <NexusOnboarding 
         profile={null} 
         isSubmitting={false} 
         onComplete={mockOnComplete} 
@@ -109,7 +109,7 @@ describe('OrchestratorOnboarding', () => {
     });
 
     render(
-      <OrchestratorOnboarding 
+      <NexusOnboarding 
         profile={null} 
         isSubmitting={false} 
         onComplete={mockOnComplete} 
@@ -137,7 +137,7 @@ describe('OrchestratorOnboarding', () => {
     });
 
     render(
-      <OrchestratorOnboarding 
+      <NexusOnboarding 
         profile={null} 
         isSubmitting={false} 
         onComplete={mockOnComplete} 

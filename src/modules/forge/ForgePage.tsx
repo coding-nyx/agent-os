@@ -256,7 +256,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
 
   return (
     <div className="h-full flex flex-col md:flex-row overflow-hidden">
-      <div className="w-full md:w-1/2 lg:w-[40%] h-1/2 md:h-full border-b md:border-b-0 md:border-r border-white/5 overflow-y-auto no-scrollbar">
+      <div className="w-full md:w-1/2 lg:w-[40%] max-h-[50vh] md:h-full md:max-h-none border-b md:border-b-0 md:border-r border-white/5 overflow-y-auto no-scrollbar">
           <ForgeDashboard soul={globalSoul} profile={profile} isLocked={isLocked} onModeSelect={handleModeSelect} />
           <div className="px-8 pb-8">
             <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6 space-y-4">
@@ -312,14 +312,14 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-black/50 p-4 text-xs text-white/70 font-mono whitespace-pre-wrap min-h-[120px]">
+              <div className="rounded-2xl border border-white/10 bg-black/50 p-4 text-xs text-white/70 font-mono whitespace-pre-wrap min-h-[60px] md:min-h-[120px]">
                 {editorOutput || 'Output will appear here.'}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 h-1/2 md:h-full flex flex-col min-h-0">
+        <div className="flex-1 min-h-0 flex flex-col">
           <NexusChat
             moduleId="forge"
             ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}

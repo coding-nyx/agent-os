@@ -10,7 +10,7 @@ import { ModuleHealthFAB } from './ModuleHealthFAB';
 import { CommandPalette } from './CommandPalette';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { useGlobalSoul } from '@/lib/global-soul-context';
-import { OrchestratorErrorBoundary } from './OrchestratorErrorBoundary';
+import { NexusErrorBoundary } from './NexusErrorBoundary';
 import { useAI } from '@/llm-engine/ai-context';
 import { runDocumentPipeline, type DocumentPipelinePolicy, type DocumentPipelineStage } from '@/lib/services/document-pipeline';
 import { useNexusCrossModuleBlocker } from '@/lib/hooks/use-nexus-cross-module-blocker';
@@ -108,7 +108,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     if (!shouldSkipRouting) {
       const decision = NexusRoutingService.classifyIntent(contentText);
       // Multi-keyword check: if target isn't orchestrator and confidence is high enough
-      if (decision.target !== 'orchestrator' && decision.confidence >= 0.62) {
+      if (decision.target !== 'nexus' && decision.confidence >= 0.62) {
         setRoutingSuggestion({ target: decision.target, reason: decision.reason });
         setSuggestionCount(prev => prev + 1);
         // Auto-dismiss after 8 seconds — clear any prior timer to avoid leaks
@@ -172,7 +172,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
 
     const nexusPolicy: DocumentPipelinePolicy<{ summary: string }, { summary: string; preview: string }> = {
       id: 'nexus-orchestrator-document',
-      context: { moduleId: 'orchestrator', domain: 'general' },
+      context: { moduleId: 'nexus', domain: 'general' },
       useOCRForImages: true,
       ocrFailureMode: 'warn',
       analyze: async ({ parsed }, llmSend) => {
@@ -247,22 +247,22 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Daily Brief — above chat, collapsible, constrained on mobile */}
       <div className="shrink-0 px-4 pt-3 pb-2 space-y-3 max-h-[40vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
-        <OrchestratorErrorBoundary name="DailyBrief">
+        <NexusErrorBoundary name="DailyBrief">
           <DailyBriefSection
             collapsed={briefCollapsed}
             onToggleCollapse={() => setBriefCollapsed(!briefCollapsed)}
             onAskAboutDomain={handleAskAboutDomain}
           />
-        </OrchestratorErrorBoundary>
+        </NexusErrorBoundary>
 
         {/* Synthesis Panel — below brief, above chat */}
-        <OrchestratorErrorBoundary name="SynthesisPanel">
+        <NexusErrorBoundary name="SynthesisPanel">
           <SynthesisPanel
             onInjectChat={handleInjectChat}
             onConsultModule={handleConsultModule}
             onNavigate={(path) => navigate(path)}
           />
-        </OrchestratorErrorBoundary>
+        </NexusErrorBoundary>
       </div>
 
       {/* Chat area — fills remaining space; relative for FAB positioning */}
@@ -278,9 +278,9 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
           </div>
         )}
         {/* Module Health FAB — floats bottom-right inside chat area */}
-        <OrchestratorErrorBoundary name="ModuleHealth">
+        <NexusErrorBoundary name="ModuleHealth">
           <ModuleHealthFAB />
-        </OrchestratorErrorBoundary>
+        </NexusErrorBoundary>
 
         {/* ⌘K discoverability hint */}
         <div className="absolute top-2 right-3 z-10 pointer-events-none">

@@ -14,7 +14,7 @@ export class MemoryOrchestrator {
     cachedFacts: SemanticFact[],
     options: { requiresVault: boolean; encryptionKey?: CryptoKey | null }
   ): Promise<{ recalledSessionsSummary: string; recalledFactsSummary: string; status: 'ok' | 'vault_blocked' }> {
-    const relevantModuleIds = Array.from(new Set([moduleId, 'orchestrator']));
+    const relevantModuleIds = Array.from(new Set([moduleId, 'nexus']));
 
     const episodicPromise =
       cachedEnvelopes.length > 0 && episodicReady

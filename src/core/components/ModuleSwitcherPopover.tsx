@@ -89,11 +89,11 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
             aria-label="Module navigation"
           >
             {/* Nexus — home base, hidden when already on orchestrator */}
-            {!isActiveModule('/orchestrator') && (
+            {!isActiveModule('/nexus') && (
               <>
                 <button
                   type="button"
-                  onClick={() => handleNavigate('/orchestrator')}
+                  onClick={() => handleNavigate('/nexus')}
                   role="menuitem"
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl w-full text-left transition-colors hover:bg-violet-500/10 mb-1"
                 >

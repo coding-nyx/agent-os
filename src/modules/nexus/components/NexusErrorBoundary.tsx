@@ -8,7 +8,7 @@ interface Props {
 
 interface State { hasError: boolean; error?: Error; }
 
-export class OrchestratorErrorBoundary extends React.Component<Props, State> {
+export class NexusErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
@@ -19,7 +19,7 @@ export class OrchestratorErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error(`[OrchestratorErrorBoundary:${this.props.name}]`, error, info);
+    console.error(`[NexusErrorBoundary:${this.props.name}]`, error, info);
   }
 
   render() {

@@ -24,7 +24,7 @@ export type NSVMetricPath =
   | 'resource.resonanceROI';
 
 export const NSV_OWNERSHIP: Record<ModuleId, NSVMetricPath[]> = {
-  orchestrator: [],
+  nexus: [],
   agnes: ['emotional.emotionalResilience', 'emotional.stressLoad', 'emotional.moodTrend', 'emotional.traumaMarkers'],
   titan: ['biological.cnsFatigue', 'biological.sleepQuality', 'biological.recoveryScore', 'biological.hormonalContext'],
   soma: ['biological.recoveryScore'],
@@ -49,7 +49,7 @@ export const NSV_OWNERSHIP: Record<ModuleId, NSVMetricPath[]> = {
  * `enhanceContextForModule()` in global-soul-context.tsx.
  */
 export const NSV_READ_PERMISSIONS: Record<ModuleId, NSVMetricPath[]> = {
-  orchestrator: [
+  nexus: [
     // Full read — Nexus synthesises across all domains
     'biological.cnsFatigue',
     'biological.sleepQuality',
@@ -153,7 +153,7 @@ export const NSV_READ_PERMISSIONS: Record<ModuleId, NSVMetricPath[]> = {
 
 export function getMetricOwner(metric: NSVMetricPath): ModuleId {
   const entry = Object.entries(NSV_OWNERSHIP).find(([, metrics]) => metrics.includes(metric));
-  return (entry?.[0] as ModuleId) || 'orchestrator';
+  return (entry?.[0] as ModuleId) || 'nexus';
 }
 
 export const NSV_DERIVED_METRICS: NSVMetricPath[] = [

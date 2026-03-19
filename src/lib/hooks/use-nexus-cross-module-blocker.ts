@@ -61,7 +61,7 @@ export function useNexusCrossModuleBlocker() {
 
     const handleModuleDelegated = (event: SpineEvent) => {
       // Nexus started a delegation: lock until the target finishes.
-      if (event.source === 'orchestrator') {
+      if (event.source === 'nexus') {
         const targetId = getTargetAsModuleId(event);
         if (targetId && trackedTargets.has(targetId)) {
           addPending(targetId);
@@ -71,7 +71,7 @@ export function useNexusCrossModuleBlocker() {
 
       // Query results: Nexus is the target, and the source module is responding.
       // useHandoffProcessor emits `MODULE_DELEGATED` with `data.reason === 'query_result'`.
-      if (event.target === 'orchestrator' && event.type === ('MODULE_DELEGATED' as SpineEventType)) {
+      if (event.target === 'nexus' && event.type === ('MODULE_DELEGATED' as SpineEventType)) {
         const reason = event.data?.reason;
         if (reason === 'query_result') {
           const sourceId = getSourceAsModuleId(event);

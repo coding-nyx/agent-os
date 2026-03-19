@@ -54,7 +54,7 @@ export function SystemCommandCenter() {
         setPurgeStep('IDLE');
         setShowSettings(false);
         setIsOpen(false);
-        navigate('/orchestrator', { replace: true });
+        navigate('/nexus', { replace: true });
     } catch (e) {
         console.error("Purge Protocol Failed:", e);
         setPurgeStep('IDLE');

@@ -23,8 +23,8 @@ describe('NSV_OWNERSHIP map', () => {
     expect(NSV_OWNERSHIP.titan).toContain('biological.sleepQuality');
   });
 
-  it('orchestrator owns no metrics', () => {
-    expect(NSV_OWNERSHIP.orchestrator).toHaveLength(0);
+  it('nexus owns no metrics', () => {
+    expect(NSV_OWNERSHIP.nexus).toHaveLength(0);
   });
 });
 
@@ -41,8 +41,8 @@ describe('getMetricOwner', () => {
     expect(getMetricOwner('resource.financialFriction')).toBe('ledger');
   });
 
-  it('falls back to orchestrator for unknown metric', () => {
-    expect(getMetricOwner('unknown.metric' as NSVMetricPath)).toBe('orchestrator');
+  it('falls back to nexus for unknown metric', () => {
+    expect(getMetricOwner('unknown.metric' as NSVMetricPath)).toBe('nexus');
   });
 });
 
@@ -132,7 +132,7 @@ describe('buildCalibrationPrompt', () => {
   });
 
   it('returns generic prompt for modules with no owned metrics', () => {
-    const prompt = buildCalibrationPrompt('orchestrator');
+    const prompt = buildCalibrationPrompt('nexus');
     expect(prompt).toContain('Calibration required');
     expect(prompt).toContain('missing vital metrics');
   });
@@ -171,8 +171,8 @@ describe('filterNSVForModule', () => {
     expect(filtered.lastUpdated['emotional.traumaMarkers']).toBeUndefined();
   });
 
-  it('returns full access for orchestrator', () => {
-    const filtered = filterNSVForModule(sampleNSV, 'orchestrator');
+  it('returns full access for nexus', () => {
+    const filtered = filterNSVForModule(sampleNSV, 'nexus');
     expect(filtered.emotional.traumaMarkers).toEqual(['flashback']);
     expect(filtered.resource.financialFriction).toBe(8);
     expect(filtered.lastUpdated['emotional.traumaMarkers']).toBe('2024-01-02T00:00:00.000Z');
@@ -183,8 +183,8 @@ describe('filterGlobalSoulForModule', () => {
   const projection: GlobalProjection = {
     lastSync: '2024-02-01T00:00:00.000Z',
     overallWellnessScore: 7,
-    displayNames: { orchestrator: 'Nexus' },
-    agentGenders: { orchestrator: 'female' },
+    displayNames: { nexus: 'Nexus' },
+    agentGenders: { nexus: 'female' },
     crossFunctionalState: {
       biological: { cnsFatigue: 3, sleepQuality: 6, recoveryScore: 5, hormonalContext: 'follicular' },
       emotional: { emotionalResilience: 8, stressLoad: 1, moodTrend: 'stable', traumaMarkers: ['redacted'] },

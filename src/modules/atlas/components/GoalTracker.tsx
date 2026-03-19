@@ -515,8 +515,6 @@ export function GoalTracker({
       </AnimatePresence>,
       document.body
     )}
-    </div>
-
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}

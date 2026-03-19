@@ -79,7 +79,7 @@ export function useModuleAI({
   // - all other modules get filtered NSV via enhanceContextForModule
   const resolvedEnhanceContext = useCallback((context: Parameters<typeof enhanceContext>[0]) => {
     if (resolvedContextPolicy === 'doc-only') return context;
-    if (moduleId === 'orchestrator') {
+    if (moduleId === 'nexus') {
       return enhanceContext(context);
     }
     return enhanceContextForModule(context, moduleId as import('@/lib/module-manifest').ModuleId);

@@ -81,11 +81,11 @@ describe('Guardrails: NSV read boundaries', () => {
   const hookPath = path.join(projectRoot, 'src', 'lib', 'hooks', 'use-module-ai.ts');
   const hookContent = fs.readFileSync(hookPath, 'utf8');
 
-  it('keeps orchestrator-only full NSV access', () => {
-    expect(hookContent).toMatch(/moduleId === 'orchestrator'[^]*enhanceContext\(context\)/m);
+  it('keeps nexus-only full NSV access', () => {
+    expect(hookContent).toMatch(/moduleId === 'nexus'[^]*enhanceContext\(context\)/m);
   });
 
-  it('forces non-orchestrator modules through filtered NSV', () => {
+  it('forces non-nexus modules through filtered NSV', () => {
     expect(hookContent).toMatch(/return\s+enhanceContextForModule\(context,\s*moduleId/m);
   });
 

@@ -202,7 +202,7 @@ export class AtlasPredictiveService {
             source: 'atlas-predictive-service',
             domain: 'C',
             priority: 'alert',
-            target: 'orchestrator',
+            target: 'nexus',
             data: {
               reason: 'compound_planning_overload',
               planningLoad,
@@ -406,7 +406,7 @@ export class AtlasPredictiveService {
       source: 'atlas-predictive-service',
       domain: 'system',
       priority: 'critical',
-      target: 'orchestrator',
+      target: 'nexus',
       data: { reason, note: 'Multi-domain crisis — Atlas transitioning to Recovery' },
     });
   }

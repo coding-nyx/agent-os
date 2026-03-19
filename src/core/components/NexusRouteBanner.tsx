@@ -91,7 +91,7 @@ export function NexusRouteBanner() {
           <button
             onClick={() => {
               if (targetModule.route) navigate(targetModule.route);
-              else navigate('/orchestrator');
+              else navigate('/nexus');
               setPrompt(null);
             }}
             className="flex items-center gap-2 rounded-2xl bg-violet-600/90 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-white"

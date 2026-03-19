@@ -9,7 +9,7 @@
  *
  * Rules:
  *   - A module may only write paths it owns according to NSV_OWNERSHIP.
- *   - The 'orchestrator' is a special super-authority: it may write any path.
+ *   - The 'nexus' is a special super-authority: it may write any path.
  *   - Modules with an empty ownership list (scout, forge, soma, bridge)
  *     cannot write any NSV fields directly.
  *
@@ -17,7 +17,7 @@
  *   SoulAuthorityGuard.canWrite('agnes', 'emotional.traumaMarkers')  → true
  *   SoulAuthorityGuard.canWrite('titan', 'emotional.traumaMarkers')  → false
  *   SoulAuthorityGuard.canWrite('forge', 'cognitive.focusScore')     → false
- *   SoulAuthorityGuard.canWrite('orchestrator', 'biological.cnsFatigue') → true
+ *   SoulAuthorityGuard.canWrite('nexus', 'biological.cnsFatigue') → true
  */
 
 import { ModuleId } from '@/lib/module-manifest';
@@ -43,7 +43,7 @@ export class SoulAuthorityError extends Error {
 
 /**
  * Resolve which module holds write authority for a given NSV path.
- * Falls back to 'orchestrator' for paths not found in any module's ownership list
+ * Falls back to 'nexus' for paths not found in any module's ownership list
  * (which should not occur with a well-maintained NSV_OWNERSHIP map).
  */
 function resolveAuthority(nsvPath: NSVMetricPath): ModuleId {
@@ -52,8 +52,8 @@ function resolveAuthority(nsvPath: NSVMetricPath): ModuleId {
       return moduleId as ModuleId;
     }
   }
-  // Unknown path — default to orchestrator as fallback authority
-  return 'orchestrator';
+  // Unknown path — default to nexus as fallback authority
+  return 'nexus';
 }
 
 export const SoulAuthorityGuard = {
@@ -64,8 +64,8 @@ export const SoulAuthorityGuard = {
    * All other modules must appear in NSV_OWNERSHIP[moduleId] for the given path.
    */
   canWrite(moduleId: ModuleId, nsvPath: NSVMetricPath): boolean {
-    // Orchestrator has super-authority over all NSV paths
-    if (moduleId === 'orchestrator') return true;
+    // Nexus has super-authority over all NSV paths
+    if (moduleId === 'nexus') return true;
 
     const ownedPaths = NSV_OWNERSHIP[moduleId] ?? [];
     return (ownedPaths as NSVMetricPath[]).includes(nsvPath);
@@ -84,7 +84,7 @@ export const SoulAuthorityGuard = {
 
   /**
    * Returns the module ID that holds write authority over `nsvPath`.
-   * Returns 'orchestrator' for unrecognized paths.
+   * Returns 'nexus' for unrecognized paths.
    */
   getAuthoritativeModule(nsvPath: NSVMetricPath): ModuleId {
     return resolveAuthority(nsvPath);

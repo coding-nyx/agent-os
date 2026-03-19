@@ -168,8 +168,8 @@ vi.mock('@/core/components/RoutingSuggestion', () => ({
     ) : null,
 }));
 
-vi.mock('./OrchestratorErrorBoundary', () => ({
-  OrchestratorErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+vi.mock('./NexusErrorBoundary', () => ({
+  NexusErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 // ─── Diagnosis registry ───────────────────────────────────────────────────────
@@ -388,7 +388,7 @@ describe('NexusDashboard', () => {
 
   // ── T-15 ───────────────────────────────────────────────────────────────────
   it('T-15 — routing suggestion appears at conversationDepth >= 1', async () => {
-    // classifyIntent returns a non-orchestrator module with high confidence
+    // classifyIntent returns a non-nexus module with high confidence
     (NexusRoutingService.classifyIntent as any).mockReturnValue({
       target: 'atlas',
       confidence: 0.85,

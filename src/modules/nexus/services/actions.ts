@@ -35,7 +35,7 @@ export function registerOrchestratorActions() {
    *
    * Payload: { moduleId: string }
    */
-  ActionHub.register('orchestrator', 'navigate_to_module', ({ payload, navigateTo }) => {
+  ActionHub.register('nexus', 'navigate_to_module', ({ payload, navigateTo }) => {
     const moduleId = typeof payload?.moduleId === 'string'
       ? (payload.moduleId as ModuleId)
       : null;
@@ -53,7 +53,7 @@ export function registerOrchestratorActions() {
    *
    * Payload: { moduleId: string; content: string; reason?: string }
    */
-  ActionHub.register('orchestrator', 'create_module_handoff', ({ payload, emitSpineEvent }) => {
+  ActionHub.register('nexus', 'create_module_handoff', ({ payload, emitSpineEvent }) => {
     const moduleId = typeof payload?.moduleId === 'string' ? payload.moduleId : null;
     const content = typeof payload?.content === 'string' ? payload.content : '';
     const reason = typeof payload?.reason === 'string' ? payload.reason : 'Prepared by Nexus';
@@ -65,7 +65,7 @@ export function registerOrchestratorActions() {
       type: 'delegate',
       content,
       reason,
-      sourceModuleId: 'orchestrator',
+      sourceModuleId: 'nexus',
       createdAt: new Date().toISOString(),
     });
 
@@ -73,7 +73,7 @@ export function registerOrchestratorActions() {
       targetModule: moduleId,
       context: content,
       reason,
-      source: 'orchestrator',
+      source: 'nexus',
     });
   });
 
@@ -87,7 +87,7 @@ export function registerOrchestratorActions() {
    *
    * Payload: { type: string, domain?: string, priority?: string, data?: object }
    */
-  ActionHub.register('orchestrator', 'broadcast_spine_event', ({ payload, emitSpineEvent }) => {
+  ActionHub.register('nexus', 'broadcast_spine_event', ({ payload, emitSpineEvent }) => {
     const ALLOWED_TYPES: SpineEventType[] = [
       'VITAL_UPDATED',
       'HEALTH_CONTEXT_STALE',
@@ -124,7 +124,7 @@ export function registerOrchestratorActions() {
    *
    * Payload: { patch: Partial<NeuralStateVector> }
    */
-  ActionHub.register('orchestrator', 'sync_vitals', async ({ payload, updateGlobalSoul, emitSpineEvent }) => {
+  ActionHub.register('nexus', 'sync_vitals', async ({ payload, updateGlobalSoul, emitSpineEvent }) => {
     const patch = payload?.patch as NeuralStateVectorPatch | undefined;
     if (!patch || typeof patch !== 'object') return;
     await updateGlobalSoul(patch);
@@ -141,7 +141,7 @@ export function registerOrchestratorActions() {
    *
    * Payload: { preferredName?, pronouns?, occupation?, age?, genderIdentity?, timezone?, locale? }
    */
-  ActionHub.register('orchestrator', 'update_global_identity', async ({ userId, payload }) => {
+  ActionHub.register('nexus', 'update_global_identity', async ({ userId, payload }) => {
     if (!userId || !payload || typeof payload !== 'object') return;
     const ALLOWED_FIELDS = [
       'preferredName', 'pronouns', 'occupation', 'age',
@@ -166,7 +166,7 @@ export function registerOrchestratorActions() {
    *
    * Payload: { provision: Partial<AgentPersonalityProvision> }
    */
-  ActionHub.register('orchestrator', 'sync_personality_provision', async ({ userId, payload }) => {
+  ActionHub.register('nexus', 'sync_personality_provision', async ({ userId, payload }) => {
     if (!userId || !payload || typeof payload !== 'object') return;
     const provision = (
       typeof (payload as Record<string, unknown>).provision === 'object' &&

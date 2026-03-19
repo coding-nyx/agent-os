@@ -43,13 +43,13 @@ export default function LandingPage() {
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/orchestrator', { replace: true });
+      navigate('/nexus', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
   const goHub = () => {
     if (isAuthenticated) {
-      navigate('/orchestrator');
+      navigate('/nexus');
       return;
     }
     setIsAuthOpen(true);

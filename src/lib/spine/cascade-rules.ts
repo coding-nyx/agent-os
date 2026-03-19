@@ -175,7 +175,7 @@ const CORE_ENERGY_WAVE_CASCADE_RULES: CascadeRule[] = [
       domain: 'system' as const,
       source: 'spine-cascade:core',
       priority: 'critical' as const,
-      target: 'orchestrator',
+      target: 'nexus',
       data: {
         reason: 'high_fatigue_low_resilience',
         cnsFatigue: (event.data as Record<string, unknown>)?.cnsFatigue,

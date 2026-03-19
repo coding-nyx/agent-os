@@ -5,7 +5,7 @@ import { DailyBrief } from './DailyBrief';
 import { useAuth } from '@/lib/auth-context';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
-import { useNsvTrends } from '@/modules/orchestrator/hooks/useNsvTrends';
+import { useNsvTrends } from '@/modules/nexus/hooks/useNsvTrends';
 
 vi.mock('framer-motion', () => ({
   motion: {
@@ -42,7 +42,7 @@ vi.mock('@/lib/hooks/useReducedMotion', () => ({
   useReducedMotion: vi.fn(),
 }));
 
-vi.mock('@/modules/orchestrator/hooks/useNsvTrends', () => ({
+vi.mock('@/modules/nexus/hooks/useNsvTrends', () => ({
   useNsvTrends: vi.fn(),
 }));
 

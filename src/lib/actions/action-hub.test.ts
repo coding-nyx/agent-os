@@ -53,8 +53,8 @@ class TestableActionHub {
       }
     }
 
-    // 3. Fallback to orchestrator
-    const orchestratorHandlers = this.registry.get('orchestrator');
+    // 3. Fallback to nexus
+    const orchestratorHandlers = this.registry.get('nexus');
     if (orchestratorHandlers && orchestratorHandlers.has(actionType)) {
       await orchestratorHandlers.get(actionType)!(context);
       return true;
@@ -82,7 +82,7 @@ class TestableActionHub {
         }
       }
     }
-    const orchestratorHandlers = this.registry.get('orchestrator');
+    const orchestratorHandlers = this.registry.get('nexus');
     if (orchestratorHandlers) {
       for (const action of orchestratorHandlers.keys()) {
         actions.add(action);
@@ -128,15 +128,15 @@ describe('ModuleActionHub', () => {
     expect(result).toBe(false);
   });
 
-  it('returns false for unregistered action on a known module (no orchestrator fallback)', async () => {
+  it('returns false for unregistered action on a known module (no nexus fallback)', async () => {
     hub.register('agnes', 'KNOWN_ACTION', vi.fn());
     const result = await hub.execute('agnes', 'UNKNOWN_ACTION', makeMockContext());
     expect(result).toBe(false);
   });
 
-  it('falls back to orchestrator handler when module handler is missing', async () => {
+  it('falls back to nexus handler when module handler is missing', async () => {
     const orchHandler = vi.fn();
-    hub.register('orchestrator', 'GLOBAL_ACTION', orchHandler);
+    hub.register('nexus', 'GLOBAL_ACTION', orchHandler);
     hub.register('agnes', 'LOCAL_ACTION', vi.fn());
 
     const ctx = makeMockContext();
@@ -146,9 +146,9 @@ describe('ModuleActionHub', () => {
     expect(orchHandler).toHaveBeenCalledWith(ctx);
   });
 
-  it('falls back to orchestrator when module is not registered at all', async () => {
+  it('falls back to nexus when module is not registered at all', async () => {
     const orchHandler = vi.fn();
-    hub.register('orchestrator', 'GLOBAL_ACTION', orchHandler);
+    hub.register('nexus', 'GLOBAL_ACTION', orchHandler);
 
     const ctx = makeMockContext();
     const result = await hub.execute('unknown_module', 'GLOBAL_ACTION', ctx);
@@ -169,10 +169,10 @@ describe('ModuleActionHub', () => {
     expect(h2).toHaveBeenCalledOnce();
   });
 
-  it('getAllowedActions merges module and orchestrator actions', () => {
+  it('getAllowedActions merges module and nexus actions', () => {
     hub.register('agnes', 'LOCAL_A', vi.fn());
     hub.register('agnes', 'LOCAL_B', vi.fn());
-    hub.register('orchestrator', 'GLOBAL_C', vi.fn());
+    hub.register('nexus', 'GLOBAL_C', vi.fn());
 
     const actions = hub.getAllowedActions('agnes');
     expect(actions).toContain('LOCAL_A');
@@ -180,8 +180,8 @@ describe('ModuleActionHub', () => {
     expect(actions).toContain('GLOBAL_C');
   });
 
-  it('getAllowedActions returns only orchestrator actions for unknown module', () => {
-    hub.register('orchestrator', 'GLOBAL_ONLY', vi.fn());
+  it('getAllowedActions returns only nexus actions for unknown module', () => {
+    hub.register('nexus', 'GLOBAL_ONLY', vi.fn());
 
     const actions = hub.getAllowedActions('unknown');
     expect(actions).toEqual(['GLOBAL_ONLY']);
@@ -227,9 +227,9 @@ describe('ModuleActionHub', () => {
     expect(actions).toContain('delete_field');
   });
 
-  it('dependency resolution falls through to orchestrator when dep has no match', async () => {
+  it('dependency resolution falls through to nexus when dep has no match', async () => {
     const orchHandler = vi.fn();
-    hub.register('orchestrator', 'GLOBAL_ACTION', orchHandler);
+    hub.register('nexus', 'GLOBAL_ACTION', orchHandler);
     hub.register('soma', 'create_field', vi.fn());
     hub.addDependency('titan', 'soma');
 
@@ -240,7 +240,7 @@ describe('ModuleActionHub', () => {
     expect(orchHandler).toHaveBeenCalledWith(ctx);
   });
 
-  it('returns false when dependency module has no matching action and no orchestrator', async () => {
+  it('returns false when dependency module has no matching action and no nexus', async () => {
     hub.register('soma', 'create_field', vi.fn());
     hub.addDependency('titan', 'soma');
 

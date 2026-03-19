@@ -25,7 +25,7 @@ export function AppVaultGate() {
   const [shaking, setShaking] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get('returnTo') || '/orchestrator';
+  const returnTo = searchParams.get('returnTo') || '/nexus';
 
   const handleUnlock = async () => {
     if (!password.trim() || isHandshaking) return;

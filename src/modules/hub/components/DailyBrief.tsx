@@ -6,7 +6,7 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { TrendArrow, type TrendDirection } from '@/core/components/TrendArrow';
-import { useNsvTrends } from '@/modules/orchestrator/hooks/useNsvTrends';
+import { useNsvTrends } from '@/modules/nexus/hooks/useNsvTrends';
 import {
   DOMAIN_PILLARS,
   DOMAIN_ORDER,

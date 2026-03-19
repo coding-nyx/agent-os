@@ -1,5 +1,5 @@
 /**
- * OrchestratorOnboarding — additional critical-path tests (supplement, not replacement)
+ * NexusOnboarding — additional critical-path tests (supplement, not replacement)
  *
  * T-04 — Fast-track: disabled when both fields empty
  * T-05 — Fast-track: disabled when only one field filled
@@ -100,7 +100,7 @@ vi.mock('@/core/intake/use-guided-chat-intake', () => ({
 }));
 
 // ─── Late imports (after mocks are registered) ────────────────────────────────
-import { OrchestratorOnboarding } from './OrchestratorOnboarding';
+import { NexusOnboarding } from './NexusOnboarding';
 import { useCommandPalette } from '../hooks/useCommandPalette';
 import { useNexusSynthesis } from '../hooks/useNexusSynthesis';
 
@@ -115,7 +115,7 @@ import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 
 const INTAKE_SPEC_STUB = {
   placeholder: 'Respond to Nexus...',
-  moduleId: 'orchestrator',
+  moduleId: 'nexus',
   initialState: { profileUpdates: {}, stepProgress: 0 },
   initialMessages: [],
   summary: '',
@@ -145,7 +145,7 @@ const makeVaultMock = (overrides: Record<string, unknown> = {}) => ({
 // ═════════════════════════════════════════════════════════════════════════════
 // ── T-04 / T-05 / T-06  Fast-track panel ─────────────────────────────────────
 // ═════════════════════════════════════════════════════════════════════════════
-describe('OrchestratorOnboarding — fast-track panel', () => {
+describe('NexusOnboarding — fast-track panel', () => {
   const mockOnComplete = vi.fn();
 
   beforeEach(() => {
@@ -161,7 +161,7 @@ describe('OrchestratorOnboarding — fast-track panel', () => {
 
   function renderOnboarding() {
     return render(
-      <OrchestratorOnboarding
+      <NexusOnboarding
         profile={null}
         isSubmitting={false}
         onComplete={mockOnComplete}

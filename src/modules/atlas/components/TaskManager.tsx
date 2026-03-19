@@ -606,8 +606,6 @@ export function TaskManager({
       </AnimatePresence>,
       document.body
     )}
-    </div>
-
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}

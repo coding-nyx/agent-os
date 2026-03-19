@@ -30,7 +30,7 @@ const HubPage = lazy(() => import('./modules/hub/HubPage'));
 const AgnesPage = lazy(() => import('./modules/agnes/AgnesPage'));
 const TitanPage = lazy(() => import('./modules/titan/TitanPage'));
 const LedgerPage = lazy(() => import('./modules/ledger/LedgerPage'));
-const OrchestratorPage = lazy(() => import('./modules/orchestrator/OrchestratorPage'));
+const NexusPage = lazy(() => import('./modules/nexus/NexusPage'));
 const SomaPage = lazy(() => import('./modules/soma/SomaPage'));
 const AtlasPage = lazy(() => import('./modules/atlas/AtlasPage'));
 const ScoutPage = lazy(() => import('./modules/scout/ScoutPage'));
@@ -133,9 +133,9 @@ function AppContent() {
         {/* Vault unlock gate — outside ProtectedRoute so it's always reachable */}
         <Route path="/vault-gate" element={<AppVaultGate />} />
         
-        <Route path="/orchestrator" element={
+        <Route path="/nexus" element={
           <ProtectedRoute requireOnboarding={false}>
-            <OrchestratorPage />
+            <NexusPage />
           </ProtectedRoute>
         } />
 

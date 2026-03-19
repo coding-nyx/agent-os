@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useAI } from '@/llm-engine/ai-context';
-import { ORCHESTRATOR_PERSONA } from '@/modules/orchestrator/personas';
+import { ORCHESTRATOR_PERSONA } from '@/modules/nexus/personas';
 import { NexusChat } from '@/core/components/NexusChat';
 import { NexusSubModulePanel } from '@/core/components/NexusSubModulePanel';
 import { useUIStore } from '@/lib/stores/ui-store';
@@ -55,14 +55,14 @@ export function NexusOverlay() {
   }, []);
 
   const ai = useModuleAI({
-    moduleId: 'orchestrator',
+    moduleId: 'nexus',
     systemPrompt: ORCHESTRATOR_PERSONA,
     navigateTo: handleDelegation
   });
 
   const nexusPolicy: DocumentPipelinePolicy<{ summary: string }, { summary: string; preview: string }> = {
     id: 'nexus-generic-document',
-    context: { moduleId: 'orchestrator', domain: 'general' },
+    context: { moduleId: 'nexus', domain: 'general' },
     analyze: async ({ parsed }, llmSend) => {
       const prompt = [
         `Document received: "${parsed.fileName}"`,
@@ -138,7 +138,7 @@ export function NexusOverlay() {
   const isVisible = useMemo(() => {
     if (!user || !profile?.onboardingComplete) return false;
     if (hasVault && !isUnlocked) return false;
-    return location.pathname !== '/' && location.pathname !== '/orchestrator' && location.pathname !== '/vault-gate';
+    return location.pathname !== '/' && location.pathname !== '/nexus' && location.pathname !== '/vault-gate';
   }, [user, profile?.onboardingComplete, location.pathname, hasVault, isUnlocked]);
 
   const isNexusBusy = isCrossModuleBusy || docUploadBusy || isConflictBlocking;

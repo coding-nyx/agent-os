@@ -843,7 +843,7 @@ export function registerAnalysisActions() {
   // Unit tests reset ActionHub's internal registry without resetting
   // any module-level flags. Make registration idempotent based on the
   // current public ActionHub state.
-  const alreadyRegistered = ActionHub.getAllowedActions('orchestrator').includes('analyze_trends');
+  const alreadyRegistered = ActionHub.getAllowedActions('nexus').includes('analyze_trends');
   if (alreadyRegistered) return;
 
   const analysisHandlers = {
@@ -855,7 +855,7 @@ export function registerAnalysisActions() {
   };
 
   // Register with orchestrator (available to all modules)
-  ActionHub.registerMultiple('orchestrator', analysisHandlers);
+  ActionHub.registerMultiple('nexus', analysisHandlers);
 
   // Register with specific modules that benefit from analysis
   const modules = ['hub', 'ledger', 'atlas'];

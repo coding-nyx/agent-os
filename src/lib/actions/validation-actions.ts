@@ -607,7 +607,7 @@ export function registerValidationActions(moduleId: string): void {
  * Register validation actions globally (available to all modules)
  */
 export function registerGlobalValidationActions(): void {
-  ActionHub.registerMultiple('orchestrator', {
+  ActionHub.registerMultiple('nexus', {
     suggest_field_fix: suggestFieldFix,
     validate_with_context: validateWithContext,
     explain_validation_error: explainValidationError

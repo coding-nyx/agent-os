@@ -9,7 +9,7 @@
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import OrchestratorPage from './OrchestratorPage';
+import NexusPage from './NexusPage';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
@@ -56,13 +56,13 @@ vi.mock('@/core/components/GuestModePanel', () => ({
 /**
  * OrchestratorOnboarding is mocked with a trigger button so T-02 can programmatically call onComplete.
  */
-vi.mock('@/modules/orchestrator/onboarding/OrchestratorOnboarding', () => ({
-  OrchestratorOnboarding: ({
+vi.mock('@/modules/nexus/onboarding/NexusOnboarding', () => ({
+  NexusOnboarding: ({
     onComplete,
   }: {
     onComplete: (u: Record<string, unknown>) => Promise<void>;
   }) => (
-    <div data-testid="orchestrator-onboarding">
+    <div data-testid="nexus-onboarding">
       <button
         data-testid="complete-onboarding-btn"
         onClick={() =>
@@ -79,7 +79,7 @@ vi.mock('@/modules/orchestrator/onboarding/OrchestratorOnboarding', () => ({
   ),
 }));
 
-vi.mock('@/modules/orchestrator/components/NexusDashboard', () => ({
+vi.mock('@/modules/nexus/components/NexusDashboard', () => ({
   NexusDashboard: () => <div data-testid="nexus-dashboard" />,
 }));
 
@@ -118,7 +118,7 @@ const makeVault = (overrides: Record<string, unknown> = {}) => ({
 const AUTHED_USER = { uid: 'user-123', email: 'alice@test.com' };
 
 // ─────────────────────────────────────────────────────────────────────────────
-describe('OrchestratorPage', () => {
+describe('NexusPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useModuleAI as any).mockReturnValue(makeModuleAI());
@@ -140,10 +140,10 @@ describe('OrchestratorPage', () => {
     });
     (useVault as any).mockReturnValue(makeVault());
 
-    render(<OrchestratorPage />);
+    render(<NexusPage />);
 
     expect(screen.getByTestId('guest-mode-panel')).toBeInTheDocument();
-    expect(screen.queryByTestId('orchestrator-onboarding')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('nexus-onboarding')).not.toBeInTheDocument();
   });
 
   // ── T-02 ───────────────────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ describe('OrchestratorPage', () => {
     });
     (useVault as any).mockReturnValue(makeVault());
 
-    render(<OrchestratorPage />);
+    render(<NexusPage />);
 
     await user.click(screen.getByTestId('complete-onboarding-btn'));
 
@@ -197,7 +197,7 @@ describe('OrchestratorPage', () => {
       })
     );
 
-    render(<OrchestratorPage />);
+    render(<NexusPage />);
 
     // Nudge must NOT be present before the timer fires
     expect(screen.queryByTestId('vault-setup-nudge')).not.toBeInTheDocument();

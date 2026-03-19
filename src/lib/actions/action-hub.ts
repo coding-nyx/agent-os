@@ -179,8 +179,8 @@ class ModuleActionHub {
       }
     }
 
-    // 3. Fallback to orchestrator — orchestrator handlers are privileged
-    const orchestratorHandlers = this.registry.get('orchestrator');
+    // 3. Fallback to nexus — nexus handlers are privileged
+    const orchestratorHandlers = this.registry.get('nexus');
     if (orchestratorHandlers && orchestratorHandlers.has(actionType)) {
       await orchestratorHandlers.get(actionType)!(context);
       NexusLogger.action(moduleId, actionType, context.payload);
@@ -215,8 +215,8 @@ class ModuleActionHub {
       }
     }
 
-    // Orchestrator actions
-    const orchestratorHandlers = this.registry.get('orchestrator');
+    // Nexus actions
+    const orchestratorHandlers = this.registry.get('nexus');
     if (orchestratorHandlers) {
       for (const action of orchestratorHandlers.keys()) {
         actions.add(action);

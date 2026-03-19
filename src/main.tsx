@@ -31,7 +31,7 @@ import { registerTitanActions } from './modules/titan/services/actions'
 import { registerScoutActions } from './modules/scout/services/actions'
 import { registerForgeActions } from './modules/forge/services/actions'
 import { registerSomaFieldActions } from './modules/soma/actions/soma-field-actions'
-import { registerOrchestratorActions } from './modules/orchestrator/services/actions'
+import { registerOrchestratorActions } from './modules/nexus/services/actions'
 
 // Boot NexusLogger before anything else — console override must be in place before
 // any module code or React runs. Reads debug state from localStorage so it persists.
