@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { Recurrence } from '../types';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
@@ -70,16 +71,19 @@ export function RecurrenceEditor({
         <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
           Schedule
         </label>
-        <select
-          value={value.kind === 'rrule' ? 'every_n_days' : value.kind}
-          disabled={disabled}
-          onChange={(e) => onChange(defaultForKind(e.target.value as Recurrence['kind']))}
-          className="w-full bg-black/40 border border-white/10 rounded-2xl h-11 px-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40"
-        >
-          {KIND_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={value.kind === 'rrule' ? 'every_n_days' : value.kind}
+            disabled={disabled}
+            onChange={(e) => onChange(defaultForKind(e.target.value as Recurrence['kind']))}
+            className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl h-11 pl-4 pr-10 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40 [color-scheme:dark]"
+          >
+            {KIND_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+        </div>
       </div>
 
       {/* Every N days */}
@@ -185,35 +189,41 @@ export function RecurrenceEditor({
         <div className="space-y-3">
           <div className="flex gap-3">
             <TimeInput
-              label="From"
+              label="Start"
               value={value.windowStart}
               onChange={(t) => onChange({ ...value, windowStart: t })}
               disabled={disabled}
             />
             <TimeInput
-              label="To"
+              label="End"
               value={value.windowEnd}
               onChange={(t) => onChange({ ...value, windowEnd: t })}
               disabled={disabled}
             />
           </div>
+          <p className="text-[10px] text-white/40 leading-snug ml-1">
+            Reminder fires once within this window each day.
+          </p>
           <div className="space-y-1.5">
             <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
               Remind me
             </label>
-            <select
-              disabled={disabled}
-              value={value.intervalMinutes}
-              onChange={(e) => onChange({ ...value, intervalMinutes: Number(e.target.value) })}
-              className="w-full bg-black/40 border border-white/10 rounded-2xl h-11 px-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40"
-            >
-              <option value={30}>Every 30 minutes</option>
-              <option value={60}>Every hour</option>
-              <option value={120}>Every 2 hours</option>
-              <option value={180}>Every 3 hours</option>
-              <option value={360}>Every 6 hours</option>
-              <option value={1440}>Once per day</option>
-            </select>
+            <div className="relative">
+              <select
+                disabled={disabled}
+                value={value.intervalMinutes}
+                onChange={(e) => onChange({ ...value, intervalMinutes: Number(e.target.value) })}
+                className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl h-11 pl-4 pr-10 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40 [color-scheme:dark]"
+              >
+                <option value={30}>Every 30 minutes</option>
+                <option value={60}>Every hour</option>
+                <option value={120}>Every 2 hours</option>
+                <option value={180}>Every 3 hours</option>
+                <option value={360}>Every 6 hours</option>
+                <option value={1440}>Once per day</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            </div>
           </div>
         </div>
       )}

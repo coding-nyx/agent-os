@@ -9,24 +9,34 @@ import fs from 'fs'
  * so it cannot access import.meta.env — this is the standard workaround.
  */
 function firebaseSwInject(): Plugin {
+  const injectTokens = (content: string, env: Record<string, string>) =>
+    content
+      .replace(/__FIREBASE_API_KEY__/g, env.VITE_FIREBASE_API_KEY ?? '')
+      .replace(/__FIREBASE_AUTH_DOMAIN__/g, env.VITE_FIREBASE_AUTH_DOMAIN ?? '')
+      .replace(/__FIREBASE_PROJECT_ID__/g, env.VITE_FIREBASE_PROJECT_ID ?? '')
+      .replace(/__FIREBASE_STORAGE_BUCKET__/g, env.VITE_FIREBASE_STORAGE_BUCKET ?? '')
+      .replace(/__FIREBASE_MESSAGING_SENDER_ID__/g, env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? '')
+      .replace(/__FIREBASE_APP_ID__/g, env.VITE_FIREBASE_APP_ID ?? '')
+
   return {
     name: 'firebase-sw-inject',
+    configureServer(server) {
+      const swSrc = path.resolve(__dirname, 'public/firebase-messaging-sw.js')
+      const env = loadEnv('development', __dirname, 'VITE_')
+      server.middlewares.use('/firebase-messaging-sw.js', (_req, res) => {
+        const content = injectTokens(fs.readFileSync(swSrc, 'utf-8'), env)
+        res.setHeader('Content-Type', 'application/javascript')
+        res.setHeader('Service-Worker-Allowed', '/')
+        res.end(content)
+      })
+    },
     closeBundle() {
       const swSrc = path.resolve(__dirname, 'public/firebase-messaging-sw.js')
       const swOut = path.resolve(__dirname, 'out/firebase-messaging-sw.js')
       if (!fs.existsSync(swSrc) || !fs.existsSync(path.resolve(__dirname, 'out'))) return
 
       const env = loadEnv('production', __dirname, 'VITE_')
-      let content = fs.readFileSync(swSrc, 'utf-8')
-      content = content
-        .replace(/__FIREBASE_API_KEY__/g, env.VITE_FIREBASE_API_KEY ?? '')
-        .replace(/__FIREBASE_AUTH_DOMAIN__/g, env.VITE_FIREBASE_AUTH_DOMAIN ?? '')
-        .replace(/__FIREBASE_PROJECT_ID__/g, env.VITE_FIREBASE_PROJECT_ID ?? '')
-        .replace(/__FIREBASE_STORAGE_BUCKET__/g, env.VITE_FIREBASE_STORAGE_BUCKET ?? '')
-        .replace(/__FIREBASE_MESSAGING_SENDER_ID__/g, env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? '')
-        .replace(/__FIREBASE_APP_ID__/g, env.VITE_FIREBASE_APP_ID ?? '')
-
-      fs.writeFileSync(swOut, content, 'utf-8')
+      fs.writeFileSync(swOut, injectTokens(fs.readFileSync(swSrc, 'utf-8'), env), 'utf-8')
       console.log('[firebase-sw-inject] Service worker written with real config.')
     },
   }

@@ -24,6 +24,8 @@ import { buildSomaAgentSystemPrompt, SOMA_MEDICAL_DISCLAIMER } from './prompts/s
 import { SomaOnboarding } from './onboarding/SomaOnboarding';
 
 import { registerSomaFieldActions } from './actions/soma-field-actions';
+import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
+import { SomaNotificationSettingsPanel } from './components/SomaNotificationSettingsPanel';
 
 registerSomaFieldActions();
 
@@ -186,6 +188,14 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
       onUploadDocument={(file) => setQueuedUpload(file)}
     >
       <div className="h-full overflow-y-auto no-scrollbar pb-20">
+        <div className="flex items-center justify-end px-4 pt-3 pb-1">
+          <ModuleReminderEntry
+            title="Soma"
+            themeColor="emerald"
+            panel={<SomaNotificationSettingsPanel />}
+            compact
+          />
+        </div>
         <SomaDashboard
           profile={profile}
           soul={globalSoul}

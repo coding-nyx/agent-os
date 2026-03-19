@@ -38,6 +38,25 @@ const PERSISTENCE_KEY = 'nexus_vault_mode';
 const SESSION_PWD_KEY = 'nexus_vault_session';
 const VAULT_COLLECTION = 'vaults';
 
+// Redirect hook to make `initializeVault()` testable in jsdom (where
+// navigation is often "Not implemented").
+export type VaultRedirector = (url: string) => void;
+const defaultVaultRedirector: VaultRedirector = (url: string) => {
+  if (typeof window === 'undefined') return;
+  window.location.assign(url);
+};
+let vaultRedirector: VaultRedirector = defaultVaultRedirector;
+
+// Test-only injection.
+export function __setVaultRedirectorForTests(next: VaultRedirector) {
+  vaultRedirector = next;
+}
+
+// Test-only reset.
+export function __resetVaultRedirectorForTests() {
+  vaultRedirector = defaultVaultRedirector;
+}
+
 export function VaultProvider({ children }: { children: React.ReactNode }) {
   const { user, profile, isGuest, loading: authLoading } = useAuth();
   const dataLayer = useDataLayer();
@@ -236,8 +255,21 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const initializeVault = useCallback(() => {
-    // Placeholder — will be wired to UnifiedAuthModal VAULT_HANDSHAKE step.
-  }, []);
+    // Non-destructive entrypoint: send the user to the full-screen vault handshake
+    // route. The gate calls `unlockVault(password)` which derives the master key.
+    if (isGuest) return;
+    if (!user) return;
+
+    try {
+      const { pathname, search, hash } = window.location;
+      const returnTo = pathname + search + hash;
+      const url = `/vault-gate?returnTo=${encodeURIComponent(returnTo)}`;
+      vaultRedirector(url);
+    } catch (e) {
+      // In unlikely environments (no window/location), fail closed (no crash).
+      console.error('[Vault] Failed to initiate vault handshake:', e);
+    }
+  }, [isGuest, user]);
 
   useEffect(() => {
     // Lock vault when user signs out

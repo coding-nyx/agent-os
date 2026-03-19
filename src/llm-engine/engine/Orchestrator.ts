@@ -7,12 +7,12 @@ import { isProviderControlOnly } from '../sanitize';
 import { ModelRegistry } from './ModelRegistry';
 
 // Free model optimized for instruction-following and structured output (guest sessions)
-const GUEST_MODEL = 'google/gemini-2.0-flash-exp:free';
+const GUEST_MODEL = 'google/gemini-2.0-flash:free';
 
 // Priority-ordered list of free models with verified tool-calling / structured-output support.
 // Used for the action-correction re-prompt so we don't retry on the same model that failed.
 const ACTION_CAPABLE_FREE_MODELS = [
-  'google/gemini-2.0-flash-exp:free',
+  'google/gemini-2.0-flash:free',
   'deepseek/deepseek-chat:free',
   'meta-llama/llama-4-scout:free',
   'mistralai/mistral-small-3.1-24b-instruct:free',
@@ -448,13 +448,19 @@ export class Orchestrator {
     const hasGrok = !!this.config.grokKey;
     const hasOpenRouter = !!this.config.openrouterKey;
 
+    // Honour explicit user preference first.
     if (preferred === 'google' && hasGoogle) return 'google';
     if (preferred === 'grok' && hasGrok) return 'grok';
     if (preferred === 'openrouter' && hasOpenRouter) return 'openrouter';
 
+    // Infer from model ID: OpenRouter models use "provider/model" paths.
+    const modelId = this.config.preferredModelId ?? '';
+    if (modelId.includes('/') && hasOpenRouter) return 'openrouter';
+
+    // Fallback priority: OpenRouter → Google → Grok.
+    if (hasOpenRouter) return 'openrouter';
     if (hasGoogle) return 'google';
     if (hasGrok) return 'grok';
-    if (hasOpenRouter) return 'openrouter';
     return 'mock';
   }
 
@@ -463,7 +469,7 @@ export class Orchestrator {
     if (modelId && modelId.trim().length > 0) {
       return this.normalizeModelForProvider(provider, modelId);
     }
-    if (provider === 'google') return 'gemini-2.0-flash-exp';
+    if (provider === 'google') return 'gemini-2.0-flash';
     if (provider === 'grok') return 'grok-2';
     return 'deepseek/deepseek-chat';
   }

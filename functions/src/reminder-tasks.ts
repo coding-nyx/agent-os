@@ -379,7 +379,7 @@ export const deliverReminder = onRequest(async (req, res) => {
       occurrenceId: occId,
       read: false,
       createdAt: now,
-    }, { merge: true });
+    }, { merge: false });
   }
 
   logger.info("[deliverReminder] Reminder delivered", { uid, moduleId, occId, osEnabled, inAppEnabled });

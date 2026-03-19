@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, Info, Activity, Code2, Bug, Cpu } from 'lucide-react';
+import { LogOut, Info, Activity, Code2, Bug, Cpu, Bell } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { useDataLayer } from '@/lib/data-layer/provider';
 import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
@@ -52,8 +53,42 @@ const cardVariants = {
 };
 
 export function SystemPanel() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const dataLayer = useDataLayer();
   const { debugMode, toggleDebugMode, debugFlags, setDebugFlag } = useDebugMode();
+  const [testNotifSending, setTestNotifSending] = useState(false);
+  const [testNotifSent, setTestNotifSent] = useState(false);
+
+  const sendTestNotification = async () => {
+    if (!user) return;
+    setTestNotifSending(true);
+    try {
+      const now = new Date().toISOString();
+      const id = `test_${Date.now()}`;
+      await dataLayer.setDocument(
+        `users/${user.uid}/notification_inbox`,
+        id,
+        {
+          type: 'MODULE_REMINDER_DUE',
+          source: 'system',
+          priority: 'alert',
+          data: {
+            title: 'Test Notification',
+            note: 'This is a test notification sent from debug mode.',
+            deepLink: { route: '/notifications' },
+          },
+          scheduleId: 'debug_test',
+          occurrenceId: id,
+          read: false,
+          createdAt: now,
+        },
+      );
+      setTestNotifSent(true);
+      setTimeout(() => setTestNotifSent(false), 3000);
+    } finally {
+      setTestNotifSending(false);
+    }
+  };
 
   const handleSignOut = () => {
     void logout();
@@ -247,6 +282,29 @@ export function SystemPanel() {
                         </button>
                       </div>
                     ))}
+                    {/* Test notification */}
+                    <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-amber-500/5 hover:bg-amber-500/[0.08] transition-colors mt-1">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Bell className="w-3.5 h-3.5 text-amber-400/70 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white/75">Test Notification</p>
+                          <p className="text-[9px] text-white/35 mt-0.5 leading-tight">Send a test alert to the inbox</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={testNotifSending}
+                        onClick={() => { void sendTestNotification(); }}
+                        className={`shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] px-3 py-1.5 rounded-xl border transition-all duration-200 disabled:opacity-40 ${
+                          testNotifSent
+                            ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+                            : 'bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20'
+                        }`}
+                      >
+                        {testNotifSent ? 'Sent' : 'Send'}
+                      </button>
+                    </div>
+
                     <p className="text-[9px] font-mono text-amber-400/60 px-1 pt-1 uppercase tracking-wider">
                       ⚡ Debug active — console + overlays enabled across all modules
                     </p>

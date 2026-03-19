@@ -18,7 +18,7 @@ const PROVIDER_KEY = 'nexus_debug_provider';
 const MODEL_KEY = 'preferred_model';
 
 const DEFAULT_PROVIDER_MODELS: Record<string, string> = {
-  google: 'google/gemini-2.0-flash-exp:free',
+  google: 'google/gemini-2.0-flash:free',
   grok: 'x-ai/grok-2',
 };
 
@@ -155,7 +155,7 @@ export function ModelSelector() {
         console.warn('ModelSelector: fetch failed', e);
         if (provider === 'google') {
           setModels([
-            { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', context_length: 0, pricing: { prompt: '0', completion: '0' } },
+            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', context_length: 0, pricing: { prompt: '0', completion: '0' } },
           ]);
         } else if (provider === 'grok') {
           setModels([

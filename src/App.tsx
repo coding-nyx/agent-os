@@ -100,9 +100,14 @@ function BridgeMount() {
   useEffect(() => {
     if (!user || isGuest) return;
 
-    BridgeService.start(user.uid).catch((err) =>
-      console.warn('[Bridge] Start failed:', err)
-    );
+    BridgeService.start(user.uid)
+      .then(() => {
+        // Request OS notification permission on sign-in if not yet decided.
+        if ('Notification' in window && Notification.permission === 'default') {
+          void BridgeService.requestPermissionAndInit();
+        }
+      })
+      .catch((err) => console.warn('[Bridge] Start failed:', err));
     ReminderScheduler.start(user.uid);
     SchedulerService.start();
 

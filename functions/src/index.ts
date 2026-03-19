@@ -139,17 +139,22 @@ export const bridgeSpineEvents = onDocumentCreated(
     }
 
     const truncatedTokens = tokens.slice(0, 500);
-    const title = `Spine Alert · ${String(payload.type).replace(/_/g, " ")}`;
-    // Prefer stable `payload.data.note` for reminder notifications; fall back to `reason` for legacy events.
-    const bodySource = typeof payload.data?.note === "string"
-      ? payload.data.note
-      : typeof payload.data?.reason === "string"
+    const notificationTitle: string =
+      typeof payload.data?.title === "string" && payload.data.title
+        ? payload.data.title
+        : (payload.type === "MODULE_REMINDER_DUE" ? "Nexus Reminder" : "Nexus Alert");
+    const bodySource: string =
+      typeof payload.data?.note === "string"
+        ? payload.data.note
+        : typeof payload.data?.body === "string"
+        ? payload.data.body
+        : typeof payload.data?.reason === "string"
         ? payload.data.reason
-        : "Neural signal update.";
+        : "";
     const response = await getMessaging().sendEachForMulticast({
       tokens: truncatedTokens,
       notification: {
-        title,
+        title: notificationTitle,
         body: bodySource
       },
       data: {

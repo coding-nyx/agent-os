@@ -391,7 +391,7 @@ export default function NotificationsPage() {
 
   // Derived counts
   const unreadCount = items.filter((i) => !i.read).length;
-  const criticalCount = items.filter((i) => i.priority === 'critical').length;
+  const criticalCount = items.filter((i) => i.priority === 'critical' || i.priority === 'alert').length;
 
   const filtered = items.filter((item) => {
     if (filter === 'unread') return !item.read;
