@@ -544,7 +544,7 @@ function AgnesContent({
       </div>
 
       <AnimatePresence>
-        <NeuralModal isOpen={!!sessionSummary} onClose={() => setSessionSummary(null)} title="Session Complete" subtitle="Neural synthesis finalized" icon={Brain} maxWidth="lg">
+        <NeuralModal key="session-summary-modal" isOpen={!!sessionSummary} onClose={() => setSessionSummary(null)} title="Session Complete" subtitle="Neural synthesis finalized" icon={Brain} maxWidth="lg">
           <div className="space-y-8">
             <div className="flex gap-4">
               <div className="flex-1 p-4 rounded-[2rem] bg-white/[0.03] border border-white/5">
@@ -597,6 +597,7 @@ function AgnesContent({
         </NeuralModal>
 
         <NeuralModal
+          key="agnes-settings-modal"
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
           title="Agnes Settings"
