@@ -242,14 +242,15 @@ export function LogConfirmCard({
         </div>
 
         {/* Dismiss button */}
-        <button
-          type="button"
+        <NeuralButton
+          variant="ghost"
+          size="sm"
           onClick={onDismiss}
           aria-label="Dismiss log preview"
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-white/25 hover:text-white/60 hover:bg-white/[0.06] transition-colors focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:outline-none"
+          className="w-7 h-7 p-0 flex items-center justify-center text-white/25 hover:text-white/60 hover:bg-white/[0.06] transition-colors min-w-0"
         >
           <X aria-hidden="true" className="w-3.5 h-3.5" />
-        </button>
+        </NeuralButton>
       </div>
 
       {/* ── Low confidence warning ── */}
@@ -283,14 +284,15 @@ export function LogConfirmCard({
             <AlertCircle aria-hidden="true" className="w-3 h-3 shrink-0" />
             {commitError}
           </p>
-          <button
-            type="button"
+          <NeuralButton
+            variant="ghost"
+            size="sm"
             onClick={handleCommit}
             disabled={isCommitting}
-            className="text-[11px] text-orange-400 font-semibold hover:text-orange-300 transition-colors shrink-0 disabled:opacity-50"
+            className="text-[11px] text-orange-400 font-semibold hover:text-orange-300 transition-colors shrink-0 disabled:opacity-50 h-auto p-0"
           >
             Retry
-          </button>
+          </NeuralButton>
         </div>
       )}
 

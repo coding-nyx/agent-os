@@ -71,6 +71,8 @@ export const LEDGER_ALL_ACTIONS = [
   'compute_resonance_roi',
   'analyze_financial_document',
   'log_transaction_summary',
+  'propose_reminder',
+  'query_reminders',
   'suggest_field',
   'create_field',
   'delete_field',
@@ -87,6 +89,8 @@ export const LEDGER_SCOPE_ACTIONS: Record<
     'compute_resonance_roi',
     'analyze_financial_document',
     'log_transaction_summary',
+    'propose_reminder',
+    'query_reminders',
     'suggest_field',
     'create_transaction',
     'set_financial_goal',
@@ -100,6 +104,8 @@ export const LEDGER_SCOPE_ACTIONS: Record<
     'create_budget',
     'modify_budget',
     'financial_health_check',
+    'propose_reminder',
+    'query_reminders',
   ],
   'goal-focus': [
     'update_budget_snapshot',
@@ -108,6 +114,8 @@ export const LEDGER_SCOPE_ACTIONS: Record<
     'complete_goal',
     'project_savings_timeline',
     'create_transaction',
+    'propose_reminder',
+    'query_reminders',
   ],
   'field-crud': [
     'suggest_field',
@@ -184,6 +192,12 @@ AVAILABLE ACTIONS:
 
 - <action type="log_transaction_summary">{"summary":"..."}</action>
   Use to log a summary of discussed transactions or financial events.
+
+- <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"finance|bill|goal","entityId":"...","label":"..."},"tags":["..."]}</action>
+  Use when the user asks for a reminder related to Ledger items. Always wait for explicit confirmation before scheduling.
+
+- <action type="query_reminders">{"moduleId":"ledger"}</action>
+  Use to list existing Ledger reminders (omit moduleId to list all reminders).
 
 - <action type="suggest_field">{"description":"...","purpose":"...","suggestedType":"number"}</action>
   Use when the user mentions tracking a financial metric not covered by existing fields.
@@ -286,6 +300,12 @@ AVAILABLE ACTIONS:
 - <action type="financial_health_check">{"healthScore":6,"healthStatus":"Moderate stress"}</action>
   Use to assess overall financial health after reviewing budget performance.
 
+- <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"bill|budget","entityId":"...","label":"..."},"tags":["..."]}</action>
+  Use when the user asks for a budget reminder. Always wait for explicit confirmation before scheduling.
+
+- <action type="query_reminders">{"moduleId":"ledger"}</action>
+  Use to list existing Ledger reminders (omit moduleId to list all reminders).
+
 RULES:
 - Only discuss this budget category.
 - Suggest specific cuts or reallocations with concrete numbers.
@@ -352,6 +372,12 @@ AVAILABLE ACTIONS:
 
 - <action type="create_transaction">{"type":"income","amount":500,"description":"Goal contribution","category":"Savings","date":"2026-03-12"}</action>
   Use when the user logs a contribution toward this goal.
+
+- <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"goal","entityId":"...","label":"..."},"tags":["..."]}</action>
+  Use when the user asks for a goal reminder. Always wait for explicit confirmation before scheduling.
+
+- <action type="query_reminders">{"moduleId":"ledger"}</action>
+  Use to list existing Ledger reminders (omit moduleId to list all reminders).
 
 RULES:
 - Only discuss this specific goal.

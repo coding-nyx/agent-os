@@ -40,6 +40,8 @@ export const titanAllowedActions = [
   'parse_workout_log',
   'parse_biometric_data',
   'log_sleep',
+  'propose_reminder',
+  'query_reminders',
   'create_cycle',
   'advance_cycle_phase',
   'complete_cycle',

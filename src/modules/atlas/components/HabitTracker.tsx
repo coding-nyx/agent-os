@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/core/components/EmptyState';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasHabit } from '../services/atlas-profile-service';
 
@@ -244,12 +245,13 @@ export function HabitTracker({
             Paused
           </span>
           {pausedHabits.map((habit) => (
-            <button
+            <NeuralButton
               key={habit.id}
               onClick={() => onPause(habit.id)}
-              className="w-full text-left rounded-xl border border-white/5 bg-white/[0.01] p-3 opacity-50 hover:opacity-80 transition-all cursor-pointer group"
+              variant="secondary"
+              className="w-full !justify-start !p-3 opacity-50 hover:opacity-100 !h-auto group"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 w-full">
                 <div className="w-6 h-6 flex items-center justify-center">
                   <Pause
                     className="w-3.5 h-3.5 text-white/40 group-hover:text-emerald-400 transition-colors"
@@ -269,7 +271,7 @@ export function HabitTracker({
                   Best: {habit.bestStreak}d
                 </span>
               </div>
-            </button>
+            </NeuralButton>
           ))}
         </div>
       )}

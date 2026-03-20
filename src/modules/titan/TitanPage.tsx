@@ -33,6 +33,7 @@ import { loadTitanProfile, saveTitanProfile, subscribeTitanProfile, syncGuestTit
 import { subscribeSomaProfile } from '../soma/services/soma-profile-service';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SectionHeader } from '@/core/components/SectionHeader';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { Activity, BarChart3, RefreshCw, Zap, X, Plus, Moon, ShieldAlert, TrendingUp, Scale, Dumbbell } from 'lucide-react';
@@ -41,7 +42,7 @@ import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useVault } from '@/lib/vault-context';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import type { ModuleId } from '@/lib/module-manifest';
@@ -52,6 +53,7 @@ import { TITAN_PERSONA } from './personas';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
+import { QuickReminderModal } from '@/core/components/QuickReminderModal';
 
 type TitanTab = 'training' | 'analytics' | 'progress' | 'cycles' | 'sleep';
 
@@ -74,6 +76,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const [showAdvisory, setShowAdvisory] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams));
   const setModuleBottomBarHeight = useUIStore((s) => s.setModuleBottomBarHeight);
   const setHideGlobalFAB = useUIStore((s) => s.setHideGlobalFAB);
@@ -95,12 +98,21 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     };
   }, [activeTab, setModuleBottomBarHeight, setHideGlobalFAB]);
 
+  useEffect(() => {
+    const focusId = (location.state as { focusId?: string } | null)?.focusId;
+    if (!focusId) return;
+    if (focusId.startsWith('session:')) {
+      setActiveTab('training');
+    }
+  }, [location.state]);
+
   const [somaProfile, setSomaProfile] = useState<SomaProfile | null>(null);
   const [somaEncryptionKey, setSomaEncryptionKey] = useState<CryptoKey | null>(null);
 
   // ── Quick-log drawer ───────────────────────────────────────────────────────
   const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
   const [quickLogDate, setQuickLogDate] = useState<Date | null>(null);
+  const [remindDate, setRemindDate] = useState<string | null>(null);
 
   // ── Fast Quick-Log bar (inline natural-language entry) ─────────────────────
   const [quickLogBarInput, setQuickLogBarInput] = useState('');
@@ -753,9 +765,14 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                   className="mx-4 sm:mx-6 md:mx-8 mb-3 sm:mb-4 flex items-start justify-between p-3 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/20"
                 >
                   <p className="text-[11px] sm:text-xs text-amber-300 leading-relaxed">{advisoryBanner}</p>
-                  <button type="button" onClick={() => setAdvisoryBanner(null)} className="ml-3 text-white/30 hover:text-white/60">
+                  <NeuralButton 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setAdvisoryBanner(null)} 
+                    className="ml-3 h-6 w-6 p-0 text-white/30 hover:text-white/60"
+                  >
                     <X className="w-3.5 h-3.5" />
-                  </button>
+                  </NeuralButton>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -772,6 +789,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                   setQuickLogDate(new Date(`${isoDate}T12:00:00`));
                   setIsQuickLogOpen(true);
                 }}
+                onRemind={(isoDate) => setRemindDate(isoDate)}
               />
             </div>
 
@@ -782,13 +800,14 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                   <span className="text-[11px] sm:text-xs text-white/40 uppercase tracking-wider font-bold truncate mr-2">
                     Session: {calendarSelectedRoutine.name}
                   </span>
-                  <button
-                    type="button"
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setCalendarSelectedRoutine(null)}
-                    className="text-[11px] sm:text-xs text-white/30 hover:text-white/60 transition-colors shrink-0 min-h-[2.25rem] min-w-[2.25rem] flex items-center justify-center"
+                    className="text-[11px] sm:text-xs text-white/30 hover:text-white/60 transition-colors shrink-0 min-h-[2.25rem] px-2 flex items-center justify-center"
                   >
                     ✕ Dismiss
-                  </button>
+                  </NeuralButton>
                 </div>
                 <WorkoutSessionLogger
                   routines={[calendarSelectedRoutine]}
@@ -1013,6 +1032,24 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         )}
       </div>
       </SingleAgentLayout>
+
+      <QuickReminderModal
+        open={!!remindDate}
+        moduleId="titan"
+        defaultTitle={remindDate ? `Workout session: ${remindDate}` : ''}
+        defaultNote="Reminder to log or complete your workout session."
+        deepLink={
+          remindDate
+            ? { route: '/titan', focusId: `session:${remindDate}` }
+            : undefined
+        }
+        source={
+          remindDate
+            ? { moduleId: 'titan', entityType: 'session', entityId: remindDate, label: `Workout ${remindDate}` }
+            : undefined
+        }
+        onClose={() => setRemindDate(null)}
+      />
 
       {/* Quick-log drawer — rendered at root level so it overlays everything */}
       <QuickLogDrawer

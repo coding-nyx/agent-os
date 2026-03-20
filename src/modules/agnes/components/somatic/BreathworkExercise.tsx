@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useAnimationControls, AnimatePresence } from 'framer-motion';
 import { X, Wind, CheckCircle } from 'lucide-react';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+import { NeuralButton } from '@/core/components/NeuralButton';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -178,13 +179,14 @@ export function BreathworkExercise({ exercise = '4-7-8', onComplete, onExit }: P
   return (
     <div className="flex flex-col items-center justify-center min-h-full w-full px-6 py-12 relative select-none">
       {/* Exit button */}
-      <button
+      <NeuralButton
+        variant="ghost"
         onClick={onExit}
-        className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 transition-all"
+        className="absolute top-4 right-4 w-9 h-9 p-0 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 border-none transition-all"
         aria-label="Exit breathwork"
       >
         <X className="w-4 h-4" />
-      </button>
+      </NeuralButton>
 
       {/* Header */}
       <div className="mb-12 text-center space-y-1">
@@ -282,12 +284,12 @@ export function BreathworkExercise({ exercise = '4-7-8', onComplete, onExit }: P
                 {TOTAL_CYCLES} cycles completed · Well done
               </p>
             </div>
-            <button
+            <NeuralButton
               onClick={onComplete}
-              className="mt-2 px-8 py-3 rounded-full bg-violet-500/20 border border-violet-500/40 text-violet-300 text-xs font-black uppercase tracking-[0.2em] hover:bg-violet-500/30 transition-all"
+              className="mt-2 h-auto px-8 py-3 rounded-full bg-violet-500/20 border border-violet-500/40 text-violet-300 text-xs font-black uppercase tracking-[0.2em] hover:bg-violet-500/30 transition-all"
             >
               Continue
-            </button>
+            </NeuralButton>
           </motion.div>
         )}
       </AnimatePresence>

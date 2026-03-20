@@ -273,14 +273,14 @@ export function QuickLogDrawer({
                 </div>
               </div>
 
-              <button
-                type="button"
+              <NeuralButton
                 onClick={onClose}
                 aria-label="Close drawer"
+                variant="ghost"
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </NeuralButton>
             </div>
 
             {/* Form */}
@@ -316,9 +316,9 @@ export function QuickLogDrawer({
                       className="bg-black/60 border border-white/10 rounded-xl overflow-hidden"
                     >
                       {searchResults.map((item) => (
-                        <button
+                        <NeuralButton
                           key={item.id}
-                          type="button"
+                          variant="ghost"
                           onMouseDown={(e) => {
                             // Prevent blur from firing before click
                             e.preventDefault();
@@ -332,7 +332,7 @@ export function QuickLogDrawer({
                           <span className="ml-2 flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20">
                             {item.category}
                           </span>
-                        </button>
+                        </NeuralButton>
                       ))}
                     </motion.div>
                   )}

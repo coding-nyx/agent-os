@@ -44,6 +44,8 @@ import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { TimeSeriesChart } from '@/core/components/viz/TimeSeriesChart';
 import { ProgressRing } from '@/core/components/viz/ProgressRing';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { VitalsEntryForm } from './VitalsEntryForm';
 import { PhysicalAssessmentForm } from './PhysicalAssessmentForm';
@@ -229,7 +231,7 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
           const hasValue   = todayVal !== undefined;
 
           return (
-            <button
+            <NeuralButton
               key={chip.key}
               onClick={() => handleChipTap(chip.key)}
               aria-expanded={isExpanded}
@@ -254,7 +256,7 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
               ) : (
                 <Plus className="w-3 h-3 flex-shrink-0 text-white/40" aria-hidden />
               )}
-            </button>
+            </NeuralButton>
           );
         })}
       </div>
@@ -279,17 +281,18 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
                   </span>
                   <span className="text-xs text-white/40">{activeChip.unit}</span>
                 </div>
-                <button
+                <NeuralButton
+                  variant="ghost"
                   onClick={() => { setExpandedKey(null); setInputValue(''); setSaveError(null); }}
-                  className="text-white/40 hover:text-white/70 transition-colors p-1"
+                  className="text-white/40 hover:text-white/70 transition-colors p-1 h-auto min-h-0"
                   aria-label="Cancel"
                 >
                   <X className="w-4 h-4" />
-                </button>
+                </NeuralButton>
               </div>
 
               <div className="flex items-center gap-2">
-                <input
+                <NeuralInput
                   type="number"
                   value={inputValue}
                   onChange={(e) => { setInputValue(e.target.value); setSaveError(null); }}
@@ -299,26 +302,16 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
                   placeholder={`${activeChip.min}–${activeChip.max}`}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSave(activeChip); }}
                   autoFocus
-                  className={cn(
-                    'flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2',
-                    'text-sm text-white placeholder-white/30',
-                    'focus:outline-none focus:border-emerald-500/50 focus:bg-white/[0.07]',
-                    'transition-all',
-                  )}
+                  className="flex-1"
                 />
-                <button
+                <NeuralButton
                   onClick={() => handleSave(activeChip)}
                   disabled={isSaving || inputValue === ''}
-                  className={cn(
-                    'px-4 py-2 bg-emerald-500/20 border border-emerald-500/40',
-                    'text-emerald-300 text-sm font-semibold rounded-lg',
-                    'hover:bg-emerald-500/30 transition-all',
-                    'disabled:opacity-50 disabled:cursor-not-allowed',
-                    'min-h-[44px]',
-                  )}
+                  themeColor="emerald"
+                  className="min-h-[44px]"
                 >
                   {isSaving ? '…' : 'Save'}
-                </button>
+                </NeuralButton>
               </div>
 
               {saveError && (
@@ -629,12 +622,14 @@ export const SomaDashboard = React.memo(function SomaDashboard({
               <p className="text-sm text-white/60">Soma readiness score</p>
             </div>
           </div>
-          <button
+          <NeuralButton
+            variant="ghost"
+            themeColor="emerald"
             onClick={toggleAIPanel}
-            className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+            className="text-xs font-semibold h-auto min-h-0 py-1"
           >
             {showAIPanel ? 'Hide' : 'Show'} AI Insights
-          </button>
+          </NeuralButton>
         </div>
 
         <div className="flex items-center gap-8">
@@ -978,13 +973,15 @@ export const SomaDashboard = React.memo(function SomaDashboard({
                 </p>
               </div>
             </div>
-            <button
+            <NeuralButton
+              variant="secondary"
+              themeColor="emerald"
               onClick={() => setShowCloseModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-[11px] font-bold hover:bg-emerald-500/25 transition-all flex-shrink-0"
+              className="px-3 py-1.5 text-[11px] font-bold flex-shrink-0 h-auto min-h-0"
               aria-label="Merge or discard diagnosis results"
             >
               Merge / Close
-            </button>
+            </NeuralButton>
           </motion.div>
 
           {/* ── Mobile workspace: tab switcher (hidden on lg+) ───────────────────────
@@ -997,7 +994,9 @@ export const SomaDashboard = React.memo(function SomaDashboard({
               role="tablist"
               aria-label="Diagnosis workspace tabs"
             >
-              <button
+              <NeuralButton
+                variant="ghost"
+                themeColor="emerald"
                 role="tab"
                 id="soma-diag-tab-findings"
                 aria-selected={diagnosisActiveTab === 'findings'}
@@ -1022,8 +1021,10 @@ export const SomaDashboard = React.memo(function SomaDashboard({
                 >
                   {resultsCount}
                 </span>
-              </button>
-              <button
+              </NeuralButton>
+              <NeuralButton
+                variant="ghost"
+                themeColor="emerald"
                 role="tab"
                 id="soma-diag-tab-analysis"
                 aria-selected={diagnosisActiveTab === 'analysis'}
@@ -1038,7 +1039,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
               >
                 <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
                 <span>Analysis</span>
-              </button>
+              </NeuralButton>
             </div>
 
             {/* Tab panels — AnimatePresence drives cross-fade + slide */}

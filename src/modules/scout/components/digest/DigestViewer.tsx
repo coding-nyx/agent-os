@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { FileText, RefreshCw, Trash2, Download, ChevronDown, ChevronUp, Sparkles, TrendingUp, BookOpen, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EmptyState } from '@/core/components/EmptyState';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import type { ScoutDigestDecrypted } from '../../services/scout-digest-service';
 import type { ScoutProfile } from '../../services/scout-knowledge-service';
@@ -87,28 +88,32 @@ function DigestCard({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
             {onExport && (
-              <button
+              <NeuralButton
+                variant="ghost"
                 onClick={onExport}
-                className="p-2 rounded-xl hover:bg-white/10 text-white/30 hover:text-white transition-colors"
+                className="p-2 h-auto w-auto min-h-0 min-w-0 border-none hover:bg-white/10 text-white/30 hover:text-white"
                 title="Export"
               >
                 <Download size={16} />
-              </button>
+              </NeuralButton>
             )}
-            <button
+            <NeuralButton
+              variant="ghost"
               onClick={onDelete}
-              className="p-2 rounded-xl hover:bg-red-500/10 text-white/30 hover:text-red-400 transition-colors"
+              themeColor="red"
+              className="p-2 h-auto w-auto min-h-0 min-w-0 border-none hover:bg-red-500/10 text-white/30 hover:text-red-400"
               title="Delete"
             >
               <Trash2 size={16} />
-            </button>
+            </NeuralButton>
           </div>
-          <button
+          <NeuralButton
+            variant="secondary"
             onClick={() => setExpanded(!expanded)}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 transition-colors"
+            className="p-2 h-auto w-auto min-h-0 min-w-0 bg-white/5 hover:bg-white/10 text-white/40"
           >
             {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </button>
+          </NeuralButton>
         </div>
       </div>
 
@@ -212,10 +217,12 @@ export function DigestViewer({
             Synthesized intelligence briefings from your research cycles.
           </p>
         </div>
-        <button
+        <NeuralButton
           onClick={onGenerate}
           disabled={isGenerating}
-          className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 hover:bg-fuchsia-500/20 text-fuchsia-400 transition-all group disabled:opacity-40"
+          themeColor="fuchsia"
+          variant="outline"
+          className="flex items-center gap-3 px-6 py-3 border-fuchsia-500/20 hover:bg-fuchsia-500/20 text-fuchsia-400 group disabled:opacity-40"
         >
           {isGenerating ? (
             <RefreshCw size={18} className="animate-spin" />
@@ -223,7 +230,7 @@ export function DigestViewer({
             <Sparkles size={18} className="group-hover:scale-110 transition-transform" />
           )}
           <span className="text-xs font-black uppercase tracking-widest">Generate Briefing</span>
-        </button>
+        </NeuralButton>
       </div>
 
       {/* Error */}

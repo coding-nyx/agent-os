@@ -8,6 +8,7 @@
 import React, { useMemo, useState } from 'react';
 import { X, Download, Copy, CheckCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import {
   exportNodesToMarkdown,
   exportSourcesToMarkdown,
@@ -89,9 +90,13 @@ export function ExportDialog({ isOpen, onClose, target }: ExportDialogProps) {
             </h2>
             <p className="text-xs text-white/30 mt-0.5">{lineCount} lines · Markdown format</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/5 text-white/30 hover:text-white/60">
+          <NeuralButton
+            variant="ghost"
+            onClick={onClose}
+            className="p-2 h-auto w-auto min-h-0 min-w-0 border-none text-white/30 hover:text-white/60"
+          >
             <X className="w-4 h-4" />
-          </button>
+          </NeuralButton>
         </div>
 
         {/* Preview */}
@@ -104,29 +109,32 @@ export function ExportDialog({ isOpen, onClose, target }: ExportDialogProps) {
 
         {/* Actions */}
         <div className="border-t border-white/8 p-4 flex items-center justify-end gap-2">
-          <button
+          <NeuralButton
+            variant="outline"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-white/40 border border-white/10 rounded-xl hover:bg-white/5"
+            className="text-white/40"
           >
             Close
-          </button>
-          <button
+          </NeuralButton>
+          <NeuralButton
+            variant="outline"
             onClick={handleCopy}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white/70 border border-white/15 rounded-xl hover:bg-white/5"
+            className="flex items-center gap-2 text-white/70"
           >
             {copied ? (
               <><CheckCheck className="w-3.5 h-3.5 text-emerald-400" /> Copied</>
             ) : (
               <><Copy className="w-3.5 h-3.5" /> Copy</>
             )}
-          </button>
-          <button
+          </NeuralButton>
+          <NeuralButton
             onClick={handleDownload}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-black bg-white rounded-xl hover:bg-white/90"
+            themeColor="white"
+            className="flex items-center gap-2"
           >
             <Download className="w-3.5 h-3.5" />
             Download .md
-          </button>
+          </NeuralButton>
         </div>
       </motion.div>
     </div>

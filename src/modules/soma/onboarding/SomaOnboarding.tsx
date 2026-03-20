@@ -3,6 +3,9 @@ import { cn } from '@/lib/utils';
 import { Heart, Pill, FlaskConical, ChevronRight, SkipForward, CheckCircle2 } from 'lucide-react';
 import { SOMA_MEDICAL_DISCLAIMER } from '../prompts/soma-prompt-builder';
 import { saveSomaProfile, createEmptySomaProfile } from '../services/soma-profile-service';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import type { SomaProfile } from '../types';
 
 interface SomaOnboardingProps {
@@ -128,24 +131,24 @@ export function SomaOnboarding({ profile, userId, encryptionKey, onComplete }: S
                 <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
                   Known Medical Conditions
                 </label>
-                <textarea
+                <NeuralTextarea
                   value={conditions}
                   onChange={e => setConditions(e.target.value)}
                   placeholder="e.g. Type 2 Diabetes, Hypertension (one per line or comma-separated)"
                   rows={3}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50 resize-none transition-colors"
+                  className="w-full resize-none transition-colors"
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
                   Allergies
                 </label>
-                <textarea
+                <NeuralTextarea
                   value={allergies}
                   onChange={e => setAllergies(e.target.value)}
                   placeholder="e.g. Penicillin, Latex, Shellfish (one per line or comma-separated)"
                   rows={2}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50 resize-none transition-colors"
+                  className="w-full resize-none transition-colors"
                 />
               </div>
             </>
@@ -156,12 +159,12 @@ export function SomaOnboarding({ profile, userId, encryptionKey, onComplete }: S
               <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
                 Current Medications & Supplements
               </label>
-              <textarea
+              <NeuralTextarea
                 value={medications}
                 onChange={e => setMedications(e.target.value)}
                 placeholder="e.g. Metformin 500mg, Vitamin D 2000IU, Omega-3 (one per line or comma-separated)"
                 rows={5}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50 resize-none transition-colors"
+                className="w-full resize-none transition-colors"
               />
               <p className="text-xs text-white/30 mt-2">
                 Include dosage where relevant for better analysis.
@@ -174,12 +177,12 @@ export function SomaOnboarding({ profile, userId, encryptionKey, onComplete }: S
               <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
                 Date of Last Medical Checkup
               </label>
-              <input
+              <NeuralInput
                 type="date"
                 value={lastCheckup}
                 onChange={e => setLastCheckup(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
-                className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
+                className="bg-white/5"
               />
               <p className="text-xs text-white/30 mt-2">
                 Leave blank if you have not had a recent checkup.
@@ -194,42 +197,50 @@ export function SomaOnboarding({ profile, userId, encryptionKey, onComplete }: S
 
         {/* Navigation */}
         <div className="flex items-center justify-between px-6 pb-6">
-          <button
+          <NeuralButton
+            variant="ghost"
+            size="sm"
             onClick={handleSkip}
             disabled={saving}
-            className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-white/40 hover:text-white/60"
           >
             <SkipForward className="w-3.5 h-3.5" />
             Skip setup
-          </button>
+          </NeuralButton>
 
           <div className="flex items-center gap-2">
             {step > 0 && (
-              <button
+              <NeuralButton
+                variant="secondary"
+                size="sm"
                 onClick={() => setStep(s => (s - 1) as Step)}
                 disabled={saving}
-                className="px-4 py-2 text-xs font-semibold text-white/60 hover:text-white/80 border border-white/10 rounded-xl transition-colors disabled:opacity-50"
+                className="font-semibold text-white/60 hover:text-white/80"
               >
                 Back
-              </button>
+              </NeuralButton>
             )}
             {step < 2 ? (
-              <button
+              <NeuralButton
+                size="sm"
+                themeColor="emerald"
                 onClick={() => setStep(s => (s + 1) as Step)}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-5 py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold rounded-xl hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 font-semibold"
               >
                 Next <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              </NeuralButton>
             ) : (
-              <button
+              <NeuralButton
+                size="sm"
+                themeColor="emerald"
+                loading={saving}
                 onClick={handleComplete}
-                disabled={saving}
-                className="flex items-center gap-1.5 px-5 py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold rounded-xl hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 font-semibold"
               >
-                {saving ? 'Saving...' : 'Complete Setup'}
+                Complete Setup
                 <CheckCircle2 className="w-3.5 h-3.5" />
-              </button>
+              </NeuralButton>
             )}
           </div>
         </div>

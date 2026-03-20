@@ -30,6 +30,7 @@ import {
   X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { ParsedEntry } from '../hooks/use-atlas-entry-parser';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -138,13 +139,15 @@ export function EntryConfirmChip({ parsed, onConfirm, onEdit, onDismiss }: Entry
             </div>
 
             {/* Dismiss button */}
-            <button
+            <NeuralButton
               onClick={onDismiss}
               aria-label="Dismiss"
-              className="shrink-0 text-white/30 hover:text-white/70 transition-colors p-0.5 -mt-0.5"
+              variant="ghost"
+              size="sm"
+              className="shrink-0 !w-6 !h-6 !p-0 !min-h-0 text-white/30 hover:text-white/70 -mt-0.5"
             >
               <X className="w-3.5 h-3.5" />
-            </button>
+            </NeuralButton>
           </div>
 
           {/* ── Parsed-field badges ─────────────────────────────────────────── */}
@@ -180,27 +183,22 @@ export function EntryConfirmChip({ parsed, onConfirm, onEdit, onDismiss }: Entry
 
           {/* ── Action row ──────────────────────────────────────────────────── */}
           <div className="flex items-center gap-2">
-            <button
+            <NeuralButton
               onClick={onConfirm}
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg px-3 py-1.5',
-                'text-xs font-bold text-white',
-                'bg-sky-500 hover:bg-sky-400 active:bg-sky-600',
-                'transition-colors shadow-[0_2px_8px_rgba(14,165,233,0.4)]'
-              )}
+              themeColor="cyan"
+              size="sm"
+              className="!h-8 !px-3 !rounded-lg text-xs font-bold shadow-[0_2px_8px_rgba(14,165,233,0.4)]"
             >
               + Add
-            </button>
-            <button
+            </NeuralButton>
+            <NeuralButton
               onClick={onEdit}
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg px-3 py-1.5',
-                'text-xs font-semibold text-white/50 hover:text-white/80',
-                'transition-colors'
-              )}
+              variant="ghost"
+              size="sm"
+              className="!h-8 !px-3 !rounded-lg text-xs font-semibold text-white/50 hover:text-white/80"
             >
               Edit
-            </button>
+            </NeuralButton>
           </div>
         </motion.div>
       )}

@@ -203,18 +203,20 @@ function FieldCard({ field, value, isSelected, onSelect, onDelete, isExtension }
             </span>
           )}
           {isExtension && onDelete && (
-            <button
+            <NeuralButton
               onClick={handleDelete}
+              variant="ghost"
+              size="sm"
               className={cn(
-                'p-1 rounded-lg transition-colors opacity-0 group-hover:opacity-100',
+                'opacity-0 group-hover:opacity-100 !w-7 !h-7 !p-0 !min-h-0',
                 showDeleteConfirm
                   ? 'bg-red-500/20 text-red-400 opacity-100'
-                  : 'hover:bg-white/10 text-white/30 hover:text-white/60'
+                  : 'text-white/30 hover:text-white/60'
               )}
               aria-label={showDeleteConfirm ? `Confirm delete ${field.name}` : `Delete ${field.name}`}
             >
               <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            </NeuralButton>
           )}
         </div>
       </div>

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Sparkles, ArrowRight, Check, Heart, Target, AlertCircle } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
@@ -40,11 +41,11 @@ export function AgnesIntake({ onComplete }: AgnesIntakeProps) {
                             <p className="text-white/40 text-sm italic font-medium">What breakthroughs are we aiming for in our synchronization?</p>
                         </div>
                         <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[40px] backdrop-blur-3xl space-y-6">
-                            <textarea 
+                            <NeuralTextarea 
                                 value={goals} 
                                 onChange={(e) => setGoals(e.target.value)}
                                 placeholder="Describe what you'd like to work on..."
-                                className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/40 focus:border-indigo-500/50 outline-none transition-colors no-scrollbar resize-none"
+                                className="h-32 focus:border-indigo-500/50 no-scrollbar"
                             />
                             <NeuralButton size="xl" className="w-full" disabled={!goals} onClick={() => setStep('TRIGGERS')}>
                                 Next Protocol <ArrowRight className="w-4 h-4 ml-2" />
@@ -63,11 +64,11 @@ export function AgnesIntake({ onComplete }: AgnesIntakeProps) {
                             <p className="text-white/40 text-sm italic font-medium">Are there specific topics or patterns that disrupt your stability?</p>
                         </div>
                         <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[40px] backdrop-blur-3xl space-y-6">
-                            <textarea 
+                            <NeuralTextarea 
                                 value={triggers} 
                                 onChange={(e) => setTriggers(e.target.value)}
                                 placeholder="This helps me maintain your emotional safety..."
-                                className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/40 focus:border-orange-500/50 outline-none transition-colors no-scrollbar resize-none"
+                                className="h-32 focus:border-orange-500/50 no-scrollbar"
                             />
                             <div className="flex gap-4">
                                 <NeuralButton variant="secondary" size="xl" className="flex-1" onClick={() => setStep('GOALS')}>Back</NeuralButton>
@@ -87,11 +88,11 @@ export function AgnesIntake({ onComplete }: AgnesIntakeProps) {
                             <p className="text-white/40 text-sm italic font-medium">Have you worked with a agnes or neural agent before?</p>
                         </div>
                         <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[40px] backdrop-blur-3xl space-y-6">
-                            <textarea 
+                            <NeuralTextarea 
                                 value={history} 
                                 onChange={(e) => setHistory(e.target.value)}
                                 placeholder="Share any past experiences that are relevant..."
-                                className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/40 focus:border-cyan-500/50 outline-none transition-colors no-scrollbar resize-none"
+                                className="h-32 focus:border-cyan-500/50 no-scrollbar"
                             />
                             <div className="flex gap-4">
                                 <NeuralButton variant="secondary" size="xl" className="flex-1" onClick={() => setStep('TRIGGERS')}>Back</NeuralButton>
@@ -114,7 +115,14 @@ export function AgnesIntake({ onComplete }: AgnesIntakeProps) {
                             <NeuralButton size="xl" className="w-full" loading={isSubmitting} onClick={handleSync}>
                                 <Sparkles className="w-4 h-4 mr-2" /> Encrypt & Initialize Session
                             </NeuralButton>
-                            <button onClick={() => setStep('GOALS')} disabled={isSubmitting} className="w-full mt-6 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors italic">Re-adjust Protocol</button>
+                            <NeuralButton 
+                                variant="ghost" 
+                                onClick={() => setStep('GOALS')} 
+                                disabled={isSubmitting} 
+                                className="w-full mt-6 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors italic"
+                            >
+                                Re-adjust Protocol
+                            </NeuralButton>
                         </div>
                     </motion.div>
                 )}

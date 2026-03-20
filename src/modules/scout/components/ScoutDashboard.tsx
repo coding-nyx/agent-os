@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { StatCard } from '@/core/components/StatCard';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { ScoutSessionList } from './ScoutSessionList';
 import { SignalBubbleCanvas } from './SignalBubbleCanvas';
 
@@ -70,21 +71,20 @@ export function ScoutDashboard({
           action={
             onRefreshNews ? (
               <div className="w-full sm:w-auto sm:shrink-0">
-                <button
+                <NeuralButton
                   type="button"
                   onClick={onRefreshNews}
-                  disabled={isRefreshingNews}
-                  className={cn(
-                    'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-[12px] font-semibold transition-colors sm:w-auto',
-                    'border-lime-500/30 bg-lime-500/10 text-lime-100 hover:bg-lime-500/18 disabled:cursor-not-allowed disabled:opacity-70'
-                  )}
+                  loading={isRefreshingNews}
+                  variant="secondary"
+                  themeColor="lime"
+                  className="w-full sm:w-auto"
                 >
                   <RefreshCcw
                     className={cn('h-4 w-4', isRefreshingNews && 'animate-spin')}
                     aria-hidden="true"
                   />
                   <span>{isRefreshingNews ? 'Refreshing briefs…' : 'Refresh briefs'}</span>
-                </button>
+                </NeuralButton>
               </div>
             ) : null
           }

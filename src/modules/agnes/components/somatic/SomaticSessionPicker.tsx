@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Wind, Layers, X, ArrowRight, type LucideIcon } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,13 +59,14 @@ export function SomaticSessionPicker({ onSelect, onExit }: Props) {
   return (
     <div className="flex flex-col w-full px-5 py-10 relative">
       {/* Exit button */}
-      <button
+      <NeuralButton
+        variant="ghost"
         onClick={onExit}
-        className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 transition-all"
+        className="absolute top-4 right-4 w-9 h-9 !rounded-full p-0 text-white/30 hover:text-white/70"
         aria-label="Close somatic session picker"
       >
         <X className="w-4 h-4" />
-      </button>
+      </NeuralButton>
 
       {/* Header */}
       <div className="mb-8 text-center space-y-2">

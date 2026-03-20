@@ -22,6 +22,10 @@ import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasGoal, AtlasMilestone, AtlasTask } from '../services/atlas-profile-service';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
+import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
 import { ConfirmDialog } from '@/core/components/ConfirmDialog';
@@ -216,17 +220,21 @@ export function GoalTracker({
       {/* ── Controls: Filter & Actions ── */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Filter dropdown */}
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as GoalFilter)}
-          className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 cursor-pointer"
-        >
-          <option value="all">All Goals</option>
-          <option value="active">Active</option>
-          <option value="paused">Paused</option>
-          <option value="completed">Completed</option>
-          <option value="abandoned">Abandoned</option>
-        </select>
+        <div className="w-full sm:w-48">
+          <NeuralSelectMenu
+            value={filter}
+            onChange={(next) => setFilter(next as GoalFilter)}
+            options={[
+              { value: 'all', label: 'All Goals' },
+              { value: 'active', label: 'Active' },
+              { value: 'paused', label: 'Paused' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'abandoned', label: 'Abandoned' },
+            ]}
+            triggerClassName="w-full"
+            ariaLabel="Filter goals"
+          />
+        </div>
 
         {/* New Goal button */}
         <NeuralButton onClick={() => handleOpenForm()} size="sm" className="ml-auto">
@@ -255,26 +263,30 @@ export function GoalTracker({
                 />
                 {/* Quick action buttons on hover */}
                 <div className="absolute top-3 right-12 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
-                  <button
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleOpenForm(goal);
                     }}
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/60 hover:text-white/90 transition-colors"
+                    className="p-1.5 h-8 w-8 min-w-0 bg-white/10 hover:bg-white/20 text-white/60 hover:text-white/90"
                     aria-label={`Edit ${goal.title}`}
                   >
                     <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
+                  </NeuralButton>
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       setDeleteTarget({ id: goal.id, title: goal.title });
                     }}
-                    className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400 transition-colors"
+                    className="p-1.5 h-8 w-8 min-w-0 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400"
                     aria-label={`Delete ${goal.title}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  </NeuralButton>
                 </div>
               </div>
             ))}
@@ -304,100 +316,90 @@ export function GoalTracker({
                 <h2 className="text-xl font-black text-white/90">
                   {editingGoal ? 'Edit Goal' : 'Create New Goal'}
                 </h2>
-                <button
+                <NeuralButton
+                  variant="ghost"
+                  size="sm"
                   onClick={handleCloseForm}
-                  className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+                  className="p-2 h-9 w-9 min-w-0 hover:bg-white/10 text-white/40 hover:text-white/70"
                 >
                   <X className="w-5 h-5" />
-                </button>
+                </NeuralButton>
               </div>
 
               <div className="space-y-4">
                 {/* Title */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title || ''}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="Enter goal title..."
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-                  />
-                </div>
+                <NeuralInput
+                  label="Title *"
+                  placeholder="Enter goal title..."
+                  value={formData.title || ''}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                />
 
                 {/* Description */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
+                <div className="space-y-2">
+                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
                     Description
                   </label>
-                  <textarea
+                  <NeuralTextarea
                     value={formData.description || ''}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
                     placeholder="Describe your goal..."
                     rows={3}
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 resize-none"
                   />
                 </div>
 
                 {/* Deadline & Status */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      Deadline
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.deadline || ''}
-                      onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
+                  <NeuralInput
+                    label="Deadline"
+                    type="date"
+                    icon={<Calendar className="w-4 h-4" />}
+                    value={formData.deadline || ''}
+                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                  />
+                  <div className="space-y-2">
+                    <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
                       Status
                     </label>
-                    <select
+                    <NeuralSelectMenu
                       value={formData.status || 'active'}
-                      onChange={(e) =>
+                      onChange={(next) =>
                         setFormData({
                           ...formData,
-                          status: e.target.value as AtlasGoal['status'],
+                          status: next as AtlasGoal['status'],
                         })
                       }
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-                    >
-                      <option value="active">Active</option>
-                      <option value="paused">Paused</option>
-                      <option value="completed">Completed</option>
-                      <option value="abandoned">Abandoned</option>
-                    </select>
+                      options={[
+                        { value: 'active', label: 'Active' },
+                        { value: 'paused', label: 'Paused' },
+                        { value: 'completed', label: 'Completed' },
+                        { value: 'abandoned', label: 'Abandoned' },
+                      ]}
+                      ariaLabel="Status"
+                    />
                   </div>
                 </div>
 
                 {/* Success Criteria */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
+                <div className="space-y-2">
+                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
                     Success Criteria
                   </label>
-                  <textarea
+                  <NeuralTextarea
                     value={formData.successCriteria || ''}
                     onChange={(e) =>
                       setFormData({ ...formData, successCriteria: e.target.value })
                     }
                     placeholder="How will you know you've achieved this goal?"
                     rows={2}
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 resize-none"
                   />
                 </div>
 
                 {/* Milestones */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
+                <div className="space-y-2">
+                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
                     Milestones
                   </label>
                   <div className="space-y-2">
@@ -428,73 +430,78 @@ export function GoalTracker({
                             {new Date(milestone.dueDate).toLocaleDateString()}
                           </span>
                         )}
-                        <button
+                        <NeuralButton
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleRemoveMilestone(milestone.id)}
-                          className="p-1 rounded hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400"
+                          className="h-7 w-7 min-w-0 p-0 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400"
                         >
                           <X className="w-3 h-3" />
-                        </button>
+                        </NeuralButton>
                       </div>
                     ))}
 
                     {/* Add new milestone */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        value={newMilestone.title}
-                        onChange={(e) =>
-                          setNewMilestone({ ...newMilestone, title: e.target.value })
-                        }
-                        placeholder="Add milestone..."
-                        className="flex-1 min-w-0 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-                      />
-                      <input
-                        type="date"
-                        value={newMilestone.dueDate}
-                        onChange={(e) =>
-                          setNewMilestone({ ...newMilestone, dueDate: e.target.value })
-                        }
-                        className="shrink-0 w-full sm:w-auto px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-                      />
+                    <div className="flex flex-col sm:flex-row gap-2 items-end">
+                      <div className="flex-1 w-full">
+                        <NeuralInput
+                          placeholder="Add milestone..."
+                          value={newMilestone.title}
+                          onChange={(e) =>
+                            setNewMilestone({ ...newMilestone, title: e.target.value })
+                          }
+                          className="h-10 min-h-[40px]"
+                        />
+                      </div>
+                      <div className="w-full sm:w-auto">
+                        <NeuralInput
+                          type="date"
+                          value={newMilestone.dueDate}
+                          onChange={(e) =>
+                            setNewMilestone({ ...newMilestone, dueDate: e.target.value })
+                          }
+                          className="h-10 min-h-[40px]"
+                        />
+                      </div>
                       <NeuralButton
                         onClick={handleAddMilestone}
                         size="sm"
+                        className="h-10 w-10 min-w-0"
                         disabled={!newMilestone.title.trim()}
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-4 h-4" />
                       </NeuralButton>
                     </div>
                   </div>
                 </div>
 
                 {/* Associated Tasks */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-1">
+                <div className="space-y-2">
+                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1 flex items-center gap-1">
                     <ListTodo className="w-3 h-3" />
                     Associated Tasks
                   </label>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                  <div className="space-y-2 max-h-40 overflow-y-auto p-1">
                     {tasks.map((t) => (
-                      <label
+                      <div
                         key={t.id}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer"
+                        className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
                       >
-                        <input
-                          type="checkbox"
+                        <span className="text-xs text-white/70">{t.title}</span>
+                        <NeuralToggle
                           checked={formData.associatedTaskIds?.includes(t.id) || false}
-                          onChange={(e) => {
+                          onChange={(checked) => {
                             const taskIds = formData.associatedTaskIds || [];
                             setFormData({
                               ...formData,
-                              associatedTaskIds: e.target.checked
+                              associatedTaskIds: checked
                                 ? [...taskIds, t.id]
                                 : taskIds.filter((id) => id !== t.id),
                             });
                           }}
-                          className="w-4 h-4 rounded border-white/20 text-emerald-500 focus:ring-emerald-400/50"
+                          size="sm"
                         />
-                        <span className="text-xs text-white/70">{t.title}</span>
-                      </label>
+                      </div>
                     ))}
                   </div>
                 </div>

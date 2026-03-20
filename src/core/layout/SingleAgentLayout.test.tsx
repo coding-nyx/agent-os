@@ -178,4 +178,25 @@ describe('SingleAgentLayout', () => {
     unmount();
     expect(document.body.style.overflow).toBe('');
   });
+
+  it('can suppress the floating chat trigger while an overlay owns the bottom-right lane', () => {
+    window.innerWidth = 1280;
+
+    render(
+      <SingleAgentLayout
+        moduleId="scout"
+        agentName="Scout"
+        themeColor="lime"
+        ai={ai}
+        hideChatTrigger
+        mobileBreakpoint={768}
+        dockChatBreakpoint={1024}
+        isChatCollapsed
+      >
+        <div>Workspace</div>
+      </SingleAgentLayout>
+    );
+
+    expect(screen.queryByRole('button', { name: /chat scout/i })).not.toBeInTheDocument();
+  });
 });

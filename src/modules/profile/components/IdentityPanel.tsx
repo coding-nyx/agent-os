@@ -119,9 +119,10 @@ export function IdentityPanel() {
                 <div className="flex items-center gap-2 ml-1">
                   <NeuralButton
                     size="sm"
+                    variant="primary"
+                    themeColor="indigo"
                     onClick={() => void handleSave()}
                     loading={isSaving}
-                    className="bg-violet-600 hover:bg-violet-500 border-violet-400/20 shadow-[0_0_15px_rgba(139,92,246,0.3)]"
                   >
                     <Check className="w-3.5 h-3.5" />
                     Save
@@ -145,13 +146,15 @@ export function IdentityPanel() {
                   )}
                 </h2>
                 {!isGuest && (
-                  <button
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setIsEditing(true)}
                     aria-label="Edit display name"
-                    className="opacity-60 hover:opacity-100 w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-violet-500/20 hover:border-violet-400/30 transition-all"
+                    className="w-8 h-8 !px-0 rounded-lg opacity-60 hover:opacity-100 hover:bg-violet-500/20 hover:border-violet-400/30"
                   >
                     <Edit3 className="w-3.5 h-3.5 text-white/60" />
-                  </button>
+                  </NeuralButton>
                 )}
               </div>
             )}

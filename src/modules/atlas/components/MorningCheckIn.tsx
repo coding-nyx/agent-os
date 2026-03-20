@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sunrise, Zap, Brain, Activity, X, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import type { AtlasProfile } from '../services/atlas-profile-service';
 import type { GlobalProjection } from '@/lib/types';
 import type { AtlasState } from '../services/atlas-predictive-service';
@@ -258,13 +259,15 @@ export function MorningCheckIn({
             <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/40">
               {dateLabel}
             </span>
-            <button
+            <NeuralButton
+              variant="ghost"
+              size="sm"
               onClick={handleDismiss}
               aria-label="Dismiss morning check-in"
-              className="rounded-lg p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
+              className="w-8 h-8 p-0 min-h-0 min-w-0"
             >
               <X className="w-3.5 h-3.5" aria-hidden="true" />
-            </button>
+            </NeuralButton>
           </div>
         </div>
 
@@ -312,24 +315,16 @@ export function MorningCheckIn({
               </p>
             )}
 
-            <button
+            <NeuralButton
               onClick={handleGetBrief}
-              className={cn(
-                'w-full flex items-center justify-center gap-2 rounded-xl',
-                isElevated
-                  ? 'bg-orange-500/20 border border-orange-500/30 hover:bg-orange-500/30 text-orange-300'
-                  : isCompressed
-                  ? 'bg-amber-500/20 border border-amber-500/30 hover:bg-amber-500/30 text-amber-300'
-                  : 'bg-sky-500/20 border border-sky-500/30 hover:bg-sky-500/30 text-sky-300',
-                'text-xs font-bold uppercase tracking-[0.15em] py-2.5 px-4 transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400',
-                'focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
-              )}
+              variant="primary"
+              themeColor={isElevated ? 'orange' : isCompressed ? 'amber' : 'cyan'}
+              className="w-full flex items-center justify-center gap-2"
               aria-label="Get my daily brief from Atlas"
             >
               <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
               Get My Daily Brief
-            </button>
+            </NeuralButton>
           </>
         )}
       </motion.div>

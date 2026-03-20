@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 export type Recurrence =
+  | { kind: "once"; dueAt: string; timezone?: string }
   | { kind: "every_n_days"; intervalDays: number; dtStart: string; timezone?: string }
   | { kind: "hourly"; intervalHours: number; dtStart: string; timezone?: string }
   | { kind: "weekly_by_days"; intervalWeeks: number; daysOfWeek: number[]; timeOfDay: string; startAt: string; timezone?: string }
@@ -40,6 +41,12 @@ function toMs(iso: unknown): number | null {
 
 function computeInRange(rec: Recurrence, startMs: number, endMs: number): number[] {
   switch (rec.kind) {
+    case "once": {
+      const dueAt = toMs(rec.dueAt);
+      if (dueAt === null) return [];
+      if (dueAt >= startMs && dueAt <= endMs) return [dueAt];
+      return [];
+    }
     case "every_n_days": {
       const anchor = toMs(rec.dtStart);
       if (anchor === null) return [];
@@ -124,6 +131,12 @@ function computeInRange(rec: Recurrence, startMs: number, endMs: number): number
 export function nextDue(recurrence: unknown, afterMs: number): number | null {
   const rec = recurrence as Recurrence | undefined;
   if (!rec || typeof rec !== "object" || !("kind" in rec)) return null;
+
+  if (rec.kind === "once") {
+    const dueAt = toMs(rec.dueAt);
+    if (dueAt === null) return null;
+    return dueAt > afterMs ? dueAt : null;
+  }
 
   const windowMs = 60 * 1000;
   const maxMs = afterMs + 60 * 24 * 60 * 60 * 1000;

@@ -278,6 +278,24 @@ export class Orchestrator {
       }
     }
 
+    // JSON-in-action fallback: handle <action>{ "type": "...", "payload": {...} }</action>
+    // Some models emit the type inside the JSON payload instead of the attribute.
+    if (actions.length === 0) {
+      const jsonActionRegex = /<action>\s*([\s\S]*?)\s*<\/action>/gi;
+      while ((match = jsonActionRegex.exec(normalized)) !== null) {
+        try {
+          const parsed = JSON.parse(nexusCleaner(match[1]));
+          const actionType = typeof parsed?.type === 'string' ? parsed.type : undefined;
+          if (!actionType) continue;
+          const payload = typeof parsed?.payload === 'object' && parsed.payload !== null ? parsed.payload : {};
+          actions.push({ type: actionType, payload, raw: match[0] });
+          console.warn(`[Orchestrator] Recovered JSON action tag without type attribute — type: "${actionType}"`);
+        } catch {
+          // Ignore malformed JSON blocks
+        }
+      }
+    }
+
     // Extract <tool_call> tags
     const toolCallRegex = /<tool_call>([\s\S]*?)<\/tool_call>/gi;
     while ((match = toolCallRegex.exec(normalized)) !== null) {

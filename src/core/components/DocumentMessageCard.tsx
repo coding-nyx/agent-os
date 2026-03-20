@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, FileSpreadsheet, Image, FileCode, ChevronDown, ChevronUp, File } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { parseDocumentUploadMessage, type UploadedDocumentMessagePayload } from '@/lib/services/document-upload-message';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,12 +102,62 @@ const FILE_ICONS: Record<string, React.FC<{ className?: string }>> = {
 // ---------------------------------------------------------------------------
 
 interface DocumentMessageCardProps {
-  doc: ParsedDocumentMessage;
+  doc?: ParsedDocumentMessage;
+  upload?: UploadedDocumentMessagePayload;
   themeAccent?: string;
 }
 
-export function DocumentMessageCard({ doc, themeAccent = 'text-orange-400' }: DocumentMessageCardProps) {
+export function DocumentMessageCard({ doc, upload, themeAccent = 'text-orange-400' }: DocumentMessageCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  if (upload) {
+    return (
+      <div className="w-full max-w-sm">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden">
+          <div className="p-3.5">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">Uploaded documents</p>
+            {upload.caption && (
+              <p className="mt-2 text-xs text-white/70 whitespace-pre-wrap">{upload.caption}</p>
+            )}
+            <div className="mt-3 space-y-2">
+              {upload.files.map((file, index) => {
+                const Icon = FILE_ICONS[file.fileType] ?? File;
+                return (
+                  <div
+                    key={`${file.name}-${index}`}
+                    className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                  >
+                    {file.previewDataUrl ? (
+                      <img
+                        src={file.previewDataUrl}
+                        alt={file.name}
+                        className="h-12 w-12 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
+                        <Icon className={cn("w-5 h-5", themeAccent)} />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-white/85" title={file.name}>
+                        {file.name}
+                      </p>
+                      <p className="text-[10px] text-white/40">
+                        {file.fileType.toUpperCase()} · {Math.max(1, Math.round(file.sizeBytes / 1024))} KB
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!doc) return null;
+
   const Icon = FILE_ICONS[doc.fileType] ?? File;
 
   const meta = [
@@ -181,3 +232,5 @@ export function DocumentMessageCard({ doc, themeAccent = 'text-orange-400' }: Do
     </div>
   );
 }
+
+export { parseDocumentUploadMessage };

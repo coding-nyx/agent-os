@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import { EmptyState } from '@/core/components/EmptyState';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -108,19 +109,18 @@ function StrengthProgressionChart({ sessions, personalRecords }: {
   return (
     <div className="space-y-3">
       {/* Exercise selector */}
-      <div className="relative inline-block">
-        <select
+      <div className="relative inline-block min-w-[160px]">
+        <NeuralSelectMenu
           value={selected}
-          onChange={e => setSelected(e.target.value)}
-          className="appearance-none pl-3 pr-8 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-orange-500/50 transition-all cursor-pointer"
-        >
-          {exerciseNames.map(n => (
-            <option key={n} value={n} className="bg-[#0a0a14]">
-              {n.replace(/\b\w/g, c => c.toUpperCase())}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" />
+          onChange={(next) => setSelected(String(next))}
+          options={exerciseNames.map((n) => ({
+            value: n,
+            label: n.replace(/\b\w/g, c => c.toUpperCase()),
+          }))}
+          triggerClassName="text-xs"
+          minWidthClassName="min-w-[160px]"
+          ariaLabel="Exercise"
+        />
       </div>
 
       {dataPoints.length < 2 ? (

@@ -4,6 +4,7 @@ import { Grid3X3, Lock, LayoutDashboard, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useModuleHealth, type StatusTone } from '../hooks/useModuleHealth';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { UnifiedAuthModal, type AuthMode } from '@/core/components/UnifiedAuthModal';
 import type { ModuleId } from '@/lib/module-manifest';
 
@@ -147,14 +148,15 @@ export function ModuleHealthFAB() {
               <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/30">
                 Modules
               </span>
-              <button
+              <NeuralButton
+                variant="ghost"
                 onClick={close}
-                className="p-0.5 rounded-md hover:bg-white/5 transition-colors"
+                className="p-0.5 h-auto w-auto min-h-0 min-w-0 border-none rounded-md hover:bg-white/5 transition-colors"
                 aria-label="Close module navigator"
                 tabIndex={-1}
               >
                 <X className="w-3 h-3 text-white/25" />
-              </button>
+              </NeuralButton>
             </div>
 
             {/* Grid */}
@@ -166,9 +168,11 @@ export function ModuleHealthFAB() {
                 : modules.map((mod, i) => {
                     const Icon = mod.icon;
                     return (
-                      <motion.button
+                      <NeuralButton
                         key={mod.moduleId}
-                        ref={(el) => { tileRefs.current[i] = el; }}
+                        as="button"
+                        variant="ghost"
+                        ref={(el: HTMLButtonElement | null) => { tileRefs.current[i] = el; }}
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={tileTransition(i)}
@@ -178,12 +182,12 @@ export function ModuleHealthFAB() {
                         onKeyDown={(e) => handleGridKeyDown(e, i)}
                         className={cn(
                           'group flex flex-col items-center justify-center gap-1',
-                          'h-[56px] rounded-xl px-1',
+                          'h-[56px] w-full rounded-xl px-1 border-none',
                           'transition-all duration-150',
                           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30',
                           mod.isAccessible
-                            ? 'hover:bg-white/[0.04] active:scale-95 cursor-pointer'
-                            : 'hover:bg-white/[0.03] active:scale-95 cursor-pointer opacity-50 hover:opacity-80'
+                            ? 'hover:bg-white/[0.04] active:scale-95 cursor-pointer text-white/40'
+                            : 'hover:bg-white/[0.03] active:scale-95 cursor-pointer opacity-50 hover:opacity-80 text-white/40'
                         )}
                       >
                         <div className="relative">
@@ -206,7 +210,7 @@ export function ModuleHealthFAB() {
                         <span className="text-[8px] font-semibold text-white/40 group-hover:text-white/60 truncate max-w-full transition-colors">
                           {mod.title}
                         </span>
-                      </motion.button>
+                      </NeuralButton>
                     );
                   })}
 
@@ -216,16 +220,19 @@ export function ModuleHealthFAB() {
       </AnimatePresence>
 
       {/* ── FAB Trigger ── */}
-      <motion.button
+      <NeuralButton
         ref={fabRef}
+        as="button"
+        variant="ghost"
+        iconOnly
+        allowOverflow
         onClick={() => setIsOpen(!isOpen)}
         whileHover={shouldReduceMotion ? undefined : { scale: 1.06 }}
         whileTap={shouldReduceMotion ? undefined : { scale: 0.94 }}
         className={cn(
-          'relative w-[60px] h-[60px] rounded-2xl',
+          'relative w-[60px] h-[60px] rounded-2xl border-white/[0.08]',
           'bg-white/[0.04] backdrop-blur-xl',
-          'border border-white/[0.08]',
-          'flex items-center justify-center',
+          'flex items-center justify-center min-w-0',
           'transition-all duration-200',
           'hover:bg-white/[0.07] hover:border-white/[0.12]',
           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500/40',
@@ -277,7 +284,7 @@ export function ModuleHealthFAB() {
             {badgeCount > 99 ? '99+' : badgeCount}
           </span>
         )}
-      </motion.button>
+      </NeuralButton>
       <UnifiedAuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}

@@ -4,6 +4,8 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { cn } from '@/lib/utils';
@@ -269,13 +271,15 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
     <div className="h-full flex flex-col md:flex-row overflow-hidden">
       {isMobile && (
         <div className="sticky top-0 z-20 flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-black/60 backdrop-blur-xl">
-          <button
+          <NeuralButton
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => setShowDashboard((v) => !v)}
-            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60"
+            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60 h-auto"
           >
             {showDashboard ? 'Hide Dashboard' : 'Show Dashboard'}
-          </button>
+          </NeuralButton>
           <div className="min-w-0 overflow-x-auto no-scrollbar">{modePillSelector}</div>
         </div>
       )}
@@ -293,30 +297,34 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
                   <p className="text-[10px] uppercase tracking-[0.3em] text-rose-300 font-black">Code Editor</p>
                   <p className="text-xs text-white/50">Cloud execution only</p>
                 </div>
-                <select
+                <NeuralSelectMenu
                   value={editorLanguage}
-                  onChange={(event) => setEditorLanguage(event.target.value)}
-                  className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-[10px] uppercase tracking-[0.2em] text-white/70"
-                >
-                  <option value="javascript">JavaScript</option>
-                </select>
+                  options={[{ value: 'javascript', label: 'JavaScript' }]}
+                  onChange={(next) => setEditorLanguage(next)}
+                  triggerClassName="w-auto h-8 px-2.5 text-[10px] uppercase tracking-[0.2em] text-white/70"
+                  minWidthClassName=""
+                  ariaLabel="Editor language"
+                />
               </div>
 
               {isMobile && (
-                <button
+                <NeuralButton
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setShowEditor((v) => !v)}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60"
+                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60 h-auto"
                 >
                   {showEditor ? 'Collapse Editor' : 'Expand Editor'}
-                </button>
+                </NeuralButton>
               )}
               {(!isMobile || showEditor) && (
-                <textarea
+                <NeuralTextarea
                   value={editorCode}
                   onChange={(event) => setEditorCode(event.target.value)}
                   placeholder="Write a JavaScript snippet to execute in Forge cloud..."
-                  className="w-full min-h-[180px] rounded-2xl border border-white/10 bg-black/50 text-xs text-white/80 font-mono p-4 focus:outline-none focus:border-rose-500/40"
+                  variant="mono"
+                  className="min-h-[180px] p-4 focus:border-rose-500/40"
                 />
               )}
 

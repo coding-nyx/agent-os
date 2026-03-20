@@ -19,6 +19,7 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralTabGroup } from '@/core/components/NeuralTabGroup';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { Camera, FileUp, FolderOpen, Plus } from 'lucide-react';
 
 /** Deterministic color palette for budget categories — no Math.random(). */
@@ -53,6 +54,8 @@ import { LEDGER_PERSONA } from './personas';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { computeResonanceROI } from './services/resonance-roi-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
+import { prepareDocumentChatPrompt } from '@/lib/services/document-chat-handoff-service';
+import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { ledgerDiagnosisSpec } from './diagnosis/ledger-diagnosis-spec';
 import { runDocumentPipeline } from '@/lib/services/document-pipeline';
@@ -126,7 +129,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
   const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('ledger');
-  const { sendMessage } = useAI();
+  const { sendMessage, analyzeImage } = useAI();
 
   // Cross-verification: coherence checks + NSV sync + Spine events
   const { coherenceReport } = useLedgerCrossVerify(profile);
@@ -282,6 +285,43 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
     setDocProposal(null);
     setDocProposalSummary(null);
   }, [docProposal, docProposalSummary, ai]);
+
+  const handleChatDocumentUploads = useCallback(async (request: DocumentUploadRequest) => {
+    const llmPrimary = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'You are a financial document triage analyst. Return only valid JSON as instructed.',
+        memoryContext: [],
+        summary: 'Ledger document triage.',
+        history: [],
+      });
+      return response.publicText;
+    };
+
+    const llmFallback = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'Return only valid JSON matching the requested schema.',
+        memoryContext: [],
+        summary: 'Ledger document triage fallback.',
+        history: [],
+      });
+      return response.publicText;
+    };
+
+    try {
+      const { prompt } = await prepareDocumentChatPrompt({
+        moduleId: 'ledger',
+        files: request.files,
+        sendMessage: llmPrimary,
+        sendMessageFallback: llmFallback,
+        analyzeImage,
+        userContext: request.caption,
+      });
+      await ai.handleSendMessage(prompt, undefined, { visibleContent: request.visibleContent });
+    } catch (error) {
+      console.error('[Ledger] Chat document analysis failed:', error);
+      await ai.handleSendMessage('I could not analyze those financial documents. Please try again with PDFs, images, or text files.');
+    }
+  }, [ai, analyzeImage, sendMessage]);
 
   const persistUpdate = useCallback((nextProfile: LedgerIntakeProfile) => {
      nextProfile.updatedAt = new Date().toISOString();
@@ -604,22 +644,17 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
       ai={ai}
       authMode="ledger"
       placeholder="Ask for budgeting or savings optimization..."
-      onUploadDocument={handleDocumentFile}
+      onUploadDocuments={handleChatDocumentUploads}
       primaryAction={
         activeTab === 'transactions' && (
-          <button
+          <NeuralButton
             onClick={() => setIsAddTransactionModalOpen(true)}
             aria-label="Add transaction"
-            className={cn(
-              'z-[var(--z-fab)] rounded-full flex items-center justify-center',
-              'bg-cyan-600 text-white shadow-lg shadow-cyan-500/25',
-              'hover:bg-cyan-500 active:bg-cyan-700 transition-all',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900',
-              'w-12 h-12'
-            )}
+            className="z-[var(--z-fab)] rounded-full w-12 h-12 shadow-lg shadow-cyan-500/25 p-0"
+            themeColor="cyan"
           >
             <Plus className="w-5 h-5" />
-          </button>
+          </NeuralButton>
         )
       }
     >
@@ -658,8 +693,8 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
             </div>
           )}
           <div className="flex gap-3 pt-4 border-t border-white/10">
-            <button onClick={handleDocReviewCommit} className="flex-1 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs rounded-lg">Commit</button>
-            <button onClick={() => setIsReviewModalOpen(false)} className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-bold text-xs rounded-lg">Discard</button>
+            <NeuralButton onClick={handleDocReviewCommit} themeColor="cyan" className="flex-1 font-bold text-xs">Commit</NeuralButton>
+            <NeuralButton onClick={() => setIsReviewModalOpen(false)} variant="secondary" className="flex-1 font-bold text-xs">Discard</NeuralButton>
           </div>
         </div>
       </NeuralModal>
@@ -706,8 +741,8 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
             </div>
           )}
           <div className="flex gap-3 pt-4 border-t border-white/10">
-            <button onClick={handleStructuredDocCommit} className="flex-1 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs rounded-lg">Apply</button>
-            <button onClick={() => setIsDocReviewOpen(false)} className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-bold text-xs rounded-lg">Discard</button>
+            <NeuralButton onClick={handleStructuredDocCommit} themeColor="cyan" className="flex-1 font-bold text-xs">Apply</NeuralButton>
+            <NeuralButton onClick={() => setIsDocReviewOpen(false)} variant="secondary" className="flex-1 font-bold text-xs">Discard</NeuralButton>
           </div>
         </div>
       </NeuralModal>
@@ -739,9 +774,9 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
               panel={<LedgerNotificationSettingsPanel />}
               compact
             />
-            <button onClick={() => setIsCaptureModalOpen(true)} className="p-1.5 md:p-2 rounded-xl bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-violet-400 transition-all"><Camera size={14} className="md:w-4 md:h-4" /></button>
-            <button onClick={openDocumentPicker} className="p-1.5 md:p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-cyan-400 transition-all"><FileUp size={14} className="md:w-4 md:h-4" /></button>
-            <button onClick={handleOpenDocuments} className="p-1.5 md:p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/60 transition-all"><FolderOpen size={14} className="md:w-4 md:h-4" /></button>
+            <NeuralButton onClick={() => setIsCaptureModalOpen(true)} variant="secondary" className="p-1.5 md:p-2 bg-violet-500/10 border-violet-500/20 text-violet-400 h-auto rounded-xl"><Camera size={14} className="md:w-4 md:h-4" /></NeuralButton>
+            <NeuralButton onClick={openDocumentPicker} variant="secondary" className="p-1.5 md:p-2 bg-cyan-500/10 border-cyan-500/20 text-cyan-400 h-auto rounded-xl"><FileUp size={14} className="md:w-4 md:h-4" /></NeuralButton>
+            <NeuralButton onClick={handleOpenDocuments} variant="secondary" className="p-1.5 md:p-2 h-auto rounded-xl"><FolderOpen size={14} className="md:w-4 md:h-4" /></NeuralButton>
           </div>
         </div>
 

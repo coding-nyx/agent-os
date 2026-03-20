@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, Info, Activity, Code2, Bug, Cpu, Bell } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
+import { BridgeService } from '@/lib/services/bridge-service';
 import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
@@ -64,24 +65,23 @@ export function SystemPanel() {
     if (!user) return;
     setTestNotifSending(true);
     try {
-      const now = new Date().toISOString();
-      const id = `test_${Date.now()}`;
+      await BridgeService.requestPermissionAndInit();
+      const eventId = `test_spine_${Date.now()}`;
       await dataLayer.setDocument(
-        `users/${user.uid}/notification_inbox`,
-        id,
+        `spine_events/${user.uid}/events`,
+        eventId,
         {
-          type: 'MODULE_REMINDER_DUE',
+          type: 'FINANCIAL_STRESS',
           source: 'system',
+          domain: 'system',
           priority: 'alert',
+          timestamp: Date.now(),
+          cascadeDepth: 0,
           data: {
             title: 'Test Notification',
             note: 'This is a test notification sent from debug mode.',
             deepLink: { route: '/notifications' },
           },
-          scheduleId: 'debug_test',
-          occurrenceId: id,
-          read: false,
-          createdAt: now,
         },
       );
       setTestNotifSent(true);

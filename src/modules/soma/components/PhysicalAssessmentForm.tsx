@@ -7,6 +7,7 @@ import { Dumbbell, Zap, TrendingUp } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import type { SomaProfile } from '../types';
 
 interface PhysicalAssessmentFormProps {
@@ -108,22 +109,18 @@ export function PhysicalAssessmentForm({ profile: _profile, onSubmit }: Physical
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {(['general', 'strength', 'flexibility', 'endurance'] as const).map((type) => (
-                <button
+                <NeuralButton
                   key={type}
                   type="button"
                   onClick={() => setAssessmentType(type)}
-                  className={`
-                    p-3 rounded-lg border transition-all
-                    ${assessmentType === type
-                      ? 'bg-cyan-500/10 border-cyan-500/40 text-white'
-                      : 'bg-white/[0.02] border-white/10 text-white/60 hover:border-white/20'
-                    }
-                  `}
+                  variant={assessmentType === type ? 'primary' : 'secondary'}
+                  themeColor="cyan"
+                  className="p-3 rounded-lg border transition-all h-auto"
                 >
                   <div className="text-xs font-semibold uppercase tracking-wider">
                     {type}
                   </div>
-                </button>
+                </NeuralButton>
               ))}
             </div>
           </div>
@@ -269,20 +266,14 @@ export function PhysicalAssessmentForm({ profile: _profile, onSubmit }: Physical
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium text-white mb-2 ml-1">
               Notes (optional)
             </label>
-            <textarea
+            <NeuralTextarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Additional observations, conditions, or comments..."
-              className="
-                w-full min-h-[100px] px-4 py-3 rounded-xl
-                bg-white/[0.03] border border-white/10
-                text-white placeholder:text-white/30
-                focus:outline-none focus:ring-2 focus:ring-cyan-500/50
-                transition-all
-              "
+              className="min-h-[100px]"
             />
           </div>
 

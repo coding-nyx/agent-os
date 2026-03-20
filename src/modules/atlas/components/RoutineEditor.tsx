@@ -1,6 +1,8 @@
 import React from 'react';
 import { Plus, Clock, Zap, Trash2 } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import type { AtlasRoutine, RoutineBlock } from '@/lib/types';
 
@@ -57,82 +59,91 @@ export function RoutineEditor({ routine, onUpdate }: RoutineEditorProps) {
       <div className="space-y-3">
         {routine.blocks && routine.blocks.length > 0 ? (
           routine.blocks.map(block => (
-            <div key={block.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl border border-white/10 bg-white/[0.02]">
-              <div className="md:col-span-1">
-                <input 
-                  type="text" 
+            <div key={block.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl border border-white/10 bg-white/[0.02] items-center">
+              <div className="md:col-span-1 space-y-2">
+                <NeuralInput 
                   value={block.title}
                   onChange={(e) => handleUpdateBlock(block.id, { title: e.target.value })}
-                  className="w-full bg-transparent border-none text-sm font-bold text-white focus:ring-0 p-0"
+                  className="h-9 min-h-[36px] font-bold"
                 />
-                <div className="flex items-center gap-2 mt-2">
-                   <select 
-                     value={block.category}
-                     onChange={(e) => handleUpdateBlock(block.id, { category: e.target.value as any })}
-                     className="bg-white/5 border-none text-[10px] uppercase text-white/40 rounded p-1"
-                   >
-                     <option value="deep_work">Deep Work</option>
-                     <option value="admin">Admin</option>
-                     <option value="physical">Physical</option>
-                     <option value="creative">Creative</option>
-                     <option value="recovery">Recovery</option>
-                     <option value="other">Other</option>
-                   </select>
-                </div>
+                <NeuralSelectMenu
+                  value={block.category}
+                  onChange={(next) => handleUpdateBlock(block.id, { category: next as any })}
+                  options={[
+                    { value: 'deep_work', label: 'Deep Work' },
+                    { value: 'admin', label: 'Admin' },
+                    { value: 'physical', label: 'Physical' },
+                    { value: 'creative', label: 'Creative' },
+                    { value: 'recovery', label: 'Recovery' },
+                    { value: 'other', label: 'Other' },
+                  ]}
+                  triggerClassName="h-8 py-1 text-[10px] uppercase"
+                  minWidthClassName=""
+                  ariaLabel="Category"
+                />
               </div>
               
               <div className="flex items-center gap-2 text-white/60">
-                <Clock className="w-3 h-3" />
-                <input 
-                  type="time" 
-                  value={block.startTime}
-                  onChange={(e) => handleUpdateBlock(block.id, { startTime: e.target.value })}
-                  className="bg-white/5 border-none text-xs rounded p-1"
-                />
-                <span>-</span>
-                <input 
-                  type="time" 
-                  value={block.endTime}
-                  onChange={(e) => handleUpdateBlock(block.id, { endTime: e.target.value })}
-                  className="bg-white/5 border-none text-xs rounded p-1"
-                />
+                <Clock className="w-4 h-4 shrink-0" />
+                <div className="flex items-center gap-1.5">
+                  <NeuralInput 
+                    type="time" 
+                    value={block.startTime}
+                    onChange={(e) => handleUpdateBlock(block.id, { startTime: e.target.value })}
+                    className="h-9 min-h-[36px] px-2 w-28"
+                  />
+                  <span>-</span>
+                  <NeuralInput 
+                    type="time" 
+                    value={block.endTime}
+                    onChange={(e) => handleUpdateBlock(block.id, { endTime: e.target.value })}
+                    className="h-9 min-h-[36px] px-2 w-28"
+                  />
+                </div>
               </div>
 
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 justify-center">
                 {[1,2,3,4,5,6,0].map(day => (
-                  <button
+                  <NeuralButton
                     key={day}
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       const days = block.daysOfWeek.includes(day) 
                         ? block.daysOfWeek.filter(d => d !== day)
                         : [...block.daysOfWeek, day];
                       handleUpdateBlock(block.id, { daysOfWeek: days });
                     }}
-                    className={`w-6 h-6 text-[10px] font-bold rounded-md flex items-center justify-center transition-colors ${
-                      block.daysOfWeek.includes(day) ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-white/20 border border-transparent'
-                    }`}
+                    className={cn(
+                      "w-8 h-8 min-w-0 px-0 rounded-lg text-[10px] font-bold border transition-all",
+                      block.daysOfWeek.includes(day) 
+                        ? 'bg-sky-500/20 text-sky-400 border-sky-500/30' 
+                        : 'bg-white/5 text-white/20 border-transparent hover:border-white/10'
+                    )}
                   >
                     {['S', 'M', 'T', 'W', 'T', 'F', 'S'][day]}
-                  </button>
+                  </NeuralButton>
                 ))}
               </div>
 
               <div className="flex items-center justify-between md:justify-end gap-4">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-3 h-3 text-amber-400" />
-                  <input 
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <NeuralInput 
                     type="number" 
                     value={block.energyCost}
                     onChange={(e) => handleUpdateBlock(block.id, { energyCost: parseInt(e.target.value) })}
-                    className="w-12 bg-white/5 border-none text-xs rounded p-1 text-center"
+                    className="w-16 h-9 min-h-[36px] text-center px-1"
                   />
                 </div>
-                <button 
+                <NeuralButton 
+                  variant="ghost"
+                  size="sm"
                   onClick={() => handleRemoveBlock(block.id)}
-                  className="p-2 rounded-lg hover:bg-rose-500/10 text-rose-400/40 hover:text-rose-400 transition-colors"
+                  className="p-2 text-rose-400/40 hover:text-rose-400 hover:bg-rose-500/10"
                 >
                   <Trash2 className="w-4 h-4" />
-                </button>
+                </NeuralButton>
               </div>
             </div>
           ))

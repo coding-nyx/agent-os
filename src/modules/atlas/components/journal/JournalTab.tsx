@@ -16,8 +16,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { ConfirmDialog } from '@/core/components/ConfirmDialog';
+import { QuickReminderModal } from '@/core/components/QuickReminderModal';
 import { JournalVaultGate } from './JournalVaultGate';
 import { JournalEntryEditor } from './JournalEntryEditor';
 import { JournalHistoryList } from './JournalHistoryList';
@@ -41,6 +43,7 @@ export interface JournalTabProps {
   encryptionKey: CryptoKey | null;
   isLocked: boolean;
   onSendMessage: (msg: string) => void;
+  focusEntryId?: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -98,6 +101,7 @@ export function JournalTab({
   encryptionKey,
   isLocked,
   onSendMessage,
+  focusEntryId,
 }: JournalTabProps) {
   const [activeView, setActiveView] = useState<JournalView>('today');
   const [todayEntry, setTodayEntry] = useState<JournalEntry | null>(null);
@@ -107,6 +111,7 @@ export function JournalTab({
   const [isSaving, setIsSaving] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState<JournalSaveFeedback | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+  const [remindEntry, setRemindEntry] = useState<JournalEntry | null>(null);
   const [isLoadingEntries, setIsLoadingEntries] = useState(true);
   const [isRegisteredModalOpen, setIsRegisteredModalOpen] = useState(false);
   const [registeredQuote, setRegisteredQuote] = useState<string>('');
@@ -157,6 +162,15 @@ export function JournalTab({
     });
     return unsubscribe;
   }, [userId, encryptionKey, isLocked]);
+
+  useEffect(() => {
+    if (!focusEntryId) return;
+    const target = entries.find((e) => e.id === focusEntryId);
+    if (target) {
+      setActiveView('history');
+      setSelectedEntry(target);
+    }
+  }, [entries, focusEntryId]);
 
   // ── AI prompt: request on freeform view switch ──────────────────────────────
   useEffect(() => {
@@ -333,24 +347,22 @@ export function JournalTab({
 
         {/* Sub-view pill nav */}
         <div className="overflow-x-auto no-scrollbar -mx-1">
-        <div className="flex gap-1.5 bg-black/20 rounded-xl p-1 w-fit min-w-full sm:min-w-0 mx-1">
+        <div className="flex gap-1 bg-black/20 rounded-xl p-1 w-fit min-w-full sm:min-w-0 mx-1 border border-white/5">
           {VIEWS.map(({ id, label }) => (
-            <button
+            <NeuralButton
               key={id}
               type="button"
               onClick={() => {
                 setSelectedEntry(null);
                 setActiveView(id);
               }}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-400',
-                activeView === id
-                  ? 'bg-violet-500/20 text-violet-200 border border-violet-500/30'
-                  : 'text-white/40 hover:text-white/70 border border-transparent',
-              )}
+              variant={activeView === id ? 'primary' : 'ghost'}
+              themeColor="emerald"
+              size="sm"
+              className="flex-1 !h-8 px-4"
             >
               {label}
-            </button>
+            </NeuralButton>
           ))}
         </div>
         </div>
@@ -431,15 +443,29 @@ export function JournalTab({
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              {/* Back button */}
-              <button
-                type="button"
-                onClick={() => setSelectedEntry(null)}
-                className="flex items-center gap-1.5 text-xs text-violet-400/70 hover:text-violet-300 mb-4 transition-colors font-medium focus-visible:outline-none"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
-                Back to History
-              </button>
+              <div className="flex items-center justify-between mb-4">
+                <NeuralButton
+                  type="button"
+                  onClick={() => setSelectedEntry(null)}
+                  variant="ghost"
+                  size="sm"
+                  themeColor="emerald"
+                  className="!p-0 !h-auto text-xs"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
+                  Back to History
+                </NeuralButton>
+                <NeuralButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  themeColor="emerald"
+                  onClick={() => setRemindEntry(selectedEntry)}
+                  className="text-[10px] uppercase tracking-[0.14em] text-white/50 hover:text-white/80"
+                >
+                  Remind me
+                </NeuralButton>
+              </div>
 
               <JournalEntryEditor
                 entry={selectedEntry}
@@ -491,6 +517,24 @@ export function JournalTab({
           </p>
         </div>
       </NeuralModal>
+      <QuickReminderModal
+        open={!!remindEntry}
+        moduleId="atlas"
+        defaultTitle={remindEntry ? `Journal: ${formatFullDate(remindEntry.date)}` : ''}
+        defaultNote={remindEntry?.freeform || remindEntry?.eveningReflection || remindEntry?.morningIntent || ''}
+        deepLink={
+          remindEntry
+            ? { route: '/atlas', focusId: `journal:${remindEntry.id}` }
+            : undefined
+        }
+        source={
+          remindEntry
+            ? { moduleId: 'atlas', entityType: 'journal', entityId: remindEntry.id, label: remindEntry.date }
+            : undefined
+        }
+        tags={remindEntry?.tags}
+        onClose={() => setRemindEntry(null)}
+      />
     </div>
   );
 }

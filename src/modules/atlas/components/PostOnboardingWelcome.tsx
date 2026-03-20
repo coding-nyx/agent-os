@@ -13,6 +13,7 @@ import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { X, Zap, Flame, Target, Clock, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import type { AtlasProfile } from '../services/atlas-profile-service';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -60,24 +61,23 @@ interface ActionPromptProps {
 
 function ActionPrompt({ icon: Icon, title, description, onClick, accentClass, borderClass }: ActionPromptProps) {
   return (
-    <button
-      type="button"
+    <NeuralButton
       onClick={onClick}
+      variant="secondary"
       className={cn(
-        'flex items-start gap-3 p-3 rounded-xl border text-left w-full',
-        'bg-white/[0.02] hover:bg-white/[0.05] transition-colors',
-        borderClass,
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50',
+        'flex !flex-col !items-start !justify-start !gap-3 !p-3 !rounded-xl !border !text-left !w-full !h-auto group',
+        'bg-white/[0.02] hover:bg-white/[0.05]',
+        borderClass
       )}
     >
-      <div className={cn('mt-0.5 p-1.5 rounded-lg bg-white/5', accentClass)}>
+      <div className={cn('p-1.5 rounded-lg bg-white/5 transition-colors group-hover:bg-white/10', accentClass)}>
         <Icon className="w-3.5 h-3.5" aria-hidden="true" />
       </div>
       <div className="min-w-0">
         <p className="text-xs font-bold text-white/80">{title}</p>
-        <p className="text-[10px] text-white/40 mt-0.5">{description}</p>
+        <p className="text-[10px] text-white/40 mt-0.5 whitespace-normal">{description}</p>
       </div>
-    </button>
+    </NeuralButton>
   );
 }
 
@@ -121,19 +121,15 @@ export function PostOnboardingWelcome({
       aria-label="Welcome to Atlas"
     >
       {/* Dismiss */}
-      <button
-        type="button"
+      <NeuralButton
         onClick={handleDismiss}
         aria-label="Dismiss welcome card"
-        className={cn(
-          'absolute top-3 right-3',
-          'w-6 h-6 rounded-lg flex items-center justify-center',
-          'text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50',
-        )}
+        variant="ghost"
+        size="sm"
+        className="absolute top-3 right-3 !w-6 !h-6 !p-0 !min-h-0 rounded-lg text-white/30 hover:text-white/60"
       >
         <X className="w-3.5 h-3.5" aria-hidden="true" />
-      </button>
+      </NeuralButton>
 
       {/* Header */}
       <div className="flex items-center gap-2 mb-3 pr-8">

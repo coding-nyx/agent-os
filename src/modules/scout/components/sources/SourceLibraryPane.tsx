@@ -12,6 +12,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EmptyState } from '@/core/components/EmptyState';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 import { cn } from '@/lib/utils';
 import type { SourceEntryDecrypted } from '../../services/scout-sources-service';
 import type { AddSourceInput } from '../../services/scout-sources-service';
@@ -118,27 +121,31 @@ function SourceCard({
           </div>
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
+            <NeuralButton
+              variant="ghost"
               onClick={onStar}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-amber-400 transition-colors"
+              className="p-1.5 h-auto w-auto min-h-0 min-w-0 border-none hover:bg-white/10 text-white/30 hover:text-amber-400"
               title={source.starred ? 'Unstar' : 'Star'}
             >
               <Star className={cn("w-3.5 h-3.5", source.starred && "fill-amber-400 text-amber-400")} />
-            </button>
-            <button
+            </NeuralButton>
+            <NeuralButton
+              variant="ghost"
               onClick={onMarkRead}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-emerald-400 transition-colors"
+              className="p-1.5 h-auto w-auto min-h-0 min-w-0 border-none hover:bg-white/10 text-white/30 hover:text-emerald-400"
               title={isRead ? 'Mark unread' : 'Mark read'}
             >
               <CheckCheck className={cn("w-3.5 h-3.5", isRead && "text-emerald-400")} />
-            </button>
-            <button
+            </NeuralButton>
+            <NeuralButton
+              variant="ghost"
               onClick={onArchive}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-red-400 transition-colors"
+              themeColor="red"
+              className="p-1.5 h-auto w-auto min-h-0 min-w-0 border-none hover:bg-red-500/10 text-white/30 hover:text-red-400"
               title="Archive"
             >
               <Archive className="w-3.5 h-3.5" />
-            </button>
+            </NeuralButton>
           </div>
         </div>
       </div>
@@ -191,50 +198,55 @@ export function SourceLibraryPane({
     <div className="h-full flex flex-col space-y-6 p-8">
       {/* Toolbar */}
       <div className="flex items-center gap-4 flex-wrap">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-          <input
-            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/10 transition-colors"
+        <div className="flex-1 min-w-[240px]">
+          <NeuralInput
             placeholder="Search source library..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white/[0.03] border-white/5 pl-11 h-12 rounded-2xl"
+            icon={<Search className="w-4 h-4 text-white/20" />}
           />
         </div>
 
         <div className="flex items-center gap-1 bg-white/[0.03] border border-white/5 rounded-2xl p-1">
           {(['all', 'starred', 'unread'] as FilterKey[]).map((f) => (
-            <button
+            <NeuralButton
               key={f}
+              variant={filterKey === f ? 'primary' : 'ghost'}
               onClick={() => setFilterKey(f)}
               className={cn(
-                "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
+                "px-4 py-2 h-auto w-auto min-h-0 min-w-0 border-none rounded-xl text-[10px] font-black uppercase tracking-widest",
                 filterKey === f 
                   ? "bg-white/10 text-white shadow-sm" 
                   : "text-white/30 hover:text-white/60"
               )}
             >
               {f}
-            </button>
+            </NeuralButton>
           ))}
         </div>
 
-        <select
+        <NeuralSelectMenu
           value={sortKey}
-          onChange={(e) => setSortKey(e.target.value as SortKey)}
-          className="bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white/40 focus:outline-none hover:bg-white/[0.05] transition-colors"
-        >
-          <option value="addedAt">Newest</option>
-          <option value="domain">Domain</option>
-          <option value="title">Title</option>
-        </select>
+          onChange={(next) => setSortKey(next as SortKey)}
+          options={[
+            { value: 'addedAt', label: 'Newest' },
+            { value: 'domain', label: 'Domain' },
+            { value: 'title', label: 'Title' },
+          ]}
+          triggerClassName="bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 h-12 text-[10px] font-black uppercase tracking-widest text-white/40 focus:outline-none hover:bg-white/[0.05]"
+          minWidthClassName=""
+          ariaLabel="Sort sources"
+        />
 
         {onExportSources && (
-          <button
+          <NeuralButton
+            variant="outline"
             onClick={onExportSources}
-            className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white/40 border border-white/5 rounded-2xl hover:bg-white/5 hover:text-white/60 transition-all"
+            className="px-6 h-12 text-[10px] font-black uppercase tracking-widest text-white/40 border-white/5 rounded-2xl hover:bg-white/5 hover:text-white/60"
           >
             Export
-          </button>
+          </NeuralButton>
         )}
       </div>
 

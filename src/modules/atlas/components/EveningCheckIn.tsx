@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Moon, CheckCircle2, X, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import type { AtlasProfile } from '../services/atlas-profile-service';
 
 // ---------------------------------------------------------------------------
@@ -100,26 +102,21 @@ function EnergySelector({ value, onChange }: EnergySelectorProps) {
       </p>
       <div className="flex gap-1.5" role="group" aria-label="Energy level 1 to 5">
         {[1, 2, 3, 4, 5].map((level) => (
-          <button
+          <NeuralButton
             key={level}
+            size="sm"
             onClick={() => onChange(level)}
+            variant={value === level ? 'primary' : 'secondary'}
+            themeColor={level <= 2 ? 'rose' : level === 3 ? 'amber' : 'emerald'}
             aria-pressed={value === level}
             aria-label={`Energy ${level}: ${ENERGY_LABELS[level]}`}
-            className={cn(
-              'flex-1 flex flex-col items-center gap-0.5 rounded-xl border px-2 py-2 transition-all',
-              'text-xs font-bold focus-visible:outline-none',
-              'focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2',
-              'focus-visible:ring-offset-transparent',
-              value === level
-                ? energyColor(level)
-                : 'border-white/10 bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/60',
-            )}
+            className="flex-1 flex flex-col items-center gap-0.5 h-auto py-2 px-1 min-w-0"
           >
             <span className="text-base leading-none tabular-nums">{level}</span>
-            <span className="text-[8px] uppercase tracking-[0.1em] truncate">
+            <span className="text-[8px] uppercase tracking-[0.1em] truncate w-full text-center">
               {ENERGY_LABELS[level]}
             </span>
-          </button>
+          </NeuralButton>
         ))}
       </div>
     </div>
@@ -166,14 +163,14 @@ export function EveningCheckIn({ profile, userId, onDismiss }: EveningCheckInPro
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="rounded-2xl border border-violet-500/20 bg-violet-500/5 backdrop-blur-sm p-4 space-y-4"
+        className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-sm p-4 space-y-4"
         role="region"
         aria-label="Evening check-in"
       >
         {/* Header */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Moon className="w-4 h-4 text-violet-400 shrink-0" aria-hidden="true" />
+            <Moon className="w-4 h-4 text-indigo-400 shrink-0" aria-hidden="true" />
             <span className="text-sm font-bold text-white/90 tracking-wide truncate">
               How did today go?
             </span>
@@ -182,13 +179,15 @@ export function EveningCheckIn({ profile, userId, onDismiss }: EveningCheckInPro
             <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/40">
               {dateLabel}
             </span>
-            <button
+            <NeuralButton
+              variant="ghost"
+              size="sm"
               onClick={() => persistAndDismiss()}
               aria-label="Dismiss evening check-in"
-              className="rounded-lg p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
+              className="w-8 h-8 p-0 min-h-0 min-w-0"
             >
               <X className="w-3.5 h-3.5" aria-hidden="true" />
-            </button>
+            </NeuralButton>
           </div>
         </div>
 
@@ -227,37 +226,27 @@ export function EveningCheckIn({ profile, userId, onDismiss }: EveningCheckInPro
             What blocked you today?{' '}
             <span className="text-white/20 normal-case">(optional)</span>
           </label>
-          <textarea
+          <NeuralTextarea
             id="evening-blockers"
             value={blockers}
             onChange={(e) => setBlockers(e.target.value)}
             placeholder="Distractions, unclear priorities, low energy..."
             rows={2}
-            className={cn(
-              'w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2',
-              'text-xs text-white/70 placeholder:text-white/25 resize-none',
-              'focus:outline-none focus:border-violet-500/40 focus:bg-white/[0.05] transition-colors',
-            )}
+            className="text-xs text-white/70 placeholder:text-white/25"
           />
         </div>
 
         {/* Submit CTA */}
-        <button
+        <NeuralButton
           onClick={handleSubmit}
           disabled={!energyLevel}
-          className={cn(
-            'w-full flex items-center justify-center gap-2 rounded-xl',
-            'bg-violet-500/20 border border-violet-500/30 hover:bg-violet-500/30 text-violet-300',
-            'text-xs font-bold uppercase tracking-[0.15em] py-2.5 px-4 transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400',
-            'focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
-            'disabled:opacity-40 disabled:cursor-not-allowed',
-          )}
+          themeColor="indigo"
+          className="w-full flex items-center justify-center gap-2"
           aria-label="Submit evening check-in"
         >
           <Send className="w-3.5 h-3.5" aria-hidden="true" />
           Log Day
-        </button>
+        </NeuralButton>
       </motion.div>
     </AnimatePresence>
   );

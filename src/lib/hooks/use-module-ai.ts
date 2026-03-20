@@ -22,6 +22,7 @@ import { usePendingRecovery } from './use-pending-recovery';
 import { MODULE_MANIFEST } from '../module-manifest';
 import { NexusLogger } from '@/lib/nexus-logger';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
+import { parseDocumentUploadMessage, summarizeDocumentUploadMessage } from '@/lib/services/document-upload-message';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual' | 'ephemeral';
 
@@ -44,11 +45,24 @@ function trimToCharLimit(text: string, limit: number): string {
 }
 
 function contentToText(content: MessageContent): string {
-  if (typeof content === 'string') return content;
+  if (typeof content === 'string') {
+    const upload = parseDocumentUploadMessage(content);
+    if (upload) return summarizeDocumentUploadMessage(upload);
+    return content;
+  }
   return content
     .filter((part) => part.type === 'text')
     .map((part) => (part as { type: 'text'; text: string }).text)
     .join(' ');
+}
+
+function normalizeContentForAI(content: MessageContent): MessageContent {
+  if (typeof content === 'string') {
+    const upload = parseDocumentUploadMessage(content);
+    if (upload) return summarizeDocumentUploadMessage(upload);
+    return content;
+  }
+  return content;
 }
 
 function buildPendingContextHash(moduleId: string, contextPolicy: ContextPolicy, content: MessageContent): string {
@@ -117,7 +131,7 @@ export function useModuleAI({
   const pendingStreamTextRef = useRef('');
   const pendingAIStateRef = useRef<{ isThinking: boolean; isActing: boolean; currentActionType: string | null }>({ isThinking: false, isActing: false, currentActionType: null });
   const streamRafRef = useRef<number>(0);
-  const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean }) => void) | null>(null);
+  const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }) => void) | null>(null);
   const recoveryReplayKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -338,13 +352,13 @@ export function useModuleAI({
     async (
       content: MessageContent,
       onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void,
-      options?: { isRecoveryReplay?: boolean }
+      options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }
     ) => {
       if (isProcessingRef.current) return;
       if (isGuest && quota.isHardLocked) return;
 
       // Show user message and processing state IMMEDIATELY
-      const userMsg: Message = { role: 'user', content };
+      const userMsg: Message = { role: 'user', content: options?.visibleContent ?? content };
       // H-2: maintain local history to avoid stale-closure issues with setMessages updater
       let localHistory = [...messages, userMsg].slice(-MAX_MESSAGES);
       setMessages(localHistory);
@@ -440,7 +454,10 @@ export function useModuleAI({
             summary: memoryStatus === 'vault_blocked'
               ? `Memory unavailable: vault locked for ${moduleId}.`
               : cappedMemorySummary || `Active session in ${moduleId}${resolvedContextPolicy === 'doc-only' ? ' (doc-only).' : '.'}`,
-            history: messages  // history before user message — CognitiveAgent adds user msg
+            history: messages.map((message) => ({
+              ...message,
+              content: normalizeContentForAI(message.content),
+            }))  // history before user message — CognitiveAgent adds user msg
           }),
           (chunk) => {
             // Update refs synchronously on every chunk (for post-stream processing)

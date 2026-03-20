@@ -16,6 +16,7 @@ import {
   Target,
   Clock,
 } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasTask, AtlasGoal, AtlasHabit, AtlasProfile } from '../services/atlas-profile-service';
@@ -234,7 +235,8 @@ export function AtlasAIPanel({
   return (
     <SurfaceCard className="overflow-hidden">
       {/* ── Collapsible Header ── */}
-      <button
+      <NeuralButton
+        variant="emerald"
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
       >
@@ -255,7 +257,7 @@ export function AtlasAIPanel({
             isExpanded && 'rotate-180'
           )}
         />
-      </button>
+      </NeuralButton>
 
       {/* ── Expandable Content ── */}
       <AnimatePresence initial={false}>

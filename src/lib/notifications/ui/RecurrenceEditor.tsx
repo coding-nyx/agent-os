@@ -1,13 +1,13 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
-import { NeuralSelect } from '@/core/components/NeuralSelect';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 import type { Recurrence } from '../types';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 const KIND_OPTIONS: { value: Recurrence['kind']; label: string }[] = [
+  { value: 'once', label: 'One-time reminder' },
   { value: 'every_n_days', label: 'Every few days' },
   { value: 'weekly_by_days', label: 'Weekly on specific days' },
   { value: 'daily_window', label: 'Daily reminder window' },
@@ -18,6 +18,10 @@ function defaultForKind(kind: Recurrence['kind']): Recurrence {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const now = new Date().toISOString();
   switch (kind) {
+    case 'once': {
+      const due = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      return { kind, dueAt: due, timezone: tz };
+    }
     case 'every_n_days':
       return { kind, intervalDays: 2, dtStart: now, timezone: tz };
     case 'hourly':
@@ -72,18 +76,38 @@ export function RecurrenceEditor({
         <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
           Schedule
         </label>
-        <NeuralSelect
+        <NeuralSelectMenu
           value={value.kind === 'rrule' ? 'every_n_days' : value.kind}
           disabled={disabled}
-          onChange={(e) => onChange(defaultForKind(e.target.value as Recurrence['kind']))}
-        >
-          {KIND_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </NeuralSelect>
+          options={KIND_OPTIONS}
+          onChange={(next) => onChange(defaultForKind(next as Recurrence['kind']))}
+          ariaLabel="Schedule"
+        />
       </div>
 
       {/* Every N days */}
+      {value.kind === 'once' && (
+        <div className="space-y-2">
+          <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+            Due at
+          </label>
+          <NeuralInput
+            label=""
+            type="datetime-local"
+            disabled={disabled}
+            value={isoToLocalInput(value.dueAt)}
+            onChange={(e) => {
+              const nextIso = localInputToIso(e.target.value, value.dueAt);
+              onChange({ ...value, dueAt: nextIso });
+            }}
+            className="w-full bg-black/40 border border-white/10 rounded-2xl h-11 px-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40 [color-scheme:dark]"
+          />
+          <p className="text-[10px] text-white/40 leading-snug ml-1">
+            One-time reminders fire once and won’t repeat.
+          </p>
+        </div>
+      )}
+
       {value.kind === 'every_n_days' && (
         <div className="space-y-3">
           <div className="space-y-1.5">
@@ -205,18 +229,20 @@ export function RecurrenceEditor({
             <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
               Remind me
             </label>
-            <NeuralSelect
-                disabled={disabled}
-                value={value.intervalMinutes}
-                onChange={(e) => onChange({ ...value, intervalMinutes: Number(e.target.value) })}
-              >
-                <option value={30}>Every 30 minutes</option>
-                <option value={60}>Every hour</option>
-                <option value={120}>Every 2 hours</option>
-                <option value={180}>Every 3 hours</option>
-                <option value={360}>Every 6 hours</option>
-                <option value={1440}>Once per day</option>
-              </NeuralSelect>
+            <NeuralSelectMenu
+              disabled={disabled}
+              value={value.intervalMinutes}
+              onChange={(next) => onChange({ ...value, intervalMinutes: Number(next) })}
+              options={[
+                { value: 30, label: 'Every 30 minutes' },
+                { value: 60, label: 'Every hour' },
+                { value: 120, label: 'Every 2 hours' },
+                { value: 180, label: 'Every 3 hours' },
+                { value: 360, label: 'Every 6 hours' },
+                { value: 1440, label: 'Once per day' },
+              ]}
+              ariaLabel="Remind me"
+            />
           </div>
         </div>
       )}
@@ -252,5 +278,32 @@ function setTimePart(iso: string, hhmm: string): string {
     return d.toISOString();
   } catch {
     return iso;
+  }
+}
+
+function isoToLocalInput(iso: string): string {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const year = d.getFullYear();
+    const month = pad(d.getMonth() + 1);
+    const day = pad(d.getDate());
+    const hours = pad(d.getHours());
+    const minutes = pad(d.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  } catch {
+    return '';
+  }
+}
+
+function localInputToIso(value: string, fallbackIso: string): string {
+  try {
+    if (!value) return fallbackIso;
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return fallbackIso;
+    return d.toISOString();
+  } catch {
+    return fallbackIso;
   }
 }

@@ -41,13 +41,14 @@ const stripMotion = ({
 }: any) => ({ children, ...rest });
 
 vi.mock('framer-motion', () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="animate-presence">{children}</div>
+  ),
   useReducedMotion: () => false,
   motion: {
-    div: (p: any) => {
-      const { children, ...r } = stripMotion(p);
-      return <div {...r}>{children}</div>;
-    },
+    div: ({ children, className, style, ...rest }: any) => (
+      <div className={className} style={style} {...rest}>{children}</div>
+    ),
     button: (p: any) => {
       const { children, ...r } = stripMotion(p);
       return <button {...r}>{children}</button>;

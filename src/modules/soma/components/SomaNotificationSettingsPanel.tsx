@@ -58,5 +58,5 @@ export function SomaNotificationSettingsPanel() {
     ];
   }, []);
 
-  return <NotificationSettingsPanel moduleId="soma" title="Reminders" presets={presets} />;
+  return <NotificationSettingsPanel moduleId="soma" title="Reminders" presets={presets} manageAllHref="/notifications" />;
 }

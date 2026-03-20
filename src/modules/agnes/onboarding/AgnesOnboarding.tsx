@@ -4,6 +4,8 @@ import { GuidedChatSpec, GuidedIntakeStep, IntakeModuleConfig } from '@/core/int
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
 import { NexusChat } from '@/core/components/NexusChat';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
@@ -328,8 +330,11 @@ ${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initial
                 <p className="text-[9px] text-white/40 uppercase tracking-wider mb-2">Communication Style</p>
                 <div className="flex gap-2 flex-wrap">
                   {(['direct', 'gentle', 'analytical'] as const).map(style => (
-                    <button
+                    <NeuralButton
                       key={style}
+                      variant={fastStyle === style ? 'primary' : 'secondary'}
+                      themeColor="indigo"
+                      size="sm"
                       onClick={() => setFastStyle(style)}
                       className={cn(
                         'px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all',
@@ -339,7 +344,7 @@ ${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initial
                       )}
                     >
                       {style}
-                    </button>
+                    </NeuralButton>
                   ))}
                 </div>
               </div>
@@ -347,8 +352,11 @@ ${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initial
                 <p className="text-[9px] text-white/40 uppercase tracking-wider mb-2">Agnes Gender Preference</p>
                 <div className="flex gap-2 flex-wrap">
                   {([['female', 'Female'], ['male', 'Male'], ['non-binary', 'Non-binary'], ['no-preference', 'No Preference']] as const).map(([value, label]) => (
-                    <button
+                    <NeuralButton
                       key={value}
+                      variant={fastGender === value ? 'primary' : 'secondary'}
+                      themeColor="indigo"
+                      size="sm"
                       onClick={() => setFastGender(value)}
                       className={cn(
                         'px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all',
@@ -358,44 +366,47 @@ ${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initial
                       )}
                     >
                       {label}
-                    </button>
+                    </NeuralButton>
                   ))}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input
+                <NeuralInput
                   placeholder="Background context *"
                   value={fastBackground}
                   onChange={e => setFastBackground(e.target.value)}
                   className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
                 />
-                <input
+                <NeuralInput
                   placeholder="Current struggles *"
                   value={fastStruggles}
                   onChange={e => setFastStruggles(e.target.value)}
                   className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
                 />
-                <input
+                <NeuralInput
                   placeholder="Goals *"
                   value={fastGoals}
                   onChange={e => setFastGoals(e.target.value)}
                   className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
                 />
               </div>
-              <input
+              <NeuralInput
                 placeholder="Past trauma or heavy experiences (optional)"
                 value={fastTrauma}
                 onChange={e => setFastTrauma(e.target.value)}
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-indigo-500/50"
               />
               <div className="flex justify-end">
-                <button
+                <NeuralButton
                   onClick={handleFastTrack}
                   disabled={!fastTrackReady || isValidatingFastTrack}
+                  loading={isValidatingFastTrack}
+                  themeColor="indigo"
+                  size="sm"
                   className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
                 >
-                  {isValidatingFastTrack ? 'Validating...' : 'Execute'}
-                </button>
+                  Execute
+                </NeuralButton>
               </div>
             </div>
             <p className="text-[9px] text-white/40 uppercase tracking-tight">

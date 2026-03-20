@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { ResearchSession, ResearchSessionStatus } from '../types';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
 
 interface ScoutSessionListProps {
   sessions: ResearchSession[];
@@ -123,11 +124,12 @@ export function ScoutSessionList({ sessions, onSelect, onDelete, activeSessionId
               )}
             >
               <div className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-start sm:justify-between sm:p-4">
-                <button
-                  type="button"
+                <NeuralButton
+                  as="button"
+                  variant="ghost"
                   onClick={() => onSelect(session.id)}
                   aria-label={`Open research session ${session.topic}`}
-                  className="flex min-h-11 min-w-0 flex-1 items-start gap-3 rounded-2xl text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-lime-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#040406]"
+                  className="flex min-h-11 min-w-0 flex-1 items-start gap-3 rounded-2xl text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-lime-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#040406] border-none bg-transparent hover:bg-transparent"
                 >
                   <span
                     className={cn(
@@ -171,7 +173,7 @@ export function ScoutSessionList({ sessions, onSelect, onDelete, activeSessionId
                       </span>
                     </span>
                   </span>
-                </button>
+                </NeuralButton>
 
                 <div className="flex items-center justify-between gap-2 sm:justify-end">
                   <span
@@ -184,14 +186,15 @@ export function ScoutSessionList({ sessions, onSelect, onDelete, activeSessionId
                     <ArrowRight size={13} aria-hidden="true" />
                   </span>
 
-                  <button
+                  <NeuralButton
                     type="button"
+                    variant="ghost"
                     onClick={() => onDelete(session.id)}
                     aria-label={`Delete research session ${session.topic}`}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-white/55 transition-colors hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-200 focus-visible:ring-2 focus-visible:ring-rose-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#040406]"
+                    className="h-11 w-11 p-0 text-white/55 transition-colors hover:bg-rose-500/10 hover:text-rose-200"
                   >
                     <Trash2 size={15} aria-hidden="true" />
-                  </button>
+                  </NeuralButton>
                 </div>
               </div>
             </motion.div>

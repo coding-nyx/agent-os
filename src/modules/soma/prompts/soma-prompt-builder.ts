@@ -247,6 +247,10 @@ const BIOMARKER_ACTIONS = `\
   <action type="parse_lab_report">{"panel":"...","findings":[...],"flags":[...]}</action>
 - analyze_medical_image: Analyze uploaded medical image
   <action type="analyze_medical_image">{"reportType":"...","sourceLabel":"...","biomarkers":[...],"labSummaries":[...],"clinicalFlags":[...]}</action>
+- propose_reminder: Suggest a health reminder and wait for explicit user confirmation
+  <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"biomarker|recovery","entityId":"...","label":"..."},"tags":["..."]}</action>
+- query_reminders: List existing reminders
+  <action type="query_reminders">{"moduleId":"soma"}</action>
 - self_clearance_check: Run self-assessment clearance
   <action type="self_clearance_check">{"activity":"..."}</action>
 - issue_clearance: Issue medical self-clearance
@@ -266,6 +270,10 @@ const RECOVERY_ACTIONS = `\
   <action type="issue_clearance">{"activity":"...","status":"granted|denied|conditional","reason":"..."}</action>
 - commit_biomarker: Save a biomarker reading
   <action type="commit_biomarker">{"name":"...","value":...,"unit":"...","recordedAt":"..."}</action>
+- propose_reminder: Suggest a recovery reminder and wait for explicit user confirmation
+  <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"recovery","entityId":"...","label":"..."},"tags":["..."]}</action>
+- query_reminders: List existing reminders
+  <action type="query_reminders">{"moduleId":"soma"}</action>
 - detect_data_hint: (SILENT) Cross-module data hint when user implies data change in another module
   <action type="detect_data_hint">{"sourceModule":"soma","targetModule":"[relevant_module]","field":"fieldName","inferredValue":"value","confidence":0.85,"rawQuote":"exact user words","sentiment":"neutral"}</action>
   Use SILENTLY when the user implies a data change in another module (e.g. titan, ledger, atlas, agnes). Only emit when confidence ≥ 0.75 and value is concrete. Do NOT explain this action to the user.`;
@@ -419,6 +427,10 @@ You ARE NOT:
 Every health entry the user submits is ALREADY SAVED before you see it. \
 Your job is to annotate, not to approve before saving.
 
+[RESPONSE RULE]
+- Keep <thought> strictly internal. Do NOT place user-facing text inside it.
+- Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.
+
 Validation severity model:
   • info    — Informational observation. No action required. ("Your resting HR is trending lower this week.")
   • warning — Plausible but worth noting. User should be aware. ("This SpO₂ reading is below 95% — worth monitoring.")
@@ -470,6 +482,10 @@ ${SOMA_MEDICAL_DISCLAIMER}
   <action type="compute_readiness">{"restingHeartRate":...,"sleepQuality":...,"energyLevel":...,"stressPhysical":...}</action>
 - commit_biomarker: Save a biomarker reading
   <action type="commit_biomarker">{"name":"...","value":...,"unit":"...","recordedAt":"..."}</action>
+- propose_reminder: Suggest a health reminder and wait for explicit user confirmation
+  <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"biomarker|recovery","entityId":"...","label":"..."},"tags":["..."]}</action>
+- query_reminders: List existing reminders
+  <action type="query_reminders">{"moduleId":"soma"}</action>
 - detect_data_hint: (SILENT) Cross-module data hint
   <action type="detect_data_hint">{"sourceModule":"soma","targetModule":"...","field":"...","inferredValue":"...","confidence":0.85,"rawQuote":"...","sentiment":"neutral"}</action>`;
 

@@ -237,7 +237,8 @@ export function GraphView({
           <div className="absolute inset-4 border border-white/[0.03] rounded-full animate-[spin_60s_linear_infinite]" />
           <div className="absolute inset-12 border border-white/[0.05] rounded-full animate-[spin_40s_linear_reverse_infinite]" />
 
-          <button
+          <NeuralButton
+            variant="indigo"
             onClick={() => window.dispatchEvent(new CustomEvent('open-nexus'))}
             onMouseEnter={() => setShowNexusStats(true)}
             onMouseLeave={() => setShowNexusStats(false)}
@@ -296,7 +297,7 @@ export function GraphView({
                 </motion.div>
               )}
             </AnimatePresence>
-          </button>
+          </NeuralButton>
         </div>
 
         {orchestratorNodes.map((node) => (

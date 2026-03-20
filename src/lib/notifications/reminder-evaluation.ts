@@ -150,6 +150,12 @@ export function computeDueOccurrencesInRange(
   const rec = recurrence as Recurrence | undefined;
   if (!rec || typeof rec !== 'object' || !('kind' in rec)) return [];
 
+  if (rec.kind === 'once') {
+    const dueAt = toDateMs(rec.dueAt);
+    if (dueAt === null) return [];
+    if (dueAt >= rangeStartMs && dueAt <= rangeEndMs) return [dueAt];
+    return [];
+  }
   if (rec.kind === 'every_n_days') return computeDueEveryNDays(rec, rangeStartMs, rangeEndMs);
   if (rec.kind === 'hourly') return computeDueHourly(rec, rangeStartMs, rangeEndMs);
   if (rec.kind === 'weekly_by_days') return computeDueWeeklyByDays(rec, rangeStartMs, rangeEndMs);
@@ -157,4 +163,3 @@ export function computeDueOccurrencesInRange(
   // Phase 1: RRULE parsing is a later phase.
   return [];
 }
-

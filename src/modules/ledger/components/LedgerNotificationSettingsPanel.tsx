@@ -43,5 +43,5 @@ export function LedgerNotificationSettingsPanel() {
     ];
   }, []);
 
-  return <NotificationSettingsPanel moduleId="ledger" title="Reminders" presets={presets} />;
+  return <NotificationSettingsPanel moduleId="ledger" title="Reminders" presets={presets} manageAllHref="/notifications" />;
 }

@@ -4,6 +4,8 @@ import { Target, TrendingUp, Plus, Edit2, Trash2, PartyPopper, Lightbulb } from 
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { ProgressRow } from '@/core/components/ProgressRow';
@@ -267,28 +269,32 @@ export function GoalTracker({
       {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
-          <button
+          <NeuralButton
+            variant="secondary"
+            themeColor={!showAchieved ? 'cyan' : undefined}
             onClick={() => setShowAchieved(false)}
             className={cn(
-              "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+              "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors h-auto min-h-0",
               !showAchieved 
                 ? "bg-cyan-600 text-white" 
                 : "bg-white/5 text-white/60 hover:bg-white/10"
             )}
           >
             Active ({stats.activeGoals})
-          </button>
-          <button
+          </NeuralButton>
+          <NeuralButton
+            variant="secondary"
+            themeColor={showAchieved ? 'emerald' : undefined}
             onClick={() => setShowAchieved(true)}
             className={cn(
-              "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+              "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors h-auto min-h-0",
               showAchieved 
                 ? "bg-emerald-600 text-white" 
                 : "bg-white/5 text-white/60 hover:bg-white/10"
             )}
           >
             Achieved ({stats.achievedGoals})
-          </button>
+          </NeuralButton>
         </div>
 
         <div className="flex gap-2">
@@ -374,20 +380,22 @@ export function GoalTracker({
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button
+                    <NeuralButton
+                      variant="ghost"
                       onClick={() => handleOpenEditModal(goal)}
                       disabled={disabled}
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white disabled:opacity-50 transition-colors"
+                      className="p-1.5 h-auto min-h-0 text-white/60 hover:text-white"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
+                    </NeuralButton>
+                    <NeuralButton
+                      variant="ghost"
                       onClick={() => onDeleteGoal(goal.id)}
                       disabled={disabled}
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 disabled:opacity-50 transition-colors"
+                      className="p-1.5 h-auto min-h-0 text-white/60 hover:text-red-400"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    </NeuralButton>
                   </div>
                 </div>
 
@@ -511,32 +519,35 @@ export function GoalTracker({
               <label className="block text-xs font-bold text-white/70 mb-2 uppercase tracking-wider">
                 Goal Type
               </label>
-              <select
+              <NeuralSelectMenu
                 value={formData.type || 'savings'}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-cyan-500/50"
-              >
-                {GOAL_TYPES.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.icon} {type.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(next) => setFormData({ ...formData, type: next as any })}
+                options={GOAL_TYPES.map((type) => ({
+                  value: type.value,
+                  label: `${type.icon} ${type.label}`
+                }))}
+                triggerClassName="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-cyan-500/50"
+                minWidthClassName=""
+                ariaLabel="Goal type"
+              />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-white/70 mb-2 uppercase tracking-wider">
                 Priority
               </label>
-              <select
+              <NeuralSelectMenu
                 value={formData.priority || 'medium'}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-cyan-500/50"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
+                onChange={(next) => setFormData({ ...formData, priority: next as any })}
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'high', label: 'High' },
+                ]}
+                triggerClassName="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-cyan-500/50"
+                minWidthClassName=""
+                ariaLabel="Priority"
+              />
             </div>
 
             <div>

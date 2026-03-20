@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Inbox, Zap, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/core/components/EmptyState';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import type { AtlasTask } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
@@ -141,20 +142,24 @@ const PriorityTaskRow = React.memo(function PriorityTaskRow({
 
       {/* Actions */}
       <div className="flex items-center gap-1 shrink-0">
-        <button
+        <NeuralButton
+          variant="ghost"
+          size="sm"
           onClick={() => onComplete(task.id)}
           aria-label={`Complete "${task.title}"`}
-          className="p-1.5 rounded-lg text-white/30 hover:text-emerald-400 hover:bg-emerald-400/10 transition-all"
+          className="p-1.5 h-auto text-white/30 hover:text-emerald-400"
         >
           <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-        </button>
-        <button
+        </NeuralButton>
+        <NeuralButton
+          variant="ghost"
+          size="sm"
           onClick={() => onDefer(task.id)}
           aria-label={`Defer "${task.title}"`}
-          className="p-1.5 rounded-lg text-white/20 hover:text-white/50 hover:bg-white/5 transition-all"
+          className="p-1.5 h-auto text-white/20 hover:text-white/50"
         >
           <ArrowRight className="w-4 h-4" aria-hidden="true" />
-        </button>
+        </NeuralButton>
       </div>
     </motion.div>
   );
@@ -251,13 +256,15 @@ export function PriorityInbox({
 
       {/* ── Defer others button — only when there are tasks beyond top 3 ── */}
       {eligibleCount > 3 && (
-        <button
+        <NeuralButton
+          variant="secondary"
+          size="sm"
           onClick={handleDeferOthers}
-          className="w-full py-2 rounded-xl border border-white/5 bg-white/[0.02] text-[10px] font-bold uppercase tracking-[0.15em] text-white/30 hover:text-white/50 hover:bg-white/5 transition-all"
+          className="w-full h-auto py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-white/30 hover:text-white/50"
           aria-label={`Defer ${eligibleCount - 3} lower-priority tasks via Atlas`}
         >
           Defer {eligibleCount - 3} other tasks → Ask Atlas
-        </button>
+        </NeuralButton>
       )}
     </motion.div>
   );

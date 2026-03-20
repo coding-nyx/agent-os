@@ -18,6 +18,7 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import { getFirebase } from '@/lib/firebase';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { SpineEvent, SpineEventType } from '@/lib/types';
+import { hashOccurrenceId } from '@/lib/notifications/reminder-evaluation';
 
 // ---------------------------------------------------------------------------
 // Alert Rule definition
@@ -359,6 +360,14 @@ class BridgeServiceClass {
         const moduleId = typeof payload.data?.source === 'string' ? payload.data.source : '';
         const title = payload.notification?.title ?? 'Nexus Reminder';
         const body = payload.notification?.body ?? '';
+        const scheduleId = typeof payload.data?.scheduleId === 'string' ? payload.data.scheduleId : undefined;
+        const occurrenceId = typeof payload.data?.occurrenceId === 'string'
+          ? payload.data.occurrenceId
+          : scheduleId
+            ? hashOccurrenceId(`${scheduleId}:${payload.data?.dueAt ?? Date.now()}`)
+            : hashOccurrenceId(`${moduleId}:${Date.now()}`);
+        const dueAt = typeof payload.data?.dueAt === 'string' ? payload.data.dueAt : new Date().toISOString();
+        const focusId = typeof payload.data?.focusId === 'string' ? payload.data.focusId : undefined;
 
         // Foreground path
         if (document.visibilityState === 'visible') {
@@ -595,7 +604,7 @@ class BridgeServiceClass {
   // -------------------------------------------------------------------------
   // In-app reminder UX (foreground FCM)
   // -------------------------------------------------------------------------
-  private showInAppReminderToast({
+  showInAppReminderToast({
     title,
     body,
     moduleId,

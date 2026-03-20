@@ -7,6 +7,8 @@ import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
 import { getFirebase } from '@/lib/firebase';
 import { BridgeService } from '@/lib/services/bridge-service';
+import { ReminderScheduler } from '@/lib/notifications/reminder-scheduler-service';
+import { useLocation } from 'react-router-dom';
 import type { ModuleId } from '@/lib/module-manifest';
 import type { NotificationScheduleConfig, Recurrence } from '../types';
 import { RecurrenceEditor } from './RecurrenceEditor';
@@ -17,6 +19,8 @@ import { cn } from '@/lib/utils';
 function recurrenceSummary(r: Recurrence): string {
   const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   switch (r.kind) {
+    case 'once':
+      return `Once at ${new Date(r.dueAt).toLocaleString()}`;
     case 'every_n_days':
       return r.intervalDays === 1 ? 'Every day' : `Every ${r.intervalDays} days`;
     case 'hourly':
@@ -210,14 +214,17 @@ export function NotificationSettingsPanel({
   title,
   presets,
   className,
+  manageAllHref,
 }: {
   moduleId: ModuleId;
   title?: string;
   presets: NotificationSchedulePreset[];
   className?: string;
+  manageAllHref?: string;
 }) {
   const { user, isGuest } = useAuth();
   const dataLayer = useDataLayer();
+  const location = useLocation();
   const [schedules, setSchedules] = useState<NexusRecord<NotificationScheduleConfig>[]>([]);
   const [hydrating, setHydrating] = useState(true);
   const didEnsureDefaultsRef = useRef(false);
@@ -314,6 +321,7 @@ export function NotificationSettingsPanel({
             message: maybe?.message,
             details: maybe?.details,
           });
+          await ReminderScheduler.scheduleLocal(scheduleId);
         }
       }
     },
@@ -353,22 +361,14 @@ export function NotificationSettingsPanel({
             onSave={(next) => saveSchedule(s.scheduleId, next)}
           />
         ))}
-      </div>
-    </div>
-  );
-}
-se tracking-widest">Loading…</span>
-          )}
-        </div>
-
-        {scheduleEditors.map((s) => (
-          <NotificationScheduleEditor
-            key={s.scheduleId}
-            scheduleId={s.scheduleId}
-            initial={s.initial}
-            onSave={(next) => saveSchedule(s.scheduleId, next)}
-          />
-        ))}
+        {manageAllHref && location.pathname !== manageAllHref && (
+          <a
+            href={manageAllHref}
+            className="block text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 hover:text-cyan-200 px-1 pt-2"
+          >
+            Manage all in Notifications
+          </a>
+        )}
       </div>
     </div>
   );

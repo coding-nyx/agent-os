@@ -11,24 +11,14 @@ Legend:
 
 | ID | Title | Location (primary) |
 |---|---|---|
-| B1 | Spine events never persist because `Spine.setDataLayer()` is never called | `src/lib/spine/spine-event-bus.ts:143-156` |
-| B2 | `SOUL_WRITE_REQUESTED` is emitted but has zero subscribers (writes get orphaned) | `src/lib/global-projection-service.ts` (emit) |
-| B3 | Cascade rules double-register under React Strict Mode/HMR (rules run multiple times) | `src/App.tsx:50-58` |
-| B4 | Reminder scheduling depends on a Cloud Function (`scheduleReminder`) that is not present in the repo | `src/lib/notifications/reminder-scheduler-service.ts:55-64` |
 | A1 | Agnes somatic branch is dead (selects `somatic` state but renders the session UI instead; breathwork/grounding never mount) | `src/modules/agnes/AgnesPage.tsx` |
 | A2 | Agnes “Resume Sync” always calls `onStartSession('new')` (unreachable continue/resume session flow) | `src/modules/agnes/components/AgnesSanctuaryContent.tsx` |
 | A3 | Agnes `detect_data_hint` handler registered only under `nexus`, so Agnes emits may be dropped | `src/lib/actions/core-handlers.ts:803` (registration) |
 | L1 | Ledger camera capture uses `process.env.REACT_APP_OPENROUTER_KEY` (Vite env should be `import.meta.env.VITE_*`) | `src/modules/ledger/LedgerPage.tsx:223` |
-| L2 | Ledger `paidQuarters` gets dropped on profile normalize (resets after reload) | `src/modules/ledger/services/ledger-intake-service.ts:152` |
-| L3 | Ledger create-empty profile omits `paidQuarters` (new profiles also lose the field) | `src/modules/ledger/services/ledger-intake-service.ts:281-303` |
 | T1 | Titan routine builder imports `@hello-pangea/dnd` and will crash if the package isn’t installed | `src/modules/titan/components/RoutineBuilder.tsx:8` |
 | T2 | Titan `workoutLogs` never gets written (sparklines stay empty) | `src/modules/titan/components/PRBoard.tsx` + write paths in `titan/services/actions.ts` |
 | SC1 | Scout `onActionParsed` is never passed (AI actions are dropped during doc analysis flows) | `src/modules/scout/ScoutPage.tsx` |
-| SC2 | Scout digest persistence ignores `encryptionKey` (digests saved plaintext; decrypt fails later) | `src/modules/scout/scout-digest-service.ts:268-284` |
-| SC3 | Scout `generate_digest` passes encrypted `SourceEntry[]` to a function expecting decrypted sources | `src/modules/scout/services/actions.ts:268-283` |
-| SO1 | Soma onboarding `onComplete` is a no-op (profile refresh depends on delayed subscriptions/offline reliability) | `src/modules/soma/SomaPage.tsx:174` |
 | SO2 | Soma diagnosis merge has potential `SomaProfile` type import mismatch (risk of wrong persisted shape) | `src/modules/soma/diagnosis/soma-diagnosis-merge.ts` |
-| AT1 | Atlas `delegateToModule` is a no-op (`() => {}`), so cross-module orchestration doesn’t happen | `src/modules/atlas/AtlasPage.tsx:260-261` |
 | AT2 | Atlas field actions likely never register because `atlas-field-actions.ts` isn’t wired | `src/modules/atlas/AtlasPage.tsx` (no registration call) |
 | FO1 | Forge `execute_code` leaves session stuck as `running` when backend env vars are missing/failure occurs | `src/modules/forge/forge-cloud-execution.ts` + `src/modules/forge/services/actions.ts` |
 | FO2 | Forge lacks an onboarding gate (users reach chat without profile setup despite `ForgeOnboarding` existing) | `src/modules/forge/ForgePage.tsx:375-389` |
@@ -110,6 +100,17 @@ Legend:
 | H1 | Hub `DailyBrief` exists but is not mounted in `HubPage` | `src/modules/hub/HubPage.tsx` + `DailyBrief.tsx` |
 | H2 | `overallWellnessScore` is never computed/written (read-only from prior persisted state) | `src/lib/services/global-projection-service.ts` |
 
+### Enhancements / UX (Requested)
+
+| ID | Title | Location (primary) |
+|---|---|---|
+| SC8 | Scout needs search customization (news/other source types) so results are type-based | `src/modules/scout/ScoutPage.tsx` + `components/deep-research/DeepResearchPanel.tsx` |
+| X10 | Document upload visual updates across all modules that support uploads | `src/modules/soma/components/DiagnosisUploadZone.tsx` + `src/modules/scout/components/ScoutUploadZone.tsx` + `src/modules/nexus/components/NexusDashboard.tsx` + `src/modules/titan/components/TitanDiagnosisPanel.tsx` |
+| N5 | Nexus should handle web search via intelligent action tag so Nexus can invoke web search too | `src/modules/nexus/NexusDashboard.tsx` + `src/lib/actions/core-handlers.ts` |
+| T3 | Titan needs a more user-friendly design and more “alive” data-structure UX | `src/modules/titan/*` |
+| T4 | Quick logger should be sticky to bottom / on keyboard on mobile | `src/modules/titan/components/QuickLogBar.tsx` |
+| N6 | Nexus notification scheduling via Spine events with interactive overlay; link notifications to modules, provide entry point to view/modify, and allow Nexus to view/modify all notifications | `src/modules/nexus/*` + `src/lib/spine/*` + `src/lib/notifications/*` |
+
 ## Partial (implemented but incomplete / inconsistent in edge conditions)
 
 | ID | Title | Location (primary) |
@@ -124,4 +125,3 @@ Legend:
 | P8 | NSV synthesis panel can be silent for users with no NSV data (no empty-state explanation) | `src/modules/nexus/useNexusSynthesis.ts` |
 | P9 | Agnes “continue” session path exists but is unreachable from the UI resume flow (same root cause as A2) | `src/modules/agnes/components/AgnesSanctuaryContent.tsx` |
 | P10 | Bridge + other event-driven features rely on event type casts as `any` in multiple places (subscriptions can silently fail on typos) | `src/modules/scout/*`, `src/modules/atlas/*`, `src/core/*` (as applicable) |
-

@@ -17,6 +17,8 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import type { Routine, WorkoutSession } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { getTodayWeekday, getTodayIso } from '../utils';
@@ -463,20 +465,22 @@ function SessionModal({
                     <span className="text-[10px] text-white/40 ml-2">planned {ex.sets}×{ex.reps}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
+                    <NeuralButton
+                      variant="ghost"
+                      size="sm"
                       onClick={() => removeSet(exIdx)}
-                      className="p-1 rounded text-white/30 hover:text-white/60 transition-colors"
+                      className="p-1 h-7 w-7 min-w-0"
                     >
                       <Minus className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button"
+                    </NeuralButton>
+                    <NeuralButton
+                      variant="ghost"
+                      size="sm"
                       onClick={() => addSet(exIdx)}
-                      className="p-1 rounded text-white/30 hover:text-orange-400 transition-colors"
+                      className="p-1 h-7 w-7 min-w-0 hover:text-orange-400"
                     >
                       <Plus className="w-3 h-3" />
-                    </button>
+                    </NeuralButton>
                   </div>
                 </div>
 
@@ -508,51 +512,58 @@ function SessionModal({
                       <span className="text-[10px] text-white/40 w-8 shrink-0">Set {setIdx + 1}</span>
 
                       {/* Weight */}
-                      <input
-                        type="number"
-                        placeholder="kg"
-                        value={s.weight}
-                        onChange={e => updateSet(exIdx, setIdx, 'weight', e.target.value)}
-                        className="w-16 bg-transparent text-xs text-white/80 border-b border-white/20 focus:border-orange-400 outline-none text-center pb-0.5"
-                        min={0}
-                      />
+                      <div className="w-20">
+                        <NeuralInput
+                          type="number"
+                          placeholder="kg"
+                          value={s.weight}
+                          onChange={e => updateSet(exIdx, setIdx, 'weight', e.target.value)}
+                          className="h-9 min-h-0 px-2 text-center focus:border-orange-400"
+                          min={0}
+                        />
+                      </div>
                       <span className="text-white/20 text-xs">×</span>
 
                       {/* Reps */}
-                      <input
-                        type="number"
-                        placeholder="reps"
-                        value={s.repsCompleted}
-                        onChange={e => updateSet(exIdx, setIdx, 'repsCompleted', e.target.value)}
-                        className="w-14 bg-transparent text-xs text-white/80 border-b border-white/20 focus:border-orange-400 outline-none text-center pb-0.5"
-                        min={0}
-                      />
+                      <div className="w-16">
+                        <NeuralInput
+                          type="number"
+                          placeholder="reps"
+                          value={s.repsCompleted}
+                          onChange={e => updateSet(exIdx, setIdx, 'repsCompleted', e.target.value)}
+                          className="h-9 min-h-0 px-2 text-center focus:border-orange-400"
+                          min={0}
+                        />
+                      </div>
 
                       {/* Per-set RPE (feature #5) */}
-                      <input
-                        type="number"
-                        min={1}
-                        max={10}
-                        step={0.5}
-                        placeholder="RPE"
-                        value={s.rpe ?? ''}
-                        onChange={e =>
-                          updateSetRpe(exIdx, setIdx, parseFloat(e.target.value) || undefined)
-                        }
-                        className="w-16 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white/70 placeholder:text-white/20 focus:outline-none focus:border-orange-500/30 text-center"
-                      />
+                      <div className="w-20">
+                        <NeuralInput
+                          type="number"
+                          min={1}
+                          max={10}
+                          step={0.5}
+                          placeholder="RPE"
+                          value={s.rpe ?? ''}
+                          onChange={e =>
+                            updateSetRpe(exIdx, setIdx, parseFloat(e.target.value) || undefined)
+                          }
+                          className="h-9 min-h-0 px-2 text-center focus:border-orange-500/30"
+                        />
+                      </div>
 
                       {/* Complete toggle — triggers rest timer on check (feature #2) */}
-                      <button
-                        type="button"
+                      <NeuralButton
+                        variant="ghost"
+                        size="sm"
                         onClick={() => toggleSet(exIdx, setIdx, ex.restSeconds ?? 90)}
-                        className="ml-auto"
+                        className="ml-auto p-0 h-8 w-8"
                       >
                         {s.completed
-                          ? <CheckCircle2 className="w-4 h-4 text-orange-400" />
-                          : <Circle className="w-4 h-4 text-white/20 hover:text-white/50 transition-colors" />
+                          ? <CheckCircle2 className="w-5 h-5 text-orange-400" />
+                          : <Circle className="w-5 h-5 text-white/20 hover:text-white/50 transition-colors" />
                         }
-                      </button>
+                      </NeuralButton>
                     </div>
                   ))}
                 </div>
@@ -590,12 +601,12 @@ function SessionModal({
         </div>
 
         {/* ── Notes ─────────────────────────────────────────────────────── */}
-        <textarea
+        <NeuralTextarea
           value={notes}
           onChange={e => setNotes(e.target.value)}
           placeholder="Session notes (PR, form issues, fatigue, etc.)..."
           rows={2}
-          className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-white/70 placeholder:text-white/25 focus:outline-none focus:border-orange-500/40 resize-none"
+          className="text-xs focus:border-orange-500/40"
         />
 
         {/* ── Stale session warning ──────────────────────────────────────── */}
@@ -619,13 +630,14 @@ function SessionModal({
                 <span className="text-lg font-black text-orange-400 tabular-nums">
                   {Math.floor(restTimer.seconds / 60)}:{String(restTimer.seconds % 60).padStart(2, '0')}
                 </span>
-                <button
-                  type="button"
+                <NeuralButton
+                  variant="ghost"
+                  size="sm"
                   onClick={() => { clearInterval(restTimerRef.current!); setRestTimer(null); }}
-                  className="text-[10px] text-white/40 hover:text-white/70 transition-colors"
+                  className="text-white/40 hover:text-white/70"
                 >
                   Skip
-                </button>
+                </NeuralButton>
               </div>
             </motion.div>
           )}
@@ -694,39 +706,41 @@ export function WorkoutSessionLogger({ routines, recentSessions, onSubmitSession
         <div className="space-y-2">
           {/* Today's routine prominently */}
           {todayRoutine && (
-            <button
-              type="button"
+            <NeuralButton
+              as="div"
+              variant="secondary"
               onClick={() => handleStartSession(todayRoutine)}
               disabled={todayRoutine.exercises.length === 0}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-between px-4 py-3 h-auto min-h-[3.5rem] bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/15 transition-all text-left"
             >
-              <div className="text-left">
+              <div className="flex-1">
                 <div className="text-xs font-bold text-orange-300">Today — {todayRoutine.name}</div>
                 <div className="text-[10px] text-white/40 mt-0.5">
                   {todayRoutine.exercises.length === 0 ? 'No exercises — configure in Titan AI' : `${todayRoutine.exercises.length} exercises`}
                 </div>
               </div>
-              <NeuralButton as="div" size="sm" className="pointer-events-none" disabled={todayRoutine.exercises.length === 0}>
+              <NeuralButton as="div" size="sm" className="pointer-events-none ml-4" disabled={todayRoutine.exercises.length === 0}>
                 <Flame className="w-3 h-3 mr-1.5" />
                 Start
               </NeuralButton>
-            </button>
+            </NeuralButton>
           )}
 
           {/* Other routines */}
           {routines.filter(r => r.weekday !== today).slice(0, 2).map(r => (
-            <button
+            <NeuralButton
               key={r.id}
-              type="button"
+              as="div"
+              variant="secondary"
               onClick={() => handleStartSession(r)}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.05] transition-all text-left"
+              className="w-full flex items-center justify-between px-3 py-2.5 h-auto bg-white/[0.03] border-white/10 hover:border-white/20 hover:bg-white/[0.05] transition-all text-left"
             >
-              <div>
+              <div className="flex-1">
                 <span className="text-[10px] uppercase tracking-wider text-white/40 mr-2">{r.weekday}</span>
                 <span className="text-xs text-white/70">{r.name}</span>
               </div>
-              <span className="text-[10px] text-white/30">{r.exercises.length} ex</span>
-            </button>
+              <span className="text-[10px] text-white/30 ml-4">{r.exercises.length} ex</span>
+            </NeuralButton>
           ))}
         </div>
 

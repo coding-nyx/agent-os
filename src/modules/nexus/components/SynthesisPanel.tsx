@@ -53,13 +53,15 @@ function AlertAction({ action, onInjectChat, onConsultModule, onNavigate }: {
   };
 
   return (
-    <button
+    <NeuralButton
+      variant="ghost"
+      size="sm"
       onClick={handleClick}
-      className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white/80 transition-colors"
+      className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white/80 transition-colors h-auto p-1"
     >
       {action.type === 'ask_nexus' ? <MessageSquare className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
       {action.label}
-    </button>
+    </NeuralButton>
   );
 }
 

@@ -39,7 +39,8 @@ const normalizeVaultLocks = (locks?: Record<string, boolean>): Record<string, bo
 
 const normalizeSecurityPreferences = (prefs?: UserSecurityPreferences): UserSecurityPreferences => {
   const result: UserSecurityPreferences = {
-    vaultLocks: normalizeVaultLocks(prefs?.vaultLocks)
+    vaultLocks: normalizeVaultLocks(prefs?.vaultLocks),
+    vaultSessionTtlMinutes: prefs?.vaultSessionTtlMinutes ?? 0
   };
   if (prefs?.dataSharingOverrides) {
     result.dataSharingOverrides = prefs.dataSharingOverrides;
@@ -101,7 +102,8 @@ export const CoreProfileService = {
       onboardingComplete: false,
       agentPersonalityProvision: DEFAULT_PERSONALITY,
       securityPreferences: {
-        vaultLocks: buildDefaultVaultLocks()
+        vaultLocks: buildDefaultVaultLocks(),
+        vaultSessionTtlMinutes: 0
       },
       schemaVersion: 2,
       createdAt: new Date().toISOString(),

@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import type { AtlasProfile, AtlasHabit } from '../services/atlas-profile-service';
 
 // ---------------------------------------------------------------------------
@@ -119,15 +120,17 @@ const TaskItem = React.memo(function TaskItem({ title, energyCost, status, block
             )}
             {blockedReason}
           </p>
-          {onAskModule && (
-            <button
-              onClick={onAskModule}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-white/80 hover:bg-white/10 transition-colors"
-            >
-              <MessageSquare className="w-3 h-3" />
-              Ask {blockedSource || 'Module'}
-            </button>
-          )}
+            {onAskModule && (
+              <NeuralButton
+                onClick={onAskModule}
+                variant="secondary"
+                size="sm"
+                className="!h-7 px-2.5 !rounded-lg text-[9px] font-black uppercase tracking-[0.2em]"
+              >
+                <MessageSquare className="w-3 h-3" />
+                Ask {blockedSource || 'Module'}
+              </NeuralButton>
+            )}
         </div>
       )}
 

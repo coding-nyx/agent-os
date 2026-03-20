@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import type { AtlasTask, AtlasHabit, ScheduledTask } from '../services/atlas-profile-service';
 
 // ---------------------------------------------------------------------------
@@ -122,25 +123,29 @@ export function MonthPlanner({
     <section aria-label="Month planner" className="space-y-3">
       {/* Month navigation header */}
       <div className="flex items-center justify-between px-1">
-        <button
+        <NeuralButton
+          variant="ghost"
+          size="sm"
           onClick={goToPrevMonth}
           aria-label="Previous month"
-          className="p-1.5 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+          className="p-1.5 h-auto text-white/40 hover:text-white/80"
         >
           <ChevronLeft className="w-4 h-4" aria-hidden />
-        </button>
+        </NeuralButton>
 
         <span className="text-xs font-bold tracking-widest text-white/70 font-display">
           {monthLabel}
         </span>
 
-        <button
+        <NeuralButton
+          variant="ghost"
+          size="sm"
           onClick={goToNextMonth}
           aria-label="Next month"
-          className="p-1.5 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+          className="p-1.5 h-auto text-white/40 hover:text-white/80"
         >
           <ChevronRight className="w-4 h-4" aria-hidden />
-        </button>
+        </NeuralButton>
       </div>
 
       {/* Day-of-week header row */}

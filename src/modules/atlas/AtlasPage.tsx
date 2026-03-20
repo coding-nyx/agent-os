@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAtlasPredictiveState } from '@/lib/hooks/use-atlas-predictive-state';
 import { useAuth } from '@/lib/auth-context';
@@ -68,6 +69,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
   );
   const [activeTab, setActiveTab] = useState<any>('dashboard');
   const [activeView, setActiveView] = useState<any>('today');
+  const location = useLocation();
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [weeklyReviewPending, setWeeklyReviewPending] = useState<boolean>(false);
   const [showWelcomeCard, setShowWelcomeCard] = useState<boolean>(() =>
@@ -257,7 +259,26 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       priority: 'info' as const
     }),
     updateGlobalSoul: updateCrossFunctionalState,
-    delegateToModule: () => {}
+    delegateToModule: (target: string, reason: string, delegationContent: string) => {
+      if (isGuest || !user?.uid) return;
+      NexusHandoffService.store({
+        moduleId: target,
+        type: 'delegate',
+        content: delegationContent,
+        reason,
+        sourceModuleId: 'atlas',
+        createdAt: new Date().toISOString(),
+      });
+      Spine.emit({
+        type: 'MODULE_DELEGATED',
+        source: 'atlas',
+        target,
+        domain: 'system',
+        data: { reason, content: delegationContent },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    }
   }), [user?.uid, isGuest, encryptionKey, updateCrossFunctionalState]);
 
   const handleCompleteTask = useCallback((taskId: string) => {
@@ -611,42 +632,43 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
         <EnhancedAtlasDashboard
           soul={globalSoul}
           profile={profile}
-        isLocked={isLocked}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        activeView={activeView}
-        onViewChange={setActiveView}
-        onCompleteTask={handleCompleteTask}
-        onCompleteHabit={handleCompleteHabit}
-        onUpdateGoalProgress={handleUpdateGoalProgress}
-        onPauseHabit={handlePauseHabit}
-        onCreateTask={handleCreateTask}
-        onCreateHabit={handleCreateHabit}
-        onCreateGoal={handleCreateGoal}
-        onUpdateTask={handleUpdateTask}
-        onUpdateHabit={handleUpdateHabit}
-        onUpdateGoal={handleUpdateGoal}
-        onDeleteTask={handleDeleteTask}
-        onDeleteHabit={handleDeleteHabit}
-        onDeleteGoal={handleDeleteGoal}
-        onUpdateRoutine={handleUpdateRoutine}
-        onUpdateIntention={handleUpdateIntention}
-        extensions={extensions}
-        fieldValues={fieldValues}
-        onAddField={handleAddField}
-        onDeleteField={handleDeleteField}
-        onSendMessage={ai.handleSendMessage}
-        onLogEnergy={handleManualEnergyLog}
-        encryptionKey={encryptionKey}
-        predictiveDisplay={predictiveDisplay}
-        weeklyReviewPending={weeklyReviewPending}
-        onReviewOpened={handleReviewOpened}
-        onSaveWeeklyReview={handleSaveWeeklyReview}
-        morningBriefVisible={showMorningBrief}
-        onMorningBriefDismiss={handleMorningBriefDismiss}
-        eveningCheckinVisible={showEveningCheckin}
-        onEveningCheckinDismiss={handleEveningCheckinDismiss}
-        preferenceMode={profile?.preferenceMode ?? 'conversational'}
+          isLocked={isLocked}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          activeView={activeView}
+          onViewChange={setActiveView}
+          onCompleteTask={handleCompleteTask}
+          onCompleteHabit={handleCompleteHabit}
+          onUpdateGoalProgress={handleUpdateGoalProgress}
+          onPauseHabit={handlePauseHabit}
+          onCreateTask={handleCreateTask}
+          onCreateHabit={handleCreateHabit}
+          onCreateGoal={handleCreateGoal}
+          onUpdateTask={handleUpdateTask}
+          onUpdateHabit={handleUpdateHabit}
+          onUpdateGoal={handleUpdateGoal}
+          onDeleteTask={handleDeleteTask}
+          onDeleteHabit={handleDeleteHabit}
+          onDeleteGoal={handleDeleteGoal}
+          onUpdateRoutine={handleUpdateRoutine}
+          onUpdateIntention={handleUpdateIntention}
+          extensions={extensions}
+          fieldValues={fieldValues}
+          onAddField={handleAddField}
+          onDeleteField={handleDeleteField}
+          onSendMessage={ai.handleSendMessage}
+          onLogEnergy={handleManualEnergyLog}
+          encryptionKey={encryptionKey}
+          predictiveDisplay={predictiveDisplay}
+          weeklyReviewPending={weeklyReviewPending}
+          onReviewOpened={handleReviewOpened}
+          onSaveWeeklyReview={handleSaveWeeklyReview}
+          morningBriefVisible={showMorningBrief}
+          onMorningBriefDismiss={handleMorningBriefDismiss}
+          eveningCheckinVisible={showEveningCheckin}
+          onEveningCheckinDismiss={handleEveningCheckinDismiss}
+          preferenceMode={profile?.preferenceMode ?? 'conversational'}
+          focusId={(location.state as { focusId?: string } | null)?.focusId}
           onTogglePreferenceMode={() => {
           if (!profile) return;
           const next: AtlasProfile = {

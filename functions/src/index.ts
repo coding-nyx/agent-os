@@ -104,6 +104,65 @@ export const bridgeSpineEvents = onDocumentCreated(
 
   try {
     const db = getFirestore();
+    const eventPriority = typeof payload.priority === "string" ? payload.priority : "info";
+    const notificationTitle: string =
+      typeof payload.data?.title === "string" && payload.data.title
+        ? payload.data.title
+        : (payload.type === "MODULE_REMINDER_DUE" ? "Nexus Reminder" : "Nexus Alert");
+    const bodySource: string =
+      typeof payload.data?.note === "string"
+        ? payload.data.note
+        : typeof payload.data?.body === "string"
+        ? payload.data.body
+        : typeof payload.data?.reason === "string"
+        ? payload.data.reason
+        : "";
+
+    const rawDeepLink = (payload.data as { deepLink?: unknown } | undefined)?.deepLink;
+    let deepLink: unknown = undefined;
+    if (typeof rawDeepLink === "string" && rawDeepLink.trim().length > 0) {
+      try {
+        deepLink = JSON.parse(rawDeepLink);
+      } catch {
+        deepLink = undefined;
+      }
+    } else if (rawDeepLink && typeof rawDeepLink === "object") {
+      deepLink = rawDeepLink;
+    }
+
+    const inboxRef = db.doc(`users/${uid}/notification_inbox/${event.params.eventId}`);
+    const inboxNow = new Date().toISOString();
+    await db.runTransaction(async (tx) => {
+      const existing = await tx.get(inboxRef);
+      const existingData = existing.exists ? (existing.data() as Record<string, unknown>) : {};
+      const existingPayload = typeof existingData?.data === "object" && existingData.data !== null
+        ? (existingData.data as Record<string, unknown>)
+        : {};
+
+      const nextData = {
+        ...existingPayload,
+        ...(typeof payload.data === "object" && payload.data !== null ? payload.data : {}),
+        title: typeof existingPayload.title === "string" && existingPayload.title.length > 0
+          ? existingPayload.title
+          : notificationTitle,
+        note: typeof existingPayload.note === "string" && existingPayload.note.length > 0
+          ? existingPayload.note
+          : bodySource,
+        ...(deepLink ? { deepLink } : {}),
+      };
+
+      const nextRecord = {
+        type: payload.type,
+        source: payload.source || "bridge",
+        priority: eventPriority,
+        data: nextData,
+        read: typeof existingData?.read === "boolean" ? existingData.read : false,
+        createdAt: typeof existingData?.createdAt === "string" ? existingData.createdAt : inboxNow,
+      };
+
+      tx.set(inboxRef, nextRecord, { merge: true });
+    });
+
     const configSnap = await db.doc(`bridge_config/${uid}`).get();
     if (!configSnap.exists) {
       logger.info("Bridge config missing, skipping", { uid, eventId: event.params.eventId });
@@ -120,7 +179,6 @@ export const bridgeSpineEvents = onDocumentCreated(
 
     const minPriority = typeof pushConfig.minPriority === "string" ? pushConfig.minPriority : "alert";
     const priorityRank: Record<string, number> = { info: 0, alert: 1, critical: 2 };
-    const eventPriority = typeof payload.priority === "string" ? payload.priority : "info";
     if ((priorityRank[eventPriority] ?? 0) < (priorityRank[minPriority] ?? 1)) {
       logger.info("Bridge event below priority threshold", { uid, eventType: payload.type, eventPriority, minPriority });
       return;
@@ -139,18 +197,6 @@ export const bridgeSpineEvents = onDocumentCreated(
     }
 
     const truncatedTokens = tokens.slice(0, 500);
-    const notificationTitle: string =
-      typeof payload.data?.title === "string" && payload.data.title
-        ? payload.data.title
-        : (payload.type === "MODULE_REMINDER_DUE" ? "Nexus Reminder" : "Nexus Alert");
-    const bodySource: string =
-      typeof payload.data?.note === "string"
-        ? payload.data.note
-        : typeof payload.data?.body === "string"
-        ? payload.data.body
-        : typeof payload.data?.reason === "string"
-        ? payload.data.reason
-        : "";
     const response = await getMessaging().sendEachForMulticast({
       tokens: truncatedTokens,
       notification: {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Lock, Unlock, Download, ChevronDown, ChevronRight, AlertTriangle, Loader2, Skull } from 'lucide-react';
 import { useVault } from '@/lib/vault-context';
@@ -7,6 +7,8 @@ import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { exportUserData, downloadAsJSON } from '@/lib/services/data-export-service';
 import { SoulTerminationService } from '@/lib/services/soul-termination-service';
+import { CoreProfileService } from '@/lib/services/core-profile-service';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 
 const panelVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -15,13 +17,34 @@ const panelVariants = {
 
 export function SecurityPanel() {
   const { isUnlocked, hasVault, lockVault, persistenceMode, getMasterKey } = useVault();
-  const { user, isGuest, logout } = useAuth();
+  const { user, isGuest, profile, logout } = useAuth();
   const [vaultActionsExpanded, setVaultActionsExpanded] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [confirmTerminate, setConfirmTerminate] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
   const [terminateError, setTerminateError] = useState<string | null>(null);
+  const [sessionTtlMinutes, setSessionTtlMinutes] = useState<number>(
+    profile?.securityPreferences?.vaultSessionTtlMinutes ?? 0
+  );
+
+  useEffect(() => {
+    setSessionTtlMinutes(profile?.securityPreferences?.vaultSessionTtlMinutes ?? 0);
+  }, [profile?.securityPreferences?.vaultSessionTtlMinutes]);
+
+  const sessionRetentionDisabled = persistenceMode === 'STRICT' || !user || isGuest;
+  const sessionRetentionHelper = persistenceMode === 'STRICT'
+    ? 'Switch persistence to SESSION to enable retention.'
+    : 'Stored in your profile and applied across devices.';
+
+  const sessionRetentionOptions = [
+    { label: 'Until tab is closed', value: 0 },
+    { label: '15 minutes', value: 15 },
+    { label: '1 hour', value: 60 },
+    { label: '4 hours', value: 240 },
+    { label: '12 hours', value: 720 },
+    { label: '24 hours', value: 1440 },
+  ];
 
   const handleExport = async () => {
     if (!user?.uid || isExporting) return;
@@ -122,6 +145,36 @@ export function SecurityPanel() {
           </span>
           <span className="text-[10px] font-bold text-white/70">{persistenceMode}</span>
         </div>
+
+        <div className="mt-4 flex flex-col gap-2 p-4 rounded-2xl bg-black/30 border border-white/5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
+                Session Retention
+              </p>
+              <p className="text-[11px] text-white/60 mt-1">
+                {sessionRetentionHelper}
+              </p>
+            </div>
+            <NeuralSelectMenu
+              ariaLabel="Session retention"
+              value={sessionTtlMinutes}
+              options={sessionRetentionOptions}
+              onChange={(next) => {
+                setSessionTtlMinutes(next);
+                if (!user?.uid || isGuest) return;
+                void CoreProfileService.updateSecurityPreferences(user.uid, { vaultSessionTtlMinutes: next });
+              }}
+              disabled={sessionRetentionDisabled}
+              accentClassName="text-violet-300"
+            />
+          </div>
+          {sessionRetentionDisabled && (
+            <p className="text-[10px] uppercase tracking-[0.12em] text-amber-300/80 font-semibold">
+              Session retention is unavailable while persistence is STRICT.
+            </p>
+          )}
+        </div>
       </GlassCard>
 
       {/* Vault Actions — collapsible submenu */}
@@ -129,14 +182,14 @@ export function SecurityPanel() {
         <button
           type="button"
           onClick={() => setVaultActionsExpanded((v) => !v)}
-          className="w-full flex items-center gap-3 text-left focus:outline-none focus:ring-1 focus:ring-violet-500/40 rounded-lg"
+          className="w-full flex items-center gap-3 px-0 text-left bg-transparent border-0 focus:outline-none"
           aria-expanded={vaultActionsExpanded}
           aria-label="Toggle Vault Actions"
         >
           <div className="w-7 h-7 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
             <Lock className="w-3.5 h-3.5 text-violet-400" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 text-left">
             <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
               Vault Actions
             </h3>

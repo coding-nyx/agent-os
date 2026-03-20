@@ -6,6 +6,8 @@ import { EmptyState } from '@/core/components/EmptyState';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import { BarChart } from '@/core/components/viz/BarChart';
 import { MetricCard } from '@/core/components/viz/MetricCard';
@@ -261,35 +263,29 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
         maxWidth="lg"
       >
         <div className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all"
-            />
-          </div>
+          <NeuralInput
+            label="Date"
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="focus:border-orange-500/50"
+          />
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Bedtime</label>
-              <input
-                type="time"
-                value={bedtime}
-                onChange={e => setBedtime(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Wake Time</label>
-              <input
-                type="time"
-                value={wakeTime}
-                onChange={e => setWakeTime(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all"
-              />
-            </div>
+            <NeuralInput
+              label="Bedtime"
+              type="time"
+              value={bedtime}
+              onChange={e => setBedtime(e.target.value)}
+              className="focus:border-orange-500/50"
+            />
+            <NeuralInput
+              label="Wake Time"
+              type="time"
+              value={wakeTime}
+              onChange={e => setWakeTime(e.target.value)}
+              className="focus:border-orange-500/50"
+            />
           </div>
 
           {durationHours != null && (
@@ -319,72 +315,67 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Deep Sleep %</label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                placeholder="—"
-                value={deepSleepPct}
-                onChange={e => setDeepSleepPct(e.target.value ? Number(e.target.value) : '')}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">REM %</label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                placeholder="—"
-                value={remSleepPct}
-                onChange={e => setRemSleepPct(e.target.value ? Number(e.target.value) : '')}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Awakenings</label>
-              <input
-                type="number"
-                min={0}
-                placeholder="—"
-                value={awakenings}
-                onChange={e => setAwakenings(e.target.value ? Number(e.target.value) : '')}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
-              />
-            </div>
+            <NeuralInput
+              label="Deep Sleep %"
+              type="number"
+              min={0}
+              max={100}
+              placeholder="—"
+              value={deepSleepPct}
+              onChange={e => setDeepSleepPct(e.target.value ? Number(e.target.value) : '')}
+              className="placeholder:text-white/20 focus:border-orange-500/50 tabular-nums px-3 py-2 h-auto min-h-0"
+            />
+            <NeuralInput
+              label="REM %"
+              type="number"
+              min={0}
+              max={100}
+              placeholder="—"
+              value={remSleepPct}
+              onChange={e => setRemSleepPct(e.target.value ? Number(e.target.value) : '')}
+              className="placeholder:text-white/20 focus:border-orange-500/50 tabular-nums px-3 py-2 h-auto min-h-0"
+            />
+            <NeuralInput
+              label="Awakenings"
+              type="number"
+              min={0}
+              placeholder="—"
+              value={awakenings}
+              onChange={e => setAwakenings(e.target.value ? Number(e.target.value) : '')}
+              className="placeholder:text-white/20 focus:border-orange-500/50 tabular-nums px-3 py-2 h-auto min-h-0"
+            />
           </div>
 
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Factors (optional)</label>
             <div className="flex flex-wrap gap-2">
               {SLEEP_TAGS.map(tag => (
-                <button
+                <NeuralButton
                   key={tag}
-                  type="button"
+                  variant={selectedTags.includes(tag) ? 'primary' : 'secondary'}
+                  size="sm"
                   onClick={() => toggleTag(tag)}
                   className={cn(
-                    'px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all',
+                    'px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all h-auto',
                     selectedTags.includes(tag)
                       ? 'bg-orange-500/20 border border-orange-500/30 text-orange-300'
                       : 'bg-white/5 border border-white/10 text-white/40 hover:bg-white/10 hover:text-white/60'
                   )}
                 >
                   {tag.replace('_', ' ')}
-                </button>
+                </NeuralButton>
               ))}
             </div>
           </div>
 
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Notes (optional)</label>
-            <textarea
+            <NeuralTextarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Dreams, disturbances, how you feel on waking..."
               rows={2}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 transition-all resize-none"
+              className="placeholder:text-white/30 focus:border-orange-500/50"
             />
           </div>
 

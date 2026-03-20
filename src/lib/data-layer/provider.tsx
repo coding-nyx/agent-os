@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import { InMemoryDataProvider, NexusDataLayer } from './index';
 import { createFirebaseDataLayer } from './firebase-data-layer';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 // ── DI Guard ──────────────────────────────────────────────────────────────────
 // Modules that import firebase/firestore directly (outside the allowlist) must
@@ -44,6 +45,7 @@ export function DataLayerProvider({
 
   useEffect(() => {
     setNexusDataLayer(value);
+    Spine.setDataLayer(value);
   }, [value]);
 
   useEffect(() => {

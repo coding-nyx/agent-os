@@ -299,7 +299,7 @@ export const GlobalProjectionService = {
       try {
         // Persist the pending request for the owning agent to review.
         await dataLayer.setDocument(
-          `${SOUL_WRITE_COLLECTION}/${uid}`,
+          `users/${uid}/${SOUL_WRITE_COLLECTION}`,
           requestId,
           soulWriteRequest as unknown as Record<string, unknown>,
         );
@@ -369,7 +369,7 @@ export const GlobalProjectionService = {
     }
 
     const request = await dataLayer.getDocument<SoulWriteRequest>(
-      `${SOUL_WRITE_COLLECTION}/${userId}`,
+      `users/${userId}/${SOUL_WRITE_COLLECTION}`,
       requestId,
     );
 
@@ -396,7 +396,7 @@ export const GlobalProjectionService = {
     // Persist the approval status.
     const approved: SoulWriteRequest = { ...request, status: 'approved' };
     await dataLayer.setDocument(
-      `${SOUL_WRITE_COLLECTION}/${userId}`,
+      `users/${userId}/${SOUL_WRITE_COLLECTION}`,
       requestId,
       approved as unknown as Record<string, unknown>,
     );
@@ -429,7 +429,7 @@ export const GlobalProjectionService = {
     }
 
     const request = await dataLayer.getDocument<SoulWriteRequest>(
-      `${SOUL_WRITE_COLLECTION}/${userId}`,
+      `users/${userId}/${SOUL_WRITE_COLLECTION}`,
       requestId,
     );
 
@@ -447,7 +447,7 @@ export const GlobalProjectionService = {
 
     const rejected: SoulWriteRequest = { ...request, status: 'rejected' };
     await dataLayer.setDocument(
-      `${SOUL_WRITE_COLLECTION}/${userId}`,
+      `users/${userId}/${SOUL_WRITE_COLLECTION}`,
       requestId,
       rejected as unknown as Record<string, unknown>,
     );

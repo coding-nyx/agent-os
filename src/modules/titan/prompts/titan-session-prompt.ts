@@ -53,6 +53,8 @@ export const TITAN_ALLOWED_ACTIONS: Record<TitanContextMode['kind'], readonly st
     'parse_workout_log',
     'parse_biometric_data',
     'log_sleep',
+    'propose_reminder',
+    'query_reminders',
     'create_cycle',
     'advance_cycle_phase',
     'complete_cycle',
@@ -64,6 +66,8 @@ export const TITAN_ALLOWED_ACTIONS: Record<TitanContextMode['kind'], readonly st
 
   'routine-edit': [
     'update_routine',
+    'propose_reminder',
+    'query_reminders',
   ],
 
   'field-crud': [
@@ -76,6 +80,8 @@ export const TITAN_ALLOWED_ACTIONS: Record<TitanContextMode['kind'], readonly st
     'commit_biomarker',
     'parse_lab_report',
     'parse_biometric_data',
+    'propose_reminder',
+    'query_reminders',
   ],
 } as const;
 
@@ -304,12 +310,16 @@ ${recoveryBlock}${clearanceNote}${activeCycleBlock}
 - Update profile: <action type="update_titan_profile">{...partialProfile}</action>
 - Update routine: <action type="update_routine">{"routines":[...]}</action>
 - Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","deepSleepPct":20,"remSleepPct":25,"awakenings":1,"tags":["stress"],"notes":"..."}</action>
+- Propose reminder: <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"session|workout","entityId":"...","label":"..."}}</action>
+- Query reminders: <action type="query_reminders">{"moduleId":"titan"}</action>
 - Create cycle: <action type="create_cycle">{"name":"Creatine Loading","type":"supplement","description":"...","startDate":"YYYY-MM-DD","phases":[{"id":"...","name":"Loading","durationDays":5,"dosage":"20g/day"},{"id":"...","name":"Maintenance","durationDays":30,"dosage":"5g/day"}]}</action>
 - Advance cycle phase: <action type="advance_cycle_phase">{"cycleId":"..."}</action>
 - Complete cycle: <action type="complete_cycle">{"cycleId":"..."}</action>
 - Log workout session: <action type="log_workout_session">{"routineId":"...","routineName":"...","date":"YYYY-MM-DD","startedAt":"...","completedAt":"...","rpe":7,"notes":"...","status":"completed","exercises":[{"exerciseName":"Squat","plannedSets":4,"plannedReps":"8","sets":[{"setNumber":1,"weight":100,"repsCompleted":8,"completed":true}]}]}</action>
 - Recovery clearance check: <action type="self_clearance_check">{"activity":"...","recoveryScore":...}</action>
 - Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
+- Keep <thought> strictly internal. Do NOT place user-facing text inside it.
+- Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.
 
 [ROUTINE INSTRUCTIONS]
 - If the user wants a new weekly routine, propose a 7-day plan as daily entries for each weekday.

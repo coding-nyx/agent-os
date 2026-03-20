@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, CalendarDays, CalendarRange, Crosshair } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
@@ -63,7 +64,8 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
         const isActive = activeView === key;
 
         return (
-          <button
+          <NeuralButton
+            variant="emerald"
             key={key}
             role="tab"
             id={`atlas-tab-${key}`}
@@ -93,7 +95,7 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
                 }
               />
             )}
-          </button>
+          </NeuralButton>
         );
       })}
     </nav>

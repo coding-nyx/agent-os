@@ -16,6 +16,8 @@ import { CardsView } from './components/cards/CardsView';
 import { GraphView } from './components/graph/GraphView';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
+import { NeuralButton } from '@/core/components/NeuralButton';
+
 const ThreeDView = React.lazy(() => import('./components/three/ThreeDView'));
 
 type ViewMode = '3D' | 'GRAPH' | 'CARDS';
@@ -239,13 +241,14 @@ export default function HubPage() {
           <div className="shrink-0 max-h-[30vh] md:max-h-none overflow-y-auto pointer-events-auto">
             {isMobile ? (
               <div className="px-4 pb-4">
-                <button
-                  type="button"
+                <NeuralButton
                   onClick={() => setShowBottomDashboard((v) => !v)}
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full text-[10px] font-bold uppercase tracking-[0.16em]"
                 >
                   {showBottomDashboard ? 'Hide System Status' : 'Show System Status'}
-                </button>
+                </NeuralButton>
                 {showBottomDashboard && (
                   <HubBottomDashboard
                     lockedModules={lockedModules}

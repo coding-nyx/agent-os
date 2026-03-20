@@ -91,26 +91,26 @@ export function TitanRoutinePanel({
                 )}
                 {onImportRoutine && (
                   <div className="relative z-50">
-                    <button
-                      type="button"
+                    <NeuralButton
+                      variant="ghost"
                       onClick={() => setDropdownOpen(!dropdownOpen)}
-                      className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white"
+                      className="p-2 h-10 w-10 min-w-0"
                       title="More options"
                     >
                       <MoreVertical className="w-5 h-5" />
-                    </button>
+                    </NeuralButton>
                     {dropdownOpen && (
                       <div className="absolute top-full right-0 mt-2 w-56 rounded-lg bg-white/10 border border-white/20 backdrop-blur-lg shadow-2xl z-[9999] overflow-visible">
-                        <button
-                          type="button"
+                        <NeuralButton
+                          variant="ghost"
                           onClick={() => {
                             onImportRoutine();
                             setDropdownOpen(false);
                           }}
-                          className="w-full px-4 py-3 text-sm text-left text-white/80 hover:bg-white/20 transition-colors whitespace-nowrap"
+                          className="w-full px-4 py-3 justify-start rounded-none hover:bg-white/20"
                         >
                           Use an Existing Routine
-                        </button>
+                        </NeuralButton>
                       </div>
                     )}
                   </div>
@@ -153,14 +153,14 @@ export function TitanRoutinePanel({
                     : 'text-white/60 bg-white/[0.02]'
                 )}
               >
-                <button
-                  type="button"
+                <NeuralButton
+                  variant="ghost"
                   onClick={() => setSelectedRoutine(routine)}
-                  className="flex-1 flex items-center gap-2 text-left hover:opacity-80 transition-opacity min-w-0"
+                  className="flex-1 flex items-center gap-2 text-left hover:opacity-80 transition-opacity min-w-0 h-auto p-0 justify-start"
                 >
                   <span className="uppercase tracking-wider shrink-0">{routine.weekday}</span>
                   <span className="text-white/40 truncate">{routine.name}</span>
-                </button>
+                </NeuralButton>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-white/40 tabular-nums w-8 text-right">{routine.exercises.length} ex</span>
                   {onStartSession && (
@@ -173,22 +173,24 @@ export function TitanRoutinePanel({
                       Log Session
                     </NeuralButton>
                   )}
-                  <button
-                    type="button"
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleOpenEdit(routine)}
-                    className="p-1.5 rounded-lg text-white/30 hover:text-orange-400 hover:bg-orange-500/10 transition-all opacity-0 group-hover:opacity-100 md:opacity-70"
+                    className="p-1.5 rounded-lg text-white/30 hover:text-orange-400 hover:bg-orange-500/10 transition-all opacity-0 group-hover:opacity-100 md:opacity-70 h-auto min-w-0"
                     title="Edit routine"
                   >
                     <Pencil className="w-3 h-3" />
-                  </button>
-                  <button
-                    type="button"
+                  </NeuralButton>
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setSelectedRoutine(routine)}
-                    className="p-1 rounded-lg text-white/40 hover:text-white/70 transition-colors shrink-0"
+                    className="p-1 rounded-lg text-white/40 hover:text-white/70 transition-colors shrink-0 h-auto min-w-0"
                     aria-label="View details"
                   >
                     <ChevronRight className="w-3 h-3" />
-                  </button>
+                  </NeuralButton>
                 </div>
               </div>
             ))}
@@ -201,35 +203,35 @@ export function TitanRoutinePanel({
             <div className="flex flex-col items-center text-center py-5 sm:py-6 space-y-3">
               <p className="text-[13px] sm:text-sm text-white/40 italic">Rest day — no protocol scheduled.</p>
               {onGeneratePlan && (
-                <button
-                  type="button"
+                <NeuralButton
+                  variant="ghost"
                   onClick={onGeneratePlan}
-                  className="text-[11px] sm:text-xs text-orange-400/70 hover:text-orange-300 transition-colors font-medium min-h-[2.25rem]"
+                  className="text-[11px] sm:text-xs text-orange-400/70 hover:text-orange-300 transition-colors font-medium min-h-[2.25rem] h-auto p-0"
                 >
                   Request a session →
-                </button>
+                </NeuralButton>
               )}
             </div>
           ) : (
             <div className="space-y-2">
               {todayRoutine.exercises.map((ex, idx) => (
-                <button
+                <NeuralButton
                   key={`${todayRoutine.id}-${idx}`}
-                  type="button"
+                  variant="ghost"
                   onClick={() => setSelectedRoutine(todayRoutine)}
-                  className="w-full flex items-center justify-between text-[11px] sm:text-xs text-white/60 px-3 py-3 min-h-[2.75rem] rounded-xl hover:bg-white/5 transition-all"
+                  className="w-full flex items-center justify-between text-[11px] sm:text-xs text-white/60 px-3 py-3 min-h-[2.75rem] rounded-xl hover:bg-white/5 transition-all h-auto"
                 >
                   <span className="font-medium truncate mr-2">{ex.name}</span>
                   <span className="text-white/40 tabular-nums shrink-0">{ex.sets}×{ex.reps}</span>
-                </button>
+                </NeuralButton>
               ))}
-              <button
-                type="button"
+              <NeuralButton
+                variant="ghost"
                 onClick={() => handleOpenEdit(todayRoutine)}
-                className="w-full text-[11px] sm:text-xs text-orange-400/60 hover:text-orange-300 transition-colors pt-2 pb-0.5 text-center min-h-[2.25rem]"
+                className="w-full text-[11px] sm:text-xs text-orange-400/60 hover:text-orange-300 transition-colors pt-2 pb-0.5 text-center min-h-[2.25rem] h-auto p-0"
               >
                 Edit today's routine →
-              </button>
+              </NeuralButton>
             </div>
           )}
         </SurfaceCard>

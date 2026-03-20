@@ -9,8 +9,6 @@ import { ScoutDashboard } from './components/ScoutDashboard';
 import { ScoutUploadZone } from './components/ScoutUploadZone';
 import {
   buildDocumentAnalysisPrompt,
-  parseDocument as parseScoutDocument,
-  validateFile as validateScoutFile,
 } from './services/scout-document-service';
 import type { DocumentParseResult } from './services/scout-document-service';
 import {
@@ -59,7 +57,11 @@ import type { DeepResearchResult } from './hooks/useDeepResearch';
 import { runDocumentPipeline, type DocumentParsed } from '@/lib/services/document-pipeline';
 import { scoutDocumentPolicy, type ScoutDocumentProposal } from './services/scout-document-policy';
 import { NeuralModal } from '@/core/components/NeuralModal';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { NewSessionDialog } from './components/NewSessionDialog';
+import { useUIStore } from '@/lib/stores/ui-store';
+import { prepareDocumentChatPrompt } from '@/lib/services/document-chat-handoff-service';
+import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
 import {
   SCOUT_SHELL_BREAKPOINTS,
   resolveScoutShellState,
@@ -80,7 +82,8 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   const { user } = useAuth();
   const { globalSoul } = useGlobalSoul();
   const agentAlias = globalSoul?.displayNames?.scout || 'Scout';
-  const { sendMessage } = useAI();
+  const { sendMessage, analyzeImage } = useAI();
+  const setHideGlobalFAB = useUIStore((state) => state.setHideGlobalFAB);
 
   const [selectedView, setSelectedView] = useState<ScoutTopLevelView>('research');
   const [showUploadZone, setShowUploadZone] = useState(false);
@@ -109,6 +112,14 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    setHideGlobalFAB(deepResearchOpen);
+
+    return () => {
+      setHideGlobalFAB(false);
+    };
+  }, [deepResearchOpen, setHideGlobalFAB]);
 
   const shellState = useMemo(
     () =>
@@ -388,19 +399,42 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     }
   }, [sendMessage]);
 
-  const handleChatUpload = useCallback(async (file: File) => {
-    const validation = validateScoutFile(file);
-    if (!validation.valid) {
-      setErrorMessage(validation.error);
-      return;
-    }
+  const handleChatDocumentUploads = useCallback(async (request: DocumentUploadRequest) => {
+    const llmPrimary = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'You are a research document triage analyst. Return only valid JSON as instructed.',
+        memoryContext: [],
+        summary: 'Scout document triage.',
+        history: [],
+      });
+      return response.publicText;
+    };
+
+    const llmFallback = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'Return only valid JSON matching the requested schema.',
+        memoryContext: [],
+        summary: 'Scout document triage fallback.',
+        history: [],
+      });
+      return response.publicText;
+    };
+
     try {
-      const result = await parseScoutDocument(file);
-      await handleUploadSubmit(result);
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to parse document.');
+      const { prompt } = await prepareDocumentChatPrompt({
+        moduleId: 'scout',
+        files: request.files,
+        sendMessage: llmPrimary,
+        sendMessageFallback: llmFallback,
+        analyzeImage,
+        userContext: request.caption,
+      });
+      await ai.handleSendMessage(prompt, onActionParsed, { visibleContent: request.visibleContent });
+    } catch (error) {
+      console.error('[Scout] Chat document analysis failed:', error);
+      setErrorMessage('I could not analyze those documents together. Please try again with supported files.');
     }
-  }, [handleUploadSubmit]);
+  }, [ai, analyzeImage, onActionParsed, sendMessage]);
 
   const handleDocProposalCommit = useCallback(() => {
     if (!docProposalParsed) return;
@@ -470,14 +504,15 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   }, [createSessionFn]);
 
   const renderNewSessionButton = () => (
-    <button
+    <NeuralButton
       type="button"
       onClick={handleStartSession}
-      className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-lime-500/25 bg-lime-500/12 px-4 py-2.5 text-[12px] font-semibold text-lime-200 transition-colors hover:bg-lime-500/20"
+      themeColor="lime"
+      className="min-h-11"
     >
       <Plus className="h-4 w-4" aria-hidden="true" />
       <span>New session</span>
-    </button>
+    </NeuralButton>
   );
 
   const sessionPanel = (
@@ -494,14 +529,15 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       </div>
 
       <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
-        <button
+        <NeuralButton
           type="button"
           onClick={handleStartSession}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-lime-500/20 bg-lime-500/10 px-4 py-2.5 text-[12px] font-semibold text-lime-200 transition-colors hover:bg-lime-500/18"
+          variant="secondary"
+          className="min-h-11 w-full"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           <span>Start new session</span>
-        </button>
+        </NeuralButton>
 
         <div className="min-h-0 flex-1 overflow-hidden">
           <div className="scrollbar-ghost h-full overflow-y-auto pr-1">
@@ -576,17 +612,18 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           {renderNewSessionButton()}
           {!shellState.isSessionRailDocked && (
-            <button
+            <NeuralButton
               type="button"
               onClick={() => {
                 setIsArtifactsSheetOpen(false);
                 setIsSessionSheetOpen(true);
               }}
-              className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[12px] font-semibold text-white/70 transition-colors hover:border-white/20 hover:text-white"
+              variant="secondary"
+              className="min-h-11"
             >
               <PanelLeft className="h-4 w-4" aria-hidden="true" />
               <span>Open sessions</span>
-            </button>
+            </NeuralButton>
           )}
         </div>
       </section>
@@ -651,7 +688,8 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       authMode="scout"
       placeholder="Discuss research strategy..."
       dockChatBreakpoint={SCOUT_SHELL_BREAKPOINTS.desktop}
-      onUploadDocument={handleChatUpload}
+      onUploadDocuments={handleChatDocumentUploads}
+      hideChatTrigger={deepResearchOpen}
       isChatCollapsed={isChatCollapsed}
       onToggleChat={setIsChatCollapsed}
       contentClassName="min-h-0"
@@ -667,17 +705,18 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               action={
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   {!shellState.isSessionRailDocked && (
-                    <button
+                    <NeuralButton
                       type="button"
                       onClick={() => {
                         setIsArtifactsSheetOpen(false);
                         setIsSessionSheetOpen(true);
                       }}
-                      className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[12px] font-semibold text-white/70 transition-colors hover:border-white/20 hover:text-white"
+                      variant="secondary"
+                      className="min-h-11"
                     >
                       <PanelLeft className="h-4 w-4" aria-hidden="true" />
                       <span>Sessions</span>
-                    </button>
+                    </NeuralButton>
                   )}
                   {renderNewSessionButton()}
                 </div>
@@ -688,13 +727,15 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               <div className="mt-4 flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-300">
                 <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                 <p className="text-xs leading-relaxed">{errorMessage}</p>
-                <button
+                <NeuralButton
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setErrorMessage(null)}
-                  className="ml-auto shrink-0 rounded-xl p-1 text-red-400/70 transition-colors hover:text-red-200"
+                  className="ml-auto h-7 w-7 p-0 text-red-400/70 hover:bg-white/10 hover:text-red-200"
                 >
                   <X size={14} />
-                </button>
+                </NeuralButton>
               </div>
             )}
 
@@ -750,13 +791,15 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                     <p className="text-chip-soft text-lime-300">Scout sessions</p>
                     <h3 className="mt-1 text-panel-heading text-white">Switch inquiries</h3>
                   </div>
-                  <button
+                  <NeuralButton
                     type="button"
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setIsSessionSheetOpen(false)}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] p-2 text-white/70 transition-colors hover:text-white"
+                    className="h-9 w-9 p-0"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </NeuralButton>
                 </div>
                 <div className="min-h-0 flex-1 p-4 sm:p-5">{sessionPanel}</div>
               </motion.div>
@@ -793,13 +836,15 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                     <p className="text-chip-soft text-lime-300">Session artifacts</p>
                     <h3 className="mt-1 text-panel-heading text-white">{activeSession.topic}</h3>
                   </div>
-                  <button
+                  <NeuralButton
                     type="button"
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setIsArtifactsSheetOpen(false)}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] p-2 text-white/70 transition-colors hover:text-white"
+                    className="h-9 w-9 p-0"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </NeuralButton>
                 </div>
                 <div className="min-h-0 flex-1 p-4 sm:p-5">{artifactsPanel}</div>
               </motion.div>
@@ -860,8 +905,20 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               </div>
             )}
             <div className="flex gap-3 border-t border-white/10 pt-4">
-              <button onClick={handleDocProposalCommit} className="flex-1 rounded-lg bg-lime-600 px-4 py-2 text-xs font-bold text-white hover:bg-lime-500">Apply</button>
-              <button onClick={() => setDocReviewOpen(false)} className="flex-1 rounded-lg bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10">Discard</button>
+              <NeuralButton
+                onClick={handleDocProposalCommit}
+                themeColor="lime"
+                className="flex-1"
+              >
+                Apply
+              </NeuralButton>
+              <NeuralButton
+                onClick={() => setDocReviewOpen(false)}
+                variant="secondary"
+                className="flex-1"
+              >
+                Discard
+              </NeuralButton>
             </div>
           </div>
         </NeuralModal>
@@ -888,12 +945,14 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                     <h2 className="text-sm font-black uppercase tracking-widest text-lime-300">Evidence Vault</h2>
                     <p className="mt-1 text-xs text-white/40">Extract research evidence from documents</p>
                   </div>
-                  <button
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setShowUploadZone(false)}
-                    className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/10"
+                    className="h-9 w-9 p-0 text-white/40 transition-colors hover:bg-white/10"
                   >
                     <X size={18} />
-                  </button>
+                  </NeuralButton>
                 </div>
                 <ScoutUploadZone
                   onSubmit={handleUploadSubmit}

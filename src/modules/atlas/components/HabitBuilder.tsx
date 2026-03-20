@@ -22,6 +22,9 @@ import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasHabit } from '../services/atlas-profile-service';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
+import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
 import { ConfirmDialog } from '@/core/components/ConfirmDialog';
@@ -290,16 +293,20 @@ export function HabitBuilder({
       {/* ── Controls: Filter & Actions ── */}
       <div className="flex flex-col md:flex-row gap-3 justify-between">
         {/* Filter dropdown */}
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as HabitFilter)}
-          className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 cursor-pointer"
-        >
-          <option value="all">All Habits</option>
-          <option value="active">Active</option>
-          <option value="paused">Paused</option>
-          <option value="archived">Archived</option>
-        </select>
+        <div className="w-full md:w-48">
+          <NeuralSelectMenu
+            value={filter}
+            onChange={(next) => setFilter(next as HabitFilter)}
+            options={[
+              { value: 'all', label: 'All Habits' },
+              { value: 'active', label: 'Active' },
+              { value: 'paused', label: 'Paused' },
+              { value: 'archived', label: 'Archived' },
+            ]}
+            triggerClassName="w-full"
+            ariaLabel="Filter habits"
+          />
+        </div>
 
         {/* Action buttons */}
         <div className="flex gap-2">
@@ -347,26 +354,30 @@ export function HabitBuilder({
                 <div className="absolute inset-0 pointer-events-none" />
                 {/* Quick action buttons on hover */}
                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10 pointer-events-auto">
-                  <button
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleOpenForm(habit);
                     }}
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/60 hover:text-white/90 transition-colors"
+                    className="p-1.5 h-8 w-8 min-w-0 bg-white/10 hover:bg-white/20 text-white/60 hover:text-white/90"
                     aria-label={`Edit ${habit.title}`}
                   >
                     <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
+                  </NeuralButton>
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       setDeleteTarget({ id: habit.id, title: habit.title });
                     }}
-                    className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400 transition-colors"
+                    className="p-1.5 h-8 w-8 min-w-0 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400"
                     aria-label={`Delete ${habit.title}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  </NeuralButton>
                 </div>
               </div>
             ))}
@@ -396,12 +407,14 @@ export function HabitBuilder({
                 <h2 className="text-xl font-black text-white/90">
                   {editingHabit ? 'Edit Habit' : 'Create New Habit'}
                 </h2>
-                <button
+                <NeuralButton
+                  variant="ghost"
+                  size="sm"
                   onClick={handleCloseForm}
-                  className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+                  className="p-2 h-9 w-9 min-w-0 hover:bg-white/10 text-white/40 hover:text-white/70"
                 >
                   <X className="w-5 h-5" />
-                </button>
+                </NeuralButton>
               </div>
 
               {/* ── Templates section ── */}
@@ -416,9 +429,9 @@ export function HabitBuilder({
                       <button
                         key={template.id}
                         onClick={() => handleSelectTemplate(template)}
-                        className="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-left transition-colors"
+                        className="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-left transition-colors group"
                       >
-                        <div className="text-sm font-semibold text-white/90 mb-1">
+                        <div className="text-sm font-semibold text-white/90 mb-1 group-hover:text-emerald-400 transition-colors">
                           {template.title}
                         </div>
                         <div className="text-[10px] text-white/40">
@@ -432,123 +445,99 @@ export function HabitBuilder({
 
               <div className="space-y-4">
                 {/* Title */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
-                    Habit Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title || ''}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="e.g., Morning meditation, Daily exercise..."
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-                  />
-                </div>
+                <NeuralInput
+                  label="Habit Name *"
+                  placeholder="e.g., Morning meditation, Daily exercise..."
+                  value={formData.title || ''}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                />
 
                 {/* Frequency & Energy Cost */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <div className="space-y-2">
+                    <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1 flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       Frequency
                     </label>
-                    <select
+                    <NeuralSelectMenu
                       value={formData.frequency || 'daily'}
-                      onChange={(e) =>
+                      onChange={(next) =>
                         setFormData({
                           ...formData,
-                          frequency: e.target.value as AtlasHabit['frequency'],
+                          frequency: next as AtlasHabit['frequency'],
                         })
                       }
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-                    >
-                      {FREQUENCY_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-1">
-                      <Zap className="w-3 h-3" />
-                      Energy Cost (0-10)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={formData.energyCost || 3}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          energyCost: Math.max(0, Math.min(10, parseInt(e.target.value) || 3)),
-                        })
-                      }
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                      options={FREQUENCY_OPTIONS}
+                      ariaLabel="Frequency"
                     />
                   </div>
+                  <NeuralInput
+                    label="Energy Cost (0-10)"
+                    type="number"
+                    min={0}
+                    max={10}
+                    icon={<Zap className="w-4 h-4" />}
+                    value={formData.energyCost || 3}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        energyCost: Math.max(0, Math.min(10, parseInt(e.target.value) || 3)),
+                      })
+                    }
+                  />
                 </div>
 
                 {/* Minimum Viable Version */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
-                    Minimum Viable Version
-                  </label>
-                  <p className="text-[10px] text-white/30 mb-2 italic">
-                    The smallest version you can do on low-energy days
-                  </p>
-                  <input
-                    type="text"
+                <div className="space-y-1">
+                  <NeuralInput
+                    label="Minimum Viable Version"
+                    placeholder="e.g., 5 minutes instead of 30, 1 page instead of a chapter..."
                     value={formData.minimumViableVersion || ''}
                     onChange={(e) =>
                       setFormData({ ...formData, minimumViableVersion: e.target.value })
                     }
-                    placeholder="e.g., 5 minutes instead of 30, 1 page instead of a chapter..."
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                   />
+                  <p className="text-[10px] text-white/30 ml-1 italic">
+                    The smallest version you can do on low-energy days
+                  </p>
                 </div>
 
                 {/* Target Streak */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <Flame className="w-3 h-3" />
-                    Target Streak (days)
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={formData.targetStreak || 30}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        targetStreak: Math.max(1, parseInt(e.target.value) || 30),
-                      })
-                    }
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-                  />
-                </div>
+                <NeuralInput
+                  label="Target Streak (days)"
+                  type="number"
+                  min={1}
+                  icon={<Flame className="w-4 h-4" />}
+                  value={formData.targetStreak || 30}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      targetStreak: Math.max(1, parseInt(e.target.value) || 30),
+                    })
+                  }
+                />
 
                 {/* Status (only when editing) */}
                 {editingHabit && (
-                  <div>
-                    <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
+                  <div className="space-y-2">
+                    <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
                       Status
                     </label>
-                    <select
+                    <NeuralSelectMenu
                       value={formData.status || 'active'}
-                      onChange={(e) =>
+                      onChange={(next) =>
                         setFormData({
                           ...formData,
-                          status: e.target.value as AtlasHabit['status'],
+                          status: next as AtlasHabit['status'],
                         })
                       }
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-                    >
-                      <option value="active">Active</option>
-                      <option value="paused">Paused</option>
-                      <option value="archived">Archived</option>
-                    </select>
+                      options={[
+                        { value: 'active', label: 'Active' },
+                        { value: 'paused', label: 'Paused' },
+                        { value: 'archived', label: 'Archived' },
+                      ]}
+                      ariaLabel="Status"
+                    />
                   </div>
                 )}
 

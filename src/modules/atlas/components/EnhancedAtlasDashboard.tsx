@@ -4,7 +4,7 @@
  * Reverted visual style to original dashboard sections while keeping unified logic.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { GlobalProjection } from '@/lib/types';
 import {
@@ -19,6 +19,8 @@ import {
   Zap,
   Settings2
 } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import {
   AtlasProfile,
   AtlasTask,
@@ -122,6 +124,8 @@ interface EnhancedAtlasDashboardProps {
   predictiveDisplay: AtlasStateDisplay;
   /** Optional manual energy log callback — shown when energyWave has no data */
   onLogEnergy?: (level: number, timeOfDay: 'morning' | 'midday' | 'afternoon' | 'evening' | 'night') => void;
+  /** Optional focus target from deep links (e.g., task:ID, journal:ID). */
+  focusId?: string;
 }
 
 const noop = () => {};
@@ -166,6 +170,7 @@ export function EnhancedAtlasDashboard({
   onTogglePreferenceMode = noop,
   predictiveDisplay,
   onLogEnergy,
+  focusId,
 }: EnhancedAtlasDashboardProps) {
   const [isEditingIntention, setIsEditingIntention] = useState(false);
   const [intentionForm, setIntentionForm] = useState({ theme: '', focusDomain: '', energyTarget: 5 });
@@ -175,6 +180,22 @@ export function EnhancedAtlasDashboard({
   const [morningDismissed, setMorningDismissed] = useState(false);
   const [selectedWeekDate, setSelectedWeekDate] = useState<string | undefined>(undefined);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [focusTaskId, setFocusTaskId] = useState<string | undefined>(undefined);
+  const [focusJournalId, setFocusJournalId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!focusId) return;
+    if (focusId.startsWith('task:')) {
+      const id = focusId.replace('task:', '');
+      setFocusTaskId(id);
+      onTabChange('backlog');
+    } else if (focusId.startsWith('journal:')) {
+      const id = focusId.replace('journal:', '');
+      setFocusJournalId(id);
+      onTabChange('journal');
+      onViewChange('history');
+    }
+  }, [focusId, onTabChange, onViewChange]);
 
   const queuedCount = profile?.tasks.filter(t => t.status === 'queued').length;
   const tabs = useMemo<NeuralTabItem<AtlasTab>[]>(() => [
@@ -239,15 +260,16 @@ export function EnhancedAtlasDashboard({
             {predictiveDisplay.label}
           </span>
         </div>
-        <button
-          type="button"
+        <NeuralButton
           onClick={onTogglePreferenceMode}
           title={preferenceMode === 'structured' ? 'Switch to conversational mode' : 'Switch to structured mode'}
-          className="shrink-0 flex items-center gap-1.5 min-h-[var(--atlas-space-touch)] px-3 py-2 rounded-[var(--atlas-radius-pill)] border border-white/10 bg-white/5 hover:bg-white/10 text-[length:var(--atlas-type-caption)] text-[var(--atlas-text-secondary)] hover:text-sky-300 transition-colors"
+          variant="secondary"
+          size="sm"
+          className="shrink-0 h-9 px-3 rounded-full"
         >
           <Settings2 className="h-3.5 w-3.5" aria-hidden />
           <span className="hidden sm:inline">{preferenceMode === 'structured' ? 'Structured' : 'Conversational'}</span>
-        </button>
+        </NeuralButton>
       </header>
 
       {/* ── Tab Navigation: scroll padding so first tab isn't clipped on narrow viewports ── */}
@@ -420,51 +442,47 @@ export function EnhancedAtlasDashboard({
                 <div className="p-5 rounded-2xl border border-sky-500/20 bg-sky-500/[0.03] backdrop-blur-md">
                    {isEditingIntention ? (
                      <div className="space-y-4">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Theme</label>
-                          <input 
-                            type="text" 
-                            value={intentionForm.theme}
-                            onChange={(e) => setIntentionForm({ ...intentionForm, theme: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
+                        <NeuralInput 
+                          label="Theme"
+                          value={intentionForm.theme}
+                          onChange={(e) => setIntentionForm({ ...intentionForm, theme: e.target.value })}
+                          className="bg-white/5 border-white/10"
+                        />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <NeuralInput 
+                            label="Focus Domain"
+                            value={intentionForm.focusDomain}
+                            onChange={(e) => setIntentionForm({ ...intentionForm, focusDomain: e.target.value })}
+                            className="bg-white/5 border-white/10"
+                          />
+                          <NeuralInput 
+                            type="number"
+                            label="Energy Target"
+                            value={intentionForm.energyTarget}
+                            onChange={(e) => setIntentionForm({ ...intentionForm, energyTarget: parseInt(e.target.value) })}
+                            className="bg-white/5 border-white/10"
                           />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Focus Domain</label>
-                            <input 
-                              type="text" 
-                              value={intentionForm.focusDomain}
-                              onChange={(e) => setIntentionForm({ ...intentionForm, focusDomain: e.target.value })}
-                              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Energy Target</label>
-                            <input 
-                              type="number" 
-                              value={intentionForm.energyTarget}
-                              onChange={(e) => setIntentionForm({ ...intentionForm, energyTarget: parseInt(e.target.value) })}
-                              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
-                            />
-                          </div>
-                        </div>
                         <div className="flex justify-end gap-2 pt-2">
-                           <button 
+                           <NeuralButton 
                              onClick={() => setIsEditingIntention(false)}
-                             className="text-[10px] font-bold text-white/40 hover:text-white/60 px-3 py-1"
+                             variant="ghost"
+                             size="sm"
+                             className="text-[10px] font-bold"
                            >
                              CANCEL
-                           </button>
-                           <button 
+                           </NeuralButton>
+                           <NeuralButton 
                              onClick={() => {
                                onUpdateIntention(intentionForm);
                                setIsEditingIntention(false);
                              }}
-                             className="text-[10px] font-bold bg-sky-500 text-white px-4 py-1 rounded-full hover:bg-sky-400 transition-colors"
+                             themeColor="cyan"
+                             size="sm"
+                             className="text-[10px] font-bold px-4 h-8"
                            >
                              SAVE INTENT
-                           </button>
+                           </NeuralButton>
                         </div>
                      </div>
                    ) : (
@@ -636,6 +654,7 @@ export function EnhancedAtlasDashboard({
                     onUpdateTask={onUpdateTask}
                     onDeleteTask={onDeleteTask}
                     onCompleteTask={onCompleteTask}
+                    focusTaskId={focusTaskId}
                   />
               </section>
               <div className="border-t border-white/5" />
@@ -692,6 +711,7 @@ export function EnhancedAtlasDashboard({
             encryptionKey={encryptionKey}
             isLocked={isLocked}
             onSendMessage={onSendMessage}
+            focusEntryId={focusJournalId}
           />
         )}
 
@@ -715,12 +735,14 @@ export function EnhancedAtlasDashboard({
           <div className="space-y-6">
             <div className="flex items-center justify-between gap-4">
               <h3 className="text-lg font-bold font-display text-white/90">Temporal Reviews</h3>
-              <button
+              <NeuralButton
                 onClick={() => setIsReviewModalOpen(true)}
-                className="px-4 py-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-xs font-black uppercase tracking-widest hover:bg-cyan-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50"
+                themeColor="cyan"
+                size="sm"
+                className="text-[10px] font-black uppercase tracking-widest px-6"
               >
                 Run Weekly Review
-              </button>
+              </NeuralButton>
             </div>
             {profile?.reviews && profile.reviews.length > 0 ? (
               <div className="space-y-4">

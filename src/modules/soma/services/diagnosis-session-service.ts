@@ -39,6 +39,10 @@ import { NexusLogger } from '@/lib/nexus-logger';
 import { buildDiagnosisSummaryPrompt } from '../prompts/soma-prompt-builder';
 import { sanitizeJsonPayload } from '@/lib/ai-adapters/sanitize';
 import type { SomaDiagnosisSummary } from '../types';
+import {
+  getDiagnosisAnalysisTimeoutMs,
+  isStorageObjectNotFoundError,
+} from './diagnosis-session-utils';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -319,8 +323,8 @@ export async function triggerParse(
         policy: somaDocumentPolicy,
         sendMessage: llmCallback,
       }),
-      60_000,
-      'Diagnosis analysis timed out. Please try again.'
+      getDiagnosisAnalysisTimeoutMs(reconstructedFile),
+      `Diagnosis analysis timed out for ${reconstructedFile.name}. Please try again.`
     );
     const analysisResult = pipeline.analysis;
 
@@ -507,7 +511,9 @@ export async function closeDiagnosis(
         await deleteObject(storageRef);
       }
     } catch (e) {
-      console.error('[DiagnosisSessionService] Failed to delete session file from Storage:', e);
+      if (!isStorageObjectNotFoundError(e)) {
+        console.error('[DiagnosisSessionService] Failed to delete session file from Storage:', e);
+      }
       // Non-fatal — the file has a TTL via Firebase Storage rules.
     }
   }

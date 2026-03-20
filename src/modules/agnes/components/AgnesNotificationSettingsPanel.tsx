@@ -26,6 +26,6 @@ export function AgnesNotificationSettingsPanel() {
   }, []);
 
   return (
-    <NotificationSettingsPanel moduleId="agnes" title="Reminders" presets={presets} />
+    <NotificationSettingsPanel moduleId="agnes" title="Reminders" presets={presets} manageAllHref="/notifications" />
   );
 }

@@ -7,6 +7,8 @@ import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useAuth } from '@/lib/auth-context';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import {
   AtlasProfile,
   createEmptyAtlasProfile
@@ -375,46 +377,46 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
             </p>
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input
+                <NeuralInput
                   placeholder="Peak focus hours (e.g., 09:00-12:00)"
                   value={fastPeakHours}
                   onChange={e => setFastPeakHours(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-sky-500/50"
+                  className="bg-black/20 border-white/10"
                 />
-                <input
+                <NeuralInput
                   placeholder="Primary task / current focus"
                   value={fastPrimaryTask}
                   onChange={e => setFastPrimaryTask(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-sky-500/50"
+                  className="bg-black/20 border-white/10"
                 />
               </div>
               <div>
                 <p className="text-[9px] text-white/40 uppercase tracking-wider mb-2">Current Load Pressure</p>
                 <div className="flex gap-2 flex-wrap">
                   {(['low', 'medium', 'high'] as const).map(l => (
-                    <button
+                    <NeuralButton
                       key={l}
                       onClick={() => setFastCurrentLoad(l)}
-                      className={cn(
-                        'px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all',
-                        fastCurrentLoad === l
-                          ? 'bg-sky-600/30 border-sky-500/50 text-sky-300'
-                          : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
-                      )}
+                      variant={fastCurrentLoad === l ? 'primary' : 'secondary'}
+                      themeColor="cyan"
+                      size="sm"
+                      className="text-[10px] font-bold uppercase tracking-wider h-9"
                     >
                       {l}
-                    </button>
+                    </NeuralButton>
                   ))}
                 </div>
               </div>
               <div className="flex justify-end">
-                <button
+                <NeuralButton
                   onClick={handleFastTrack}
                   disabled={!fastPeakHours.trim() || isValidatingFastTrack}
-                  className="bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+                  loading={isValidatingFastTrack}
+                  themeColor="cyan"
+                  className="px-8"
                 >
-                  {isValidatingFastTrack ? 'Validating...' : 'Execute'}
-                </button>
+                  Execute
+                </NeuralButton>
               </div>
             </div>
             <p className="text-[9px] text-white/40 uppercase tracking-tight">

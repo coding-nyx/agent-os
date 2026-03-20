@@ -13,7 +13,7 @@ interface ReminderItem {
   data?: {
     title?: string;
     note?: string;
-    deepLink?: { route: string };
+    deepLink?: { route: string; focusId?: string };
     moduleId?: string;
   };
 }
@@ -88,7 +88,12 @@ export function RemindersCard({ moduleId }: { moduleId: ModuleId }) {
           <button
             key={item.id}
             type="button"
-            onClick={() => navigate(item.data?.deepLink?.route ?? '/notifications')}
+            onClick={() =>
+              navigate(
+                item.data?.deepLink?.route ?? '/notifications',
+                item.data?.deepLink?.focusId ? { state: { focusId: item.data.deepLink.focusId } } : undefined,
+              )
+            }
             className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-left hover:bg-white/[0.04]"
           >
             <p className="truncate text-xs font-semibold text-white/80">

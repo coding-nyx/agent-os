@@ -27,6 +27,11 @@ export interface AgentPersonalityProvision {
 
 export interface UserSecurityPreferences {
   vaultLocks: Record<string, boolean>;
+  /**
+   * Session storage TTL for vault password (in minutes).
+   * 0 or undefined means "until tab is closed".
+   */
+  vaultSessionTtlMinutes?: number;
   /** Per-category data-sharing overrides keyed by categoryId → targetModuleId → enabled */
   dataSharingOverrides?: Record<string, Record<string, boolean>>;
 }
@@ -287,6 +292,10 @@ export type SpineEventType =
   // Module reminders (cross-device scheduling via bridge + scheduler)
   | 'MODULE_REMINDER_DUE'
   | 'MODULE_REMINDER_COMPLETED'
+  // Reminder proposal lifecycle (AI + confirmation)
+  | 'REMINDER_PROPOSED'
+  | 'REMINDER_CONFIRMED'
+  | 'REMINDER_DISMISSED'
   // Titan Cycle Events
   | 'CYCLE_STARTED'
   | 'CYCLE_COMPLETED'
@@ -1406,5 +1415,3 @@ export interface HintVerificationResult {
   /** ActionHub action type to dispatch when the user confirms the update. */
   confirmActionType: string;
 }
-
-

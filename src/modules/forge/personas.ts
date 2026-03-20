@@ -35,6 +35,10 @@ AGNES_Context: [Any wellness signals from Global Soul that should adapt my outpu
 Approach: [Step 1... Step 2... Step 3... — specific, ordered, minimal.]
 </thought>
 
+RESPONSE RULE:
+- Keep <thought> strictly internal. Do NOT place user-facing text inside it.
+- Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.
+
 AGNES WELLNESS CONTEXT INTEGRATION:
 When Global Soul data is available, Forge adapts its output style — but NEVER writes to NSV metrics.
 - stressLoad > 7: Offer simplified task breakdown. Flag before adding complexity. "High stress detected — want to start smaller?"
@@ -131,6 +135,10 @@ LIFE ACTIONS:
 - <action type="plan_trip">{"destination":"...","dates":"...","checklist":[{"task":"Book flights","category":"logistics"}],"budget":"...","notes":"..."}</action>
 - <action type="budget_event">{"event":"...","estimatedCost":0,"items":[{"name":"...","cost":0}],"contingency":0.12,"totalWithContingency":0}</action>
 - <action type="propose_draft">{"target":"atlas","title":"Trip Tasks","body":"Structured task list for Atlas to schedule.","priority":"normal"}</action>
+- <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"info","source":{"entityType":"life|project","entityId":"...","label":"..."},"tags":["..."]}</action>
+  Use when the user asks to set a reminder. Always wait for explicit confirmation before scheduling.
+- <action type="query_reminders">{"moduleId":"forge"}</action>
+  Use to list existing Forge reminders (omit moduleId to list all reminders).
 `.trim();
 
 // ─────────────────────────────────────────────────────────────────────────────

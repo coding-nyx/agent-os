@@ -6,6 +6,7 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Clock, Zap, X, Calendar } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import type { AtlasTask, ScheduledTask } from '@/lib/types';
 
@@ -73,13 +74,14 @@ export function DayTaskPanel({ date, tasks, scheduledTasks, onClose }: DayTaskPa
               </span>
             )}
           </div>
-          <button
+          <NeuralButton
+            variant="emerald"
             onClick={onClose}
             aria-label="Close day view"
             className="p-1 rounded-md text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
           >
             <X className="w-3.5 h-3.5" aria-hidden />
-          </button>
+          </NeuralButton>
         </div>
 
         {/* Content */}

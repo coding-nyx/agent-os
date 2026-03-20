@@ -30,6 +30,8 @@ import { Plus, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAtlasEntryParser, ParsedEntry } from '../hooks/use-atlas-entry-parser';
 import { EntryConfirmChip } from './EntryConfirmChip';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import {
   AtlasTask,
   AtlasHabit,
@@ -193,7 +195,7 @@ export function QuickCaptureBar({ onAddTask, onAddHabit, onLogEnergy, disabled =
           'flex items-center gap-2 rounded-xl',
           'bg-white/[0.04] border border-white/10',
           'border-l-[3px] border-l-sky-500',
-          'px-3 py-2.5',
+          'px-3 py-1.5',
           'backdrop-blur-sm',
           'transition-colors',
           !disabled && 'focus-within:border-white/20 focus-within:bg-white/[0.06]',
@@ -201,51 +203,42 @@ export function QuickCaptureBar({ onAddTask, onAddHabit, onLogEnergy, disabled =
         )}
       >
         {/* Text input */}
-        <input
+        <NeuralInput
           ref={inputRef}
-          type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder="Capture a task or habit… (e.g. 'call dentist Friday' or 'run every weekday')"
           aria-label="Quick capture input"
-          className={cn(
-            'flex-1 min-w-0 bg-transparent outline-none',
-            'text-sm text-white/90 placeholder:text-white/30',
-            'disabled:cursor-not-allowed'
-          )}
+          className="flex-1 bg-transparent border-none min-h-0 h-9 px-0 focus:ring-0 focus:border-none"
         />
 
         {/* Clear button — only shown when there is text */}
         {inputValue.length > 0 && !disabled && (
-          <button
+          <NeuralButton
+            variant="ghost"
+            size="sm"
             onClick={handleClear}
             aria-label="Clear input"
             tabIndex={-1}
-            className="shrink-0 text-white/30 hover:text-white/70 transition-colors p-2.5"
+            className="shrink-0 p-0 w-8 h-8"
           >
             <X className="w-4 h-4" />
-          </button>
+          </NeuralButton>
         )}
 
         {/* Submit button */}
-        <button
+        <NeuralButton
+          size="sm"
+          themeColor="cyan"
           onClick={handleSubmit}
           disabled={disabled || inputValue.trim().length === 0}
           aria-label="Add entry"
-          className={cn(
-            'shrink-0 flex items-center justify-center',
-            'w-10 h-10 rounded-lg flex-none',
-            'bg-sky-500 hover:bg-sky-400 active:bg-sky-600',
-            'text-white transition-colors',
-            'disabled:opacity-40 disabled:cursor-not-allowed',
-            'shadow-[0_2px_8px_rgba(14,165,233,0.35)]',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50'
-          )}
+          className="shrink-0 w-9 h-9 p-0 rounded-lg shadow-[0_2px_8px_rgba(14,165,233,0.35)]"
         >
           <Plus className="w-4 h-4" />
-        </button>
+        </NeuralButton>
       </div>
 
       {/* ── Confirm chip ──────────────────────────────────────────────────────── */}
@@ -280,23 +273,25 @@ export function QuickCaptureBar({ onAddTask, onAddHabit, onLogEnergy, disabled =
               : 'Energy now:'}
           </span>
           <div className="flex items-center gap-1.5 flex-1 justify-between">
-            {ENERGY_LEVELS.map(({ value, label, color, bg }) => (
-              <button
+            {ENERGY_LEVELS.map(({ value, label }) => (
+              <NeuralButton
                 key={value}
-                type="button"
+                size="sm"
+                variant={loggedEnergy === value ? 'primary' : 'secondary'}
+                themeColor={
+                  value === 1 ? 'rose' :
+                  value === 2 ? 'orange' :
+                  value === 3 ? 'amber' :
+                  value === 4 ? 'lime' :
+                  'emerald'
+                }
                 onClick={() => handleEnergyLog(value)}
                 aria-label={`Energy level ${value}: ${label}`}
                 aria-pressed={loggedEnergy === value}
-                className={cn(
-                  'flex-1 h-6 rounded-lg border text-[10px] font-bold transition-all',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50',
-                  loggedEnergy === value
-                    ? cn(bg, color)
-                    : 'bg-white/[0.03] border-white/[0.08] text-white/30 hover:bg-white/[0.06] hover:text-white/50',
-                )}
+                className="flex-1 h-7 text-[10px] font-bold p-0"
               >
                 {value}
-              </button>
+              </NeuralButton>
             ))}
           </div>
           <span className="text-[10px] text-white/20 shrink-0 w-[42px] text-right">

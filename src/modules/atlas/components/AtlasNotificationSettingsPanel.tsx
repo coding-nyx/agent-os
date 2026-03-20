@@ -43,5 +43,5 @@ export function AtlasNotificationSettingsPanel() {
     ];
   }, []);
 
-  return <NotificationSettingsPanel moduleId="atlas" title="Reminders" presets={presets} />;
+  return <NotificationSettingsPanel moduleId="atlas" title="Reminders" presets={presets} manageAllHref="/notifications" />;
 }

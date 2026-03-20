@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Lock, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCommandPalette, type Command } from '../hooks/useCommandPalette';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import type { ModuleId } from '@/lib/module-manifest';
 
 interface CommandPaletteProps {
@@ -26,10 +28,11 @@ function CommandRow({ command, isSelected, onSelect }: {
 }) {
   const Icon = command.icon;
   return (
-    <button
+    <NeuralButton
+      variant="ghost"
       onClick={onSelect}
       className={cn(
-        'flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors',
+        'flex items-center justify-start gap-3 w-full px-4 py-2.5 text-left transition-colors border-none',
         isSelected
           ? 'bg-white/[0.08] text-white/90'
           : 'text-white/60 hover:bg-white/[0.04] hover:text-white/80',
@@ -46,7 +49,7 @@ function CommandRow({ command, isSelected, onSelect }: {
         </kbd>
       )}
       {isSelected && <ArrowRight className="w-3 h-3 text-white/40" />}
-    </button>
+    </NeuralButton>
   );
 }
 
@@ -128,16 +131,16 @@ export function CommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule
             aria-label="Command palette"
           >
             {/* Search input */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5">
-              <Search className="w-4 h-4 text-white/30 shrink-0" />
-              <input
+            <div className="px-4 py-3 border-b border-white/5 relative flex items-center gap-3">
+              <NeuralInput
                 ref={inputRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Type a command..."
-                className="flex-1 bg-transparent text-sm text-white/90 placeholder:text-white/30 outline-none"
+                icon={<Search className="w-4 h-4" />}
+                className="flex-1 bg-transparent border-none min-h-0 h-9 p-0 focus:ring-0"
               />
-              <kbd className="text-[10px] font-mono text-white/20 bg-white/5 px-1.5 py-0.5 rounded">ESC</kbd>
+              <kbd className="text-[10px] font-mono text-white/20 bg-white/5 px-1.5 py-0.5 rounded shrink-0">ESC</kbd>
             </div>
 
             {/* Command list */}

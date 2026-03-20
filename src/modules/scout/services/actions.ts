@@ -263,6 +263,11 @@ export function registerScoutActions() {
      */
     generate_digest: async (context) => {
       const { userId, encryptionKey, pushAssistantMessage } = context;
+
+      if (!encryptionKey) {
+        pushAssistantMessage?.('Please unlock your vault before generating a digest.');
+        return;
+      }
       
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       const nodes = await loadKnowledgeNodes({ userId: userId ?? null, encryptionKey });

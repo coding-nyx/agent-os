@@ -18,6 +18,8 @@ import { motion } from 'framer-motion';
 import { Lightbulb, RefreshCw, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { Skeleton } from '@/core/components/Skeleton';
 import type { JournalEntry } from '@/lib/types';
 import type { AtlasHabit, AtlasGoal } from '../../services/atlas-profile-service';
@@ -121,9 +123,8 @@ export function JournalEntryEditor({
       {/* ── 1. Morning Intent ─────────────────────────────────────── */}
       <section>
         <p className={LABEL_CLASS}>Morning Intent</p>
-        <textarea
+        <NeuralTextarea
           rows={3}
-          className={TEXTAREA_CLASS}
           placeholder="What's your intention for today?"
           value={draft.morningIntent}
           onChange={(e) => patch('morningIntent', e.target.value)}
@@ -145,15 +146,18 @@ export function JournalEntryEditor({
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-white/80 leading-relaxed">{aiPrompt}</p>
               </div>
-              <button
+              <NeuralButton
                 type="button"
+                variant="ghost"
+                size="sm"
+                themeColor="emerald"
                 onClick={onRegeneratePrompt}
                 title="Regenerate prompt"
-                className="shrink-0 flex items-center gap-1 text-[11px] text-violet-400/70 hover:text-violet-300 transition-colors font-medium uppercase tracking-wide focus-visible:outline-none"
+                className="shrink-0 flex items-center gap-1 text-[11px] !p-0 !h-auto font-medium uppercase tracking-wide"
               >
                 <RefreshCw className="w-3 h-3" aria-hidden />
                 Regenerate
-              </button>
+              </NeuralButton>
             </div>
           )}
         </section>
@@ -162,9 +166,8 @@ export function JournalEntryEditor({
       {/* ── 3. Free Write ─────────────────────────────────────────── */}
       <section>
         <p className={LABEL_CLASS}>Free Write</p>
-        <textarea
+        <NeuralTextarea
           rows={5}
-          className={TEXTAREA_CLASS}
           placeholder="How are you feeling?"
           value={draft.freeform}
           onChange={(e) => patch('freeform', e.target.value)}
@@ -174,9 +177,8 @@ export function JournalEntryEditor({
       {/* ── 4. Evening Reflection ─────────────────────────────────── */}
       <section>
         <p className={LABEL_CLASS}>Evening Reflection</p>
-        <textarea
+        <NeuralTextarea
           rows={4}
-          className={TEXTAREA_CLASS}
           placeholder="What happened today?"
           value={draft.eveningReflection}
           onChange={(e) => patch('eveningReflection', e.target.value)}
@@ -188,21 +190,18 @@ export function JournalEntryEditor({
         <p className={LABEL_CLASS}>Mood</p>
         <div className="flex gap-2">
           {MOOD_OPTIONS.map(({ value, emoji, label }) => (
-            <button
+            <NeuralButton
               key={value}
               type="button"
               onClick={() => patch('mood', value)}
               title={label}
-              className={cn(
-                'flex-1 flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg border text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-400 min-h-11',
-                draft.mood === value
-                  ? 'border-violet-500/50 bg-violet-500/15 text-violet-200'
-                  : 'border-white/10 bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white/60',
-              )}
+              variant={draft.mood === value ? 'primary' : 'secondary'}
+              themeColor="emerald"
+              className="flex-1 flex-col !h-14 !gap-1"
             >
               <span className="text-base leading-none">{emoji}</span>
-              <span className="text-[10px] leading-none">{label}</span>
-            </button>
+              <span className="text-[10px] leading-none font-medium">{label}</span>
+            </NeuralButton>
           ))}
         </div>
       </section>
@@ -212,20 +211,17 @@ export function JournalEntryEditor({
         <p className={LABEL_CLASS}>Energy Level</p>
         <div className="flex gap-2">
           {[1, 2, 3, 4, 5].map((val) => (
-            <button
+            <NeuralButton
               key={val}
               type="button"
               onClick={() => patch('energyLevel', val)}
               title={`Energy ${val}`}
-              className={cn(
-                'flex-1 py-2.5 rounded-lg border text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-400 min-h-11',
-                draft.energyLevel === val
-                  ? 'border-violet-500/50 bg-violet-500/15 text-violet-200'
-                  : 'border-white/10 bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white/60',
-              )}
+              variant={draft.energyLevel === val ? 'primary' : 'secondary'}
+              themeColor="emerald"
+              className="flex-1 !h-11 font-bold"
             >
               {val}
-            </button>
+            </NeuralButton>
           ))}
         </div>
       </section>
@@ -236,32 +232,37 @@ export function JournalEntryEditor({
         <div className="space-y-2">
           {draft.gratitude.map((item, idx) => (
             <div key={idx} className="flex items-center gap-2">
-              <input
+              <NeuralInput
                 type="text"
                 value={item}
                 onChange={(e) => updateGratitude(idx, e.target.value)}
                 placeholder={`Grateful for #${idx + 1}…`}
-                className="flex-1 bg-black/30 border border-white/10 rounded-lg text-white/90 placeholder:text-white/30 focus:border-violet-500/50 focus:outline-none px-3 py-2 text-sm transition-colors"
+                className="flex-1"
               />
-              <button
+              <NeuralButton
                 type="button"
                 onClick={() => removeGratitude(idx)}
-                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/40 hover:text-white/70 hover:border-white/20 transition-colors focus-visible:outline-none"
+                variant="secondary"
+                size="sm"
+                className="shrink-0 w-10 h-10 !p-0"
                 aria-label="Remove"
               >
-                <X className="w-3.5 h-3.5" aria-hidden />
-              </button>
+                <X className="w-4 h-4" aria-hidden />
+              </NeuralButton>
             </div>
           ))}
           {draft.gratitude.length < 3 && (
-            <button
+            <NeuralButton
               type="button"
+              variant="ghost"
+              size="sm"
+              themeColor="emerald"
               onClick={addGratitude}
-              className="flex items-center gap-1.5 text-xs text-violet-400/70 hover:text-violet-300 transition-colors font-medium focus-visible:outline-none"
+              className="!p-0 !h-auto text-xs"
             >
               <Plus className="w-3.5 h-3.5" aria-hidden />
               Add what you're grateful for
-            </button>
+            </NeuralButton>
           )}
         </div>
       </section>
@@ -269,9 +270,8 @@ export function JournalEntryEditor({
       {/* ── 8. Blockers ───────────────────────────────────────────── */}
       <section>
         <p className={LABEL_CLASS}>Blockers</p>
-        <textarea
+        <NeuralTextarea
           rows={3}
-          className={TEXTAREA_CLASS}
           placeholder="Any obstacles or friction today?"
           value={draft.blockers}
           onChange={(e) => patch('blockers', e.target.value)}

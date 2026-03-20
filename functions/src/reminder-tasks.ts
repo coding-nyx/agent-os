@@ -370,9 +370,10 @@ export const deliverReminder = onRequest(async (req, res) => {
     tx.set(occurrenceRef, { status: "delivered", updatedAt: now }, { merge: true });
   });
 
-  // Write an in-app inbox record when the inApp channel is enabled.
-  // The client reads users/{uid}/notification_inbox to surface unread reminders.
-  if (inAppEnabled) {
+  // Write an in-app inbox record when the inApp channel is enabled AND
+  // OS push is disabled. When OS push is enabled, the Bridge handler writes
+  // to notification_inbox to avoid duplicate entries.
+  if (inAppEnabled && !osEnabled) {
     await db.doc(`users/${uid}/notification_inbox/${occId}`).set({
       ...eventPayload,
       scheduleId,

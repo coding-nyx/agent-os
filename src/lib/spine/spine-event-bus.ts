@@ -48,7 +48,10 @@ class SpineEventBus {
   }
 
   registerCascadeRules(rules: CascadeRule[]): void {
-    this.cascadeRules = [...this.cascadeRules, ...rules];
+    const deduped = new Map<string, CascadeRule>();
+    this.cascadeRules.forEach((rule) => deduped.set(rule.id, rule));
+    rules.forEach((rule) => deduped.set(rule.id, rule));
+    this.cascadeRules = Array.from(deduped.values());
   }
 
   publish(eventInput: SpineEventPayload): SpineEvent {

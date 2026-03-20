@@ -11,10 +11,13 @@ import { CommandPalette } from './CommandPalette';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { NexusErrorBoundary } from './NexusErrorBoundary';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { useAI } from '@/llm-engine/ai-context';
-import { runDocumentPipeline, type DocumentPipelinePolicy, type DocumentPipelineStage } from '@/lib/services/document-pipeline';
+import { type DocumentPipelineStage } from '@/lib/services/document-pipeline';
 import { useNexusCrossModuleBlocker } from '@/lib/hooks/use-nexus-cross-module-blocker';
 import { useNexusConflictBlocker } from '@/lib/hooks/use-nexus-conflict-blocker';
+import { prepareDocumentChatPrompt } from '@/lib/services/document-chat-handoff-service';
+import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
 
 interface NexusDashboardProps {
   ai: {
@@ -23,7 +26,11 @@ interface NexusDashboardProps {
     streamingText: string;
     error: string | null;
     quota: GuestQuota | null;
-    handleSendMessage: (content: MessageContent, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
+    handleSendMessage: (
+      content: MessageContent,
+      onActionParsed?: (type: string, payload: Record<string, unknown>) => void,
+      options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }
+    ) => Promise<void>;
     clearSession: () => Promise<void>;
   };
   agentName: string;
@@ -49,12 +56,16 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
   // `useAI()` throws in that scenario, so we fall back to a no-op sender
   // (document-upload features won't be exercised by those tests).
   let sendMessage: ReturnType<typeof useAI>['sendMessage'] | undefined;
+  let analyzeImage: ReturnType<typeof useAI>['analyzeImage'] | undefined;
   try {
     // `useAI()` must still be invoked to preserve hook order.
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    sendMessage = useAI().sendMessage;
+    const aiContext = useAI();
+    sendMessage = aiContext.sendMessage;
+    analyzeImage = aiContext.analyzeImage;
   } catch {
     sendMessage = undefined;
+    analyzeImage = undefined;
   }
   const [briefCollapsed, setBriefCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(
@@ -144,6 +155,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     setRoutingSuggestion(null);
   }, []);
 
+
   const handleInjectChat = useCallback((text: string) => {
     ai.handleSendMessage(text);
   }, [ai]);
@@ -156,7 +168,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     ai.handleSendMessage(`Tell me about my ${domain} state right now.`);
   }, [ai]);
 
-  const handleUploadDocument = useCallback(async (file: File) => {
+  const handleUploadDocuments = useCallback(async (request: DocumentUploadRequest) => {
     if (!sendMessage) {
       throw new Error('AI sendMessage unavailable (missing AIProvider).');
     }
@@ -180,53 +192,23 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
       return response.publicText;
     };
 
-    const nexusPolicy: DocumentPipelinePolicy<{ summary: string }, { summary: string; preview: string }> = {
-      id: 'nexus-orchestrator-document',
-      context: { moduleId: 'nexus', domain: 'general' },
-      useOCRForImages: true,
-      ocrFailureMode: 'warn',
-      analyze: async ({ parsed }, llmSend) => {
-        const prompt = [
-          `Document received: "${parsed.fileName}"`,
-          `Type: ${parsed.fileType.toUpperCase()} | Words: ${parsed.wordCount.toLocaleString()}`,
-          'Provide a concise summary (4-6 sentences) and list 3-5 key points as bullets.',
-          'Do NOT emit action tags.',
-          '',
-          '---BEGIN DOCUMENT---',
-          parsed.rawText,
-          '---END DOCUMENT---'
-        ].join('\\n');
-
-        const response = await llmSend(prompt);
-        return { summary: response.trim() || 'No summary returned.' };
-      },
-      buildProposal: (analysis, parsed) => ({
-        summary: analysis.summary,
-        preview: parsed.rawText.slice(0, 2000)
-      }),
-      summarizeProposal: (proposal) => proposal.summary
-    };
-
     setDocUploadError(null);
     setDocUploadBusy(true);
-    setDocStage({ id: 'parsing', label: 'Uploading document…' });
+    setDocStage({ id: 'parsing', label: request.files.length > 1 ? 'Uploading documents…' : 'Uploading document…' });
 
     try {
-      const result = await runDocumentPipeline({
-        file,
-        policy: nexusPolicy,
+      const result = await prepareDocumentChatPrompt({
+        moduleId: 'nexus',
+        files: request.files,
         sendMessage: llmPrimary,
         sendMessageFallback: llmFallback,
+        analyzeImage: analyzeImage ? (imageDataUrl, prompt) => analyzeImage(imageDataUrl, prompt) : undefined,
+        userContext: request.caption,
         onStageChange: (stage) => setDocStage(stage),
       });
 
-      // `onStageChange` emits `done`; keep this as a defensive fallback.
       setDocStage((prev) => prev ?? { id: 'done', label: 'Document analyzed.' });
-
-      // Do not inject "prompt instructions" into the user chat.
-      await ai.handleSendMessage(
-        `Document uploaded and analyzed.\n\nSummary:\n${result.summary}`
-      );
+      await ai.handleSendMessage(result.prompt, undefined, { visibleContent: request.visibleContent });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Document analysis failed.';
       setDocUploadError(message);
@@ -234,7 +216,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     } finally {
       setDocUploadBusy(false);
     }
-  }, [ai, sendMessage]);
+  }, [ai, analyzeImage, sendMessage]);
 
   const isNexusBusy = isCrossModuleBusy || docUploadBusy || isConflictBlocking;
   const busyLabel = (() => {
@@ -258,13 +240,15 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
       {/* Daily Brief — above chat, collapsible, constrained on mobile */}
       <div className="shrink-0 px-4 pt-3 pb-2 space-y-3 max-h-[40vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
         {isMobile && (
-          <button
+          <NeuralButton
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => setBriefCollapsed((v) => !v)}
-            className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left text-[10px] font-bold uppercase tracking-[0.16em] text-white/55"
+            className="w-full px-3 py-2 text-left text-[10px] font-bold uppercase tracking-[0.16em] text-white/55 h-auto rounded-xl"
           >
             {briefCollapsed ? 'Show Brief' : 'Hide Brief'}
-          </button>
+          </NeuralButton>
         )}
         {(!isMobile || !briefCollapsed) && (
           <>
@@ -284,6 +268,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
                 onNavigate={(path) => navigate(path)}
               />
             </NexusErrorBoundary>
+
           </>
         )}
       </div>
@@ -324,7 +309,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
           moduleId="orchestrator"
           onClearHistory={ai.clearSession}
           onActionParsed={handleActionParsed}
-          onUploadDocument={handleUploadDocument}
+          onUploadDocuments={handleUploadDocuments}
         />
 
         {/* Routing suggestion — inline below chat input */}

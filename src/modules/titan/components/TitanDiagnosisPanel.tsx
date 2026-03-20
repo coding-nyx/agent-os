@@ -7,6 +7,7 @@ import { DiagnosisMergeDialog } from '@/core/diagnosis/components/DiagnosisMerge
 import { DiagnosisSidebar } from '@/core/diagnosis/components/DiagnosisSidebar';
 import { NexusChat } from '@/core/components/NexusChat';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import type { TitanProfile } from '@/lib/types';
 import { Lock } from 'lucide-react';
 
@@ -109,13 +110,13 @@ export function TitanDiagnosisPanel({ encryptionKey, profile }: TitanDiagnosisPa
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-orange-200">Unlock vault to analyze documents</p>
             <div className="flex gap-2 mt-2">
-              <input
+              <NeuralInput
                 type="password"
                 value={vaultPassword}
                 onChange={(e) => setVaultPassword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleVaultUnlock()}
                 placeholder="Vault password"
-                className="flex-1 px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-orange-400/40"
+                className="flex-1 px-3 py-1.5 h-auto min-h-0 focus:border-orange-400/40"
               />
               <NeuralButton
                 size="sm"

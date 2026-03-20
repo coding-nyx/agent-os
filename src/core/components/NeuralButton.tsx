@@ -11,6 +11,8 @@ interface NeuralButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonEl
   themeColor?: NeuralButtonThemeColor;
   loading?: boolean;
   as?: 'button' | 'div' | 'span';
+  iconOnly?: boolean;
+  allowOverflow?: boolean;
 }
 
 const THEME_STYLES: Record<NeuralButtonThemeColor, string> = {
@@ -34,6 +36,8 @@ export function NeuralButton({
   loading, 
   disabled,
   as = 'button',
+  iconOnly = false,
+  allowOverflow = false,
   ...props 
 }: NeuralButtonProps) {
   const variants: Record<NonNullable<NeuralButtonProps['variant']>, string> = {
@@ -49,18 +53,21 @@ export function NeuralButton({
     lg: 'h-12 px-8 text-base',
     xl: 'h-13 px-10 text-base'
   };
+  const iconOnlySize = 'h-11 w-11 p-0';
 
   const Component = as === 'div' ? motion.div : as === 'span' ? motion.span : motion.button;
   const isDisabled = Boolean(disabled || loading);
   const motionScaleProps: HTMLMotionProps<'button'> | {} =
     !isDisabled ? { whileHover: { scale: 1.02 }, whileTap: { scale: 0.98 } } : {};
+  const overflowClass = allowOverflow ? 'overflow-visible' : 'overflow-hidden';
 
   return (
     <Component
       className={cn(
-        'relative font-medium tracking-[0.04em] rounded-button border transition-all duration-300 flex items-center justify-center gap-1.5 md:gap-2 overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none whitespace-nowrap',
+        'relative font-medium tracking-[0.04em] rounded-button border transition-all duration-300 flex items-center justify-center gap-1.5 md:gap-2 group disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none whitespace-nowrap',
+        overflowClass,
         variants[variant],
-        sizes[size],
+        iconOnly ? iconOnlySize : sizes[size],
         className
       )}
       {...(motionScaleProps as any)}
@@ -86,4 +93,3 @@ export function NeuralButton({
     </Component>
   );
 }
-

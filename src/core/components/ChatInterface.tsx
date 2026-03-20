@@ -17,8 +17,10 @@ import { NeuralTextarea } from './NeuralTextarea';
 import { EmptyState } from '@/core/components/EmptyState';
 import { getActionLabel } from '@/lib/actions/action-labels';
 import { PendingRequestState } from '@/lib/hooks/use-pending-recovery';
-import { DocumentMessageCard, parseDocumentMessage } from './DocumentMessageCard';
+import { DocumentMessageCard, parseDocumentMessage, parseDocumentUploadMessage } from './DocumentMessageCard';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
+import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
+import { buildDocumentUploadVisibleMessage, summarizeDocumentUploadMessage } from '@/lib/services/document-upload-message';
 
 // Helper to convert MessageContent to string for display
 function messageContentToString(content: MessageContent): string {
@@ -58,6 +60,7 @@ interface ChatInterfaceProps {
   onRecoverPendingRequest?: () => void;
   onDismissPendingRequest?: () => void;
   onUploadDocument?: (file: File) => void;
+  onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
 }
 
 const THEMES = {
@@ -165,7 +168,16 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
     // When a model emits only internal/action tags, `publicText` becomes empty.
     // In that case, show a minimal assistant bubble so the user never sees a "blank response".
     const hasInternalOnlyCompletion = hasInternalContent && !hasPublicContent && !showProcessingPulse;
-    const bubbleText = hasPublicContent ? publicText : (hasInternalOnlyCompletion ? 'Processed.' : '');
+    const actionTagMatch = !hasPublicContent
+      ? content.match(/<action\s+type="([^"]+)">/i)
+      : null;
+    const hasBareActionTag = !hasPublicContent && /<action\b/i.test(content);
+    const actionFallback = actionTagMatch
+      ? `${getActionLabel(actionTagMatch[1])}.`
+      : (hasBareActionTag ? 'Action processed.' : '');
+    const bubbleText = hasPublicContent
+      ? publicText
+      : (hasInternalOnlyCompletion ? 'Processed.' : actionFallback);
 
     // Debug chips — actions and spine events
     const actionChips = debugMode ? (debugMeta?.actionTagsExtracted ?? []) : [];
@@ -294,11 +306,13 @@ export const ChatInterface = React.memo(function ChatInterface({
   onRecoverPendingRequest,
   onDismissPendingRequest,
   onUploadDocument,
+  onUploadDocuments,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [hasNewCompletion, setHasNewCompletion] = useState(false);
+  const [draftUploads, setDraftUploads] = useState<Array<{ file: File; previewUrl?: string }>>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -356,7 +370,30 @@ export const ChatInterface = React.memo(function ChatInterface({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || effectiveIsProcessing || error || quota?.isHardLocked) return;
+    if (effectiveIsProcessing || error || quota?.isHardLocked) return;
+    if (draftUploads.length > 0) {
+      const files = draftUploads.map((draft) => draft.file);
+      if (onUploadDocuments) {
+        void (async () => {
+          const caption = input.trim() || undefined;
+          const visibleContent = await buildDocumentUploadVisibleMessage(files, caption);
+          await onUploadDocuments({ files, caption, visibleContent });
+        })();
+      } else if (onUploadDocument) {
+        onUploadDocument(files[0]);
+      }
+      draftUploads.forEach((draft) => {
+        if (draft.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+      });
+      setDraftUploads([]);
+      setInput('');
+      setIsDrawerOpen(false);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+      return;
+    }
+    if (!input.trim()) return;
     onSendMessage(input);
     setInput('');
     setIsDrawerOpen(false);
@@ -374,20 +411,41 @@ export const ChatInterface = React.memo(function ChatInterface({
   };
 
   const theme = THEMES[themeColor];
-  const canShowUpload = typeof onUploadDocument === 'function';
+  const canShowUpload =
+    typeof onUploadDocument === 'function' || typeof onUploadDocuments === 'function';
+  const uploadLabel = typeof onUploadDocuments === 'function' ? 'Upload Docs' : 'Upload Doc';
 
   const handleUploadDocClick = useCallback(() => {
-    if (!onUploadDocument) return;
+    if (!onUploadDocument && !onUploadDocuments) return;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.md,.markdown';
+    input.multiple = typeof onUploadDocuments === 'function';
     input.onchange = (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) onUploadDocument(file);
+      const files = Array.from((e.target as HTMLInputElement).files ?? []);
+      if (files.length === 0) return;
+      setDraftUploads((current) => {
+        current.forEach((draft) => {
+          if (draft.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+        });
+        return files.map((file) => ({
+          file,
+          previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+        }));
+      });
+      setIsDrawerOpen(false);
       input.value = '';
     };
     input.click();
-  }, [onUploadDocument]);
+  }, [onUploadDocument, onUploadDocuments]);
+
+  useEffect(() => {
+    return () => {
+      draftUploads.forEach((draft) => {
+        if (draft.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+      });
+    };
+  }, [draftUploads]);
   const isAgnes = moduleId === 'agnes';
 
   const hasMessages = messages.some((msg) => msg.role !== 'system');
@@ -477,6 +535,17 @@ export const ChatInterface = React.memo(function ChatInterface({
                 ) : (
                     (() => {
                       const textContent = messageContentToString(msg.content);
+                      const uploadParsed = parseDocumentUploadMessage(textContent);
+                      if (uploadParsed) {
+                        return (
+                          <div className="flex flex-col max-w-[85%] w-fit items-end">
+                            <DocumentMessageCard upload={uploadParsed} themeAccent={theme.accent} />
+                            <div className="mt-1.5 opacity-30 px-1">
+                              <span className="text-[9px] font-mono uppercase tracking-wider text-white">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
+                        );
+                      }
                       const docParsed = parseDocumentMessage(textContent);
                       if (docParsed) {
                         return (
@@ -604,7 +673,11 @@ export const ChatInterface = React.memo(function ChatInterface({
                   A neural transmission was interrupted. Would you like to recover and retransmit the following message?
                 </p>
                 <div className="p-3 mt-1 rounded-lg bg-black/40 border border-white/5 text-sm text-white/70 italic font-medium truncate">
-                  "{messageContentToString(pendingRequest.userMessage)}"
+                  "{(() => {
+                    const pendingText = messageContentToString(pendingRequest.userMessage);
+                    const pendingUpload = parseDocumentUploadMessage(pendingText);
+                    return pendingUpload ? summarizeDocumentUploadMessage(pendingUpload) : pendingText;
+                  })()}"
                 </div>
                 <div className="flex justify-end gap-3 mt-2">
                   <NeuralButton variant="ghost" size="sm" onClick={onDismissPendingRequest} className="text-amber-400 hover:bg-amber-400/10">
@@ -640,6 +713,47 @@ export const ChatInterface = React.memo(function ChatInterface({
         </AnimatePresence>
 
         <div className="relative">
+          {draftUploads.length > 0 && (
+            <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">Attachments ready</p>
+                  <p className="mt-1 text-xs text-white/55">Add optional context in the composer, then send.</p>
+                </div>
+                <NeuralButton
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    draftUploads.forEach((draft) => {
+                      if (draft.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+                    });
+                    setDraftUploads([]);
+                  }}
+                  className="h-auto p-2 text-white/45"
+                >
+                  <X className="w-4 h-4" />
+                </NeuralButton>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {draftUploads.map((draft, index) => (
+                  <div
+                    key={`${draft.file.name}-${index}`}
+                    className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                  >
+                    {draft.previewUrl ? (
+                      <img src={draft.previewUrl} alt={draft.file.name} className="h-10 w-10 rounded-lg object-cover" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-indigo-400" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-white/80">{draft.file.name}</p>
+                      <p className="text-[10px] text-white/40">{Math.max(1, Math.round(draft.file.size / 1024))} KB</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <AnimatePresence>
             {isDrawerOpen && (
               <motion.div 
@@ -656,7 +770,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                       className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group h-auto"
                     >
                        <FileText className="w-6 h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
-                       <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Upload Doc</span>
+                       <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">{uploadLabel}</span>
                     </NeuralButton>
                     <NeuralButton variant="ghost" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group h-auto">
                        <BarChart3 className="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform" />
@@ -680,16 +794,17 @@ export const ChatInterface = React.memo(function ChatInterface({
                 (error || quota?.isHardLocked) && "opacity-20 grayscale pointer-events-none"
             )}>
               {(canShowUpload || renderCustomActions) && (
-                <NeuralButton 
+                  <NeuralButton 
                   type="button"
                   variant="ghost"
+                  iconOnly
                   onClick={() => setIsDrawerOpen(!isDrawerOpen)}
                   className={cn(
-                    "w-11 h-11 rounded-panel flex items-center justify-center transition-all bg-white/5 border border-white/5 hover:bg-white/10 group/plus",
+                    "rounded-panel flex items-center justify-center transition-all bg-white/8 border border-white/10 hover:bg-white/12 group/plus",
                     isDrawerOpen && "bg-white/10 border-white/20 rotate-45"
                   )}
                 >
-                  <Plus className="w-5 h-5 text-white/40 group-hover/plus:text-white transition-colors" />
+                  <Plus className="w-5 h-5 text-white/70 group-hover/plus:text-white transition-colors drop-shadow-[0_0_6px_rgba(255,255,255,0.25)]" />
                 </NeuralButton>
               )}
 
@@ -698,14 +813,14 @@ export const ChatInterface = React.memo(function ChatInterface({
                 value={input} 
                 onChange={(e) => setInput(e.target.value)} 
                 onKeyDown={handleKeyDown}
-                placeholder={error ? "Link severed..." : (quota?.isHardLocked ? "Trial Locked" : placeholder)} 
+                placeholder={error ? "Link severed..." : (quota?.isHardLocked ? "Trial Locked" : (draftUploads.length > 0 ? 'Optional: what should I analyze about these attachments?' : placeholder))} 
                 aria-label="Type your message"
                 className="flex-1 bg-transparent border-none outline-none px-3 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base text-white placeholder:text-white/10 resize-none min-h-[44px] max-h-40 leading-relaxed focus:ring-0 focus:border-none" 
                 disabled={effectiveIsProcessing || !!error || quota?.isHardLocked}
                 rows={1}
               />
               
-              <NeuralButton type="submit" aria-label="Send message" disabled={effectiveIsProcessing || !input.trim() || !!error || quota?.isHardLocked} className={cn("w-11 h-11 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl p-0", theme.btn)}>
+              <NeuralButton type="submit" aria-label="Send message" disabled={effectiveIsProcessing || (draftUploads.length === 0 && !input.trim()) || !!error || quota?.isHardLocked} className={cn("w-11 h-11 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl p-0", theme.btn)}>
                 {isSyncing ? (
                   <Loader2 className="w-5 h-5 text-white animate-spin" />
                 ) : (

@@ -10,6 +10,8 @@ import type { LucideIcon } from 'lucide-react';
 import { RefreshCw, Plus, CheckCircle, PauseCircle, ChevronRight, MessageSquare, Dumbbell, Zap, Settings, Trash2 } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import type { CycleEntry, CycleType } from '@/lib/types';
@@ -71,12 +73,12 @@ function CycleCard({
 
   return (
   <div className="relative">
-    <button
-      type="button"
+    <NeuralButton
+      variant="secondary"
       onClick={() => onSelect(cycle)}
-      className="w-full text-left p-3 rounded-xl bg-white/[0.03] border border-white/10 hover:border-orange-500/30 hover:bg-orange-500/5 transition-all group"
+      className="w-full text-left p-3 rounded-xl bg-white/[0.03] border border-white/10 hover:border-orange-500/30 hover:bg-orange-500/5 transition-all group h-auto justify-start"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 w-full">
         <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
           <TypeIcon className={cn('w-4 h-4', typeMeta.color)} />
         </div>
@@ -108,7 +110,7 @@ function CycleCard({
         </div>
         <ChevronRight className="w-3.5 h-3.5 text-white/20 group-hover:text-orange-400/60 transition-colors shrink-0 mt-2" />
       </div>
-    </button>
+    </NeuralButton>
     {directWriteMode && onDirectDelete && (
       <button
         type="button"
@@ -316,13 +318,13 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
             <p className="text-xs text-white/40 italic">
               No cycles configured. Track workout periodization blocks, deload weeks, or recovery cycles.
             </p>
-            <button
-              type="button"
+            <NeuralButton
+              variant="ghost"
               onClick={handleNewCycle}
-              className="text-[11px] text-orange-400/60 hover:text-orange-300 transition-colors"
+              className="text-[11px] text-orange-400/60 hover:text-orange-300 transition-colors h-auto p-0"
             >
               Set up your first cycle →
-            </button>
+            </NeuralButton>
           </div>
         ) : (
           <div className="space-y-4">
@@ -364,18 +366,14 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
         maxWidth="md"
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-wider text-white/50 mb-1.5">
-              Cycle Name *
-            </label>
-            <input
-              type="text"
-              value={directName}
-              onChange={e => setDirectName(e.target.value)}
-              placeholder="e.g. Hypertrophy Block, Deload Week"
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50"
-            />
-          </div>
+          <NeuralInput
+            label="Cycle Name *"
+            type="text"
+            value={directName}
+            onChange={e => setDirectName(e.target.value)}
+            placeholder="e.g. Hypertrophy Block, Deload Week"
+            className="placeholder-white/30 focus:border-orange-500/50"
+          />
 
           <div>
             <label className="block text-[10px] font-black uppercase tracking-wider text-white/50 mb-1.5">
@@ -383,45 +381,41 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
             </label>
             <div className="flex gap-2">
               {(['workout', 'recovery', 'custom'] as const).map(t => (
-                <button
+                <NeuralButton
                   key={t}
-                  type="button"
                   onClick={() => setDirectType(t)}
+                  variant={directType === t ? 'primary' : 'secondary'}
                   className={cn(
-                    'flex-1 py-2 rounded-xl text-xs font-bold transition-all border',
+                    'flex-1 py-2 rounded-xl text-xs font-bold transition-all h-auto',
                     directType === t
                       ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
                       : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20'
                   )}
                 >
                   {t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
+                </NeuralButton>
               ))}
             </div>
           </div>
 
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-wider text-white/50 mb-1.5">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={directStartDate}
-              onChange={e => setDirectStartDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-orange-500/50"
-            />
-          </div>
+          <NeuralInput
+            label="Start Date"
+            type="date"
+            value={directStartDate}
+            onChange={e => setDirectStartDate(e.target.value)}
+            className="focus:border-orange-500/50"
+          />
 
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-wider text-white/50 mb-1.5">
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-black uppercase tracking-wider text-white/50">
               Description (optional)
             </label>
-            <textarea
+            <NeuralTextarea
               value={directDescription}
               onChange={e => setDirectDescription(e.target.value)}
               rows={2}
               placeholder="Goals, notes, or context for this cycle"
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50 resize-none"
+              className="placeholder-white/30 focus:border-orange-500/50"
             />
           </div>
 

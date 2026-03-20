@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { TaskCard } from './TaskCard';
 import type {
   AtlasTask,
@@ -251,13 +252,11 @@ export function TaskTimeline({
       {/* Backlog section (collapsed by default) */}
       {backlogTasks.length > 0 && (
         <div className="border-t border-white/5 pt-4">
-          <button
+          <NeuralButton
             onClick={() => setShowBacklog((prev) => !prev)}
             aria-expanded={showBacklog}
-            className={cn(
-              'flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/40 hover:text-white/60 transition-colors w-full min-h-[44px]',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 rounded-lg py-3 px-2'
-            )}
+            variant="ghost"
+            className="w-full !justify-start gap-2 text-xs font-bold uppercase tracking-wider text-white/40 hover:text-white/60 !h-auto py-3 px-2"
           >
             {showBacklog ? (
               <ChevronDown className="w-4 h-4" aria-hidden="true" />
@@ -266,7 +265,7 @@ export function TaskTimeline({
             )}
             <Inbox className="w-4 h-4" aria-hidden="true" />
             <span>Backlog ({backlogTasks.length})</span>
-          </button>
+          </NeuralButton>
 
           <AnimatePresence>
             {showBacklog && (

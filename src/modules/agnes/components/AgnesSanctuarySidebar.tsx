@@ -4,6 +4,7 @@ import { Settings, User, Bot, Sparkles, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AgnesPersonalitySidebar } from './AgnesPersonalitySidebar';
 import { AgnesTherapistCard } from './AgnesTherapistCard';
+import { NeuralButton } from '@/core/components/NeuralButton';
 
 interface AgnesSanctuarySidebarProps {
   collapsed: boolean;
@@ -65,7 +66,9 @@ export const AgnesSanctuarySidebar: React.FC<AgnesSanctuarySidebarProps> = ({
 
       {/* Settings Button - Moved UP to avoid global button overlap */}
       <div className="p-6 mb-20 border-t border-white/5 bg-black/20">
-        <button
+        <NeuralButton
+          variant="ghost"
+          themeColor="indigo"
           onClick={() => window.dispatchEvent(new CustomEvent('agnes:open-settings'))}
           className={cn(
             "w-full h-11 flex items-center gap-4 px-4 rounded-xl bg-white/[0.03] border border-white/5 text-white/40 hover:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/20 transition-all group",
@@ -74,7 +77,7 @@ export const AgnesSanctuarySidebar: React.FC<AgnesSanctuarySidebarProps> = ({
         >
           <Settings size={16} className="group-hover:rotate-45 transition-transform duration-700" />
           {!collapsed && <span className="text-[10px] font-black uppercase tracking-widest">Module Settings</span>}
-        </button>
+        </NeuralButton>
       </div>
     </motion.aside>
   );

@@ -14,6 +14,8 @@ import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import { EmptyState } from '@/core/components/EmptyState';
 import { MetricCard } from '@/core/components/viz/MetricCard';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { getTodayIso } from '../utils';
 
 // ---------------------------------------------------------------------------
@@ -257,24 +259,23 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
         maxWidth="lg"
       >
         <div className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all"
-            />
-          </div>
+          <NeuralInput
+            label="Date"
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+          />
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Activity Type</label>
+            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">Activity Type</label>
             <div className="flex flex-wrap gap-2">
               {CARDIO_TYPES.map(ct => (
-                <button
+                <NeuralButton
                   key={ct.value}
-                  type="button"
                   onClick={() => setType(ct.value)}
+                  variant={type === ct.value ? 'primary' : 'secondary'}
+                  themeColor="orange"
+                  size="sm"
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border',
                     type === ct.value
@@ -284,15 +285,15 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
                 >
                   <span>{ct.emoji}</span>
                   {ct.label}
-                </button>
+                </NeuralButton>
               ))}
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Duration</label>
+            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">Duration</label>
             <div className="flex items-center gap-3">
-              <div className="flex flex-1 items-center bg-white/5 border border-white/10 rounded-xl focus-within:border-orange-500/50 transition-all px-4 py-2.5">
+              <div className="flex flex-1 items-center bg-black/40 border border-white/10 rounded-2xl focus-within:border-orange-500/50 transition-all px-4 h-12">
                 <input
                   type="number"
                   min={0}
@@ -321,45 +322,39 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Distance (km)</label>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                placeholder="—"
-                value={distance}
-                onChange={e => setDistance(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Avg HR (bpm)</label>
-              <input
-                type="number"
-                min={40}
-                max={220}
-                placeholder="—"
-                value={avgHR}
-                onChange={e => setAvgHR(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Calories</label>
-              <input
-                type="number"
-                min={0}
-                placeholder="—"
-                value={calories}
-                onChange={e => setCalories(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
-              />
-            </div>
+            <NeuralInput
+              label="Distance (km)"
+              type="number"
+              step="0.01"
+              min={0}
+              placeholder="—"
+              value={distance}
+              onChange={e => setDistance(e.target.value)}
+              className="tabular-nums"
+            />
+            <NeuralInput
+              label="Avg HR (bpm)"
+              type="number"
+              min={40}
+              max={220}
+              placeholder="—"
+              value={avgHR}
+              onChange={e => setAvgHR(e.target.value)}
+              className="tabular-nums"
+            />
+            <NeuralInput
+              label="Calories"
+              type="number"
+              min={0}
+              placeholder="—"
+              value={calories}
+              onChange={e => setCalories(e.target.value)}
+              className="tabular-nums"
+            />
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between ml-1">
               <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Effort (RPE)</label>
               <span className={cn('text-sm font-black tabular-nums', rpeColor(rpe))}>
                 {rpe}/10
@@ -377,13 +372,12 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
           </div>
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Notes (optional)</label>
-            <textarea
+            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">Notes (optional)</label>
+            <NeuralTextarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Route, conditions, how it felt..."
               rows={2}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 transition-all resize-none"
             />
           </div>
 

@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cpu, ChevronDown, Search, RefreshCw, Check, Loader2 } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 
 // ---------------------------------------------------------------------------
 // Types & constants
@@ -211,17 +213,18 @@ export function ModelSelector() {
         </p>
         <div className="flex gap-2">
           {PROVIDERS.map(p => (
-            <button
+            <NeuralButton
               key={p.id}
               onClick={() => setProvider(p.id)}
-              className={`flex-1 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 border ${
+              variant={provider === p.id ? 'primary' : 'secondary'}
+              className={`flex-1 text-xs font-bold h-auto py-2 ${
                 provider === p.id
                   ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
                   : 'border-white/10 bg-black/20 text-white/50 hover:border-white/20 hover:text-white/70'
               }`}
             >
               {p.label}
-            </button>
+            </NeuralButton>
           ))}
         </div>
       </div>
@@ -232,30 +235,32 @@ export function ModelSelector() {
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
             Model
           </p>
-          <button
+          <NeuralButton
+            variant="ghost"
             onClick={() => {
               if (provider === 'openrouter') return fetchOpenRouterModels();
               if (provider === 'google') return fetchGoogleModels();
               return fetchGrokModels();
             }}
             disabled={loading}
-            className="text-[9px] text-amber-400/60 hover:text-amber-400 transition-colors flex items-center gap-1"
+            className="text-[9px] text-amber-400/60 hover:text-amber-400 transition-colors flex items-center gap-1 h-auto p-0 min-w-0"
           >
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
             Refresh
-          </button>
+          </NeuralButton>
         </div>
 
         {/* Trigger */}
-        <button
+        <NeuralButton
+          variant="secondary"
           onClick={() => setIsOpen(o => !o)}
-          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-white/10 bg-black/30 hover:border-amber-500/30 transition-colors text-left"
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-white/10 bg-black/30 hover:border-amber-500/30 transition-colors text-left h-auto min-h-[44px]"
         >
           <span className="text-xs text-white/70 truncate">{displayName}</span>
           <ChevronDown
             className={`w-3.5 h-3.5 text-white/30 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           />
-        </button>
+        </NeuralButton>
 
         {/* Dropdown */}
         <AnimatePresence>
@@ -271,17 +276,14 @@ export function ModelSelector() {
               <div className="mt-2 rounded-xl border border-white/10 bg-black/40 overflow-hidden">
                 {/* Search */}
                 <div className="p-2 border-b border-white/5">
-                  <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-black/30 border border-white/5">
-                    <Search className="w-3 h-3 text-white/30 shrink-0" />
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={e => setSearch(e.target.value)}
-                      placeholder="Search models…"
-                      className="w-full text-xs bg-transparent text-white/80 placeholder:text-white/20 outline-none"
-                      autoFocus
-                    />
-                  </div>
+                  <NeuralInput
+                    icon={<Search className="w-3 h-3" />}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search models…"
+                    className="h-9 min-h-0 text-xs py-0"
+                    autoFocus
+                  />
                 </div>
 
                 {/* List */}
@@ -296,10 +298,11 @@ export function ModelSelector() {
                     </div>
                   ) : (
                     filtered.map(m => (
-                      <button
+                      <NeuralButton
                         key={m.id}
+                        variant="ghost"
                         onClick={() => selectModel(m.id)}
-                        className={`w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors ${
+                        className={`w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors h-auto rounded-none justify-start ${
                           selectedModel === m.id ? 'bg-amber-500/10' : ''
                         }`}
                       >
@@ -317,7 +320,7 @@ export function ModelSelector() {
                         {selectedModel === m.id && (
                           <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                         )}
-                      </button>
+                      </NeuralButton>
                     ))
                   )}
                 </div>

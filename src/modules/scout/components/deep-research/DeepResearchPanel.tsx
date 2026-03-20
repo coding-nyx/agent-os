@@ -13,6 +13,8 @@ import { X, Brain, Search, CheckCircle, AlertCircle, RefreshCw, Edit2, ArrowRigh
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UseDeepResearchReturn, SubQuestion, DeepResearchResult } from '../../hooks/useDeepResearch';
 import { ConfirmDialog } from '@/core/components/ConfirmDialog';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 
 interface DeepResearchPanelProps {
   isOpen: boolean;
@@ -48,24 +50,25 @@ function SubQuestionRow({
       <span className="text-xs font-bold text-white/20 mt-0.5 w-4 flex-shrink-0">{index + 1}</span>
       {editing ? (
         <div className="flex-1 flex items-center gap-2">
-          <input
+          <NeuralInput
             autoFocus
-            className="flex-1 bg-white/5 border border-white/20 rounded-lg px-2 py-1 text-sm text-white focus:outline-none"
+            className="flex-1 bg-white/5 border border-white/20 rounded-lg px-2 py-1 text-sm text-white focus:outline-none min-h-0 h-8"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
           />
-          <button onClick={save} className="text-xs text-emerald-400 hover:text-emerald-300">Save</button>
+          <NeuralButton variant="ghost" themeColor="emerald" onClick={save} className="text-xs text-emerald-400 hover:text-emerald-300 h-8 px-2">Save</NeuralButton>
         </div>
       ) : (
         <div className="flex-1 flex items-start justify-between gap-2">
           <p className="text-sm text-white/70 leading-relaxed">{question.question}</p>
-          <button
+          <NeuralButton
+            variant="ghost"
             onClick={() => setEditing(true)}
-            className="mt-0.5 p-1 rounded hover:bg-white/10 text-white/20 hover:text-white/50 flex-shrink-0"
+            className="mt-0.5 p-1 rounded hover:bg-white/10 text-white/20 hover:text-white/50 flex-shrink-0 h-auto w-auto min-h-0 min-w-0 border-none"
           >
             <Edit2 className="w-3 h-3" />
-          </button>
+          </NeuralButton>
         </div>
       )}
     </div>
@@ -173,7 +176,7 @@ export function DeepResearchPanel({
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: '100%' }}
         transition={{ type: 'spring', stiffness: 320, damping: 32, mass: 0.8 }}
-        className="relative ml-auto w-full md:w-[600px] lg:w-[680px] bg-[#0a0c11] border-l border-white/10 flex flex-col h-full overflow-hidden shadow-2xl"
+        className="relative ml-auto flex h-full w-full flex-col overflow-hidden border-l border-white/10 bg-[#0a0c11] shadow-2xl md:w-[600px] lg:w-[680px]"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.08] flex-shrink-0">
@@ -186,41 +189,43 @@ export function DeepResearchPanel({
               <p className="text-xs text-white/30 mt-0.5">Multi-angle investigation with synthesis</p>
             </div>
           </div>
-          <button
+          <NeuralButton
+            variant="ghost"
             onClick={handleClose}
-            className="p-2 rounded-xl hover:bg-white/5 text-white/30 hover:text-white/60 transition-colors"
+            className="p-2 rounded-xl hover:bg-white/5 text-white/30 hover:text-white/60 transition-colors h-auto w-auto min-h-0 min-w-0 border-none"
             aria-label="Close deep research panel"
           >
             <X className="w-4 h-4" />
-          </button>
+          </NeuralButton>
         </div>
 
         {/* Body — full remaining height, scrollable */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 pb-28 sm:pb-32">
 
           {/* ── Idle / Form ─────────────────────────────────────────────── */}
           {(deepResearch.status === 'idle' || deepResearch.status === 'error') && (
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">Research Query</label>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <input
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/40 focus:bg-white/[0.07] transition-all"
-                    placeholder="What do you want to research deeply?"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleStart(); }}
-                    autoFocus
-                    aria-label="Research query"
-                  />
-                  <button
+                <NeuralInput
+                  label="Research Query"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/40 focus:bg-white/[0.07] transition-all"
+                  placeholder="What do you want to research deeply?"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleStart(); }}
+                  autoFocus
+                  aria-label="Research query"
+                />
+                <div className="flex justify-end pt-2">
+                  <NeuralButton
                     onClick={handleStart}
                     disabled={!query.trim()}
-                    className="px-6 py-3 text-sm font-bold text-black bg-white rounded-xl hover:bg-white/90 disabled:opacity-40 flex items-center justify-center gap-2 flex-shrink-0 transition-opacity"
+                    themeColor="white"
+                    className="px-6 py-3 text-sm font-bold text-black bg-white rounded-xl hover:bg-white/90 disabled:opacity-40 flex items-center justify-center gap-2 flex-shrink-0 transition-opacity h-auto"
                   >
                     <Zap className="w-3.5 h-3.5" />
                     Research
-                  </button>
+                  </NeuralButton>
                 </div>
               </div>
 
@@ -358,51 +363,59 @@ export function DeepResearchPanel({
         </div>
 
         {/* Footer actions */}
-        <div className="border-t border-white/[0.08] px-6 py-4 flex items-center justify-end gap-2 flex-shrink-0">
+        <div className="border-t border-white/[0.08] bg-[#0a0c11]/95 px-6 py-4 pb-[calc(var(--space-4)+env(safe-area-inset-bottom,0px))] backdrop-blur-xl">
           {deepResearch.status === 'reviewing' && (
-            <>
-              <button
+            <div className="flex w-full flex-col-reverse items-stretch justify-end gap-2 sm:flex-row sm:items-center">
+              <NeuralButton
+                variant="outline"
                 onClick={() => deepResearch.reset()}
-                className="px-4 py-2 text-xs font-medium text-white/40 border border-white/10 rounded-xl hover:bg-white/5"
+                className="w-full sm:w-auto"
               >
                 Start Over
-              </button>
-              <button
+              </NeuralButton>
+              <NeuralButton
                 onClick={handleConfirm}
                 disabled={editedQuestions.length === 0}
-                className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-black bg-white rounded-xl hover:bg-white/90 disabled:opacity-40"
+                themeColor="white"
+                className="flex w-full items-center justify-center gap-2 sm:w-auto"
               >
                 Search All
                 <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </>
+              </NeuralButton>
+            </div>
           )}
 
           {(deepResearch.status === 'searching' || deepResearch.status === 'synthesizing' || deepResearch.status === 'generating_questions') && (
-            <button
-              onClick={deepResearch.abort}
-              className="px-4 py-2 text-xs font-medium text-red-400/70 border border-red-500/20 rounded-xl hover:bg-red-500/10"
-            >
-              Abort
-            </button>
+            <div className="flex w-full justify-end">
+              <NeuralButton
+                variant="outline"
+                themeColor="red"
+                onClick={deepResearch.abort}
+                className="w-full sm:w-auto"
+              >
+                Abort
+              </NeuralButton>
+            </div>
           )}
 
           {deepResearch.status === 'complete' && deepResearch.result && (
-            <>
-              <button
+            <div className="flex w-full flex-col-reverse items-stretch justify-end gap-2 sm:flex-row sm:items-center">
+              <NeuralButton
+                variant="outline"
                 onClick={() => { deepResearch.reset(); }}
-                className="px-4 py-2 text-xs font-medium text-white/40 border border-white/10 rounded-xl hover:bg-white/5"
+                className="w-full sm:w-auto"
               >
                 Discard
-              </button>
-              <button
+              </NeuralButton>
+              <NeuralButton
                 onClick={handleAccept}
-                className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-black bg-emerald-400 rounded-xl hover:bg-emerald-300"
+                themeColor="emerald"
+                className="flex w-full items-center justify-center gap-2 sm:w-auto"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
                 Accept Node
-              </button>
-            </>
+              </NeuralButton>
+            </div>
           )}
         </div>
       </motion.div>

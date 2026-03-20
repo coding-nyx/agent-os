@@ -220,8 +220,10 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
       {/* Drop Zone */}
       <AnimatePresence mode="wait">
         {(phase === 'idle' || phase === 'drag_over') && (
-          <motion.div
+          <NeuralButton
             key="dropzone"
+            as="div"
+            variant="ghost"
             initial={reducedMotion ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
@@ -282,7 +284,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
                 or click to browse
               </span>
             )}
-          </motion.div>
+          </NeuralButton>
         )}
 
         {/* Validation Error State */}
@@ -404,13 +406,14 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
                 )}
               </div>
 
-              <button
+              <NeuralButton
+                variant="secondary"
                 onClick={handleReset}
-                className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors shrink-0"
+                className="w-8 h-8 p-0 flex items-center justify-center shrink-0 border-white/10 bg-white/5 hover:bg-white/10"
                 aria-label="Remove file and select a different one"
               >
                 <X className="w-4 h-4 text-white/50" />
-              </button>
+              </NeuralButton>
             </div>
 
             {/* Metadata chips */}

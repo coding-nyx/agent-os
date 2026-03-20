@@ -10,6 +10,87 @@ import { NSV_READ_PERMISSIONS } from '../services/nsv-ownership';
 import { formatNSVForModulePrompt, formatNSVForAtlasPlanner, normalizeNSV } from '../services/nsv-service';
 import { WebCrawlerService } from '../services/web-crawler-service';
 import type { ModuleId } from '../module-manifest';
+import { createReminderSchedule } from '@/lib/notifications/reminder-create';
+import type { NotificationChannelPrefs, NotificationDeepLink, NotificationPriority, Recurrence, ReminderProposal } from '@/lib/notifications/types';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import type { NotificationScheduleConfig } from '@/lib/notifications/types';
+
+const REMINDER_PROPOSALS = new Map<string, ReminderProposal>();
+
+function safeRecurrence(value: unknown): Recurrence | null {
+  if (!value || typeof value !== 'object') return null;
+  const kind = (value as { kind?: string }).kind;
+  if (!kind) return null;
+  return value as Recurrence;
+}
+
+function normalizeChannelPrefs(value: unknown): NotificationChannelPrefs {
+  if (value && typeof value === 'object') {
+    const prefs = value as { os?: boolean; inApp?: boolean };
+    return {
+      os: prefs.os !== false,
+      inApp: prefs.inApp !== false ? true : false,
+    };
+  }
+  return { os: true, inApp: true };
+}
+
+function normalizePriority(value: unknown): NotificationPriority {
+  if (value === 'critical' || value === 'alert' || value === 'info') return value;
+  return 'alert';
+}
+
+function normalizeDeepLink(moduleId: ModuleId, value: unknown, focusId?: string): NotificationDeepLink {
+  if (value && typeof value === 'object') {
+    const dl = value as { route?: string; focusId?: string };
+    const route = typeof dl.route === 'string' && dl.route.length > 0 ? dl.route : `/${moduleId}`;
+    return { route, focusId: typeof dl.focusId === 'string' ? dl.focusId : focusId };
+  }
+  return { route: `/${moduleId}`, focusId };
+}
+
+function normalizeReminderPayload(moduleId: ModuleId, payload: Record<string, unknown>): ReminderProposal {
+  const title = safeString(payload.title) ?? safeString(payload.reminderTitle) ?? 'Reminder';
+  const note = safeString(payload.note) ?? safeString(payload.body) ?? safeString(payload.message);
+  const timezone = safeString(payload.timezone) ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const dueAt = safeString(payload.dueAt) ?? safeString(payload.due_at);
+  const recurrence = safeRecurrence(payload.recurrence) ?? (dueAt ? { kind: 'once', dueAt, timezone } : { kind: 'once', dueAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), timezone });
+  const channelPrefs = normalizeChannelPrefs(payload.channelPrefs);
+  const priority = normalizePriority(payload.priority);
+  const focusId = safeString(payload.focusId);
+  const deepLink = normalizeDeepLink(moduleId, payload.deepLink, focusId);
+
+  const source = payload.source && typeof payload.source === 'object'
+    ? (payload.source as ReminderProposal['source'])
+    : {
+      moduleId,
+      entityType: safeString(payload.entityType) ?? safeString(payload.sourceType),
+      entityId: safeString(payload.entityId),
+      label: safeString(payload.sourceLabel) ?? safeString(payload.label),
+    };
+
+  const tags = safeStringArray(payload.tags) ?? undefined;
+
+  const id =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `reminder_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+  return {
+    id,
+    moduleId,
+    title,
+    note,
+    recurrence,
+    timezone,
+    channelPrefs,
+    priority,
+    deepLink,
+    source,
+    tags,
+    createdBy: 'agent',
+  };
+}
 
 function safeNumber(value: unknown): number | undefined {
   if (typeof value !== 'number' || Number.isNaN(value)) return undefined;
@@ -365,6 +446,153 @@ export function registerCoreActions() {
       }
       if (Object.keys(patch).length === 0) return;
       await CoreProfileService.updateProfile(userId, patch);
+    },
+
+    propose_reminder: ({ moduleId, payload, pushAssistantMessage }) => {
+      const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
+        ? payload.moduleId as ModuleId
+        : (moduleId as ModuleId);
+
+      const proposal = normalizeReminderPayload(scopedModule, payload || {});
+      REMINDER_PROPOSALS.set(proposal.id, proposal);
+
+      Spine.emit({
+        type: 'REMINDER_PROPOSED',
+        source: moduleId,
+        domain: 'system',
+        data: { proposal },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+
+      pushAssistantMessage?.(`Reminder proposed for ${proposal.title}.`);
+    },
+
+    confirm_reminder: async ({ moduleId, payload, userId, isGuest, pushAssistantMessage }) => {
+      if (!userId || isGuest) {
+        pushAssistantMessage?.('Sign in to schedule reminders.');
+        return;
+      }
+
+      const proposalId = typeof payload?.proposalId === 'string' ? payload.proposalId : undefined;
+      let proposal = proposalId ? REMINDER_PROPOSALS.get(proposalId) : undefined;
+
+      if (!proposal) {
+        const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
+          ? payload.moduleId as ModuleId
+          : (moduleId as ModuleId);
+        proposal = normalizeReminderPayload(scopedModule, payload || {});
+      }
+
+      const scheduleId = await createReminderSchedule(userId, {
+        moduleId: proposal.moduleId,
+        title: proposal.title,
+        note: proposal.note,
+        recurrence: proposal.recurrence,
+        timezone: proposal.timezone,
+        channelPrefs: proposal.channelPrefs,
+        priority: proposal.priority,
+        deepLink: proposal.deepLink,
+        source: proposal.source,
+        tags: proposal.tags,
+        createdBy: 'agent',
+      });
+
+      if (proposalId) REMINDER_PROPOSALS.delete(proposalId);
+
+      Spine.emit({
+        type: 'REMINDER_CONFIRMED',
+        source: moduleId,
+        domain: 'system',
+        data: { scheduleId, proposalId, moduleId: proposal.moduleId },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    },
+
+    dismiss_reminder: ({ moduleId, payload }) => {
+      const proposalId = typeof payload?.proposalId === 'string' ? payload.proposalId : undefined;
+      if (proposalId) REMINDER_PROPOSALS.delete(proposalId);
+      Spine.emit({
+        type: 'REMINDER_DISMISSED',
+        source: moduleId,
+        domain: 'system',
+        data: { proposalId },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    },
+
+    query_reminders: async ({ moduleId, payload, userId, isGuest, pushAssistantMessage }) => {
+      if (!userId || isGuest) {
+        pushAssistantMessage?.('Sign in to view reminders.');
+        return;
+      }
+      const rawModule = payload?.moduleId;
+      const moduleList = Array.isArray(rawModule)
+        ? rawModule.filter((m): m is string => typeof m === 'string')
+        : typeof rawModule === 'string'
+          ? rawModule.split(/[|,]/g).map((m) => m.trim()).filter(Boolean)
+          : [];
+      const moduleFilter = moduleList.map((m) => m.toLowerCase());
+
+      const rawTags = payload?.tags;
+      const tags = Array.isArray(rawTags)
+        ? rawTags.filter((t): t is string => typeof t === 'string').map((t) => t.toLowerCase())
+        : [];
+      const rawEntityTypes = payload?.entityTypes;
+      const entityTypes = Array.isArray(rawEntityTypes)
+        ? rawEntityTypes.filter((t): t is string => typeof t === 'string').map((t) => t.toLowerCase())
+        : [];
+      const sourceEntityType = typeof payload?.source?.entityType === 'string'
+        ? [payload.source.entityType.toLowerCase()]
+        : [];
+      const entityFilter = [...entityTypes, ...sourceEntityType];
+
+      const dataLayer = getNexusDataLayer();
+      const all = await dataLayer.listDocuments<NotificationScheduleConfig>(
+        `users/${userId}/notification_schedules`,
+      );
+      const filtered = all.filter((s) => {
+        const matchesModule = moduleFilter.length === 0
+          ? true
+          : moduleFilter.includes((s.moduleId ?? '').toLowerCase());
+        const scheduleTags = Array.isArray(s.tags) ? s.tags.map((t) => t.toLowerCase()) : [];
+        const matchesTags = tags.length === 0
+          ? true
+          : scheduleTags.some((t) => tags.includes(t));
+        const sourceType = typeof s.source?.entityType === 'string'
+          ? s.source.entityType.toLowerCase()
+          : '';
+        const matchesEntity = entityFilter.length === 0
+          ? true
+          : (sourceType ? entityFilter.includes(sourceType) : false);
+        return matchesModule && matchesTags && matchesEntity;
+      });
+
+      if (filtered.length === 0) {
+        pushAssistantMessage?.(
+          moduleFilter.length > 0
+            ? `No active reminders found for ${moduleFilter.join(', ')}.`
+            : 'No reminders scheduled yet.',
+        );
+        return;
+      }
+
+      const lines = filtered
+        .slice(0, 12)
+        .map((s) => {
+          const title = s.messageTemplate?.title || 'Reminder';
+          const status = s.enabled ? 'active' : 'paused';
+          return `• ${title} (${s.moduleId}, ${status})`;
+        });
+
+      const header = moduleFilter.length > 0
+        ? `Here are your ${moduleFilter.join(', ')} reminders:`
+        : 'Here are your scheduled reminders:';
+      const more =
+        filtered.length > 12 ? `\n…plus ${filtered.length - 12} more.` : '';
+      pushAssistantMessage?.([header, ...lines].join('\n') + more);
     },
 
     sync_personality_provision: async ({ userId, payload }) => {

@@ -1,14 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Check,
-  MessageCircle,
-  Pause,
-  Play,
-  RotateCcw,
-  Zap,
-  ArrowRight,
-} from 'lucide-react';
+import { ArrowRight, Check, MessageCircle, Pause, Play, RotateCcw, Zap } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/core/components/EmptyState';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
@@ -297,50 +290,40 @@ export function FocusView({
 
         {/* ── Action buttons ── */}
         <div className="flex items-center gap-3 w-full">
-          <button
+          <NeuralButton
             onClick={() => onComplete(activeTask.id)}
             aria-label={`Complete task: ${activeTask.title}`}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold text-sm',
-              'bg-emerald-500/15 border border-emerald-500/20 text-emerald-400',
-              'hover:bg-emerald-500/25 active:bg-emerald-500/30 transition-all',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50'
-            )}
+            themeColor="emerald"
+            className="flex-1 !h-12 !rounded-xl font-bold"
           >
             <Check className="w-4 h-4" aria-hidden="true" />
             Complete
-          </button>
+          </NeuralButton>
 
-          <button
+          <NeuralButton
             onClick={() => onDefer(activeTask.id)}
             aria-label={`Defer task: ${activeTask.title}`}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold text-sm',
-              'bg-white/5 border border-white/10 text-white/50',
-              'hover:bg-white/10 hover:text-white/70 active:bg-white/15 transition-all',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50'
-            )}
+            variant="secondary"
+            className="flex-1 !h-12 !rounded-xl font-bold border-white/10 text-white/50 hover:text-white/70"
           >
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
             Defer
-          </button>
+          </NeuralButton>
         </div>
       </motion.div>
 
       {/* ── Floating chat button ── */}
-      <button
+      <NeuralButton
         onClick={onOpenChat}
         aria-label="Open chat with Atlas"
+        themeColor="emerald"
         className={cn(
-          'fixed bottom-6 right-6 z-[var(--z-fab)] w-12 h-12 rounded-full flex items-center justify-center',
-          'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400',
-          'hover:bg-emerald-500/30 active:bg-emerald-500/40 transition-all',
-          'shadow-lg shadow-emerald-500/10',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950'
+          'fixed bottom-6 right-6 z-[var(--z-fab)] !w-12 !h-12 !rounded-full',
+          'shadow-lg shadow-emerald-500/10'
         )}
       >
         <MessageCircle className="w-5 h-5" aria-hidden="true" />
-      </button>
+      </NeuralButton>
     </div>
   );
 }

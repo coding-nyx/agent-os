@@ -7,6 +7,7 @@ import { History, Heart, Activity, Calendar, Filter } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { cn } from '@/lib/utils';
 import type { VitalReading, PhysicalAssessment } from './SomaDashboard';
+import { NeuralButton } from '@/core/components/NeuralButton';
 
 interface BiometricHistoryProps {
   vitalHistory: VitalReading[];
@@ -174,18 +175,16 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
             <span className="text-sm font-medium text-white/60">Type:</span>
             <div className="flex gap-2">
               {(['all', 'vitals', 'assessments'] as const).map((type) => (
-                <button
+                <NeuralButton
                   key={type}
                   onClick={() => setFilter(type)}
-                  className={cn(
-                    'px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all',
-                    filter === type
-                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                      : 'bg-white/[0.02] text-white/40 border border-white/10 hover:border-white/20'
-                  )}
+                  variant={filter === type ? 'primary' : 'secondary'}
+                  themeColor="cyan"
+                  size="sm"
+                  className="px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
                 >
                   {type}
-                </button>
+                </NeuralButton>
               ))}
             </div>
           </div>
@@ -196,18 +195,16 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
             <span className="text-sm font-medium text-white/60">Period:</span>
             <div className="flex gap-2">
               {(['week', 'month', 'quarter', 'all'] as const).map((range) => (
-                <button
+                <NeuralButton
                   key={range}
                   onClick={() => setTimeRange(range)}
-                  className={cn(
-                    'px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all',
-                    timeRange === range
-                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                      : 'bg-white/[0.02] text-white/40 border border-white/10 hover:border-white/20'
-                  )}
+                  variant={timeRange === range ? 'primary' : 'secondary'}
+                  themeColor="cyan"
+                  size="sm"
+                  className="px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
                 >
                   {range === 'all' ? 'All' : range}
-                </button>
+                </NeuralButton>
               ))}
             </div>
           </div>

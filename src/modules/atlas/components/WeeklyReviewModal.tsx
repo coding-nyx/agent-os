@@ -13,6 +13,7 @@ import React, { useMemo, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { NeuralModal } from '@/core/components/NeuralModal';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { cn } from '@/lib/utils';
 import type { GlobalProjection, EnergyWavePoint, ScheduledTask } from '@/lib/types';
@@ -384,20 +385,16 @@ export function WeeklyReviewModal({
         {/* ── CTA ──────────────────────────────────────────────────────── */}
         <section className="space-y-3">
           {onCompleteReview && (
-            <button
+            <NeuralButton
               onClick={() => {
                 onCompleteReview();
                 onClose();
               }}
-              className={cn(
-                'w-full py-3 px-6 rounded-xl border text-sm font-black uppercase tracking-widest',
-                'border-sky-500/40 bg-sky-500/10 text-sky-300',
-                'hover:bg-sky-500/20 hover:border-sky-500/60 transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50'
-              )}
+              themeColor="cyan"
+              className="w-full text-sm font-black uppercase tracking-widest h-12"
             >
               Complete review & save
-            </button>
+            </NeuralButton>
           )}
           {recoveryScheduled ? (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
@@ -409,17 +406,13 @@ export function WeeklyReviewModal({
               </p>
             </div>
           ) : (
-            <button
+            <NeuralButton
               onClick={handleScheduleRecovery}
-              className={cn(
-                'w-full py-3 px-6 rounded-xl border text-sm font-black uppercase tracking-widest',
-                'border-rose-500/40 bg-rose-500/10 text-rose-400',
-                'hover:bg-rose-500/20 hover:border-rose-500/60 transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/50'
-              )}
+              variant="danger"
+              className="w-full text-sm font-black uppercase tracking-widest h-12"
             >
               Schedule Recovery Day
-            </button>
+            </NeuralButton>
           )}
         </section>
       </div>

@@ -69,5 +69,16 @@ describe('reminder-evaluation', () => {
     const due = computeDueOccurrencesInRange(recurrence, rangeStartMs, rangeEndMs);
     expect(due.map((ms) => new Date(ms).toISOString())).toEqual(['2026-01-01T20:00:00.000Z']);
   });
-});
 
+  it('computes due once occurrences', () => {
+    const recurrence: Recurrence = {
+      kind: 'once',
+      dueAt: '2026-02-01T10:00:00.000Z',
+      timezone: 'UTC',
+    };
+    const rangeStartMs = Date.parse('2026-02-01T09:59:00.000Z');
+    const rangeEndMs = Date.parse('2026-02-01T10:01:00.000Z');
+    const due = computeDueOccurrencesInRange(recurrence, rangeStartMs, rangeEndMs);
+    expect(due.map((ms) => new Date(ms).toISOString())).toEqual(['2026-02-01T10:00:00.000Z']);
+  });
+});

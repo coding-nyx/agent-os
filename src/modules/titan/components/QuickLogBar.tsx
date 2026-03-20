@@ -8,6 +8,8 @@ import { ChevronUp, Clock, Plus, Dumbbell, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildHistorySuggestion } from '../utils/quick-log-parser';
 import type { WorkoutSession } from '@/lib/types';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -136,11 +138,12 @@ export function QuickLogBar({
               exit={{ opacity: 0, y: 10 }}
               className="absolute bottom-full left-2 right-2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-10 mb-1 flex justify-center"
             >
-              <button
-                type="button"
+              <NeuralButton
                 onClick={handleAcceptHistory}
+                variant="secondary"
+                size="sm"
                 className={cn(
-                  'flex items-center gap-2 min-h-[44px] px-3 py-2.5 sm:px-4 sm:py-2',
+                  'gap-2 min-h-[44px] px-3 py-2.5 sm:px-4 sm:py-2',
                   'bg-black/60 backdrop-blur-xl border border-white/10 rounded-full',
                   'text-[11px] text-white/50 hover:text-orange-400 hover:border-orange-500/30',
                   'transition-all shadow-xl max-w-[min(280px,calc(100vw-2rem))]',
@@ -149,7 +152,7 @@ export function QuickLogBar({
                 <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden />
                 <span className="font-bold text-orange-500/60 uppercase tracking-wider shrink-0">Reuse:</span>
                 <span className="truncate min-w-0 text-left">{historySuggestion.text}</span>
-              </button>
+              </NeuralButton>
             </motion.div>
           )}
         </AnimatePresence>
@@ -164,25 +167,24 @@ export function QuickLogBar({
         >
           <div className="flex items-center gap-2 sm:gap-3 w-full py-2.5 px-2 sm:py-3 sm:px-4 min-w-0">
             {/* Nexus Anchor — hidden on very narrow to prioritize input */}
-            <button
-              type="button"
+            <NeuralButton
               onClick={handleNexusClick}
               title="Consult Nexus"
               aria-label="Consult Nexus"
+              themeColor="indigo"
+              variant="secondary"
               className={cn(
                 'shrink-0 min-w-[48px] min-h-[48px] w-12 h-12 rounded-2xl',
-                'flex items-center justify-center',
                 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400',
                 'hover:bg-indigo-500/20 hover:border-indigo-500/40 transition-all active:scale-95',
-                'focus:outline-none focus:ring-1 focus:ring-indigo-400/40 focus:ring-offset-2 focus:ring-offset-transparent',
                 'max-[380px]:hidden',
               )}
             >
               <Sparkles className="w-5 h-5 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]" aria-hidden />
-            </button>
+            </NeuralButton>
 
             {/* Intelligence Input — visible boundary, min-w-0 so flex doesn't overflow */}
-            <input
+            <NeuralInput
               ref={inputRef}
               type="text"
               aria-label="Unified entry — log workout or ask Nexus"
@@ -220,51 +222,51 @@ export function QuickLogBar({
                     exit={{ width: 0, opacity: 0, x: 20 }}
                     className="flex items-center gap-1.5 sm:gap-2 overflow-hidden"
                   >
-                    <button
-                      type="button"
+                    <NeuralButton
                       onClick={onCardioLog}
                       title="Log Cardio"
                       aria-label="Log Cardio"
-                      className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl flex items-center justify-center bg-black/20 border border-white/10 text-white/50 hover:text-orange-400 hover:bg-orange-500/10 hover:border-orange-500/20 transition-all active:scale-95 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      variant="secondary"
+                      className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl bg-black/20 border border-white/10 text-white/50 hover:text-orange-400 hover:bg-orange-500/10 hover:border-orange-500/20 transition-all active:scale-95"
                     >
                       <Dumbbell className="w-4 h-4" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
+                    </NeuralButton>
+                    <NeuralButton
                       onClick={onManualLog}
                       title="Manual Log"
                       aria-label="Manual log"
-                      className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl flex items-center justify-center bg-black/20 border border-white/10 text-white/50 hover:text-orange-400 hover:bg-orange-500/10 hover:border-orange-500/20 transition-all active:scale-95 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      variant="secondary"
+                      className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl bg-black/20 border border-white/10 text-white/50 hover:text-orange-400 hover:bg-orange-500/10 hover:border-orange-500/20 transition-all active:scale-95"
                     >
                       <Plus className="w-5 h-5" aria-hidden />
-                    </button>
+                    </NeuralButton>
                   </motion.div>
                 )}
               </AnimatePresence>
 
               {hasInput ? (
-                <button
-                  type="button"
+                <NeuralButton
                   onClick={handleSubmit}
                   aria-label="Submit log"
-                  className="min-w-[48px] min-h-[48px] w-12 h-12 rounded-2xl flex items-center justify-center bg-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:scale-105 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-orange-400/50 focus:ring-offset-2 focus:ring-offset-transparent"
+                  themeColor="orange"
+                  className="min-w-[48px] min-h-[48px] w-12 h-12 rounded-2xl bg-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:scale-105 active:scale-95 transition-all"
                 >
                   <ChevronUp className="w-6 h-6 stroke-[3px]" aria-hidden />
-                </button>
+                </NeuralButton>
               ) : (
-                <button
-                  type="button"
+                <NeuralButton
                   onClick={() => setShowActions(!showActions)}
                   aria-label={showActions ? 'Close actions' : 'Show actions'}
+                  variant="secondary"
                   className={cn(
-                    'min-w-[48px] min-h-[48px] w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-95 border focus:outline-none focus:ring-1 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-transparent',
+                    'min-w-[48px] min-h-[48px] w-12 h-12 rounded-2xl transition-all active:scale-95 border',
                     showActions
                       ? 'bg-black/30 border-white/20 text-white'
                       : 'bg-black/20 border-white/10 text-white/40 hover:text-white/80 hover:bg-black/30 hover:border-white/15',
                   )}
                 >
                   <Plus className={cn('w-5 h-5 transition-transform duration-300', showActions && 'rotate-45')} aria-hidden />
-                </button>
+                </NeuralButton>
               )}
             </div>
           </div>

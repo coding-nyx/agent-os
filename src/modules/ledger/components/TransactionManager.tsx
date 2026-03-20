@@ -3,6 +3,8 @@ import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Plus, Search, Filter, Download, Upload, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { DynamicFormBuilder } from '@/core/components/forms/DynamicFormBuilder';
@@ -69,20 +71,22 @@ const TransactionRow = React.memo(function TransactionRow({
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-2">
-          <button
+          <NeuralButton
+            variant="ghost"
             onClick={() => onEdit(transaction)}
             disabled={disabled}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white disabled:opacity-50 transition-colors"
+            className="p-1.5 h-auto min-h-0 text-white/60 hover:text-white"
           >
             <Edit2 className="w-3.5 h-3.5" />
-          </button>
-          <button
+          </NeuralButton>
+          <NeuralButton
+            variant="ghost"
             onClick={() => onDelete(transaction.id)}
             disabled={disabled}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 disabled:opacity-50 transition-colors"
+            className="p-1.5 h-auto min-h-0 text-white/60 hover:text-red-400"
           >
             <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          </NeuralButton>
         </div>
       </td>
     </tr>
@@ -433,40 +437,40 @@ export function TransactionManager({
         <div className="flex flex-wrap gap-3">
           {/* Search */}
           <div className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-              <input
-                type="text"
-                placeholder="Search transactions..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-500/50"
-              />
-            </div>
+            <NeuralInput
+              type="text"
+              placeholder="Search transactions..."
+              value={searchQuery}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+              icon={Search}
+              className="w-full"
+            />
           </div>
 
           {/* Type Filter */}
-          <select
+          <NeuralSelectMenu
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value as any)}
-            className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500/50"
-          >
-            <option value="all">All Types</option>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-          </select>
+            onChange={(next) => setFilterType(next as any)}
+            options={[
+              { value: 'all', label: 'All Types' },
+              { value: 'income', label: 'Income' },
+              { value: 'expense', label: 'Expense' },
+            ]}
+            triggerClassName="w-[150px]"
+            ariaLabel="Filter type"
+          />
 
           {/* Category Filter */}
-          <select
+          <NeuralSelectMenu
             value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500/50"
-          >
-            <option value="all">All Categories</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
+            onChange={(next) => setFilterCategory(String(next))}
+            options={[
+              { value: 'all', label: 'All Categories' },
+              ...categories.map((cat) => ({ value: cat, label: cat })),
+            ]}
+            triggerClassName="w-[180px]"
+            ariaLabel="Filter category"
+          />
 
           {/* Actions */}
           <div className="flex gap-2 ml-auto">

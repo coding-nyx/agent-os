@@ -34,6 +34,12 @@ export interface NotificationMessageTemplate {
 
 export type Recurrence =
   | {
+      /** One-off reminder at a specific timestamp. */
+      kind: 'once';
+      dueAt: string;
+      timezone?: string;
+    }
+  | {
       kind: 'rrule';
       /**
        * RFC5545 RRULE string. We keep this for future full fidelity.
@@ -113,6 +119,19 @@ export interface NotificationScheduleConfig {
   recurrence: Recurrence;
   messageTemplate: NotificationMessageTemplate;
   /**
+   * Optional source metadata for linking reminders to module entities.
+   */
+  source?: {
+    moduleId: ModuleId;
+    entityType?: string;
+    entityId?: string;
+    label?: string;
+  };
+  /** Optional tags for intelligent routing or filtering. */
+  tags?: string[];
+  /** Who created the schedule (user vs agent). */
+  createdBy?: 'user' | 'agent';
+  /**
    * Deep link is auto-derived from moduleId by the scheduler.
    * Kept optional here for legacy records or explicit overrides.
    */
@@ -139,6 +158,25 @@ export interface NotificationOccurrenceRecord {
 }
 
 // ---------------------------------------------------------------------------
+// Reminder proposals (AI or user intent before confirmation)
+// ---------------------------------------------------------------------------
+
+export interface ReminderProposal {
+  id: string;
+  moduleId: ModuleId;
+  title: string;
+  note?: string;
+  recurrence: Recurrence;
+  timezone: string;
+  channelPrefs: NotificationChannelPrefs;
+  priority: NotificationPriority;
+  deepLink?: NotificationDeepLink;
+  source?: NotificationScheduleConfig['source'];
+  tags?: string[];
+  createdBy: 'agent';
+}
+
+// ---------------------------------------------------------------------------
 // Firestore collections / document shapes
 // ---------------------------------------------------------------------------
 
@@ -159,4 +197,3 @@ export function notificationScheduleDocPath(userId: string, scheduleId: string):
 export function notificationOccurrenceDocPath(userId: string, occurrenceId: string): string {
   return `users/${userId}/${NOTIFICATION_COLLECTIONS.occurrences}/${occurrenceId}`;
 }
-

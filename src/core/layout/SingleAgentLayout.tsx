@@ -13,6 +13,7 @@ import type { AuthMode } from '@/core/components/UnifiedAuthModal';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { SpineMobileBar } from '@/core/components/SpineMobileBar';
 import { ModuleSwitcherPopover } from '@/core/components/ModuleSwitcherPopover';
+import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
 
 interface SingleAgentLayoutProps {
   moduleId: string;
@@ -27,7 +28,11 @@ interface SingleAgentLayoutProps {
     quota: GuestQuota | null;
     routingSuggestion?: { target: ModuleId; reason?: string } | null;
     setRoutingSuggestion?: (suggestion: { target: ModuleId; reason?: string } | null) => void;
-    handleSendMessage: (content: MessageContent, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => Promise<void>;
+    handleSendMessage: (
+      content: MessageContent,
+      onActionParsed?: (type: string, payload: Record<string, unknown>) => void,
+      options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }
+    ) => Promise<void>;
     clearSession: () => Promise<void>;
   };
   placeholder?: string;
@@ -39,6 +44,8 @@ interface SingleAgentLayoutProps {
   /** Optional secondary action button (e.g. FAB) to show next to chat trigger */
   primaryAction?: React.ReactNode;
   onUploadDocument?: (file: File) => void;
+  onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
+  hideChatTrigger?: boolean;
   // External control for layout intelligence
   isChatCollapsed?: boolean;
   onToggleChat?: (collapsed: boolean) => void;
@@ -58,6 +65,8 @@ export function SingleAgentLayout({
   contentClassName,
   primaryAction,
   onUploadDocument,
+  onUploadDocuments,
+  hideChatTrigger = false,
   isChatCollapsed: externalIsChatCollapsed,
   onToggleChat
 }: SingleAgentLayoutProps) {
@@ -180,7 +189,7 @@ export function SingleAgentLayout({
       )}
 
       {/* ── Mobile chat trigger (floating circular FAB) ── */}
-      {!canDockChat && isChatCollapsed && (
+      {!canDockChat && isChatCollapsed && !hideChatTrigger && (
         <div 
           className="fixed z-[var(--z-fab)] flex flex-col items-end gap-3 transition-all duration-300"
           style={{ right: floatingInlineEnd, bottom: floatingBottom }}
@@ -214,7 +223,7 @@ export function SingleAgentLayout({
       )}
 
       {/* ── Open Chat Floating Button (Desktop) ── */}
-      {canDockChat && isChatCollapsed && (
+      {canDockChat && isChatCollapsed && !hideChatTrigger && (
         <motion.button
           initial={{ opacity: 0, scale: 0.9, x: 20 }}
           animate={{ opacity: 1, scale: 1, x: 0 }}
@@ -280,6 +289,7 @@ export function SingleAgentLayout({
               showInternalSignals={false}
               onClearHistory={ai.clearSession}
               onUploadDocument={onUploadDocument}
+              onUploadDocuments={onUploadDocuments}
             />
             {/* Routing suggestion — inline below chat input */}
             <RoutingSuggestion
@@ -359,11 +369,12 @@ export function SingleAgentLayout({
                     agentName={agentName}
                     themeColor={themeColor as any}
                     placeholder={placeholder}
-                    authMode={authMode}
-                    showInternalSignals={false}
-                    onClearHistory={ai.clearSession}
-                    onUploadDocument={onUploadDocument}
-                  />
+                     authMode={authMode}
+                     showInternalSignals={false}
+                     onClearHistory={ai.clearSession}
+                     onUploadDocument={onUploadDocument}
+                     onUploadDocuments={onUploadDocuments}
+                   />
                   {/* Routing suggestion — inline below chat input */}
                   <RoutingSuggestion
                     target={ai.routingSuggestion?.target || 'agnes'}

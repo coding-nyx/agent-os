@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { motion } from 'framer-motion';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalSoul } from '@/lib/global-soul-context';
@@ -110,13 +111,15 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white tracking-tight font-display">{greeting}</h2>
         {onToggleCollapse && (
-          <button
+          <NeuralButton
+            variant="ghost"
+            size="sm"
             onClick={onToggleCollapse}
-            className="p-1 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-colors"
+            className="w-8 h-8 p-0 rounded-lg text-white/30 hover:text-white/60 border-none"
             aria-label={collapsed ? 'Expand daily brief' : 'Collapse daily brief'}
           >
             {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-          </button>
+          </NeuralButton>
         )}
       </div>
 
@@ -127,17 +130,20 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
             {pillars.map((p, i) => {
               const Icon = p.config.icon;
               return (
-                <motion.div
+                <NeuralButton
+                  as="div"
+                  variant="ghost"
                   key={p.domain}
                   initial={reducedMotion ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={reducedMotion ? { duration: 0 } : { delay: i * 0.08, duration: 0.3 }}
                   whileHover={{ scale: 1.02 }}
                   onClick={() => onAskAboutDomain?.(p.domain)}
+                  className="p-0 border-none h-auto bg-transparent hover:bg-transparent"
                   role="button"
                   aria-label={`${p.config.label}: ${p.word}`}
                 >
-                  <GlassCard className={cn('cursor-pointer px-4 py-3.5 space-y-2 hover:border-white/15 transition-colors', TONE_ACCENT[p.tone])}>
+                  <GlassCard className={cn('w-full cursor-pointer px-4 py-3.5 space-y-2 hover:border-white/15 transition-colors', TONE_ACCENT[p.tone])}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Icon className={cn('w-4 h-4', TONE_TEXT[p.tone])} />
@@ -154,7 +160,7 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
                       </span>
                     </div>
                   </GlassCard>
-                </motion.div>
+                </NeuralButton>
               );
             })}
           </div>

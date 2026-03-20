@@ -10,8 +10,9 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import type { TitanWorkoutLog, WorkoutSession } from '@/lib/types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -48,6 +49,8 @@ export interface TrainingCalendarProps {
   sessions?: WorkoutSession[];
   /** Called when the user taps the + button on an empty day cell. */
   onQuickLog?: (date: string) => void;
+  /** Called when the user wants a reminder for this day. */
+  onRemind?: (date: string) => void;
 }
 
 /** Resolved display data for a single calendar day. */
@@ -148,9 +151,10 @@ interface DayCellProps {
   dayLabel: string;
   data: DayData;
   onQuickLog?: (isoDate: string) => void;
+  onRemind?: (isoDate: string) => void;
 }
 
-function DayCell({ date, dayLabel, data, onQuickLog }: DayCellProps) {
+function DayCell({ date, dayLabel, data, onQuickLog, onRemind }: DayCellProps) {
   const isoDate = toIsoDate(date);
   const todayISO = toIsoDate(new Date());
   const isToday = isoDate === todayISO;
@@ -211,6 +215,17 @@ function DayCell({ date, dayLabel, data, onQuickLog }: DayCellProps) {
             : 'border border-dashed border-white/[0.07]',
         )}
       >
+        {onRemind && (
+          <NeuralButton
+            variant="ghost"
+            size="sm"
+            onClick={() => onRemind(isoDate)}
+            className="absolute top-1.5 left-1.5 h-6 w-6 p-0 text-white/30 hover:text-white/70"
+            aria-label={`Set a reminder for ${dayLabel} ${date.getDate()}`}
+          >
+            <Bell className="h-3.5 w-3.5" />
+          </NeuralButton>
+        )}
         {/* Green dot indicator for logged days */}
         {hasActivity && (
           <span
@@ -255,18 +270,15 @@ function DayCell({ date, dayLabel, data, onQuickLog }: DayCellProps) {
           <div className="flex flex-col items-center justify-center h-full gap-2 pt-2 sm:pt-3">
             <span className="text-[9px] sm:text-[10px] text-white/20 font-medium select-none">Rest</span>
             {onQuickLog && (
-              <button
-                type="button"
-                aria-label={`Log workout for ${dayLabel} ${date.getDate()}`}
+              <NeuralButton
+                variant="secondary"
+                size="sm"
                 onClick={() => onQuickLog(isoDate)}
-                className={cn(
-                  'min-h-[2.25rem] min-w-[2.25rem] w-9 h-9 rounded-lg flex items-center justify-center transition-colors',
-                  'bg-white/5 hover:bg-white/10 border border-white/10',
-                  'text-white/30 hover:text-white/60',
-                )}
+                className="w-9 h-9 min-w-0 p-0 rounded-lg text-white/30 hover:text-white/60 transition-colors"
+                aria-label={`Log workout for ${dayLabel} ${date.getDate()}`}
               >
                 <Plus className="w-3.5 h-3.5" />
-              </button>
+              </NeuralButton>
             )}
           </div>
         )}
@@ -347,6 +359,7 @@ export function TrainingCalendar({
   workoutLogs,
   sessions = [],
   onQuickLog,
+  onRemind,
 }: TrainingCalendarProps) {
   const [weekOffset, setWeekOffset] = useState(0);
 
@@ -382,40 +395,39 @@ export function TrainingCalendar({
       {/* ── Week navigation header ── */}
       <div className="flex items-center justify-center mb-3 sm:mb-4">
         <div className="flex items-center gap-2 sm:gap-4">
-          <button
-            type="button"
+          <NeuralButton
+            variant="ghost"
+            size="md"
             onClick={() => setWeekOffset((o) => o - 1)}
-            className="p-2 sm:p-2.5 rounded-lg hover:bg-white/5 transition-colors min-h-[2.5rem] min-w-[2.5rem] flex items-center justify-center"
+            className="p-2 h-10 w-10 min-w-0"
             aria-label="Previous week"
           >
             <ChevronLeft className="w-4 h-4 text-white/50" />
-          </button>
+          </NeuralButton>
 
           <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
             <span className="text-[11px] sm:text-xs font-semibold text-white/60 truncate">{weekLabel}</span>
             {weekOffset !== 0 && (
-              <button
-                type="button"
+              <NeuralButton
+                size="sm"
+                themeColor="emerald"
                 onClick={() => setWeekOffset(0)}
-                className={cn(
-                  'text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full transition-colors shrink-0 min-h-[1.75rem]',
-                  'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-                  'hover:bg-emerald-500/25',
-                )}
+                className="px-2.5 h-7 text-[11px] sm:text-xs min-w-0"
               >
                 Today
-              </button>
+              </NeuralButton>
             )}
           </div>
 
-          <button
-            type="button"
+          <NeuralButton
+            variant="ghost"
+            size="md"
             onClick={() => setWeekOffset((o) => o + 1)}
-            className="p-2 sm:p-2.5 rounded-lg hover:bg-white/5 transition-colors min-h-[2.5rem] min-w-[2.5rem] flex items-center justify-center"
+            className="p-2 h-10 w-10 min-w-0"
             aria-label="Next week"
           >
             <ChevronRight className="w-4 h-4 text-white/50" />
-          </button>
+          </NeuralButton>
         </div>
       </div>
 
@@ -430,6 +442,7 @@ export function TrainingCalendar({
               dayLabel={DAY_LABELS[i]}
               data={dayMap.get(isoDate) ?? {}}
               onQuickLog={onQuickLog}
+              onRemind={onRemind}
             />
           );
         })}

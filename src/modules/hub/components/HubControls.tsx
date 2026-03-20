@@ -45,7 +45,8 @@ export function HubViewSwitcher({ viewMode, setViewMode, hide3D }: HubViewSwitch
       className="flex items-center gap-1 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 p-1.5 shadow-2xl pointer-events-auto"
     >
       {views.map(({ mode, icon: ModeIcon, label, key }) => (
-        <button
+        <NeuralButton
+          variant="indigo" // Applying the indigo theme
           key={mode}
           role="tab"
           id={`tab-${mode.toLowerCase()}`}
@@ -65,7 +66,7 @@ export function HubViewSwitcher({ viewMode, setViewMode, hide3D }: HubViewSwitch
           aria-label={`Switch to ${label} View (${key})`}
         >
           <ModeIcon className="w-5 h-5" />
-        </button>
+        </NeuralButton>
       ))}
     </div>
   );

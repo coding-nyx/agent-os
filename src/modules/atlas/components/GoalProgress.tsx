@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronDown, Clock, ListTodo, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/core/components/EmptyState';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasGoal } from '../services/atlas-profile-service';
 
@@ -256,7 +257,9 @@ export function GoalProgress({
                             className="flex items-center gap-3 py-1.5"
                           >
                             {/* Milestone checkbox */}
-                            <button
+                            <NeuralButton
+                              variant="ghost"
+                              size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onUpdateProgress(goal.id, milestone.id);
@@ -267,10 +270,9 @@ export function GoalProgress({
                                   : `Mark ${milestone.title} as complete`
                               }
                               className={cn(
-                                'flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all',
-                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
+                                'flex-shrink-0 w-5 h-5 min-w-0 p-0 rounded-md border-2 flex items-center justify-center transition-all',
                                 milestone.completed
-                                  ? 'bg-emerald-500 border-emerald-500'
+                                  ? 'bg-emerald-500 border-emerald-500 hover:bg-emerald-600'
                                   : 'border-white/15 hover:border-emerald-400/50'
                               )}
                             >
@@ -280,7 +282,7 @@ export function GoalProgress({
                                   aria-hidden="true"
                                 />
                               )}
-                            </button>
+                            </NeuralButton>
 
                             {/* Milestone title */}
                             <span

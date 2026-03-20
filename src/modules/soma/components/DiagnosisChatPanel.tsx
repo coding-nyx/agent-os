@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 import { useAI } from '@/llm-engine/ai-context';
 import type { SomaDiagnosisSummary } from '../types';
 import { SOMA_MEDICAL_DISCLAIMER } from '../prompts/soma-prompt-builder';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -149,21 +151,22 @@ export function DiagnosisChatPanel({ summary, sessionId }: DiagnosisChatPanelPro
 
       <div className="px-3 py-3 border-t border-white/10 bg-[#0a0a0f]/95">
         <div className="flex items-center gap-2">
-          <input
+          <NeuralInput
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
             placeholder="Ask about this report..."
-            className="flex-1 bg-transparent border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-400/40"
+            className="flex-1 bg-transparent"
           />
-          <button
+          <NeuralButton
             onClick={handleSend}
             disabled={isSending || input.trim().length === 0}
-            className="w-10 h-10 rounded-lg bg-emerald-600/80 hover:bg-emerald-500 text-white flex items-center justify-center disabled:opacity-40"
+            themeColor="emerald"
+            className="w-10 h-10 min-h-0 px-0 rounded-lg"
             aria-label="Send"
           >
             <Send className="w-4 h-4" />
-          </button>
+          </NeuralButton>
         </div>
       </div>
     </div>

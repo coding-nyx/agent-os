@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Layers, CheckCircle, ChevronRight } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -179,13 +181,14 @@ export function GroundingExercise({ onComplete, onExit, agnesAI }: Props) {
   return (
     <div className="flex flex-col min-h-full w-full px-5 py-10 relative">
       {/* Exit button */}
-      <button
+      <NeuralButton
+        variant="ghost"
         onClick={onExit}
-        className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 transition-all"
+        className="absolute top-4 right-4 w-9 h-9 p-0 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 border-none transition-all"
         aria-label="Exit grounding exercise"
       >
         <X className="w-4 h-4" />
-      </button>
+      </NeuralButton>
 
       {/* Header */}
       <div className="mb-8 text-center space-y-1">
@@ -250,12 +253,13 @@ export function GroundingExercise({ onComplete, onExit, agnesAI }: Props) {
                 ))}
               </div>
 
-              <button
+              <NeuralButton
                 onClick={onComplete}
-                className="px-8 py-3 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-black uppercase tracking-[0.2em] hover:bg-indigo-500/30 transition-all"
+                themeColor="indigo"
+                className="px-8 h-auto py-3 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-black uppercase tracking-[0.2em] hover:bg-indigo-500/30 transition-all"
               >
                 Continue
-              </button>
+              </NeuralButton>
             </motion.div>
           ) : (
             <motion.div
@@ -302,7 +306,7 @@ export function GroundingExercise({ onComplete, onExit, agnesAI }: Props) {
 
               {/* Text input */}
               <div className="space-y-3">
-                <textarea
+                <NeuralTextarea
                   value={currentInput}
                   onChange={e => handleInput(e.target.value)}
                   placeholder={`What do you ${currentStep.sense.toLowerCase()}…`}
@@ -313,26 +317,29 @@ export function GroundingExercise({ onComplete, onExit, agnesAI }: Props) {
                 {/* Suggestion chips */}
                 <div className="flex flex-wrap gap-2">
                   {currentStep.chips.map(chip => (
-                    <button
+                    <NeuralButton
                       key={chip}
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleChip(chip)}
-                      className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/40 text-[11px] font-medium hover:bg-white/[0.08] hover:text-white/60 hover:border-white/15 transition-all"
+                      className="px-3 h-auto py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/40 text-[11px] font-medium hover:bg-white/[0.08] hover:text-white/60 hover:border-white/15 border-none transition-all"
                     >
                       {chip}
-                    </button>
+                    </NeuralButton>
                   ))}
                 </div>
               </div>
 
               {/* Next button */}
-              <button
+              <NeuralButton
                 onClick={handleNext}
                 disabled={!hasInput || showResponse}
-                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-black uppercase tracking-[0.2em] hover:bg-indigo-500/25 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                themeColor="indigo"
+                className="flex items-center justify-center gap-2 w-full h-auto py-3.5 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-black uppercase tracking-[0.2em] hover:bg-indigo-500/25 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
                 {isLastStep ? 'Complete' : 'Next Sense'}
                 <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              </NeuralButton>
             </motion.div>
           )}
         </AnimatePresence>

@@ -28,6 +28,7 @@ import {
   Dumbbell,
   Target,
 } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import type {
   JournalEntry,
   JournalHabitReflection,
@@ -40,6 +41,7 @@ export interface JournalEntryPreviewProps {
   entry: JournalEntry;
   onClose: () => void;
   onEdit: () => void;
+  onRemind?: (entry: JournalEntry) => void;
 }
 
 // ── Static maps ───────────────────────────────────────────────────────────────
@@ -114,6 +116,7 @@ export function JournalEntryPreview({
   entry,
   onClose,
   onEdit,
+  onRemind,
 }: JournalEntryPreviewProps) {
   // Resolved mood data — fall back to "Okay" if value is out of range
   const mood = MOOD_MAP[entry.mood] ?? MOOD_MAP[3];
@@ -143,34 +146,41 @@ export function JournalEntryPreview({
           </p>
         </div>
 
-        {/* Right: Edit + Close controls */}
+        {/* Right: Edit + Remind + Close controls */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
+          {onRemind && (
+            <NeuralButton
+              variant="ghost"
+              size="sm"
+              themeColor="indigo"
+              onClick={() => onRemind(entry)}
+              aria-label="Create a reminder for this journal entry"
+              className="flex items-center gap-1.5"
+            >
+              Remind
+            </NeuralButton>
+          )}
+          <NeuralButton
+            variant="ghost"
+            size="sm"
+            themeColor="indigo"
             onClick={onEdit}
             aria-label="Edit this journal entry"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                       text-violet-300 hover:text-violet-100
-                       bg-transparent hover:bg-violet-500/10
-                       border border-violet-500/20 hover:border-violet-500/40
-                       transition-colors duration-150
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60"
+            className="flex items-center gap-1.5"
           >
             <PencilLine className="w-3.5 h-3.5" aria-hidden="true" />
             Edit
-          </button>
+          </NeuralButton>
 
-          <button
-            type="button"
+          <NeuralButton
+            variant="ghost"
+            size="sm"
             onClick={onClose}
             aria-label="Close preview and return to history list"
-            className="w-8 h-8 flex items-center justify-center rounded-lg
-                       text-white/40 hover:text-white/70 hover:bg-white/5
-                       transition-colors duration-150
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60"
+            className="w-8 h-8 flex items-center justify-center p-0"
           >
             <X className="w-4 h-4" aria-hidden="true" />
-          </button>
+          </NeuralButton>
         </div>
       </header>
 

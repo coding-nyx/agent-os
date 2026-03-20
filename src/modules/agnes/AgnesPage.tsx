@@ -584,13 +584,14 @@ function AgnesContent({
                   <CheckSquare className="w-4 h-4 mr-2" /> Sync to Vault
                 </NeuralButton>
               )}
-              <button
+              <NeuralButton
+                variant="ghost"
                 onClick={handleDiscardAndClose}
                 disabled={isClosingSession}
-                className="w-full py-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white/40 transition-colors disabled:opacity-30"
+                className="w-full h-auto py-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white/40 hover:bg-transparent border-none transition-colors disabled:opacity-30"
               >
                 {sessionType === 'impromptu' ? 'Finalize Session' : 'Discard Session Data'}
-              </button>
+              </NeuralButton>
             </div>
           </div>
         </NeuralModal>
@@ -680,13 +681,15 @@ export default function AgnesPage() {
       )}
       renderMobileFooter={() => (
         <div className="flex items-center justify-center p-3">
-          <button
+          <NeuralButton
+            variant="ghost"
+            themeColor="indigo"
             onClick={() => window.dispatchEvent(new Event('agnes:open-settings'))}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all"
+            className="w-full flex items-center justify-center gap-3 h-auto px-6 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black uppercase tracking-widest text-[10px] hover:bg-indigo-500/20 hover:border-indigo-500/30 active:scale-95 transition-all"
           >
             <Settings size={14} />
             Agnes Settings
-          </button>
+          </NeuralButton>
         </div>
       )}
     />

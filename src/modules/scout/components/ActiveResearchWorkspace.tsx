@@ -2,6 +2,7 @@ import type React from 'react';
 import { BookOpen, FileText, History, Loader2, Search, Sparkles, Zap } from 'lucide-react';
 import { getActionLabel } from '@/lib/actions/action-labels';
 import { ChatInterface } from '@/core/components/ChatInterface';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import type { GuestQuota, Message } from '@/lib/types';
 import type { AddSourceInput } from '../services/scout-sources-service';
@@ -218,29 +219,28 @@ export function ActiveResearchWorkspace({
 
           <div className="flex flex-wrap items-center justify-start gap-2 xl:max-w-[20rem] xl:justify-end">
             {onToggleArtifacts && (
-              <button
+              <NeuralButton
                 type="button"
                 onClick={onToggleArtifacts}
-                className={cn(
-                  'inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-[12px] font-semibold transition-colors',
-                  isArtifactsVisible
-                    ? 'border-white/15 bg-white/10 text-white'
-                    : 'border-white/8 bg-white/[0.03] text-white/60 hover:border-white/15 hover:text-white/80'
-                )}
+                variant={isArtifactsVisible ? 'secondary' : 'ghost'}
+                size="sm"
+                className="min-h-11"
                 aria-pressed={isArtifactsVisible}
               >
                 <History className="h-4 w-4" aria-hidden="true" />
                 <span>{artifactsLabel}</span>
-              </button>
+              </NeuralButton>
             )}
-            <button
+            <NeuralButton
               type="button"
               onClick={() => onStartDeepResearch(session.topic)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-violet-500/20 bg-violet-500/10 px-4 py-2.5 text-[12px] font-semibold text-violet-200 transition-colors hover:bg-violet-500/20"
+              themeColor="indigo"
+              size="sm"
+              className="min-h-11 bg-indigo-500/10 border-indigo-500/20 text-indigo-200 hover:bg-indigo-500/20"
             >
               <Zap className="h-4 w-4" aria-hidden="true" />
               <span>Deep research</span>
-            </button>
+            </NeuralButton>
           </div>
         </div>
       </header>

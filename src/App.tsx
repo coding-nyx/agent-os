@@ -15,6 +15,7 @@ import { NeuralDraftPanel } from './core/components/NeuralDraftPanel';
 import { SpineOverlay } from './core/components/SpineOverlay';
 import { SpineToastProvider } from './core/components/SpineToast';
 import { NexusRouteBanner } from './core/components/NexusRouteBanner';
+import { ReminderFallbackBanner } from './core/components/ReminderFallbackBanner';
 // import { ConflictResolutionOverlay } from './core/components/ConflictResolutionOverlay';
 import { useIntelligencePipeline } from './lib/services/intelligence-pipeline';
 import { BridgeService } from './lib/services/bridge-service';
@@ -131,6 +132,7 @@ function AppContent() {
       <GlobalFAB />
       <SpineOverlay />
       <NeuralDraftPanel />
+      <ReminderFallbackBanner />
       <SpineToastProvider />
       <NexusRouteBanner />
       {/* <ConflictResolutionOverlay /> Temporarily disabled while conflict UX is iterated */}

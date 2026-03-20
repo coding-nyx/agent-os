@@ -21,6 +21,9 @@ import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import { EmptyState } from '@/core/components/EmptyState';
 import { MetricCard } from '@/core/components/viz/MetricCard';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
+import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { getTodayIso } from '../utils';
 
 // ---------------------------------------------------------------------------
@@ -301,13 +304,14 @@ export function BodyWeightTracker({
           />
           <div className="flex items-center gap-2">
             {/* Unit toggle */}
-            <button
-              type="button"
+            <NeuralButton
+              size="sm"
+              variant="ghost"
               onClick={() => setUnit(u => u === 'kg' ? 'lbs' : 'kg')}
-              className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border border-white/10 bg-white/5 text-white/50 hover:bg-white/10 transition-colors"
+              className="text-[10px] font-black uppercase tracking-wider"
             >
               {unit}
-            </button>
+            </NeuralButton>
             {latest && onAnalyze && (
               <NeuralButton
                 size="sm"
@@ -411,29 +415,29 @@ export function BodyWeightTracker({
       >
         <div className="space-y-5">
           {/* Date */}
-          <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all"
-            />
-          </div>
+          <NeuralInput
+            label="Date"
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="focus:border-orange-500/50"
+          />
 
           {/* Weight + unit toggle */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Weight</label>
-              <button
-                type="button"
-                onClick={() => setUnit(u => u === 'kg' ? 'lbs' : 'kg')}
-                className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 transition-colors"
-              >
-                {unit}
-              </button>
+            <div className="flex items-center justify-between ml-1">
+              <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50">
+                Weight ({unit})
+              </label>
+              <NeuralToggle
+                checked={unit === 'lbs'}
+                onChange={(isLbs) => setUnit(isLbs ? 'lbs' : 'kg')}
+                size="sm"
+                color="orange"
+                label={`Switch to ${unit === 'kg' ? 'lbs' : 'kg'}`}
+              />
             </div>
-            <input
+            <NeuralInput
               type="number"
               step="0.1"
               min={unit === 'kg' ? 20 : 44}
@@ -441,49 +445,47 @@ export function BodyWeightTracker({
               placeholder={unit === 'kg' ? '75.0' : '165.0'}
               value={weightInput}
               onChange={e => setWeightInput(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
+              className="focus:border-orange-500/50 tabular-nums"
             />
           </div>
 
           {/* Body fat % */}
-          <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Body Fat % (optional)</label>
-            <input
-              type="number"
-              step="0.1"
-              min={3}
-              max={60}
-              placeholder="—"
-              value={bodyFat}
-              onChange={e => setBodyFat(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
-            />
-          </div>
+          <NeuralInput
+            label="Body Fat % (optional)"
+            type="number"
+            step="0.1"
+            min={3}
+            max={60}
+            placeholder="—"
+            value={bodyFat}
+            onChange={e => setBodyFat(e.target.value)}
+            className="focus:border-orange-500/50 tabular-nums"
+          />
 
           {/* Measurements accordion */}
           <div className="space-y-2">
-            <button
-              type="button"
+            <NeuralButton
+              variant="ghost"
+              size="sm"
               onClick={() => setShowMeasurements(v => !v)}
-              className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white/60 transition-colors"
+              className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white/60 h-auto p-1"
             >
-              {showMeasurements ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              {showMeasurements ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
               Measurements (cm) — optional
-            </button>
+            </NeuralButton>
             {showMeasurements && (
               <div className="grid grid-cols-2 gap-3">
                 {MEASUREMENT_FIELDS.map(({ key, label }) => (
-                  <div key={key} className="space-y-1">
-                    <label className="text-[9px] font-black uppercase tracking-wider text-white/40">{label}</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      placeholder="—"
-                      value={measurements[key] ?? ''}
-                      onChange={e => setMeasurement(key, e.target.value)}
-                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
-                    />
-                  </div>
+                  <NeuralInput
+                    key={key}
+                    label={label}
+                    type="number"
+                    step="0.1"
+                    placeholder="—"
+                    value={measurements[key] ?? ''}
+                    onChange={e => setMeasurement(key, e.target.value)}
+                    className="focus:border-orange-500/50 tabular-nums h-10 min-h-[40px]"
+                  />
                 ))}
               </div>
             )}
@@ -491,13 +493,15 @@ export function BodyWeightTracker({
 
           {/* Notes */}
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Notes (optional)</label>
-            <textarea
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+              Notes (optional)
+            </label>
+            <NeuralTextarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Morning weigh-in, post-competition, etc."
               rows={2}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 transition-all resize-none"
+              className="focus:border-orange-500/50"
             />
           </div>
 

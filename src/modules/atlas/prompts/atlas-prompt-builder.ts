@@ -142,19 +142,24 @@ export const ATLAS_ALLOWED_ACTIONS: Record<AtlasContextMode['kind'], string[]> =
     'sync_vitals', 'request_nsv_calibration',
     // Cross-module delegation
     'delegate_to_module',
+    // Reminders
+    'propose_reminder', 'query_reminders',
     // Field CRUD (also available in general for AI proactive suggestions)
     'suggest_field', 'create_field', 'delete_field',
   ],
   'task-focus': [
     'update_task', 'complete_task', 'move_task', 'prioritize', 'set_deadline',
     'create_task', 'set_task_recurrence',
+    'propose_reminder', 'query_reminders',
   ],
   'habit-review': [
     'update_habit_streak', 'pause_habit', 'create_habit', 'update_habit',
+    'propose_reminder', 'query_reminders',
   ],
   'goal-planning': [
     'update_goal_progress', 'set_deadline', 'create_goal', 'update_goal',
     'create_task',
+    'propose_reminder', 'query_reminders',
   ],
   'field-crud': [
     'suggest_field', 'create_field', 'delete_field',

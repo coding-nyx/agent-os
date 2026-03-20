@@ -34,5 +34,5 @@ export function TitanNotificationSettingsPanel() {
     ];
   }, []);
 
-  return <NotificationSettingsPanel moduleId="titan" title="Reminders" presets={presets} />;
+  return <NotificationSettingsPanel moduleId="titan" title="Reminders" presets={presets} manageAllHref="/notifications" />;
 }

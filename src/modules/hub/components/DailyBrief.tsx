@@ -6,6 +6,7 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { TrendArrow, type TrendDirection } from '@/core/components/TrendArrow';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { useNsvTrends } from '@/modules/nexus/hooks/useNsvTrends';
 import {
   DOMAIN_PILLARS,
@@ -144,12 +145,14 @@ function CascadeAlertBanner({
             </>
           )}
         </p>
-        <button
-          className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-violet-400 hover:text-violet-300 transition-colors"
+        <NeuralButton
+          variant="ghost"
+          size="sm"
+          className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-violet-400 hover:text-violet-300"
           aria-label="View cascade timeline"
         >
           View timeline →
-        </button>
+        </NeuralButton>
       </div>
     </div>
   );

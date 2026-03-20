@@ -45,6 +45,10 @@ const ACTION_LABELS: Record<string, string> = {
   create_field: 'Creating custom tracking field',
   delete_field: 'Removing custom tracking field',
   update_field_value: 'Updating custom field data',
+  propose_reminder: 'Proposing a reminder',
+  confirm_reminder: 'Scheduling reminder',
+  dismiss_reminder: 'Dismissing reminder',
+  query_reminders: 'Listing reminders',
 };
 
 /**

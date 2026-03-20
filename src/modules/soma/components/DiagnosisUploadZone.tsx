@@ -10,6 +10,7 @@ import React, { useRef, useState, useCallback, DragEvent, ChangeEvent } from 're
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, Table, Image, AlertCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -252,14 +253,14 @@ export function DiagnosisUploadZone({
           >
             <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-red-300 flex-1">{displayError}</p>
-            <button
-              type="button"
+            <NeuralButton
+              variant="ghost"
               onClick={() => setLocalError(null)}
-              className="text-red-400 hover:text-red-300 transition-colors flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center -m-2"
+              className="text-red-400 hover:text-red-300 transition-colors flex-shrink-0 -m-2"
               aria-label="Dismiss error"
             >
               <X className="w-4 h-4" />
-            </button>
+            </NeuralButton>
           </motion.div>
         )}
       </AnimatePresence>

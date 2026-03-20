@@ -36,6 +36,7 @@ interface VaultContextType {
 const VaultContext = createContext<VaultContextType | null>(null);
 const PERSISTENCE_KEY = 'nexus_vault_mode';
 const SESSION_PWD_KEY = 'nexus_vault_session';
+const SESSION_TS_KEY = 'nexus_vault_session_ts';
 const VAULT_COLLECTION = 'vaults';
 
 // Redirect hook to make `initializeVault()` testable in jsdom (where
@@ -82,21 +83,54 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(PERSISTENCE_KEY, mode);
   }, []);
 
+  const clearSessionPassword = useCallback(() => {
+    sessionStorage.removeItem(SESSION_PWD_KEY);
+    sessionStorage.removeItem(SESSION_TS_KEY);
+  }, []);
+
   const lockVault = useCallback(() => {
     masterKeyRef.current = null;
     setIsUnlocked(false);
-    sessionStorage.removeItem(SESSION_PWD_KEY);
-  }, []);
+    clearSessionPassword();
+  }, [clearSessionPassword]);
+
+  const getSessionTtlMs = useCallback(() => {
+    const ttlMinutes = profile?.securityPreferences?.vaultSessionTtlMinutes ?? 0;
+    if (!ttlMinutes || ttlMinutes <= 0) return 0;
+    return ttlMinutes * 60 * 1000;
+  }, [profile?.securityPreferences?.vaultSessionTtlMinutes]);
 
   const setSessionPassword = useCallback((pwd: string) => {
     if (persistenceMode !== 'STRICT') {
         sessionStorage.setItem(SESSION_PWD_KEY, pwd);
+        sessionStorage.setItem(SESSION_TS_KEY, String(Date.now()));
     }
   }, [persistenceMode]);
 
   const getSessionPassword = useCallback(() => {
-      return sessionStorage.getItem(SESSION_PWD_KEY);
-  }, []);
+      const pwd = sessionStorage.getItem(SESSION_PWD_KEY);
+      if (!pwd) return null;
+      const ttlMs = getSessionTtlMs();
+      if (ttlMs <= 0) return pwd;
+
+      const rawTs = sessionStorage.getItem(SESSION_TS_KEY);
+      if (!rawTs) {
+        sessionStorage.setItem(SESSION_TS_KEY, String(Date.now()));
+        return pwd;
+      }
+
+      const ts = Number(rawTs);
+      if (!Number.isFinite(ts)) {
+        clearSessionPassword();
+        return null;
+      }
+
+      if (Date.now() - ts > ttlMs) {
+        clearSessionPassword();
+        return null;
+      }
+      return pwd;
+  }, [clearSessionPassword, getSessionTtlMs]);
 
   const getMasterKey = useCallback(async (): Promise<CryptoKey | null> => {
     return masterKeyRef.current;
@@ -216,7 +250,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       .catch((e: unknown) => {
         const isWrongPassword = e instanceof Error && e.message === 'Invalid Vault Password.';
         if (isWrongPassword) {
-          sessionStorage.removeItem(SESSION_PWD_KEY);
+          clearSessionPassword();
         }
         setIsHandshaking(false);
       });

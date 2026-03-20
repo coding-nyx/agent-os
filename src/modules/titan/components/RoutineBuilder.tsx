@@ -21,6 +21,9 @@ import type { Routine, Exercise, Weekday } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 
 interface RoutineBuilderProps {
   routine?: Routine;
@@ -178,38 +181,29 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
     <div className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
       {/* Header Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
-            Routine Name
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => { setName(e.target.value); if (nameError) setNameError(null); }}
-            placeholder="e.g. Upper Body Push"
-            className={cn(
-              'w-full px-4 py-2.5 bg-white/5 border rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:bg-white/[0.07] transition-all',
-              nameError ? 'border-rose-500/50 focus:border-rose-500/70' : 'border-white/10 focus:border-orange-500/50'
-            )}
-          />
-          {nameError && <p className="text-xs text-rose-400 mt-1">{nameError}</p>}
-        </div>
+        <NeuralInput
+          label="Routine Name"
+          type="text"
+          value={name}
+          onChange={(e) => { setName(e.target.value); if (nameError) setNameError(null); }}
+          placeholder="e.g. Upper Body Push"
+          className={cn(
+            nameError ? 'border-rose-500/50 focus:border-rose-500/70' : 'focus:border-orange-500/50'
+          )}
+        />
+        {nameError && <p className="text-xs text-rose-400 mt-1">{nameError}</p>}
 
         <div className="space-y-2">
           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
             Day of Week
           </label>
-          <select
+          <NeuralSelectMenu
             value={weekday}
-            onChange={(e) => setWeekday(e.target.value as Weekday)}
-            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 focus:bg-white/[0.07] transition-all capitalize"
-          >
-            {WEEKDAYS.map((day) => (
-              <option key={day} value={day} className="bg-black/95 capitalize">
-                {day}
-              </option>
-            ))}
-          </select>
+            onChange={(next) => setWeekday(next as Weekday)}
+            options={WEEKDAYS.map((day) => ({ value: day, label: day }))}
+            triggerClassName="capitalize"
+            ariaLabel="Day of week"
+          />
         </div>
       </div>
 
@@ -219,25 +213,23 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
             Rationale (Optional)
           </label>
-          <textarea
+          <NeuralTextarea
             value={rationale}
             onChange={(e) => setRationale(e.target.value)}
             placeholder="Why this routine? Target goals..."
             rows={3}
-            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 focus:bg-white/[0.07] transition-all resize-none"
+            className="focus:border-orange-500/50"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
-            Timeframe (Optional)
-          </label>
-          <input
+          <NeuralInput
+            label="Timeframe (Optional)"
             type="text"
             value={timeframe}
             onChange={(e) => setTimeframe(e.target.value)}
             placeholder="e.g. 45-60 minutes"
-            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 focus:bg-white/[0.07] transition-all"
+            className="focus:border-orange-500/50"
           />
           
           {/* Volume Stats */}
@@ -342,97 +334,89 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
 
                             {/* Exercise Fields */}
                             <div className="flex-1 space-y-3">
-                              <input
+                              <NeuralInput
                                 type="text"
                                 value={exercise.name}
                                 onChange={(e) => updateExercise(index, { name: e.target.value })}
                                 placeholder="Exercise name"
-                                className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm font-bold text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 transition-all"
+                                className="font-bold focus:border-orange-500/50"
                               />
 
                               <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40">
-                                    Sets
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={exercise.sets}
-                                    onChange={(e) => updateExercise(index, { sets: parseInt(e.target.value) || 1 })}
-                                    className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all tabular-nums"
-                                  />
-                                </div>
+                                <NeuralInput
+                                  label="Sets"
+                                  type="number"
+                                  min="1"
+                                  value={exercise.sets}
+                                  onChange={(e) => updateExercise(index, { sets: parseInt(e.target.value) || 1 })}
+                                  className="focus:border-orange-500/50 tabular-nums"
+                                />
 
-                                <div className="space-y-1">
-                                  <label className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40">
-                                    Reps
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={exercise.reps}
-                                    onChange={(e) => updateExercise(index, { reps: e.target.value })}
-                                    placeholder="e.g. 8-10"
-                                    className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 transition-all"
-                                  />
-                                </div>
+                                <NeuralInput
+                                  label="Reps"
+                                  type="text"
+                                  value={exercise.reps}
+                                  onChange={(e) => updateExercise(index, { reps: e.target.value })}
+                                  placeholder="e.g. 8-10"
+                                  className="focus:border-orange-500/50"
+                                />
                               </div>
 
                               {/* RPE + Rest — compact inline row */}
                               <div className="flex items-end gap-3">
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-[9px] text-white/40 uppercase tracking-wider">RPE</label>
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    max={10}
-                                    step={0.5}
-                                    placeholder="–"
-                                    value={exercise.targetRPE ?? ''}
-                                    onChange={e => updateExercise(index, { targetRPE: parseFloat(e.target.value) || undefined })}
-                                    className="w-14 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white text-center placeholder:text-white/30 focus:outline-none focus:border-orange-500/40 transition-colors"
-                                  />
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-[9px] text-white/40 uppercase tracking-wider">Rest (s)</label>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    max={600}
-                                    step={15}
-                                    placeholder="–"
-                                    value={exercise.restSeconds ?? ''}
-                                    onChange={e => updateExercise(index, { restSeconds: parseInt(e.target.value) || undefined })}
-                                    className="w-16 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white text-center placeholder:text-white/30 focus:outline-none focus:border-orange-500/40 transition-colors"
-                                  />
-                                </div>
+                                <NeuralInput
+                                  label="RPE"
+                                  type="number"
+                                  min={1}
+                                  max={10}
+                                  step={0.5}
+                                  placeholder="–"
+                                  value={exercise.targetRPE ?? ''}
+                                  onChange={e => updateExercise(index, { targetRPE: parseFloat(e.target.value) || undefined })}
+                                  className="w-20 text-center focus:border-orange-500/40"
+                                />
+                                <NeuralInput
+                                  label="Rest (s)"
+                                  type="number"
+                                  min={0}
+                                  max={600}
+                                  step={15}
+                                  placeholder="–"
+                                  value={exercise.restSeconds ?? ''}
+                                  onChange={e => updateExercise(index, { restSeconds: parseInt(e.target.value) || undefined })}
+                                  className="w-24 text-center focus:border-orange-500/40"
+                                />
                               </div>
 
-                              <textarea
+                              <NeuralTextarea
                                 value={exercise.notes || ''}
-                              onChange={(e) => updateExercise(index, { notes: e.target.value })}
+                                onChange={(e) => updateExercise(index, { notes: e.target.value })}
                                 placeholder="Notes (tempo, rest period, form cues...)"
                                 rows={2}
-                                className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] text-white/70 placeholder:text-white/30 focus:outline-none focus:border-orange-500/50 transition-all resize-none"
+                                className="text-[11px] text-white/70 focus:border-orange-500/50"
                               />
                             </div>
 
                             {/* Action Buttons */}
                             <div className="flex flex-col gap-1">
-                              <button
+                              <NeuralButton
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => duplicateExercise(index)}
-                                className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-orange-400 hover:bg-orange-500/10 hover:border-orange-500/20 transition-all"
+                                className="h-8 w-8 p-0"
                                 title="Duplicate"
                               >
                                 <Copy className="w-3.5 h-3.5" />
-                              </button>
-                              <button
+                              </NeuralButton>
+                              <NeuralButton
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => removeExercise(index)}
-                                className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all"
+                                className="h-8 w-8 p-0 text-rose-400 hover:text-rose-300"
                                 title="Remove"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              </NeuralButton>
                             </div>
                           </div>
                         </SurfaceCard>

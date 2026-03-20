@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Lock, Clock, Zap, ChevronDown, Link2, RotateCcw } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasTask } from '../services/atlas-profile-service';
@@ -15,6 +16,7 @@ interface TaskCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   allTasks?: AtlasTask[];
+  onRemind?: (task: AtlasTask) => void;
   /** Whether this card is currently selected for scoped chat */
   isEntitySelected?: boolean;
   /** Called when the user taps to select/deselect this card */
@@ -52,6 +54,7 @@ export const TaskCard = React.memo(function TaskCard({
   isExpanded,
   onToggleExpand,
   allTasks = [],
+  onRemind,
   isEntitySelected = false,
   onEntitySelect,
 }: TaskCardProps) {
@@ -116,7 +119,8 @@ export const TaskCard = React.memo(function TaskCard({
 
       <div className="pl-4 pr-3 py-3">
         {/* Main row — clickable for expand */}
-        <div
+        <NeuralButton
+          variant="emerald"
           role="button"
           tabIndex={0}
           onClick={onToggleExpand}
@@ -227,7 +231,7 @@ export const TaskCard = React.memo(function TaskCard({
             )}
             aria-hidden="true"
           />
-        </div>
+        </NeuralButton>
 
         {/* Expanded details panel */}
         <AnimatePresence>
@@ -316,6 +320,22 @@ export const TaskCard = React.memo(function TaskCard({
                   {task.projectId && <span>Project: {task.projectId}</span>}
                   {task.goalId && <span>Goal: {task.goalId}</span>}
                 </div>
+
+                {onRemind && (
+                  <div className="pt-2">
+                    <NeuralButton
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemind(task);
+                      }}
+                      className="text-[10px] uppercase tracking-[0.14em] text-white/50 hover:text-white/80 h-auto px-3 py-2"
+                    >
+                      Remind me
+                    </NeuralButton>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

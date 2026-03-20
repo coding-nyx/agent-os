@@ -1,4 +1,4 @@
-import React, { ReactNode, useState, useEffect, useRef } from 'react';
+import React, { ReactNode, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ChatInterface } from './ChatInterface';
 import { useAuth } from '@/lib/auth-context';
 import type { ModuleTheme } from '@/lib/module-manifest';
@@ -9,6 +9,9 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { PendingRequestState } from '@/lib/hooks/use-pending-recovery';
 import { Spine } from '@/lib/spine/spine-event-bus';
+import { useReminderProposals } from '@/lib/hooks/use-reminder-proposals';
+import { ReminderProposalCard } from '@/core/components/ReminderProposalCard';
+import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
 
 interface NexusChatProps {
     ai: {
@@ -22,7 +25,11 @@ interface NexusChatProps {
         streamingText: string;
         error: string | null;
         quota: GuestQuota | null;
-        handleSendMessage: (content: MessageContent, onActionParsed?: (type: string, payload: Record<string, unknown>) => void) => void;
+        handleSendMessage: (
+          content: MessageContent,
+          onActionParsed?: (type: string, payload: Record<string, unknown>) => void,
+          options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }
+        ) => void;
         pendingRequest?: PendingRequestState | null;
         clearPendingRequest?: () => void;
     };
@@ -38,6 +45,7 @@ interface NexusChatProps {
     renderMessageActions?: (message: Message, index: number) => ReactNode;
     moduleId?: string;
     onUploadDocument?: (file: File) => void;
+    onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
 }
 
 export function NexusChat({ 
@@ -54,11 +62,36 @@ export function NexusChat({
     renderMessageActions,
     moduleId,
     onUploadDocument,
+    onUploadDocuments,
 }: NexusChatProps) {
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
 
     const { messages, isProcessing, aiState, streamingText, error, quota, handleSendMessage, pendingRequest, clearPendingRequest } = ai;
+
+    const canRenderReminderActions = !renderMessageActions && !!moduleId;
+    const { activeProposal, confirm, dismiss } = useReminderProposals(
+      moduleId === 'orchestrator' ? 'any' : (moduleId ?? 'any'),
+    );
+    const lastAssistantIndex = useMemo(() => {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === 'assistant') return i;
+      }
+      return -1;
+    }, [messages]);
+
+    const reminderMessageActions = useCallback((message: Message, index: number) => {
+      if (!activeProposal) return null;
+      if (message.role !== 'assistant') return null;
+      if (index !== lastAssistantIndex) return null;
+      return (
+        <ReminderProposalCard
+          proposal={activeProposal}
+          onConfirm={confirm}
+          onDismiss={dismiss}
+        />
+      );
+    }, [activeProposal, confirm, dismiss, lastAssistantIndex]);
 
     const prevMessagesLength = useRef(messages.length);
     const prevIsProcessing = useRef(isProcessing);
@@ -152,9 +185,10 @@ export function NexusChat({
                 onQuotaExhausted={() => setShowAuth(true)}
                 showInternalSignals={showInternalSignals}
                 renderCustomActions={renderCustomActions}
-                renderMessageActions={renderMessageActions}
+                renderMessageActions={canRenderReminderActions ? reminderMessageActions : renderMessageActions}
                 moduleId={moduleId}
                 onUploadDocument={onUploadDocument}
+                onUploadDocuments={onUploadDocuments}
                 headerActions={headerActions}
                 pendingRequest={pendingRequest}
                 onRecoverPendingRequest={() => {

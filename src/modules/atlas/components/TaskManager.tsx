@@ -3,7 +3,7 @@
  * Comprehensive task CRUD with dependencies, energy cost, and AI-suggested scheduling
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,9 +26,14 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasTask, AtlasProject } from '../services/atlas-profile-service';
 import { TaskCard } from './TaskCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
+import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
 import { ConfirmDialog } from '@/core/components/ConfirmDialog';
+import { QuickReminderModal } from '@/core/components/QuickReminderModal';
 
 interface TaskManagerProps {
   tasks: AtlasTask[];
@@ -37,6 +42,7 @@ interface TaskManagerProps {
   onUpdateTask: (taskId: string, updates: Partial<AtlasTask>) => void;
   onDeleteTask: (taskId: string) => void;
   onCompleteTask: (taskId: string) => void;
+  focusTaskId?: string;
 }
 
 type TaskFilter = 'all' | 'active' | 'blocked' | 'done' | 'deferred';
@@ -49,6 +55,7 @@ export function TaskManager({
   onUpdateTask,
   onDeleteTask,
   onCompleteTask,
+  focusTaskId,
 }: TaskManagerProps) {
   const reducedMotion = useReducedMotion();
 
@@ -61,6 +68,14 @@ export function TaskManager({
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showDependencyGraph, setShowDependencyGraph] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [remindTask, setRemindTask] = useState<AtlasTask | null>(null);
+
+  useEffect(() => {
+    if (!focusTaskId) return;
+    setExpandedTaskId(focusTaskId);
+    const target = tasks.find((t) => t.id === focusTaskId);
+    if (target) setRemindTask(null);
+  }, [focusTaskId, tasks]);
 
   // ── Form state ──
   const [formData, setFormData] = useState<Partial<AtlasTask>>({
@@ -252,41 +267,47 @@ export function TaskManager({
       {/* ── Controls: Search, Filter, Sort, Actions ── */}
       <div className="flex flex-wrap gap-2">
         {/* Search */}
-        <div className="relative min-w-0 flex-1 basis-40">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-          <input
-            type="text"
+        <div className="flex-1 min-w-[200px]">
+          <NeuralInput
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tasks..."
-            className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
+            icon={<Search className="w-4 h-4" />}
           />
         </div>
 
         {/* Filter dropdown */}
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as TaskFilter)}
-          className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400/50 cursor-pointer min-w-0"
-        >
-          <option value="all">All Tasks</option>
-          <option value="active">Active</option>
-          <option value="blocked">Blocked</option>
-          <option value="done">Done</option>
-          <option value="deferred">Deferred</option>
-        </select>
+        <div className="w-full sm:w-40">
+          <NeuralSelectMenu
+            value={filter}
+            onChange={(next) => setFilter(next as TaskFilter)}
+            options={[
+              { value: 'all', label: 'All Tasks' },
+              { value: 'active', label: 'Active' },
+              { value: 'blocked', label: 'Blocked' },
+              { value: 'done', label: 'Done' },
+              { value: 'deferred', label: 'Deferred' },
+            ]}
+            triggerClassName="w-full"
+            ariaLabel="Filter tasks"
+          />
+        </div>
 
         {/* Sort dropdown */}
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as TaskSort)}
-          className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400/50 cursor-pointer min-w-0"
-        >
-          <option value="priority">Priority</option>
-          <option value="deadline">Deadline</option>
-          <option value="energy">Energy Cost</option>
-          <option value="created">Created Date</option>
-        </select>
+        <div className="w-full sm:w-40">
+          <NeuralSelectMenu
+            value={sortBy}
+            onChange={(next) => setSortBy(next as TaskSort)}
+            options={[
+              { value: 'priority', label: 'Priority' },
+              { value: 'deadline', label: 'Deadline' },
+              { value: 'energy', label: 'Energy Cost' },
+              { value: 'created', label: 'Created Date' },
+            ]}
+            triggerClassName="w-full"
+            ariaLabel="Sort tasks"
+          />
+        </div>
 
         {/* Action buttons */}
         <div className="flex gap-2 ml-auto">
@@ -378,29 +399,34 @@ export function TaskManager({
                 isExpanded={expandedTaskId === task.id}
                 onToggleExpand={() => handleToggleExpand(task.id)}
                 allTasks={tasks}
+                onRemind={(t) => setRemindTask(t)}
               />
               {/* Quick action buttons on hover */}
               <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                <button
+                <NeuralButton
+                  variant="ghost"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleOpenForm(task);
                   }}
-                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/60 hover:text-white/90 transition-colors"
+                  className="p-1.5 h-8 w-8 min-w-0 bg-white/10 hover:bg-white/20 text-white/60 hover:text-white/90"
                   aria-label={`Edit ${task.title}`}
                 >
                   <Edit2 className="w-3.5 h-3.5" />
-                </button>
-                <button
+                </NeuralButton>
+                <NeuralButton
+                  variant="ghost"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     setDeleteTarget({ id: task.id, title: task.title });
                   }}
-                                    className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400 transition-colors"
+                  className="p-1.5 h-8 w-8 min-w-0 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400"
                   aria-label={`Delete ${task.title}`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                </NeuralButton>
               </div>
             </div>
           ))
@@ -429,166 +455,142 @@ export function TaskManager({
                 <h2 className="text-xl font-black text-white/90">
                   {editingTask ? 'Edit Task' : 'Create New Task'}
                 </h2>
-                <button
+                <NeuralButton
+                  variant="ghost"
+                  size="sm"
                   onClick={handleCloseForm}
-                  className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+                  className="p-2 h-9 w-9 min-w-0 hover:bg-white/10 text-white/40 hover:text-white/70"
                 >
                   <X className="w-5 h-5" />
-                </button>
+                </NeuralButton>
               </div>
 
               <div className="space-y-4">
                 {/* Title */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title || ''}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="Enter task title..."
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
-                  />
-                </div>
+                <NeuralInput
+                  label="Title *"
+                  placeholder="Enter task title..."
+                  value={formData.title || ''}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                />
 
                 {/* Description */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
+                <div className="space-y-2">
+                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
                     Description
                   </label>
-                  <textarea
+                  <NeuralTextarea
                     value={formData.description || ''}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Add task details..."
                     rows={3}
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-sky-400/50 resize-none"
                   />
                 </div>
 
                 {/* Priority & Energy Cost */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
+                  <div className="space-y-2">
+                    <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
                       Priority (1-5)
                     </label>
-                    <select
+                    <NeuralSelectMenu
                       value={formData.priority || 3}
-                      onChange={(e) =>
-                        setFormData({ ...formData, priority: parseInt(e.target.value) as 1 | 2 | 3 | 4 | 5 })
+                      onChange={(next) =>
+                        setFormData({ ...formData, priority: Number(next) as 1 | 2 | 3 | 4 | 5 })
                       }
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
-                    >
-                      <option value={1}>1 - Critical</option>
-                      <option value={2}>2 - High</option>
-                      <option value={3}>3 - Medium</option>
-                      <option value={4}>4 - Low</option>
-                      <option value={5}>5 - Minimal</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-1">
-                      <Zap className="w-3 h-3" />
-                      Energy Cost (0-10)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={formData.energyCost || 5}
-                      onChange={(e) =>
-                        setFormData({ ...formData, energyCost: Math.max(0, Math.min(10, parseInt(e.target.value) || 5)) })
-                      }
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
+                      options={[
+                        { value: 1, label: '1 - Critical' },
+                        { value: 2, label: '2 - High' },
+                        { value: 3, label: '3 - Medium' },
+                        { value: 4, label: '4 - Low' },
+                        { value: 5, label: '5 - Minimal' },
+                      ]}
+                      ariaLabel="Priority"
                     />
                   </div>
+                  <NeuralInput
+                    label="Energy Cost (0-10)"
+                    type="number"
+                    min={0}
+                    max={10}
+                    icon={<Zap className="w-4 h-4" />}
+                    value={formData.energyCost || 5}
+                    onChange={(e) =>
+                      setFormData({ ...formData, energyCost: Math.max(0, Math.min(10, parseInt(e.target.value) || 5)) })
+                    }
+                  />
                 </div>
 
                 {/* Deadline & Project */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      Deadline
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.deadline || ''}
-                      onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
+                  <NeuralInput
+                    label="Deadline"
+                    type="date"
+                    icon={<Calendar className="w-4 h-4" />}
+                    value={formData.deadline || ''}
+                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                  />
+                  <div className="space-y-2">
+                    <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
                       Project
                     </label>
-                    <select
+                    <NeuralSelectMenu
                       value={formData.projectId || ''}
-                      onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
-                    >
-                      <option value="">None</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.title}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(next) => setFormData({ ...formData, projectId: String(next) })}
+                      options={[
+                        { value: '', label: 'None' },
+                        ...projects.map((p) => ({ value: p.id, label: p.title })),
+                      ]}
+                      ariaLabel="Project"
+                    />
                   </div>
                 </div>
 
                 {/* Dependencies */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-1">
+                <div className="space-y-2">
+                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1 flex items-center gap-1">
                     <Link2 className="w-3 h-3" />
                     Dependencies
                   </label>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                  <div className="space-y-2 max-h-40 overflow-y-auto p-1">
                     {tasks
                       .filter((t) => t.id !== editingTask?.id)
                       .map((t) => (
-                        <label
+                        <div
                           key={t.id}
-                          className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer"
+                          className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
                         >
-                          <input
-                            type="checkbox"
+                          <span className="text-xs text-white/70">{t.title}</span>
+                          <NeuralToggle
                             checked={formData.dependencies?.includes(t.id) || false}
-                            onChange={(e) => {
+                            onChange={(checked) => {
                               const deps = formData.dependencies || [];
                               setFormData({
                                 ...formData,
-                                dependencies: e.target.checked
+                                dependencies: checked
                                   ? [...deps, t.id]
                                   : deps.filter((id) => id !== t.id),
                               });
                             }}
-                            className="w-4 h-4 rounded border-white/20 text-sky-500 focus:ring-sky-400/50"
+                            size="sm"
                           />
-                          <span className="text-xs text-white/70">{t.title}</span>
-                        </label>
+                        </div>
                       ))}
                   </div>
                 </div>
 
                 {/* Tags */}
-                <div>
-                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
-                    Tags (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tags?.join(', ') || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean),
-                      })
-                    }
-                    placeholder="work, urgent, research..."
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
-                  />
-                </div>
+                <NeuralInput
+                  label="Tags (comma-separated)"
+                  value={formData.tags?.join(', ') || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean),
+                    })
+                  }
+                  placeholder="work, urgent, research..."
+                />
               </div>
 
               {/* Actions */}
@@ -606,6 +608,24 @@ export function TaskManager({
       </AnimatePresence>,
       document.body
     )}
+      <QuickReminderModal
+        open={!!remindTask}
+        moduleId="atlas"
+        defaultTitle={remindTask ? `Task: ${remindTask.title}` : ''}
+        defaultNote={remindTask?.description}
+        deepLink={
+          remindTask
+            ? { route: '/atlas', focusId: `task:${remindTask.id}` }
+            : undefined
+        }
+        source={
+          remindTask
+            ? { moduleId: 'atlas', entityType: 'task', entityId: remindTask.id, label: remindTask.title }
+            : undefined
+        }
+        tags={remindTask?.tags}
+        onClose={() => setRemindTask(null)}
+      />
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}

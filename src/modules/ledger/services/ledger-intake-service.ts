@@ -268,6 +268,9 @@ function normalizeLedgerProfile(raw: unknown): LedgerIntakeProfile {
             transactionCount: parseNumber((candidate.lastDocumentAnalysis as Record<string, unknown>)?.transactionCount, 0)
           }
         : undefined,
+    paidQuarters: Array.isArray(candidate.paidQuarters)
+      ? candidate.paidQuarters.filter((q) => typeof q === 'number' && Number.isFinite(q))
+      : [],
     extensionValues: candidate.extensionValues && typeof candidate.extensionValues === 'object' && !Array.isArray(candidate.extensionValues)
       ? candidate.extensionValues as Record<string, unknown>
       : {},
@@ -297,6 +300,7 @@ export function createEmptyLedgerProfile(): LedgerIntakeProfile {
     transactions: [],
     budgetCategories: [],
     financialGoals: [],
+    paidQuarters: [],
     extensionValues: {},
     createdAt: now,
     updatedAt: now

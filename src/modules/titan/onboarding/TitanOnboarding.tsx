@@ -17,6 +17,8 @@ import { mergeNSVPatch } from '@/lib/services/nsv-service';
 import type { NeuralStateVectorPatch, Routine } from '@/lib/types';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import {
   RequiredSectionKey,
   TitanIntakeAccumulator,
@@ -570,23 +572,25 @@ export function TitanOnboarding({
           <div className="p-6">
             <p className="text-[10px] text-white/50 uppercase font-black tracking-[0.2em] mb-4">Select Data Sharing Level</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
+              <NeuralButton
+                variant="secondary"
                 onClick={() => setState((prev) => ({ ...prev, privacyLevel: 'basic' }))}
-                className={cn('p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left group')}
+                className="p-5 h-auto flex-col items-start justify-start text-left group rounded-2xl border-white/10"
               >
                 <Shield className="w-6 h-6 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
                 <h3 className="text-sm font-black uppercase tracking-wider mb-2">Basic Data</h3>
-                <p className="text-xs text-white/50 leading-relaxed">Non-intrusive intake. Skips intimate and gender-dependent questions.</p>
-              </button>
+                <p className="text-xs text-white/50 leading-relaxed whitespace-normal font-normal">Non-intrusive intake. Skips intimate and gender-dependent questions.</p>
+              </NeuralButton>
 
-              <button
+              <NeuralButton
+                variant="secondary"
                 onClick={() => setState((prev) => ({ ...prev, privacyLevel: 'complete' }))}
-                className={cn('p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left group')}
+                className="p-5 h-auto flex-col items-start justify-start text-left group rounded-2xl border-white/10"
               >
                 <Sparkles className="w-6 h-6 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
                 <h3 className="text-sm font-black uppercase tracking-wider mb-2">Complete Data</h3>
-                <p className="text-xs text-white/50 leading-relaxed">Full intake including biological and intimate factors for maximum optimization.</p>
-              </button>
+                <p className="text-xs text-white/50 leading-relaxed whitespace-normal font-normal">Full intake including biological and intimate factors for maximum optimization.</p>
+              </NeuralButton>
             </div>
           </div>
         ) : (
@@ -600,19 +604,20 @@ export function TitanOnboarding({
               <p className="text-[9px] text-white/40 uppercase tracking-wider">Primary Goal</p>
               <div className="flex flex-wrap gap-2">
                 {GOAL_CHIPS.map(chip => (
-                  <button
+                  <NeuralButton
                     key={chip.value}
                     type="button"
+                    size="sm"
+                    variant={fastGoal === chip.value ? 'primary' : 'secondary'}
+                    themeColor="orange"
                     onClick={() => setFastGoal(chip.value)}
                     className={cn(
-                      'px-3 py-1.5 rounded-full text-xs font-bold border transition-all',
-                      fastGoal === chip.value
-                        ? 'bg-orange-500/20 border-orange-500/50 text-orange-300'
-                        : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
+                      'rounded-full h-8 px-4 text-xs font-bold transition-all',
+                      fastGoal !== chip.value && 'text-white/50 hover:text-white/70'
                     )}
                   >
                     {chip.label}
-                  </button>
+                  </NeuralButton>
                 ))}
               </div>
             </div>
@@ -622,25 +627,26 @@ export function TitanOnboarding({
               <p className="text-[9px] text-white/40 uppercase tracking-wider">Experience Level</p>
               <div className="flex flex-wrap gap-2">
                 {EXPERIENCE_CHIPS.map(chip => (
-                  <button
+                  <NeuralButton
                     key={chip.value}
                     type="button"
+                    size="sm"
+                    variant={fastExperience === chip.value ? 'primary' : 'secondary'}
+                    themeColor="orange"
                     onClick={() => setFastExperience(chip.value)}
                     className={cn(
-                      'px-3 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5',
-                      fastExperience === chip.value
-                        ? 'bg-orange-500/20 border-orange-500/50 text-orange-300'
-                        : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
+                      'rounded-full h-8 px-4 text-xs font-bold transition-all flex items-center gap-1.5',
+                      fastExperience !== chip.value && 'text-white/50 hover:text-white/70'
                     )}
                   >
                     {chip.label}
                     <span className={cn(
                       'text-[9px] font-normal',
-                      fastExperience === chip.value ? 'text-orange-300/70' : 'text-white/30'
+                      fastExperience === chip.value ? 'text-white/70' : 'text-white/30'
                     )}>
                       {chip.sub}
                     </span>
-                  </button>
+                  </NeuralButton>
                 ))}
               </div>
             </div>
@@ -649,23 +655,25 @@ export function TitanOnboarding({
             <div className="space-y-2">
               <p className="text-[9px] text-white/40 uppercase tracking-wider">Training Days / Week</p>
               <div className="flex items-center gap-4">
-                <button
+                <NeuralButton
                   type="button"
+                  variant="secondary"
                   onClick={() => setDaysPerWeek(d => Math.max(1, d - 1))}
-                  className="w-8 h-8 rounded-full bg-white/10 text-white/70 font-bold hover:bg-white/20 transition-colors"
+                  className="w-8 h-8 min-w-0 p-0 rounded-full font-bold"
                 >
                   –
-                </button>
+                </NeuralButton>
                 <span className="text-2xl font-black text-white tabular-nums w-6 text-center">
                   {daysPerWeek}
                 </span>
-                <button
+                <NeuralButton
                   type="button"
+                  variant="secondary"
                   onClick={() => setDaysPerWeek(d => Math.min(7, d + 1))}
-                  className="w-8 h-8 rounded-full bg-white/10 text-white/70 font-bold hover:bg-white/20 transition-colors"
+                  className="w-8 h-8 min-w-0 p-0 rounded-full font-bold"
                 >
                   +
-                </button>
+                </NeuralButton>
               </div>
             </div>
 
@@ -674,23 +682,24 @@ export function TitanOnboarding({
               <p className="text-[9px] text-white/40 uppercase tracking-wider">Available Equipment</p>
               <div className="flex flex-wrap gap-2">
                 {EQUIPMENT_CHIPS.map(chip => (
-                  <button
+                  <NeuralButton
                     key={chip.value}
                     type="button"
+                    size="sm"
+                    variant={equipment.includes(chip.value) ? 'primary' : 'secondary'}
+                    themeColor="orange"
                     onClick={() => setEquipment(prev =>
                       prev.includes(chip.value)
                         ? prev.filter(e => e !== chip.value)
                         : [...prev, chip.value]
                     )}
                     className={cn(
-                      'px-3 py-1.5 rounded-full text-xs font-bold border transition-all',
-                      equipment.includes(chip.value)
-                        ? 'bg-orange-500/20 border-orange-500/50 text-orange-300'
-                        : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
+                      'rounded-full h-8 px-4 text-xs font-bold transition-all',
+                      !equipment.includes(chip.value) && 'text-white/50 hover:text-white/70'
                     )}
                   >
                     {chip.label}
-                  </button>
+                  </NeuralButton>
                 ))}
               </div>
             </div>
@@ -700,7 +709,7 @@ export function TitanOnboarding({
               <p className="text-[9px] text-white/40 uppercase tracking-wider">Physical Baseline (optional)</p>
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex items-center gap-1">
-                  <input
+                  <NeuralInput
                     type="number"
                     step="0.1"
                     min={baselineWeightUnit === 'kg' ? 20 : 44}
@@ -708,17 +717,19 @@ export function TitanOnboarding({
                     placeholder={baselineWeightUnit === 'kg' ? 'Weight (kg)' : 'Weight (lbs)'}
                     value={baselineWeight}
                     onChange={e => setBaselineWeight(e.target.value)}
-                    className="flex-1 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-orange-500/50 tabular-nums"
+                    className="flex-1 min-h-[40px] h-10 bg-black/20"
                   />
-                  <button
+                  <NeuralButton
                     type="button"
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setBaselineWeightUnit(u => u === 'kg' ? 'lbs' : 'kg')}
-                    className="px-2 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-white/50 hover:bg-white/10 transition-colors"
+                    className="px-2 h-10 bg-white/5 border border-white/10 text-[10px] font-black text-white/50 hover:bg-white/10 transition-colors"
                   >
                     {baselineWeightUnit}
-                  </button>
+                  </NeuralButton>
                 </div>
-                <input
+                <NeuralInput
                   type="number"
                   step="0.1"
                   min={100}
@@ -726,24 +737,24 @@ export function TitanOnboarding({
                   placeholder="Height (cm)"
                   value={baselineHeight}
                   onChange={e => setBaselineHeight(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-orange-500/50 tabular-nums"
+                  className="bg-black/20 min-h-[40px] h-10"
                 />
               </div>
             </div>
 
             {/* Optional text fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input
+              <NeuralInput
                 placeholder="Supplements (comma-separated, optional)"
                 value={fastSupplements}
                 onChange={e => setFastSupplements(e.target.value)}
-                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-orange-500/50"
+                className="bg-black/20 min-h-[40px] h-10"
               />
-              <input
+              <NeuralInput
                 placeholder="Injuries or limitations (optional)"
                 value={fastInjuries}
                 onChange={e => setFastInjuries(e.target.value)}
-                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-orange-500/50"
+                className="bg-black/20 min-h-[40px] h-10"
               />
             </div>
 
@@ -751,14 +762,16 @@ export function TitanOnboarding({
               <p className="text-[9px] text-white/40 uppercase tracking-tight">
                 Bypass conversational intake. Requires goal and experience level.
               </p>
-              <button
+              <NeuralButton
                 onClick={handleFastTrack}
                 disabled={!fastGoal || !fastExperience || isValidatingFastTrack}
-                className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                loading={isValidatingFastTrack}
+                themeColor="orange"
+                className="px-6 h-10 text-xs font-bold uppercase tracking-widest whitespace-nowrap"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                {isValidatingFastTrack ? 'Validating…' : 'Execute'}
-              </button>
+                Execute
+              </NeuralButton>
             </div>
 
             {fastTrackError && (

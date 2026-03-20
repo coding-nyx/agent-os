@@ -2,10 +2,12 @@ import React, { useEffect, useCallback, useRef } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useAI } from '@/llm-engine/ai-context';
-import { useSpineEvent } from '@/lib/spine/spine-event-bus';
+import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
+import { prepareDocumentChatPrompt } from '@/lib/services/document-chat-handoff-service';
+import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
 import { SomaDashboard } from './components/SomaDashboard';
 import type { VitalReading as UIVitalReading, PhysicalAssessment as UIPhysicalAssessment } from './components/SomaDashboard';
 import type { PhysicalAssessment as StoredPhysicalAssessment } from '@/lib/types';
@@ -37,7 +39,7 @@ interface SomaContentProps {
 
 function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
   const { user } = useAuth();
-  const { sendMessage } = useAI();
+  const { sendMessage, analyzeImage } = useAI();
   const { globalSoul } = useGlobalSoul();
   const [queuedUpload, setQueuedUpload] = React.useState<File | null>(null);
 
@@ -78,6 +80,43 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
       return '';
     }
   }, [sendMessage]);
+
+  const handleChatDocumentUploads = useCallback(async (request: DocumentUploadRequest) => {
+    const llmPrimary = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'You are a medical document triage analyst. Return only valid JSON as instructed.',
+        memoryContext: [],
+        summary: 'Soma document triage.',
+        history: [],
+      });
+      return response.publicText;
+    };
+
+    const llmFallback = async (prompt: string) => {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt: 'Return only valid JSON matching the requested schema.',
+        memoryContext: [],
+        summary: 'Soma document triage fallback.',
+        history: [],
+      });
+      return response.publicText;
+    };
+
+    try {
+      const { prompt } = await prepareDocumentChatPrompt({
+        moduleId: 'soma',
+        files: request.files,
+        sendMessage: llmPrimary,
+        sendMessageFallback: llmFallback,
+        analyzeImage,
+        userContext: request.caption,
+      });
+      await ai.handleSendMessage(prompt, undefined, { visibleContent: request.visibleContent });
+    } catch (error) {
+      console.error('[SomaPage] Chat document analysis failed:', error);
+      await ai.handleSendMessage('I could not analyze those medical documents. Please try again with a clearer PDF, image, or text file.');
+    }
+  }, [ai, analyzeImage, sendMessage]);
 
   useEffect(() => {
     if (ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
@@ -171,7 +210,16 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
           profile={profile}
           userId={user.uid}
           encryptionKey={encryptionKey}
-          onComplete={() => {}}
+          onComplete={() => {
+            Spine.emit({
+              type: 'MODULE_PROFILE_UPDATED',
+              source: 'soma',
+              domain: 'system',
+              data: { moduleId: 'soma', reason: 'onboarding_complete' },
+              cascadeDepth: 0,
+              priority: 'info',
+            });
+          }}
         />
       </div>
     );
@@ -185,7 +233,7 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
       ai={ai}
       authMode="soma"
       placeholder="Ask about biomarkers, labs, or recovery..."
-      onUploadDocument={(file) => setQueuedUpload(file)}
+      onUploadDocuments={handleChatDocumentUploads}
     >
       <div className="h-full overflow-y-auto no-scrollbar pb-20">
         <div className="flex items-center justify-end px-4 pt-3 pb-1">

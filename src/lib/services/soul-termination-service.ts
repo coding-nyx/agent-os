@@ -4,7 +4,7 @@ import { getUserDataDeletionTargets } from './user-data-registry';
 
 const LOCAL_STORAGE_PREFIXES = ['nexus_', 'agnes_'];
 const LOCAL_STORAGE_SUBSTRINGS = ['integrity'];
-const SESSION_STORAGE_KEYS = ['nexus_guest_active', 'nexus_vault_session'];
+const SESSION_STORAGE_KEYS = ['nexus_guest_active', 'nexus_vault_session', 'nexus_vault_session_ts'];
 
 /** Known subcollections keyed by parent collection name. */
 const KNOWN_SUBCOLLECTIONS: Record<string, string[]> = {

@@ -5,6 +5,9 @@ import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { useUIStore } from '@/lib/stores/ui-store';
 import type { AtlasProject } from '../services/atlas-profile-service';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 
 // ---------------------------------------------------------------------------
 // QuickAddForm — FAB + modal for rapid task / habit / goal creation
@@ -213,23 +216,20 @@ export function QuickAddForm({
     <>
       {/* ── Floating Action Button — hidden when chat overlay covers screen or showFAB is false ── */}
       {showFAB && !isChatOverlayOpen && (
-        <button
-          ref={fabRef}
+        <NeuralButton
+          ref={fabRef as any}
           onClick={() => setIsOpen(true)}
           aria-label="Add new item"
-          aria-haspopup="dialog"
+          themeColor="emerald"
           className={cn(
-            'z-[var(--z-fab)] rounded-full flex items-center justify-center',
-            'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25',
-            'hover:bg-emerald-400 active:bg-emerald-600 transition-all',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900',
+            'z-[var(--z-fab)] !rounded-full shadow-lg shadow-emerald-500/25',
             isFluid 
               ? 'w-12 h-12' 
               : 'fixed w-14 h-14 bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-8 md:translate-x-0 md:bottom-8'
           )}
         >
           <Plus className={isFluid ? "w-5 h-5" : "w-6 h-6"} aria-hidden="true" />
-        </button>
+        </NeuralButton>
       )}
 
       {/* ── Modal overlay + dialog ── */}
@@ -276,17 +276,15 @@ export function QuickAddForm({
                 <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-emerald-400 font-display">
                   Quick Add
                 </h2>
-                <button
+                <NeuralButton
                   onClick={close}
                   aria-label="Close dialog"
-                  className={cn(
-                    'w-8 h-8 flex items-center justify-center rounded-lg',
-                    'text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50'
-                  )}
+                  variant="ghost"
+                  size="sm"
+                  className="!w-8 !h-8 !p-0 !min-h-0 rounded-lg text-white/30 hover:text-white/60"
                 >
                   <X className="w-4 h-4" aria-hidden="true" />
-                </button>
+                </NeuralButton>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
@@ -297,53 +295,31 @@ export function QuickAddForm({
                   </legend>
                   <div className="flex gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/5">
                     {TYPE_OPTIONS.map((opt) => (
-                      <button
+                      <NeuralButton
                         key={opt.key}
                         type="button"
                         onClick={() => setItemType(opt.key)}
-                        aria-pressed={itemType === opt.key}
-                        className={cn(
-                          'flex-1 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
-                          itemType === opt.key
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                            : 'text-white/30 hover:text-white/50 border border-transparent'
-                        )}
+                        variant={itemType === opt.key ? 'primary' : 'ghost'}
+                        themeColor="emerald"
+                        size="sm"
+                        className="flex-1 !h-8"
                       >
                         {opt.label}
-                      </button>
+                      </NeuralButton>
                     ))}
                   </div>
                 </fieldset>
 
                 {/* ── Title ── */}
-                <div>
-                  <label
-                    htmlFor="quick-add-title"
-                    className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-2"
-                  >
-                    Title{' '}
-                    <span className="text-rose-400" aria-label="required">
-                      *
-                    </span>
-                  </label>
-                  <input
-                    ref={titleInputRef}
-                    id="quick-add-title"
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                    autoComplete="off"
-                    placeholder={`New ${itemType}…`}
-                    className={cn(
-                      'w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]',
-                      'text-sm text-white/90 placeholder:text-white/20',
-                      'focus:outline-none focus:border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/20',
-                      'transition-colors'
-                    )}
-                  />
-                </div>
+                <NeuralInput
+                  ref={titleInputRef}
+                  id="quick-add-title"
+                  label="Title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  placeholder={`New ${itemType}…`}
+                />
 
                 {/* ── Priority selector (tasks only) ── */}
                 {itemType === 'task' && (
@@ -353,22 +329,16 @@ export function QuickAddForm({
                     </legend>
                     <div className="flex gap-2">
                       {PRIORITY_OPTIONS.map((p) => (
-                        <button
+                        <NeuralButton
                           key={p}
                           type="button"
                           onClick={() => setPriority(p)}
-                          aria-pressed={priority === p}
-                          aria-label={`Priority ${p}`}
-                          className={cn(
-                            'w-9 h-9 rounded-lg border-2 flex items-center justify-center text-xs font-black transition-all',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
-                            priority === p
-                              ? PRIORITY_COLORS[p]
-                              : 'border-white/10 text-white/30 hover:border-white/20'
-                          )}
+                          themeColor={p === 1 ? 'rose' : p === 2 ? 'orange' : p === 3 ? 'amber' : p === 4 ? 'cyan' : 'white'}
+                          variant={priority === p ? 'primary' : 'secondary'}
+                          className="w-9 h-9 !px-0 flex items-center justify-center text-xs font-black"
                         >
                           {p}
-                        </button>
+                        </NeuralButton>
                       ))}
                     </div>
                   </fieldset>
@@ -421,30 +391,14 @@ export function QuickAddForm({
 
                 {/* ── Deadline (tasks & goals) ── */}
                 {(itemType === 'task' || itemType === 'goal') && (
-                  <div>
-                    <label
-                      htmlFor="quick-add-deadline"
-                      className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2 mb-2"
-                    >
-                      <CalendarIcon
-                        className="w-3 h-3 text-white/20"
-                        aria-hidden="true"
-                      />
-                      Deadline (optional)
-                    </label>
-                    <input
-                      id="quick-add-deadline"
-                      type="date"
-                      value={deadline}
-                      onChange={(e) => setDeadline(e.target.value)}
-                      className={cn(
-                        'w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]',
-                        'text-sm text-white/90',
-                        'focus:outline-none focus:border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/20',
-                        'transition-colors [color-scheme:dark]'
-                      )}
-                    />
-                  </div>
+                  <NeuralInput
+                    id="quick-add-deadline"
+                    type="date"
+                    label="Deadline (optional)"
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className="[color-scheme:dark]"
+                  />
                 )}
 
                 {/* ── Project dropdown (tasks only) ── */}
@@ -456,24 +410,15 @@ export function QuickAddForm({
                     >
                       Project (optional)
                     </label>
-                    <select
-                      id="quick-add-project"
+                    <NeuralSelectMenu
                       value={projectId}
-                      onChange={(e) => setProjectId(e.target.value)}
-                      className={cn(
-                        'w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]',
-                        'text-sm text-white/90',
-                        'focus:outline-none focus:border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/20',
-                        'transition-colors [color-scheme:dark]'
-                      )}
-                    >
-                      <option value="">No project</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.title}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(next) => setProjectId(String(next))}
+                      options={[
+                        { value: '', label: 'No project' },
+                        ...projects.map((p) => ({ value: p.id, label: p.title })),
+                      ]}
+                      ariaLabel="Project"
+                    />
                   </div>
                 )}
 
@@ -485,21 +430,17 @@ export function QuickAddForm({
                     </legend>
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
                       {(['daily', 'weekdays', 'weekends', 'weekly', 'custom'] as const).map((f) => (
-                        <button
+                        <NeuralButton
                           key={f}
                           type="button"
                           onClick={() => setFrequency(f)}
-                          aria-pressed={frequency === f}
-                          className={cn(
-                            'py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all capitalize',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
-                            frequency === f
-                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                              : 'text-white/30 hover:text-white/50 border border-white/5'
-                          )}
+                          variant={frequency === f ? 'primary' : 'secondary'}
+                          themeColor="emerald"
+                          size="sm"
+                          className="!h-8 !px-0 text-[9px] capitalize"
                         >
                           {f}
-                        </button>
+                        </NeuralButton>
                       ))}
                     </div>
                   </fieldset>
@@ -507,43 +448,25 @@ export function QuickAddForm({
 
                 {/* ── Minimum viable version (habits only) ── */}
                 {itemType === 'habit' && (
-                  <div>
-                    <label
-                      htmlFor="quick-add-mvv"
-                      className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-2"
-                    >
-                      Minimum for a bad day (optional)
-                    </label>
-                    <input
-                      id="quick-add-mvv"
-                      type="text"
-                      value={minimumViableVersion}
-                      onChange={(e) => setMinimumViableVersion(e.target.value)}
-                      placeholder="e.g. 5 mins, 3 sentences…"
-                      className={cn(
-                        'w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]',
-                        'text-sm text-white/90 placeholder:text-white/20',
-                        'focus:outline-none focus:border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/20',
-                        'transition-colors'
-                      )}
-                    />
-                  </div>
+                  <NeuralInput
+                    id="quick-add-mvv"
+                    label="Minimum for a bad day (optional)"
+                    value={minimumViableVersion}
+                    onChange={(e) => setMinimumViableVersion(e.target.value)}
+                    placeholder="e.g. 5 mins, 3 sentences…"
+                  />
                 )}
 
                 {/* ── Submit ── */}
-                <button
+                <NeuralButton
                   type="submit"
                   disabled={!title.trim()}
-                  className={cn(
-                    'w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wider transition-all',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
-                    title.trim()
-                      ? 'bg-emerald-500 text-white hover:bg-emerald-400 active:bg-emerald-600'
-                      : 'bg-white/5 text-white/20 cursor-not-allowed'
-                  )}
+                  themeColor="emerald"
+                  size="lg"
+                  className="w-full uppercase tracking-wider"
                 >
                   Create {itemType}
-                </button>
+                </NeuralButton>
               </form>
             </motion.div>
           </>
