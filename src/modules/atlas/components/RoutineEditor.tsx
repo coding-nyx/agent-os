@@ -4,6 +4,7 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
+import { cn } from '@/lib/utils';
 import type { AtlasRoutine, RoutineBlock } from '@/lib/types';
 
 interface RoutineEditorProps {

@@ -26,15 +26,16 @@ export function useReminderProposals(moduleId: string | 'any') {
 
   const confirm = useCallback(async () => {
     if (!active || !user || isGuest) return;
+    const targetModuleId = moduleId === 'any' ? active.proposal.moduleId : moduleId;
     const ctx: ActionContext = {
       userId: user.uid,
       isGuest: !!isGuest,
-      moduleId: moduleId === 'any' ? proposal.moduleId : moduleId,
+      moduleId: targetModuleId,
       payload: { proposalId: active.proposal.id },
       emitSpineEvent: (type, data) => {
         Spine.publish({
           type,
-          source: moduleId === 'any' ? proposal.moduleId : moduleId,
+          source: targetModuleId,
           domain: 'system',
           priority: 'info',
           data,
@@ -43,22 +44,23 @@ export function useReminderProposals(moduleId: string | 'any') {
       updateGlobalSoul: async () => {},
       delegateToModule: () => {},
     };
-    await ActionHub.execute(moduleId === 'any' ? proposal.moduleId : moduleId, 'confirm_reminder', ctx);
+    await ActionHub.execute(targetModuleId, 'confirm_reminder', ctx);
     setActive(null);
     pendingId.current = null;
   }, [active, isGuest, moduleId, user]);
 
   const dismiss = useCallback(async () => {
     if (!active) return;
+    const targetModuleId = moduleId === 'any' ? active.proposal.moduleId : moduleId;
     const ctx: ActionContext = {
       userId: user?.uid,
       isGuest: !!isGuest,
-      moduleId: moduleId === 'any' ? proposal.moduleId : moduleId,
+      moduleId: targetModuleId,
       payload: { proposalId: active.proposal.id },
       emitSpineEvent: (type, data) => {
         Spine.publish({
           type,
-          source: moduleId === 'any' ? proposal.moduleId : moduleId,
+          source: targetModuleId,
           domain: 'system',
           priority: 'info',
           data,
@@ -67,7 +69,7 @@ export function useReminderProposals(moduleId: string | 'any') {
       updateGlobalSoul: async () => {},
       delegateToModule: () => {},
     };
-    await ActionHub.execute(moduleId === 'any' ? proposal.moduleId : moduleId, 'dismiss_reminder', ctx);
+    await ActionHub.execute(targetModuleId, 'dismiss_reminder', ctx);
     setActive(null);
     pendingId.current = null;
   }, [active, isGuest, moduleId, user?.uid]);

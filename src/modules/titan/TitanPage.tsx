@@ -17,6 +17,11 @@ import { QuickLogDrawer } from './components/QuickLogDrawer';
 import type { QuickLogPayload } from './components/QuickLogDrawer';
 import { QuickLogBar } from './components/QuickLogBar';
 import { LogConfirmCard } from './components/LogConfirmCard';
+import { RecoveryPlanModal } from './components/RecoveryPlanModal';
+import type { RecoveryPlanDraft, RecoveryConsultResult } from './components/RecoveryPlanModal';
+import { RecoveryBanner } from './components/RecoveryBanner';
+import { RecoveryDashboard } from './components/RecoveryDashboard';
+import { RecoveryCheckinPanel } from './components/RecoveryCheckinPanel';
 import { parseQuickLogInput, annotatePRs } from './utils/quick-log-parser';
 import type { ParsedEntry } from './utils/quick-log-parser';
 import { calculateE1RM } from './utils/e1rm';
@@ -26,7 +31,25 @@ import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
-import { TitanProfile, Routine, Exercise, WorkoutSession, PersonalRecord, SomaProfile, ExerciseLog, SleepEntry, CycleEntry, BodyWeightEntry, CardioSession, CustomField } from '@/lib/types';
+import {
+  TitanProfile,
+  Routine,
+  Exercise,
+  WorkoutSession,
+  PersonalRecord,
+  SomaProfile,
+  ExerciseLog,
+  SleepEntry,
+  CycleEntry,
+  BodyWeightEntry,
+  CardioSession,
+  CustomField,
+  TitanRecoveryPlan,
+  TitanRecoveryCheckin,
+  TitanRecoveryReason,
+  TitanRecoveryType,
+  TitanRecoveryBodyRegion
+} from '@/lib/types';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { buildTitanSessionPrompt } from './prompts/titan-session-prompt';
 import { loadTitanProfile, saveTitanProfile, subscribeTitanProfile, syncGuestTitanProfileToUser } from './services/titan-profile-service';
@@ -36,6 +59,8 @@ import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
+import { SurfaceCard } from '@/core/components/SurfaceCard';
+import { NeuralModal } from '@/core/components/NeuralModal';
 import { Activity, BarChart3, RefreshCw, Zap, X, Plus, Moon, ShieldAlert, TrendingUp, Scale, Dumbbell } from 'lucide-react';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
@@ -44,6 +69,7 @@ import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useVault } from '@/lib/vault-context';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import type { NexusHandoff } from '@/lib/services/nexus-handoff-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import type { ModuleId } from '@/lib/module-manifest';
 import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
@@ -55,20 +81,23 @@ import { TitanNotificationSettingsPanel } from './components/TitanNotificationSe
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { QuickReminderModal } from '@/core/components/QuickReminderModal';
 
-type TitanTab = 'training' | 'analytics' | 'progress' | 'cycles' | 'sleep';
+type TitanTab = 'training' | 'analytics' | 'progress' | 'cycles' | 'sleep' | 'recovery';
 
 registerDiagnosisSpec(titanDiagnosisSpec);
 
-function resolveInitialTab(searchParams: URLSearchParams): TitanTab {
+function resolveInitialTab(searchParams: URLSearchParams, recoveryActive: boolean): TitanTab {
   const param = searchParams.get('tab');
-  if (param === 'training' || param === 'analytics' || param === 'progress' || param === 'cycles' || param === 'sleep') return param;
-  return 'training';
+  if (param === 'training' || param === 'analytics' || param === 'progress' || param === 'cycles' || param === 'sleep' || param === 'recovery') {
+    if (param === 'recovery' && !recoveryActive) return 'training';
+    return param;
+  }
+  return recoveryActive ? 'recovery' : 'training';
 }
 
 function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null }) {
   const { globalSoul } = useGlobalSoul();
   const { isModuleAccessible, getMasterKey, lockVault } = useVault();
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const isLocked = !isModuleAccessible('titan');
 
   // ── Medical-data vault advisory (S21-015) ─────────────────────────────────
@@ -77,7 +106,8 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams));
+  const isRecoveryActive = Boolean(profile?.recoveryPlan?.active);
+  const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams, isRecoveryActive));
   const setModuleBottomBarHeight = useUIStore((s) => s.setModuleBottomBarHeight);
   const setHideGlobalFAB = useUIStore((s) => s.setHideGlobalFAB);
   const [calendarSelectedRoutine, setCalendarSelectedRoutine] = useState<Routine | null>(null);
@@ -106,6 +136,12 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     }
   }, [location.state]);
 
+  useEffect(() => {
+    if (isRecoveryActive) {
+      setActiveTab((prev) => (prev === 'recovery' ? prev : 'recovery'));
+    }
+  }, [isRecoveryActive]);
+
   const [somaProfile, setSomaProfile] = useState<SomaProfile | null>(null);
   const [somaEncryptionKey, setSomaEncryptionKey] = useState<CryptoKey | null>(null);
 
@@ -113,6 +149,17 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
   const [quickLogDate, setQuickLogDate] = useState<Date | null>(null);
   const [remindDate, setRemindDate] = useState<string | null>(null);
+  const [quickLogIsRecovery, setQuickLogIsRecovery] = useState(false);
+
+  // ── Recovery mode ────────────────────────────────────────────────────────
+  const recoveryPlan = profile?.recoveryPlan ?? null;
+  const [isRecoveryModalOpen, setIsRecoveryModalOpen] = useState(false);
+  const [recoveryDraft, setRecoveryDraft] = useState<RecoveryPlanDraft | null>(null);
+  const [somaConsult, setSomaConsult] = useState<RecoveryConsultResult | null>(null);
+  const [agnesConsult, setAgnesConsult] = useState<RecoveryConsultResult | null>(null);
+  const [pendingConsults, setPendingConsults] = useState({ soma: false, agnes: false });
+  const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
+  const [recoveryGate, setRecoveryGate] = useState<{ onLight: () => void; onFull: () => void } | null>(null);
 
   // ── Fast Quick-Log bar (inline natural-language entry) ─────────────────────
   const [quickLogBarInput, setQuickLogBarInput] = useState('');
@@ -159,18 +206,68 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const systemPrompt = useMemo(() => {
     if (!profile) return TITAN_PERSONA;
     return buildTitanSessionPrompt(profile, {
-      mode: 'training',
+      mode: isRecoveryActive ? 'recovery' : 'training',
       recoveryScore: globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null,
       hormonalContext: globalSoul?.crossFunctionalState?.biological?.hormonalContext ?? null,
       somaProfile,
     });
-  }, [profile, globalSoul?.crossFunctionalState?.biological?.recoveryScore, globalSoul?.crossFunctionalState?.biological?.hormonalContext, somaProfile]);
+  }, [profile, globalSoul?.crossFunctionalState?.biological?.recoveryScore, globalSoul?.crossFunctionalState?.biological?.hormonalContext, somaProfile, isRecoveryActive]);
 
   const ai = useModuleAI({
     moduleId: 'titan',
     systemPrompt,
     encryptionKey
   });
+
+  const parseRecoveryConsult = useCallback((content: string): RecoveryConsultResult | null => {
+    if (!content) return null;
+    const start = content.indexOf('{');
+    const end = content.lastIndexOf('}');
+    if (start === -1 || end === -1 || end <= start) return null;
+    try {
+      const json = JSON.parse(content.slice(start, end + 1)) as RecoveryConsultResult;
+      if (!json.summary) return null;
+      return json;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const handleIncomingHandoff = useCallback((handoff: NexusHandoff) => {
+    if (handoff.type === 'query_result' && handoff.content) {
+      const parsed = parseRecoveryConsult(handoff.content);
+      if (parsed && (handoff.sourceModuleId === 'soma' || handoff.sourceModuleId === 'agnes')) {
+        if (handoff.sourceModuleId === 'soma') {
+          setSomaConsult(parsed);
+          setPendingConsults((prev) => ({ ...prev, soma: false }));
+        } else {
+          setAgnesConsult(parsed);
+          setPendingConsults((prev) => ({ ...prev, agnes: false }));
+        }
+        return;
+      }
+    }
+
+    if (handoff.type === 'delegate') {
+      if (handoff.type === 'delegate' && handoff.sourceModuleId === 'agnes') {
+        ai.handleSendMessage(`[Context from Agnes] ${handoff.content}`);
+      } else if (handoff.sourceModuleId === 'atlas') {
+        ai.handleSendMessage(
+          `[Atlas] A physical commitment was missed: "${handoff.content}". ` +
+          `Should we reschedule or adjust the training plan?`
+        );
+      } else if (handoff.type === 'delegate') {
+        ai.handleSendMessage(`[${handoff.sourceModuleId ?? 'System'}] ${handoff.content}`);
+      }
+      return;
+    }
+
+    if (handoff.type === 'query_result' && handoff.content) {
+      ai.handleSendMessage(
+        `[Query Result from ${handoff.sourceModuleId ?? 'module'}] ${handoff.content}`
+      );
+    }
+  }, [ai, parseRecoveryConsult]);
 
   // ── Direct Write (Logbook) Mode ────────────────────────────────────────────
   // Bypasses AI validation for session logging; persists directly to Firestore.
@@ -183,6 +280,14 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
   }, [profile, directWrite, encryptionKey, user]);
 
+  const openRecoveryModal = useCallback((draft?: RecoveryPlanDraft | null) => {
+    setRecoveryDraft(draft ?? null);
+    setSomaConsult(null);
+    setAgnesConsult(null);
+    setPendingConsults({ soma: false, agnes: false });
+    setIsRecoveryModalOpen(true);
+  }, []);
+
   // Phase 6 — Agnes→Titan reactive Spine: auto-suggest deload on high stress events
   // Use a Set so COMPOUND_STRESS, BURNOUT_WARNING, COMMITMENT_MISSED, and FINANCIAL_STRESS deduplicate independently
   const handledSpineEventsRef = useRef<Set<string>>(new Set());
@@ -191,22 +296,38 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     const eventKey = `compound-stress-${event.id}`;
     if (handledSpineEventsRef.current.has(eventKey)) return;
     handledSpineEventsRef.current.add(eventKey);
+    if (!isRecoveryActive) {
+      openRecoveryModal({
+        reasons: ['stress'],
+        type: 'rest',
+        durationDays: 7,
+      });
+      return;
+    }
     const stressLoad = event.data?.stressLoad as number | undefined;
     const prompt = stressLoad != null && stressLoad >= 8
       ? `Agnes has flagged critical compound stress (level ${stressLoad}/10) across domains. Review my current training load and recommend a deload protocol or active recovery day. Consider adjusting this week's plan.`
       : `Agnes has flagged elevated compound stress. Should I scale back training intensity this week? Review my schedule and recovery state.`;
     ai.handleSendMessage(prompt);
-  }, [profile?.onboardingComplete, ai.handleSendMessage]));
+  }, [profile?.onboardingComplete, ai.handleSendMessage, isRecoveryActive, openRecoveryModal]));
 
   useSpineEvent('BURNOUT_WARNING', useCallback((event) => {
     if (!profile?.onboardingComplete) return;
     const eventKey = `burnout-${event.id}`;
     if (handledSpineEventsRef.current.has(eventKey)) return;
     handledSpineEventsRef.current.add(eventKey);
+    if (!isRecoveryActive) {
+      openRecoveryModal({
+        reasons: ['stress'],
+        type: 'rest',
+        durationDays: 10,
+      });
+      return;
+    }
     ai.handleSendMessage(
       'Agnes has detected a burnout warning signal. Please reduce training volume immediately and suggest a 3–5 day active recovery protocol based on my current state.'
     );
-  }, [profile?.onboardingComplete, ai.handleSendMessage]));
+  }, [profile?.onboardingComplete, ai.handleSendMessage, isRecoveryActive, openRecoveryModal]));
 
   useSpineEvent('COMMITMENT_MISSED', useCallback((event) => {
     if (!profile?.onboardingComplete) return;
@@ -246,6 +367,14 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     const eventKey = `reduce-load-${event.id}`;
     if (handledSpineEventsRef.current.has(eventKey)) return;
     handledSpineEventsRef.current.add(eventKey);
+    if (!isRecoveryActive) {
+      openRecoveryModal({
+        reasons: ['overtraining'],
+        type: 'deload',
+        durationDays: 7,
+      });
+      return;
+    }
     const reason = event.data?.reason as string | undefined;
     const capacity = event.data?.capacityPercent as number | undefined;
     const contextMsg = reason === 'atlas_recovery_day'
@@ -254,7 +383,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       ? `Your last session had very high RPE. Your next session should be at ${capacity ?? 60}% capacity — prioritise technique, mobility, or active recovery.`
       : `A load reduction signal was received (${reason ?? 'system'}, ${capacity ?? 60}% capacity). Recommend adjusting today's training accordingly.`;
     ai.handleSendMessage(`[System] ${contextMsg} Please update my plan for today or tomorrow.`);
-  }, [profile?.onboardingComplete, ai.handleSendMessage]));
+  }, [profile?.onboardingComplete, ai.handleSendMessage, isRecoveryActive, openRecoveryModal]));
 
   // Recovery window confirmed — positive signal to acknowledge and optimise
   useSpineEvent('RECOVERY_AVAILABLE', useCallback((event) => {
@@ -334,33 +463,19 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   useEffect(() => {
     const handoff = NexusHandoffService.consume('titan');
     if (!handoff) return;
-
-    // Case 1 — Stress context delegated from Agnes
-    if (handoff.type === 'delegate' && handoff.sourceModuleId === 'agnes') {
-      ai.handleSendMessage(
-        `[Context from Agnes] Stress context: ${handoff.content}. ` +
-        `Please factor this into training recommendations.`
-      );
-    }
-    // Case 2 — Commitment failure delegated from Atlas
-    else if (handoff.sourceModuleId === 'atlas') {
-      ai.handleSendMessage(
-        `[Atlas] A physical commitment was missed: "${handoff.content}". ` +
-        `Should we reschedule or adjust the training plan?`
-      );
-    }
-    // Case 3 — Generic delegate with a content message
-    else if (handoff.type === 'delegate') {
-      ai.handleSendMessage(`[${handoff.sourceModuleId ?? 'System'}] ${handoff.content}`);
-    }
-    // Case 4 — Query result (response to a previous Titan query)
-    else if (handoff.type === 'query_result') {
-      ai.handleSendMessage(
-        `[Query Result from ${handoff.sourceModuleId ?? 'module'}] ${handoff.content}`
-      );
-    }
+    handleIncomingHandoff(handoff);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Poll for recovery consults while the modal is open.
+  useEffect(() => {
+    if (!isRecoveryModalOpen) return;
+    const interval = window.setInterval(() => {
+      const handoff = NexusHandoffService.consume('titan');
+      if (handoff) handleIncomingHandoff(handoff);
+    }, 1500);
+    return () => window.clearInterval(interval);
+  }, [isRecoveryModalOpen, handleIncomingHandoff]);
 
   useEffect(() => {
     if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
@@ -539,8 +654,15 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     setPendingLogEntries(annotated);
   }, [profile?.personalRecords]);
 
-  const handleQuickLogBarCommit = useCallback(async () => {
+  const handleQuickLogBarCommit = useCallback(async (mode?: 'recovery' | 'full') => {
     if (!profile || !encryptionKey || !user || pendingLogEntries.length === 0) return;
+    if (isRecoveryActive && !mode) {
+      setRecoveryGate({
+        onLight: () => handleQuickLogBarCommit('recovery'),
+        onFull: () => handleQuickLogBarCommit('full'),
+      });
+      return;
+    }
     // Guard against duplicate sessions from rapid double-tap on the Commit button.
     if (isCommittingQuickLogRef.current) return;
     isCommittingQuickLogRef.current = true;
@@ -578,6 +700,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         completedAt: now,
         exercises,
         totalVolume: totalVolume > 0 ? Math.round(totalVolume) : undefined,
+        recoverySession: mode === 'recovery',
         status: 'completed',
       };
 
@@ -619,7 +742,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     } finally {
       isCommittingQuickLogRef.current = false;
     }
-  }, [profile, encryptionKey, user, pendingLogEntries]);
+  }, [profile, encryptionKey, user, pendingLogEntries, isRecoveryActive]);
 
   // ── Direct-write handlers for new tracking features ───────────────────────
   const handleDirectSaveBodyWeight = useCallback(async (entry: BodyWeightEntry) => {
@@ -656,13 +779,160 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
   }, [profile, encryptionKey, user]);
 
+  const commitWorkoutSession = useCallback(async (session: WorkoutSession, recoverySession?: boolean) => {
+    if (!profile || !encryptionKey || !user) return;
+    const sessionWithFlag = { ...session, recoverySession: recoverySession ?? session.recoverySession };
+    const updatedSessions = [sessionWithFlag, ...(profile.workoutSessions ?? [])].slice(0, 500);
+    const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
+    for (const exLog of sessionWithFlag.exercises) {
+      const key = exLog.exerciseName.toLowerCase().trim();
+      for (const s of exLog.sets) {
+        if (!s.completed || !s.weight || !s.repsCompleted) continue;
+        const e1RM = calculateE1RM(s.weight, s.repsCompleted);
+        const existing = updatedPRs[key];
+        if (!existing || e1RM > existing.e1RM) {
+          updatedPRs[key] = {
+            exerciseName: exLog.exerciseName,
+            maxWeight: s.weight,
+            repsAtMax: s.repsCompleted,
+            e1RM,
+            achievedDate: sessionWithFlag.date,
+            sessionId: sessionWithFlag.id,
+          };
+        }
+      }
+    }
+    const updated: TitanProfile = {
+      ...profile,
+      workoutSessions: updatedSessions,
+      personalRecords: updatedPRs,
+      updatedAt: new Date().toISOString(),
+    };
+    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+  }, [profile, encryptionKey, user]);
+
+  const todayIso = () => new Date().toISOString().slice(0, 10);
+
+  const daysRemaining = useMemo(() => {
+    if (!recoveryPlan?.active) return 0;
+    const today = new Date(todayIso());
+    const end = new Date(recoveryPlan.endDate);
+    const diff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(diff, 0);
+  }, [recoveryPlan]);
+
+  const recoveryCheckins = profile?.recoveryCheckins ?? [];
+  const hasCheckinToday = recoveryCheckins.some(c => c.date === todayIso());
+
+  const handleSaveRecoveryPlan = useCallback(async (plan: TitanRecoveryPlan) => {
+    if (!profile || !encryptionKey || !user) return;
+    const updated: TitanProfile = {
+      ...profile,
+      recoveryPlan: plan,
+      updatedAt: new Date().toISOString(),
+    };
+    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+    setIsRecoveryModalOpen(false);
+    setActiveTab('recovery');
+    setRecoveryDraft(null);
+    setSomaConsult(null);
+    setAgnesConsult(null);
+    setPendingConsults({ soma: false, agnes: false });
+  }, [profile, encryptionKey, user]);
+
+  const handleSaveRecoveryCheckin = useCallback(async (payload: Omit<TitanRecoveryCheckin, 'date'> & { date?: string }) => {
+    if (!profile || !encryptionKey || !user) return;
+    const date = payload.date ?? todayIso();
+    const nextEntry: TitanRecoveryCheckin = {
+      date,
+      pain: payload.pain,
+      fatigue: payload.fatigue,
+      sleepQuality: payload.sleepQuality,
+      mood: payload.mood,
+      notes: payload.notes,
+      skipped: payload.skipped,
+    };
+    const filtered = (profile.recoveryCheckins ?? []).filter(c => c.date !== date);
+    const updated: TitanProfile = {
+      ...profile,
+      recoveryCheckins: [nextEntry, ...filtered].slice(0, 180),
+      updatedAt: new Date().toISOString(),
+    };
+    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+  }, [profile, encryptionKey, user]);
+
+  const handleResumeTraining = useCallback(async () => {
+    if (!profile || !encryptionKey || !user || !profile.recoveryPlan) return;
+    const updated: TitanProfile = {
+      ...profile,
+      recoveryPlan: { ...profile.recoveryPlan, active: false },
+      updatedAt: new Date().toISOString(),
+    };
+    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+    setIsResumeModalOpen(false);
+  }, [profile, encryptionKey, user]);
+
+  const requestRecoveryConsults = useCallback((reasons: TitanRecoveryReason[], bodyRegion?: TitanRecoveryBodyRegion) => {
+    if (!user || isGuest) return;
+    const recoveryScore = globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null;
+    const baseContext = {
+      reasons,
+      bodyRegion,
+      recoveryScore,
+      summary: profile?.summary ?? '',
+      injuries: profile?.history?.injuries ?? [],
+      sleepSummary: profile?.activity?.sleepHours ?? null,
+      medicalSummary: somaProfile?.medicalSummary ?? profile?.medicalSummary ?? null,
+      clearances: somaProfile?.clearances?.slice(0, 2) ?? [],
+      biomarkers: somaProfile?.biomarkers?.slice(0, 2) ?? [],
+      labSummaries: somaProfile?.labSummaries?.slice(0, 2) ?? [],
+    };
+    const prompt = [
+      'RECOVERY_CONSULT_REQUEST',
+      'Respond ONLY with JSON: {"summary": "...", "suggestedType": "rest|active|rehab|deload", "suggestedDurationDays": number, "rehabTemplateId": "optional", "severity": "low|medium|high"}',
+      `Context: ${JSON.stringify(baseContext)}`
+    ].join('\n');
+
+    if (reasons.includes('injury')) {
+      NexusHandoffService.store({
+        moduleId: 'soma',
+        type: 'query',
+        content: prompt,
+        reason: 'recovery_consult',
+        sourceModuleId: 'titan',
+        createdAt: new Date().toISOString(),
+      });
+      setPendingConsults((prev) => ({ ...prev, soma: true }));
+    }
+    if (reasons.includes('stress')) {
+      NexusHandoffService.store({
+        moduleId: 'agnes',
+        type: 'query',
+        content: prompt,
+        reason: 'recovery_consult',
+        sourceModuleId: 'titan',
+        createdAt: new Date().toISOString(),
+      });
+      setPendingConsults((prev) => ({ ...prev, agnes: true }));
+    }
+  }, [user, isGuest, globalSoul?.crossFunctionalState?.biological?.recoveryScore, profile, somaProfile]);
+
+  const guardRecoveryAction = useCallback((onLight: () => void, onFull: () => void) => {
+    if (!isRecoveryActive) {
+      onFull();
+      return;
+    }
+    setRecoveryGate({ onLight, onFull });
+  }, [isRecoveryActive]);
+
   // Tab data
   const activeCycleCount = (profile?.cycles ?? []).filter(c => c.status === 'active').length;
 
   const prCount = Object.keys(profile?.personalRecords ?? {}).length;
 
   const tabs: NeuralTabItem<TitanTab>[] = [
-    { id: 'training', label: 'Training', icon: Activity },
+    ...(isRecoveryActive ? [{ id: 'recovery' as const, label: 'Recovery', icon: ShieldAlert }] : []),
+    { id: 'training', label: isRecoveryActive ? 'Recovery Training' : 'Training', icon: Activity },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'progress', label: 'Progress', icon: BarChart3, badge: prCount > 0 ? prCount : undefined },
     { id: 'sleep', label: 'Sleep', icon: Moon, badge: (profile?.sleepLog?.length && profile.sleepLog.length > 0) ? profile.sleepLog.length : undefined },
@@ -671,6 +941,53 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'recovery':
+        return (
+          <div className="px-4 sm:px-6 md:px-8 pb-5 sm:pb-6 md:pb-8 pt-4 sm:pt-5 space-y-4 sm:space-y-5">
+            {recoveryPlan && (
+              <RecoveryDashboard
+                plan={recoveryPlan}
+                daysRemaining={daysRemaining}
+                onResume={() => setIsResumeModalOpen(true)}
+              />
+            )}
+
+            {!hasCheckinToday && (
+              <RecoveryCheckinPanel
+                isNudge
+                onSubmit={(payload) => handleSaveRecoveryCheckin(payload)}
+                onSkip={() => handleSaveRecoveryCheckin({
+                  pain: 0,
+                  fatigue: 0,
+                  sleepQuality: 0,
+                  mood: 0,
+                  skipped: true,
+                })}
+              />
+            )}
+
+            <SurfaceCard className="p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-white/40">Light Activity</p>
+                  <p className="text-sm text-white/70">Log a recovery-safe session (walk, mobility, rehab).</p>
+                </div>
+                <NeuralButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setQuickLogIsRecovery(true);
+                    setQuickLogDate(new Date());
+                    setIsQuickLogOpen(true);
+                  }}
+                >
+                  Log Session
+                </NeuralButton>
+              </div>
+            </SurfaceCard>
+          </div>
+        );
+
       case 'analytics':
         return <AnalyticsTab profile={profile} />;
 
@@ -782,15 +1099,16 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <span className="text-[11px] sm:text-xs font-bold text-white/40 uppercase tracking-wider">This Week</span>
               </div>
-              <TrainingCalendar
-                workoutLogs={profile?.workoutLogs ?? []}
-                sessions={profile?.workoutSessions}
-                onQuickLog={(isoDate) => {
-                  setQuickLogDate(new Date(`${isoDate}T12:00:00`));
-                  setIsQuickLogOpen(true);
-                }}
-                onRemind={(isoDate) => setRemindDate(isoDate)}
-              />
+                <TrainingCalendar
+                  workoutLogs={profile?.workoutLogs ?? []}
+                  sessions={profile?.workoutSessions}
+                  onQuickLog={(isoDate) => {
+                    setQuickLogDate(new Date(`${isoDate}T12:00:00`));
+                    setQuickLogIsRecovery(isRecoveryActive);
+                    setIsQuickLogOpen(true);
+                  }}
+                  onRemind={(isoDate) => setRemindDate(isoDate)}
+                />
             </div>
 
             {/* Quick session logger for calendar-selected routine */}
@@ -813,31 +1131,32 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                   routines={[calendarSelectedRoutine]}
                   recentSessions={profile?.workoutSessions ?? []}
                   onSubmitSession={(prompt) => {
-                    ai.handleSendMessage(prompt);
-                    setCalendarSelectedRoutine(null);
+                    guardRecoveryAction(
+                      () => {
+                        ai.handleSendMessage(`[Recovery Session] ${prompt}`);
+                        setCalendarSelectedRoutine(null);
+                      },
+                      () => {
+                        ai.handleSendMessage(prompt);
+                        setCalendarSelectedRoutine(null);
+                      }
+                    );
                   }}
                   directWriteMode={directWrite}
                   onDirectCommit={async (session) => {
-                    if (!profile || !encryptionKey || !user) return;
-                    const updatedSessions = [session, ...(profile.workoutSessions ?? [])].slice(0, 500);
-                    const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
-                    for (const exLog of session.exercises) {
-                      const key = exLog.exerciseName.toLowerCase().trim();
-                      for (const s of exLog.sets) {
-                        if (!s.completed || !s.weight || !s.repsCompleted) continue;
-                        const e1RM = calculateE1RM(s.weight, s.repsCompleted);
-                        const existing = updatedPRs[key];
-                        if (!existing || e1RM > existing.e1RM) {
-                          updatedPRs[key] = { exerciseName: exLog.exerciseName, maxWeight: s.weight, repsAtMax: s.repsCompleted, e1RM, achievedDate: session.date, sessionId: session.id };
+                    guardRecoveryAction(
+                      async () => {
+                        await commitWorkoutSession({ ...session, recoverySession: true }, true);
+                        setCalendarSelectedRoutine(null);
+                      },
+                      async () => {
+                        await commitWorkoutSession(session);
+                        setCalendarSelectedRoutine(null);
+                        if (session.rpe != null && session.rpe >= 9) {
+                          setAdvisoryBanner(`High RPE (${session.rpe}) detected — consider scheduling a deload day tomorrow.`);
                         }
                       }
-                    }
-                    const updated: TitanProfile = { ...profile, workoutSessions: updatedSessions, personalRecords: updatedPRs, updatedAt: new Date().toISOString() };
-                    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
-                    setCalendarSelectedRoutine(null);
-                    if (session.rpe != null && session.rpe >= 9) {
-                      setAdvisoryBanner(`High RPE (${session.rpe}) detected — consider scheduling a deload day tomorrow.`);
-                    }
+                    );
                   }}
                 />
               </div>
@@ -876,28 +1195,25 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                 <WorkoutSessionLogger
                   routines={profile.routines}
                   recentSessions={profile?.workoutSessions ?? []}
-                  onSubmitSession={ai.handleSendMessage}
+                  onSubmitSession={(prompt) => {
+                    guardRecoveryAction(
+                      () => ai.handleSendMessage(`[Recovery Session] ${prompt}`),
+                      () => ai.handleSendMessage(prompt)
+                    );
+                  }}
                   directWriteMode={directWrite}
                   onDirectCommit={async (session) => {
-                    if (!profile || !encryptionKey || !user) return;
-                    const updatedSessions = [session, ...(profile.workoutSessions ?? [])].slice(0, 500);
-                    const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
-                    for (const exLog of session.exercises) {
-                      const key = exLog.exerciseName.toLowerCase().trim();
-                      for (const s of exLog.sets) {
-                        if (!s.completed || !s.weight || !s.repsCompleted) continue;
-                        const e1RM = calculateE1RM(s.weight, s.repsCompleted);
-                        const existing = updatedPRs[key];
-                        if (!existing || e1RM > existing.e1RM) {
-                          updatedPRs[key] = { exerciseName: exLog.exerciseName, maxWeight: s.weight, repsAtMax: s.repsCompleted, e1RM, achievedDate: session.date, sessionId: session.id };
+                    guardRecoveryAction(
+                      async () => {
+                        await commitWorkoutSession({ ...session, recoverySession: true }, true);
+                      },
+                      async () => {
+                        await commitWorkoutSession(session);
+                        if (session.rpe != null && session.rpe >= 9) {
+                          setAdvisoryBanner(`High RPE (${session.rpe}) detected — consider scheduling a deload day tomorrow.`);
                         }
                       }
-                    }
-                    const updated: TitanProfile = { ...profile, workoutSessions: updatedSessions, personalRecords: updatedPRs, updatedAt: new Date().toISOString() };
-                    await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
-                    if (session.rpe != null && session.rpe >= 9) {
-                      setAdvisoryBanner(`High RPE (${session.rpe}) detected — consider scheduling a deload day tomorrow.`);
-                    }
+                    );
                   }}
                 />
               </div>
@@ -955,6 +1271,16 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           </div>
         </div>
 
+        {isRecoveryActive && recoveryPlan && (
+          <RecoveryBanner
+            plan={recoveryPlan}
+            daysRemaining={daysRemaining}
+            onOpenCheckin={() => setActiveTab('recovery')}
+            onViewPlan={() => setActiveTab('recovery')}
+            onResume={() => setIsResumeModalOpen(true)}
+          />
+        )}
+
         <div className="px-4 sm:px-6 md:px-8 pb-3 sm:pb-4 md:pb-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-4 relative">
           <div className="relative overflow-x-auto no-scrollbar mask-edges-horizontal">
             <NeuralTabGroup
@@ -973,6 +1299,15 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               panel={<TitanNotificationSettingsPanel />}
               compact
             />
+            {!isRecoveryActive && (
+              <NeuralButton
+                variant="secondary"
+                size="sm"
+                onClick={() => openRecoveryModal(null)}
+              >
+                Start Recovery
+              </NeuralButton>
+            )}
             <div className="w-px h-4 bg-white/10 hidden sm:block" />
             <span className="text-white/40">{directWrite ? 'Logbook' : 'Coach'}</span>
             <NeuralToggle
@@ -1022,6 +1357,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               onSubmit={handleQuickLogBarSubmit}
               onManualLog={() => {
                 setQuickLogDate(new Date());
+                setQuickLogIsRecovery(isRecoveryActive);
                 setIsQuickLogOpen(true);
               }}
               onCardioLog={() => setActiveTab('progress')}
@@ -1032,6 +1368,85 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         )}
       </div>
       </SingleAgentLayout>
+
+      <RecoveryPlanModal
+        isOpen={isRecoveryModalOpen}
+        onClose={() => {
+          setIsRecoveryModalOpen(false);
+          setPendingConsults({ soma: false, agnes: false });
+        }}
+        onConfirm={handleSaveRecoveryPlan}
+        recoveryScore={globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null}
+        draft={recoveryDraft}
+        somaConsult={somaConsult}
+        agnesConsult={agnesConsult}
+        pendingConsults={pendingConsults}
+        onRequestConsults={requestRecoveryConsults}
+        onOpenModule={(moduleId) => {
+          const route = NexusRoutingService.getRoute(moduleId);
+          if (route) navigate(route);
+        }}
+      />
+
+      <NeuralModal
+        isOpen={isResumeModalOpen}
+        onClose={() => setIsResumeModalOpen(false)}
+        title="Resume Training"
+        subtitle="Final recovery check-in"
+        icon={ShieldAlert}
+        themeColor="orange"
+        maxWidth="md"
+      >
+        <RecoveryCheckinPanel
+          allowSkip={false}
+          onSubmit={async (payload) => {
+            await handleSaveRecoveryCheckin(payload);
+            await handleResumeTraining();
+          }}
+          onSkip={() => {}}
+        />
+      </NeuralModal>
+
+      <NeuralModal
+        isOpen={!!recoveryGate}
+        onClose={() => setRecoveryGate(null)}
+        title="Recovery Mode Active"
+        subtitle="Choose how to log this session"
+        icon={ShieldAlert}
+        themeColor="orange"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-white/70">
+            You're in recovery mode. Log this as a light recovery session or continue with full training.
+          </p>
+          <div className="flex flex-col gap-2">
+            <NeuralButton
+              variant="primary"
+              onClick={async () => {
+                const action = recoveryGate?.onLight;
+                setRecoveryGate(null);
+                await action?.();
+              }}
+            >
+              Log Light Recovery Session
+            </NeuralButton>
+            <NeuralButton
+              variant="secondary"
+              onClick={async () => {
+                const action = recoveryGate?.onFull;
+                setRecoveryGate(null);
+                await action?.();
+              }}
+            >
+              Proceed with Full Training
+            </NeuralButton>
+            <NeuralButton variant="ghost" onClick={() => setRecoveryGate(null)}>
+              Cancel
+            </NeuralButton>
+          </div>
+        </div>
+      </NeuralModal>
 
       <QuickReminderModal
         open={!!remindDate}
@@ -1054,92 +1469,79 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       {/* Quick-log drawer — rendered at root level so it overlays everything */}
       <QuickLogDrawer
         isOpen={isQuickLogOpen}
-        onClose={() => setIsQuickLogOpen(false)}
+        onClose={() => {
+          setIsQuickLogOpen(false);
+          setQuickLogIsRecovery(false);
+        }}
         selectedDate={quickLogDate}
         existingExercises={existingExercises}
+        recoverySession={quickLogIsRecovery}
         onCommit={async (payload: QuickLogPayload) => {
           if (!profile || !encryptionKey || !user) return;
-          const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
-
-          if ('exercises' in payload) {
-            // ── WorkoutSession path (free-text exercise) ──────────────────
-            const session = payload;
-            const updatedSessions = [session, ...(profile.workoutSessions ?? [])].slice(0, 500);
-            for (const exLog of session.exercises) {
-              const key = exLog.exerciseName.toLowerCase().trim();
-              for (const s of exLog.sets) {
-                if (!s.completed || !s.weight || !s.repsCompleted) continue;
-                const e1RM = calculateE1RM(s.weight, s.repsCompleted);
-                const existing = updatedPRs[key];
-                if (!existing || e1RM > existing.e1RM) {
-                  updatedPRs[key] = {
-                    exerciseName: exLog.exerciseName,
-                    maxWeight: s.weight,
-                    repsAtMax: s.repsCompleted,
-                    e1RM,
-                    achievedDate: session.date,
-                    sessionId: session.id,
-                  };
-                }
-              }
-            }
-            const updated: TitanProfile = {
-              ...profile,
-              workoutSessions: updatedSessions,
-              personalRecords: updatedPRs,
-              updatedAt: new Date().toISOString(),
-            };
-            await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
-          } else {
-            // ── QuickLogRecord path (library exercise with e1RM) ──────────
-            const record = payload;
-            const key = record.exerciseName.toLowerCase().trim();
-            const existing = updatedPRs[key];
-            if (!existing || record.e1RM > existing.e1RM) {
-              updatedPRs[key] = {
-                exerciseName: record.exerciseName,
-                maxWeight: record.weight,
-                repsAtMax: record.reps,
-                e1RM: record.e1RM,
-                achievedDate: record.date,
-                sessionId: record.exerciseId,
-              };
-            }
-            // Also add a minimal WorkoutSession so the calendar is populated.
-            const now = new Date().toISOString();
-            const session: WorkoutSession = {
-              id: `ql-${Date.now()}`,
-              routineId: 'quick-log',
-              routineName: 'Quick Log',
-              date: record.date,
-              startedAt: now,
-              completedAt: now,
-              exercises: [
-                {
+          const handleCommit = async (isRecovery: boolean) => {
+            if ('exercises' in payload) {
+              const session = payload;
+              await commitWorkoutSession({ ...session, recoverySession: isRecovery }, isRecovery);
+            } else {
+              const record = payload;
+              const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
+              const key = record.exerciseName.toLowerCase().trim();
+              const existing = updatedPRs[key];
+              if (!existing || record.e1RM > existing.e1RM) {
+                updatedPRs[key] = {
                   exerciseName: record.exerciseName,
-                  plannedSets: 1,
-                  plannedReps: String(record.reps),
-                  sets: [
-                    {
-                      setNumber: 1,
-                      weight: record.weight,
-                      repsCompleted: record.reps,
-                      completed: true,
-                    },
-                  ],
-                },
-              ],
-              status: 'completed',
-            };
-            const updatedSessions = [session, ...(profile.workoutSessions ?? [])].slice(0, 500);
-            const updated: TitanProfile = {
-              ...profile,
-              workoutSessions: updatedSessions,
-              personalRecords: updatedPRs,
-              updatedAt: new Date().toISOString(),
-            };
-            await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+                  maxWeight: record.weight,
+                  repsAtMax: record.reps,
+                  e1RM: record.e1RM,
+                  achievedDate: record.date,
+                  sessionId: record.exerciseId,
+                };
+              }
+              const now = new Date().toISOString();
+              const session: WorkoutSession = {
+                id: `ql-${Date.now()}`,
+                routineId: 'quick-log',
+                routineName: 'Quick Log',
+                date: record.date,
+                startedAt: now,
+                completedAt: now,
+                exercises: [
+                  {
+                    exerciseName: record.exerciseName,
+                    plannedSets: 1,
+                    plannedReps: String(record.reps),
+                    sets: [
+                      {
+                        setNumber: 1,
+                        weight: record.weight,
+                        repsCompleted: record.reps,
+                        completed: true,
+                      },
+                    ],
+                  },
+                ],
+                recoverySession: isRecovery,
+                status: 'completed',
+              };
+              const updatedSessions = [session, ...(profile.workoutSessions ?? [])].slice(0, 500);
+              const updated: TitanProfile = {
+                ...profile,
+                workoutSessions: updatedSessions,
+                personalRecords: updatedPRs,
+                updatedAt: new Date().toISOString(),
+              };
+              await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+            }
+          };
+
+          if (isRecoveryActive && !quickLogIsRecovery) {
+            setRecoveryGate({
+              onLight: () => handleCommit(true),
+              onFull: () => handleCommit(false),
+            });
+            return;
           }
+          await handleCommit(quickLogIsRecovery);
         }}
       />
 

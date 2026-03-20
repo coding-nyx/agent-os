@@ -1,17 +1,18 @@
 /**
- * AnalyticsTab — Four analytics panels for the Titan module.
+ * AnalyticsTab — Five analytics panels for the Titan module.
  *
  * Panels (all pure SVG/CSS — no external chart library):
  *  1. StrengthProgressionChart — exercise selector → e1RM trend over last 12 sessions
  *  2. MuscleVolumeBreakdown — sets per muscle group over last 4 weeks
  *  3. TrainingHeatmap — GitHub-style grid showing workout days / volume (last 16 weeks)
  *  4. RecoveryTrendPanel — sleep quality + sleep duration over last 30 days
+ *  5. RecoveryCheckinTrend — pain/fatigue/mood/sleep from recovery check-ins
  */
 
 import React, { useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { TrendingUp, Layers, Grid, Moon, ChevronDown } from 'lucide-react';
-import type { TitanProfile, WorkoutSession, SleepEntry } from '@/lib/types';
+import type { TitanProfile, WorkoutSession, SleepEntry, TitanRecoveryCheckin } from '@/lib/types';
 import { EXERCISE_LIBRARY } from '../data/exercise-library';
 import { cn } from '@/lib/utils';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -473,6 +474,88 @@ function RecoveryTrendPanel({ sleepLog }: { sleepLog: SleepEntry[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// 5. RecoveryCheckinTrend
+// ---------------------------------------------------------------------------
+
+function RecoveryCheckinTrend({ checkins }: { checkins: TitanRecoveryCheckin[] }) {
+  const data = useMemo(() => {
+    const cutoff = daysAgo(30);
+    return [...checkins]
+      .filter(e => e.date >= cutoff && !e.skipped)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-30);
+  }, [checkins]);
+
+  if (data.length < 2) {
+    return (
+      <EmptyState
+        icon={Moon}
+        title="Not enough recovery check-ins"
+        description="Log at least 2 recovery check-ins to see trends."
+      />
+    );
+  }
+
+  const W = 500; const H = 100;
+  const PAD_X = 4; const PAD_Y = 4;
+  const n = data.length;
+
+  const toPts = (vals: number[], max: number) =>
+    vals.map((v, i): [number, number] => [
+      PAD_X + (i / (n - 1)) * (W - PAD_X * 2),
+      H - PAD_Y - (Math.min(v, max) / max) * (H - PAD_Y * 2),
+    ]);
+
+  const toPolyline = (pts: [number, number][]) => pts.map(([x, y]) => `${x},${y}`).join(' ');
+
+  const painPts = toPts(data.map(d => d.pain), 10);
+  const fatiguePts = toPts(data.map(d => d.fatigue), 10);
+  const sleepPts = toPts(data.map(d => d.sleepQuality), 5);
+  const moodPts = toPts(data.map(d => d.mood), 5);
+
+  const avg = (key: keyof TitanRecoveryCheckin) =>
+    (data.reduce((s, e) => s + Number(e[key] ?? 0), 0) / n).toFixed(1);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-6 flex-wrap">
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-white/40">Pain</p>
+          <p className="text-lg font-black text-orange-400">{avg('pain')}</p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-white/40">Fatigue</p>
+          <p className="text-lg font-black text-red-400">{avg('fatigue')}</p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-white/40">Sleep</p>
+          <p className="text-lg font-black text-indigo-300">{avg('sleepQuality')}</p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-white/40">Mood</p>
+          <p className="text-lg font-black text-emerald-300">{avg('mood')}</p>
+        </div>
+      </div>
+
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-24" aria-label="Recovery check-in trend">
+        <polyline points={toPolyline(painPts)} stroke="#f97316" strokeWidth="2" fill="none" strokeLinecap="round" />
+        <polyline points={toPolyline(fatiguePts)} stroke="#ef4444" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+        <polyline points={toPolyline(sleepPts)} stroke="#6366f1" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeDasharray="4 2" />
+        <polyline points={toPolyline(moodPts)} stroke="#34d399" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeDasharray="2 2" />
+      </svg>
+
+      <div className="flex items-center gap-3 text-[9px] text-white/40 flex-wrap">
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-orange-400" /> Pain (0–10)</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-red-400" /> Fatigue (0–10)</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-indigo-400" style={{ borderTop: '1px dashed' }} /> Sleep (1–5)</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-emerald-400" style={{ borderTop: '1px dashed' }} /> Mood (1–5)</span>
+        <span className="ml-auto text-white/30">Last 30 days</span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Panel wrapper
 // ---------------------------------------------------------------------------
 
@@ -504,6 +587,7 @@ export function AnalyticsTab({ profile }: AnalyticsTabProps) {
   const sessions = profile?.workoutSessions ?? [];
   const sleepLog = profile?.sleepLog ?? [];
   const personalRecords = profile?.personalRecords ?? {};
+  const recoveryCheckins = profile?.recoveryCheckins ?? [];
 
   return (
     <div className="px-4 sm:px-6 md:px-8 pb-5 sm:pb-6 md:pb-8 pt-4 sm:pt-5 space-y-5 sm:space-y-6 md:space-y-8">
@@ -521,6 +605,10 @@ export function AnalyticsTab({ profile }: AnalyticsTabProps) {
 
       <AnalyticsPanel icon={Moon} title="Recovery Trend — Last 30 Days">
         <RecoveryTrendPanel sleepLog={sleepLog} />
+      </AnalyticsPanel>
+
+      <AnalyticsPanel icon={Moon} title="Recovery Check-ins — Last 30 Days">
+        <RecoveryCheckinTrend checkins={recoveryCheckins} />
       </AnalyticsPanel>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Orbit } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import { toneClass, toneTextClass, CORE_MODULES, type NodeCardProps, type OrchestratorNode, type ModuleStat } from '../../constants';
 

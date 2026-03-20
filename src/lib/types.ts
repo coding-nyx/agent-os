@@ -688,6 +688,8 @@ export interface WorkoutSession {
   /** Rate of perceived exertion 1–10 */
   rpe?: number;
   notes?: string;
+  /** Marks a session logged during recovery mode (light activity). */
+  recoverySession?: boolean;
   status: 'completed' | 'partial' | 'abandoned';
 }
 
@@ -806,6 +808,10 @@ export interface TitanProfile {
   bodyWeightLog?: BodyWeightEntry[];
   /** Cardiovascular session log — newest first, capped at 500 entries. */
   cardioLog?: CardioSession[];
+  /** Recovery plan state (global recovery mode). */
+  recoveryPlan?: TitanRecoveryPlan;
+  /** Daily recovery check-ins (newest first). */
+  recoveryCheckins?: TitanRecoveryCheckin[];
   createdAt: string;
   updatedAt: string;
   traits?: string[];
@@ -832,6 +838,51 @@ export interface TitanProfile {
   name?: string;
   gender?: string;
   soul?: Record<string, unknown>;
+}
+
+export type TitanRecoveryType = 'rest' | 'active' | 'rehab' | 'deload';
+export type TitanRecoveryReason =
+  | 'injury'
+  | 'stress'
+  | 'overtraining'
+  | 'illness'
+  | 'travel'
+  | 'deload'
+  | 'other';
+export type TitanRecoveryBodyRegion =
+  | 'knee'
+  | 'shoulder'
+  | 'back'
+  | 'hip'
+  | 'ankle'
+  | 'wrist'
+  | 'neck'
+  | 'other';
+
+export interface TitanRecoveryPlan {
+  active: boolean;
+  reasons: TitanRecoveryReason[];
+  type: TitanRecoveryType;
+  startDate: string;
+  endDate: string;
+  suggestedDurationDays: number;
+  notes?: string;
+  severity?: 'low' | 'medium' | 'high';
+  templateId?: string;
+  aiSummary?: string;
+  somaSummary?: string;
+  agnesSummary?: string;
+  bodyRegion?: TitanRecoveryBodyRegion;
+}
+
+export interface TitanRecoveryCheckin {
+  date: string;
+  pain: number;
+  fatigue: number;
+  sleepQuality: number;
+  mood: number;
+  notes?: string;
+  skipped?: boolean;
 }
 
 export type Weekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';

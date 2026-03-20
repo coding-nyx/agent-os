@@ -2,9 +2,11 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
+type NeuralInputIcon = React.ReactNode | React.ComponentType<{ className?: string }>;
+
 interface NeuralInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
-  icon?: React.ReactNode;
+  icon?: NeuralInputIcon;
 }
 
 export const NeuralInput = React.forwardRef<HTMLInputElement, NeuralInputProps>(
@@ -28,7 +30,11 @@ export const NeuralInput = React.forwardRef<HTMLInputElement, NeuralInputProps>(
         <div className="relative group">
           {icon && (
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-[var(--module-accent)] transition-colors">
-              {icon}
+              {React.isValidElement(icon)
+                ? icon
+                : typeof icon === 'function'
+                  ? React.createElement(icon, { className: 'w-4 h-4' })
+                  : icon}
             </div>
           )}
           <input

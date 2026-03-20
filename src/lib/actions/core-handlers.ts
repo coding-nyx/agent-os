@@ -544,8 +544,12 @@ export function registerCoreActions() {
       const entityTypes = Array.isArray(rawEntityTypes)
         ? rawEntityTypes.filter((t): t is string => typeof t === 'string').map((t) => t.toLowerCase())
         : [];
-      const sourceEntityType = typeof payload?.source?.entityType === 'string'
-        ? [payload.source.entityType.toLowerCase()]
+      const sourceEntityTypeValue =
+        payload?.source && typeof payload.source === 'object'
+          ? (payload.source as { entityType?: unknown }).entityType
+          : undefined;
+      const sourceEntityType = typeof sourceEntityTypeValue === 'string'
+        ? [sourceEntityTypeValue.toLowerCase()]
         : [];
       const entityFilter = [...entityTypes, ...sourceEntityType];
 

@@ -193,7 +193,6 @@ export function EnhancedAtlasDashboard({
       const id = focusId.replace('journal:', '');
       setFocusJournalId(id);
       onTabChange('journal');
-      onViewChange('history');
     }
   }, [focusId, onTabChange, onViewChange]);
 

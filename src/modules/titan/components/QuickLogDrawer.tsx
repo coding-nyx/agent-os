@@ -48,6 +48,8 @@ export interface QuickLogDrawerProps {
   selectedDate: Date | null;
   /** Exercise names from history + routines for autocomplete. */
   existingExercises: string[];
+  /** Marks quick logs as recovery sessions when active. */
+  recoverySession?: boolean;
   /**
    * Called with either a full WorkoutSession (free-text path) or a
    * QuickLogRecord (library-search path).
@@ -87,6 +89,7 @@ export function QuickLogDrawer({
   onClose,
   selectedDate,
   existingExercises,
+  recoverySession,
   onCommit,
 }: QuickLogDrawerProps) {
   const datalistId = useId();
@@ -188,6 +191,7 @@ export function QuickLogDrawer({
           date: dateStr,
           startedAt: now,
           completedAt: now,
+          recoverySession,
           exercises: [
             {
               exerciseName: trimmedExercise,

@@ -442,7 +442,7 @@ export function TransactionManager({
               placeholder="Search transactions..."
               value={searchQuery}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-              icon={Search}
+              icon={<Search className="w-4 h-4" />}
               className="w-full"
             />
           </div>

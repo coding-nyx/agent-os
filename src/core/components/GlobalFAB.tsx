@@ -21,6 +21,7 @@ const themeItemClasses: Record<NeuralThemeColor, { bg: string; border: string; t
   indigo:  { bg: 'bg-indigo-600/15 hover:bg-indigo-600/25', border: 'border-indigo-500/20',  text: 'text-indigo-400' },
   emerald: { bg: 'bg-emerald-600/15 hover:bg-emerald-600/25', border: 'border-emerald-500/20', text: 'text-emerald-400' },
   white:   { bg: 'bg-white/[0.06] hover:bg-white/[0.1]',    border: 'border-white/10',       text: 'text-white/50' },
+  module:  { bg: 'bg-[var(--module-accent-muted)] hover:bg-[var(--module-accent-muted)]', border: 'border-[var(--module-accent-border)]', text: 'text-[var(--module-accent)]' },
 };
 
 export function GlobalFAB() {

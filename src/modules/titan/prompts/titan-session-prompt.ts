@@ -1,10 +1,10 @@
-import { Routine, TitanProfile, BiomarkerRecord, ClearanceRecord, LabSummaryRecord, SleepEntry, CycleEntry, WorkoutSession, SomaProfile } from '@/lib/types';
+import { Routine, TitanProfile, BiomarkerRecord, ClearanceRecord, LabSummaryRecord, SleepEntry, CycleEntry, WorkoutSession, SomaProfile, TitanRecoveryCheckin } from '@/lib/types';
 import type { ContextPolicy } from '@/lib/types';
 import { SchemaRegistry } from '@/lib/schema-registry';
 import { serializeSomaExtensionFields, SOMA_MEDICAL_DISCLAIMER } from '@/modules/soma/prompts/soma-prompt-builder';
 import type { FieldDefinition, FieldValue } from '@/lib/field-system/types';
 
-export type TitanSessionMode = 'training' | 'medical' | 'diagnosis';
+export type TitanSessionMode = 'training' | 'medical' | 'diagnosis' | 'recovery';
 
 interface TitanSessionPromptOptions {
   mode?: TitanSessionMode;
@@ -240,6 +240,22 @@ Allergies: ${profile.allergies?.length ? profile.allergies.join(', ') : 'None re
 Medical Summary: ${profile.medicalSummary || 'Not yet summarized'}`;
   }
 
+  if (profile.recoveryPlan?.active) {
+    const plan = profile.recoveryPlan;
+    const lastCheckin = (profile.recoveryCheckins ?? [])[0] as TitanRecoveryCheckin | undefined;
+    context += `
+
+RECOVERY MODE:
+Active: Yes
+Reasons: ${plan.reasons.join(', ')}
+Type: ${plan.type}
+Window: ${plan.startDate} → ${plan.endDate} (${plan.suggestedDurationDays}d suggested)
+Notes: ${plan.notes || 'None'}
+Specialist Summary (Soma): ${plan.somaSummary || 'None'}
+Specialist Summary (Agnes): ${plan.agnesSummary || 'None'}
+Last Check-in: ${lastCheckin ? `${lastCheckin.date} pain ${lastCheckin.pain}/10, fatigue ${lastCheckin.fatigue}/10, sleep ${lastCheckin.sleepQuality}/5, mood ${lastCheckin.mood}/5` : 'No check-ins yet'}`;
+  }
+
 
   return context;
 }
@@ -326,6 +342,35 @@ ${recoveryBlock}${clearanceNote}${activeCycleBlock}
 - Each routine entry MUST include: weekday (e.g., "monday", "tuesday"), timeframe "daily", status "active", rationale, exercises[].
 - Exercises must have: name, sets, reps, notes.
 - Factor in any known medical conditions, medications, or clearance restrictions when designing routines.`;
+}
+
+function buildRecoveryMode(profile: TitanProfile, options: TitanSessionPromptOptions): string {
+  const recovery = profile.recoveryPlan;
+  const planLine = recovery
+    ? `Active recovery plan: ${recovery.type} | reasons: ${recovery.reasons.join(', ')} | ${recovery.startDate} → ${recovery.endDate}`
+    : 'No active recovery plan detected.';
+
+  return `
+[MODE: RECOVERY]
+You are in recovery mode. Prioritize rest, rehab, and low-load activity. Do NOT prescribe high-intensity or maximal load training.
+If the user asks to resume full training, ask for confirmation and require a recovery check-in before proceeding.
+${planLine}
+
+[RECOVERY GUIDANCE]
+- If injury-related: emphasize rehab protocols and pain-free range of motion.
+- If stress-related: emphasize sleep, parasympathetic recovery, and reduced load.
+- Favor light activity (walking, mobility, zone 2) unless contraindicated.
+- Keep advice conservative and safety-first.
+
+[AVAILABLE ACTIONS]
+- Update profile: <action type="update_titan_profile">{...partialProfile}</action>
+- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","deepSleepPct":20,"remSleepPct":25,"awakenings":1,"tags":["stress"],"notes":"..."}</action>
+- Propose reminder: <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"session|workout","entityId":"...","label":"..."}}</action>
+- Query reminders: <action type="query_reminders">{"moduleId":"titan"}</action>
+- Log workout session: <action type="log_workout_session">{"routineId":"...","routineName":"...","date":"YYYY-MM-DD","startedAt":"...","completedAt":"...","rpe":5,"notes":"recovery session","status":"completed","exercises":[{"exerciseName":"Walk","plannedSets":1,"plannedReps":"20min","sets":[{"setNumber":1,"completed":true}]}]}</action>
+- Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
+- Keep <thought> strictly internal. Do NOT place user-facing text inside it.
+- Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.`;
 }
 
 function buildMedicalMode(profile: TitanProfile): string {
@@ -454,6 +499,8 @@ You maintain a persistent neural link — you do NOT lose memory between session
 
   const modeBlock = mode === 'medical'
     ? buildMedicalMode(profile)
+    : mode === 'recovery'
+    ? buildRecoveryMode(profile, options)
     : buildTrainingMode(profile, options);
 
   const somaBlock = options.somaProfile ? buildSomaMedicalBridge(options.somaProfile) : '';

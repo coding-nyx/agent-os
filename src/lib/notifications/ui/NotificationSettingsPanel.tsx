@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
+import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
@@ -132,13 +133,13 @@ function NotificationScheduleEditor({
               placeholder="Short reminder title"
               disabled={disabled}
             />
-            <NeuralTextarea
-              disabled={disabled}
-              value={draft.messageTemplate.body}
-              onChange={(e) => {
-                dirtyRef.current = true;
-                setDraft((d) => ({ ...d, messageTemplate: { ...d.messageTemplate, body: e.target.value } }));
-              }}
+              <NeuralTextarea
+                disabled={disabled}
+                value={draft.messageTemplate.body}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                  dirtyRef.current = true;
+                  setDraft((d) => ({ ...d, messageTemplate: { ...d.messageTemplate, body: e.target.value } }));
+                }}
               placeholder="Optional longer message"
               rows={2}
               className="resize-none"
