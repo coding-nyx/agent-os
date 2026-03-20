@@ -33,6 +33,16 @@ import { registerForgeActions } from './modules/forge/services/actions'
 import { registerSomaFieldActions } from './modules/soma/actions/soma-field-actions'
 import { registerOrchestratorActions } from './modules/nexus/services/actions'
 
+// Dev-only capture mode: enable guest access via `?capture=1` for design exports.
+if (import.meta.env.DEV) {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('capture') === '1') {
+    sessionStorage.setItem('nexus_guest_active', 'true');
+    const moduleIds = ['nexus', 'agnes', 'titan', 'soma', 'ledger', 'atlas', 'scout', 'forge'];
+    moduleIds.forEach((id) => sessionStorage.setItem(`nexus_guest_module_${id}`, 'true'));
+  }
+}
+
 // Boot NexusLogger before anything else — console override must be in place before
 // any module code or React runs. Reads debug state from localStorage so it persists.
 const _debugOnBoot = localStorage.getItem('nexus_debug_mode') === 'true';

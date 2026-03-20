@@ -234,6 +234,13 @@
   canvas {
     max-width: 100%;
   }
+
+  svg.lucide {
+    display: inline-block;
+    vertical-align: middle;
+    stroke: currentColor;
+    fill: none;
+  }
 }
 
 

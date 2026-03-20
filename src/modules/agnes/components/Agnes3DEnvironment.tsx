@@ -53,7 +53,8 @@ export function Agnes3DEnvironment({ activeSession, isProcessing }: Agnes3DEnvir
   const { globalSoul } = useGlobalSoul();
   const [webglError, setWebglError] = useState(false);
   
-  const shouldRender3D = !webglError;
+  const isFigmaCapture = typeof window !== 'undefined' && window.location.hash.includes('figmacapture=');
+  const shouldRender3D = !webglError && !isFigmaCapture;
 
   if (!shouldRender3D) {
     return (

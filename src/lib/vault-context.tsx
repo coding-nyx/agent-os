@@ -62,6 +62,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const { user, profile, isGuest, loading: authLoading } = useAuth();
   const dataLayer = useDataLayer();
   const masterKeyRef = useRef<CryptoKey | null>(null);
+  const sessionPasswordRef = useRef<string | null>(null);
   const unlockInProgressRef = useRef(false);
   
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -78,15 +79,32 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       (localStorage.getItem(PERSISTENCE_KEY) as VaultPersistenceMode) || 'SESSION'
   );
 
-  const setPersistenceMode = useCallback((mode: VaultPersistenceMode) => {
-      _setPersistenceMode(mode);
-      localStorage.setItem(PERSISTENCE_KEY, mode);
-  }, []);
-
   const clearSessionPassword = useCallback(() => {
+    sessionPasswordRef.current = null;
     sessionStorage.removeItem(SESSION_PWD_KEY);
     sessionStorage.removeItem(SESSION_TS_KEY);
   }, []);
+
+  const writeRetainedSessionPassword = useCallback((pwd: string) => {
+    sessionPasswordRef.current = pwd;
+    sessionStorage.setItem(SESSION_PWD_KEY, pwd);
+    sessionStorage.setItem(SESSION_TS_KEY, String(Date.now()));
+  }, []);
+
+  const setPersistenceMode = useCallback((mode: VaultPersistenceMode) => {
+    _setPersistenceMode(mode);
+    localStorage.setItem(PERSISTENCE_KEY, mode);
+
+    if (mode === 'STRICT') {
+      sessionStorage.removeItem(SESSION_PWD_KEY);
+      sessionStorage.removeItem(SESSION_TS_KEY);
+      return;
+    }
+
+    if (isUnlocked && sessionPasswordRef.current) {
+      writeRetainedSessionPassword(sessionPasswordRef.current);
+    }
+  }, [isUnlocked, writeRetainedSessionPassword]);
 
   const lockVault = useCallback(() => {
     masterKeyRef.current = null;
@@ -101,15 +119,16 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   }, [profile?.securityPreferences?.vaultSessionTtlMinutes]);
 
   const setSessionPassword = useCallback((pwd: string) => {
+    sessionPasswordRef.current = pwd;
     if (persistenceMode !== 'STRICT') {
-        sessionStorage.setItem(SESSION_PWD_KEY, pwd);
-        sessionStorage.setItem(SESSION_TS_KEY, String(Date.now()));
+        writeRetainedSessionPassword(pwd);
     }
-  }, [persistenceMode]);
+  }, [persistenceMode, writeRetainedSessionPassword]);
 
   const getSessionPassword = useCallback(() => {
       const pwd = sessionStorage.getItem(SESSION_PWD_KEY);
       if (!pwd) return null;
+      sessionPasswordRef.current = pwd;
       const ttlMs = getSessionTtlMs();
       if (ttlMs <= 0) return pwd;
 

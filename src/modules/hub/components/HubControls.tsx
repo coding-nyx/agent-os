@@ -46,8 +46,9 @@ export function HubViewSwitcher({ viewMode, setViewMode, hide3D }: HubViewSwitch
     >
       {views.map(({ mode, icon: ModeIcon, label, key }) => (
         <NeuralButton
-          variant="indigo" // Applying the indigo theme
+          variant="ghost"
           key={mode}
+          iconOnly
           role="tab"
           id={`tab-${mode.toLowerCase()}`}
           aria-selected={viewMode === mode}
@@ -60,12 +61,19 @@ export function HubViewSwitcher({ viewMode, setViewMode, hide3D }: HubViewSwitch
             if (e.key === 'ArrowLeft') setViewMode(views[(idx - 1 + views.length) % views.length].mode);
           }}
           className={cn(
-            "relative flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50",
-            viewMode === mode ? "bg-white/15 text-white shadow-sm" : "text-white/40 hover:text-white hover:bg-white/5"
+            "relative flex flex-col items-center justify-center w-10 h-10 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-white/30 hover:bg-transparent",
+            viewMode === mode
+              ? "border border-white/40 text-white shadow-sm"
+              : "border border-transparent text-white/40 hover:text-white"
           )}
           aria-label={`Switch to ${label} View (${key})`}
         >
-          <ModeIcon className="w-5 h-5" />
+          <ModeIcon
+            className={cn(
+              "w-5 h-5 text-current opacity-100 stroke-[1.8]",
+              viewMode === mode ? "text-white" : "text-white/60"
+            )}
+          />
         </NeuralButton>
       ))}
     </div>

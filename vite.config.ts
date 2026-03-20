@@ -47,7 +47,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'lucide-react': path.resolve(__dirname, 'node_modules/lucide-react/dist/esm/lucide-react.js'),
     },
+  },
+  optimizeDeps: {
+    include: ['lucide-react'],
   },
   build: {
     outDir: 'out',

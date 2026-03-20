@@ -33,7 +33,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<CoreUserProfile | null>(null);
-  const [isGuest, setIsGuest] = useState(false);
+  const [isGuest, setIsGuest] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem(GUEST_SESSION_KEY) === 'true';
+  });
   const [loading, setLoading] = useState(true);
   const profileUnsubRef = useRef<null | (() => void)>(null);
 

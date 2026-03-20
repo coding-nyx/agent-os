@@ -39,13 +39,13 @@ Titan content lives inside **SingleAgentLayout**. The main column is a single ve
 │    md:pb-[calc(5rem+env(safe-area-inset-bottom))].              │
 │    All section content uses same horizontal padding as header.   │
 ├─────────────────────────────────────────────────────────────────┤
-│ 4. FOOTER (training tab only, in flow, shrink-0)                 │
+│ 4. FOOTER (training tab only, sticky bottom dock, shrink-0)       │
 │    LogConfirmCard (when pending) then QuickLogBar.               │
 │    Full width of main column. Bar: full width, no outer px on md+│
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-- **Positioning:** All of 1–4 are in **document flow** (no fixed/sticky within Titan). The **tab panel (3)** scrolls; header (1) and tab bar (2) scroll away with it. Footer (4) is the last sibling so it sits at the bottom of the flex column (visually at bottom of viewport when content is short).
+- **Positioning:** Header (1) and tab bar (2) remain in document flow. The **tab panel (3)** scrolls. Footer (4) is a **sticky bottom dock within Titan's main column**, so quick logging stays reachable while training content scrolls underneath it.
 - **Width:** Main column is `flex-1 min-w-0`; all content full width of that column. Horizontal padding applied to inner content only (`px-4 sm:px-6 md:px-8`).
 
 ---
@@ -93,8 +93,8 @@ Titan content lives inside **SingleAgentLayout**. The main column is a single ve
 | 10 | RoutineProgress block | Full width, same padding | 100% | Block | When routines.length > 0 |
 | 11 | CustomFieldManager block | Full width, same padding | 100% | Block | When profile exists |
 | 12 | Bottom spacer | Full width | 100% | Block, h-4 | Always (training) |
-| 13 | LogConfirmCard | Above QuickLogBar | 100% | Block | When pendingLogEntries.length > 0 |
-| 14 | QuickLogBar | Bottom of column | 100% | Block | Always (training tab) |
+| 13 | LogConfirmCard | Inside sticky footer dock, above QuickLogBar | 100% | Block | When pendingLogEntries.length > 0 |
+| 14 | QuickLogBar | Sticky bottom dock | 100% | Block | Always (training tab) |
 
 ---
 
@@ -121,13 +121,14 @@ Titan content lives inside **SingleAgentLayout**. The main column is a single ve
 
 ### 2.7 QuickLogBar — internal layout
 
-- **Outer wrapper:** Full width; padding bottom 0 (mobile) or safe-area (sm+). Inner has px-2 (mobile), md:px-0.
+- **Outer wrapper:** Full width; always respects bottom safe-area inset. Inner has px-2 (mobile), md:px-0.
 - **History chip (when focused, no input):** Positioned **above** the bar. **Mobile:** left-2 right-2 (full width minus 8px). **sm+:** centered (left-1/2 -translate-x-1/2). Max width min(280px, 100vw-2rem). Content: [Clock icon] [Reuse:] [truncated suggestion]. Chip is a single row, center-aligned content.
 - **Bar tray:** Single flex row, full width. Border-top; no internal padding on tray itself.
 - **Inner row (flex, gap-2 sm:gap-3):**
   - **Left:** Nexus button (Sparkles). 48×48px, rounded-2xl. **Hidden when viewport &lt; 380px.**
   - **Center:** Text input. flex-1 min-w-0, rounded-xl, min-height 44px (sm: 48px). Takes all remaining space.
   - **Right:** Action group (flex, shrink-0). When no input: Plus button (48×48). When input: Submit (ChevronUp) 48×48. When Plus expanded (and no input): [Cardio button 44×44] [Manual Log 44×44] [Plus 48×48]. Actions stay right-aligned; no wrap.
+- **Keyboard behavior:** On mobile, the sticky footer dock should shift upward with the soft keyboard using `visualViewport` when available, while preserving hardware-keyboard `Enter` submission.
 
 ---
 

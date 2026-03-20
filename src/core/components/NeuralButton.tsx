@@ -116,13 +116,29 @@ const NeuralButtonImpl = React.forwardRef<any, NeuralButtonProps>(function Neura
   const isDisabled = Boolean(disabled || loading);
   const motionScaleProps: HTMLMotionProps<'button'> | {} =
     !isDisabled ? { whileHover: { scale: 1.02 }, whileTap: { scale: 0.98 } } : {};
-  const overflowClass = allowOverflow ? 'overflow-visible' : 'overflow-hidden';
+  const overflowClass = iconOnly || allowOverflow ? 'overflow-visible' : 'overflow-hidden';
+  const resolvedChildren = React.Children.map(children, (child) => {
+    if (typeof child === 'function') {
+      const Child = child as React.ComponentType<any>;
+      return <Child />;
+    }
+    if (React.isValidElement(child)) {
+      const props = child.props as Record<string, unknown>;
+      const nextProps: Record<string, unknown> = { ...props };
+      const needsSize = nextProps.size == null && nextProps.width == null && nextProps.height == null;
+      if (nextProps.color == null) nextProps.color = 'currentColor';
+      if (nextProps.strokeWidth == null) nextProps.strokeWidth = 2;
+      if (needsSize) nextProps.size = 18;
+      return React.cloneElement(child, nextProps);
+    }
+    return child;
+  });
 
   return (
     <Component
       ref={ref}
       className={cn(
-        'relative font-medium tracking-[0.04em] rounded-button border transition-all duration-300 flex items-center justify-center gap-1.5 md:gap-2 group disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none whitespace-nowrap',
+        'relative isolate font-medium tracking-[0.04em] rounded-button border transition-all duration-300 flex items-center justify-center group disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none whitespace-nowrap',
         overflowClass,
         variants[variant],
         iconOnly ? iconOnlySize : sizes[size],
@@ -137,17 +153,19 @@ const NeuralButtonImpl = React.forwardRef<any, NeuralButtonProps>(function Neura
       {/* Toplight sheen (decorative) */}
       <span
         aria-hidden="true"
-        className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+        className="absolute inset-0 z-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
       />
 
-      {loading ? (
-        <>
-          <span className="sr-only">Loading</span>
-          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        </>
-      ) : (
-        children as React.ReactNode
-      )}
+      <span className="relative z-10 inline-flex items-center gap-1.5 md:gap-2 [&_svg]:block [&_svg]:opacity-100 [&_svg]:stroke-current [&_svg]:text-current [&_svg]:fill-none">
+        {loading ? (
+          <>
+            <span className="sr-only">Loading</span>
+            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          </>
+        ) : (
+          resolvedChildren as React.ReactNode
+        )}
+      </span>
     </Component>
   );
 });

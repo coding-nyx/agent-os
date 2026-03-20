@@ -1,10 +1,15 @@
 /**
- * NexusLogger — debug-mode-aware console controller.
+ * NexusLogger — debug-mode-aware console controller with observable event stream.
  *
  * Default (debug=OFF): console.log / console.debug / console.info are silenced.
  *                      console.warn and console.error always pass through.
  * Debug ON:            All console methods restored + structured action/spine
  *                      output with colour-coded group labels.
+ *
+ * Observable stream: subscribe to real-time events for the DebugActivityOverlay.
+ *   NexusLogger.subscribe('action', cb)  → unsubscribe fn
+ *   NexusLogger.subscribe('*', cb)       → all categories
+ *   NexusLogger.emit('profile', { ... }) → custom structured event
  *
  * Usage:
  *   NexusLogger.init(readDebugMode())   — call once at app boot (main.tsx)
@@ -13,6 +18,7 @@
  *   NexusLogger.spine(eventType, source, data)
  *   NexusLogger.warn(tag, msg, data?)
  *   NexusLogger.error(tag, err)
+ *   NexusLogger.emit(category, event)   — structured debug event
  */
 
 type SuppressibleLevel = 'log' | 'debug' | 'info';
@@ -38,10 +44,38 @@ export interface CapturedSpineEvent {
   timestamp: number;
 }
 
+// ---------------------------------------------------------------------------
+// Observable event stream types
+// ---------------------------------------------------------------------------
+
+export type DebugEventCategory =
+  | 'action'
+  | 'spine'
+  | 'error'
+  | 'profile'
+  | 'upload'
+  | 'handoff'
+  | 'vault'
+  | 'ai';
+
+export interface DebugEvent {
+  id: string;
+  category: DebugEventCategory;
+  timestamp: number;
+  moduleId?: string;
+  label: string;
+  detail?: unknown;
+}
+
+export type DebugEventSubscriber = (event: DebugEvent) => void;
+
 const SUPPRESSIBLE: SuppressibleLevel[] = ['log', 'debug', 'info'];
 const MAX_ERRORS = 100;
 const MAX_ACTIONS = 200;
 const MAX_SPINE = 200;
+const MAX_EVENTS = 500;
+
+let nextEventId = 1;
 
 class NexusLoggerSingleton {
   private debugMode = false;
@@ -52,6 +86,12 @@ class NexusLoggerSingleton {
   readonly errors: CapturedError[] = [];
   readonly actions: CapturedAction[] = [];
   readonly spineEvents: CapturedSpineEvent[] = [];
+
+  /** Unified event ring buffer for the debug overlay. */
+  readonly events: DebugEvent[] = [];
+
+  /** Per-category subscriber sets + wildcard '*'. */
+  private subscribers = new Map<DebugEventCategory | '*', Set<DebugEventSubscriber>>();
 
   /** Call once in main.tsx before React mounts. */
   init(debugMode: boolean): void {
@@ -86,11 +126,59 @@ class NexusLoggerSingleton {
     });
   }
 
+  // -----------------------------------------------------------------------
+  // Observable stream
+  // -----------------------------------------------------------------------
+
+  /** Subscribe to debug events. Returns an unsubscribe function. */
+  subscribe(
+    categoryOrWildcard: DebugEventCategory | '*',
+    callback: DebugEventSubscriber,
+  ): () => void {
+    let set = this.subscribers.get(categoryOrWildcard);
+    if (!set) {
+      set = new Set();
+      this.subscribers.set(categoryOrWildcard, set);
+    }
+    set.add(callback);
+    return () => { set!.delete(callback); };
+  }
+
+  /** Emit a structured debug event. Stored in ring buffer and dispatched to subscribers. */
+  emit(
+    category: DebugEventCategory,
+    event: Omit<DebugEvent, 'id' | 'category' | 'timestamp'>,
+  ): void {
+    const entry: DebugEvent = {
+      id: `dbg-${nextEventId++}`,
+      category,
+      timestamp: Date.now(),
+      ...event,
+    };
+    this.events.push(entry);
+    if (this.events.length > MAX_EVENTS) this.events.shift();
+
+    // Dispatch to category subscribers + wildcard
+    this.subscribers.get(category)?.forEach((cb) => { try { cb(entry); } catch { /* swallow */ } });
+    this.subscribers.get('*')?.forEach((cb) => { try { cb(entry); } catch { /* swallow */ } });
+  }
+
+  /** Get recent events from the unified buffer. */
+  getRecentEvents(limit = 100): DebugEvent[] {
+    return this.events.slice(-limit);
+  }
+
+  // -----------------------------------------------------------------------
+  // Legacy structured loggers (now also emit into the stream)
+  // -----------------------------------------------------------------------
+
   /** Log an ActionHub dispatch. Called by action-hub.ts after execute(). */
   action(moduleId: string, type: string, payload: unknown): void {
     const entry: CapturedAction = { moduleId, type, payload, timestamp: Date.now() };
     this.actions.push(entry);
     if (this.actions.length > MAX_ACTIONS) this.actions.shift();
+
+    this.emit('action', { moduleId, label: type, detail: payload });
 
     if (this.debugMode) {
       (this.orig.log ?? console.log)(
@@ -108,6 +196,8 @@ class NexusLoggerSingleton {
     const entry: CapturedSpineEvent = { eventType, source, data, timestamp: Date.now() };
     this.spineEvents.push(entry);
     if (this.spineEvents.length > MAX_SPINE) this.spineEvents.shift();
+
+    this.emit('spine', { moduleId: source, label: eventType, detail: data });
 
     if (this.debugMode) {
       (this.orig.log ?? console.log)(
@@ -140,6 +230,9 @@ class NexusLoggerSingleton {
     const entry: CapturedError = { tag, message, stack, timestamp: Date.now() };
     this.errors.push(entry);
     if (this.errors.length > MAX_ERRORS) this.errors.shift();
+
+    this.emit('error', { label: `[${tag}] ${message}`, detail: stack });
+
     // Errors always pass through — never suppress
     console.error(`[${tag}]`, err);
   }

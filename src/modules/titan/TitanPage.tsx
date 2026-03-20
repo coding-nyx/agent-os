@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { TitanDashboard } from './components/TitanReadiness';
 import { TitanRoutinePanel } from './components/TitanRoutinePanel';
 import { CustomFieldManager } from './components/CustomFieldManager';
@@ -111,12 +111,15 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const setModuleBottomBarHeight = useUIStore((s) => s.setModuleBottomBarHeight);
   const setHideGlobalFAB = useUIStore((s) => s.setHideGlobalFAB);
   const [calendarSelectedRoutine, setCalendarSelectedRoutine] = useState<Routine | null>(null);
+  const quickLogBarRef = useRef<HTMLDivElement>(null);
+  const [quickLogBarHeight, setQuickLogBarHeight] = useState(0);
+  const [isQuickLogFocused, setIsQuickLogFocused] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
 
   useEffect(() => {
-    // Hide GlobalFAB on training tab because UnifiedIntelligenceBar handles it.
-    // For other tabs, show GlobalFAB and reset bottom bar height.
     if (activeTab === 'training') {
-      setModuleBottomBarHeight(64);
+      const totalHeight = Math.max(0, quickLogBarHeight + keyboardOffset);
+      setModuleBottomBarHeight(Math.round(totalHeight));
       setHideGlobalFAB(true);
     } else {
       setModuleBottomBarHeight(0);
@@ -126,7 +129,47 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       setModuleBottomBarHeight(0);
       setHideGlobalFAB(false);
     };
-  }, [activeTab, setModuleBottomBarHeight, setHideGlobalFAB]);
+  }, [activeTab, keyboardOffset, quickLogBarHeight, setModuleBottomBarHeight, setHideGlobalFAB]);
+
+  useLayoutEffect(() => {
+    const element = quickLogBarRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setQuickLogBarHeight(entry.contentRect.height);
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isQuickLogFocused) {
+      setKeyboardOffset(0);
+      return;
+    }
+    if (typeof window === 'undefined' || !window.visualViewport) {
+      setKeyboardOffset(0);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    const updateOffset = () => {
+      const offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      setKeyboardOffset(offset);
+    };
+
+    updateOffset();
+    viewport.addEventListener('resize', updateOffset);
+    viewport.addEventListener('scroll', updateOffset);
+    window.addEventListener('resize', updateOffset);
+
+    return () => {
+      viewport.removeEventListener('resize', updateOffset);
+      viewport.removeEventListener('scroll', updateOffset);
+      window.removeEventListener('resize', updateOffset);
+    };
+  }, [isQuickLogFocused]);
 
   useEffect(() => {
     const focusId = (location.state as { focusId?: string } | null)?.focusId;
@@ -1309,12 +1352,12 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               </NeuralButton>
             )}
             <div className="w-px h-4 bg-white/10 hidden sm:block" />
-            <span className="text-white/40">{directWrite ? 'Logbook' : 'Coach'}</span>
+            <span className="text-white/40">{directWrite ? 'Direct Logbook' : 'Coach Review'}</span>
             <NeuralToggle
               checked={directWrite}
               onChange={handleToggleDirectWrite}
               color="orange"
-              label={directWrite ? 'Logbook Mode: sessions save instantly' : 'Coach Mode: AI reviews your sessions'}
+              label={directWrite ? 'Direct Logbook Mode: sessions save instantly' : 'Coach Review Mode: Titan reviews session updates before commit'}
             />
             <Zap className={cn('w-3 h-3 transition-colors', directWrite ? 'text-orange-400' : 'text-white/30')} />
           </div>
@@ -1325,47 +1368,59 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           id={`tab-panel-${activeTab}`}
           aria-labelledby={`tab-${activeTab}`}
           className={cn(
-            "flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pt-4 sm:pt-5 md:pt-6",
+            "flex-1 overflow-y-auto overflow-x-visible no-scrollbar pt-4 sm:pt-5 md:pt-6",
             activeTab === 'training' && "md:pb-[calc(5rem+env(safe-area-inset-bottom,0px))]"
-          )}>
-          {renderTabContent()}
+          )}
+          style={activeTab === 'training' && quickLogBarHeight > 0
+            ? { paddingBottom: Math.max(quickLogBarHeight, 16) }
+            : undefined}
+        >
+          <div className="w-full overflow-x-hidden">
+            {renderTabContent()}
+          </div>
+          {/* Quick-log bar footer — sticky within the Titan tab panel */}
+          {activeTab === 'training' && (
+            <div
+              className="fixed left-0 right-0 bottom-0 z-[var(--z-fab)]"
+              style={keyboardOffset > 0 ? { bottom: `${keyboardOffset}px` } : undefined}
+            >
+              <div className="relative w-full">
+                <AnimatePresence>
+                  {pendingLogEntries.length > 0 && (
+                    <LogConfirmCard
+                      entries={pendingLogEntries}
+                      onCommit={handleQuickLogBarCommit}
+                      onEdit={() => {
+                        setPendingLogEntries([]);
+                      }}
+                      onDismiss={() => {
+                        setPendingLogEntries([]);
+                        setQuickLogCommitError(null);
+                      }}
+                      commitError={quickLogCommitError}
+                    />
+                  )}
+                </AnimatePresence>
+                <div ref={quickLogBarRef}>
+                  <QuickLogBar
+                    value={quickLogBarInput}
+                    onChange={setQuickLogBarInput}
+                    onSubmit={handleQuickLogBarSubmit}
+                    onManualLog={() => {
+                      setQuickLogDate(new Date());
+                      setQuickLogIsRecovery(isRecoveryActive);
+                      setIsQuickLogOpen(true);
+                    }}
+                    onCardioLog={() => setActiveTab('progress')}
+                    recentSessions={profile?.workoutSessions ?? []}
+                    disabled={pendingLogEntries.length > 0}
+                    onFocusChange={setIsQuickLogFocused}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Quick-log bar footer — constrained to left panel, not fixed to viewport */}
-        {activeTab === 'training' && (
-          <>
-            {/* Log confirm card — slides up after parse */}
-            <AnimatePresence>
-              {pendingLogEntries.length > 0 && (
-                <LogConfirmCard
-                  entries={pendingLogEntries}
-                  onCommit={handleQuickLogBarCommit}
-                  onEdit={() => {
-                    setPendingLogEntries([]);
-                  }}
-                  onDismiss={() => {
-                    setPendingLogEntries([]);
-                    setQuickLogCommitError(null);
-                  }}
-                  commitError={quickLogCommitError}
-                />
-              )}
-            </AnimatePresence>
-            <QuickLogBar
-              value={quickLogBarInput}
-              onChange={setQuickLogBarInput}
-              onSubmit={handleQuickLogBarSubmit}
-              onManualLog={() => {
-                setQuickLogDate(new Date());
-                setQuickLogIsRecovery(isRecoveryActive);
-                setIsQuickLogOpen(true);
-              }}
-              onCardioLog={() => setActiveTab('progress')}
-              recentSessions={profile?.workoutSessions ?? []}
-              disabled={pendingLogEntries.length > 0}
-            />
-          </>
-        )}
       </div>
       </SingleAgentLayout>
 
