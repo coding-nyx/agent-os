@@ -29,6 +29,8 @@ export interface AIContextType {
     prompt: string,
     options?: { model?: string; temperature?: number; maxTokens?: number; signal?: AbortSignal; format?: 'json_object' | 'text' }
   ) => Promise<string>;
+  activeModelId: string | null;
+  activeProvider: 'openrouter' | 'grok' | 'google' | 'mock' | null;
   isInitialized: boolean;
   /** True when initialization timed out or failed; agent will be null. */
   initFailed: boolean;
@@ -45,7 +47,11 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [initFailed, setInitFailed] = useState(false);
   const [agent, setAgent] = useState<CognitiveAgent | null>(null);
+  const [runtimeModelId, setRuntimeModelId] = useState<string | null>(null);
+  const [runtimeProvider, setRuntimeProvider] = useState<'openrouter' | 'grok' | 'google' | 'mock' | null>(null);
   const initRef = useRef(false);
+  const reinitRef = useRef(false);
+  const lastConfigRef = useRef<{ model: string | null; provider: string | null; guest: boolean } | null>(null);
 
   useEffect(() => {
     if (initRef.current) return;
@@ -70,6 +76,9 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
         await newAgent.initialize();
 
         setAgent(newAgent);
+        const state = newAgent.getOrchestratorState();
+        setRuntimeModelId(state.activeModelId);
+        setRuntimeProvider(state.provider);
         setIsInitialized(true);
     };
 
@@ -90,8 +99,72 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
   useEffect(() => {
     if (agent) {
       agent.setFreeModelsOnly(!!guestMode);
+      const state = agent.getOrchestratorState();
+      setRuntimeModelId(state.activeModelId);
+      setRuntimeProvider(state.provider);
     }
   }, [guestMode, agent]);
+
+  useEffect(() => {
+    if (!agent) return;
+    const readConfig = () => ({
+      model: localStorage.getItem('preferred_model'),
+      provider: localStorage.getItem('nexus_debug_provider'),
+      guest: !!guestMode,
+    });
+    lastConfigRef.current = readConfig();
+
+    const reinitIfChanged = async () => {
+      const next = readConfig();
+      const prev = lastConfigRef.current;
+      if (prev && prev.model === next.model && prev.provider === next.provider && prev.guest === next.guest) return;
+      if (reinitRef.current) return;
+      reinitRef.current = true;
+      lastConfigRef.current = next;
+      try {
+        const openrouterKey = localStorage.getItem('VITE_OPENROUTER_API_KEY') || import.meta.env.VITE_OPENROUTER_API_KEY;
+        const grokKey = localStorage.getItem('VITE_GROK_API_KEY') || import.meta.env.VITE_GROK_API_KEY;
+        const googleKey = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY;
+
+        const config = {
+          openrouterKey,
+          grokKey,
+          googleKey,
+          preferredModelId: localStorage.getItem('preferred_model') || undefined,
+          preferredProvider: (localStorage.getItem('nexus_debug_provider') as 'openrouter' | 'grok' | 'google' | null) || undefined,
+          isMockMode: !openrouterKey && !grokKey && !googleKey,
+          freeModelsOnly: !!guestMode
+        };
+
+        const newAgent = new CognitiveAgent(config);
+        await newAgent.initialize();
+        setAgent(newAgent);
+        const state = newAgent.getOrchestratorState();
+        setRuntimeModelId(state.activeModelId);
+        setRuntimeProvider(state.provider);
+        setInitFailed(false);
+      } catch (e) {
+        console.warn('AIProvider: re-init failed', e);
+        setInitFailed(true);
+      } finally {
+        reinitRef.current = false;
+      }
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'preferred_model' || e.key === 'nexus_debug_provider') {
+        void reinitIfChanged();
+      }
+    };
+    const handleCustom = () => { void reinitIfChanged(); };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('nexus_model_changed', handleCustom);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('nexus_model_changed', handleCustom);
+    };
+  }, [agent, guestMode]);
 
   /** Empty StructuredResponse returned when the agent is unavailable (degraded mode). */
   const degradedResponse = useCallback((context: ConversationContext) => ({
@@ -144,8 +217,18 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
   }, [agent]);
 
   const aiContextValue = useMemo(
-    () => ({ sendMessage, streamMessage, generateJSON, analyzeImage, analyzeImageJSON, isInitialized, initFailed }),
-    [sendMessage, streamMessage, generateJSON, analyzeImage, analyzeImageJSON, isInitialized, initFailed]
+    () => ({
+      sendMessage,
+      streamMessage,
+      generateJSON,
+      analyzeImage,
+      analyzeImageJSON,
+      activeModelId: runtimeModelId,
+      activeProvider: runtimeProvider,
+      isInitialized,
+      initFailed
+    }),
+    [sendMessage, streamMessage, generateJSON, analyzeImage, analyzeImageJSON, runtimeModelId, runtimeProvider, isInitialized, initFailed]
   );
 
   return (

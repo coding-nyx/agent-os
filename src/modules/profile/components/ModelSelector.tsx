@@ -175,10 +175,12 @@ export function ModelSelector() {
   const setProvider = useCallback((p: ProviderId) => {
     setProviderState(p);
     try { localStorage.setItem(PROVIDER_KEY, p); } catch { /* noop */ }
+    window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { provider: p } }));
     if (p !== 'openrouter') {
       const m = DEFAULT_PROVIDER_MODELS[p] ?? '';
       setSelectedModelState(m);
       try { localStorage.setItem(MODEL_KEY, m); } catch { /* noop */ }
+      window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { provider: p, model: m } }));
     }
   }, []);
 
@@ -186,6 +188,7 @@ export function ModelSelector() {
   const selectModel = useCallback((id: string) => {
     setSelectedModelState(id);
     try { localStorage.setItem(MODEL_KEY, id); } catch { /* noop */ }
+    window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { model: id } }));
     setIsOpen(false);
     setSearch('');
   }, []);

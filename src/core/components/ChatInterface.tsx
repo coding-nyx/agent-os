@@ -48,6 +48,7 @@ interface ChatInterfaceProps {
   error?: string | null;
   onRetry?: () => void;
   onClearHistory?: () => void;
+  hideClearHistory?: boolean;
   isGuestTrial?: boolean;
   quota?: GuestQuota;
   onQuotaExhausted?: () => void;
@@ -302,6 +303,7 @@ export const ChatInterface = React.memo(function ChatInterface({
   error,
   onRetry,
   onClearHistory,
+  hideClearHistory,
   isGuestTrial,
   quota,
   onQuotaExhausted,
@@ -455,6 +457,7 @@ export const ChatInterface = React.memo(function ChatInterface({
     };
   }, [draftUploads]);
   const isAgnes = moduleId === 'agnes';
+  const isOrchestrator = moduleId === 'orchestrator' || moduleId === 'nexus';
 
   const hasMessages = messages.some((msg) => msg.role !== 'system');
 
@@ -470,7 +473,7 @@ export const ChatInterface = React.memo(function ChatInterface({
       )}
 
       {/* Clear session button */}
-      {onClearHistory && (
+      {onClearHistory && !hideClearHistory && !isOrchestrator && (
         <div className="shrink-0 flex justify-end px-3 sm:px-6 py-2 sm:py-3 border-b border-white/5 relative z-10">
           <details className="relative group">
             <summary className="list-none p-2 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/10 cursor-pointer transition-all focus:outline-none [&::-webkit-details-marker]:hidden" title="Chat Options">

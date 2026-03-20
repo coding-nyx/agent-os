@@ -65,6 +65,28 @@ function normalizeContentForAI(content: MessageContent): MessageContent {
   return content;
 }
 
+function rewriteReminderClaim(text: string): { text: string; didRewrite: boolean } {
+  if (!text) return { text, didRewrite: false };
+  const patterns: Array<[RegExp, string]> = [
+    [/\b(i'?(?:ve|ll)\s+)?scheduled\b/gi, 'proposed'],
+    [/\b(i'?(?:ve|ll)\s+)?set\b(?=\s+(?:a\s+)?reminder\b)/gi, 'proposed'],
+    [/\b(i'?(?:ve|ll)\s+)?created\b(?=\s+(?:a\s+)?reminder\b)/gi, 'proposed'],
+    [/\b(i'?(?:ve|ll)\s+)?added\b(?=\s+(?:a\s+)?reminder\b)/gi, 'proposed'],
+    [/\b(?:your|the)\s+reminder\s+(?:has been|is|was)\s+(?:scheduled|set|created|added)\b/gi, 'your reminder has been proposed'],
+  ];
+
+  let next = text;
+  let didRewrite = false;
+  for (const [regex, replacement] of patterns) {
+    if (regex.test(next)) {
+      next = next.replace(regex, replacement);
+      didRewrite = true;
+    }
+  }
+
+  return { text: next, didRewrite };
+}
+
 function buildPendingContextHash(moduleId: string, contextPolicy: ContextPolicy, content: MessageContent): string {
   const text = contentToText(content).trim().slice(0, 512);
   return `${moduleId}:${contextPolicy}:${text}`;
@@ -114,6 +136,7 @@ export function useModuleAI({
   const [streamingText, setStreamingText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [quota, setQuota] = useState<GuestQuota>(GuestQuotaService.getQuota());
+  const reminderClaimGuardRef = useRef(false);
   const [routingSuggestion, setRoutingSuggestion] = useState<{
     target: import('@/lib/module-manifest').ModuleId;
     reason?: string;
@@ -617,6 +640,7 @@ export function useModuleAI({
 
         const visibleAssistantText = response.publicText.trim();
         let finalContent = response.fullText;
+        let adjustedPublicText = visibleAssistantText;
 
         NexusLogger.emit('ai', {
           moduleId,
@@ -627,13 +651,40 @@ export function useModuleAI({
             latencyMs: Date.now() - sendStartTime,
           },
         });
+
+        // --- Defensive reminder-claim rewrite ---
+        if (response.actions.length === 0 && adjustedPublicText) {
+          const rewritten = rewriteReminderClaim(adjustedPublicText);
+          if (rewritten.didRewrite) {
+            adjustedPublicText = rewritten.text;
+            if (!/confirm to schedule/i.test(adjustedPublicText)) {
+              adjustedPublicText = `${adjustedPublicText} Confirm to schedule.`;
+            }
+            if (!reminderClaimGuardRef.current) {
+              reminderClaimGuardRef.current = true;
+              NexusLogger.warn('ReminderGuard', 'Reminder claim rewritten: no action tags emitted.', {
+                moduleId,
+                original: visibleAssistantText.slice(0, 200),
+                rewritten: adjustedPublicText.slice(0, 200),
+              });
+            }
+          }
+        }
         
         // --- Silent Action Fallback ---
         // If the AI performed actions but left the public response empty, generate a confirmation label
         // and prepend it to the content so it renders as the public text.
-        if (!visibleAssistantText && response.actions.length > 0) {
+        if (!adjustedPublicText && response.actions.length > 0) {
           const fallback = response.actions.map(a => getActionLabel(a.type)).join(', ') + '.';
           finalContent = fallback + "\n\n" + response.fullText;
+        }
+        // If we rewrote the public text, reflect it in the final content shown to the user.
+        if (adjustedPublicText && adjustedPublicText !== visibleAssistantText) {
+          if (visibleAssistantText && finalContent.includes(visibleAssistantText)) {
+            finalContent = finalContent.replace(visibleAssistantText, adjustedPublicText);
+          } else {
+            finalContent = adjustedPublicText + (response.fullText ? `\n\n${response.fullText}` : '');
+          }
         }
 
         // H-2: update localHistory directly instead of relying on setMessages updater

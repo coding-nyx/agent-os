@@ -21,8 +21,8 @@ interface SubModuleState {
   content?: string;
 }
 
-const NEXUS_COLLAPSED_WIDTH = 60;
-const NEXUS_EXPANDED_WIDTH = 180;
+const COLLAPSED_W = 60;
+const EXPANDED_W = 180;
 
 export function NexusOverlay() {
   const { user, profile } = useAuth();
@@ -38,6 +38,16 @@ export function NexusOverlay() {
   const [docUploadBusy, setDocUploadBusy] = useState(false);
   const [docUploadError, setDocUploadError] = useState<string | null>(null);
   const [docStage, setDocStage] = useState<DocumentPipelineStage | null>(null);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 1024
+  );
+
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener('resize', update, { passive: true });
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   // Allow external components to open Nexus via a custom DOM event
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -45,18 +55,17 @@ export function NexusOverlay() {
     return () => window.removeEventListener('open-nexus', handler);
   }, []);
 
+  const close = useCallback(() => { setOpen(false); setSubModule(null); }, []);
+
   const handleDelegation = useCallback((path: string) => {
-    // Extract moduleId from route path (e.g., "/agnes" → "agnes")
     const moduleId = path.replace(/^\//, '').split('/')[0];
-    if (moduleId) {
-      setSubModule({ moduleId });
-    }
+    if (moduleId) setSubModule({ moduleId });
   }, []);
 
   const ai = useModuleAI({
     moduleId: 'nexus',
     systemPrompt: ORCHESTRATOR_PERSONA,
-    navigateTo: handleDelegation
+    navigateTo: handleDelegation,
   });
 
   const handleUploadDocuments = useCallback(async (request: DocumentUploadRequest) => {
@@ -81,7 +90,10 @@ export function NexusOverlay() {
 
     setDocUploadError(null);
     setDocUploadBusy(true);
-    setDocStage({ id: 'parsing', label: request.files.length > 1 ? 'Uploading documents…' : 'Uploading document…' });
+    setDocStage({
+      id: 'parsing',
+      label: request.files.length > 1 ? 'Uploading documents…' : 'Uploading document…',
+    });
 
     try {
       const result = await prepareDocumentChatPrompt({
@@ -93,7 +105,6 @@ export function NexusOverlay() {
         userContext: request.caption,
         onStageChange: (stage) => setDocStage(stage),
       });
-
       setDocStage((prev) => prev ?? { id: 'done', label: 'Document analyzed.' });
       await ai.handleSendMessage(result.prompt, undefined, { visibleContent: request.visibleContent });
     } catch (e: unknown) {
@@ -114,19 +125,21 @@ export function NexusOverlay() {
   const isVisible = useMemo(() => {
     if (!user || !profile?.onboardingComplete) return false;
     if (hasVault && !isUnlocked) return false;
-    return location.pathname !== '/' && location.pathname !== '/nexus' && location.pathname !== '/vault-gate';
+    return (
+      location.pathname !== '/' &&
+      location.pathname !== '/nexus' &&
+      location.pathname !== '/vault-gate'
+    );
   }, [user, profile?.onboardingComplete, location.pathname, hasVault, isUnlocked]);
 
   const isNexusBusy = isCrossModuleBusy || docUploadBusy || isConflictBlocking;
   const busyLabel = (() => {
-    if (docUploadBusy) return docStage?.label ?? 'Uploading and analyzing…';
+    if (docUploadBusy) return docStage?.label ?? 'Uploading…';
     if (docUploadError) return docStage?.label ?? 'Analysis failed.';
-    if (isConflictBlocking) return 'Conflict active: resolve it in the overlay to continue…';
+    if (isConflictBlocking) return 'Conflict active';
     if (isCrossModuleBusy) {
-      const names = pendingTargets
-        .slice(0, 3)
-        .join(', ');
-      return pendingTargets.length > 0 ? `Waiting for module response: ${names}…` : 'Waiting for module response…';
+      const names = pendingTargets.slice(0, 2).join(', ');
+      return names ? `Waiting: ${names}…` : 'Waiting for module…';
     }
     return '';
   })();
@@ -136,35 +149,57 @@ export function NexusOverlay() {
 
   if (!isVisible) return null;
 
+  // Mobile = bottom sheet (y-axis), Desktop = right panel (x-axis)
+  const panelVariants = isMobile
+    ? { initial: { y: '100%' }, animate: { y: 0 }, exit: { y: '100%' } }
+    : { initial: { x: '100%', opacity: 0 }, animate: { x: 0, opacity: 1 }, exit: { x: '100%', opacity: 0 } };
+
   return (
     <>
+      {/* FAB */}
       {!isChatOverlayOpen && !hideGlobalFAB && (
         <motion.button
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          whileTap={{ scale: 0.94 }}
-          onHoverStart={() => setIsHovered(true)}
-          onHoverEnd={() => setIsHovered(false)}
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.2 }}
+          whileTap={{ scale: 0.93 }}
+          onHoverStart={() => !isMobile && setIsHovered(true)}
+          onHoverEnd={() => !isMobile && setIsHovered(false)}
           onClick={() => setOpen(true)}
-          style={{
-            width: isHovered ? NEXUS_EXPANDED_WIDTH : NEXUS_COLLAPSED_WIDTH,
-            height: NEXUS_COLLAPSED_WIDTH,
-            minWidth: NEXUS_COLLAPSED_WIDTH,
-          }}
-          className="fixed bottom-6 left-6 z-[var(--z-fab)] hidden lg:flex items-center justify-center rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] shadow-lg shadow-black/20 transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:border-white/[0.12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/40"
-          aria-label="Open Nexus overlay"
+          style={
+            isMobile
+              ? { width: 52, height: 52 }
+              : { width: isHovered ? EXPANDED_W : COLLAPSED_W, height: COLLAPSED_W, minWidth: COLLAPSED_W }
+          }
+          className={[
+            'fixed z-[var(--z-fab)] flex items-center justify-center overflow-hidden',
+            'rounded-2xl border backdrop-blur-xl transition-colors',
+            'bg-white/[0.05] border-white/[0.09] shadow-lg shadow-black/25',
+            'hover:bg-white/[0.08] hover:border-white/[0.14]',
+            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-500/40',
+            // Mobile: bottom-right; Desktop: bottom-left
+            'bottom-5 right-5 lg:bottom-6 lg:left-6 lg:right-auto',
+            // Width transition only on desktop
+            'lg:transition-all lg:duration-300',
+          ].join(' ')}
+          aria-label="Open Nexus"
         >
-          <Sparkles className="w-5 h-5 text-white/35 shrink-0" />
-          {isHovered && (
+          <Sparkles className="w-[18px] h-[18px] text-violet-400/80 shrink-0" />
+          {/* Hover label — desktop only */}
+          {isHovered && !isMobile && (
             <motion.span
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.15 }}
-              className="ml-2 text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 whitespace-nowrap overflow-hidden"
+              transition={{ duration: 0.12 }}
+              className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45 whitespace-nowrap"
             >
-              Consult Nexus
+              Nexus
             </motion.span>
+          )}
+          {/* Busy dot */}
+          {isNexusBusy && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
           )}
         </motion.button>
       )}
@@ -172,72 +207,91 @@ export function NexusOverlay() {
       <AnimatePresence>
         {open && (
           <>
-            <motion.button
+            {/* Backdrop */}
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => { setOpen(false); setSubModule(null); }}
-              className="fixed inset-0 z-[var(--z-overlay)] bg-black/60 backdrop-blur-sm"
+              transition={{ duration: 0.2 }}
+              onClick={close}
+              className="fixed inset-0 z-[var(--z-overlay)] bg-black/55 backdrop-blur-sm"
             />
+
+            {/* Panel */}
             <motion.aside
-              initial={{ x: '100%', opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: '100%', opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed inset-y-0 right-0 z-[var(--z-modal)] w-full max-w-md border-l border-white/5 bg-black/40 backdrop-blur-[40px] flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)]"
+              variants={panelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ type: 'spring', stiffness: 340, damping: 34 }}
+              className={[
+                'fixed z-[var(--z-modal)] flex flex-col',
+                'bg-[#09090e]/96 backdrop-blur-[52px]',
+                // Mobile: bottom sheet
+                'bottom-0 left-0 right-0 rounded-t-[28px]',
+                'h-[88dvh] border-t border-l border-r border-white/[0.06]',
+                'shadow-[0_-20px_60px_rgba(0,0,0,0.55)]',
+                // Desktop: right panel overrides
+                'lg:inset-y-0 lg:right-0 lg:left-auto lg:bottom-auto',
+                'lg:w-full lg:max-w-[420px]',
+                'lg:rounded-none lg:border-t-0 lg:border-r-0 lg:border-l lg:border-white/[0.06]',
+                'lg:shadow-[-24px_0_60px_rgba(0,0,0,0.45)]',
+              ].join(' ')}
             >
-              <div className="p-6 md:p-8 pb-4 flex items-center justify-between border-b border-white/5 shrink-0">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-violet-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <Sparkles className="w-6 h-6 text-violet-400 relative z-10" />
+              {/* Mobile drag handle */}
+              <div className="flex justify-center pt-3 pb-1 shrink-0 lg:hidden" aria-hidden="true">
+                <div className="w-9 h-1 rounded-full bg-white/[0.12]" />
+              </div>
+
+              {/* Header */}
+              <div className="px-4 pt-3 pb-3 lg:px-5 lg:pt-4 lg:pb-4 flex items-center justify-between border-b border-white/[0.05] shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-violet-500/[0.12] border border-violet-500/[0.18] flex items-center justify-center shrink-0 relative">
+                    <Sparkles className="w-4 h-4 text-violet-400" />
                   </div>
-                  <div>
-                    <h2 className="text-base font-bold uppercase tracking-[0.2em] text-white font-display">Nexus Proxy</h2>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                      <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Global_Access_Active</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-[13px] font-bold uppercase tracking-[0.18em] text-white/90 leading-none">
+                        Nexus
+                      </h2>
+                      <div
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          isNexusBusy ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500 animate-pulse'
+                        }`}
+                      />
                     </div>
+                    <p className="text-[10px] text-white/30 mt-0.5 tracking-wide truncate">
+                      {isNexusBusy ? busyLabel : 'Global access active'}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => ai.clearSession()}
-                    className="w-10 h-10 rounded-xl border border-white/5 bg-white/5 hover:bg-red-500/10 hover:border-red-500/20 flex items-center justify-center transition-colors group"
+                    className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-red-500/10 hover:border-red-500/20 flex items-center justify-center transition-colors group"
                     aria-label="Clear conversation"
                   >
-                    <Trash2 className="w-4 h-4 text-white/40 group-hover:text-red-400 transition-colors" />
+                    <Trash2 className="w-3.5 h-3.5 text-white/25 group-hover:text-red-400 transition-colors" />
                   </button>
                   <button
-                    onClick={() => { setOpen(false); setSubModule(null); }}
-                    className="w-10 h-10 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors group"
-                    aria-label="Close overlay"
+                    onClick={close}
+                    className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.07] flex items-center justify-center transition-colors group"
+                    aria-label="Close Nexus"
                   >
-                    <X className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
+                    <X className="w-3.5 h-3.5 text-white/25 group-hover:text-white/80 transition-colors" />
                   </button>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-hidden flex flex-col relative w-full h-full pb-4">
-                {isNexusBusy && (
-                  <div className="shrink-0 px-4 pt-3 pb-2">
-                    <section className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur px-4 py-3">
-                      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
-                        Nexus Busy
-                      </p>
-                      <p className="text-sm text-white/70 mt-1 break-words">{busyLabel}</p>
-                    </section>
-                  </div>
-                )}
+              {/* Chat */}
+              <div className="flex-1 overflow-hidden flex flex-col relative min-h-0">
                 <NexusChat
-                  ai={{
-                    ...ai,
-                    isProcessing: ai.isProcessing || isNexusBusy,
-                  }}
+                  ai={{ ...ai, isProcessing: ai.isProcessing || isNexusBusy }}
                   agentName="Nexus"
                   moduleId="nexus"
                   themeColor="indigo"
-                  placeholder="Consult the master node..."
+                  placeholder="Ask Nexus anything…"
                   showInternalSignals={false}
                   onUploadDocuments={handleUploadDocuments}
                 />

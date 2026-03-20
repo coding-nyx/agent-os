@@ -69,6 +69,7 @@ const PRIORITY_COLORS: Record<number, string> = {
 
 const FOCUSABLE_SELECTOR =
   'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const NO_PROJECT_VALUE = '__none__';
 
 export function QuickAddForm({
   projects,
@@ -411,10 +412,13 @@ export function QuickAddForm({
                       Project (optional)
                     </label>
                     <NeuralSelectMenu
-                      value={projectId}
-                      onChange={(next) => setProjectId(String(next))}
+                      value={projectId || NO_PROJECT_VALUE}
+                      onChange={(next) => {
+                        const selected = String(next);
+                        setProjectId(selected === NO_PROJECT_VALUE ? '' : selected);
+                      }}
                       options={[
-                        { value: '', label: 'No project' },
+                        { value: NO_PROJECT_VALUE, label: 'No project' },
                         ...projects.map((p) => ({ value: p.id, label: p.title })),
                       ]}
                       ariaLabel="Project"

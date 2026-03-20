@@ -159,7 +159,7 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     isCore: true,
     hasPage: true,
     securityPolicy: { defaultLocked: true, mandatory: false },
-    onboarding: { mode: 'optional', fastTrack: { enabled: true, confidenceThreshold: 0.72 } }
+    onboarding: { mode: 'hybrid', fastTrack: { enabled: true, confidenceThreshold: 0.72 } }
   },
   scout: {
     id: 'scout',

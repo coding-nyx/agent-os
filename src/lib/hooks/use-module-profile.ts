@@ -64,7 +64,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
     let unsubscribe: (() => void) | null = null;
 
     const init = async () => {
-      if (!user?.uid) {
+      if (!user?.uid && !isGuest) {
         if (!mounted) return;
         setProfile(null);
         setEncryptionKey(null);
@@ -77,7 +77,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       if (!hasLoadedOnce.current) {
         setIsLoading(true);
       }
-      const key = isUnlocked ? await getMasterKey() : null;
+      const key = !isGuest && isUnlocked ? await getMasterKey() : null;
       if (!mounted) return;
       setEncryptionKey(key);
 
@@ -98,7 +98,8 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
         return;
       }
 
-      const loadedProfile = await loadProfileRef.current({ userId: user.uid, encryptionKey: key });
+      const guestSafeUserId = user?.uid ?? '';
+      const loadedProfile = await loadProfileRef.current({ userId: guestSafeUserId, encryptionKey: key });
       if (!mounted) return;
       setProfile(loadedProfile);
       setIsOnboarding(resolveOnboardingGate(loadedProfile));
@@ -126,34 +127,37 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
   }, [user?.uid, isUnlocked, hasSyncedGuest, getMasterKey, moduleId]);
 
   const persistProfile = useCallback(async (p: TProfile) => {
-    if (!saveProfileRef.current || !user?.uid) return;
+    if (!saveProfileRef.current) return;
+    const targetUserId = user?.uid ?? (isGuest ? '' : null);
+    if (targetUserId === null) return;
     try {
-      await saveProfileRef.current(p, { userId: user.uid, encryptionKey });
+      await saveProfileRef.current(p, { userId: targetUserId, encryptionKey });
     } catch (e) {
       console.error(`Failed to persist ${moduleId} profile:`, e);
     }
-  }, [user?.uid, encryptionKey, moduleId]);
+  }, [user?.uid, isGuest, encryptionKey, moduleId]);
 
   const reloadProfile = useCallback(async () => {
-    if (!user?.uid) {
+    if (!user?.uid && !isGuest) {
       setProfile(null);
       setEncryptionKey(null);
       setIsOnboarding(true);
       return null;
     }
 
-    const key = isUnlocked ? await getMasterKey() : null;
+    const key = !isGuest && isUnlocked ? await getMasterKey() : null;
     setEncryptionKey(key);
+    const guestSafeUserId = user?.uid ?? '';
 
     const nextProfile = await refreshProfileRef.current({
-      userId: user.uid,
+      userId: guestSafeUserId,
       encryptionKey: key
     });
 
     setProfile(nextProfile);
     setIsOnboarding(resolveOnboardingGate(nextProfile));
     return nextProfile;
-  }, [user?.uid, isUnlocked, getMasterKey, moduleId, resolveOnboardingGate]);
+  }, [user?.uid, isGuest, isUnlocked, getMasterKey, moduleId, resolveOnboardingGate]);
 
   return {
     profile,

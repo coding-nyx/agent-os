@@ -38,6 +38,7 @@ interface NexusChatProps {
     placeholder?: string;
     onActionParsed?: (type: string, payload: Record<string, unknown>) => void;
     onClearHistory?: () => void;
+    hideClearHistory?: boolean;
     headerActions?: ReactNode;
     authMode?: AuthMode;
     showInternalSignals?: boolean;
@@ -55,6 +56,7 @@ export function NexusChat({
     placeholder, 
     onActionParsed, 
     onClearHistory,
+    hideClearHistory,
     headerActions,
     authMode = 'global',
     showInternalSignals = true,
@@ -172,6 +174,7 @@ export function NexusChat({
                 messages={renderedMessages}
                 onSendMessage={(content) => handleSendMessage(content, onActionParsed)}
                 onClearHistory={onClearHistory}
+                hideClearHistory={hideClearHistory}
                 isLoading={isActuallyThinking}
                 isSyncing={isSyncing}
                 isProcessing={isProcessing}

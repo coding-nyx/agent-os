@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { motion } from 'framer-motion';
-import { NeuralButton } from '@/core/components/NeuralButton';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalSoul } from '@/lib/global-soul-context';
@@ -22,21 +21,21 @@ const TONE_ACCENT: Record<StatusTone, string> = {
   good: 'border-emerald-500/30 bg-emerald-500/5',
   warn: 'border-amber-500/30 bg-amber-500/5',
   bad: 'border-rose-500/30 bg-rose-500/5',
-  neutral: 'border-white/10 bg-white/[0.02]',
+  neutral: 'border-white/20 bg-white/[0.05]',
 };
 
 const TONE_DOT: Record<StatusTone, string> = {
   good: 'bg-emerald-400',
   warn: 'bg-amber-400',
   bad: 'bg-rose-400',
-  neutral: 'bg-white/30',
+  neutral: 'bg-white/50',
 };
 
 const TONE_TEXT: Record<StatusTone, string> = {
   good: 'text-emerald-300',
   warn: 'text-amber-300',
   bad: 'text-rose-300',
-  neutral: 'text-white/40',
+  neutral: 'text-white/60',
 };
 
 function getGreeting(name: string): string {
@@ -50,9 +49,10 @@ interface DailyBriefSectionProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   onAskAboutDomain?: (domain: string) => void;
+  headerActions?: React.ReactNode;
 }
 
-export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAboutDomain }: DailyBriefSectionProps) {
+export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAboutDomain, headerActions }: DailyBriefSectionProps) {
   const { globalSoul } = useGlobalSoul();
   const auth = useAuth();
   const profile = auth?.profile;
@@ -108,22 +108,29 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
       data-collapsed={String(collapsed)}
     >
       {/* Header row — Always visible greeting that serves as the toggle trigger */}
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        disabled={!onToggleCollapse}
-        className={cn(
-          "flex items-center gap-3 mb-4 transition-opacity focus:outline-none text-left select-none group",
-          onToggleCollapse ? "cursor-pointer hover:opacity-80" : "cursor-default"
-        )}
-      >
-        <h2 className="text-xl font-bold text-white tracking-tight font-display">{greeting}</h2>
-        {onToggleCollapse && (
-          <div className="text-white/20 group-hover:text-white/40 transition-colors pt-0.5">
-            {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+      <div className="flex items-center justify-between gap-3 mb-4 flex-nowrap">
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          disabled={!onToggleCollapse}
+          className={cn(
+            "flex items-center gap-3 transition-opacity focus:outline-none text-left select-none group min-w-0 flex-1",
+            onToggleCollapse ? "cursor-pointer hover:opacity-80" : "cursor-default"
+          )}
+        >
+          <h2 className="text-xl font-bold text-white tracking-tight font-display leading-none truncate whitespace-nowrap">{greeting}</h2>
+          {onToggleCollapse && (
+            <div className="text-white/20 group-hover:text-white/40 transition-colors pt-0.5">
+              {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </div>
+          )}
+        </button>
+        {headerActions && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {headerActions}
           </div>
         )}
-      </button>
+      </div>
 
       {!collapsed && (
         <>
@@ -132,26 +139,24 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
             {pillars.map((p, i) => {
               const Icon = p.config.icon;
               return (
-                <NeuralButton
-                  as="div"
-                  variant="ghost"
+                <motion.button
                   key={p.domain}
+                  type="button"
                   initial={reducedMotion ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={reducedMotion ? { duration: 0 } : { delay: i * 0.08, duration: 0.3 }}
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={reducedMotion ? undefined : { scale: 1.02 }}
                   onClick={() => onAskAboutDomain?.(p.domain)}
-                  className="p-0 border-none h-auto bg-transparent hover:bg-transparent"
-                  role="button"
+                  className="p-0 border-none h-auto bg-transparent text-left"
                   aria-label={`${p.config.label}: ${p.word}`}
                 >
                   <GlassCard className={cn('w-full cursor-pointer px-4 py-3.5 space-y-2 hover:border-white/15 transition-colors', TONE_ACCENT[p.tone])}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Icon className={cn('w-4 h-4', p.tone === 'neutral' ? 'text-white/10' : TONE_TEXT[p.tone])} />
+                        <Icon className={cn('w-4 h-4', p.tone === 'neutral' ? 'text-white/50' : TONE_TEXT[p.tone])} />
                         <span className={cn(
                           "text-[11px] uppercase tracking-[0.12em] font-bold",
-                          p.tone === 'neutral' ? "text-white/20" : "text-white/50"
+                          p.tone === 'neutral' ? "text-white/50" : "text-white/50"
                         )}>
                           {p.config.label}
                         </span>
@@ -162,13 +167,13 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
                       {p.tone !== 'neutral' && <div className={cn('w-2 h-2 rounded-full', TONE_DOT[p.tone])} />}
                       <span className={cn(
                         'text-base font-bold uppercase tracking-tight font-display', 
-                        p.tone === 'neutral' ? 'text-white/10' : TONE_TEXT[p.tone]
+                        p.tone === 'neutral' ? 'text-white/70' : TONE_TEXT[p.tone]
                       )}>
                         {p.word}
                       </span>
                     </div>
                   </GlassCard>
-                </NeuralButton>
+                </motion.button>
               );
             })}
           </div>

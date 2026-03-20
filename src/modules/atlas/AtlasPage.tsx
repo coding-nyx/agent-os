@@ -152,7 +152,14 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     const sessionKey = `atlas_commitment_checked_${today}`;
-    if (!sessionStorage.getItem(sessionKey) && profile?.tasks) {
+    let alreadyCheckedToday = false;
+    try {
+      alreadyCheckedToday = sessionStorage.getItem(sessionKey) === '1';
+    } catch (storageError) {
+      console.warn('[Atlas] Could not read commitment-check session key:', storageError);
+    }
+
+    if (!alreadyCheckedToday && profile?.tasks) {
       const overdueTasks = profile.tasks.filter(
         (t) =>
           t.status !== 'done' &&
@@ -170,7 +177,11 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
             taskIds: overdueTasks.map((t) => t.id),
           },
         });
-        sessionStorage.setItem(sessionKey, '1');
+        try {
+          sessionStorage.setItem(sessionKey, '1');
+        } catch (storageError) {
+          console.warn('[Atlas] Could not persist commitment-check session key:', storageError);
+        }
       }
     }
   }, [profile]);
@@ -295,47 +306,64 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     }
   }), [user?.uid, isGuest, encryptionKey, updateCrossFunctionalState]);
 
+  const executeAtlasAction = useCallback((
+    actionType: string,
+    payload: Record<string, unknown>,
+    reason: string
+  ) => {
+    void ActionHub.execute('atlas', actionType, buildActionContext(payload)).then(() => {
+      Spine.emit({
+        type: 'MODULE_PROFILE_UPDATED',
+        source: 'atlas',
+        domain: 'system',
+        data: { moduleId: 'atlas', reason },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    });
+  }, [buildActionContext]);
+
   const handleCompleteTask = useCallback((taskId: string) => {
-    ActionHub.execute('atlas', 'complete_task', buildActionContext({
+    executeAtlasAction('complete_task', {
       id: taskId,
       completedAt: new Date().toISOString()
-    }));
-  }, [buildActionContext]);
+    }, 'task_completed');
+  }, [executeAtlasAction]);
 
   const handleCompleteHabit = useCallback((habitId: string) => {
-    ActionHub.execute('atlas', 'update_habit_streak', buildActionContext({
+    executeAtlasAction('complete_habit', {
       id: habitId,
-      completedToday: true
-    }));
-  }, [buildActionContext]);
+      completedAt: new Date().toISOString()
+    }, 'habit_completed');
+  }, [executeAtlasAction]);
 
   const handleUpdateGoalProgress = useCallback((goalId: string, milestoneId: string) => {
-    ActionHub.execute('atlas', 'update_goal_progress', buildActionContext({
+    executeAtlasAction('update_goal_progress', {
       id: goalId,
       milestoneId,
       completed: true
-    }));
-  }, [buildActionContext]);
+    }, 'goal_progress_updated');
+  }, [executeAtlasAction]);
 
   const handlePauseHabit = useCallback((habitId: string) => {
     const habit = profile?.habits.find(h => h.id === habitId);
     if (!habit) return;
     
     if (habit.status === 'paused') {
-      ActionHub.execute('atlas', 'update_habit', buildActionContext({
+      executeAtlasAction('update_habit', {
         id: habitId,
         status: 'active'
-      }));
+      }, 'habit_resumed');
     } else {
-      ActionHub.execute('atlas', 'pause_habit', buildActionContext({
+      executeAtlasAction('pause_habit', {
         id: habitId
-      }));
+      }, 'habit_paused');
     }
-  }, [profile?.habits, buildActionContext]);
+  }, [profile?.habits, executeAtlasAction]);
 
   const handleCreateTask = useCallback((task: Partial<AtlasTask>) => {
     const now = new Date().toISOString();
-    ActionHub.execute('atlas', 'create_task', buildActionContext({
+    executeAtlasAction('create_task', {
       id: `task_${crypto.randomUUID()}`,
       status: 'queued',
       dependencies: [],
@@ -344,76 +372,76 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       priority: 3,
       energyCost: 5,
       ...task
-    }));
-  }, [buildActionContext]);
+    }, 'task_created');
+  }, [executeAtlasAction]);
 
   const handleCreateHabit = useCallback((habit: Partial<AtlasHabit>) => {
-    ActionHub.execute('atlas', 'create_habit', buildActionContext({
+    executeAtlasAction('create_habit', {
       id: `habit_${crypto.randomUUID()}`,
       ...habit
-    }));
-  }, [buildActionContext]);
+    }, 'habit_created');
+  }, [executeAtlasAction]);
 
   const handleCreateGoal = useCallback((goal: Partial<AtlasGoal>) => {
-    ActionHub.execute('atlas', 'create_goal', buildActionContext({
+    executeAtlasAction('create_goal', {
       id: `goal_${crypto.randomUUID()}`,
       ...goal
-    }));
-  }, [buildActionContext]);
+    }, 'goal_created');
+  }, [executeAtlasAction]);
 
   const handleDeferTask = useCallback((taskId: string) => {
-    ActionHub.execute('atlas', 'update_task', buildActionContext({
+    executeAtlasAction('update_task', {
       id: taskId,
       status: 'deferred'
-    }));
-  }, [buildActionContext]);
+    }, 'task_deferred');
+  }, [executeAtlasAction]);
 
   const handleUpdateTask = useCallback((taskId: string, updates: Record<string, unknown>) => {
-    ActionHub.execute('atlas', 'update_task', buildActionContext({
+    executeAtlasAction('update_task', {
       id: taskId,
       ...updates
-    }));
-  }, [buildActionContext]);
+    }, 'task_updated');
+  }, [executeAtlasAction]);
 
   const handleDeleteTask = useCallback((taskId: string) => {
-    ActionHub.execute('atlas', 'delete_task', buildActionContext({
+    executeAtlasAction('delete_task', {
       id: taskId
-    }));
-  }, [buildActionContext]);
+    }, 'task_deleted');
+  }, [executeAtlasAction]);
 
   const handleUpdateGoal = useCallback((goalId: string, updates: Record<string, unknown>) => {
-    ActionHub.execute('atlas', 'update_goal', buildActionContext({
+    executeAtlasAction('update_goal', {
       id: goalId,
       ...updates
-    }));
-  }, [buildActionContext]);
+    }, 'goal_updated');
+  }, [executeAtlasAction]);
 
   const handleDeleteGoal = useCallback((goalId: string) => {
-    ActionHub.execute('atlas', 'delete_goal', buildActionContext({
+    executeAtlasAction('delete_goal', {
       id: goalId
-    }));
-  }, [buildActionContext]);
+    }, 'goal_deleted');
+  }, [executeAtlasAction]);
 
   const handleUpdateHabit = useCallback((habitId: string, updates: Record<string, unknown>) => {
-    ActionHub.execute('atlas', 'update_habit', buildActionContext({
+    executeAtlasAction('update_habit', {
       id: habitId,
       ...updates
-    }));
-  }, [buildActionContext]);
+    }, 'habit_updated');
+  }, [executeAtlasAction]);
 
   const handleDeleteHabit = useCallback((habitId: string) => {
-    ActionHub.execute('atlas', 'delete_habit', buildActionContext({
+    executeAtlasAction('delete_habit', {
       id: habitId
-    }));
-  }, [buildActionContext]);
+    }, 'habit_deleted');
+  }, [executeAtlasAction]);
 
   const handleUpdateRoutine = useCallback((updates: Record<string, unknown>) => {
-    ActionHub.execute('atlas', 'update_routine', buildActionContext(updates));
-  }, [buildActionContext]);
+    executeAtlasAction('update_routine', updates, 'routine_updated');
+  }, [executeAtlasAction]);
 
   const handleUpdateIntention = useCallback((updates: Record<string, unknown>) => {
-    ActionHub.execute('atlas', 'set_daily_intention', buildActionContext(updates));
-  }, [buildActionContext]);
+    executeAtlasAction('set_daily_intention', updates, 'intention_updated');
+  }, [executeAtlasAction]);
 
   /** Persist a weekly review snapshot to profile.reviews so the Review tab shows it. */
   const handleSaveWeeklyReview = useCallback(() => {
@@ -450,7 +478,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       milestonesCompleted: (g.milestones ?? []).filter((m) => m.completed).length,
       milestonesTotal: (g.milestones ?? []).length || 1,
     }));
-    ActionHub.execute('atlas', 'temporal_review', buildActionContext({
+    executeAtlasAction('temporal_review', {
       scope: 'weekly',
       periodStart: weekStartStr,
       periodEnd: weekEndStr,
@@ -463,9 +491,9 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       focusScoreAvg: typeof cognitive.focusScore === 'number' ? cognitive.focusScore : 5,
       resilienceTrend: 'stable',
       insights: [],
-    }));
+    }, 'weekly_review_saved');
     handleReviewOpened();
-  }, [profile, globalSoul?.crossFunctionalState?.cognitive, buildActionContext, handleReviewOpened]);
+  }, [profile, globalSoul?.crossFunctionalState?.cognitive, executeAtlasAction, handleReviewOpened]);
 
   // S-journal-01: Morning brief dismiss — record today's date so JournalTab
   // can pre-populate the morningIntent placeholder.

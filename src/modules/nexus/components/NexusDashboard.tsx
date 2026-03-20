@@ -8,6 +8,7 @@ import { DailyBriefSection } from './DailyBriefSection';
 import { SynthesisPanel } from './SynthesisPanel';
 import { ModuleHealthFAB } from './ModuleHealthFAB';
 import { CommandPalette } from './CommandPalette';
+import { Trash2 } from 'lucide-react';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { NexusErrorBoundary } from './NexusErrorBoundary';
@@ -237,13 +238,43 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0">
-      {/* Daily Brief — above chat, collapsible, constrained on mobile */}
-      <div className="shrink-0 px-4 pt-3 pb-2 space-y-3 max-h-[40vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
+      {/* Daily Brief — collapsible, scroll-constrained on mobile */}
+      <div className={[
+        'shrink-0 px-3 pt-3 pb-2 sm:px-5 sm:pt-4 space-y-2',
+        !briefCollapsed ? 'max-h-[38vh] overflow-y-auto sm:max-h-none sm:overflow-visible' : '',
+      ].join(' ')}>
         <NexusErrorBoundary name="DailyBrief">
           <DailyBriefSection
             collapsed={briefCollapsed}
             onToggleCollapse={() => setBriefCollapsed(!briefCollapsed)}
             onAskAboutDomain={handleAskAboutDomain}
+            headerActions={(
+              <>
+                <NeuralButton
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
+                  }}
+                  className="sm:hidden flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.07] text-[10px] text-white/25 hover:text-white/50 hover:bg-white/[0.07] transition-colors"
+                  aria-label="Open command palette"
+                >
+                  <span className="font-mono">/</span>
+                </NeuralButton>
+                <kbd className="hidden sm:block text-[10px] font-mono text-white/20 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.08] select-none pointer-events-none">
+                  ⌘K
+                </kbd>
+                <NeuralButton
+                  type="button"
+                  variant="ghost"
+                  onClick={() => ai.clearSession()}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-[10px] text-white/40 hover:text-rose-300 hover:bg-rose-500/10 transition-colors h-auto"
+                  aria-label="Clear Link"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span className="font-semibold uppercase tracking-wider">Clear Link</span>
+                </NeuralButton>
+              </>
+            )}
           />
         </NexusErrorBoundary>
 
@@ -258,29 +289,22 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
         )}
       </div>
 
-      {/* Chat area — fills remaining space; relative for FAB positioning */}
-      <div className="flex-1 min-h-0 flex flex-col relative">
-        {isNexusBusy && (
-          <div className="shrink-0 px-3 pt-2 pb-3">
-            <section className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur px-4 py-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
-                Nexus Busy
-              </p>
-              <p className="text-sm text-white/70 mt-1 break-words">{busyLabel}</p>
-            </section>
+      {/* Busy state banner — compact, full-width */}
+      {isNexusBusy && (
+        <div className="shrink-0 mx-3 mb-2 sm:mx-5">
+          <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.06] px-3 py-2 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+            <p className="text-xs text-amber-300/80 truncate">{busyLabel}</p>
           </div>
-        )}
-        {/* Module Health FAB — floats bottom-left inside chat area. */}
+        </div>
+      )}
+
+      {/* Chat area — fills remaining space */}
+      <div className="flex-1 min-h-0 flex flex-col relative">
+        {/* Module Health FAB */}
         <NexusErrorBoundary name="ModuleHealth">
           <ModuleHealthFAB />
         </NexusErrorBoundary>
-
-        {/* ⌘K discoverability hint */}
-        <div className="absolute top-2 right-3 z-[var(--z-content)] pointer-events-none hidden sm:block">
-          <kbd className="text-[10px] font-mono text-white/20 bg-white/5 px-1.5 py-0.5 rounded border border-white/10 select-none">
-            ⌘K
-          </kbd>
-        </div>
 
         <NexusChat
           ai={{
@@ -290,14 +314,14 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
           }}
           agentName={agentName}
           themeColor="cyan"
-          placeholder="Ask Nexus anything — system command, cross-domain analysis, or module routing..."
+          placeholder={isMobile ? 'Ask Nexus…' : 'Ask Nexus anything — analysis, routing, or system commands…'}
           moduleId="orchestrator"
-          onClearHistory={ai.clearSession}
+          hideClearHistory
           onActionParsed={handleActionParsed}
           onUploadDocuments={handleUploadDocuments}
         />
 
-        {/* Routing suggestion — inline below chat input */}
+        {/* Routing suggestion */}
         <RoutingSuggestion
           target={routingSuggestion?.target || 'agnes'}
           reason={routingSuggestion?.reason}
@@ -307,7 +331,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
         />
       </div>
 
-      {/* Command Palette — overlay, ⌘K triggered */}
+      {/* Command Palette */}
       <CommandPalette
         onSynthesisRefresh={refreshGlobalSoul}
         onMemorySearch={(query) => {

@@ -8,10 +8,10 @@ describe('requiresModuleOnboarding', () => {
     expect(requiresModuleOnboarding('agnes')).toBe(true);
     expect(requiresModuleOnboarding('titan')).toBe(true);
     expect(requiresModuleOnboarding('ledger')).toBe(true);
+    expect(requiresModuleOnboarding('atlas')).toBe(true);
   });
 
   it('returns false for modules not requiring onboarding', () => {
-    expect(requiresModuleOnboarding('atlas')).toBe(false);
     expect(requiresModuleOnboarding('scout')).toBe(false);
     expect(requiresModuleOnboarding('forge')).toBe(false);
     expect(requiresModuleOnboarding('soma')).toBe(false);

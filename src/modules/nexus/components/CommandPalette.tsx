@@ -123,7 +123,7 @@ export function CommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule
             transition={{ duration: 0.15 }}
             className={cn(
               'fixed top-[20%] left-1/2 -translate-x-1/2 z-[var(--z-modal)]',
-              'w-full max-w-[520px] rounded-2xl',
+              'w-[calc(100%-2rem)] max-w-[520px] rounded-2xl',
               'border border-white/10 bg-[#0a0a0f]/95 backdrop-blur-3xl',
               'shadow-2xl shadow-black/50 overflow-hidden'
             )}

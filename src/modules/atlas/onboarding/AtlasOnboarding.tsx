@@ -369,6 +369,7 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
       steps={[...ATLAS_STEPS]}
       currentStep={intake.stepIndex}
       themeColor="sky"
+      preludeCollapsible={false}
       prelude={
         <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]">
           <div className="flex-1 w-full space-y-3">

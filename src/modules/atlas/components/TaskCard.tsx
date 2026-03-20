@@ -120,6 +120,7 @@ export const TaskCard = React.memo(function TaskCard({
       <div className="pl-4 pr-3 py-3">
         {/* Main row — clickable for expand */}
         <NeuralButton
+          as="div"
           variant="emerald"
           role="button"
           tabIndex={0}

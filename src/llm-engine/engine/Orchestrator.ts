@@ -180,6 +180,12 @@ export class Orchestrator {
       // Log / update claims
       /i'?(?:ve|ll)\s+(log|record|update|track|save|commit|store)\b/,
       /(routine|session|biomarker|sleep|cycle|clearance) (has been|was|is now) (logged|recorded|saved|created|updated|committed)/,
+      // Reminder / schedule claims
+      /i'?(?:ve|ll)\s+(?:schedule[d]?|set|creat(?:e[d]?)|add(?:ed)?)\s+(?:a\s+|your\s+)?reminder\b/,
+      /reminder\s+(?:has been|is|was)\s+(?:scheduled|set|created|added)/,
+      /i'?(?:ve|ll)\s+remind\s+you\b/,
+      /you'?(?:ll|'re going to)\s+(?:receive|get)\s+(?:a\s+)?(?:notification|reminder)\b/,
+      /\breminder\b.*\b(?:0\d{3}|[012]?\d:\d{2})\b/,
     ];
     return patterns.some((p) => p.test(lower));
   }
@@ -424,6 +430,7 @@ export class Orchestrator {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
+      this.handleOpenRouterPolicyError(model, errorText);
       throw new Error(`OpenRouter JSON API error (${response.status}): ${errorText || response.statusText}`);
     }
 
@@ -474,6 +481,13 @@ export class Orchestrator {
     }), 3, signal);
 
     if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      this.handleOpenRouterPolicyError(model, errorText);
+      console.warn('[Orchestrator] OpenRouter request failed', {
+        status: response.status,
+        model,
+        provider,
+      });
       throw new Error(`API Error: ${response.status}`);
     }
 
@@ -567,6 +581,21 @@ export class Orchestrator {
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || '').join('') || '';
     return { choices: [{ message: { content: text, role: 'assistant' } }] };
+  }
+
+  private handleOpenRouterPolicyError(model: string, errorText: string): void {
+    if (!errorText || !errorText.toLowerCase().includes('no endpoints available matching your guardrail restrictions')) return;
+    if (typeof window === 'undefined') return;
+    try {
+      const preferred = localStorage.getItem('preferred_model');
+      if (preferred && preferred === model) {
+        localStorage.removeItem('preferred_model');
+        window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { model: null, reason: 'guardrail_policy' } }));
+        console.warn('[Orchestrator] Cleared preferred_model due to OpenRouter guardrail policy.', { model });
+      }
+    } catch {
+      // ignore storage errors
+    }
   }
 
   private async executeGrokRequest(messages: Message[], modelId: string, signal?: AbortSignal): Promise<any> {

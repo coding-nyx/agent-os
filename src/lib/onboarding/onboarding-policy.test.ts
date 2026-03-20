@@ -19,16 +19,19 @@ describe('onboarding-policy', () => {
   });
 
   it('does not gate optional modules', () => {
-    expect(shouldGateModuleOnboarding('atlas', null)).toBe(false);
     expect(shouldGateModuleOnboarding('scout', { onboardingComplete: false })).toBe(false);
     expect(shouldGateModuleOnboarding('forge', { onboardingComplete: false })).toBe(false);
+  });
+
+  it('gates Atlas onboarding when profile is missing', () => {
+    expect(shouldGateModuleOnboarding('atlas', null)).toBe(true);
   });
 
   it('returns routed modules grouped by mode', () => {
     const grouped = getRoutedModulesByOnboardingMode();
     expect(grouped.required).toContain('agnes');
     expect(grouped.hybrid).toContain('titan');
-    expect(grouped.optional).toContain('atlas');
+    expect(grouped.hybrid).toContain('atlas');
     expect(grouped.optional).toContain('forge');
   });
 

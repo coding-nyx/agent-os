@@ -47,6 +47,7 @@ interface TaskManagerProps {
 
 type TaskFilter = 'all' | 'active' | 'blocked' | 'done' | 'deferred';
 type TaskSort = 'priority' | 'deadline' | 'energy' | 'created';
+const NO_PROJECT_VALUE = '__none__';
 
 export function TaskManager({
   tasks,
@@ -535,10 +536,16 @@ export function TaskManager({
                       Project
                     </label>
                     <NeuralSelectMenu
-                      value={formData.projectId || ''}
-                      onChange={(next) => setFormData({ ...formData, projectId: String(next) })}
+                      value={formData.projectId || NO_PROJECT_VALUE}
+                      onChange={(next) => {
+                        const selected = String(next);
+                        setFormData({
+                          ...formData,
+                          projectId: selected === NO_PROJECT_VALUE ? undefined : selected,
+                        });
+                      }}
                       options={[
-                        { value: '', label: 'None' },
+                        { value: NO_PROJECT_VALUE, label: 'None' },
                         ...projects.map((p) => ({ value: p.id, label: p.title })),
                       ]}
                       ariaLabel="Project"
