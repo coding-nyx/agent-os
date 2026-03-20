@@ -188,7 +188,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
           onChange={(e) => { setName(e.target.value); if (nameError) setNameError(null); }}
           placeholder="e.g. Upper Body Push"
           className={cn(
-            nameError ? 'border-rose-500/50 focus:border-rose-500/70' : 'focus:border-orange-500/50'
+            nameError ? 'border-rose-500/50 focus:border-rose-500/70' : 'focus:border-[var(--module-accent)]'
           )}
         />
         {nameError && <p className="text-xs text-rose-400 mt-1">{nameError}</p>}
@@ -218,7 +218,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
             onChange={(e) => setRationale(e.target.value)}
             placeholder="Why this routine? Target goals..."
             rows={3}
-            className="focus:border-orange-500/50"
+            className="focus:border-[var(--module-accent)]"
           />
         </div>
 
@@ -229,7 +229,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
             value={timeframe}
             onChange={(e) => setTimeframe(e.target.value)}
             placeholder="e.g. 45-60 minutes"
-            className="focus:border-orange-500/50"
+            className="focus:border-[var(--module-accent)]"
           />
           
           {/* Volume Stats */}
@@ -239,7 +239,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                 <TrendingUp className="w-3 h-3" />
                 <span>Estimated Volume:</span>
               </div>
-              <span className="font-black text-orange-400 tabular-nums">{totalVolume} reps</span>
+              <span className="font-black text-[var(--module-color-400)] tabular-nums">{totalVolume} reps</span>
             </div>
             <div className="flex items-center justify-between text-[10px] mt-1">
               <div className="flex items-center gap-2 text-white/50">
@@ -282,8 +282,8 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
         {exercises.length === 0 ? (
           <SurfaceCard className="p-8">
             <div className="flex flex-col items-center text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-                <Dumbbell className="w-5 h-5 text-orange-400" />
+              <div className="w-12 h-12 rounded-2xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] flex items-center justify-center">
+                <Dumbbell className="w-5 h-5 text-[var(--module-color-400)]" />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-bold text-white/70">No exercises yet</p>
@@ -315,21 +315,21 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                           <SurfaceCard
                             className={cn(
                               'p-4 transition-all',
-                              snapshot.isDragging && 'ring-2 ring-orange-500/50 shadow-xl'
+                              snapshot.isDragging && 'ring-2 ring-[var(--module-accent-ring)] shadow-xl'
                             )}
                           >
                           <div className="flex items-start gap-3">
                             {/* Drag Handle */}
                             <div
                               {...provided.dragHandleProps}
-                              className="mt-1 cursor-grab active:cursor-grabbing text-white/30 hover:text-orange-400 transition-colors"
+                              className="mt-1 cursor-grab active:cursor-grabbing text-white/30 hover:text-[var(--module-color-400)] transition-colors"
                             >
                               <GripVertical className="w-4 h-4" />
                             </div>
 
                             {/* Exercise Number */}
-                            <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                              <span className="text-[10px] font-black text-orange-400">{index + 1}</span>
+                            <div className="w-7 h-7 rounded-lg bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] flex items-center justify-center shrink-0 mt-0.5">
+                              <span className="text-[10px] font-black text-[var(--module-color-400)]">{index + 1}</span>
                             </div>
 
                             {/* Exercise Fields */}
@@ -339,7 +339,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                                 value={exercise.name}
                                 onChange={(e) => updateExercise(index, { name: e.target.value })}
                                 placeholder="Exercise name"
-                                className="font-bold focus:border-orange-500/50"
+                                className="font-bold focus:border-[var(--module-accent)]"
                               />
 
                               <div className="grid grid-cols-2 gap-3">
@@ -349,7 +349,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                                   min="1"
                                   value={exercise.sets}
                                   onChange={(e) => updateExercise(index, { sets: parseInt(e.target.value) || 1 })}
-                                  className="focus:border-orange-500/50 tabular-nums"
+                                  className="focus:border-[var(--module-accent)] tabular-nums"
                                 />
 
                                 <NeuralInput
@@ -358,7 +358,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                                   value={exercise.reps}
                                   onChange={(e) => updateExercise(index, { reps: e.target.value })}
                                   placeholder="e.g. 8-10"
-                                  className="focus:border-orange-500/50"
+                                  className="focus:border-[var(--module-accent)]"
                                 />
                               </div>
 
@@ -373,7 +373,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                                   placeholder="–"
                                   value={exercise.targetRPE ?? ''}
                                   onChange={e => updateExercise(index, { targetRPE: parseFloat(e.target.value) || undefined })}
-                                  className="w-20 text-center focus:border-orange-500/40"
+                                  className="w-20 text-center focus:border-[var(--module-accent)]"
                                 />
                                 <NeuralInput
                                   label="Rest (s)"
@@ -384,7 +384,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                                   placeholder="–"
                                   value={exercise.restSeconds ?? ''}
                                   onChange={e => updateExercise(index, { restSeconds: parseInt(e.target.value) || undefined })}
-                                  className="w-24 text-center focus:border-orange-500/40"
+                                  className="w-24 text-center focus:border-[var(--module-accent)]"
                                 />
                               </div>
 
@@ -393,7 +393,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                                 onChange={(e) => updateExercise(index, { notes: e.target.value })}
                                 placeholder="Notes (tempo, rest period, form cues...)"
                                 rows={2}
-                                className="text-[11px] text-white/70 focus:border-orange-500/50"
+                                className="text-[11px] text-white/70 focus:border-[var(--module-accent)]"
                               />
                             </div>
 
@@ -468,7 +468,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                     className={cn(
                       'px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all',
                       selectedCategory === cat
-                        ? 'bg-orange-500/20 border border-orange-500/30 text-orange-300'
+                        ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]'
                         : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
                     )}
                   >
@@ -483,13 +483,13 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                   <button
                     key={idx}
                     onClick={() => addExerciseFromTemplate(template)}
-                    className="p-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-orange-500/10 hover:border-orange-500/30 transition-all text-left group"
+                    className="p-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all text-left group"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <span className="text-sm font-bold text-white/90 group-hover:text-orange-300 transition-colors">
+                      <span className="text-sm font-bold text-white/90 group-hover:text-[var(--module-color-300)] transition-colors">
                         {template.name}
                       </span>
-                      <Plus className="w-3.5 h-3.5 text-white/30 group-hover:text-orange-400 transition-colors" />
+                      <Plus className="w-3.5 h-3.5 text-white/30 group-hover:text-[var(--module-color-400)] transition-colors" />
                     </div>
                     <div className="flex items-center gap-3 text-[10px] text-white/50">
                       <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 uppercase tracking-wider">

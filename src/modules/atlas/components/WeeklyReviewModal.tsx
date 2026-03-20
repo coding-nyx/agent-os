@@ -119,7 +119,7 @@ function computePressureSources(soul: GlobalProjection | null): PressureSource[]
 
 function StateBadge({ display }: { display: AtlasStateDisplay }) {
   const bgMap: Record<string, string> = {
-    Normal: 'bg-sky-500/15 border-sky-500/40 text-sky-400',
+    Normal: 'bg-[var(--module-accent-glow)] border-[var(--module-accent-border)] text-[var(--module-color-400)]',
     Compressed: 'bg-amber-400/15 border-amber-400/40 text-amber-400',
     Overloaded: 'bg-orange-500/15 border-orange-500/40 text-orange-400',
     Recovery: 'bg-rose-600/15 border-rose-600/40 text-rose-400',
@@ -270,7 +270,7 @@ export function WeeklyReviewModal({
       title="Weekly Review"
       subtitle={weekLabel}
       icon={CalendarDays}
-      themeColor="cyan"
+      themeColor="module"
       maxWidth="lg"
     >
       <div className="space-y-6">
@@ -300,7 +300,7 @@ export function WeeklyReviewModal({
               <p className="text-[10px] text-white/30 uppercase tracking-widest">
                 Planned Capacity
               </p>
-              <p className="text-xl font-black text-sky-400">
+              <p className="text-xl font-black text-[var(--module-color-400)]">
                 {weekly.planned}
                 <span className="text-xs text-white/30 ml-1">/ {weekly.max}</span>
               </p>
@@ -355,7 +355,7 @@ export function WeeklyReviewModal({
             <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">
               Next Week's Capacity
             </h3>
-            <span className="text-sm font-black text-cyan-400">{capacityPct}%</span>
+            <span className="text-sm font-black text-[var(--module-color-400)]">{capacityPct}%</span>
           </div>
           <input
             type="range"
@@ -365,7 +365,10 @@ export function WeeklyReviewModal({
             value={capacityPct}
             onChange={(e) => setCapacityPct(Number(e.target.value))}
             aria-label="Adjust next week's capacity percentage"
-            className="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-cyan-400 cursor-pointer"
+            aria-valuemin={60}
+            aria-valuemax={120}
+            aria-valuenow={capacityPct}
+            className="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-[var(--module-color-400)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
           />
           <div className="flex justify-between text-[10px] text-white/20">
             <span>60% (Recovery)</span>
@@ -390,7 +393,7 @@ export function WeeklyReviewModal({
                 onCompleteReview();
                 onClose();
               }}
-              themeColor="cyan"
+              themeColor="module"
               className="w-full text-sm font-black uppercase tracking-widest h-12"
             >
               Complete review & save

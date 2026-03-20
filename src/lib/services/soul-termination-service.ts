@@ -1,6 +1,7 @@
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { BatchOperation } from '@/lib/data-layer/index';
 import { getUserDataDeletionTargets } from './user-data-registry';
+import { CoreProfileService } from './core-profile-service';
 
 const LOCAL_STORAGE_PREFIXES = ['nexus_', 'agnes_'];
 const LOCAL_STORAGE_SUBSTRINGS = ['integrity'];
@@ -10,7 +11,10 @@ const SESSION_STORAGE_KEYS = ['nexus_guest_active', 'nexus_vault_session', 'nexu
 const KNOWN_SUBCOLLECTIONS: Record<string, string[]> = {
   semantic_memory: ['facts'],
   spine_events: ['events'],
-  users: ['modules'],
+  users: ['modules', 'notification_inbox', 'notification_schedules', 'notification_occurrences', 'insights'],
+  atlas_journals: ['entries'],
+  soma_diagnoses: ['sessions'],
+  scout_knowledge: ['nodes'],
 };
 
 function shouldRemoveLocalStorageKey(key: string): boolean {
@@ -42,10 +46,17 @@ export const SoulTerminationService = {
   async purgeUserData(uid: string): Promise<void> {
     if (!uid) return;
 
+    // 1. Reset onboarding status so the app locks down immediately
+    try {
+      await CoreProfileService.updateProfile(uid, { onboardingComplete: false });
+    } catch (err) {
+      console.warn('[SoulTerminationService] Non-fatal: Failed to reset onboarding status:', err);
+    }
+
     const dl = getNexusDataLayer();
     const targets = getUserDataDeletionTargets(uid);
     try {
-      // 1. Delete known subcollections first (Firestore does NOT cascade-delete)
+      // 2. Delete known subcollections first (Firestore does NOT cascade-delete)
       for (const target of targets) {
         const subcollections = KNOWN_SUBCOLLECTIONS[target.collection];
         if (subcollections) {

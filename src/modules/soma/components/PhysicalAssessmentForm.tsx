@@ -114,7 +114,7 @@ export function PhysicalAssessmentForm({ profile: _profile, onSubmit }: Physical
                   type="button"
                   onClick={() => setAssessmentType(type)}
                   variant={assessmentType === type ? 'primary' : 'secondary'}
-                  themeColor="cyan"
+                  themeColor="module"
                   className="p-3 rounded-lg border transition-all h-auto"
                 >
                   <div className="text-xs font-semibold uppercase tracking-wider">
@@ -129,7 +129,7 @@ export function PhysicalAssessmentForm({ profile: _profile, onSubmit }: Physical
           <div>
             <label className="block text-sm font-medium text-white mb-2">
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
+                <TrendingUp className="w-4 h-4 text-[var(--module-color-400)]" />
                 <span>Overall Score (0-100)</span>
                 <span className="text-red-400">*</span>
               </div>

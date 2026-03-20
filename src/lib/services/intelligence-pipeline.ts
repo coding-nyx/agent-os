@@ -53,6 +53,45 @@ export const IntelligencePipeline = {
        });
     }));
 
+    // 4. Emotional Regulation Success (Agnes)
+    unsubs.push(Spine.on('SOMATIC_SESSION_COMPLETE', async (event) => {
+      const { exerciseType, completedFully } = event.data;
+      if (completedFully) {
+        await DerivedInsightsService.addInsight(userId, {
+          moduleId: 'agnes',
+          type: 'regulation_success',
+          content: `Successfully completed ${exerciseType} somatic session. Nervous system recalibration in progress.`,
+          severity: 'info'
+        });
+      }
+    }));
+
+    // 5. High-Intensity Training Recognition (Titan)
+    unsubs.push(Spine.on('WORKOUT_COMPLETED', async (event) => {
+      const { rpe, totalVolume } = event.data;
+      if (Number(rpe ?? 0) >= 9) {
+        await DerivedInsightsService.addInsight(userId, {
+          moduleId: 'titan',
+          type: 'intensity_milestone',
+          content: `High-intensity session registered (RPE ${rpe}). Volume: ${totalVolume}. Central nervous system fatigue will be elevated.`,
+          severity: 'info'
+        });
+      }
+    }));
+
+    // 6. Financial Stability Shift (Ledger)
+    unsubs.push(Spine.on('FINANCIAL_FRICTION_CHANGED', async (event) => {
+      const { level, delta } = event.data;
+      if (Number(level ?? 0) >= 7 && Number(delta ?? 0) > 0) {
+        await DerivedInsightsService.addInsight(userId, {
+          moduleId: 'ledger',
+          type: 'stability_risk',
+          content: `Financial friction has increased significantly. Resource stability is trending downward.`,
+          severity: 'warning'
+        });
+      }
+    }));
+
     return () => {
       unsubs.forEach((u) => {
         try {

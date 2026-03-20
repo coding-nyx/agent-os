@@ -15,6 +15,32 @@ const SOUL_WRITE_COLLECTION = 'pending_soul_writes';
 // ---------------------------------------------------------------------------
 const _projectionWriteQueues = new Map<string, Promise<void>>();
 
+/**
+ * Computes a weighted 0-100 wellness score based on NSV domain metrics.
+ */
+function computeOverallWellness(nsv: NeuralStateVector): number {
+  const bio = nsv.biological;
+  const emo = nsv.emotional;
+  const cog = nsv.cognitive;
+  const res = nsv.resource;
+
+  // Domain scores (all 0-10, where 10 is better)
+  const bioScore = 10 - (bio?.cnsFatigue ?? 5);
+  const emoScore = emo?.emotionalResilience ?? 5;
+  const cogScore = cog?.focusScore ?? 5;
+  const resScore = 10 - (res?.financialFriction ?? 5);
+
+  // Weights
+  const weights = { bio: 0.3, emo: 0.3, cog: 0.2, res: 0.2 };
+  
+  const raw = (bioScore * weights.bio) + 
+              (emoScore * weights.emo) + 
+              (cogScore * weights.cog) + 
+              (resScore * weights.res);
+
+  return Math.round(raw * 10); // Scale to 0-100
+}
+
 function enqueueProjectionWrite(uid: string, fn: () => Promise<void>): Promise<void> {
   const prev = _projectionWriteQueues.get(uid) ?? Promise.resolve();
   // Chain the new write onto the tail of the queue.
@@ -200,15 +226,23 @@ export const GlobalProjectionService = {
     };
 
     // Load existing projection to preserve crossFunctionalState if it exists
-    const existing = await this.getProjection(profile.uid, dataLayer);
+    let existing: GlobalProjection | null = null;
+    try {
+      existing = await this.getProjection(profile.uid, dataLayer);
+    } catch (err) {
+      // If we can't load the existing projection, we skip syncing for now
+      // to avoid potentially overwriting with incomplete data during network issues.
+      return null;
+    }
 
     // Skip write if the profile-derived fields haven't changed.
-    // This prevents the onSnapshot → syncFromProfile → setDoc feedback that
-    // fires 2+ unnecessary writes on every page load.
     if (existing) {
-      const namesMatch = JSON.stringify(existing.displayNames) === JSON.stringify(displayNames);
-      const gendersMatch = JSON.stringify(existing.agentGenders) === JSON.stringify(agentGenders);
-      if (namesMatch && gendersMatch) {
+      const existingNames = JSON.stringify(existing.displayNames || {});
+      const nextNames = JSON.stringify(displayNames || {});
+      const existingGenders = JSON.stringify(existing.agentGenders || {});
+      const nextGenders = JSON.stringify(agentGenders || {});
+      
+      if (existingNames === nextNames && existingGenders === nextGenders) {
         return existing;
       }
     }
@@ -338,6 +372,7 @@ export const GlobalProjectionService = {
       });
       next.lastSync = new Date().toISOString();
       next.crossFunctionalState = normalizeNSV(next.crossFunctionalState);
+      next.overallWellnessScore = computeOverallWellness(next.crossFunctionalState);
 
       try {
         await dataLayer.setDocument(COLLECTION, uid, next);

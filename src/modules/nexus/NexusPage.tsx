@@ -79,14 +79,14 @@ export default function NexusPage() {
   }, [isGuest, profile?.onboardingComplete, messages.length, profile?.preferredName, setMessages]);
 
   // Show the one-time vault setup nudge once the page has settled.
-  // Conditions: authenticated user, no vault yet, nudge not previously dismissed.
+  // Conditions: authenticated user, no vault yet, nudge not previously dismissed, ONBOARDING COMPLETE.
   useEffect(() => {
-    if (!isGuest && !hasVault && !vaultSetupNudgeSeen && !vaultLoading) {
+    if (!isGuest && !hasVault && !vaultSetupNudgeSeen && !vaultLoading && profile?.onboardingComplete) {
       // Small delay so it doesn't interrupt page load
       const timer = setTimeout(() => setShowNudge(true), 1200);
       return () => clearTimeout(timer);
     }
-  }, [isGuest, hasVault, vaultSetupNudgeSeen, vaultLoading]);
+  }, [isGuest, hasVault, vaultSetupNudgeSeen, vaultLoading, profile?.onboardingComplete]);
 
   if (isGuest) {
     return (
@@ -143,16 +143,11 @@ export default function NexusPage() {
       {onboardingError && (
         <div
           data-testid="onboarding-error"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-500/20 border border-red-500/40 text-red-300 text-sm px-4 py-3 rounded-xl backdrop-blur-sm whitespace-nowrap"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[var(--z-toast)] bg-red-500/20 border border-red-500/40 text-red-300 text-sm px-4 py-3 rounded-xl backdrop-blur-sm whitespace-nowrap"
         >
           {onboardingError}
         </div>
       )}
-      <AnimatePresence>
-        {showNudge && (
-          <VaultSetupNudge onClose={() => setShowNudge(false)} />
-        )}
-      </AnimatePresence>
     </ModuleLayout>
   );
 }

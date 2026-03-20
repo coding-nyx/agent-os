@@ -562,7 +562,7 @@ export function TitanOnboarding({
     <GuidedIntakeFrame
       title="Titan Guided Intake"
       subtitle="Calibrating a performance profile for safe routine generation."
-      statusLabel={state.privacyLevel ? (state.privacyLevel === 'complete' ? 'COMPLETE_DATA' : 'BASIC_DATA') : 'SELECT_PRIVACY'}
+      statusLabel=""
       steps={[...TRAINER_STEPS]}
       currentStep={stepIndex}
       themeColor="orange"
@@ -577,7 +577,7 @@ export function TitanOnboarding({
                 onClick={() => setState((prev) => ({ ...prev, privacyLevel: 'basic' }))}
                 className="p-5 h-auto flex-col items-start justify-start text-left group rounded-2xl border-white/10"
               >
-                <Shield className="w-6 h-6 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
+                <Shield className="w-6 h-6 text-[var(--module-color-400)] mb-3 group-hover:scale-110 transition-transform" />
                 <h3 className="text-sm font-black uppercase tracking-wider mb-2">Basic Data</h3>
                 <p className="text-xs text-white/50 leading-relaxed whitespace-normal font-normal">Non-intrusive intake. Skips intimate and gender-dependent questions.</p>
               </NeuralButton>
@@ -587,15 +587,15 @@ export function TitanOnboarding({
                 onClick={() => setState((prev) => ({ ...prev, privacyLevel: 'complete' }))}
                 className="p-5 h-auto flex-col items-start justify-start text-left group rounded-2xl border-white/10"
               >
-                <Sparkles className="w-6 h-6 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
+                <Sparkles className="w-6 h-6 text-[var(--module-color-400)] mb-3 group-hover:scale-110 transition-transform" />
                 <h3 className="text-sm font-black uppercase tracking-wider mb-2">Complete Data</h3>
                 <p className="text-xs text-white/50 leading-relaxed whitespace-normal font-normal">Full intake including biological and intimate factors for maximum optimization.</p>
               </NeuralButton>
             </div>
           </div>
         ) : (
-          <div className="p-4 md:p-6 flex flex-col gap-5 border-b border-orange-500/20 bg-orange-500/5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 flex items-center gap-2">
+          <div className="p-4 md:p-6 flex flex-col gap-5 border-b border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--module-color-400)] flex items-center gap-2">
               <Zap className="w-3 h-3" /> Fast Track Initialization
             </p>
 
@@ -609,7 +609,6 @@ export function TitanOnboarding({
                     type="button"
                     size="sm"
                     variant={fastGoal === chip.value ? 'primary' : 'secondary'}
-                    themeColor="orange"
                     onClick={() => setFastGoal(chip.value)}
                     className={cn(
                       'rounded-full h-8 px-4 text-xs font-bold transition-all',
@@ -632,7 +631,6 @@ export function TitanOnboarding({
                     type="button"
                     size="sm"
                     variant={fastExperience === chip.value ? 'primary' : 'secondary'}
-                    themeColor="orange"
                     onClick={() => setFastExperience(chip.value)}
                     className={cn(
                       'rounded-full h-8 px-4 text-xs font-bold transition-all flex items-center gap-1.5',
@@ -687,7 +685,6 @@ export function TitanOnboarding({
                     type="button"
                     size="sm"
                     variant={equipment.includes(chip.value) ? 'primary' : 'secondary'}
-                    themeColor="orange"
                     onClick={() => setEquipment(prev =>
                       prev.includes(chip.value)
                         ? prev.filter(e => e !== chip.value)
@@ -766,7 +763,6 @@ export function TitanOnboarding({
                 onClick={handleFastTrack}
                 disabled={!fastGoal || !fastExperience || isValidatingFastTrack}
                 loading={isValidatingFastTrack}
-                themeColor="orange"
                 className="px-6 h-10 text-xs font-bold uppercase tracking-widest whitespace-nowrap"
               >
                 <Sparkles className="w-3.5 h-3.5" />

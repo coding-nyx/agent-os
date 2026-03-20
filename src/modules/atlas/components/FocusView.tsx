@@ -238,7 +238,7 @@ export function FocusView({
 
           {/* Timer controls */}
           <div className="flex items-center gap-3">
-            <button
+            <NeuralButton
               onClick={toggleTimer}
               aria-label={
                 isTimerRunning
@@ -247,8 +247,10 @@ export function FocusView({
                     ? 'Restart timer'
                     : 'Start timer'
               }
+              variant="ghost"
+              themeColor="emerald"
               className={cn(
-                'flex items-center justify-center w-12 h-12 rounded-full border transition-all',
+                'flex items-center justify-center w-12 h-12 rounded-full border transition-all min-h-[44px]',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
                 isTimerRunning
                   ? 'border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
@@ -260,19 +262,20 @@ export function FocusView({
               ) : (
                 <Play className="w-5 h-5 ml-0.5" aria-hidden="true" />
               )}
-            </button>
+            </NeuralButton>
 
-            <button
+            <NeuralButton
               onClick={resetTimer}
               aria-label="Reset timer"
+              variant="ghost"
               className={cn(
-                'flex items-center justify-center w-10 h-10 rounded-full border border-white/10',
+                'flex items-center justify-center w-10 h-10 rounded-full border border-white/10 min-h-[44px]',
                 'text-white/30 hover:text-white/50 hover:bg-white/5 transition-all',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50'
               )}
             >
               <RotateCcw className="w-4 h-4" aria-hidden="true" />
-            </button>
+            </NeuralButton>
           </div>
 
           {/* Timer progress bar */}

@@ -18,7 +18,7 @@ interface TitanDashboardProps {
 function ReadinessHeader() {
   return (
     <div className="space-y-1 sm:space-y-1.5">
-      <div className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em] font-display text-orange-400">Performance Coach</div>
+      <div className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em] font-display text-[var(--module-color-400)]">Performance Coach</div>
       <h2 className="text-lg sm:text-xl md:text-2xl font-bold uppercase tracking-tight text-white font-display">Today&apos;s Readiness</h2>
       <p className="text-[11px] sm:text-xs text-white/40 max-w-xl leading-relaxed">CNS-aware training surfaced from biometrics, recovery load, and recent sessions.</p>
     </div>
@@ -96,7 +96,7 @@ function ReadinessStats({ soul, hasSoul }: ReadinessStatsProps) {
         value={soul.crossFunctionalState.cnsFatigue * 10}
         suffix="%"
         isEmpty={false}
-        accentClassName="text-orange-400"
+        accentClassName="text-[var(--module-color-400)]"
       />
     </div>
   );
@@ -112,7 +112,7 @@ function useTitanMetrics(soul: GlobalProjection | null) {
       value: typeof soul?.crossFunctionalState.cnsFatigue === 'number' ? soul.crossFunctionalState.cnsFatigue : null,
       max: 10,
       icon: Zap,
-      colorClass: 'text-orange-400',
+      colorClass: 'text-[var(--module-color-400)]',
       isEmpty: !hasSoul,
       metricKey: 'biological.cnsFatigue',
       lastUpdated: lastUpdated['biological.cnsFatigue'],
@@ -134,7 +134,7 @@ function useTitanMetrics(soul: GlobalProjection | null) {
       value: typeof soul?.crossFunctionalState.sleepQuality === 'number' ? soul.crossFunctionalState.sleepQuality : null,
       max: 10,
       icon: Wind,
-      colorClass: 'text-orange-400',
+      colorClass: 'text-[var(--module-color-400)]',
       isEmpty: !hasSoul,
       metricKey: 'biological.sleepQuality',
       lastUpdated: lastUpdated['biological.sleepQuality'],

@@ -272,18 +272,13 @@ describe('parseAtlasEntry edge cases', () => {
    * Fix: match all candidate date tokens and pick the one with the earliest index
    * in the raw input string (leftmost-match-wins semantics).
    */
-  it('PARSER BUG: "today...tomorrow" should match "today" (leftmost wins), but currently matches "tomorrow"', () => {
+  it('"today...tomorrow" matches "today" (leftmost wins)', () => {
     const result = parseAtlasEntry('do thing today and also tomorrow');
     const d = new Date();
     const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const tomorrowD = new Date();
-    tomorrowD.setDate(tomorrowD.getDate() + 1);
-    const tomorrowStr = `${tomorrowD.getFullYear()}-${String(tomorrowD.getMonth() + 1).padStart(2, '0')}-${String(tomorrowD.getDate()).padStart(2, '0')}`;
 
-    // Document current (buggy) behavior: "tomorrow" wins because it's higher in DATE_RULES
-    expect(result.dueDate).toBe(tomorrowStr); // This PASSES — documents the bug
-    // After fix: expect(result.dueDate).toBe(todayStr); // "today" appears first in input
-    expect(result.dueDate).not.toBe(todayStr); // Confirms the bug is present
+    // "today" appears before "tomorrow" in the input, so leftmost-wins returns today's date.
+    expect(result.dueDate).toBe(todayStr);
   });
 
   it('high priority extracted from single exclamation mark', () => {

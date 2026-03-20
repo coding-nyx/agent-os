@@ -173,7 +173,7 @@ export function GoalVelocityChart({ tasks }: GoalVelocityChartProps) {
     <div className="bg-white/5 border border-white/10 rounded-xl p-4">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
-        <TrendingUp className="w-4 h-4 text-sky-400" aria-hidden="true" />
+        <TrendingUp className="w-4 h-4 text-[var(--module-color-400)]" aria-hidden="true" />
         <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em]">
           Goal Velocity
         </h4>

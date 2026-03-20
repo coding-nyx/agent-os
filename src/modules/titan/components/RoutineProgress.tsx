@@ -66,7 +66,7 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
         label="Training Progress"
         title="Routine Analytics"
         subtitle="Volume tracking and session performance"
-        accentClassName="text-orange-400"
+        accentClassName="text-[var(--module-color-400)]"
       />
 
       {/* Key metrics */}
@@ -124,7 +124,7 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
         <SurfaceCard className="p-6">
           <div className="mb-4">
             <h3 className="text-sm font-black uppercase tracking-wide text-white/90 mb-1 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-orange-400" />
+              <TrendingUp className="w-4 h-4 text-[var(--module-color-400)]" />
               Session Volume Trend
             </h3>
             <p className="text-xs text-white/50">Total weight lifted per session (kg)</p>
@@ -175,7 +175,7 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
                     <span className={cn(
                       'px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider',
                       session.status === 'completed' ? 'bg-emerald-500/10 text-emerald-300' :
-                      session.status === 'partial' ? 'bg-amber-500/10 text-amber-300' :
+                      session.status === 'partial' ? 'bg-[var(--module-accent-muted)] text-[var(--module-color-300)]' :
                       'bg-white/5 text-white/30'
                     )}>
                       {session.status}
@@ -202,7 +202,7 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
                   <div className="shrink-0 ml-4 text-right">
                     <div className={cn(
                       'text-sm font-black tabular-nums',
-                      session.rpe >= 9 ? 'text-rose-400' : session.rpe >= 7 ? 'text-orange-400' : 'text-green-400'
+                      session.rpe >= 9 ? 'text-rose-400' : session.rpe >= 7 ? 'text-[var(--module-color-400)]' : 'text-green-400'
                     )}>
                       {session.rpe}
                     </div>

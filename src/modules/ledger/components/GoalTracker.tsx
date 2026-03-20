@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Target, TrendingUp, Plus, Edit2, Trash2, PartyPopper, Lightbulb } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -247,10 +248,10 @@ export function GoalTracker({
   return (
     <div className="space-y-6">
       {/* Overview Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Active Goals</div>
-          <div className="mt-2 text-2xl font-black text-cyan-400">{stats.activeGoals}</div>
+          <div className="mt-2 text-2xl font-black text-[var(--module-color-400)]">{stats.activeGoals}</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Achieved</div>
@@ -271,12 +272,12 @@ export function GoalTracker({
         <div className="flex gap-2">
           <NeuralButton
             variant="secondary"
-            themeColor={!showAchieved ? 'cyan' : undefined}
+            themeColor={!showAchieved ? 'module' : undefined}
             onClick={() => setShowAchieved(false)}
             className={cn(
-              "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors h-auto min-h-0",
+              "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors h-auto min-h-[44px]",
               !showAchieved 
-                ? "bg-cyan-600 text-white" 
+                ? "bg-[var(--module-accent)] text-white" 
                 : "bg-white/5 text-white/60 hover:bg-white/10"
             )}
           >
@@ -287,7 +288,7 @@ export function GoalTracker({
             themeColor={showAchieved ? 'emerald' : undefined}
             onClick={() => setShowAchieved(true)}
             className={cn(
-              "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors h-auto min-h-0",
+              "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors h-auto min-h-[44px]",
               showAchieved 
                 ? "bg-emerald-600 text-white" 
                 : "bg-white/5 text-white/60 hover:bg-white/10"
@@ -314,11 +315,10 @@ export function GoalTracker({
             variant="primary"
             size="sm"
             disabled={disabled}
-            className="bg-cyan-600 hover:bg-cyan-500"
+            className="bg-[var(--module-accent)] hover:bg-[var(--module-accent)]"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add Goal
-          </NeuralButton>
+            Add Goal</NeuralButton>
         </div>
       </div>
 
@@ -335,8 +335,8 @@ export function GoalTracker({
           />
         </SurfaceCard>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {sortedGoals.map((goal) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sortedGoals.map((goal, index) => {
             const progress = (goal.currentAmount / goal.targetAmount) * 100;
             const isAchieved = goal.currentAmount >= goal.targetAmount;
             const goalType = GOAL_TYPES.find(t => t.value === goal.type);
@@ -364,7 +364,13 @@ export function GoalTracker({
                       <span className="text-lg">{goalType?.icon}</span>
                       <h3 className="text-sm font-bold text-white">{goal.name}</h3>
                       {isAchieved && (
-                        <PartyPopper className="w-4 h-4 text-emerald-400" />
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: 'spring', damping: 15, stiffness: 280 }}
+                        >
+                          <PartyPopper className="w-4 h-4 text-emerald-400" />
+                        </motion.div>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -384,7 +390,8 @@ export function GoalTracker({
                       variant="ghost"
                       onClick={() => handleOpenEditModal(goal)}
                       disabled={disabled}
-                      className="p-1.5 h-auto min-h-0 text-white/60 hover:text-white"
+                      className="p-1.5 h-auto min-h-[44px] text-white/60 hover:text-white"
+                      aria-label={`Edit ${goal.name}`}
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </NeuralButton>
@@ -392,7 +399,8 @@ export function GoalTracker({
                       variant="ghost"
                       onClick={() => onDeleteGoal(goal.id)}
                       disabled={disabled}
-                      className="p-1.5 h-auto min-h-0 text-white/60 hover:text-red-400"
+                      className="p-1.5 h-auto min-h-[44px] text-white/60 hover:text-red-400"
+                      aria-label={`Delete ${goal.name}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </NeuralButton>
@@ -411,7 +419,7 @@ export function GoalTracker({
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-black text-cyan-400">
+                      <div className="text-lg font-black text-[var(--module-color-400)]">
                         {formatNumber(progress, 0, 0)}%
                       </div>
                       {!isAchieved && monthsToComplete !== null && (
@@ -426,7 +434,7 @@ export function GoalTracker({
                     label=""
                     value={goal.currentAmount}
                     max={goal.targetAmount}
-                    accentClassName={isAchieved ? "bg-emerald-500" : "bg-cyan-500"}
+                    accentClassName={isAchieved ? "bg-emerald-500" : "bg-[var(--module-accent)]"}
                     className="mb-0"
                   />
 
@@ -440,7 +448,7 @@ export function GoalTracker({
                     {goal.monthlyContribution > 0 && !isAchieved && (
                       <div>
                         <span className="text-white/50">Monthly: </span>
-                        <span className="text-cyan-400 font-mono">
+                        <span className="text-[var(--module-color-400)] font-mono">
                           {formatCurrency(goal.monthlyContribution, currency)}
                         </span>
                       </div>
@@ -497,21 +505,20 @@ export function GoalTracker({
           setFormData({});
         }}
         title={editingGoal ? 'Edit Goal' : 'Add Financial Goal'}
-        themeColor="cyan"
+        themeColor="module"
         maxWidth="2xl"
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="col-span-1 sm:col-span-2">
               <label className="block text-xs font-bold text-white/70 mb-2 uppercase tracking-wider">
                 Goal Name
               </label>
-              <input
+              <NeuralInput
                 type="text"
                 value={formData.name || ''}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g., Emergency Fund, Pay off Credit Card"
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-500/50"
               />
             </div>
 
@@ -526,7 +533,7 @@ export function GoalTracker({
                   value: type.value,
                   label: `${type.icon} ${type.label}`
                 }))}
-                triggerClassName="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-cyan-500/50"
+                triggerClassName="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[var(--module-accent-border)]"
                 minWidthClassName=""
                 ariaLabel="Goal type"
               />
@@ -544,7 +551,7 @@ export function GoalTracker({
                   { value: 'medium', label: 'Medium' },
                   { value: 'high', label: 'High' },
                 ]}
-                triggerClassName="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-cyan-500/50"
+                triggerClassName="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[var(--module-accent-border)]"
                 minWidthClassName=""
                 ariaLabel="Priority"
               />
@@ -558,14 +565,14 @@ export function GoalTracker({
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
                   {currency}
                 </span>
-                <input
+                <NeuralInput
                   type="number"
                   value={formData.targetAmount || ''}
-                  onChange={(e) => setFormData({ ...formData, targetAmount: parseFloat(e.target.value) })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, targetAmount: parseFloat(e.target.value) })}
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  className="w-full pl-14 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-500/50"
+                  className="pl-14"
                 />
               </div>
             </div>
@@ -578,14 +585,14 @@ export function GoalTracker({
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
                   {currency}
                 </span>
-                <input
+                <NeuralInput
                   type="number"
                   value={formData.currentAmount || ''}
-                  onChange={(e) => setFormData({ ...formData, currentAmount: parseFloat(e.target.value) })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, currentAmount: parseFloat(e.target.value) })}
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  className="w-full pl-14 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-500/50"
+                  className="pl-14"
                 />
               </div>
             </div>
@@ -598,14 +605,14 @@ export function GoalTracker({
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
                   {currency}
                 </span>
-                <input
+                <NeuralInput
                   type="number"
                   value={formData.monthlyContribution || ''}
-                  onChange={(e) => setFormData({ ...formData, monthlyContribution: parseFloat(e.target.value) })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, monthlyContribution: parseFloat(e.target.value) })}
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  className="w-full pl-14 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-500/50"
+                  className="pl-14"
                 />
               </div>
             </div>
@@ -614,24 +621,22 @@ export function GoalTracker({
               <label className="block text-xs font-bold text-white/70 mb-2 uppercase tracking-wider">
                 Target Date (Optional)
               </label>
-              <input
+              <NeuralInput
                 type="date"
                 value={formData.targetDate || ''}
-                onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-cyan-500/50"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, targetDate: e.target.value })}
               />
             </div>
 
-            <div className="col-span-2">
+            <div className="col-span-1 sm:col-span-2">
               <label className="block text-xs font-bold text-white/70 mb-2 uppercase tracking-wider">
                 Notes (Optional)
               </label>
-              <textarea
+              <NeuralTextarea
                 value={formData.notes || ''}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Add any additional notes about this goal..."
                 rows={3}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-500/50 resize-none"
               />
             </div>
           </div>
@@ -641,7 +646,7 @@ export function GoalTracker({
               onClick={handleSubmit}
               variant="primary"
               disabled={!formData.name || !formData.targetAmount || formData.targetAmount <= 0 || disabled}
-              className="flex-1 bg-cyan-600 hover:bg-cyan-500"
+              className="flex-1 bg-[var(--module-accent)] hover:bg-[var(--module-accent)]"
             >
               {editingGoal ? 'Update Goal' : 'Create Goal'}
             </NeuralButton>

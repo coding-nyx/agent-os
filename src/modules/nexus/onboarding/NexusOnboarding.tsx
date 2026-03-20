@@ -219,9 +219,9 @@ export function NexusOnboarding({ profile, isSubmitting, onComplete }: NexusOnbo
 
   return (
     <GuidedIntakeFrame
-      title="Nexus Interactive Intake"
+      title="Nexus Onboarding"
       subtitle="Configure your core identity and Nexus only. Other bots onboard independently."
-      statusLabel="NYX_ONBOARDING"
+      statusLabel=""
       steps={ORCHESTRATOR_STEPS}
       currentStep={intake.stepIndex}
       themeColor="indigo"
@@ -231,7 +231,7 @@ export function NexusOnboarding({ profile, isSubmitting, onComplete }: NexusOnbo
             <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
               <Zap className="w-3 h-3" /> Fast Track Initialization
             </p>
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
               <div className="flex-1 min-w-0">
                 <NeuralInput
                   placeholder="Preferred Name"
@@ -239,7 +239,7 @@ export function NexusOnboarding({ profile, isSubmitting, onComplete }: NexusOnbo
                   onChange={e => setFastName(e.target.value)}
                 />
               </div>
-              <div className="flex-[1.5] min-w-0">
+              <div className="flex-1 sm:flex-[1.5] min-w-0">
                 <NeuralInput
                   placeholder="Pronouns (e.g., they/them)"
                   value={fastPronouns}
@@ -252,6 +252,7 @@ export function NexusOnboarding({ profile, isSubmitting, onComplete }: NexusOnbo
                 onClick={handleFastTrack}
                 disabled={!fastName.trim() || !fastPronouns.trim()}
                 loading={isSubmitting}
+                className="w-full sm:w-auto"
               >
                 Execute
               </NeuralButton>

@@ -77,7 +77,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(#fff 0.6px, transparent 0.6px)', backgroundSize: '28px 28px' }} />
       </div>
 
-      <header className="relative z-20 mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
+      <header className="relative z-[var(--z-content)] mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
         <div>
           <h1 className="font-display text-xl sm:text-2xl font-bold text-white/95 tracking-wide">NEXUS</h1>
           <p className="text-[10px] sm:text-[11px] text-violet-300/80 uppercase tracking-[0.12em] font-medium">Neural Interface v3.0</p>
@@ -88,7 +88,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main className="relative z-10 px-4 sm:px-6 pb-12 sm:pb-20">
+      <main className="relative z-[var(--z-content)] px-4 sm:px-6 pb-12 sm:pb-20">
         <section className="max-w-5xl mx-auto text-center pt-8 sm:pt-12 md:pt-20">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
             <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs uppercase tracking-[0.1em] sm:tracking-[0.15em] text-violet-200 mb-6 sm:mb-8">
@@ -153,7 +153,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-white/10 py-5 sm:py-8 text-center text-[10px] sm:text-[11px] tracking-[0.1em] sm:tracking-[0.15em] uppercase text-white/30 font-medium">
+      <footer className="relative z-[var(--z-content)] border-t border-white/10 py-5 sm:py-8 text-center text-[10px] sm:text-[11px] tracking-[0.1em] sm:tracking-[0.15em] uppercase text-white/30 font-medium">
         © 2026 Nexus Neural Interface
       </footer>
 

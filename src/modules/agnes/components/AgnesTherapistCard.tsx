@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Heart, Star, Settings } from 'lucide-react';
+import { Sparkles, Heart, Settings } from 'lucide-react';
 import { BaseContext } from '../types';
 import { cn } from '@/lib/utils';
 

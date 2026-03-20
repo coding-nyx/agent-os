@@ -134,7 +134,7 @@ export function SecurityPanel() {
         </div>
 
         {/* Simplified vault info row */}
-        <div className="flex items-center gap-4 p-3 rounded-2xl bg-black/30 border border-white/5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-3 rounded-2xl bg-black/30 border border-white/5">
           <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
             Encryption
           </span>

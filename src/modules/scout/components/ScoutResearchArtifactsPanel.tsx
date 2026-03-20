@@ -55,10 +55,10 @@ export function ScoutResearchArtifactsPanel({
               {sessionNodes.map((node) => (
                 <article
                   key={node.id}
-                  className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 transition-colors hover:border-lime-500/20"
+                  className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 transition-colors hover:border-[var(--module-accent-border)]"
                 >
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <div className="h-2 w-2 rounded-full bg-lime-400 shadow-[0_0_12px_rgba(163,230,53,0.55)]" />
+                    <div className="h-2 w-2 rounded-full bg-[var(--module-color-400)] shadow-[0_0_12px_var(--module-accent-glow)]" />
                     <span className="text-[11px] font-medium text-white/35">
                       {Math.round(node.confidence * 100)}% confidence
                     </span>
@@ -101,8 +101,8 @@ export function ScoutResearchArtifactsPanel({
         </section>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-lime-500/12 bg-gradient-to-br from-lime-500/10 to-emerald-500/5 p-4">
-        <p className="text-chip-soft text-lime-300">Scout awareness</p>
+      <div className="mt-4 rounded-2xl border border-[var(--module-accent-border)] bg-gradient-to-br from-[var(--module-accent-muted)] to-emerald-500/5 p-4">
+        <p className="text-chip-soft text-[var(--module-color-300)]">Scout awareness</p>
         <p className="mt-2 text-[12px] leading-relaxed text-white/65">
           Scout keeps this session&apos;s evidence and synthesized claims reachable without forcing them to stay docked.
         </p>

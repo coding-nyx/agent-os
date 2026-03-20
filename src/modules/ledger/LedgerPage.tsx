@@ -12,8 +12,9 @@ import { GoalTracker } from './components/GoalTracker';
 import { DebtStrategist } from './components/DebtStrategist';
 import { FieldsTab } from './components/FieldsTab';
 import { LedgerOnboarding } from './onboarding/LedgerOnboarding';
-import { ImageCaptureModal } from '@/core/components/ImageCaptureModal';
+import { UniversalUploadZone } from '@/core/components/forms/UniversalUploadZone';
 import { NeuralModal } from '@/core/components/NeuralModal';
+import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 
@@ -250,12 +251,17 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
 
   const handleDocReviewCommit = useCallback(async () => {
     if (!visionReviewData) return;
-    const sanitized = JSON.stringify(visionReviewData).replace(/<action/gi, '[action');
+    
+    // We already use ai.analyzeImageJSON which returns a clean object.
+    // We now send it back to the agent to trigger the 'analyze_financial_document' action handler,
+    // which handles the merging logic (including preserving debtItems) correctly.
+    const sanitized = JSON.stringify(visionReviewData);
     const prompt = [
       'Financial document analysis completed. Review the extracted data:',
       sanitized,
-      'User has confirmed this data. Now emit: <action type="analyze_financial_document">...(include the extracted data)</action>'
+      'User has confirmed this data. Please execute the analyze_financial_document action now to update my profile.'
     ].join('\n\n');
+    
     ai.handleSendMessage(prompt);
     setIsReviewModalOpen(false);
     setVisionReviewData(null);
@@ -658,16 +664,24 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
         )
       }
     >
-      <ImageCaptureModal
+      <NeuralModal
         isOpen={isCaptureModalOpen}
         onClose={() => setIsCaptureModalOpen(false)}
-        onCapture={handleDocumentCapture}
-        isAnalyzing={isVisionAnalyzing}
-        themeColor="indigo"
-        title="Capture Financial Statement"
-        acceptedTypes="image/jpeg,image/png"
-        maxFileSizeMb={10}
-      />
+        title="Extract Financial Data"
+        themeColor="cyan"
+        maxWidth="lg"
+      >
+        <div className="p-2">
+          <UniversalUploadZone
+            onFileSelected={handleDocumentFile}
+            onCameraCapture={handleDocumentCapture}
+            phase={isVisionAnalyzing ? 'processing' : 'idle'}
+            themeColor="cyan"
+            label="Statement or Receipt"
+            description="Upload for structured extraction"
+          />
+        </div>
+      </NeuralModal>
 
       <NeuralModal
         isOpen={isReviewModalOpen}
@@ -815,7 +829,16 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
             </>
           )}
 
-          {activeTab === 'transactions' && profile && (
+          {activeTab !== 'overview' && isLocked && (
+            <div className="px-4 md:px-8 py-12">
+              <VaultLockedShell 
+                moduleName="Ledger" 
+                moduleDescription="Financial planning and stability tracking are protected by your secure vault."
+              />
+            </div>
+          )}
+
+          {activeTab === 'transactions' && profile && !isLocked && (
             <div className="px-4 md:px-8">
               <TransactionManager
                 transactions={transactions}
@@ -833,7 +856,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
             </div>
           )}
 
-          {activeTab === 'budget' && profile && (
+          {activeTab === 'budget' && profile && !isLocked && (
             <div className="px-4 md:px-8">
               <BudgetPlanner
                 categories={budgetWithActuals}
@@ -849,7 +872,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
             </div>
           )}
 
-          {activeTab === 'goals' && profile && (
+          {activeTab === 'goals' && profile && !isLocked && (
             <div className="px-4 md:px-8 space-y-8">
               <GoalTracker
                 goals={financialGoals}
@@ -874,7 +897,7 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
             </div>
           )}
 
-          {activeTab === 'fields' && profile && (
+          {activeTab === 'fields' && profile && !isLocked && (
             <div className="px-4 md:px-8">
               <FieldsTab
                 currency={profile.currency}
@@ -886,14 +909,14 @@ function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfil
             </div>
           )}
 
-          {activeTab === 'analytics' && profile && (
+          {activeTab === 'analytics' && profile && !isLocked && (
             <AnalyticsTab
               profile={profile}
               onAskAI={(question) => ai.handleSendMessage(question)}
             />
           )}
 
-          {activeTab === 'tax' && profile && (
+          {activeTab === 'tax' && profile && !isLocked && (
             <div className="px-4 md:px-8">
               <TaxTracker
                 profile={profile}

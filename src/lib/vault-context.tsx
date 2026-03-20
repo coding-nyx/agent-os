@@ -4,6 +4,8 @@ import { deriveKey, encryptWithKey, decryptWithKey, base64ToUint8Array } from '.
 import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
 import { syncAllGuestDataToUser } from './services/guest-sync-service';
 import { useDataLayer } from './data-layer/provider';
+import { CoreProfileService } from './services/core-profile-service';
+import { SoulTerminationService } from './services/soul-termination-service';
 
 export type VaultPersistenceMode = 'STRICT' | 'SESSION' | 'GRACE';
 
@@ -31,6 +33,8 @@ interface VaultContextType {
   dismissVaultSetupNudge: () => void;
   /** Placeholder — will be wired to UnifiedAuthModal VAULT_HANDSHAKE step */
   initializeVault: () => void;
+  /** Permanently deletes the vault and all associated keys. Irreversible data loss. */
+  destroyVault: () => Promise<void>;
 }
 
 const VaultContext = createContext<VaultContextType | null>(null);
@@ -59,7 +63,7 @@ export function __resetVaultRedirectorForTests() {
 }
 
 export function VaultProvider({ children }: { children: React.ReactNode }) {
-  const { user, profile, isGuest, loading: authLoading } = useAuth();
+  const { user, profile, isGuest, loading: authLoading, refreshProfile } = useAuth();
   const dataLayer = useDataLayer();
   const masterKeyRef = useRef<CryptoKey | null>(null);
   const sessionPasswordRef = useRef<string | null>(null);
@@ -324,6 +328,28 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isGuest, user]);
 
+  const destroyVault = useCallback(async () => {
+    if (!user) throw new Error("User must be logged in to destroy vault");
+    
+    // 1. Synchronously clear local state to prevent UI flashes
+    masterKeyRef.current = null;
+    setIsUnlocked(false);
+    setHasVault(false);
+    clearSessionPassword();
+
+    // 2. Purge all encrypted module data (and the vault record) to prevent decryption 
+    //    errors when a new vault/key is created.
+    //    This also triggers the onboardingComplete: false reset inside SoulTerminationService.
+    try {
+      await SoulTerminationService.purgeUserData(user.uid);
+    } catch (err) {
+      console.error('[Vault] Purge failed during destruction:', err);
+    }
+
+    // 3. Force a re-fetch of the profile so AppContent reacts immediately
+    await refreshProfile();
+  }, [user, refreshProfile, clearSessionPassword]);
+
   useEffect(() => {
     // Lock vault when user signs out
     if (!user && !authLoading) {
@@ -378,10 +404,12 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   }, [user?.uid, authLoading, dataLayer]);
 
   useEffect(() => {
-    if (isUnlocked && user && !isGuest && masterKeyRef.current) {
+    // Only sync guest data if the user is unlocked and NOT currently 
+    // undergoing a vault destruction/reset.
+    if (isUnlocked && user && !isGuest && masterKeyRef.current && hasVault) {
       void syncAllGuestDataToUser(user.uid, masterKeyRef.current);
     }
-  }, [isUnlocked, user?.uid, isGuest]);
+  }, [isUnlocked, user?.uid, isGuest, hasVault]);
 
   const computedIsLoading = useMemo(
     () => isLoading || authLoading || isHandshaking,
@@ -411,10 +439,11 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     vaultSetupNudgeSeen: nudgeSeen,
     dismissVaultSetupNudge,
     initializeVault,
+    destroyVault,
   }), [isUnlocked, computedIsLoading, isHandshaking, hasVault, persistenceMode,
       setPersistenceMode, refreshVaultStatus, unlockVault, lockVault, getModuleKey, getMasterKey,
       checkModuleVault, isModuleAccessible, setSessionPassword, getSessionPassword,
-      isVaultGateVisible, nudgeSeen, dismissVaultSetupNudge, initializeVault]);
+      isVaultGateVisible, nudgeSeen, dismissVaultSetupNudge, initializeVault, destroyVault]);
 
   return (
     <VaultContext.Provider value={contextValue}>
@@ -445,6 +474,7 @@ const VAULT_LOADING_FALLBACK: VaultContextType = {
   vaultSetupNudgeSeen: false,
   dismissVaultSetupNudge: () => {},
   initializeVault: () => {},
+  destroyVault: async () => {},
 };
 
 export function useVault() {

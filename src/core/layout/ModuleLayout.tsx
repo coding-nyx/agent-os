@@ -6,7 +6,7 @@ import { ModuleSwitcherPopover } from '@/core/components/ModuleSwitcherPopover';
 import { SyncTransition } from '@/core/components/SyncTransition';
 import { SystemCommandCenter } from '@/core/components/SystemCommandCenter';
 import { useVault } from '@/lib/vault-context';
-import { ModuleId } from '@/lib/module-manifest';
+import { ModuleId, type ModuleTheme } from '@/lib/module-manifest';
 import { UnifiedAuthModal } from '@/core/components/UnifiedAuthModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,156 @@ import { DataSyncToast } from '@/core/components/DataSyncToast';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
+
+/**
+ * CSS custom property palette per module theme.
+ * Applied on ModuleLayout root so descendants can use var(--module-*) everywhere.
+ * NeuralButton `themeColor="module"` resolves these automatically.
+ */
+const MODULE_THEME_VARIABLES: Record<ModuleTheme, Record<string, string>> = {
+  indigo: {
+    '--module-accent':        '#818cf8', // indigo-400
+    '--module-accent-text':   '#ffffff',
+    '--module-accent-hover':  '#6366f1', // indigo-500
+    '--module-accent-border': 'rgba(99,102,241,0.25)',
+    '--module-accent-ring':   '#818cf8',
+    '--module-accent-shadow': '0 0 0 0',
+    '--module-accent-muted':  'rgba(99,102,241,0.1)',
+    '--module-accent-glow':   'rgba(99,102,241,0.15)',
+    '--module-color-300':     '#a5b4fc',
+    '--module-color-400':     '#818cf8',
+    '--module-color-500':     '#6366f1',
+    '--module-color-600':     '#4f46e5',
+  },
+  orange: {
+    '--module-accent':        '#DC4B1E',
+    '--module-accent-text':   '#ffffff',
+    '--module-accent-hover':  '#FF5C2A',
+    '--module-accent-border': 'rgba(220,75,30,0.25)',
+    '--module-accent-ring':   'rgba(220,75,30,0.38)',
+    '--module-accent-shadow': '0 8px 24px rgba(220,75,30,0.32), inset 0 1px 0 rgba(255,255,255,0.18)',
+    '--module-accent-muted':  'rgba(220,75,30,0.10)',
+    '--module-accent-faint':  'rgba(220,75,30,0.05)',
+    '--module-accent-glow':   'rgba(220,75,30,0.15)',
+    '--module-color-300':     '#FFA882',
+    '--module-color-400':     '#FF7252',
+    '--module-color-500':     '#DC4B1E',
+    '--module-color-600':     '#B23510',
+  },
+  cyan: {
+    '--module-accent':        '#22d3ee', // cyan-400
+    '--module-accent-text':   '#ffffff',
+    '--module-accent-hover':  '#06b6d4', // cyan-500
+    '--module-accent-border': 'rgba(6,182,212,0.25)',
+    '--module-accent-ring':   '#22d3ee',
+    '--module-accent-shadow': '0 0 0 0',
+    '--module-accent-muted':  'rgba(6,182,212,0.1)',
+    '--module-accent-glow':   'rgba(6,182,212,0.15)',
+    '--module-color-300':     '#67e8f9',
+    '--module-color-400':     '#22d3ee',
+    '--module-color-500':     '#06b6d4',
+    '--module-color-600':     '#0891b2',
+  },
+  emerald: {
+    '--module-accent':        '#34d399', // emerald-400
+    '--module-accent-text':   '#ffffff',
+    '--module-accent-hover':  '#10b981', // emerald-500
+    '--module-accent-border': 'rgba(16,185,129,0.25)',
+    '--module-accent-ring':   '#34d399',
+    '--module-accent-shadow': '0 0 0 0',
+    '--module-accent-muted':  'rgba(16,185,129,0.1)',
+    '--module-accent-glow':   'rgba(16,185,129,0.15)',
+    '--module-color-300':     '#6ee7b7',
+    '--module-color-400':     '#34d399',
+    '--module-color-500':     '#10b981',
+    '--module-color-600':     '#059669',
+  },
+  sky: {
+    '--module-accent':        '#38bdf8', // sky-400
+    '--module-accent-text':   '#ffffff',
+    '--module-accent-hover':  '#0ea5e9', // sky-500
+    '--module-accent-border': 'rgba(14,165,233,0.25)',
+    '--module-accent-ring':   '#38bdf8',
+    '--module-accent-shadow': '0 0 0 0',
+    '--module-accent-muted':  'rgba(14,165,233,0.1)',
+    '--module-accent-glow':   'rgba(14,165,233,0.15)',
+    '--module-color-300':     '#7dd3fc',
+    '--module-color-400':     '#38bdf8',
+    '--module-color-500':     '#0ea5e9',
+    '--module-color-600':     '#0284c7',
+  },
+  lime: {
+    '--module-accent':        '#a3e635',
+    '--module-accent-text':   '#000000',
+    '--module-accent-hover':  '#bef264',
+    '--module-accent-border': 'rgba(132,204,22,0.25)',
+    '--module-accent-ring':   'rgba(132,204,22,0.38)',
+    '--module-accent-shadow': '0 8px 24px rgba(132,204,22,0.28), inset 0 1px 0 rgba(255,255,255,0.20)',
+    '--module-accent-muted':  'rgba(132,204,22,0.10)',
+    '--module-accent-faint':  'rgba(132,204,22,0.05)',
+    '--module-accent-glow':   'rgba(132,204,22,0.15)',
+    '--module-color-300':     '#bef264',
+    '--module-color-400':     '#a3e635',
+    '--module-color-500':     '#84cc16',
+    '--module-color-600':     '#65a30d',
+  },
+  rose: {
+    '--module-accent':        '#fb7185', // rose-400
+    '--module-accent-text':   '#ffffff',
+    '--module-accent-hover':  '#f43f5e', // rose-500
+    '--module-accent-border': 'rgba(244,63,94,0.25)',
+    '--module-accent-ring':   '#fb7185',
+    '--module-accent-shadow': '0 0 0 0',
+    '--module-accent-muted':  'rgba(244,63,94,0.1)',
+    '--module-accent-glow':   'rgba(244,63,94,0.15)',
+    '--module-color-300':     '#fda4af',
+    '--module-color-400':     '#fb7185',
+    '--module-color-500':     '#f43f5e',
+    '--module-color-600':     '#e11d48',
+  },
+  fuchsia: {
+    '--module-accent':        '#e879f9', // fuchsia-400
+    '--module-accent-text':   '#ffffff',
+    '--module-accent-hover':  '#d946ef', // fuchsia-500
+    '--module-accent-border': 'rgba(217,70,239,0.25)',
+    '--module-accent-ring':   '#e879f9',
+    '--module-accent-shadow': '0 0 0 0',
+    '--module-accent-muted':  'rgba(217,70,239,0.1)',
+    '--module-accent-glow':   'rgba(217,70,239,0.15)',
+    '--module-color-300':     '#f0abfc',
+    '--module-color-400':     '#e879f9',
+    '--module-color-500':     '#d946ef',
+    '--module-color-600':     '#c026d3',
+  },
+  slate: {
+    '--module-accent':        '#94a3b8', // slate-400
+    '--module-accent-text':   '#ffffff',
+    '--module-accent-hover':  '#64748b', // slate-500
+    '--module-accent-border': 'rgba(100,116,139,0.25)',
+    '--module-accent-ring':   '#94a3b8',
+    '--module-accent-shadow': '0 0 0 0',
+    '--module-accent-muted':  'rgba(100,116,139,0.1)',
+    '--module-accent-glow':   'rgba(100,116,139,0.15)',
+    '--module-color-300':     '#cbd5e1',
+    '--module-color-400':     '#94a3b8',
+    '--module-color-500':     '#64748b',
+    '--module-color-600':     '#475569',
+  },
+  violet: {
+    '--module-accent':        '#a78bfa', // violet-400
+    '--module-accent-text':   '#ffffff',
+    '--module-accent-hover':  '#8b5cf6', // violet-500
+    '--module-accent-border': 'rgba(139,92,246,0.25)',
+    '--module-accent-ring':   '#a78bfa',
+    '--module-accent-shadow': '0 0 0 0',
+    '--module-accent-muted':  'rgba(139,92,246,0.1)',
+    '--module-accent-glow':   'rgba(139,92,246,0.15)',
+    '--module-color-300':     '#c4b5fd',
+    '--module-color-400':     '#a78bfa',
+    '--module-color-500':     '#8b5cf6',
+    '--module-color-600':     '#7c3aed',
+  },
+};
 
 interface ModuleLayoutProps {
   children: React.ReactNode;
@@ -81,28 +231,11 @@ function TelemetryTicker({ debugMode }: TelemetryTickerProps) {
     );
 }
 
+import { useNotifications } from '@/lib/notifications/NotificationContext';
+
 function NotificationBell() {
-    const { user, isGuest } = useAuth();
-    const dataLayer = useDataLayer();
     const navigate = useNavigate();
-    const [unreadCount, setUnreadCount] = useState(0);
-
-    useEffect(() => {
-        if (!user || isGuest) return;
-
-        const unsub = dataLayer.subscribeToQuery<{ read: boolean }>(
-            {
-                collection: `users/${user.uid}/notification_inbox`,
-                orderBy: [{ field: 'createdAt', direction: 'desc' }],
-                limit: 100,
-            },
-            (docs) => {
-                setUnreadCount(docs.filter((d) => !d.read).length);
-            },
-        );
-
-        return () => unsub?.();
-    }, [dataLayer, isGuest, user]);
+    const { unreadCount } = useNotifications();
 
     return (
         <button
@@ -179,6 +312,8 @@ export function ModuleLayout({
   };
 
   const theme = colors[themeColor];
+
+  const moduleThemeVars = MODULE_THEME_VARIABLES[themeColor];
   const isAccessible = moduleId ? isModuleAccessible(moduleId) : true;
   const isLocked = Boolean(moduleId && !isAccessible);
 
@@ -202,7 +337,10 @@ export function ModuleLayout({
   };
 
   return (
-    <div className="h-screen bg-[#010103] text-white flex flex-col font-sans relative selection:bg-white/10 overflow-hidden">
+    <div
+      className="h-[100dvh] bg-[#010103] text-white flex flex-col font-sans relative selection:bg-white/10 overflow-hidden"
+      style={moduleThemeVars as React.CSSProperties}
+    >
       <SyncTransition 
         isActive={isSyncing} 
         onComplete={finalizeExit} 
@@ -223,7 +361,7 @@ export function ModuleLayout({
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
-            className="sticky top-0 z-[var(--z-header)] border-b border-white/5 bg-black/50 backdrop-blur-2xl px-4 md:px-6 py-3 flex items-center justify-between gap-2"
+            className="sticky top-0 z-[var(--z-header)] border-b border-white/5 bg-black/50 backdrop-blur-2xl px-4 md:px-6 py-3 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] flex items-center justify-between gap-2"
           >
             {/* Left cluster: back + title */}
             <div className="flex items-center gap-2 md:gap-4 min-w-0">
@@ -231,7 +369,7 @@ export function ModuleLayout({
                 <button 
                   onClick={handleExit}
                   aria-label="Back to Hub"
-                  className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all group shrink-0"
+                  className="w-11 h-11 sm:w-9 sm:h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all group shrink-0"
                 >
                   <ArrowLeft className="w-4 h-4 text-white/40 group-hover:text-white" />
                 </button>
@@ -341,7 +479,7 @@ export function ModuleLayout({
                         {children}
                     </div>
                     {RenderMobileFooter && (
-                        <div className="lg:hidden shrink-0 border-t border-white/5 bg-black/40 backdrop-blur-2xl">
+                        <div className="lg:hidden shrink-0 border-t border-white/5 bg-black/40 backdrop-blur-2xl pb-[env(safe-area-inset-bottom,0px)]">
                             <RenderMobileFooter />
                         </div>
                     )}

@@ -88,7 +88,7 @@ export function ConfirmDialog({
                   <Dialog.Close asChild>
                     <button
                       type="button"
-                      className="absolute right-4 top-4 p-1.5 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
+                      className="absolute right-3 top-3 p-2.5 -m-1 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                       aria-label="Close"
                     >
                       <X className="w-4 h-4" />

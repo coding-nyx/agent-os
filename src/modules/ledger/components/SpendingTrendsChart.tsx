@@ -112,7 +112,7 @@ export function SpendingTrendsChart({
           </h3>
           <p className="text-[10px] text-white/50 mt-1">Last 6 months</p>
         </div>
-        <BarChart2 className="w-5 h-5 text-cyan-400" />
+        <BarChart2 className="w-5 h-5 text-[var(--module-color-400)]" />
       </div>
 
       {/* Body */}

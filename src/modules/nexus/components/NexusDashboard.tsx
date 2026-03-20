@@ -239,37 +239,22 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
     <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Daily Brief — above chat, collapsible, constrained on mobile */}
       <div className="shrink-0 px-4 pt-3 pb-2 space-y-3 max-h-[40vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
-        {isMobile && (
-          <NeuralButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setBriefCollapsed((v) => !v)}
-            className="w-full px-3 py-2 text-left text-[10px] font-bold uppercase tracking-[0.16em] text-white/55 h-auto rounded-xl"
-          >
-            {briefCollapsed ? 'Show Brief' : 'Hide Brief'}
-          </NeuralButton>
-        )}
-        {(!isMobile || !briefCollapsed) && (
-          <>
-            <NexusErrorBoundary name="DailyBrief">
-              <DailyBriefSection
-                collapsed={briefCollapsed}
-                onToggleCollapse={() => setBriefCollapsed(!briefCollapsed)}
-                onAskAboutDomain={handleAskAboutDomain}
-              />
-            </NexusErrorBoundary>
+        <NexusErrorBoundary name="DailyBrief">
+          <DailyBriefSection
+            collapsed={briefCollapsed}
+            onToggleCollapse={() => setBriefCollapsed(!briefCollapsed)}
+            onAskAboutDomain={handleAskAboutDomain}
+          />
+        </NexusErrorBoundary>
 
-            {/* Synthesis Panel — below brief, above chat */}
-            <NexusErrorBoundary name="SynthesisPanel">
-              <SynthesisPanel
-                onInjectChat={handleInjectChat}
-                onConsultModule={handleConsultModule}
-                onNavigate={(path) => navigate(path)}
-              />
-            </NexusErrorBoundary>
-
-          </>
+        {!briefCollapsed && (
+          <NexusErrorBoundary name="SynthesisPanel">
+            <SynthesisPanel
+              onInjectChat={handleInjectChat}
+              onConsultModule={handleConsultModule}
+              onNavigate={(path) => navigate(path)}
+            />
+          </NexusErrorBoundary>
         )}
       </div>
 
@@ -291,7 +276,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
         </NexusErrorBoundary>
 
         {/* ⌘K discoverability hint */}
-        <div className="absolute top-2 right-3 z-10 pointer-events-none hidden sm:block">
+        <div className="absolute top-2 right-3 z-[var(--z-content)] pointer-events-none hidden sm:block">
           <kbd className="text-[10px] font-mono text-white/20 bg-white/5 px-1.5 py-0.5 rounded border border-white/10 select-none">
             ⌘K
           </kbd>

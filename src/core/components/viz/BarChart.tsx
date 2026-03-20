@@ -21,7 +21,7 @@ interface BarChartProps {
 const COLOR_CONFIGS = {
   indigo: { base: 'rgba(99, 102, 241, 0.7)', hover: 'rgba(99, 102, 241, 0.9)', glow: 'rgba(99, 102, 241, 0.3)' },
   purple: { base: 'rgba(139, 92, 246, 0.7)', hover: 'rgba(139, 92, 246, 0.9)', glow: 'rgba(139, 92, 246, 0.3)' },
-  orange: { base: 'rgba(251, 146, 60, 0.7)', hover: 'rgba(251, 146, 60, 0.9)', glow: 'rgba(251, 146, 60, 0.3)' },
+  orange: { base: 'rgba(220, 75, 30, 0.7)', hover: 'rgba(220, 75, 30, 0.9)', glow: 'rgba(220, 75, 30, 0.3)' },
   amber: { base: 'rgba(245, 158, 11, 0.7)', hover: 'rgba(245, 158, 11, 0.9)', glow: 'rgba(245, 158, 11, 0.3)' },
   cyan: { base: 'rgba(6, 182, 212, 0.7)', hover: 'rgba(6, 182, 212, 0.9)', glow: 'rgba(6, 182, 212, 0.3)' },
   teal: { base: 'rgba(20, 184, 166, 0.7)', hover: 'rgba(20, 184, 166, 0.9)', glow: 'rgba(20, 184, 166, 0.3)' },

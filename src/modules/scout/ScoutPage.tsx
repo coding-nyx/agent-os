@@ -6,11 +6,12 @@ import { useAI } from '@/llm-engine/ai-context';
 import type { MessageContent } from '@/lib/types';
 import { getScoutSystemPrompt } from './personas';
 import { ScoutDashboard } from './components/ScoutDashboard';
-import { ScoutUploadZone } from './components/ScoutUploadZone';
+import { UniversalUploadZone } from '@/core/components/forms/UniversalUploadZone';
 import {
   buildDocumentAnalysisPrompt,
 } from './services/scout-document-service';
 import type { DocumentParseResult } from './services/scout-document-service';
+import { parseDocument } from './services/scout-document-service';
 import {
   type ScoutProfile,
   loadScoutProfile,
@@ -59,6 +60,7 @@ import { scoutDocumentPolicy, type ScoutDocumentProposal } from './services/scou
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NewSessionDialog } from './components/NewSessionDialog';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { prepareDocumentChatPrompt } from '@/lib/services/document-chat-handoff-service';
 import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
@@ -290,13 +292,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   }, [encryptionKey, addSourceFn, deepResearch, user?.uid, activeSessionId]);
 
   useEffect(() => {
-    const unsubDeepResearch = Spine.subscribe('DEEP_RESEARCH_STARTED' as any, (event) => {
+    const unsubDeepResearch = Spine.subscribe('DEEP_RESEARCH_STARTED', (event) => {
       const query = (event.data?.query as string) ?? '';
       setDeepResearchInitialQuery(query);
       setDeepResearchOpen(true);
     });
 
-    const unsubExport = Spine.subscribe('EXPORT_REQUESTED' as any, (event) => {
+    const unsubExport = Spine.subscribe('EXPORT_REQUESTED', (event) => {
       const exportType = event.data?.exportType as string;
       const s = sourcesRef.current;
       const d = digestsRef.current;
@@ -315,11 +317,11 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       }
     });
 
-    const unsubDigest = Spine.subscribe('DIGEST_GENERATION_STARTED' as any, () => {
+    const unsubDigest = Spine.subscribe('DIGEST_GENERATION_STARTED', () => {
       setSelectedView('briefings');
     });
 
-    const unsubSession = Spine.subscribe('SESSION_STARTED' as any, (event) => {
+    const unsubSession = Spine.subscribe('SESSION_STARTED', (event) => {
       if (typeof event.data?.sessionId === 'string') {
         setActiveSessionId(event.data.sessionId);
         setSelectedView('research');
@@ -674,6 +676,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
             onDeleteSession={deleteSessionFn}
             onRefreshNews={onRefreshNews}
             isRefreshingNews={isRefreshingNews}
+            onStartSession={handleStartSession}
           />
         );
     }
@@ -701,7 +704,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               label="Intelligence domain"
               title="Scout protocol"
               subtitle="Research, evidence review, and synthesis with explicit workspace, session, and overlay ownership."
-              accentClassName="text-lime-400"
+              accentClassName="text-[var(--module-color-400)]"
               action={
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   {!shellState.isSessionRailDocked && (
@@ -739,7 +742,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               </div>
             )}
 
-            <div className="mt-4">
+            <div className="mt-4 hidden lg:block">
               <NeuralTabGroup
                 tabs={tabs}
                 activeTab={selectedView}
@@ -757,7 +760,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
             </aside>
           )}
 
-          <main className="min-w-0 pb-[calc(var(--space-8)+env(safe-area-inset-bottom,0px))] lg:flex-1">
+          <main className="min-w-0 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-[calc(var(--space-8)+env(safe-area-inset-bottom,0px))] lg:flex-1">
             {pageContent}
           </main>
         </div>
@@ -788,7 +791,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               >
                 <div className="flex items-center justify-between border-b border-white/8 px-4 py-4 sm:px-5">
                   <div>
-                    <p className="text-chip-soft text-lime-300">Scout sessions</p>
+                    <p className="text-chip-soft text-[var(--module-color-300)]">Scout sessions</p>
                     <h3 className="mt-1 text-panel-heading text-white">Switch inquiries</h3>
                   </div>
                   <NeuralButton
@@ -833,7 +836,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               >
                 <div className="flex items-center justify-between border-b border-white/8 px-4 py-4 sm:px-5">
                   <div>
-                    <p className="text-chip-soft text-lime-300">Session artifacts</p>
+                    <p className="text-chip-soft text-[var(--module-color-300)]">Session artifacts</p>
                     <h3 className="mt-1 text-panel-heading text-white">{activeSession.topic}</h3>
                   </div>
                   <NeuralButton
@@ -942,7 +945,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               >
                 <div className="mb-6 flex items-center justify-between">
                   <div>
-                    <h2 className="text-sm font-black uppercase tracking-widest text-lime-300">Evidence Vault</h2>
+                    <h2 className="text-sm font-black uppercase tracking-widest text-[var(--module-color-300)]">Evidence Vault</h2>
                     <p className="mt-1 text-xs text-white/40">Extract research evidence from documents</p>
                   </div>
                   <NeuralButton
@@ -954,9 +957,14 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                     <X size={18} />
                   </NeuralButton>
                 </div>
-                <ScoutUploadZone
-                  onSubmit={handleUploadSubmit}
-                  onCancel={() => setShowUploadZone(false)}
+                <UniversalUploadZone
+                  onFileSelected={async (file: File) => {
+                    const result = await parseDocument(file);
+                    await handleUploadSubmit(result);
+                  }}
+                  themeColor="cyan"
+                  label="Evidence Source"
+                  description="Upload for research analysis"
                 />
               </motion.div>
             </motion.div>
@@ -967,6 +975,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           isOpen={isNewSessionDialogOpen}
           onClose={() => setIsNewSessionDialogOpen(false)}
           onSubmit={handleNewSessionSubmit}
+        />
+
+        <MobileBottomNav
+          activeView={selectedView}
+          onViewChange={handleViewChange}
+          onNewSession={handleStartSession}
+          hasActiveSession={!!activeSession}
         />
       </div>
     </SingleAgentLayout>
@@ -1029,12 +1044,13 @@ export default function ScoutPage() {
           onComplete={props.onComplete}
         />
       )}
-      renderContent={({ encryptionKey }) => (
+      renderContent={({ encryptionKey, onActionParsed }) => (
         <ScoutContent
           profile={activeProfile}
           encryptionKey={encryptionKey}
           isRefreshingNews={isRefreshingNews}
           onRefreshNews={() => handleRefreshNews(activeProfile, encryptionKey)}
+          onActionParsed={onActionParsed}
         />
       )}
     />

@@ -43,7 +43,7 @@ function RankBadge({ rank }: { rank: number }) {
   return (
     <span
       aria-label={`Rank ${rank}`}
-      className="text-[13px] leading-none text-sky-400 font-bold select-none shrink-0"
+      className="text-[13px] leading-none text-[var(--module-color-400)] font-bold select-none shrink-0"
     >
       {RANK_BADGES[rank] ?? rank}
     </span>
@@ -125,11 +125,11 @@ const PriorityTaskRow = React.memo(function PriorityTaskRow({
             aria-label={`Energy cost: ${task.energyCost}${energyExceedsBudget ? ' — exceeds budget' : ''}`}
             className={cn(
               'inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider',
-              energyExceedsBudget ? 'text-rose-400' : 'text-sky-300',
+              energyExceedsBudget ? 'text-rose-400' : 'text-[var(--module-color-300)]',
             )}
           >
             <Zap
-              className={cn('w-3 h-3', energyExceedsBudget ? 'text-rose-400' : 'text-sky-400')}
+              className={cn('w-3 h-3', energyExceedsBudget ? 'text-rose-400' : 'text-[var(--module-color-400)]')}
               aria-hidden="true"
             />
             {task.energyCost}
@@ -232,8 +232,8 @@ export function PriorityInbox({
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Inbox className="w-4 h-4 text-sky-400" aria-hidden="true" />
-          <span className="text-xs font-black uppercase tracking-[0.12em] text-sky-400 font-display">
+          <Inbox className="w-4 h-4 text-[var(--module-color-400)]" aria-hidden="true" />
+          <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--module-color-400)] font-display">
             Priority Inbox
           </span>
         </div>
@@ -244,14 +244,20 @@ export function PriorityInbox({
 
       {/* ── Task cards ──────────────────────────────────────────────────── */}
       {topTasks.map((task, index) => (
-        <PriorityTaskRow
+        <motion.div
           key={task.id}
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: index * 0.04, duration: 0.2 }}
+        >
+        <PriorityTaskRow
           task={task}
           rank={index + 1}
           energyBudget={energyBudget}
           onComplete={onCompleteTask}
           onDefer={onDeferTask}
         />
+        </motion.div>
       ))}
 
       {/* ── Defer others button — only when there are tasks beyond top 3 ── */}

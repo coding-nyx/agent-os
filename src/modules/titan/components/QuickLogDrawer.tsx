@@ -257,18 +257,18 @@ export function QuickLogDrawer({
               'w-72 sm:w-80',
               'flex flex-col',
               'bg-[#0c0c10]/95 backdrop-blur-xl',
-              'border-l border-orange-500/20',
+              'border-l border-[var(--module-accent-border)]',
               'shadow-[−8px_0_40px_rgba(0,0,0,0.6)]',
             ].join(' ')}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-6 pb-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
-                  <Zap className="w-3.5 h-3.5 text-orange-400" />
+                <div className="w-7 h-7 rounded-lg bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] flex items-center justify-center">
+                  <Zap className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-orange-400/80">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--module-color-400)]">
                     Quick Log
                   </p>
                   <p className="text-[11px] text-white/40 leading-tight">
@@ -333,7 +333,7 @@ export function QuickLogDrawer({
                           <span className="text-[13px] text-white/80 truncate">
                             {item.name}
                           </span>
-                          <span className="ml-2 flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20">
+                          <span className="ml-2 flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[var(--module-accent-glow)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
                             {item.category}
                           </span>
                         </NeuralButton>
@@ -391,7 +391,6 @@ export function QuickLogDrawer({
             {/* Footer actions */}
             <div className="px-5 pb-6 pt-3 border-t border-white/[0.06] space-y-2.5">
               <NeuralButton
-                themeColor="orange"
                 size="md"
                 className="w-full"
                 onClick={handleLogSet}

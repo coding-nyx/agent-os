@@ -127,6 +127,39 @@ ${ctx.longTermSummary || 'New conversation.'}
     return response.choices?.[0]?.message?.content || '';
   }
 
+  async analyzeImageJSON<T = any>(
+    imageDataUrl: string,
+    prompt: string,
+    options: { model?: string; temperature?: number; maxTokens?: number; signal?: AbortSignal } = {}
+  ): Promise<T> {
+    const messages: Message[] = [
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: imageDataUrl, detail: 'auto' } },
+          { type: 'text', text: prompt }
+        ] as any
+      }
+    ];
+
+    const response = await this.orchestrator.executeStructuredRequest(messages, {
+      ...options,
+      format: 'json_object'
+    });
+
+    const content = response.choices?.[0]?.message?.content || '';
+    const cleaned = content
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/, '')
+      .trim();
+
+    try {
+      return JSON.parse(cleaned) as T;
+    } catch (e) {
+      throw new Error(`Failed to parse vision JSON response: ${content.slice(0, 100)}...`);
+    }
+  }
+
   getOrchestratorState() {
       return this.orchestrator.getState();
   }

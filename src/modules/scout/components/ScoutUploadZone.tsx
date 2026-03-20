@@ -238,10 +238,10 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             className={cn(
-              'relative w-full min-h-[200px] rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-4 p-8 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#05050a]',
+              'relative w-full min-h-[200px] rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-4 p-8 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05050a]',
               phase === 'drag_over'
-                ? 'border-lime-400/50 bg-lime-500/[0.08] scale-[1.01]'
-                : 'border-white/10 bg-white/[0.02] hover:border-lime-400/30 hover:bg-lime-500/[0.03]'
+                ? 'border-[var(--module-accent-ring)] bg-[var(--module-accent-muted)] scale-[1.01]'
+                : 'border-white/10 bg-white/[0.02] hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)]'
             )}
           >
             {/* Animated upload icon */}
@@ -255,16 +255,16 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
               className={cn(
                 'w-16 h-16 rounded-2xl flex items-center justify-center border transition-colors duration-300',
                 phase === 'drag_over'
-                  ? 'border-lime-400/30 bg-lime-500/20'
-                  : 'border-white/10 bg-white/[0.04] group-hover:border-lime-400/20 group-hover:bg-lime-500/10'
+                  ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-glow)]'
+                  : 'border-white/10 bg-white/[0.04] group-hover:border-[var(--module-accent-border)] group-hover:bg-[var(--module-accent-muted)]'
               )}
             >
               <Upload
                 className={cn(
                   'w-7 h-7 transition-colors duration-300',
                   phase === 'drag_over'
-                    ? 'text-lime-400'
-                    : 'text-white/30 group-hover:text-lime-400/70'
+                    ? 'text-[var(--module-color-400)]'
+                    : 'text-white/30 group-hover:text-[var(--module-color-400)]'
                 )}
                 aria-hidden="true"
               />
@@ -280,7 +280,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
             </div>
 
             {phase !== 'drag_over' && (
-              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-lime-400/50 italic mt-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--module-color-400)] opacity-50 italic mt-2">
                 or click to browse
               </span>
             )}
@@ -325,7 +325,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
             initial={reducedMotion ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
-            className="w-full rounded-2xl border border-lime-500/20 bg-lime-500/[0.04] p-6 space-y-4"
+            className="w-full rounded-2xl border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] p-6 space-y-4"
             role="status"
             aria-live="polite"
             aria-label={
@@ -335,13 +335,13 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
             }
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-lime-500/20 bg-lime-500/10 shrink-0">
-                <Loader2 className="w-6 h-6 text-lime-400 animate-spin" aria-hidden="true" />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] shrink-0">
+                <Loader2 className="w-6 h-6 text-[var(--module-color-400)] animate-spin" aria-hidden="true" />
               </div>
               <div className="flex-1 space-y-2 min-w-0">
-                <p className="text-sm font-bold text-lime-200">Parsing Document…</p>
+                <p className="text-sm font-bold text-[var(--module-color-300)]">Parsing Document…</p>
                 {parseProgress && (
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-300/60 italic">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--module-color-300)] italic">
                     Page {parseProgress.current} / {parseProgress.total}
                   </p>
                 )}
@@ -352,7 +352,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
             {parseProgress && (
               <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                 <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-lime-500 to-lime-400"
+                  className="h-full rounded-full bg-gradient-to-r from-[var(--module-color-500)] to-[var(--module-color-400)]"
                   initial={{ width: 0 }}
                   animate={{
                     width: `${Math.round((parseProgress.current / parseProgress.total) * 100)}%`,
@@ -372,7 +372,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
             transition={motionConfig}
-            className="w-full rounded-2xl border border-lime-500/25 bg-lime-500/[0.04] p-6 space-y-5"
+            className="w-full rounded-2xl border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] p-6 space-y-5"
           >
             {/* Document preview header */}
             <div className="flex items-start gap-4">
@@ -384,11 +384,11 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
                     ? { duration: 0 }
                     : { type: 'spring', stiffness: 260, damping: 20, delay: 0.1 }
                 }
-                className="w-14 h-14 rounded-xl flex items-center justify-center border border-lime-500/20 bg-lime-500/10 shrink-0"
+                className="w-14 h-14 rounded-xl flex items-center justify-center border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] shrink-0"
               >
                 <FileTypeIcon
                   fileType={parseResult.metadata.fileType}
-                  className="w-7 h-7 text-lime-400"
+                  className="w-7 h-7 text-[var(--module-color-400)]"
                 />
               </motion.div>
 
@@ -398,7 +398,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
                 </p>
                 {parseResult.metadata.extractedTitle && (
                   <p
-                    className="text-xs text-lime-300/70 italic truncate"
+                    className="text-xs text-[var(--module-color-300)] italic truncate"
                     title={parseResult.metadata.extractedTitle}
                   >
                     "{parseResult.metadata.extractedTitle}"
@@ -452,7 +452,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
               initial={reducedMotion ? false : { opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={reducedMotion ? { duration: 0 } : { delay: 0.2 }}
-              className="flex items-center gap-2 text-lime-400"
+              className="flex items-center gap-2 text-[var(--module-color-400)]"
             >
               <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
               <span className="text-[9px] font-black uppercase tracking-[0.3em] italic">
@@ -468,12 +468,12 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
             key="submitting"
             initial={reducedMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="w-full rounded-2xl border border-lime-500/20 bg-lime-500/[0.04] p-6 flex items-center gap-4"
+            className="w-full rounded-2xl border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] p-6 flex items-center gap-4"
             role="status"
             aria-live="polite"
           >
-            <Loader2 className="w-5 h-5 text-lime-400 animate-spin" aria-hidden="true" />
-            <span className="text-xs font-bold text-lime-200">
+            <Loader2 className="w-5 h-5 text-[var(--module-color-400)] animate-spin" aria-hidden="true" />
+            <span className="text-xs font-bold text-[var(--module-color-300)]">
               Submitting to Scout for analysis…
             </span>
           </motion.div>
@@ -495,7 +495,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
               variant="primary"
               size="md"
               onClick={handleSubmit}
-              className="bg-lime-600 hover:bg-lime-500 shadow-[0_0_20px_rgba(132,204,22,0.3)] hover:shadow-[0_0_30px_rgba(132,204,22,0.5)] border-lime-400/20"
+              className="bg-[var(--module-accent)] hover:bg-[var(--module-accent-hover)] shadow-[var(--module-accent-shadow)] border-[var(--module-accent-border)]"
             >
               Submit for Analysis
             </NeuralButton>
@@ -525,7 +525,7 @@ function MetadataChip({
   return (
     <span
       role={roleProp}
-      className="px-3 py-1 rounded-full border border-lime-500/15 bg-lime-500/[0.06] text-[10px] font-bold text-lime-300/80 uppercase tracking-wider"
+      className="px-3 py-1 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] text-[10px] font-bold text-[var(--module-color-300)] uppercase tracking-wider"
     >
       {label}
     </span>

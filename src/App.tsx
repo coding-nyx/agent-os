@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './core/components/ThemeProvider';
 import { AuthProvider, useAuth } from './lib/auth-context';
@@ -16,14 +16,25 @@ import { SpineOverlay } from './core/components/SpineOverlay';
 import { SpineToastProvider } from './core/components/SpineToast';
 import { NexusRouteBanner } from './core/components/NexusRouteBanner';
 import { ReminderFallbackBanner } from './core/components/ReminderFallbackBanner';
-// import { ConflictResolutionOverlay } from './core/components/ConflictResolutionOverlay';
+import { SoulWriteInbox } from './core/components/SoulWriteInbox';
+import { DebugActivityOverlay } from './core/components/debug';
+import { ConflictResolutionOverlay } from './core/components/ConflictResolutionOverlay';
 import { useIntelligencePipeline } from './lib/services/intelligence-pipeline';
 import { BridgeService } from './lib/services/bridge-service';
 import { ReminderScheduler } from './lib/notifications/reminder-scheduler-service';
 import { SchedulerService } from './lib/spine/scheduler-service';
 import { Spine } from './lib/spine/spine-event-bus';
-import { CORE_CASCADE_RULES, ATLAS_CASCADE_RULES, ATLAS_PLANNING_CASCADE_RULES, AGNES_CASCADE_RULES, ATLAS_FAILURE_RULES, SOMA_CASCADE_RULES, TITAN_CASCADE_RULES } from './lib/spine/cascade-rules';
-import { useEffect } from 'react';
+import { 
+  CORE_CASCADE_RULES, 
+  ATLAS_CASCADE_RULES, 
+  ATLAS_PLANNING_CASCADE_RULES, 
+  AGNES_CASCADE_RULES, 
+  ATLAS_FAILURE_RULES, 
+  SOMA_CASCADE_RULES, 
+  TITAN_CASCADE_RULES,
+  ATLAS_MORNING_RULES,
+  ATLAS_JOURNAL_RULES
+} from './lib/spine/cascade-rules';
 import { DataLayerProvider } from './lib/data-layer/provider';
 
 // Route-level lazy loading for chunk splitting.
@@ -56,6 +67,8 @@ function SpineRuntimeBootstrap() {
     Spine.registerCascadeRules(ATLAS_FAILURE_RULES);
     Spine.registerCascadeRules(SOMA_CASCADE_RULES);
     Spine.registerCascadeRules(TITAN_CASCADE_RULES);
+    Spine.registerCascadeRules(ATLAS_MORNING_RULES);
+    Spine.registerCascadeRules(ATLAS_JOURNAL_RULES);
   }, []);
 
   useEffect(() => {
@@ -79,7 +92,7 @@ function AIRuntimeGate({ children }: { children: React.ReactNode }) {
   if (initFailed) {
     return (
       <>
-        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500/20 border-b border-amber-500/30 px-4 py-2 text-center text-xs text-amber-300">
+        <div className="fixed top-0 left-0 right-0 z-[var(--z-header)] bg-amber-500/20 border-b border-amber-500/30 px-4 py-2 text-center text-xs text-amber-300">
           AI assistant is unavailable — check your API key in Profile settings
         </div>
         {children}
@@ -95,27 +108,86 @@ function IntelligencePipelineMount() {
   return null;
 }
 
+function SchedulerRuntimeBootstrap() {
+  useEffect(() => {
+    // 1. Start the platform scheduler
+    SchedulerService.start();
+
+    // 2. Register global core schedules
+    // S9-007: Atlas Morning Brief (Daily 09:00)
+    SchedulerService.register({
+      id: 'atlas.morning_brief',
+      moduleId: 'atlas',
+      type: 'morning_brief',
+      time: '09:00',
+      spineEventType: 'MORNING_BRIEF_DUE',
+      defaultEnabled: true,
+    });
+
+    // S9-007: Atlas Evening Check-in (Daily 20:30)
+    SchedulerService.register({
+      id: 'atlas.evening_checkin',
+      moduleId: 'atlas',
+      type: 'evening_checkin',
+      time: '20:30',
+      spineEventType: 'EVENING_CHECKIN_DUE',
+      defaultEnabled: true,
+    });
+
+    // S18-002: Atlas Weekly Review (Sundays 18:00)
+    SchedulerService.register({
+      id: 'atlas.weekly_review',
+      moduleId: 'atlas',
+      type: 'weekly_review',
+      time: 'Sun 18:00',
+      spineEventType: 'WEEKLY_REVIEW_DUE',
+      defaultEnabled: true,
+    });
+
+    return () => {
+      SchedulerService.stop();
+    };
+  }, []);
+
+  return null;
+}
+
 function BridgeMount() {
   const { user, isGuest } = useAuth();
+  const mountedUserId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user || isGuest) return;
+    if (!user || isGuest) {
+      if (mountedUserId.current) {
+        BridgeService.stop();
+        ReminderScheduler.stop();
+        SchedulerService.stop();
+        mountedUserId.current = null;
+      }
+      return;
+    }
 
-    BridgeService.start(user.uid)
+    if (mountedUserId.current === user.uid) return;
+    
+    mountedUserId.current = user.uid;
+    console.log('[BridgeMount] Initializing services for:', user.uid);
+
+    void BridgeService.start(user.uid)
       .then(() => {
-        // Request OS notification permission on sign-in if not yet decided.
         if ('Notification' in window && Notification.permission === 'default') {
           void BridgeService.requestPermissionAndInit();
         }
-      })
-      .catch((err) => console.warn('[Bridge] Start failed:', err));
+      });
+    
     ReminderScheduler.start(user.uid);
     SchedulerService.start();
 
     return () => {
+      // Immediate stop when BridgeMount is actually removed from the tree (e.g. lock down)
       BridgeService.stop();
       ReminderScheduler.stop();
       SchedulerService.stop();
+      mountedUserId.current = null;
     };
   }, [user?.uid, isGuest]);
 
@@ -123,19 +195,37 @@ function BridgeMount() {
 }
 
 function AppContent() {
+  const { profile, isGuest, isAuthenticated } = useAuth();
+  
+  // A session is "onboarded" if it's a guest session (which bypasses Nexus onboarding)
+  // or if the authenticated user has completed their core profile.
+  const isOnboardingComplete = isGuest || !!profile?.onboardingComplete;
+
+  // We are in "lock down" if authenticated but not yet onboarded.
+  // This prevents background services and global UI from leaking before the user
+  // initializes their identity.
+  const isLockedDown = isAuthenticated && !isGuest && !isOnboardingComplete;
+
   return (
     <Suspense fallback={<BootLoader />}>
-      <SpineRuntimeBootstrap />
-      <IntelligencePipelineMount />
-      <BridgeMount />
-      <NexusOverlay />
-      <GlobalFAB />
-      <SpineOverlay />
-      <NeuralDraftPanel />
-      <ReminderFallbackBanner />
+      {!isLockedDown && (
+        <>
+          <SpineRuntimeBootstrap />
+          <SchedulerRuntimeBootstrap />
+          <IntelligencePipelineMount />
+          <BridgeMount />
+          <NexusOverlay />
+          <GlobalFAB />
+          <SpineOverlay />
+          <NeuralDraftPanel />
+          <ReminderFallbackBanner />
+          <NexusRouteBanner />
+        </>
+      )}
+
       <SpineToastProvider />
-      <NexusRouteBanner />
-      {/* <ConflictResolutionOverlay /> Temporarily disabled while conflict UX is iterated */}
+      <DebugActivityOverlay />
+      
       <Routes>
         <Route path="/" element={<LandingPage />} />
 
@@ -214,6 +304,8 @@ function AppContent() {
   );
 }
 
+import { NotificationProvider } from './lib/notifications/NotificationContext';
+
 function App() {
   return (
     <ThemeProvider>
@@ -221,15 +313,17 @@ function App() {
         <Router>
           <AuthProvider>
             <AIWrapper>
-              <VaultProvider>
-                <GlobalSoulProvider>
-                  <AppErrorBoundary>
-                    <AIRuntimeGate>
-                      <AppContent />
-                    </AIRuntimeGate>
-                  </AppErrorBoundary>
-                </GlobalSoulProvider>
-              </VaultProvider>
+              <NotificationProvider>
+                <VaultProvider>
+                  <GlobalSoulProvider>
+                    <AppErrorBoundary>
+                      <AIRuntimeGate>
+                        <AppContent />
+                      </AIRuntimeGate>
+                    </AppErrorBoundary>
+                  </GlobalSoulProvider>
+                </VaultProvider>
+              </NotificationProvider>
             </AIWrapper>
           </AuthProvider>
         </Router>

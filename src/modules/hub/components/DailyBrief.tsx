@@ -184,7 +184,11 @@ function getGreeting(name: string): string {
 // DailyBrief — Main Export
 // ---------------------------------------------------------------------------
 
-export function DailyBrief() {
+interface DailyBriefProps {
+  collapsed?: boolean;
+}
+
+export function DailyBrief({ collapsed = false }: DailyBriefProps) {
   const { globalSoul } = useGlobalSoul();
   const { profile } = useAuth();
   const reducedMotion = useReducedMotion();

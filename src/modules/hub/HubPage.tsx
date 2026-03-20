@@ -14,6 +14,7 @@ import { useModules, useModuleStats, useHubLayout } from './hooks';
 import { HubViewSwitcher, HubBottomDashboard } from './components/HubControls';
 import { CardsView } from './components/cards/CardsView';
 import { GraphView } from './components/graph/GraphView';
+import { DailyBrief } from './components/DailyBrief';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -132,22 +133,22 @@ export default function HubPage() {
 
         {/* Breathing ambient background */}
         <div className="absolute inset-0 hub-ambient pointer-events-none" aria-hidden="true" />
+{/* Universal spine pulse overlay */}
+<AnimatePresence>
+  {edgePulse > 0.3 && (
+    <motion.div
+      key="spine-pulse"
+      initial={reducedMotion ? false : { opacity: 0, scale: 0.8 }}
+      animate={reducedMotion ? { opacity: edgeIntensity * 0.12 } : { opacity: edgeIntensity * 0.12, scale: 1 }}
+      exit={{ opacity: 0 }}
+      transition={reducedMotion ? { duration: 0 } : undefined}
+      className="absolute inset-0 z-[var(--z-base)] pointer-events-none"
+      style={{ background: 'radial-gradient(circle at center, rgba(139,92,246,0.25) 0%, transparent 70%)' }}
+    />
+  )}
+</AnimatePresence>
 
-        {/* Universal spine pulse overlay */}
-        <AnimatePresence>
-          {edgePulse > 0.3 && (
-            <motion.div
-              key="spine-pulse"
-              initial={reducedMotion ? false : { opacity: 0, scale: 0.8 }}
-              animate={reducedMotion ? { opacity: edgeIntensity * 0.12 } : { opacity: edgeIntensity * 0.12, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={reducedMotion ? { duration: 0 } : undefined}
-              className="absolute inset-0 z-[5] pointer-events-none"
-              style={{ background: 'radial-gradient(circle at center, rgba(139,92,246,0.25) 0%, transparent 70%)' }}
-            />
-          )}
-        </AnimatePresence>
-
+        {/* --- View Mode Content --- */}
         {/* 3D Canvas Background (lazy loaded) — sits behind everything at z-0 */}
         <div
           className={cn(
@@ -190,10 +191,10 @@ export default function HubPage() {
         </div>
 
         {/* Content Layers — flex column so the switcher sits above the scroll area in normal flow */}
-        <div className="absolute inset-0 z-10 flex flex-col pointer-events-none">
+        <div className="absolute inset-0 z-[var(--z-content)] flex flex-col pointer-events-none">
 
           {/* View Switcher — top of the flex column; no absolute positioning, never overlaps cards */}
-          <div className="relative z-[60] flex justify-center pt-4 pb-2 pointer-events-auto shrink-0">
+          <div className="relative z-[var(--z-fab)] flex justify-center pt-4 pb-2 pointer-events-auto shrink-0">
             <HubViewSwitcher viewMode={viewMode} setViewMode={setViewMode} hide3D={webglError} />
           </div>
 

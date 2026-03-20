@@ -105,10 +105,10 @@ export function TitanDiagnosisPanel({ encryptionKey, profile }: TitanDiagnosisPa
     >
       {/* Vault unlock prompt */}
       {needsVaultUnlock && (
-        <div className="mx-4 mt-4 rounded-[16px] border border-orange-400/25 bg-orange-500/8 p-4 flex items-center gap-3">
-          <Lock className="w-4 h-4 text-orange-300 flex-shrink-0" />
+        <div className="mx-4 mt-4 rounded-[16px] border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] p-4 flex items-center gap-3">
+          <Lock className="w-4 h-4 text-[var(--module-color-300)] flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-orange-200">Unlock vault to analyze documents</p>
+            <p className="text-xs font-semibold text-[var(--module-color-300)]">Unlock vault to analyze documents</p>
             <div className="flex gap-2 mt-2">
               <NeuralInput
                 type="password"
@@ -116,11 +116,10 @@ export function TitanDiagnosisPanel({ encryptionKey, profile }: TitanDiagnosisPa
                 onChange={(e) => setVaultPassword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleVaultUnlock()}
                 placeholder="Vault password"
-                className="flex-1 px-3 py-1.5 h-auto min-h-0 focus:border-orange-400/40"
+                className="flex-1 px-3 py-1.5 h-auto min-h-0 focus:border-[var(--module-accent)]"
               />
               <NeuralButton
                 size="sm"
-                themeColor="orange"
                 onClick={handleVaultUnlock}
                 disabled={isHandshaking}
               >

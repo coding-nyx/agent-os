@@ -694,5 +694,45 @@ export function registerLedgerActions() {
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
       markProfileDirty?.();
     },
+
+    // ── Handler: suggest_field (FIX-L4) ──────────────────────────────────
+    suggest_field: async ({ payload, emitSpineEvent }) => {
+      emitSpineEvent('LEDGER_FIELD_SUGGESTION', {
+        fieldId: typeof payload?.fieldId === 'string' ? payload.fieldId : undefined,
+        label: typeof payload?.label === 'string' ? payload.label : undefined,
+        type: typeof payload?.type === 'string' ? payload.type : 'number',
+        description: typeof payload?.description === 'string' ? payload.description : undefined,
+      });
+    },
+
+    // ── Handler: create_transaction (FIX-L11) ─────────────────────────────
+    create_transaction: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
+      const now = new Date().toISOString();
+      const amount = parseNumber(payload?.amount);
+      if (amount === 0) return;
+      const type = (payload?.type === 'income' || amount > 0) ? 'income' : 'expense';
+      const tx: Transaction = {
+        id: crypto.randomUUID(),
+        date: typeof payload?.date === 'string' ? payload.date : now.split('T')[0],
+        description: typeof payload?.description === 'string' ? payload.description : 'AI Created Transaction',
+        amount: Math.abs(amount),
+        type,
+        category: typeof payload?.category === 'string' ? payload.category : 'Other',
+      };
+      const next: LedgerIntakeProfile = {
+        ...profile,
+        transactions: [...(profile.transactions ?? []), tx],
+        updatedAt: now,
+      };
+      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      emitSpineEvent('TRANSACTION_CREATED', {
+        domain: 'R', source: 'ledger', priority: 'alert',
+        transactionId: tx.id, amount: tx.amount, type: tx.type,
+        category: tx.category, date: tx.date,
+      });
+      markProfileDirty?.();
+    },
   });
 }

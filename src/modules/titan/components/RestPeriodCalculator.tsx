@@ -176,8 +176,8 @@ export function RestPeriodCalculator({
   return (
     <SurfaceCard className={cn('p-5 space-y-4', className)}>
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-          <Clock className="w-5 h-5 text-orange-400" />
+        <div className="w-10 h-10 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] flex items-center justify-center">
+          <Clock className="w-5 h-5 text-[var(--module-color-400)]" />
         </div>
         <div className="flex-1">
           <h3 className="text-sm font-black uppercase tracking-wide text-white/90">
@@ -204,7 +204,7 @@ export function RestPeriodCalculator({
               className={cn(
                 'text-[10px] font-bold uppercase tracking-wider transition-all h-auto py-2',
                 selectedType === type
-                  ? 'bg-orange-500/20 border-orange-500/30 text-orange-300'
+                  ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
                   : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
               )}
             >
@@ -229,7 +229,7 @@ export function RestPeriodCalculator({
               className={cn(
                 'text-[10px] font-bold uppercase tracking-wider transition-all h-auto py-2',
                 selectedIntensity === level
-                  ? 'bg-orange-500/20 border-orange-500/30 text-orange-300'
+                  ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
                   : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
               )}
             >
@@ -245,7 +245,7 @@ export function RestPeriodCalculator({
           <span className="text-[10px] font-black uppercase tracking-wider text-white/50">
             Optimal Rest
           </span>
-          <span className="text-3xl font-black text-orange-400 tabular-nums">
+          <span className="text-3xl font-black text-[var(--module-color-400)] tabular-nums">
             {formatSeconds(recommendation.optimal)}
           </span>
         </div>
@@ -274,7 +274,7 @@ export function RestPeriodCalculator({
           <div className={cn(
             'px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5',
             recommendation.cnsImpact === 'low'      && 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300',
-            recommendation.cnsImpact === 'moderate' && 'bg-amber-500/10  border border-amber-500/20  text-amber-300',
+            recommendation.cnsImpact === 'moderate' && 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]',
             recommendation.cnsImpact === 'high'     && 'bg-rose-500/10   border border-rose-500/20   text-rose-300',
           )}>
             <Brain className="w-3 h-3" />

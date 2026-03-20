@@ -47,7 +47,7 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
         spec.buildContext(state, [...messages, userMsg]),
         (chunk) => {
           if (activeTurnRef.current !== turnId) return;
-          setStreamingText((prev) => prev + chunk);
+          setStreamingText((prev) => prev + chunk.delta);
         }
       );
 

@@ -365,14 +365,14 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
     <GuidedIntakeFrame
       title="Atlas Guided Intake"
       subtitle="Calibrating your cognitive energy architecture."
-      statusLabel="COGNITIVE_BASELINE"
+      statusLabel=""
       steps={[...ATLAS_STEPS]}
       currentStep={intake.stepIndex}
       themeColor="sky"
       prelude={
-        <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-sky-500/20 bg-sky-500/5">
+        <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]">
           <div className="flex-1 w-full space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-sky-400 flex items-center gap-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--module-color-400)] flex items-center gap-2">
               <Zap className="w-3 h-3" /> Fast Track Initialization
             </p>
             <div className="space-y-3">
@@ -398,7 +398,7 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
                       key={l}
                       onClick={() => setFastCurrentLoad(l)}
                       variant={fastCurrentLoad === l ? 'primary' : 'secondary'}
-                      themeColor="cyan"
+                      themeColor="module"
                       size="sm"
                       className="text-[10px] font-bold uppercase tracking-wider h-9"
                     >
@@ -412,7 +412,7 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
                   onClick={handleFastTrack}
                   disabled={!fastPeakHours.trim() || isValidatingFastTrack}
                   loading={isValidatingFastTrack}
-                  themeColor="cyan"
+                  themeColor="module"
                   className="px-8"
                 >
                   Execute

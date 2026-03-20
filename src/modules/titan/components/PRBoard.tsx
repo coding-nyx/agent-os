@@ -43,7 +43,7 @@ export interface PRBoardProps {
 // ---------------------------------------------------------------------------
 
 const CATEGORY_STYLES: Record<ExerciseCategory, string> = {
-  compound:  'bg-orange-500/20 text-orange-300',
+  compound:  'bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
   isolation: 'bg-blue-500/20  text-blue-300',
   cardio:    'bg-green-500/20  text-green-300',
   mobility:  'bg-purple-500/20 text-purple-300',

@@ -107,21 +107,23 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
       data-testid="daily-brief"
       data-collapsed={String(collapsed)}
     >
-      {/* Header row */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header row — Always visible greeting that serves as the toggle trigger */}
+      <button
+        type="button"
+        onClick={onToggleCollapse}
+        disabled={!onToggleCollapse}
+        className={cn(
+          "flex items-center gap-3 mb-4 transition-opacity focus:outline-none text-left select-none group",
+          onToggleCollapse ? "cursor-pointer hover:opacity-80" : "cursor-default"
+        )}
+      >
         <h2 className="text-xl font-bold text-white tracking-tight font-display">{greeting}</h2>
         {onToggleCollapse && (
-          <NeuralButton
-            variant="ghost"
-            size="sm"
-            onClick={onToggleCollapse}
-            className="w-8 h-8 p-0 rounded-lg text-white/30 hover:text-white/60 border-none"
-            aria-label={collapsed ? 'Expand daily brief' : 'Collapse daily brief'}
-          >
+          <div className="text-white/20 group-hover:text-white/40 transition-colors pt-0.5">
             {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-          </NeuralButton>
+          </div>
         )}
-      </div>
+      </button>
 
       {!collapsed && (
         <>
@@ -146,16 +148,22 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
                   <GlassCard className={cn('w-full cursor-pointer px-4 py-3.5 space-y-2 hover:border-white/15 transition-colors', TONE_ACCENT[p.tone])}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Icon className={cn('w-4 h-4', TONE_TEXT[p.tone])} />
-                        <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-white/50">
+                        <Icon className={cn('w-4 h-4', p.tone === 'neutral' ? 'text-white/10' : TONE_TEXT[p.tone])} />
+                        <span className={cn(
+                          "text-[11px] uppercase tracking-[0.12em] font-bold",
+                          p.tone === 'neutral' ? "text-white/20" : "text-white/50"
+                        )}>
                           {p.config.label}
                         </span>
                       </div>
-                      <TrendArrow trend={p.trend} size="sm" />
+                      {p.tone !== 'neutral' && <TrendArrow trend={p.trend} size="sm" />}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={cn('w-2 h-2 rounded-full', TONE_DOT[p.tone])} />
-                      <span className={cn('text-base font-bold uppercase tracking-tight font-display', TONE_TEXT[p.tone])}>
+                      {p.tone !== 'neutral' && <div className={cn('w-2 h-2 rounded-full', TONE_DOT[p.tone])} />}
+                      <span className={cn(
+                        'text-base font-bold uppercase tracking-tight font-display', 
+                        p.tone === 'neutral' ? 'text-white/10' : TONE_TEXT[p.tone]
+                      )}>
                         {p.word}
                       </span>
                     </div>

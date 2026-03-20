@@ -24,8 +24,8 @@ const SLEEP_TAGS = ['stress', 'alcohol', 'late_meal', 'caffeine', 'exercise_pm',
 
 function qualityColor(q: number): string {
   if (q >= 8) return 'text-emerald-400';
-  if (q >= 6) return 'text-orange-400';
-  if (q >= 4) return 'text-amber-400';
+  if (q >= 6) return 'text-[var(--module-color-400)]';
+  if (q >= 4) return 'text-[var(--module-color-300)]';
   return 'text-rose-400';
 }
 
@@ -38,7 +38,7 @@ function qualityLabel(q: number): string {
 
 function durationColor(h: number): string {
   if (h >= 7.5) return 'text-emerald-400';
-  if (h >= 6) return 'text-amber-400';
+  if (h >= 6) return 'text-[var(--module-color-300)]';
   return 'text-rose-400';
 }
 
@@ -127,16 +127,20 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
               <NeuralButton
                 size="sm"
                 variant="ghost"
-                themeColor="orange"
                 onClick={() => onAnalyze(`Analyze my sleep trends from the last ${recent.length} nights and give me actionable recommendations to improve recovery and training performance.`)}
               >
                 <MessageSquare className="w-3 h-3 mr-1.5" />
                 Trends
               </NeuralButton>
             )}
-            <NeuralButton size="sm" themeColor="orange" onClick={() => setShowModal(true)}>
-              <Plus className="w-3 h-3 mr-1.5" />
-              Log Sleep
+            <NeuralButton
+              size="sm"
+              iconOnly
+              onClick={() => setShowModal(true)}
+              title="Log Sleep"
+              aria-label="Log Sleep"
+            >
+              <Moon className="w-3.5 h-3.5" />
             </NeuralButton>
           </div>
         </div>
@@ -147,9 +151,13 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
             description="Track your sleep to unlock AI-powered recovery analysis. Titan uses sleep quality to calibrate your training intensity."
             icon={Moon}
             action={
-              <NeuralButton themeColor="orange" onClick={() => setShowModal(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Log Sleep
+              <NeuralButton
+                iconOnly
+                onClick={() => setShowModal(true)}
+                title="Log Sleep"
+                aria-label="Log Sleep"
+              >
+                <Moon className="w-4 h-4" />
               </NeuralButton>
             }
           />
@@ -215,7 +223,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
                   className="flex items-center justify-between px-3 py-2.5 min-h-[2.75rem] rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors gap-2"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <Moon className="w-3.5 h-3.5 text-orange-400/60 shrink-0" />
+                    <Moon className="w-3.5 h-3.5 text-[var(--module-color-400)] shrink-0" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-white/80">{entry.date}</span>
@@ -259,7 +267,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
         title="Log Sleep"
         subtitle="Track your recovery"
         icon={Moon}
-        themeColor="orange"
+        themeColor="module"
         maxWidth="lg"
       >
         <div className="space-y-5">
@@ -268,7 +276,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
             type="date"
             value={date}
             onChange={e => setDate(e.target.value)}
-            className="focus:border-orange-500/50"
+            className="focus:border-[var(--module-accent)]"
           />
 
           <div className="grid grid-cols-2 gap-3">
@@ -277,21 +285,21 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
               type="time"
               value={bedtime}
               onChange={e => setBedtime(e.target.value)}
-              className="focus:border-orange-500/50"
+              className="focus:border-[var(--module-accent)]"
             />
             <NeuralInput
               label="Wake Time"
               type="time"
               value={wakeTime}
               onChange={e => setWakeTime(e.target.value)}
-              className="focus:border-orange-500/50"
+              className="focus:border-[var(--module-accent)]"
             />
           </div>
 
           {durationHours != null && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-500/5 border border-orange-500/10">
-              <Clock className="w-3.5 h-3.5 text-orange-400" />
-              <span className="text-xs text-orange-300 font-black">{durationHours.toFixed(1)}h</span>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]">
+              <Clock className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
+              <span className="text-xs text-[var(--module-color-300)] font-black">{durationHours.toFixed(1)}h</span>
               <span className="text-xs text-white/40">total sleep</span>
             </div>
           )}
@@ -310,7 +318,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
               step={1}
               value={quality}
               onChange={e => setQuality(Number(e.target.value))}
-              className="w-full accent-orange-400"
+              className="w-full accent-[var(--module-color-400)]"
             />
           </div>
 
@@ -323,7 +331,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
               placeholder="—"
               value={deepSleepPct}
               onChange={e => setDeepSleepPct(e.target.value ? Number(e.target.value) : '')}
-              className="placeholder:text-white/20 focus:border-orange-500/50 tabular-nums px-3 py-2 h-auto min-h-0"
+              className="placeholder:text-white/20 focus:border-[var(--module-accent)] tabular-nums px-3 py-2 h-auto min-h-0"
             />
             <NeuralInput
               label="REM %"
@@ -333,7 +341,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
               placeholder="—"
               value={remSleepPct}
               onChange={e => setRemSleepPct(e.target.value ? Number(e.target.value) : '')}
-              className="placeholder:text-white/20 focus:border-orange-500/50 tabular-nums px-3 py-2 h-auto min-h-0"
+              className="placeholder:text-white/20 focus:border-[var(--module-accent)] tabular-nums px-3 py-2 h-auto min-h-0"
             />
             <NeuralInput
               label="Awakenings"
@@ -342,7 +350,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
               placeholder="—"
               value={awakenings}
               onChange={e => setAwakenings(e.target.value ? Number(e.target.value) : '')}
-              className="placeholder:text-white/20 focus:border-orange-500/50 tabular-nums px-3 py-2 h-auto min-h-0"
+              className="placeholder:text-white/20 focus:border-[var(--module-accent)] tabular-nums px-3 py-2 h-auto min-h-0"
             />
           </div>
 
@@ -358,7 +366,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
                   className={cn(
                     'px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all h-auto',
                     selectedTags.includes(tag)
-                      ? 'bg-orange-500/20 border border-orange-500/30 text-orange-300'
+                      ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]'
                       : 'bg-white/5 border border-white/10 text-white/40 hover:bg-white/10 hover:text-white/60'
                   )}
                 >
@@ -375,7 +383,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
               onChange={e => setNotes(e.target.value)}
               placeholder="Dreams, disturbances, how you feel on waking..."
               rows={2}
-              className="placeholder:text-white/30 focus:border-orange-500/50"
+              className="placeholder:text-white/30 focus:border-[var(--module-accent)]"
             />
           </div>
 
@@ -386,10 +394,10 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
           )}
 
           <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-            <NeuralButton variant="ghost" themeColor="orange" onClick={() => setShowModal(false)}>
+            <NeuralButton variant="ghost" onClick={() => setShowModal(false)}>
               Cancel
             </NeuralButton>
-            <NeuralButton themeColor="orange" onClick={handleSave} disabled={!directWriteMode && !onAnalyze}>
+            <NeuralButton onClick={handleSave} disabled={!directWriteMode && !onAnalyze}>
               <Moon className="w-4 h-4 mr-2" />
               {directWriteMode ? 'Save Entry' : 'Save & Analyze'}
             </NeuralButton>

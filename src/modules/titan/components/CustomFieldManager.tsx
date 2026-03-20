@@ -302,10 +302,10 @@ export function CustomFieldManager({
     <div className={cn('space-y-3', className)}>
       {/* Macro defaults prompt — shown when no AI-created custom fields exist */}
       {!hasMacroFields && (onDirectCreateMacros || onAICreateMacros) && (
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-orange-500/5 border border-orange-500/15">
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
-              <Utensils className="w-4 h-4 text-orange-400" />
+            <div className="w-8 h-8 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] flex items-center justify-center shrink-0">
+              <Utensils className="w-4 h-4 text-[var(--module-color-400)]" />
             </div>
             <div>
               <p className="text-xs font-bold text-white/80">Set Up Macro Tracking</p>
@@ -316,7 +316,6 @@ export function CustomFieldManager({
           </div>
           <NeuralButton
             size="sm"
-            themeColor="orange"
             onClick={handleSetupMacros}
             disabled={macrosCreating}
           >
@@ -329,8 +328,8 @@ export function CustomFieldManager({
       <SurfaceCard className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-              <Database className="w-5 h-5 text-orange-400" />
+            <div className="w-10 h-10 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] flex items-center justify-center">
+              <Database className="w-5 h-5 text-[var(--module-color-400)]" />
             </div>
             <div>
               <h3 className="text-sm font-black uppercase tracking-wide text-white/90">
@@ -344,7 +343,6 @@ export function CustomFieldManager({
 
           <NeuralButton
             size="sm"
-            themeColor="orange"
             onClick={() => setIsModalOpen(true)}
           >
             <Plus className="w-3 h-3 mr-1.5" />
@@ -394,7 +392,7 @@ export function CustomFieldManager({
         title="Manage Custom Fields"
         subtitle="Add personalized tracking metrics"
         icon={Database}
-        themeColor="orange"
+        themeColor="module"
         maxWidth="2xl"
       >
         <div className="space-y-6">
@@ -408,7 +406,7 @@ export function CustomFieldManager({
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all',
                   activeCategory === cat.id
-                    ? 'bg-orange-500/20 border border-orange-500/30 text-orange-300'
+                    ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]'
                     : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
                 )}
               >

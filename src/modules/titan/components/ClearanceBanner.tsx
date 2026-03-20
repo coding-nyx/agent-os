@@ -21,7 +21,7 @@ export function ClearanceBanner({ status, className }: ClearanceBannerProps) {
         'w-full flex items-center justify-between px-3 sm:px-4 py-3 min-h-[2.75rem] sm:min-h-[3rem] rounded-xl border text-left',
         isDenied
           ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-          : 'bg-amber-500/10 border-amber-500/30 text-amber-300',
+          : 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]',
         className
       )}
     >

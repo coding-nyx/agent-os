@@ -5,6 +5,7 @@ import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NeuralModal } from '@/core/components/NeuralModal';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import { ProgressRow } from '@/core/components/ProgressRow';
 import { cn } from '@/lib/utils';
 import { TaxTracker } from './TaxTracker';
@@ -226,14 +227,14 @@ export function BudgetPlanner({
   return (
     <div className="space-y-6">
       {/* Overview Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Monthly Income</div>
           <div className="mt-2 text-xl font-black text-white">{formatCurrency(monthlyIncome, currency)}</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Allocated</div>
-          <div className="mt-2 text-xl font-black text-cyan-400">{formatCurrency(stats.totalAllocated, currency)}</div>
+          <div className="mt-2 text-xl font-black text-[var(--module-color-400)]">{formatCurrency(stats.totalAllocated, currency)}</div>
           <div className="text-[10px] text-white/50 mt-1">{formatNumber(stats.allocationPercent, 1, 1)}%</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
@@ -279,7 +280,7 @@ export function BudgetPlanner({
         </SurfaceCard>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Budget Visualization */}
         <SurfaceCard className="p-6">
           <div className="flex items-center justify-between mb-6">
@@ -287,7 +288,7 @@ export function BudgetPlanner({
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">Budget Allocation</h3>
               <p className="text-[10px] text-white/50 mt-1">Visual breakdown by category</p>
             </div>
-            <PieChart className="w-5 h-5 text-cyan-400" />
+            <PieChart className="w-5 h-5 text-[var(--module-color-400)]" />
           </div>
 
           {categories.length === 0 ? (
@@ -341,7 +342,7 @@ export function BudgetPlanner({
                 variant="primary"
                 size="sm"
                 disabled={disabled}
-                className="bg-cyan-600 hover:bg-cyan-500"
+                className="bg-[var(--module-accent)] hover:bg-[var(--module-accent)]"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Category
@@ -368,27 +369,33 @@ export function BudgetPlanner({
                       )}>
                         {formatCurrency(cat.spent, currency)} / {formatCurrency(cat.allocated, currency)}
                       </span>
-                      <button
+                      <NeuralButton
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleOpenEditModal(cat)}
                         disabled={disabled}
-                        className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white disabled:opacity-50"
+                        className="p-1 h-auto min-h-[44px] text-white/60 hover:text-white"
+                        aria-label={`Edit ${cat.name}`}
                       >
                         <Edit2 className="w-3 h-3" />
-                      </button>
-                      <button
+                      </NeuralButton>
+                      <NeuralButton
+                        variant="ghost"
+                        size="sm"
                         onClick={() => onDeleteCategory(cat.id)}
                         disabled={disabled}
-                        className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-red-400 disabled:opacity-50"
+                        className="p-1 h-auto min-h-[44px] text-white/60 hover:text-red-400"
+                        aria-label={`Delete ${cat.name}`}
                       >
                         <Trash2 className="w-3 h-3" />
-                      </button>
+                      </NeuralButton>
                     </div>
                   </div>
                   <ProgressRow
                     label=""
                     value={cat.spent}
                     max={cat.allocated}
-                    accentClassName={cat.spent > cat.allocated ? "bg-red-500" : "bg-cyan-500"}
+                    accentClassName={cat.spent > cat.allocated ? "bg-red-500" : "bg-[var(--module-accent)]"}
                     className="mb-0"
                   />
                 </div>
@@ -404,9 +411,9 @@ export function BudgetPlanner({
           <button
             onClick={() => setIsTaxOpen((prev) => !prev)}
             className={cn(
-              'w-full flex items-center justify-between px-5 py-4',
+              'w-full flex items-center justify-between px-5 py-4 min-h-[44px]',
               'text-sm font-bold text-white hover:bg-white/5 transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-inset',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] focus-visible:ring-inset',
             )}
             aria-expanded={isTaxOpen}
           >
@@ -442,7 +449,7 @@ export function BudgetPlanner({
           setEditingCategory(null);
         }}
         title={editingCategory ? 'Edit Category' : 'Add Budget Category'}
-        themeColor="cyan"
+        themeColor="module"
         maxWidth="md"
       >
         <div className="space-y-4">
@@ -450,13 +457,12 @@ export function BudgetPlanner({
             <label className="block text-xs font-bold text-white/70 mb-2 uppercase tracking-wider">
               Category Name
             </label>
-            <input
+            <NeuralInput
               type="text"
               value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCategoryName(e.target.value)}
               disabled={editingCategory !== null}
               placeholder="e.g., Groceries, Entertainment"
-              className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-500/50 disabled:opacity-50"
             />
           </div>
 
@@ -468,14 +474,14 @@ export function BudgetPlanner({
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
                 {currency}
               </span>
-              <input
+              <NeuralInput
                 type="number"
                 value={newCategoryAmount}
-                onChange={(e) => setNewCategoryAmount(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCategoryAmount(e.target.value)}
                 placeholder="0.00"
                 min="0"
                 step="0.01"
-                className="w-full pl-14 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-500/50"
+                className="pl-14"
               />
             </div>
             {monthlyIncome > 0 && newCategoryAmount && (
@@ -490,7 +496,7 @@ export function BudgetPlanner({
               onClick={handleSubmitCategory}
               variant="primary"
               disabled={!newCategoryName.trim() || !newCategoryAmount || disabled}
-              className="flex-1 bg-cyan-600 hover:bg-cyan-500"
+              className="flex-1 bg-[var(--module-accent)] hover:bg-[var(--module-accent)]"
             >
               {editingCategory ? 'Update' : 'Add'}
             </NeuralButton>
@@ -513,7 +519,7 @@ export function BudgetPlanner({
         isOpen={isTemplateModalOpen}
         onClose={() => setIsTemplateModalOpen(false)}
         title="Budget Templates"
-        themeColor="cyan"
+        themeColor="module"
         maxWidth="lg"
       >
         <div className="space-y-4">
@@ -533,7 +539,7 @@ export function BudgetPlanner({
                   variant="primary"
                   size="sm"
                   disabled={disabled}
-                  className="bg-cyan-600 hover:bg-cyan-500"
+                  className="bg-[var(--module-accent)] hover:bg-[var(--module-accent)]"
                 >
                   Apply
                 </NeuralButton>
@@ -544,7 +550,7 @@ export function BudgetPlanner({
                   <div key={category} className="flex items-center justify-between text-xs">
                     <span className="text-white/70">{category}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-cyan-400 font-mono">{percentage}%</span>
+                      <span className="text-[var(--module-color-400)] font-mono">{percentage}%</span>
                       <span className="text-white/50 font-mono">
                         {formatCurrency((monthlyIncome * percentage) / 100, currency)}
                       </span>

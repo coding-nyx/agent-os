@@ -269,6 +269,12 @@ export const scheduleReminder = onCall(
   }
 );
 
+import { NotificationEngine, type NotificationPriority } from "./notification-engine";
+
+// ... (helpers same as before)
+
+// ... (scheduleReminder same as before)
+
 // ---------------------------------------------------------------------------
 // deliverReminder — HTTP handler invoked by Cloud Tasks at the scheduled time
 // ---------------------------------------------------------------------------
@@ -295,7 +301,18 @@ export const deliverReminder = onRequest(async (req, res) => {
 
   const db = getFirestore();
 
-  // Re-read schedule to get current message template and priority
+  // 1. Check for existing occurrence to prevent duplicates from Task retries
+  const occRef = db.doc(`users/${uid}/notification_occurrences/${occId}`);
+  const occSnap = await occRef.get();
+  const occData = occSnap.exists ? (occSnap.data() as Record<string, unknown>) : null;
+
+  if (occData && occData.status === "delivered") {
+    logger.info("[deliverReminder] Reminder already delivered, skipping.", { uid, occId });
+    res.status(200).send("already_delivered");
+    return;
+  }
+
+  // 2. Re-read schedule to get current message template and priority
   const scheduleSnap = await db.doc(`users/${uid}/notification_schedules/${scheduleId}`).get();
   const schedule = scheduleSnap.exists ? (scheduleSnap.data() as Record<string, unknown>) : null;
 
@@ -324,65 +341,42 @@ export const deliverReminder = onRequest(async (req, res) => {
       : "Reminder";
 
   const priority =
-    schedule?.priority === "critical" || schedule?.priority === "alert" || schedule?.priority === "info"
-      ? (schedule.priority as string)
-      : "alert";
+    (schedule?.priority as NotificationPriority) || "alert";
 
   const deepLink =
     schedule?.deepLink && typeof schedule.deepLink === "object"
       ? schedule.deepLink
       : { route: `/${moduleId}` };
 
-  // Read channel preferences — default to os:true, inApp:false if missing.
-  const channelPrefs = (
-    schedule?.channelPrefs &&
-    typeof schedule.channelPrefs === "object" &&
-    schedule.channelPrefs !== null
-  )
-    ? (schedule.channelPrefs as { os?: boolean; inApp?: boolean })
-    : { os: true, inApp: false };
+  try {
+    // Use the centralized NotificationEngine to handle delivery (FCM + Inbox)
+    await NotificationEngine.getInstance().processNotification({
+      uid,
+      id: occId,
+      type: "MODULE_REMINDER_DUE",
+      source: moduleId,
+      priority,
+      title,
+      body: note,
+      data: {
+        scheduleId,
+        moduleId,
+        occurrenceId: occId,
+        dueAt,
+        deepLink
+      }
+    });
 
-  const osEnabled = channelPrefs.os !== false;
-  const inAppEnabled = channelPrefs.inApp === true;
+    // Update occurrence status
+    await db.doc(`users/${uid}/notification_occurrences/${occId}`).set(
+      { status: "delivered", updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
 
-  const now = new Date().toISOString();
-  const eventPayload = {
-    type: "MODULE_REMINDER_DUE",
-    source: moduleId,
-    domain: "system",
-    priority,
-    timestamp: Date.now(),
-    cascadeDepth: 0,
-    data: { note, title, deepLink, scheduleId, moduleId, occurrenceId: occId, dueAt },
-  };
-
-  const spineEventRef = db.doc(`spine_events/${uid}/events/${occId}`);
-  const occurrenceRef = db.doc(`users/${uid}/notification_occurrences/${occId}`);
-
-  await db.runTransaction(async (tx) => {
-    const existing = await tx.get(spineEventRef);
-
-    // Write FCM-triggering Spine event only if the OS push channel is enabled.
-    if (osEnabled && !existing.exists) {
-      tx.create(spineEventRef, eventPayload);
-    }
-
-    tx.set(occurrenceRef, { status: "delivered", updatedAt: now }, { merge: true });
-  });
-
-  // Write an in-app inbox record when the inApp channel is enabled AND
-  // OS push is disabled. When OS push is enabled, the Bridge handler writes
-  // to notification_inbox to avoid duplicate entries.
-  if (inAppEnabled && !osEnabled) {
-    await db.doc(`users/${uid}/notification_inbox/${occId}`).set({
-      ...eventPayload,
-      scheduleId,
-      occurrenceId: occId,
-      read: false,
-      createdAt: now,
-    }, { merge: false });
+    logger.info("[deliverReminder] Reminder processed via Engine", { uid, moduleId, occId });
+    res.status(200).send("ok");
+  } catch (error) {
+    logger.error("[deliverReminder] Failed to process reminder", { uid, occId, error });
+    res.status(500).send("internal error");
   }
-
-  logger.info("[deliverReminder] Reminder delivered", { uid, moduleId, occId, osEnabled, inAppEnabled });
-  res.status(200).send("ok");
 });

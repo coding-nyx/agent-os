@@ -381,7 +381,7 @@ export function BiomarkerDashboard({
           Clinical Flags
         </h4>
         {aggregatedFlags.length === 0 ? (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs text-emerald-300">
+          <div className="rounded-2xl border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] p-4 text-xs text-[var(--module-color-300)]">
             No clinical flags detected across lab reports and image analyses.
           </div>
         ) : (
@@ -436,10 +436,10 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
 /** Color class mapping for biomarker status */
 const STATUS_STYLE: Record<string, { border: string; bg: string; text: string; dot: string }> = {
   normal: {
-    border: 'border-emerald-500/30',
-    bg: 'bg-emerald-500/5',
-    text: 'text-emerald-400',
-    dot: 'bg-emerald-400',
+    border: 'border-[var(--module-accent-border)]',
+    bg: 'bg-[var(--module-accent-faint)]',
+    text: 'text-[var(--module-color-400)]',
+    dot: 'bg-[var(--module-color-400)]',
   },
   warning: {
     border: 'border-amber-500/30',
@@ -555,7 +555,7 @@ function CustomBiomarkerCard({ field, onSelect }: CustomBiomarkerCardProps) {
   const category = field.metadata?.category || 'general';
   const categoryInfo =
     SOMA_FIELD_CATEGORIES[category as keyof typeof SOMA_FIELD_CATEGORIES];
-  const categoryColor = categoryInfo?.color || 'cyan';
+  const categoryColor = categoryInfo?.color || 'emerald';
   const categoryLabel = categoryInfo?.label || 'General Health';
   const unit = field.metadata?.unit || '';
 
@@ -583,7 +583,7 @@ function CustomBiomarkerCard({ field, onSelect }: CustomBiomarkerCardProps) {
     >
       <button
         onClick={handleClick}
-        className="w-full text-left"
+        className="w-full text-left min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
         aria-label={`View details for ${field.name}`}
       >
         <div className="flex items-start justify-between gap-2">
@@ -599,7 +599,7 @@ function CustomBiomarkerCard({ field, onSelect }: CustomBiomarkerCardProps) {
               }}
             >
               <CategoryIcon
-                className={cn('w-3.5 h-3.5', CATEGORY_ACCENT[categoryColor]?.split(' ')[0] || 'text-cyan-400')}
+                className={cn('w-3.5 h-3.5', CATEGORY_ACCENT[categoryColor]?.split(' ')[0] || 'text-[var(--module-color-400)]')}
                 aria-hidden="true"
               />
             </div>

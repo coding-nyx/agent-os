@@ -7,6 +7,7 @@ import { Heart, Droplet, Thermometer, Activity } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
+import { cn } from '@/lib/utils';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { SpineEventType } from '@/lib/types';
 
@@ -32,6 +33,7 @@ export function VitalsEntryForm({ onSubmit }: VitalsEntryFormProps) {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +59,8 @@ export function VitalsEntryForm({ onSubmit }: VitalsEntryFormProps) {
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 400);
       return;
     }
     
@@ -125,19 +129,19 @@ export function VitalsEntryForm({ onSubmit }: VitalsEntryFormProps) {
     <div className="space-y-6">
       <SurfaceCard className="p-6">
         <div className="flex items-center gap-3 mb-6">
-          <Activity className="w-6 h-6 text-cyan-400" />
+          <Activity className="w-6 h-6 text-[var(--module-color-400)]" />
           <div>
             <h2 className="text-xl font-black text-white tracking-tight">Quick Vitals Entry</h2>
             <p className="text-sm text-white/60">Record your current vital signs</p>
           </div>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className={cn('space-y-6', isShaking && 'animate-[quicklog-shake_0.4s_ease-in-out]')}>
           {/* Heart Rate */}
           <div>
             <label className="block text-sm font-medium text-white mb-2">
               <div className="flex items-center gap-2">
-                <Heart className="w-4 h-4 text-cyan-400" />
+                <Heart className="w-4 h-4 text-[var(--module-color-400)]" />
                 <span>Heart Rate (bpm)</span>
               </div>
             </label>

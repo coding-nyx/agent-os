@@ -145,7 +145,7 @@ interface StatCardProps {
   sub?: string;
 }
 
-function StatCard({ icon, label, value, accent = 'text-cyan-400', sub }: StatCardProps) {
+function StatCard({ icon, label, value, accent = 'text-[var(--module-color-400)]', sub }: StatCardProps) {
   return (
     <div className="flex flex-col gap-1 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm p-4">
       <div className={cn('flex items-center gap-2 text-xs font-semibold uppercase tracking-wider', accent)}>
@@ -214,7 +214,7 @@ function TaxYearSummary({ transactions, currency }: TaxYearSummaryProps) {
           icon={<Receipt size={13} />}
           label="Taxable Income"
           value={formatCurrency(taxableIncome, currency)}
-          accent="text-cyan-400"
+          accent="text-[var(--module-color-400)]"
         />
         <StatCard
           icon={<DollarSign size={13} />}
@@ -406,7 +406,7 @@ function QuarterlyEstimates({ annualTaxEstimate, currency, paidQuarters: externa
               onClick={() => togglePaid(idx)}
               className={cn(
                 'flex flex-col gap-2 rounded-xl border backdrop-blur-sm p-4 text-left transition-all',
-                'hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400',
+                'hover:bg-white/10 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]',
                 statusStyles[status],
               )}
               aria-pressed={paidQuarters.has(idx)}

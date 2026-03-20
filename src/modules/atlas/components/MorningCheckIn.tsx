@@ -143,7 +143,7 @@ function LoadingSkeleton() {
       aria-live="polite"
       aria-label="Generating your brief"
     >
-      <Loader2 className="w-5 h-5 text-sky-400 animate-spin" aria-hidden="true" />
+      <Loader2 className="w-5 h-5 text-[var(--module-color-400)] animate-spin" aria-hidden="true" />
       <span className="text-xs font-bold text-white/50 animate-pulse tracking-wide">
         Generating your brief\u2026
       </span>
@@ -199,17 +199,17 @@ export function MorningCheckIn({
     ? 'border-orange-500/20'
     : isCompressed
     ? 'border-amber-500/20'
-    : 'border-sky-500/20';
+    : 'border-[var(--module-accent-border)]';
   const bgClass = isElevated
     ? 'bg-orange-500/5'
     : isCompressed
     ? 'bg-amber-500/5'
-    : 'bg-sky-500/5';
+    : 'bg-[var(--module-accent-faint)]';
   const iconClass = isElevated
     ? 'text-orange-400'
     : isCompressed
     ? 'text-amber-400'
-    : 'text-sky-400';
+    : 'text-[var(--module-color-400)]';
   const headerText =
     predictiveState === 'Overloaded'
       ? 'Overloaded \u2014 Light Day Recommended'
@@ -297,8 +297,8 @@ export function MorningCheckIn({
                     </span>
                     {typeof task.energyCost === 'number' && (
                       <div className="flex items-center gap-1 shrink-0">
-                        <Zap className="w-3 h-3 text-sky-400" aria-hidden="true" />
-                        <span className="text-[10px] font-black text-sky-300 tabular-nums">
+                        <Zap className="w-3 h-3 text-[var(--module-color-400)]" aria-hidden="true" />
+                        <span className="text-[10px] font-black text-[var(--module-color-300)] tabular-nums">
                           {task.energyCost}
                         </span>
                       </div>
@@ -318,7 +318,7 @@ export function MorningCheckIn({
             <NeuralButton
               onClick={handleGetBrief}
               variant="primary"
-              themeColor={isElevated ? 'orange' : isCompressed ? 'amber' : 'cyan'}
+              themeColor={isElevated ? 'orange' : isCompressed ? 'amber' : 'module'}
               className="w-full flex items-center justify-center gap-2"
               aria-label="Get my daily brief from Atlas"
             >

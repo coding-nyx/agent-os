@@ -21,6 +21,7 @@ import {
 } from './services/forge-session-service';
 import { ForgeCloudExecutionService } from './services/forge-cloud-execution';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
+import { ForgeOnboarding } from './onboarding/ForgeOnboarding';
 
 type ForgeMode = 'code' | 'comms' | 'docs' | 'life';
 
@@ -392,6 +393,12 @@ export default function ForgePage() {
         refreshProfile: loadForgeProfile,
         syncGuestProfile: syncGuestForgeProfileToUser
       }}
+      renderOnboarding={({ profile, onComplete }) => (
+        <ForgeOnboarding
+          initialProfile={profile}
+          onComplete={onComplete}
+        />
+      )}
       renderContent={ForgeContent}
     />
   );

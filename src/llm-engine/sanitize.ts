@@ -81,34 +81,27 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   const internalParts = [thoughtText, actionText, toolCallText, rawToolCallText].filter(Boolean);
   const internalText = internalParts.length > 0 ? internalParts.join('\n\n') : null;
 
-  // Aggressively clean public text of all internal tags - REPLACE WITH SPACE TO PREVENT WORD JOINING
-  // Includes cross-matched openers/closers (e.g. <thinking>...</thought>) from non-conforming models
+  // Aggressively clean public text of all internal tags.
+  // Replace with empty string to avoid "ghost spaces" and redundant lines.
   let publicText = normalized
-    .replace(/<thought>[\s\S]*?<\/thought>/g, ' ')
-    .replace(/<think>[\s\S]*?<\/think>/g, ' ')
-    .replace(/<thinking>[\s\S]*?<\/thinking>/g, ' ')
-    .replace(/<thinking>[\s\S]*?<\/thought>/g, ' ')
-    .replace(/<thought>[\s\S]*?<\/thinking>/g, ' ')
-    .replace(/<think>[\s\S]*?<\/thought>/g, ' ')
-    .replace(/<thought>[\s\S]*?<\/think>/g, ' ')
-    .replace(/<action[\s\S]*?<\/action>/g, ' ')
-    .replace(/<tool_calls_begin>[\s\S]*?<tool_calls_end>/g, ' ')
-    .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/g, ' ')
-    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, ' ');
+    .replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/g, '')
+    .replace(/<action[\s\S]*?<\/action>/g, '')
+    .replace(/<tool_calls_begin>[\s\S]*?<tool_calls_end>/g, '')
+    .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/g, '')
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
 
-  // Remove any unclosed tags at the end (for streaming) - REPLACE WITH SPACE
-  // Only strip greedily if there is truly no thought-closer of any kind present
+  // Remove any unclosed tags at the end (for streaming)
   if (!hasThoughtCloser) {
     publicText = publicText
-      .replace(/<thought>[\s\S]*/g, ' ')
-      .replace(/<think>[\s\S]*/g, ' ')
-      .replace(/<thinking>[\s\S]*/g, ' ');
+      .replace(/<thought>[\s\S]*/g, '')
+      .replace(/<think>[\s\S]*/g, '')
+      .replace(/<thinking>[\s\S]*/g, '');
   }
   publicText = publicText
-    .replace(/<action[\s\S]*/g, ' ')
-    .replace(/<tool_calls_begin>[\s\S]*/g, ' ')
-    .replace(/<tool_call_begin>[\s\S]*/g, ' ')
-    .replace(/<tool_call>[\s\S]*/g, ' ')
+    .replace(/<action[\s\S]*/g, '')
+    .replace(/<tool_calls_begin>[\s\S]*/g, '')
+    .replace(/<tool_call_begin>[\s\S]*/g, '')
+    .replace(/<tool_call>[\s\S]*/g, '')
     .replace(/<(?:t(?:h(?:o(?:u(?:g(?:ht?)?)?)?|i(?:n(?:k(?:ing?)?)?)?)?)?|a(?:c(?:t(?:i(?:on?)?)?)?)?|tool_call(?:s_begin|_begin)?)$/i, '');
 
   if (!options.retainSpacings) {
@@ -116,7 +109,11 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
     publicText = publicText.trim();
   } else {
     // During streaming we want to keep leading/trailing spaces for immediate feedback
-    // but we still want to collapse internal tags to a single space
+    // but we still want to collapse excessive newlines to prevent UI jumps.
+    // 1. Remove leading whitespace (prevents ghost space if model starts with tag)
+    publicText = publicText.replace(/^\s+/, '');
+    // 2. Collapse 3+ consecutive newlines into exactly 2 newlines
+    publicText = publicText.replace(/\n{3,}/g, '\n\n');
   }
 
   return { publicText, internalText, isThinking, isActing, currentActionType };

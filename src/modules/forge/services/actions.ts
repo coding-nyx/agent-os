@@ -139,8 +139,9 @@ export function registerForgeActions() {
       const session: ForgeExecutionRecord = {
         id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
         command,
-        result: 'queued',
-        outputSummary: typeof payload?.summary === 'string' ? payload.summary : undefined,
+        result: 'error',
+        outputSummary: 'Direct file reading is disabled in this environment.',
+        errorLog: ['Direct file reading is disabled in this environment. Use code execution instead.'],
         createdAt: new Date().toISOString()
       };
       const next: ForgeProfile = {
@@ -157,8 +158,9 @@ export function registerForgeActions() {
       const session: ForgeExecutionRecord = {
         id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
         command,
-        result: 'queued',
-        outputSummary: typeof payload?.summary === 'string' ? payload.summary : undefined,
+        result: 'error',
+        outputSummary: 'Direct file writing is disabled in this environment.',
+        errorLog: ['Direct file writing is disabled in this environment. Use code execution instead.'],
         createdAt: new Date().toISOString()
       };
       const next: ForgeProfile = {

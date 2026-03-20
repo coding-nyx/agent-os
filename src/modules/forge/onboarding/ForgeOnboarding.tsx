@@ -175,7 +175,7 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
     <GuidedIntakeFrame
       title="Forge Guided Intake"
       subtitle="Configuring execution environment and safety defaults."
-      statusLabel="EXECUTION_BASELINE"
+      statusLabel=""
       steps={[...FORGE_STEPS]}
       currentStep={intake.stepIndex}
       themeColor="rose"

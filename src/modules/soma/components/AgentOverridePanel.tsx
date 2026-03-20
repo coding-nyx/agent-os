@@ -16,6 +16,8 @@ import React, { useState, useCallback, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle2, ShieldOff, PencilLine, ChevronDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
 import type { AgentReview } from '@/lib/types';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -165,14 +167,15 @@ export function AgentOverridePanel({
                   {fieldLabel}
                 </h2>
               </div>
-              <button
+              <NeuralButton
                 type="button"
+                variant="ghost"
                 onClick={onDismiss}
                 className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
                 aria-label="Close panel"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </NeuralButton>
             </div>
 
             {/* Agent note */}
@@ -196,11 +199,11 @@ export function AgentOverridePanel({
                     {currentValue}
                   </p>
                 </div>
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-400/70 mb-1">
+                <div className="rounded-xl border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--module-color-400)] opacity-70 mb-1">
                     Agent suggests
                   </p>
-                  <p className="text-sm font-semibold text-emerald-300">
+                  <p className="text-sm font-semibold text-[var(--module-color-300)]">
                     {agentReview.suggestedValue}
                   </p>
                 </div>
@@ -220,38 +223,32 @@ export function AgentOverridePanel({
                 >
                   <div className="mb-4">
                     <label
+                      id={`${inputId}-label`}
                       htmlFor={inputId}
                       className="block text-xs text-white/50 mb-1.5"
                     >
                       Manual override value
                     </label>
                     <div className="flex gap-2">
-                      <input
+                      <NeuralInput
                         id={inputId}
                         type="text"
                         value={editValue}
                         onChange={e => setEditValue(e.target.value)}
                         placeholder={String(currentValue)}
-                        className={cn(
-                          'flex-1 rounded-xl border border-white/15 bg-white/5',
-                          'px-3 py-2 text-sm text-white placeholder:text-white/30',
-                          'focus:outline-none focus:ring-1 focus:ring-emerald-500/50',
-                          'transition-colors',
-                        )}
+                        aria-describedby={`${inputId}-label`}
+                        className="flex-1"
                       />
-                      <button
+                      <NeuralButton
                         type="button"
                         onClick={handleEdit}
                         disabled={!editValue.trim()}
-                        className={cn(
-                          'px-3 py-2 rounded-xl text-xs font-semibold transition-colors',
-                          'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300',
-                          'hover:bg-emerald-500/30',
-                          'disabled:opacity-40 disabled:cursor-not-allowed',
-                        )}
+                        themeColor="module"
+                        variant="outline"
+                        className="min-h-[44px]"
                       >
                         Apply
-                      </button>
+                      </NeuralButton>
                     </div>
                   </div>
                 </motion.div>
@@ -267,7 +264,7 @@ export function AgentOverridePanel({
                   loading={loadingAccept}
                   disabled={loadingKeep}
                   icon={<CheckCircle2 className="w-4 h-4" />}
-                  className="bg-emerald-500/20 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30"
+                  className="bg-[var(--module-accent-glow)] border-[var(--module-accent-border)] text-[var(--module-color-300)] hover:bg-[var(--module-accent-glow)]"
                 >
                   Accept Suggestion
                 </ActionButton>
@@ -347,6 +344,7 @@ function ActionButton({
         'text-xs font-semibold transition-colors',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         'min-h-[44px]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]',
         className,
       )}
     >

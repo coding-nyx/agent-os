@@ -218,7 +218,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
     : 0;
 
   const gradeColor = {
-    A: 'text-emerald-400', B: 'text-cyan-400', C: 'text-amber-400', D: 'text-orange-400', F: 'text-rose-400'
+    A: 'text-emerald-400', B: 'text-[var(--module-color-400)]', C: 'text-amber-400', D: 'text-orange-400', F: 'text-rose-400'
   }[healthScore.grade];
 
   const gradeRingColor = {
@@ -300,7 +300,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
           {onAskAI && (
             <button
               onClick={() => onAskAI('Analyze my financial health score and give me specific actions to improve it')}
-              className="mt-4 w-full text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold text-left transition-colors flex items-center gap-1"
+              className="mt-4 w-full text-[11px] text-[var(--module-color-400)] hover:text-[var(--module-color-300)] font-semibold text-left transition-colors flex items-center gap-1 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
             >
               <Activity className="w-3 h-3" /> Ask AI for improvement plan →
             </button>
@@ -344,7 +344,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
                   <div key={m.label} className="flex-1 flex flex-col items-center gap-1">
                     <div className="w-full flex items-end justify-center" style={{ height: 56 }}>
                       <div
-                        className={cn('w-full rounded-t-sm transition-all', isLast ? 'bg-cyan-500' : 'bg-white/20')}
+                        className={cn('w-full rounded-t-sm transition-all', isLast ? 'bg-[var(--module-accent)]' : 'bg-white/20')}
                         style={{ height: barHeight }}
                         title={`${m.label}: ${m.rate.toFixed(1)}%`}
                       />
@@ -368,11 +368,12 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
                 key={opt.value}
                 onClick={() => setSelectedMonth(opt.value)}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all',
+                  'px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]',
                   selectedMonth === opt.value
-                    ? 'bg-cyan-600 text-white'
+                    ? 'bg-[var(--module-accent)] text-white'
                     : 'bg-white/5 text-white/50 hover:bg-white/10'
                 )}
+                aria-pressed={selectedMonth === opt.value}
               >
                 {opt.label}
               </button>
@@ -435,13 +436,13 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
               const utilizationPct = bp.allocated > 0 ? Math.min(150, (bp.actual / bp.allocated) * 100) : 0;
               const statusColor = {
                 under: 'bg-emerald-500/50',
-                on_track: 'bg-cyan-500/50',
+                on_track: 'bg-[var(--module-accent)]',
                 warning: 'bg-amber-500/60',
                 over: 'bg-rose-500/70',
               }[bp.status];
               const badgeColor = {
                 under: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-                on_track: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+                on_track: 'text-[var(--module-color-400)] bg-[var(--module-accent-muted)] border-[var(--module-accent-border)]',
                 warning: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
                 over: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
               }[bp.status];
@@ -473,7 +474,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
           {onAskAI && budgetPerformance.some(bp => bp.status === 'over') && (
             <button
               onClick={() => onAskAI('Which budget categories am I overspending on and how can I reduce them?')}
-              className="mt-4 text-[11px] text-amber-400 hover:text-amber-300 font-semibold transition-colors flex items-center gap-1"
+              className="mt-4 text-[11px] text-amber-400 hover:text-amber-300 font-semibold transition-colors flex items-center gap-1 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
             >
               <AlertTriangle className="w-3 h-3" /> Get AI advice on overspend →
             </button>

@@ -34,7 +34,7 @@ interface NexusChatProps {
         clearPendingRequest?: () => void;
     };
     agentName: string;
-    themeColor: ModuleTheme;
+    themeColor: ModuleTheme | 'module';
     placeholder?: string;
     onActionParsed?: (type: string, payload: Record<string, unknown>) => void;
     onClearHistory?: () => void;

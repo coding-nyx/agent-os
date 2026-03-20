@@ -252,39 +252,6 @@ export function NotificationSettingsPanel({
     return () => unsub?.();
   }, [dataLayer, isGuest, moduleId, user]);
 
-  useEffect(() => {
-    if (!user || isGuest) return;
-    if (didEnsureDefaultsRef.current) return;
-    if (!hydrating && schedules.length === 0) {
-      didEnsureDefaultsRef.current = true;
-      const now = formatNowIso();
-      void (async () => {
-        await dataLayer.batchWrite(
-          presets.map((p) => ({
-            type: 'set' as const,
-            collection: `users/${user.uid}/notification_schedules`,
-            id: p.scheduleId,
-            data: {
-              ...p.config,
-              createdAt: p.config.createdAt || now,
-              updatedAt: p.config.updatedAt || now,
-            },
-          })),
-        );
-      })();
-    }
-  }, [dataLayer, hydrating, isGuest, moduleId, presets, schedules.length, user]);
-
-  const scheduleEditors = useMemo(() => {
-    const loadedMap = new Map<string, NotificationScheduleConfig>();
-    for (const s of schedules) loadedMap.set(s.id, s);
-
-    return presets.map((p) => ({
-      scheduleId: p.scheduleId,
-      initial: loadedMap.get(p.scheduleId) ?? p.config,
-    }));
-  }, [presets, schedules]);
-
   const saveSchedule = useCallback(
     async (scheduleId: string, next: NotificationScheduleConfig) => {
       if (!user || isGuest) return;
@@ -328,6 +295,37 @@ export function NotificationSettingsPanel({
     },
     [dataLayer, isGuest, user],
   );
+
+  // Auto-persist default enabled presets to DB on first view
+  useEffect(() => {
+    if (hydrating || !user || isGuest || didEnsureDefaultsRef.current) return;
+
+    const loadedIds = new Set(schedules.map(s => s.id));
+    const missingPresets = presets.filter(p => !loadedIds.has(p.scheduleId));
+
+    if (missingPresets.length > 0) {
+      didEnsureDefaultsRef.current = true;
+      missingPresets.forEach(p => {
+        if (p.config.enabled) {
+          void saveSchedule(p.scheduleId, p.config);
+        }
+      });
+    }
+  }, [hydrating, user, isGuest, schedules, presets, saveSchedule]);
+
+  const scheduleEditors = useMemo(() => {
+    const loadedMap = new Map<string, NotificationScheduleConfig>();
+    for (const s of schedules) loadedMap.set(s.id, s);
+
+    return presets.map((p) => {
+      const existing = loadedMap.get(p.scheduleId);
+      return {
+        scheduleId: p.scheduleId,
+        // If not in DB, default to the preset config
+        initial: existing ?? p.config,
+      };
+    });
+  }, [presets, schedules]);
 
   if (isGuest) {
     return (

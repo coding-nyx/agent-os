@@ -181,7 +181,7 @@ export function GoalTracker({
   return (
     <div className="space-y-6">
       {/* ── Header with stats ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <SurfaceCard className="p-3">
           <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">
             Total Goals
@@ -199,10 +199,10 @@ export function GoalTracker({
           </div>
         </SurfaceCard>
         <SurfaceCard className="p-3">
-          <div className="text-[10px] text-sky-400/60 uppercase tracking-wider mb-1">
+          <div className="text-[10px] text-[var(--module-color-400)]/60 uppercase tracking-wider mb-1">
             Completed
           </div>
-          <div className="text-2xl font-black text-sky-400 tabular-nums">
+          <div className="text-2xl font-black text-[var(--module-color-400)] tabular-nums">
             {stats.completed}
           </div>
         </SurfaceCard>

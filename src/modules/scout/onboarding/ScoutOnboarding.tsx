@@ -186,7 +186,7 @@ ${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context br
     <GuidedIntakeFrame
       title="Scout Guided Intake"
       subtitle="Configuring your verification and research baseline."
-      statusLabel="RESEARCH_BASELINE"
+      statusLabel=""
       steps={[...SCOUT_STEPS]}
       currentStep={intake.stepIndex}
       themeColor="lime"

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Plus, Search, Filter, Download, Upload, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -53,13 +54,13 @@ const TransactionRow = React.memo(function TransactionRow({
       <td className="px-4 py-3">
         <div className="text-sm text-white font-medium">{transaction.description}</div>
         {transaction.recurring && (
-          <div className="text-[10px] text-cyan-400 mt-1">
+          <div className="text-[10px] text-[var(--module-color-400)] mt-1">
             ↻ {transaction.recurringFrequency}
           </div>
         )}
       </td>
       <td className="px-4 py-3">
-        <span className="inline-block px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+        <span className="inline-block px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
           {transaction.category}
         </span>
       </td>
@@ -75,7 +76,8 @@ const TransactionRow = React.memo(function TransactionRow({
             variant="ghost"
             onClick={() => onEdit(transaction)}
             disabled={disabled}
-            className="p-1.5 h-auto min-h-0 text-white/60 hover:text-white"
+            className="p-1.5 h-auto min-h-[44px] text-white/60 hover:text-white"
+            aria-label="Edit transaction"
           >
             <Edit2 className="w-3.5 h-3.5" />
           </NeuralButton>
@@ -83,7 +85,8 @@ const TransactionRow = React.memo(function TransactionRow({
             variant="ghost"
             onClick={() => onDelete(transaction.id)}
             disabled={disabled}
-            className="p-1.5 h-auto min-h-0 text-white/60 hover:text-red-400"
+            className="p-1.5 h-auto min-h-[44px] text-white/60 hover:text-red-400"
+            aria-label="Delete transaction"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </NeuralButton>
@@ -412,7 +415,7 @@ export function TransactionManager({
   return (
     <div className="space-y-6">
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Total Income</div>
           <div className="mt-2 text-2xl font-black text-emerald-400">{formatCurrency(stats.totalIncome, currency)}</div>
@@ -425,7 +428,7 @@ export function TransactionManager({
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Net Cash Flow</div>
           <div className={cn(
             "mt-2 text-2xl font-black",
-            stats.netCashFlow >= 0 ? "text-cyan-400" : "text-amber-400"
+            stats.netCashFlow >= 0 ? "text-[var(--module-color-400)]" : "text-amber-400"
           )}>
             {formatCurrency(stats.netCashFlow, currency)}
           </div>
@@ -502,7 +505,7 @@ export function TransactionManager({
                 variant="primary"
                 size="sm"
                 disabled={disabled}
-                className="bg-cyan-600 hover:bg-cyan-500"
+                className="bg-[var(--module-accent)] hover:bg-[var(--module-accent)]"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Transaction
@@ -526,10 +529,10 @@ export function TransactionManager({
             />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-16rem)]">
+            <table className="w-full" role="table">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-white/10 sticky top-0 z-10 backdrop-blur-xl bg-black/60">
                   <th 
                     className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60"
                     onClick={() => toggleSort('date')}
@@ -593,7 +596,7 @@ export function TransactionManager({
         isOpen={isAddModalOpen || editingTransaction !== null}
         onClose={handleCloseModal}
         title={editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
-        themeColor="cyan"
+        themeColor="module"
         maxWidth="2xl"
       >
         <DynamicFormBuilder

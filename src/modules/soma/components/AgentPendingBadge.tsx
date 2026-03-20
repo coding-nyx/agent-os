@@ -58,9 +58,9 @@ const STATUS_CONFIG: Record<AgentReview['status'], StatusConfig> = {
   approved: {
     icon: CheckCircle2,
     label: 'Approved',
-    containerCls: 'bg-emerald-500/20 border-emerald-500/30',
-    textCls: 'text-emerald-300',
-    iconCls: 'text-emerald-400',
+    containerCls: 'bg-[var(--module-accent-glow)] border-[var(--module-accent-border)]',
+    textCls: 'text-[var(--module-color-300)]',
+    iconCls: 'text-[var(--module-color-400)]',
   },
   rejected: {
     icon: XCircle,

@@ -31,12 +31,12 @@ const MUSCLE_COLORS: Record<string, string> = {
   legs: 'bg-purple-500/30 text-purple-300',
   quads: 'bg-purple-500/30 text-purple-300',
   hamstrings: 'bg-purple-500/30 text-purple-300',
-  shoulders: 'bg-amber-500/30 text-amber-300',
+  shoulders: 'bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
   arms: 'bg-green-500/30 text-green-300',
   biceps: 'bg-green-500/30 text-green-300',
   triceps: 'bg-green-500/30 text-green-300',
-  core: 'bg-orange-500/30 text-orange-300',
-  cardio: 'bg-orange-500/30 text-orange-300',
+  core: 'bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
+  cardio: 'bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
   default: 'bg-white/10 text-white/50',
 };
 
@@ -237,7 +237,7 @@ function DayCell({ date, dayLabel, data, onQuickLog, onRemind }: DayCellProps) {
         {hasActivity ? (
           <div className="flex flex-col gap-1 pr-3 min-w-0">
             {/* Workout name */}
-            <span className="text-[10px] sm:text-[11px] font-semibold text-white/80 leading-tight break-words">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-white/80 leading-tight line-clamp-2">
               {displayName}
             </span>
 
@@ -432,8 +432,9 @@ export function TrainingCalendar({
       </div>
 
       {/* ── 7-day grid ── */}
-      <div className="grid grid-cols-7 gap-1.5 sm:gap-2 w-full">
-        {weekDays.map((date, i) => {
+      <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-2 w-full min-w-[500px] sm:min-w-0">
+          {weekDays.map((date, i) => {
           const isoDate = toIsoDate(date);
           return (
             <DayCell
@@ -446,6 +447,7 @@ export function TrainingCalendar({
             />
           );
         })}
+        </div>
       </div>
 
       {/* ── Weekly summary footer ── */}
@@ -457,3 +459,5 @@ export function TrainingCalendar({
     </div>
   );
 }
+
+export default TrainingCalendar;

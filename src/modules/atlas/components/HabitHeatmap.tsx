@@ -16,6 +16,7 @@
 import React, { useMemo, useState } from 'react';
 import { Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import type { AtlasHabit } from '../services/atlas-profile-service';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -197,13 +198,15 @@ export function HabitHeatmap({ habit }: HabitHeatmapProps) {
         <span className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] truncate max-w-[180px]">
           {habit.title}
         </span>
-        <button
-          type="button"
+        <NeuralButton
+          variant="ghost"
+          size="sm"
           onClick={() => setShowFullYear((v) => !v)}
-          className="shrink-0 text-[10px] text-sky-400 hover:text-sky-300 font-bold transition-colors ml-2"
+          className="shrink-0 text-[10px] text-[var(--module-color-400)] hover:text-[var(--module-color-300)] font-bold transition-colors ml-2"
+          aria-label={showFullYear ? 'Show 12 weeks' : 'Show full year'}
         >
           {showFullYear ? 'Show 12 weeks' : 'Show full year'}
-        </button>
+        </NeuralButton>
       </div>
 
       {/* Scrollable heatmap area */}
@@ -274,7 +277,7 @@ export function HabitHeatmap({ habit }: HabitHeatmapProps) {
                         cell.isFuture
                           ? 'bg-white/[0.03]'
                           : cell.completed
-                            ? 'bg-sky-500/80'
+                            ? 'bg-[var(--module-color-500)]/80'
                             : 'bg-white/5',
                       )}
                       aria-label={

@@ -78,6 +78,7 @@ export function DiagnosisUploadZone({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isShaking, setIsShaking] = useState(false);
 
   const isDisabled = disabled || isUploading;
 
@@ -86,6 +87,8 @@ export function DiagnosisUploadZone({
       const validationError = validateFile(file);
       if (validationError) {
         setLocalError(validationError);
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 400);
         return;
       }
       setLocalError(null);
@@ -157,8 +160,9 @@ export function DiagnosisUploadZone({
           'transition-colors',
           isDisabled
             ? 'cursor-not-allowed opacity-60'
-            : 'cursor-pointer hover:border-emerald-500/40 hover:bg-emerald-500/5',
-          isDragOver && 'bg-emerald-500/10',
+            : 'cursor-pointer hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)]',
+          isDragOver && 'bg-[var(--module-accent-muted)]',
+          isShaking && 'animate-[quicklog-shake_0.4s_ease-in-out]',
         )}
         role="button"
         aria-label="Upload medical document"
@@ -173,6 +177,7 @@ export function DiagnosisUploadZone({
           className="sr-only"
           onChange={handleInputChange}
           disabled={isDisabled}
+          aria-label="Upload medical document"
           aria-hidden="true"
         />
 
@@ -182,10 +187,10 @@ export function DiagnosisUploadZone({
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           className={cn(
             'w-16 h-16 rounded-2xl flex items-center justify-center',
-            'bg-emerald-500/10 border border-emerald-500/20',
+            'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]',
           )}
         >
-          <Upload className="w-8 h-8 text-emerald-400" />
+          <Upload className="w-8 h-8 text-[var(--module-color-400)]" />
         </motion.div>
 
         {/* Text */}
@@ -194,7 +199,7 @@ export function DiagnosisUploadZone({
             {isDragOver ? 'Drop to upload' : 'Drag & drop your document'}
           </p>
           <p className="text-xs text-white/40 mt-1">
-            or <span className="text-emerald-400 underline-offset-2 underline">click to browse</span>
+            or <span className="text-[var(--module-color-400)] underline-offset-2 underline">click to browse</span>
           </p>
         </div>
 
@@ -227,10 +232,10 @@ export function DiagnosisUploadZone({
               exit={{ opacity: 0 }}
               className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-black/60 backdrop-blur-sm"
             >
-              <p className="text-sm font-semibold text-emerald-400">Uploading…</p>
+              <p className="text-sm font-semibold text-[var(--module-color-400)]">Uploading…</p>
               <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                  className="h-full bg-[var(--module-accent)] rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(100, Math.max(0, uploadProgress))}%` }}
                 />
               </div>

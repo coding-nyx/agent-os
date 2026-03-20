@@ -44,20 +44,24 @@ export function GuidedIntakeFrame({
   const [preludeOpen, setPreludeOpen] = useState(false);
 
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center p-4">
-      <div className="relative w-full max-w-5xl h-[84vh] flex flex-col bg-black/40 backdrop-blur-xl rounded-panel border border-white/10 overflow-hidden shadow-2xl">
+    <div className="h-full w-full flex flex-col items-center justify-center p-0 sm:p-4">
+      <div className="relative w-full h-full sm:h-[84vh] flex flex-col bg-black/40 backdrop-blur-xl rounded-none sm:rounded-panel border-x-0 border-y sm:border border-white/10 overflow-hidden shadow-2xl">
         {/* Simplified Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-white/5 bg-gradient-to-r from-white/[0.04] to-transparent shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 border-b border-white/5 bg-gradient-to-r from-white/[0.04] to-transparent shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">{statusLabel}</span>
-              <div className="h-1 w-1 rounded-full bg-white/20" />
+              {statusLabel && (
+                <>
+                  <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">{statusLabel}</span>
+                  <div className="h-1 w-1 rounded-full bg-white/20" />
+                </>
+              )}
               <span className={cn('text-[9px] font-black uppercase tracking-[0.3em]', theme.accent)}>
                 Step {safeStep + 1} of {steps.length}
               </span>
             </div>
-            <h2 className={cn('text-xl font-black italic uppercase tracking-widest', theme.accent)}>{title}</h2>
-            <p className="text-[11px] text-white/50 leading-relaxed max-w-xl">{subtitle}</p>
+            <h2 className={cn('text-lg sm:text-xl font-black italic uppercase tracking-widest', theme.accent)}>{title}</h2>
+            <p className="text-[10px] sm:text-[11px] text-white/50 leading-relaxed max-w-xl">{subtitle}</p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -65,19 +69,19 @@ export function GuidedIntakeFrame({
               <React.Fragment key={step.key}>
                 <div
                   className={cn(
-                    'h-2 w-2 rounded-full transition-all duration-300',
+                    'h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full transition-all duration-300',
                     index === safeStep ? `${theme.soft} scale-125` : index < safeStep ? 'bg-white/30' : 'bg-white/10'
                   )}
                   title={step.label}
                 />
-                {index < steps.length - 1 && <div className="h-px w-3 bg-white/10" />}
+                {index < steps.length - 1 && <div className="h-px w-2 sm:w-3 bg-white/10" />}
               </React.Fragment>
             ))}
           </div>
         </div>
 
         {/* Current Step Helper */}
-        <div className="px-6 py-3 border-b border-white/5 bg-white/[0.01] flex items-center justify-between shrink-0">
+        <div className="px-4 sm:px-6 py-2 sm:py-3 border-b border-white/5 bg-white/[0.01] flex items-center justify-between shrink-0">
            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">
              Current Focus: <span className="text-white">{steps[safeStep]?.label || 'Intake'}</span>
            </p>
@@ -106,7 +110,7 @@ export function GuidedIntakeFrame({
           {prelude && !preludeCollapsible && (
             <div className="border-b border-white/5 bg-black/30 shrink-0">{prelude}</div>
           )}
-          <div className="flex-1 overflow-hidden">{children}</div>
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">{children}</div>
         </div>
       </div>
     </div>

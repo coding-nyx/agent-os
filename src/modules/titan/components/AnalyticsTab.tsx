@@ -164,14 +164,14 @@ function StrengthLineSVG({ points }: { points: DataPoint[] }) {
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-28" aria-label="Strength trend">
         <defs>
           <linearGradient id="strGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={improving ? 'rgba(249,115,22,0.3)' : 'rgba(148,163,184,0.2)'} />
+            <stop offset="0%" stopColor={improving ? 'var(--module-accent-glow)' : 'rgba(148,163,184,0.2)'} />
             <stop offset="100%" stopColor="rgba(0,0,0,0)" />
           </linearGradient>
         </defs>
         <polygon points={area} fill="url(#strGrad)" />
-        <polyline points={polyline} stroke={improving ? '#f97316' : '#94a3b8'} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={polyline} style={{ stroke: improving ? 'var(--module-accent)' : '#94a3b8' }} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         {svgPts.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r="3.5" fill={improving ? '#f97316' : '#94a3b8'} />
+          <circle key={i} cx={x} cy={y} r="3.5" style={{ fill: improving ? 'var(--module-accent)' : '#94a3b8' }} />
         ))}
       </svg>
       <div className="flex justify-between text-[9px] text-white/30 px-1 mt-0.5">
@@ -198,8 +198,8 @@ const MUSCLE_DISPLAY: Record<string, string> = {
 };
 
 const MUSCLE_COLOR: Record<string, string> = {
-  chest: '#f97316', back: '#3b82f6', lats: '#6366f1', shoulders: '#a855f7',
-  biceps: '#ec4899', triceps: '#14b8a6', forearms: '#f59e0b',
+  chest: '#DC4B1E', back: '#3b82f6', lats: '#6366f1', shoulders: '#a855f7',
+  biceps: '#ec4899', triceps: '#14b8a6', forearms: '#FF7252',
   quads: '#22c55e', hamstrings: '#84cc16', glutes: '#f43f5e',
   calves: '#06b6d4', core: '#eab308', traps: '#8b5cf6', full_body: '#94a3b8',
 };
@@ -345,12 +345,12 @@ function TrainingHeatmap({ sessions }: { sessions: WorkoutSession[] }) {
                   title={vol > 0 ? `${date}: ${Math.round(vol).toLocaleString()} kg volume` : date}
                   className={cn(
                     'w-3 h-3 rounded-sm transition-all cursor-default',
-                    isToday && 'ring-1 ring-orange-400/60',
+                    isToday && 'ring-1 ring-[var(--module-accent-ring)]',
                     isFuture && 'opacity-20',
                   )}
                   style={{
                     backgroundColor: vol > 0
-                      ? `rgba(249,115,22,${intensity})`
+                      ? `color-mix(in srgb, var(--module-accent) ${Math.round(intensity * 100)}%, transparent)`
                       : 'rgba(255,255,255,0.04)',
                   }}
                 />
@@ -365,7 +365,7 @@ function TrainingHeatmap({ sessions }: { sessions: WorkoutSession[] }) {
           <div
             key={i}
             className="w-3 h-3 rounded-sm"
-            style={{ backgroundColor: i === 0 ? 'rgba(255,255,255,0.04)' : `rgba(249,115,22,${o})` }}
+            style={{ backgroundColor: i === 0 ? 'rgba(255,255,255,0.04)' : `color-mix(in srgb, var(--module-accent) ${Math.round(o * 100)}%, transparent)` }}
           />
         ))}
         <span className="text-[9px] text-white/30">More</span>
@@ -429,7 +429,7 @@ function RecoveryTrendPanel({ sleepLog }: { sleepLog: SleepEntry[] }) {
       <div className="flex gap-6">
         <div>
           <p className="text-[9px] uppercase tracking-wider text-white/40">Avg Quality</p>
-          <p className="text-lg font-black text-orange-400">{avgQuality.toFixed(1)}<span className="text-xs text-white/40">/10</span></p>
+          <p className="text-lg font-black text-[var(--module-color-400)]">{avgQuality.toFixed(1)}<span className="text-xs text-white/40">/10</span></p>
         </div>
         <div>
           <p className="text-[9px] uppercase tracking-wider text-white/40">Avg Duration</p>
@@ -455,12 +455,12 @@ function RecoveryTrendPanel({ sleepLog }: { sleepLog: SleepEntry[] }) {
         <polygon points={toArea(durationPts)} fill="url(#durGrad)" />
         <polygon points={toArea(qualityPts)} fill="url(#qualGrad)" />
         <polyline points={toPolyline(durationPts)} stroke="#6366f1" strokeWidth="1.5" fill="none" strokeDasharray="4 2" strokeLinecap="round" />
-        <polyline points={toPolyline(qualityPts)} stroke="#f97316" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={toPolyline(qualityPts)} style={{ stroke: 'var(--module-accent)' }} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
 
       <div className="flex items-center gap-4 text-[9px]">
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5 bg-orange-400 rounded" />
+          <div className="w-4 h-0.5 bg-[var(--module-color-400)] rounded" />
           <span className="text-white/40">Sleep Quality (0–10)</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -521,7 +521,7 @@ function RecoveryCheckinTrend({ checkins }: { checkins: TitanRecoveryCheckin[] }
       <div className="flex gap-6 flex-wrap">
         <div>
           <p className="text-[9px] uppercase tracking-wider text-white/40">Pain</p>
-          <p className="text-lg font-black text-orange-400">{avg('pain')}</p>
+          <p className="text-lg font-black text-[var(--module-color-400)]">{avg('pain')}</p>
         </div>
         <div>
           <p className="text-[9px] uppercase tracking-wider text-white/40">Fatigue</p>
@@ -538,14 +538,14 @@ function RecoveryCheckinTrend({ checkins }: { checkins: TitanRecoveryCheckin[] }
       </div>
 
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-24" aria-label="Recovery check-in trend">
-        <polyline points={toPolyline(painPts)} stroke="#f97316" strokeWidth="2" fill="none" strokeLinecap="round" />
+        <polyline points={toPolyline(painPts)} style={{ stroke: 'var(--module-accent)' }} strokeWidth="2" fill="none" strokeLinecap="round" />
         <polyline points={toPolyline(fatiguePts)} stroke="#ef4444" strokeWidth="1.6" fill="none" strokeLinecap="round" />
         <polyline points={toPolyline(sleepPts)} stroke="#6366f1" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeDasharray="4 2" />
         <polyline points={toPolyline(moodPts)} stroke="#34d399" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeDasharray="2 2" />
       </svg>
 
       <div className="flex items-center gap-3 text-[9px] text-white/40 flex-wrap">
-        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-orange-400" /> Pain (0–10)</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-[var(--module-color-400)]" /> Pain (0–10)</span>
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-red-400" /> Fatigue (0–10)</span>
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-indigo-400" style={{ borderTop: '1px dashed' }} /> Sleep (1–5)</span>
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-emerald-400" style={{ borderTop: '1px dashed' }} /> Mood (1–5)</span>
@@ -571,7 +571,7 @@ function AnalyticsPanel({
   return (
     <SurfaceCard className="p-4 sm:p-5 md:p-6">
       <div className="flex items-center gap-2 mb-3 sm:mb-4">
-        <Icon className="w-4 h-4 text-orange-400 shrink-0" />
+        <Icon className="w-4 h-4 text-[var(--module-color-400)] shrink-0" />
         <h3 className="text-[13px] sm:text-sm font-black uppercase tracking-wider text-white/80">{title}</h3>
       </div>
       {children}

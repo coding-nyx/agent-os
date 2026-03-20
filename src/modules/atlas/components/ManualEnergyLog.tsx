@@ -84,14 +84,16 @@ export function ManualEnergyLog({ onLogEnergy, lastLoggedAt }: ManualEnergyLogPr
           {/* Energy level buttons: 1–5 */}
           <div className="flex items-center gap-2">
             {[1, 2, 3, 4, 5].map((lvl) => (
-              <button
+              <NeuralButton
                 key={lvl}
-                type="button"
+                size="sm"
+                variant={selectedLevel === lvl ? 'primary' : 'ghost'}
+                themeColor="emerald"
                 aria-label={`Energy level ${lvl}`}
                 aria-pressed={selectedLevel === lvl}
                 onClick={() => setSelectedLevel(lvl)}
                 className={cn(
-                  'w-8 h-8 rounded-full text-xs font-bold border transition-all duration-150',
+                  'w-8 h-8 min-w-0 !p-0 rounded-full text-xs font-bold border transition-all duration-150 min-h-[44px]',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60',
                   selectedLevel === lvl
                     ? 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_10px_rgba(16,185,129,0.4)]'
@@ -99,21 +101,23 @@ export function ManualEnergyLog({ onLogEnergy, lastLoggedAt }: ManualEnergyLogPr
                 )}
               >
                 {lvl}
-              </button>
+              </NeuralButton>
             ))}
           </div>
 
           {/* Time-of-day pills */}
           <div className="flex items-center flex-wrap gap-1.5">
             {TIME_LABELS.map(({ id, label }) => (
-              <button
+              <NeuralButton
                 key={id}
-                type="button"
+                size="sm"
+                variant={selectedTime === id ? 'primary' : 'ghost'}
+                themeColor="emerald"
                 aria-label={`Time of day: ${label}`}
                 aria-pressed={selectedTime === id}
                 onClick={() => setSelectedTime(id)}
                 className={cn(
-                  'px-2.5 py-0.5 rounded-full text-[10px] font-semibold border transition-all duration-150',
+                  'px-2.5 py-0.5 !h-auto rounded-full text-[10px] font-semibold border transition-all duration-150',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60',
                   selectedTime === id
                     ? 'bg-emerald-500/25 border-emerald-400/60 text-emerald-300'
@@ -121,7 +125,7 @@ export function ManualEnergyLog({ onLogEnergy, lastLoggedAt }: ManualEnergyLogPr
                 )}
               >
                 {label}
-              </button>
+              </NeuralButton>
             ))}
           </div>
 

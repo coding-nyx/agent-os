@@ -82,10 +82,10 @@ function resolveIcon(iconName?: string): React.ComponentType<{ className?: strin
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; glow: string }> = {
   focus: {
-    bg: 'bg-sky-500/10',
-    text: 'text-sky-400',
-    border: 'border-sky-500/20',
-    glow: 'rgba(14,165,233,0.15)',
+    bg: 'bg-[var(--module-accent-muted)]',
+    text: 'text-[var(--module-color-400)]',
+    border: 'border-[var(--module-accent-border)]',
+    glow: 'var(--module-accent-glow)',
   },
   energy: {
     bg: 'bg-amber-500/10',
@@ -106,10 +106,10 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
     glow: 'rgba(168,85,247,0.15)',
   },
   custom: {
-    bg: 'bg-sky-500/10',
-    text: 'text-sky-400',
-    border: 'border-sky-500/20',
-    glow: 'rgba(14,165,233,0.15)',
+    bg: 'bg-[var(--module-accent-muted)]',
+    text: 'text-[var(--module-color-400)]',
+    border: 'border-[var(--module-accent-border)]',
+    glow: 'var(--module-accent-glow)',
   },
 };
 
@@ -178,13 +178,15 @@ function FieldCard({ field, value, isSelected, onSelect, onDelete, isExtension }
   };
 
   return (
-    <button
+    <NeuralButton
       onClick={onSelect}
+      variant="ghost"
+      themeColor="module"
       className={cn(
-        'group relative w-full text-left rounded-2xl border p-4 transition-all duration-200',
-        'bg-white/[0.03] backdrop-blur-sm hover:bg-white/[0.05]',
+        'group relative w-full text-left rounded-2xl border p-4 transition-all duration-200 min-h-[44px] !h-auto !justify-start !items-start !flex-col',
+        'bg-white/[0.03] backdrop-blur-sm hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]',
         isSelected
-          ? `${colors.border} ring-2 ring-sky-400/40`
+          ? `${colors.border} ring-2 ring-[var(--module-accent-ring)]`
           : 'border-white/10 hover:border-white/15'
       )}
       style={isSelected ? { boxShadow: `0 0 30px ${colors.glow}` } : undefined}
@@ -244,7 +246,7 @@ function FieldCard({ field, value, isSelected, onSelect, onDelete, isExtension }
           </span>
         )}
       </div>
-    </button>
+    </NeuralButton>
   );
 }
 
@@ -382,7 +384,7 @@ export function FieldsTab({
           {extensionsByCategory['custom'] && extensionsByCategory['custom'].length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-sky-400" />
+                <SlidersHorizontal className="w-4 h-4 text-[var(--module-color-400)]" />
                 <h4 className="text-xs font-black text-white/50 uppercase tracking-widest">
                   Custom
                 </h4>

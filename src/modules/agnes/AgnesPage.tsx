@@ -11,7 +11,8 @@ import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare
 import { SomaticSessionPicker, type SomaticExerciseType } from './components/somatic/SomaticSessionPicker';
 import { BreathworkExercise } from './components/somatic/BreathworkExercise';
 import { GroundingExercise } from './components/somatic/GroundingExercise';
-import { Spine } from '@/lib/spine/spine-event-bus';
+import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
+import { AgnesTelemetryHeader } from './components/AgnesTelemetryHeader';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -20,7 +21,8 @@ import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { buildAgnesSessionPrompt } from './prompts/agnes-session-prompt';
 import { Agnes3DEnvironment } from './components/Agnes3DEnvironment';
-import { AgnesTelemetryHeader } from './components/AgnesTelemetryHeader';
+import { AgnesSettingsPanel } from './components/AgnesSettingsPanel';
+import { AgnesDashboard } from './components/AgnesDashboard';
 import { AgnesPersonalitySidebar } from './components/AgnesPersonalitySidebar';
 import { AgnesTherapistCard } from './components/AgnesTherapistCard';
 import {
@@ -94,6 +96,21 @@ function AgnesContent({
   const [selectedSomaticExercise, setSelectedSomaticExercise] = useState<SomaticExerciseType | null>(null);
   const somaticStartedAt = useRef<number>(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // S14-006: Reactive Spine event handling
+  const handledSpineEventsRef = useRef<Set<string>>(new Set());
+
+  // Somatic support requested via Spine cascade (e.g. from Ledger or Soma)
+  useSpineEvent('SOMATIC_SUPPORT_REQUESTED', useCallback((event: import('@/lib/types').SpineEvent) => {
+    if (!profile?.onboardingComplete || currentState !== 'selecting') return;
+    const eventKey = `somatic-req-${event.id}`;
+    if (handledSpineEventsRef.current.has(eventKey)) return;
+    handledSpineEventsRef.current.add(eventKey);
+
+    // Auto-open somatic picker
+    setCurrentState('somatic');
+    setSelectedSomaticExercise(null);
+  }, [profile?.onboardingComplete, currentState]));
 
   useEffect(() => {
     const handleOpenSettings = () => setIsSettingsOpen(true);
@@ -215,6 +232,7 @@ function AgnesContent({
 
   const startSession = async (type: 'impromptu' | 'new' | 'continue') => {
     if (type === 'continue') {
+      setSessionType('new'); // Continue is effectively a 'new' persistent session from a routing perspective
       setSessionStartedAt(Date.now());
       setCurrentState('session');
       const ctx = profile?.baseContext;
@@ -434,7 +452,7 @@ function AgnesContent({
       </div>
 
       <div className={cn(
-        "flex-1 flex flex-col min-h-0 relative z-10 w-full min-w-0"
+        "flex-1 flex flex-col min-h-0 relative z-[var(--z-content)] w-full min-w-0"
       )}>
         <AnimatePresence mode="wait">
           {currentState === 'selecting' ? (
@@ -464,13 +482,40 @@ function AgnesContent({
                 />
               )}
             </motion.div>
+          ) : currentState === 'somatic' ? (
+            <motion.div
+              key="somatic"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              className="flex-1 flex flex-col min-h-0 relative z-[var(--z-content)] overflow-hidden"
+            >
+              <div className="flex-1 flex flex-col items-center justify-center p-4">
+                {selectedSomaticExercise === 'breathwork' ? (
+                  <BreathworkExercise 
+                    onComplete={handleSomaticComplete}
+                    onExit={handleSomaticExit}
+                  />
+                ) : selectedSomaticExercise === 'grounding' ? (
+                  <GroundingExercise 
+                    onComplete={handleSomaticComplete}
+                    onExit={handleSomaticExit}
+                  />
+                ) : (
+                  <SomaticSessionPicker 
+                    onSelect={handleSomaticSelect}
+                    onExit={handleSomaticExit}
+                  />
+                )}
+              </div>
+            </motion.div>
           ) : (
             <motion.div 
               key="session"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex-1 flex flex-col min-h-0 relative z-10"
+              className="flex-1 flex flex-col min-h-0 relative z-[var(--z-content)]"
             >
               <div className="flex-1 flex flex-col min-h-0 relative">
                 <AnimatePresence mode="wait">
@@ -495,11 +540,11 @@ function AgnesContent({
                       className="flex-1 flex flex-col min-h-0"
                     >
                       {/* Session Telemetry & Control Bar - Persistent above chat to prevent clipping */}
-                      <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/5 bg-black/40 backdrop-blur-2xl z-20">
+                      <div className="shrink-0 flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/5 bg-black/40 backdrop-blur-2xl z-[var(--z-content)]">
                         <div className="flex-1 min-w-0 overflow-hidden">
                           <AgnesTelemetryHeader />
                         </div>
-                        <div className="shrink-0 ml-4 flex items-center gap-2">
+                        <div className="shrink-0 ml-2 sm:ml-4 flex items-center gap-1.5 sm:gap-2">
                           <ModuleReminderEntry
                             title="Agnes"
                             themeColor="indigo"
@@ -546,8 +591,8 @@ function AgnesContent({
       <AnimatePresence>
         <NeuralModal key="session-summary-modal" isOpen={!!sessionSummary} onClose={() => setSessionSummary(null)} title="Session Complete" subtitle="Neural synthesis finalized" icon={Brain} maxWidth="lg">
           <div className="space-y-8">
-            <div className="flex gap-4">
-              <div className="flex-1 p-4 rounded-[2rem] bg-white/[0.03] border border-white/5">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="p-4 rounded-2xl sm:rounded-[2rem] bg-white/[0.03] border border-white/5">
                 <div className="flex items-center gap-2 mb-2">
                   <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
                   <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/50">Exchanges</span>
@@ -556,7 +601,7 @@ function AgnesContent({
                   {messages.filter(m => m.role === 'user').length}
                 </span>
               </div>
-              <div className="flex-1 p-4 rounded-[2rem] bg-white/[0.03] border border-white/5">
+              <div className="p-4 rounded-2xl sm:rounded-[2rem] bg-white/[0.03] border border-white/5">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="w-3.5 h-3.5 text-indigo-400" />
                   <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/50">Duration</span>
@@ -570,7 +615,7 @@ function AgnesContent({
               </div>
             </div>
 
-            <div className="relative p-6 rounded-[2rem] bg-indigo-500/[0.04] border border-indigo-500/10">
+            <div className="relative p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] bg-indigo-500/[0.04] border border-indigo-500/10">
               <div className="flex items-center gap-2 mb-4">
                 <Brain className="w-4 h-4 text-indigo-400" />
                 <span className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-400/60">Reflection</span>
@@ -605,35 +650,13 @@ function AgnesContent({
           icon={Settings}
           maxWidth="lg"
         >
-          <div className="space-y-8">
-             <div className="p-6 rounded-[2rem] bg-indigo-500/5 border border-indigo-500/10">
-                <div className="flex items-start gap-4 mb-6">
-                   <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                      <Activity className="w-5 h-5 text-indigo-400" />
-                   </div>
-                   <div className="flex-1">
-                      <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-1">Behavioral Core</h4>
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest leading-relaxed">Adjust somatic feedback and identity linkage.</p>
-                   </div>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                   <div className="flex flex-col">
-                      <span className="text-xs font-bold text-white/80">Somatic Awareness</span>
-                      <span className="text-[10px] text-white/30 uppercase tracking-widest font-medium">Physiological prompting</span>
-                   </div>
-                   <NeuralToggle
-                      checked={somaticEnabled}
-                      onChange={handleSomaticToggle}
-                      color="indigo"
-                      label="Somatic Awareness"
-                    />
-                </div>
-             </div>
-
-             <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/[0.06]">
-                <AgnesNotificationSettingsPanel />
-             </div>
-          </div>
+          <AgnesSettingsPanel
+            profile={profile}
+            onSave={async (updated) => {
+              if (!user) return;
+              await saveAgnesProfile(updated, { userId: user.uid, encryptionKey });
+            }}
+          />
         </NeuralModal>
       </AnimatePresence>
     </div>
@@ -679,6 +702,9 @@ export default function AgnesPage() {
       renderContent={AgnesContent}
       renderLeftRail={({ profile, persistProfile }) => (
         <AgnesSidebar profile={profile} agentAlias={agentAlias} onSave={persistProfile} />
+      )}
+      renderDashboard={({ profile, encryptionKey }) => (
+        <AgnesDashboard profile={profile} encryptionKey={encryptionKey} />
       )}
       renderMobileFooter={() => (
         <div className="flex items-center justify-center p-3">

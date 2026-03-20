@@ -302,7 +302,7 @@ export function registerScoutActions() {
 
       // In v2, this opens the specialized DeepResearchPanel via Spine event
       Spine.emit({
-        type: 'DEEP_RESEARCH_STARTED' as any,
+        type: 'DEEP_RESEARCH_STARTED',
         source: 'scout',
         domain: 'C',
         data: { query },

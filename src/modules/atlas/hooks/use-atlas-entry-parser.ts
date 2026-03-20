@@ -7,7 +7,7 @@
  *   - Recurrence ("every day", "daily", "weekly", …)
  *   - Energy level ("quick", "deep focus", "easy", …)
  *   - Priority ("urgent", "asap", "!", "someday", …)
- *   - Entry type: 'habit' when a recurrence word is detected, else 'task'
+ *   - Entry type: 'habit' when a recurrence word is detected, 'goal' for prefixes, else 'task'
  *
  * The hook returns a stable `parse` function (memoised with useCallback so it
  * is safe to list as a dependency in callers).
@@ -24,8 +24,8 @@ export type EnergyLevel   = 'low' | 'medium' | 'high';
 export type PriorityLevel = 'low' | 'medium' | 'high';
 
 export interface ParsedEntry {
-  /** Inferred entry kind: 'habit' when a recurrence word is detected, 'task' otherwise. */
-  type: 'task' | 'habit';
+  /** Inferred entry kind. Defaults to 'task' if no cues match. */
+  type: 'task' | 'habit' | 'goal';
   /** Cleaned title with all matched tokens stripped. */
   title: string;
   /** YYYY-MM-DD, present when a date token was matched. */
@@ -42,6 +42,11 @@ export interface ParsedEntry {
 
 const WEEKDAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
+/** Returns a local YYYY-MM-DD string for a given Date (avoids UTC-offset date shift). */
+function isoLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /** Returns an ISO YYYY-MM-DD string for the next occurrence of a weekday (≥ tomorrow). */
 function nextWeekday(targetDay: number): string {
   const now = new Date();
@@ -49,20 +54,26 @@ function nextWeekday(targetDay: number): string {
   const daysUntil = ((targetDay - todayDay + 7) % 7) || 7; // at least 1 day ahead
   const result = new Date(now);
   result.setDate(now.getDate() + daysUntil);
-  return result.toISOString().slice(0, 10);
+  return isoLocal(result);
 }
 
 function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
+  return isoLocal(new Date());
 }
 
 function isoOffset(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return isoLocal(d);
 }
 
 // ─── Rule tables ──────────────────────────────────────────────────────────────
+
+/** Explicit type prefixes (e.g. "habit: run", "goal: publish book") */
+const TYPE_RULES: { pattern: RegExp; value: 'habit' | 'goal' }[] = [
+  { pattern: /^(?:habit|h)[:\s]+/i, value: 'habit' },
+  { pattern: /^(?:goal|g)[:\s]+/i,  value: 'goal' },
+];
 
 /**
  * Date extraction rules.
@@ -99,10 +110,12 @@ const DATE_RULES: DateRule[] = [
       const now = new Date();
       const todayDay = now.getDay();
       const daysUntil = ((day - todayDay + 7) % 7) || 7;
-      // Add another week to distinguish "next friday" from plain "friday"
+      // Add another week only when "next X" is today (daysUntil===7 after the ||7 fallback
+      // handles same-day; daysUntil===0 would mean today, so we push to next occurrence).
+      // "next friday" from Wednesday (daysUntil=2) → 9 days, NOT 16.
       const result = new Date(now);
-      result.setDate(now.getDate() + daysUntil + (daysUntil <= 2 ? 7 : 0));
-      return result.toISOString().slice(0, 10);
+      result.setDate(now.getDate() + daysUntil + (daysUntil === 0 ? 7 : 0));
+      return isoLocal(result);
     }
   },
   {
@@ -156,7 +169,7 @@ const PRIORITY_RULES: PriorityRuleEntry[] = [
  * 1. Apply each category's rule list in order; record first match + span.
  * 2. Remove all matched spans from the input string.
  * 3. Trim and normalise the remainder into the title.
- * 4. Infer entry type: 'habit' if a recurrenceRule was found, 'task' otherwise.
+ * 4. Infer entry type: 'habit' if a recurrenceRule was found, 'goal' for prefixes, 'task' otherwise.
  *
  * @param raw - The raw user input string.
  * @returns A ParsedEntry; title will be the raw input (trimmed) if no tokens match.
@@ -165,14 +178,38 @@ export function parseAtlasEntry(raw: string): ParsedEntry {
   let working = raw;
   const spansToRemove: Array<[number, number]> = [];
 
-  // ── Date ──────────────────────────────────────────────────────────────────
-  let dueDate: string | undefined;
-  for (const rule of DATE_RULES) {
+  // ── Explicit Type Prefix ──────────────────────────────────────────────────
+  let inferredType: 'task' | 'habit' | 'goal' | undefined;
+  for (const rule of TYPE_RULES) {
     const m = working.match(rule.pattern);
     if (m && m.index !== undefined) {
-      dueDate = rule.extract(m);
+      inferredType = rule.value;
       spansToRemove.push([m.index, m.index + m[0].length]);
+      // Update working string immediately to avoid other rules matching against the prefix
+      working = working.slice(0, m.index) + working.slice(m.index + m[0].length);
       break;
+    }
+  }
+
+  // ── Date ──────────────────────────────────────────────────────────────────
+  // Use leftmost-wins: collect all matching rules with their match positions,
+  // then pick the one whose match starts earliest in the string.
+  let dueDate: string | undefined;
+  {
+    let bestIndex = Infinity;
+    let bestMatch: RegExpMatchArray | null = null;
+    let bestRule: DateRule | null = null;
+    for (const rule of DATE_RULES) {
+      const m = working.match(rule.pattern);
+      if (m && m.index !== undefined && m.index < bestIndex) {
+        bestIndex = m.index;
+        bestMatch = m;
+        bestRule = rule;
+      }
+    }
+    if (bestRule && bestMatch && bestMatch.index !== undefined) {
+      dueDate = bestRule.extract(bestMatch);
+      spansToRemove.push([bestMatch.index, bestMatch.index + bestMatch[0].length]);
     }
   }
 
@@ -218,8 +255,11 @@ export function parseAtlasEntry(raw: string): ParsedEntry {
   }
   const title = cleaned.replace(/\s{2,}/g, ' ').trim() || raw.trim();
 
+  // Final Type Inference Logic
+  const type = inferredType || (recurrenceRule !== undefined ? 'habit' : 'task');
+
   return {
-    type: recurrenceRule !== undefined ? 'habit' : 'task',
+    type,
     title,
     dueDate,
     recurrenceRule,

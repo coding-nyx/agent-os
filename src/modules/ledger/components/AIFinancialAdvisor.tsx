@@ -205,19 +205,19 @@ export function AIFinancialAdvisor({
                     "p-3 rounded-lg border",
                     insight.type === 'positive' && "bg-emerald-500/5 border-emerald-500/20",
                     insight.type === 'warning' && "bg-amber-500/5 border-amber-500/20",
-                    insight.type === 'info' && "bg-cyan-500/5 border-cyan-500/20"
+                    insight.type === 'info' && "bg-[var(--module-accent-faint)] border-[var(--module-accent-border)]"
                   )}
                 >
                   <div className="flex items-start gap-2">
                     {insight.type === 'positive' && <TrendingUp className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />}
                     {insight.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />}
-                    {insight.type === 'info' && <Sparkles className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />}
+                    {insight.type === 'info' && <Sparkles className="w-4 h-4 text-[var(--module-color-400)] mt-0.5 shrink-0" />}
                     <div className="flex-1 min-w-0">
                       <h5 className={cn(
                         "text-xs font-bold mb-1",
                         insight.type === 'positive' && "text-emerald-400",
                         insight.type === 'warning' && "text-amber-400",
-                        insight.type === 'info' && "text-cyan-400"
+                        insight.type === 'info' && "text-[var(--module-color-400)]"
                       )}>
                         {insight.title}
                       </h5>
@@ -251,7 +251,7 @@ export function AIFinancialAdvisor({
                     onClick={() => handleQuestionClick(question)}
                     disabled={disabled}
                     className={cn(
-                      "p-3 rounded-lg text-left text-xs text-white/70 hover:text-white transition-colors border border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5 disabled:opacity-50",
+                      "p-3 rounded-lg text-left text-xs text-white/70 hover:text-white transition-colors border border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5 disabled:opacity-50 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]",
                       selectedQuestion === question && "border-violet-500/50 bg-violet-500/10"
                     )}
                   >
@@ -363,7 +363,7 @@ function HealthScore({ savingsRate, expenseRatio, debtToIncome }: {
 
   score = Math.min(100, Math.max(0, score));
 
-  const color = score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-cyan-400' : score >= 40 ? 'text-amber-400' : 'text-red-400';
+  const color = score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-[var(--module-color-400)]' : score >= 40 ? 'text-amber-400' : 'text-red-400';
 
   return (
     <div className="flex items-center gap-2">
@@ -397,7 +397,7 @@ function HealthScoreBar({ savingsRate, expenseRatio, debtToIncome }: {
 
   score = Math.min(100, Math.max(0, score));
 
-  const color = score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-cyan-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-500';
+  const color = score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-[var(--module-accent)]' : score >= 40 ? 'bg-amber-500' : 'bg-red-500';
 
   return (
     <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">

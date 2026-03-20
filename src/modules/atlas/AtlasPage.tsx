@@ -29,6 +29,7 @@ import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useSchemaRegistry } from '@/lib/hooks/use-schema-registry';
+import { useExtensionFieldValues } from '@/lib/hooks/use-extension-field-values';
 import { AtlasOnboarding } from './onboarding/AtlasOnboarding';
 import { PostOnboardingWelcome, hasSeenWelcome, markWelcomeSeen } from './components/PostOnboardingWelcome';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
@@ -40,6 +41,7 @@ import {
   mergeCheckInData,
 } from './services/journal-service';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
+import { registerAtlasFieldActions } from './actions/atlas-field-actions';
 
 function buildRecoveryWindow(reason: string): RecoveryWindow {
   const now = Date.now();
@@ -210,8 +212,20 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     removeExtension,
   } = useSchemaRegistry('atlas');
 
-  // Field values state (ephemeral for now — persisted via SchemaRegistry in future)
-  const [fieldValues, setFieldValues] = useState<Record<string, import('@/lib/field-system/types').FieldValue>>({});
+  // S19-atlas-02: Persisted field values via Firestore
+  const {
+    fieldValues,
+    updateFieldValue,
+    removeFieldValue,
+  } = useExtensionFieldValues('atlas');
+
+  const handleSaveFieldValue = useCallback(async (fieldId: string, value: any) => {
+    await updateFieldValue(fieldId, value);
+  }, [updateFieldValue]);
+
+  const handleRemoveFieldValue = useCallback(async (fieldId: string) => {
+    await removeFieldValue(fieldId);
+  }, [removeFieldValue]);
 
   const handleAddField = useCallback(async (field?: import('@/lib/field-system/types').FieldDefinition) => {
     if (field) {
@@ -654,6 +668,8 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
           onUpdateIntention={handleUpdateIntention}
           extensions={extensions}
           fieldValues={fieldValues}
+          onSaveFieldValue={handleSaveFieldValue}
+          onRemoveFieldValue={handleRemoveFieldValue}
           onAddField={handleAddField}
           onDeleteField={handleDeleteField}
           onSendMessage={ai.handleSendMessage}
@@ -686,6 +702,11 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
 
 export default function AtlasPage() {
   const { user, isGuest, profile: coreProfile, refreshProfile } = useAuth();
+
+  useEffect(() => {
+    registerAtlasFieldActions();
+  }, []);
+
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('atlas');
 

@@ -403,7 +403,7 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
         <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
           This Week vs Last Week
         </h4>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <SummaryCard
             label="Tasks Done"
             value={weeklySummary.thisWeekDone}
@@ -417,7 +417,7 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
             delta={weeklySummary.thisEnergy > 0 && weeklySummary.energyDelta !== 0 ? weeklySummary.energyDelta : undefined}
             unit="/5"
             icon={Zap}
-            accentClass="text-sky-400"
+            accentClass="text-[var(--module-color-400)]"
           />
           <SummaryCard
             label="Streak Health"
@@ -499,7 +499,7 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
                 <Target
                   className={cn(
                     'w-4 h-4 shrink-0',
-                    goal.status === 'completed' ? 'text-emerald-400' : 'text-sky-400',
+                    goal.status === 'completed' ? 'text-emerald-400' : 'text-[var(--module-color-400)]',
                   )}
                   aria-hidden="true"
                 />
@@ -524,7 +524,7 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
                     <div
                       className={cn(
                         'h-full rounded-full transition-all',
-                        goal.status === 'completed' ? 'bg-emerald-400' : 'bg-sky-400',
+                        goal.status === 'completed' ? 'bg-emerald-400' : 'bg-[var(--module-color-400)]',
                       )}
                       style={{ width: `${goal.progressPercent}%` }}
                     />

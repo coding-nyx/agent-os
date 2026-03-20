@@ -153,7 +153,7 @@ export function ActiveResearchWorkspace({
   })();
 
   const activityToneClasses = {
-    lime: 'border-lime-500/15 bg-lime-500/[0.08] text-lime-200',
+    lime: 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
     violet: 'border-violet-500/15 bg-violet-500/[0.08] text-violet-200',
     amber: 'border-amber-500/15 bg-amber-500/[0.08] text-amber-200',
     emerald: 'border-emerald-500/15 bg-emerald-500/[0.08] text-emerald-200',
@@ -174,7 +174,7 @@ export function ActiveResearchWorkspace({
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 space-y-3">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-lime-500/20 bg-lime-500/10 text-lime-300 shadow-[0_0_30px_rgba(132,204,22,0.08)]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)] shadow-[0_0_30px_var(--module-accent-faint)]">
                 <BookOpen className="h-5 w-5" aria-hidden="true" />
               </div>
               <div className="min-w-0">
@@ -185,7 +185,7 @@ export function ActiveResearchWorkspace({
                       'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold',
                       session.status === 'complete'
                         ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-                        : 'border-lime-500/20 bg-lime-500/10 text-lime-300'
+                        : 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)]'
                     )}
                   >
                     {statusLabel}
@@ -211,7 +211,7 @@ export function ActiveResearchWorkspace({
                 {session.subQuestions.length} sub-question{session.subQuestions.length === 1 ? '' : 's'} tracked
               </span>
               <span className="flex items-center gap-1.5 text-white/55">
-                <Sparkles className="h-3.5 w-3.5 text-lime-300" aria-hidden="true" />
+                <Sparkles className="h-3.5 w-3.5 text-[var(--module-color-300)]" aria-hidden="true" />
                 {activity.label}
               </span>
             </div>
@@ -338,7 +338,7 @@ export function ActiveResearchWorkspace({
                   {error ? (
                     <History className="h-4 w-4 shrink-0" aria-hidden="true" />
                   ) : (
-                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-lime-300" aria-hidden="true" />
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--module-color-300)]" aria-hidden="true" />
                   )}
                   <span>
                     {error

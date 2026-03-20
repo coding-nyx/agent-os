@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Settings, User, Bot, Sparkles, ShieldCheck } from 'lucide-react';
+import { Settings, User, Bot, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AgnesPersonalitySidebar } from './AgnesPersonalitySidebar';
 import { AgnesTherapistCard } from './AgnesTherapistCard';
+import { BeliefGraph } from './BeliefGraph';
 import { NeuralButton } from '@/core/components/NeuralButton';
 
 interface AgnesSanctuarySidebarProps {
@@ -23,7 +24,7 @@ export const AgnesSanctuarySidebar: React.FC<AgnesSanctuarySidebarProps> = ({
       initial={false}
       animate={{ width: collapsed ? 80 : 300 }}
       className={cn(
-        "relative h-full flex flex-col bg-[#050508]/60 backdrop-blur-3xl border-r border-white/5 transition-all duration-500 ease-in-out z-20 overflow-hidden",
+        "relative h-full flex flex-col bg-[#050508]/60 backdrop-blur-3xl border-r border-white/5 transition-all duration-500 ease-in-out z-[var(--z-content)] overflow-hidden",
       )}
     >
       {!collapsed ? (
@@ -39,19 +40,31 @@ export const AgnesSanctuarySidebar: React.FC<AgnesSanctuarySidebarProps> = ({
               agentAlias={agentAlias}
               naked
             />
+            <div className="h-px w-full bg-white/[0.05]" />
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Inner World</span>
+              </div>
+              <div className="bg-black/20 rounded-[2rem] border border-white/5 overflow-hidden">
+                <BeliefGraph profile={profile} />
+              </div>
+            </div>
           </div>
 
-          {/* Footer Stats integrated into sidebar flow */}
+          {/* Footer — vault & connection status */}
           <div className="mt-auto pt-8 border-t border-white/5 space-y-4">
              <div className="flex items-center justify-between px-2">
-                <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Resonance</span>
-                <span className="text-[10px] font-black text-indigo-400">98%</span>
+                <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Vault</span>
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck size={10} className="text-indigo-400/60" />
+                  <span className="text-[9px] text-indigo-400/60 font-black uppercase tracking-widest">Encrypted</span>
+                </div>
              </div>
              <div className="flex items-center justify-between px-2">
                 <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Link</span>
                 <div className="flex items-center gap-1.5">
                   <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[9px] text-emerald-400/60 font-black uppercase tracking-widest">Stable</span>
+                  <span className="text-[9px] text-emerald-400/60 font-black uppercase tracking-widest">Active</span>
                 </div>
              </div>
           </div>

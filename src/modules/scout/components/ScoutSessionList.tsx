@@ -2,12 +2,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
-  CheckCircle2,
-  Clock,
-  Loader2,
   Search,
   Trash2,
-  AlertCircle,
 } from 'lucide-react';
 import type { ResearchSession, ResearchSessionStatus } from '../types';
 import { cn } from '@/lib/utils';
@@ -35,41 +31,23 @@ const statusBadgeClasses: Record<ResearchSessionStatus, string> = {
   idle: 'border-white/10 bg-white/[0.04] text-white/55',
   decomposing: 'border-sky-500/20 bg-sky-500/10 text-sky-300',
   awaiting_review: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
-  searching: 'border-lime-500/20 bg-lime-500/10 text-lime-300',
+  searching: 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
   synthesizing: 'border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-300',
   complete: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
   error: 'border-rose-500/20 bg-rose-500/10 text-rose-300',
   cancelled: 'border-white/10 bg-white/[0.03] text-white/40',
 };
 
-const statusIconClasses: Record<ResearchSessionStatus, string> = {
-  idle: 'bg-white/[0.04] text-white/45',
-  decomposing: 'bg-sky-500/12 text-sky-300',
-  awaiting_review: 'bg-amber-500/12 text-amber-300',
-  searching: 'bg-lime-500/12 text-lime-300',
-  synthesizing: 'bg-fuchsia-500/12 text-fuchsia-300',
-  complete: 'bg-emerald-500/12 text-emerald-300',
-  error: 'bg-rose-500/12 text-rose-300',
-  cancelled: 'bg-white/[0.04] text-white/35',
+const statusDotClasses: Record<ResearchSessionStatus, string> = {
+  idle:            'bg-white/25',
+  decomposing:     'bg-sky-400',
+  awaiting_review: 'bg-amber-400',
+  searching:       'bg-[var(--module-color-400)]',
+  synthesizing:    'bg-fuchsia-400',
+  complete:        'bg-emerald-400',
+  error:           'bg-rose-400',
+  cancelled:       'bg-white/15',
 };
-
-const processingStatuses: ResearchSessionStatus[] = ['decomposing', 'searching', 'synthesizing'];
-
-function getSessionStatusIcon(status: ResearchSessionStatus) {
-  if (processingStatuses.includes(status)) {
-    return <Loader2 size={18} className="animate-spin" aria-hidden="true" />;
-  }
-
-  if (status === 'complete') {
-    return <CheckCircle2 size={18} aria-hidden="true" />;
-  }
-
-  if (status === 'error') {
-    return <AlertCircle size={18} aria-hidden="true" />;
-  }
-
-  return <Clock size={18} aria-hidden="true" />;
-}
 
 function formatUpdatedDate(value: string) {
   const date = new Date(value);
@@ -92,112 +70,73 @@ export function ScoutSessionList({ sessions, onSelect, onDelete, activeSessionId
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/8 bg-white/[0.03] text-white/20">
           <Search size={20} aria-hidden="true" />
         </div>
-        <div className="space-y-1.5">
-          <p className="text-item-title text-white/72">No research sessions yet</p>
-          <p className="max-w-md text-body-secondary text-white/50">
-            Ask Scout to start a deep research session and your active investigations will appear here.
-          </p>
-        </div>
+        <p className="text-item-title text-white/72">No research sessions yet</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <AnimatePresence mode="popLayout">
         {sessions.map((session) => {
           const isActive = activeSessionId === session.id;
           const subQuestionCount = session.subQuestions.length;
 
           return (
-            <motion.div
+            <motion.article
               key={session.id}
               layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97 }}
               className={cn(
-                'surface-foundation overflow-hidden rounded-[var(--foundation-radius-card)] transition-colors',
+                'group flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors',
                 isActive
-                  ? 'border-lime-500/30 bg-lime-500/[0.08] shadow-[0_0_0_1px_rgba(132,204,22,0.10)]'
-                  : 'border-white/8 bg-white/[0.02]'
+                  ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]'
+                  : 'border-white/6 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.03]'
               )}
             >
-              <div className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-start sm:justify-between sm:p-4">
-                <NeuralButton
-                  as="button"
-                  variant="ghost"
-                  onClick={() => onSelect(session.id)}
-                  aria-label={`Open research session ${session.topic}`}
-                  className="flex min-h-11 min-w-0 flex-1 items-start gap-3 rounded-2xl text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-lime-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#040406] border-none bg-transparent hover:bg-transparent"
-                >
-                  <span
-                    className={cn(
-                      'mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/8',
-                      isActive ? 'bg-lime-500/16 text-lime-300' : statusIconClasses[session.status]
-                    )}
-                  >
-                    {getSessionStatusIcon(session.status)}
+              {/* Status dot */}
+              <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDotClasses[session.status])} />
+
+              {/* Clickable topic + meta */}
+              <button
+                type="button"
+                onClick={() => onSelect(session.id)}
+                className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
+                aria-label={`Open research session: ${session.topic}`}
+              >
+                <p className={cn('truncate text-[13px] font-semibold',
+                  isActive ? 'text-[var(--module-color-300)]' : 'text-white/85 group-hover:text-white')}>
+                  {session.topic}
+                </p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className={cn('rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                    statusBadgeClasses[session.status])}>
+                    {statusLabelMap[session.status]}
                   </span>
-
-                  <span className="min-w-0 flex-1 space-y-2">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={cn(
-                          'text-item-title break-words text-white/88',
-                          isActive && 'text-lime-100'
-                        )}
-                      >
-                        {session.topic}
-                      </span>
-                      {isActive && (
-                        <span className="rounded-full border border-lime-500/25 bg-lime-500/12 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-lime-200">
-                          Current
-                        </span>
-                      )}
-                    </span>
-
-                    <span className="flex flex-wrap items-center gap-2 text-meta text-white/48">
-                      <span
-                        className={cn(
-                          'rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]',
-                          statusBadgeClasses[session.status]
-                        )}
-                      >
-                        {statusLabelMap[session.status]}
-                      </span>
-                      <span className="text-white/28">Updated {formatUpdatedDate(session.updatedAt)}</span>
-                      <span className="text-white/28">•</span>
-                      <span className="text-white/40">
-                        {subQuestionCount} question{subQuestionCount === 1 ? '' : 's'}
-                      </span>
-                    </span>
-                  </span>
-                </NeuralButton>
-
-                <div className="flex items-center justify-between gap-2 sm:justify-end">
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
-                      isActive ? 'text-lime-200' : 'text-white/35'
-                    )}
-                  >
-                    <span>Open</span>
-                    <ArrowRight size={13} aria-hidden="true" />
-                  </span>
-
-                  <NeuralButton
-                    type="button"
-                    variant="ghost"
-                    onClick={() => onDelete(session.id)}
-                    aria-label={`Delete research session ${session.topic}`}
-                    className="h-11 w-11 p-0 text-white/55 transition-colors hover:bg-rose-500/10 hover:text-rose-200"
-                  >
-                    <Trash2 size={15} aria-hidden="true" />
-                  </NeuralButton>
+                  <span className="text-[10px] text-white/28">{formatUpdatedDate(session.updatedAt)}</span>
+                  {subQuestionCount > 0 && (
+                    <span className="text-[10px] text-white/35">{subQuestionCount}q</span>
+                  )}
                 </div>
-              </div>
-            </motion.div>
+              </button>
+
+              {/* Open arrow */}
+              <ArrowRight size={14} className={cn('shrink-0 transition-colors',
+                isActive ? 'text-[var(--module-color-400)]' : 'text-white/20 group-hover:text-white/45')} />
+
+              {/* Delete — hidden until hover */}
+              <NeuralButton
+                type="button"
+                variant="ghost"
+                onClick={() => onDelete(session.id)}
+                aria-label={`Delete ${session.topic}`}
+                className="h-8 w-8 shrink-0 p-0 text-white/30 opacity-0 group-hover:opacity-100 hover:bg-rose-500/10 hover:text-rose-300"
+              >
+                <Trash2 size={13} />
+              </NeuralButton>
+            </motion.article>
           );
         })}
       </AnimatePresence>

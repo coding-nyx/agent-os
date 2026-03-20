@@ -315,7 +315,7 @@ ${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initial
     <GuidedIntakeFrame
       title="Agnes Guided Intake"
       subtitle="Building a therapeutic baseline for long-term session continuity."
-      statusLabel="ENCRYPTED_ONBOARDING"
+      statusLabel=""
       steps={THERAPY_STEPS}
       currentStep={intake.stepIndex}
       themeColor="indigo"

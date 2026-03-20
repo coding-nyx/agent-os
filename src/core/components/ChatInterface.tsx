@@ -42,7 +42,7 @@ interface ChatInterfaceProps {
     isActing: boolean;
     currentActionType: string | null;
   };
-  themeColor: 'indigo' | 'orange' | 'cyan' | 'violet' | 'emerald' | 'sky' | 'lime' | 'rose' | 'fuchsia' | 'slate';
+  themeColor: 'indigo' | 'orange' | 'cyan' | 'violet' | 'emerald' | 'sky' | 'lime' | 'rose' | 'fuchsia' | 'slate' | 'module';
   placeholder?: string;
   agentName: string;
   error?: string | null;
@@ -143,6 +143,14 @@ const THEMES = {
     glow: 'shadow-xl shadow-slate-500/10',
     bgGlow: 'bg-slate-500/30',
     btn: 'bg-slate-600 hover:bg-slate-500 shadow-slate-500/20'
+  },
+  module: {
+    bubble: 'bg-white/[0.03] border-white/5 text-white rounded-2xl rounded-tl-sm border-l-2 border-l-[var(--module-accent-border)]',
+    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    accent: 'text-[var(--module-color-400)]',
+    glow: 'shadow-xl shadow-[var(--module-accent-muted)]',
+    bgGlow: 'bg-[var(--module-accent-glow)]',
+    btn: 'bg-[var(--module-accent)] hover:bg-[var(--module-accent-hover)] shadow-[var(--module-accent-muted)]'
   }
 };
 
@@ -453,7 +461,7 @@ export const ChatInterface = React.memo(function ChatInterface({
   return (
     <div
       className={cn(
-        "flex-1 flex flex-col w-full mx-auto relative min-h-0 max-w-5xl"
+        "flex-1 flex flex-col w-full mx-auto relative min-h-0"
       )}
     >
       {/* Header actions (full-width, e.g. DiagnosisToolbar) */}
@@ -764,22 +772,22 @@ export const ChatInterface = React.memo(function ChatInterface({
               >
                 {canShowUpload && (
                   <>
-                    <NeuralButton
-                      variant="ghost"
+                    <button
+                      type="button"
                       onClick={handleUploadDocClick}
-                      className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group h-auto"
+                      className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group"
                     >
                        <FileText className="w-6 h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">{uploadLabel}</span>
-                    </NeuralButton>
-                    <NeuralButton variant="ghost" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group h-auto">
+                    </button>
+                    <button type="button" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
                        <BarChart3 className="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform" />
                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Data CSV</span>
-                    </NeuralButton>
-                    <NeuralButton variant="ghost" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group h-auto">
+                    </button>
+                    <button type="button" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
                        <Search className="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform" />
                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Web Research</span>
-                    </NeuralButton>
+                    </button>
                   </>
                 )}
                 {renderCustomActions && renderCustomActions()}

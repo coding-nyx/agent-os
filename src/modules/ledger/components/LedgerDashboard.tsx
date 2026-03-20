@@ -203,8 +203,18 @@ export function LedgerDashboard({
         label="Resource Control"
         title="Financial Command Center"
         subtitle="AI-powered tracking and optimization across spend, savings, and plan execution."
-        accentClassName="text-cyan-400"
+        accentClassName="text-[var(--module-color-400)]"
       />
+
+      {/* Loading skeleton when profile unavailable */}
+      {!profile ? (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="animate-pulse bg-white/5 rounded-lg h-24" />
+          ))}
+        </div>
+      ) : (
+      <>
 
       {/* View Tabs + Behavioral Insights Toggle */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -214,9 +224,9 @@ export function LedgerDashboard({
           aria-selected={activeView === 'overview'}
           onClick={() => setActiveView('overview')}
           className={cn(
-            "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+            "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]",
             activeView === 'overview'
-              ? "bg-cyan-600 text-white"
+              ? "bg-[var(--module-accent)] text-white"
               : "bg-white/5 text-white/60 hover:bg-white/10"
           )}
         >
@@ -227,9 +237,9 @@ export function LedgerDashboard({
           aria-selected={activeView === 'cashflow'}
           onClick={() => setActiveView('cashflow')}
           className={cn(
-            "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+            "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]",
             activeView === 'cashflow'
-              ? "bg-cyan-600 text-white"
+              ? "bg-[var(--module-accent)] text-white"
               : "bg-white/5 text-white/60 hover:bg-white/10"
           )}
         >
@@ -241,9 +251,9 @@ export function LedgerDashboard({
           aria-selected={activeView === 'debt'}
           onClick={() => setActiveView('debt')}
           className={cn(
-            "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors",
+            "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]",
             activeView === 'debt'
-              ? "bg-cyan-600 text-white"
+              ? "bg-[var(--module-accent)] text-white"
               : "bg-white/5 text-white/60 hover:bg-white/10"
           )}
         >
@@ -386,20 +396,20 @@ export function LedgerDashboard({
               </div>
               <button
                 onClick={() => onAskAI?.('What does my financial health score mean and how can I improve it?')}
-                className="text-[10px] text-white/30 hover:text-white/60 transition-colors font-semibold"
+                className="text-[10px] text-white/30 hover:text-white/60 transition-colors font-semibold min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
               >
                 Explain →
               </button>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               label="Monthly Income"
               value={monthlyIncome}
               suffix={profile?.currency ? ` ${profile.currency}` : ''}
               isEmpty={!profile}
-              accentClassName="text-cyan-300"
+              accentClassName="text-[var(--module-color-300)]"
             />
             <StatCard
               label="Total Expenses"
@@ -432,7 +442,7 @@ export function LedgerDashboard({
           <SurfaceCard className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-sm font-bold text-white uppercase tracking-wider">Recent Transactions</h4>
-              <FileText className="w-4 h-4 text-cyan-400" />
+              <FileText className="w-4 h-4 text-[var(--module-color-400)]" />
             </div>
             {recentTransactions.length === 0 ? (
               <EmptyState
@@ -485,7 +495,7 @@ export function LedgerDashboard({
                       value={item.amount}
                       max={item.max}
                       suffix={profile?.currency ? ` ${profile.currency}` : ''}
-                      accentClassName="bg-cyan-500"
+                      accentClassName="bg-[var(--module-accent)]"
                     />
                   ))}
                 </div>
@@ -498,18 +508,18 @@ export function LedgerDashboard({
                 <span className="text-[9px] text-white/50 uppercase tracking-widest">Planner</span>
               </div>
               {profile?.activePlanId ? (
-                <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 space-y-2">
+                <div className="rounded-2xl border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] p-4 space-y-2">
                   {(() => {
                     const activePlan = profile.plans?.find((p) => p.id === profile.activePlanId);
                     return activePlan ? (
                       <>
-                        <p className="text-xs text-cyan-200/80 font-medium">{activePlan.title}</p>
+                        <p className="text-xs text-[var(--module-color-300)] font-medium">{activePlan.title}</p>
                         {activePlan.summary && (
                           <p className="text-[10px] text-white/40 leading-relaxed">{activePlan.summary}</p>
                         )}
                       </>
                     ) : (
-                      <p className="text-xs text-cyan-200/80 truncate">Plan: {profile.activePlanId.slice(0, 8)}…</p>
+                      <p className="text-xs text-[var(--module-color-300)] truncate">Plan: {profile.activePlanId.slice(0, 8)}…</p>
                     );
                   })()}
                   <p className="text-[10px] text-white/50">Planner state: {profile.plannerBotState.toUpperCase()}</p>
@@ -535,7 +545,7 @@ export function LedgerDashboard({
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">Cash Flow Analysis</h3>
               <p className="text-[10px] text-white/50 mt-1">Income vs expenses over time</p>
             </div>
-            <TrendingUp className="w-5 h-5 text-cyan-400" />
+            <TrendingUp className="w-5 h-5 text-[var(--module-color-400)]" />
           </div>
           <CashFlowChart 
             data={cashFlowData} 
@@ -559,7 +569,7 @@ export function LedgerDashboard({
               <div className="space-y-2">
                 {recentEvents.slice(0, 8).map((evt) => (
                   <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/5 border border-white/10">
-                    <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0 text-cyan-400" />
+                    <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--module-color-400)]" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-white/80 truncate">
                         {EVENT_DISPLAY_NAMES[evt.type] ?? evt.type}
@@ -595,7 +605,7 @@ export function LedgerDashboard({
                   <div key={debt.id} className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-white">{debt.name}</span>
-                      <span className="text-sm font-bold text-cyan-400">
+                      <span className="text-sm font-bold text-[var(--module-color-400)]">
                         {formatCurrency(debt.balance, profile?.currency)}
                       </span>
                     </div>
@@ -620,7 +630,7 @@ export function LedgerDashboard({
                   <div className="space-y-2">
                     {recentEvents.slice(0, 8).map((evt) => (
                       <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/5 border border-white/10">
-                        <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0 text-cyan-400" />
+                        <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--module-color-400)]" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-white/80 truncate">
                             {EVENT_DISPLAY_NAMES[evt.type] ?? evt.type}
@@ -684,7 +694,7 @@ export function LedgerDashboard({
             <div className="space-y-2">
               <button
                 onClick={onAnalyzeDocument}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-violet-600/20 border border-violet-500/30 hover:bg-violet-600/30 transition-colors text-xs font-bold text-violet-300"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-violet-600/20 border border-violet-500/30 hover:bg-violet-600/30 transition-colors text-xs font-bold text-violet-300 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
               >
                 <Upload className="w-4 h-4" />
                 Analyze Bank Statement
@@ -717,6 +727,8 @@ export function LedgerDashboard({
           ))
         )}
       </section>
+      </>
+      )}
     </div>
   );
 }

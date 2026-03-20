@@ -47,7 +47,7 @@ const STATUS_ICON: Record<CycleEntry['status'], LucideIcon> = {
 };
 
 const STATUS_COLOR: Record<CycleEntry['status'], string> = {
-  active:    'text-orange-400',
+  active:    'text-[var(--module-color-400)]',
   completed: 'text-green-400',
   paused:    'text-white/40',
 };
@@ -76,7 +76,7 @@ function CycleCard({
     <NeuralButton
       variant="secondary"
       onClick={() => onSelect(cycle)}
-      className="w-full text-left p-3 rounded-xl bg-white/[0.03] border border-white/10 hover:border-orange-500/30 hover:bg-orange-500/5 transition-all group h-auto justify-start"
+      className="w-full text-left p-3 rounded-xl bg-white/[0.03] border border-white/10 hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-muted)] transition-all group h-auto justify-start"
     >
       <div className="flex items-start gap-3 w-full">
         <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -97,18 +97,18 @@ function CycleCard({
             <div className="mt-2 space-y-1">
               <div className="flex items-center justify-between text-[10px] text-white/50">
                 <span>Phase {cycle.currentPhaseIndex + 1}/{cycle.phases.length}: {phase.name}</span>
-                {phase.dosage && <span className="text-orange-400/70">{phase.dosage}</span>}
+                {phase.dosage && <span className="text-[var(--module-color-400)]">{phase.dosage}</span>}
               </div>
               <div className="w-full h-1 rounded-full bg-white/10">
                 <div
-                  className="h-full rounded-full bg-orange-500/60 transition-all"
+                  className="h-full rounded-full bg-[var(--module-accent)] transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
           )}
         </div>
-        <ChevronRight className="w-3.5 h-3.5 text-white/20 group-hover:text-orange-400/60 transition-colors shrink-0 mt-2" />
+        <ChevronRight className="w-3.5 h-3.5 text-white/20 group-hover:text-[var(--module-color-400)] transition-colors shrink-0 mt-2" />
       </div>
     </NeuralButton>
     {directWriteMode && onDirectDelete && (
@@ -169,7 +169,7 @@ function CycleDetailModal({
       title={cycle.name}
       subtitle={`${typeMeta.label} Cycle · ${cycle.status.toUpperCase()}`}
       icon={TypeIcon}
-      themeColor="orange"
+      themeColor="module"
       maxWidth="lg"
     >
       <div className="space-y-6">
@@ -202,18 +202,18 @@ function CycleDetailModal({
                 key={phase.id}
                 className={cn(
                   'flex items-start gap-3 p-3 rounded-xl border transition-all',
-                  isCurrent ? 'bg-orange-500/10 border-orange-500/30' : isDone ? 'bg-white/[0.02] border-white/5 opacity-50' : 'bg-white/[0.02] border-white/5'
+                  isCurrent ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)]' : isDone ? 'bg-white/[0.02] border-white/5 opacity-50' : 'bg-white/[0.02] border-white/5'
                 )}
               >
                 <div className={cn(
                   'w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5',
-                  isCurrent ? 'border-orange-500/60 text-orange-400' : isDone ? 'border-green-500/40 text-green-400' : 'border-white/20 text-white/30'
+                  isCurrent ? 'border-[var(--module-accent)] text-[var(--module-color-400)]' : isDone ? 'border-green-500/40 text-green-400' : 'border-white/20 text-white/30'
                 )}>
                   {isDone ? '✓' : idx + 1}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span className={cn('text-xs font-bold', isCurrent ? 'text-orange-300' : 'text-white/70')}>
+                    <span className={cn('text-xs font-bold', isCurrent ? 'text-[var(--module-color-300)]' : 'text-white/70')}>
                       {phase.name}
                     </span>
                     <span className="text-[10px] text-white/40">{phase.durationDays}d</span>
@@ -240,11 +240,11 @@ function CycleDetailModal({
         {/* Actions */}
         {cycle.status === 'active' && (
           <div className="flex gap-3 pt-2 border-t border-white/5">
-            <NeuralButton size="xl" themeColor="orange" className="flex-1" onClick={handleAdvancePhase}>
+            <NeuralButton size="xl" className="flex-1" onClick={handleAdvancePhase}>
               <RefreshCw className="w-4 h-4 mr-2" />
               {cycle.currentPhaseIndex + 1 < cycle.phases.length ? 'Next Phase' : 'Complete Cycle'}
             </NeuralButton>
-            <NeuralButton size="xl" variant="ghost" themeColor="orange" onClick={handleAnalyze}>
+            <NeuralButton size="xl" variant="ghost" onClick={handleAnalyze}>
               <MessageSquare className="w-4 h-4 mr-2" />
               Analyze
             </NeuralButton>
@@ -257,57 +257,71 @@ function CycleDetailModal({
 
 export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onDirectCreate, onDirectDelete, className }: CycleManagerProps) {
   const [selectedCycle, setSelectedCycle] = useState<CycleEntry | null>(null);
-  const [showDirectModal, setShowDirectModal] = useState(false);
-  const [directName, setDirectName] = useState('');
-  const [directType, setDirectType] = useState<'workout' | 'recovery' | 'custom'>('workout');
-  const [directStartDate, setDirectStartDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [directDescription, setDirectDescription] = useState('');
+  const [showCycleModal, setShowCycleModal] = useState(false);
+  const [cycleName, setCycleName] = useState('');
+  const [cycleType, setCycleType] = useState<'workout' | 'recovery' | 'custom'>('workout');
+  const [cycleStartDate, setCycleStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [cycleDescription, setCycleDescription] = useState('');
 
   const active = cycles.filter(c => c.status === 'active');
   const completed = cycles.filter(c => c.status !== 'active');
 
   const handleNewCycle = useCallback(() => {
-    if (directWriteMode) {
-      setDirectName('');
-      setDirectType('workout');
-      setDirectStartDate(new Date().toISOString().slice(0, 10));
-      setDirectDescription('');
-      setShowDirectModal(true);
-      return;
-    }
-    const prompt = [
-      "I want to set up a new training cycle. Please help me create one.",
-      "Ask me: What type of cycle (workout periodization, recovery block, or custom)?",
-      "Then build the phases with me and use the create_cycle action to commit it.",
-    ].join('\n');
-    onSubmitForApproval(prompt);
+    setCycleName('');
+    setCycleType('workout');
+    setCycleStartDate(new Date().toISOString().slice(0, 10));
+    setCycleDescription('');
+    setShowCycleModal(true);
   }, [directWriteMode, onSubmitForApproval]);
 
-  const handleDirectCreate = useCallback(() => {
-    if (!directName.trim() || !onDirectCreate) return;
-    const newCycle: CycleEntry = {
-      id: `cycle-${Date.now()}`,
-      name: directName.trim(),
-      type: directType,
-      description: directDescription.trim() || undefined,
-      startDate: directStartDate,
-      phases: [],
-      currentPhaseIndex: 0,
-      currentPhaseStartDate: directStartDate,
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    onDirectCreate(newCycle);
-    setShowDirectModal(false);
-  }, [directName, directType, directStartDate, directDescription, onDirectCreate]);
+  const handleCycleCreate = useCallback(() => {
+    if (!cycleName.trim()) return;
+    if (directWriteMode) {
+      if (!onDirectCreate) return;
+      const newCycle: CycleEntry = {
+        id: `cycle-${Date.now()}`,
+        name: cycleName.trim(),
+        type: cycleType,
+        description: cycleDescription.trim() || undefined,
+        startDate: cycleStartDate,
+        phases: [],
+        currentPhaseIndex: 0,
+        currentPhaseStartDate: cycleStartDate,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      onDirectCreate(newCycle);
+      setShowCycleModal(false);
+      return;
+    }
+
+    const prompt = [
+      "Create a new training cycle with the following details.",
+      `Name: ${cycleName.trim()}`,
+      `Type: ${cycleType}`,
+      `Start date: ${cycleStartDate}`,
+      cycleDescription.trim() ? `Description: ${cycleDescription.trim()}` : null,
+      "Include at least one phase (with durationDays) and then emit create_cycle to commit it.",
+    ].filter(Boolean).join('\n');
+    onSubmitForApproval(prompt);
+    setShowCycleModal(false);
+  }, [
+    cycleDescription,
+    cycleName,
+    cycleStartDate,
+    cycleType,
+    directWriteMode,
+    onDirectCreate,
+    onSubmitForApproval,
+  ]);
 
   return (
     <div className={className}>
       <SurfaceCard className="p-5">
         <div className="flex items-center justify-between mb-4">
           <PanelLabel label="Cycle Tracker" metadata={active.length ? `${active.length} active` : 'no active cycles'} />
-          <NeuralButton size="sm" themeColor="orange" onClick={handleNewCycle}>
+          <NeuralButton size="sm" onClick={handleNewCycle}>
             <Plus className="w-3 h-3 mr-1.5" />
             New Cycle
           </NeuralButton>
@@ -321,7 +335,7 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
             <NeuralButton
               variant="ghost"
               onClick={handleNewCycle}
-              className="text-[11px] text-orange-400/60 hover:text-orange-300 transition-colors h-auto p-0"
+              className="text-[11px] text-[var(--module-color-400)] hover:text-[var(--module-color-300)] transition-colors h-auto p-0"
             >
               Set up your first cycle →
             </NeuralButton>
@@ -355,24 +369,24 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
         onSubmitForApproval={onSubmitForApproval}
       />
 
-      {/* Direct-write (Logbook mode) new cycle modal */}
+      {/* New cycle modal (shared for Coach + Logbook) */}
       <NeuralModal
-        isOpen={showDirectModal}
-        onClose={() => setShowDirectModal(false)}
+        isOpen={showCycleModal}
+        onClose={() => setShowCycleModal(false)}
         title="New Training Cycle"
-        subtitle="Logbook mode — saved instantly"
+        subtitle={directWriteMode ? 'Logbook mode — saved instantly' : 'Coach review — needs approval'}
         icon={RefreshCw}
-        themeColor="orange"
+        themeColor="module"
         maxWidth="md"
       >
         <div className="space-y-4">
           <NeuralInput
             label="Cycle Name *"
             type="text"
-            value={directName}
-            onChange={e => setDirectName(e.target.value)}
+            value={cycleName}
+            onChange={e => setCycleName(e.target.value)}
             placeholder="e.g. Hypertrophy Block, Deload Week"
-            className="placeholder-white/30 focus:border-orange-500/50"
+            className="placeholder-white/30 focus:border-[var(--module-accent)]"
           />
 
           <div>
@@ -383,12 +397,12 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
               {(['workout', 'recovery', 'custom'] as const).map(t => (
                 <NeuralButton
                   key={t}
-                  onClick={() => setDirectType(t)}
-                  variant={directType === t ? 'primary' : 'secondary'}
+                  onClick={() => setCycleType(t)}
+                  variant={cycleType === t ? 'primary' : 'secondary'}
                   className={cn(
                     'flex-1 py-2 rounded-xl text-xs font-bold transition-all h-auto',
-                    directType === t
-                      ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
+                    cycleType === t
+                      ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
                       : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20'
                   )}
                 >
@@ -401,9 +415,9 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
           <NeuralInput
             label="Start Date"
             type="date"
-            value={directStartDate}
-            onChange={e => setDirectStartDate(e.target.value)}
-            className="focus:border-orange-500/50"
+            value={cycleStartDate}
+            onChange={e => setCycleStartDate(e.target.value)}
+            className="focus:border-[var(--module-accent)]"
           />
 
           <div className="space-y-1.5">
@@ -411,22 +425,21 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
               Description (optional)
             </label>
             <NeuralTextarea
-              value={directDescription}
-              onChange={e => setDirectDescription(e.target.value)}
+              value={cycleDescription}
+              onChange={e => setCycleDescription(e.target.value)}
               rows={2}
               placeholder="Goals, notes, or context for this cycle"
-              className="placeholder-white/30 focus:border-orange-500/50"
+              className="placeholder-white/30 focus:border-[var(--module-accent)]"
             />
           </div>
 
           <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-            <NeuralButton variant="ghost" themeColor="orange" onClick={() => setShowDirectModal(false)}>
+            <NeuralButton variant="ghost" onClick={() => setShowCycleModal(false)}>
               Cancel
             </NeuralButton>
             <NeuralButton
-              themeColor="orange"
-              onClick={handleDirectCreate}
-              disabled={!directName.trim()}
+              onClick={handleCycleCreate}
+              disabled={!cycleName.trim()}
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Cycle

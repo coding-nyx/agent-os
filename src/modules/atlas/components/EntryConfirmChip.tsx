@@ -97,10 +97,10 @@ export function EntryConfirmChip({ parsed, onConfirm, onEdit, onDismiss }: Entry
       {parsed && (
         <motion.div
           key="entry-confirm-chip"
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+          initial={{ opacity: 0, y: 8, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8, scale: 0.95 }}
+          transition={{ type: 'spring', damping: 22, stiffness: 280 }}
           className={cn(
             'relative rounded-xl border border-white/10 bg-white/[0.04]',
             'backdrop-blur-md px-4 py-3 flex flex-col gap-3',
@@ -117,8 +117,8 @@ export function EntryConfirmChip({ parsed, onConfirm, onEdit, onDismiss }: Entry
                 className={cn(
                   'shrink-0 flex items-center justify-center w-6 h-6 rounded-md',
                   parsed.type === 'habit'
-                    ? 'bg-sky-500/15 text-sky-400'
-                    : 'bg-sky-500/15 text-sky-400'
+                    ? 'bg-[var(--module-accent-glow)] text-[var(--module-color-400)]'
+                    : 'bg-[var(--module-accent-glow)] text-[var(--module-color-400)]'
                 )}
               >
                 {parsed.type === 'habit'
@@ -133,7 +133,7 @@ export function EntryConfirmChip({ parsed, onConfirm, onEdit, onDismiss }: Entry
               </span>
 
               {/* Entry type label */}
-              <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-sky-400/70">
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-[var(--module-color-400)]/70">
                 {parsed.type}
               </span>
             </div>
@@ -185,7 +185,7 @@ export function EntryConfirmChip({ parsed, onConfirm, onEdit, onDismiss }: Entry
           <div className="flex items-center gap-2">
             <NeuralButton
               onClick={onConfirm}
-              themeColor="cyan"
+              themeColor="module"
               size="sm"
               className="!h-8 !px-3 !rounded-lg text-xs font-bold shadow-[0_2px_8px_rgba(14,165,233,0.4)]"
             >

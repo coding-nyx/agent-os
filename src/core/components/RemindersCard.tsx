@@ -5,6 +5,8 @@ import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
 import type { NexusRecord } from '@/lib/data-layer';
 import type { ModuleId } from '@/lib/module-manifest';
+import { useNotifications } from '@/lib/notifications/NotificationContext';
+import { ModuleIcon } from '@/core/components/ModuleIcon';
 
 interface ReminderItem {
   source: string;
@@ -32,26 +34,8 @@ function timeAgo(isoStr: string): string {
 }
 
 export function RemindersCard({ moduleId }: { moduleId: ModuleId }) {
-  const { user, isGuest } = useAuth();
-  const dataLayer = useDataLayer();
+  const { inbox: items, performAction } = useNotifications();
   const navigate = useNavigate();
-  const [items, setItems] = useState<ReminderRecord[]>([]);
-
-  useEffect(() => {
-    if (!user || isGuest) {
-      setItems([]);
-      return;
-    }
-    const unsub = dataLayer.subscribeToQuery<ReminderItem>(
-      {
-        collection: `users/${user.uid}/notification_inbox`,
-        orderBy: [{ field: 'createdAt', direction: 'desc' }],
-        limit: 100,
-      },
-      (docs) => setItems(docs)
-    );
-    return () => unsub?.();
-  }, [dataLayer, isGuest, user]);
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
@@ -68,10 +52,10 @@ export function RemindersCard({ moduleId }: { moduleId: ModuleId }) {
   if (preview.length === 0) return null;
 
   return (
-    <section className="mx-4 mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+    <section className="mx-4 mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3 shadow-xl">
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Bell className="h-3.5 w-3.5 text-white/50" />
+          <Bell className="h-3.5 w-3.5 text-indigo-400" />
           <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/50">Reminders</span>
         </div>
         <button
@@ -84,24 +68,34 @@ export function RemindersCard({ moduleId }: { moduleId: ModuleId }) {
         </button>
       </div>
       <div className="space-y-2">
-        {preview.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() =>
-              navigate(
-                item.data?.deepLink?.route ?? '/notifications',
-                item.data?.deepLink?.focusId ? { state: { focusId: item.data.deepLink.focusId } } : undefined,
-              )
-            }
-            className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-left hover:bg-white/[0.04]"
-          >
-            <p className="truncate text-xs font-semibold text-white/80">
-              {item.data?.title ?? 'Reminder'}
-            </p>
-            <p className="mt-0.5 text-[10px] text-white/40">{timeAgo(item.createdAt)}</p>
-          </button>
-        ))}
+        {preview.map((item) => {
+          const source = item.source?.replace(/^cascade:/, '').toLowerCase() || moduleId;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                if (item.action) {
+                  void performAction(item.action, item.id);
+                } else {
+                  navigate(
+                    item.data?.deepLink?.route ?? '/notifications',
+                    item.data?.deepLink?.focusId ? { state: { focusId: item.data.deepLink.focusId } } : undefined,
+                  );
+                }
+              }}
+              className="w-full flex items-start gap-3 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-left hover:bg-white/[0.06] transition-all hover:translate-y-[-1px] active:translate-y-0"
+            >
+              <ModuleIcon source={source} withBackground className="w-6 h-6 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-xs font-semibold text-white/90">
+                  {item.title || item.data?.title || 'Reminder'}
+                </p>
+                <p className="mt-0.5 text-[10px] text-white/40">{timeAgo(item.createdAt)}</p>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </section>
   );

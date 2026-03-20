@@ -107,7 +107,7 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     title: 'Titan',
     alias: 'Titan',
     description: 'Fitness coaching, biomarker tracking, and recovery management',
-    colorHex: '#F59E0B',
+    colorHex: '#DC4B1E',
     themeColor: 'orange',
     chatTheme: 'orange',
     icon: Activity,

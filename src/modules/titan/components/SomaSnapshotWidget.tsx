@@ -15,7 +15,7 @@ export function SomaSnapshotWidget({ clearanceStatus, lastBiomarkerDate, classNa
 
   const statusConfig = {
     granted: { icon: ShieldCheck, color: 'emerald', label: 'Cleared for Training', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-    pending: { icon: AlertTriangle, color: 'amber', label: 'Clearance Pending', bg: 'bg-amber-500/10 border-amber-500/20' },
+    pending: { icon: AlertTriangle, color: 'orange', label: 'Clearance Pending', bg: 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)]' },
     denied: { icon: AlertTriangle, color: 'rose', label: 'Clearance Denied', bg: 'bg-rose-500/10 border-rose-500/20' },
   };
 

@@ -134,14 +134,15 @@ export function DiagnosisCloseModal({
                 )}
               </div>
               {!isBusy && !isSuccess && (
-                <button
+                <NeuralButton
                   type="button"
+                  variant="ghost"
                   onClick={onCancel}
                   className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors flex-shrink-0"
                   aria-label="Cancel"
                 >
                   <X className="w-4 h-4" />
-                </button>
+                </NeuralButton>
               )}
             </div>
 
@@ -155,8 +156,8 @@ export function DiagnosisCloseModal({
                   exit={{ opacity: 0 }}
                   className="flex flex-col items-center gap-3 py-6 text-center"
                 >
-                  <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                    <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+                  <div className="w-14 h-14 rounded-full bg-[var(--module-accent-glow)] border border-[var(--module-accent-border)] flex items-center justify-center">
+                    <CheckCircle2 className="w-7 h-7 text-[var(--module-color-400)]" />
                   </div>
                   <p className="text-sm font-semibold text-white">
                     {actionState === 'success-merge'
@@ -179,7 +180,7 @@ export function DiagnosisCloseModal({
                   {selectedItemCount > 0 ? (
                     <p className="text-sm text-white/70 leading-relaxed">
                       Merge{' '}
-                      <span className="font-semibold text-emerald-300">
+                      <span className="font-semibold text-[var(--module-color-300)]">
                         {selectedItemCount}
                       </span>{' '}
                       of{' '}
@@ -197,7 +198,7 @@ export function DiagnosisCloseModal({
 
                   {/* Warning */}
                   {suggestedMedicationCount > 0 && (
-                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3.5 py-2.5 text-xs text-emerald-200/80">
+                    <div className="rounded-xl border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] px-3.5 py-2.5 text-xs text-[var(--module-color-300)] opacity-80">
                       {suggestedMedicationCount} suggested medication{suggestedMedicationCount !== 1 ? 's' : ''} will be added as
                       “Suggested: … (discuss with provider)”.
                     </div>
@@ -214,7 +215,7 @@ export function DiagnosisCloseModal({
                     <NeuralButton
                       onClick={handleMerge}
                       disabled={isBusy}
-                      themeColor="emerald"
+                      themeColor="module"
                       variant="secondary"
                       className="w-full min-h-[48px] font-semibold"
                     >
@@ -255,14 +256,15 @@ export function DiagnosisCloseModal({
 
                   {/* Cancel link */}
                   <div className="text-center">
-                    <button
+                    <NeuralButton
                       type="button"
+                      variant="ghost"
                       onClick={onCancel}
                       disabled={isBusy}
                       className="text-xs text-white/35 hover:text-white/55 transition-colors underline underline-offset-2 disabled:pointer-events-none"
                     >
                       Keep reviewing
-                    </button>
+                    </NeuralButton>
                   </div>
                 </motion.div>
               )}

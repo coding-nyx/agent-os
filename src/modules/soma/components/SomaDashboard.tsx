@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
+import { UniversalUploadZone } from '@/core/components/forms/UniversalUploadZone';
 import { VitalsEntryForm } from './VitalsEntryForm';
 import { PhysicalAssessmentForm } from './PhysicalAssessmentForm';
 import { BiometricHistory } from './BiometricHistory';
@@ -240,17 +241,17 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium whitespace-nowrap transition-all duration-200 flex-shrink-0',
                 'min-h-[44px]', // mobile touch target
                 isFlashing
-                  ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300 animate-pulse'
+                  ? 'border-[var(--module-color-400)] bg-[var(--module-accent-glow)] text-[var(--module-color-300)] animate-pulse'
                   : hasValue
-                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                  ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)] hover:bg-[var(--module-accent-glow)]'
                   : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80',
-                isExpanded && !isFlashing && 'border-emerald-400/50 bg-emerald-500/10 text-emerald-300',
+                isExpanded && !isFlashing && 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
               )}
             >
               {React.createElement(chip.icon, { className: 'w-3.5 h-3.5 flex-shrink-0', 'aria-hidden': true })}
               <span>{chip.label}</span>
               {hasValue ? (
-                <span className="text-xs font-semibold text-emerald-400">
+                <span className="text-xs font-semibold text-[var(--module-color-400)]">
                   {Number.isInteger(todayVal) ? todayVal : (todayVal as number).toFixed(1)}{chip.unit}
                 </span>
               ) : (
@@ -275,7 +276,7 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
             <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  {React.createElement(activeChip.icon, { className: 'w-4 h-4 text-emerald-400', 'aria-hidden': true })}
+                  {React.createElement(activeChip.icon, { className: 'w-4 h-4 text-[var(--module-color-400)]', 'aria-hidden': true })}
                   <span className="text-sm font-semibold text-white">
                     Log {activeChip.label}
                   </span>
@@ -307,7 +308,7 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
                 <NeuralButton
                   onClick={() => handleSave(activeChip)}
                   disabled={isSaving || inputValue === ''}
-                  themeColor="emerald"
+                  themeColor="module"
                   className="min-h-[44px]"
                 >
                   {isSaving ? '…' : 'Save'}
@@ -587,8 +588,19 @@ export const SomaDashboard = React.memo(function SomaDashboard({
     );
   }
 
-  // Fix 4: Guard on missing/incomplete profile (soul is always present for logged-in users)
-  if (!profile || !profile.medicalOnboardingComplete) {
+  // Skeleton loading when profile hasn't loaded yet
+  if (!profile) {
+    return (
+      <div className="px-4 md:px-8 pt-6 space-y-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="animate-pulse bg-white/5 rounded-lg h-24" />
+        ))}
+      </div>
+    );
+  }
+
+  // Fix 4: Guard on incomplete onboarding
+  if (!profile.medicalOnboardingComplete) {
     return (
       <div className="h-full flex items-center justify-center p-8">
         <EmptyState
@@ -616,7 +628,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
       <SurfaceCard className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <Activity className="w-6 h-6 text-emerald-400" />
+            <Activity className="w-6 h-6 text-[var(--module-color-400)]" />
             <div>
               <h2 className="text-2xl font-bold text-white tracking-tight font-display">Physical Readiness</h2>
               <p className="text-sm text-white/60">Soma readiness score</p>
@@ -624,7 +636,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
           </div>
           <NeuralButton
             variant="ghost"
-            themeColor="emerald"
+            themeColor="module"
             onClick={toggleAIPanel}
             className="text-xs font-semibold h-auto min-h-0 py-1"
           >
@@ -650,7 +662,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
           </div>
 
           {/* Real data summary stats */}
-          <div className="flex-1 grid grid-cols-2 gap-4">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
               <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Biomarkers</p>
               <p className="text-2xl font-bold text-white">{profile.biomarkers.length}</p>
@@ -748,13 +760,13 @@ export const SomaDashboard = React.memo(function SomaDashboard({
       {profile.biomarkers.length > 0 && (
         <SurfaceCard className="p-6">
           <div className="flex items-center gap-3 mb-6">
-            <FlaskConical className="w-6 h-6 text-cyan-400" />
+            <FlaskConical className="w-6 h-6 text-[var(--module-color-400)]" />
             <div>
               <h2 className="text-xl font-bold text-white tracking-tight font-display">Recent Biomarkers</h2>
               <p className="text-sm text-white/60">Latest {Math.min(profile.biomarkers.length, 6)} of {profile.biomarkers.length}</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {profile.biomarkers.slice(-6).reverse().map(b => (
               <div key={b.id} className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
                 <p className="text-xs text-white/40 uppercase tracking-wider mb-1 truncate">{b.name}</p>
@@ -795,7 +807,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
               >
                 <div className="flex items-center gap-3">
                   {clearance.status === 'granted' ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 text-[var(--module-color-400)] flex-shrink-0" />
                   ) : (
                     <AlertCircle className={cn('w-5 h-5 flex-shrink-0', clearance.status === 'denied' ? 'text-red-400' : 'text-amber-400')} />
                   )}
@@ -807,7 +819,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
                 <span className={cn(
                   'text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full flex-shrink-0',
                   clearance.status === 'granted'
-                    ? 'bg-emerald-500/10 text-emerald-400'
+                    ? 'bg-[var(--module-accent-muted)] text-[var(--module-color-400)]'
                     : clearance.status === 'denied'
                     ? 'bg-red-500/10 text-red-400'
                     : 'bg-amber-500/10 text-amber-400'
@@ -823,7 +835,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
       {heartRateHistory.length > 0 && (
         <SurfaceCard className="p-6">
           <div className="flex items-center gap-3 mb-6">
-            <Heart className="w-6 h-6 text-cyan-400" />
+            <Heart className="w-6 h-6 text-[var(--module-color-400)]" />
             <div>
               <h2 className="text-xl font-bold text-white tracking-tight font-display">Heart Rate Trend</h2>
               <p className="text-sm text-white/60">Last {heartRateHistory.length} reading(s)</p>
@@ -862,7 +874,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
       {profile.medicalSummary && (
         <SurfaceCard className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <TrendingUp className="w-6 h-6 text-emerald-400" />
+            <TrendingUp className="w-6 h-6 text-[var(--module-color-400)]" />
             <h2 className="text-xl font-bold text-white tracking-tight font-display">Medical Summary</h2>
           </div>
           <p className="text-sm text-white/70 leading-relaxed">{profile.medicalSummary}</p>
@@ -916,10 +928,14 @@ export const SomaDashboard = React.memo(function SomaDashboard({
   const renderLabs = () => {
     if (diagnosisPhase === 'idle') {
       return (
-        <DiagnosisUploadZone
+        <UniversalUploadZone
           onFileSelected={handleFileSelected}
-          isUploading={false}
+          phase="idle"
           error={uploadError}
+          themeColor="emerald"
+          label="Medical Document"
+          description="Upload labs, reports, or images"
+          maxSizeMb={15}
         />
       );
     }
@@ -953,19 +969,19 @@ export const SomaDashboard = React.memo(function SomaDashboard({
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-emerald-500/[0.06] border border-emerald-500/20 backdrop-blur-sm"
+            className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-[var(--module-accent-faint)] border border-[var(--module-accent-border)] backdrop-blur-sm"
             role="status"
             aria-label="Active diagnosis session"
           >
             <div className="flex items-center gap-3 min-w-0">
               <div
-                className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0"
+                className="w-7 h-7 rounded-lg bg-[var(--module-accent-glow)] border border-[var(--module-accent-border)] flex items-center justify-center flex-shrink-0"
                 aria-hidden="true"
               >
-                <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                <FileText className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-widest text-emerald-400">
+                <p className="text-[11px] font-black uppercase tracking-widest text-[var(--module-color-400)]">
                   Active Analysis
                 </p>
                 <p className="text-[11px] text-white/40 mt-0.5">
@@ -975,7 +991,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
             </div>
             <NeuralButton
               variant="secondary"
-              themeColor="emerald"
+              themeColor="module"
               onClick={() => setShowCloseModal(true)}
               className="px-3 py-1.5 text-[11px] font-bold flex-shrink-0 h-auto min-h-0"
               aria-label="Merge or discard diagnosis results"
@@ -996,7 +1012,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
             >
               <NeuralButton
                 variant="ghost"
-                themeColor="emerald"
+                themeColor="module"
                 role="tab"
                 id="soma-diag-tab-findings"
                 aria-selected={diagnosisActiveTab === 'findings'}
@@ -1005,7 +1021,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
                 className={cn(
                   'flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all min-h-[40px]',
                   diagnosisActiveTab === 'findings'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                    ? 'bg-[var(--module-accent-glow)] text-[var(--module-color-300)] border border-[var(--module-accent-border)] shadow-sm'
                     : 'text-white/40 hover:text-white/60 hover:bg-white/[0.03]',
                 )}
               >
@@ -1015,7 +1031,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
                   className={cn(
                     'px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none',
                     diagnosisActiveTab === 'findings'
-                      ? 'bg-emerald-500/30 text-emerald-300'
+                      ? 'bg-[var(--module-accent-glow)] text-[var(--module-color-300)]'
                       : 'bg-white/10 text-white/40',
                   )}
                 >
@@ -1024,7 +1040,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
               </NeuralButton>
               <NeuralButton
                 variant="ghost"
-                themeColor="emerald"
+                themeColor="module"
                 role="tab"
                 id="soma-diag-tab-analysis"
                 aria-selected={diagnosisActiveTab === 'analysis'}
@@ -1033,7 +1049,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
                 className={cn(
                   'flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all min-h-[40px]',
                   diagnosisActiveTab === 'analysis'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                    ? 'bg-[var(--module-accent-glow)] text-[var(--module-color-300)] border border-[var(--module-accent-border)] shadow-sm'
                     : 'text-white/40 hover:text-white/60 hover:bg-white/[0.03]',
                 )}
               >
@@ -1173,7 +1189,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
           tabs={tabs}
           activeTab={activeView}
           onTabChange={setActiveView}
-          themeColor="emerald"
+          themeColor="module"
           variant="pill"
           layoutIdPrefix="soma-tab"
         />

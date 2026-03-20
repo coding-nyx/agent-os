@@ -13,7 +13,7 @@ interface NeuralToggleProps {
 
 const COLOR_MAP: Record<string, string> = {
   indigo: 'bg-indigo-500/80',
-  orange: 'bg-orange-500/70',
+  orange: 'bg-[#DC4B1E]/70',
   amber: 'bg-amber-500/80',
   emerald: 'bg-emerald-500/60',
   rose: 'bg-rose-500/70',

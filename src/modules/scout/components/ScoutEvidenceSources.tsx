@@ -83,7 +83,7 @@ export function ScoutEvidenceSources({ knowledgeNodes, className }: ScoutEvidenc
     return (
       <section className={cn('space-y-3', className)} aria-label="Evidence sources">
         <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic flex items-center gap-2">
-          <Library className="w-3.5 h-3.5 text-lime-400/50" aria-hidden="true" />
+          <Library className="w-3.5 h-3.5 text-[var(--module-color-400)] opacity-50" aria-hidden="true" />
           Evidence Sources
         </h4>
         <EmptyState
@@ -101,7 +101,7 @@ export function ScoutEvidenceSources({ knowledgeNodes, className }: ScoutEvidenc
     <section className={cn('space-y-3', className)} aria-label="Evidence sources">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-black text-white/70 uppercase tracking-widest italic flex items-center gap-2">
-          <Library className="w-3.5 h-3.5 text-lime-400/50" aria-hidden="true" />
+          <Library className="w-3.5 h-3.5 text-[var(--module-color-400)] opacity-50" aria-hidden="true" />
           Evidence Sources
         </h4>
         <span className="text-[9px] font-bold text-white/25 uppercase tracking-wider">

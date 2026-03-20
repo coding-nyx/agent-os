@@ -19,7 +19,7 @@ interface DayTaskPanelProps {
 
 const PRIORITY_COLORS: Record<number, string> = {
   1: 'text-white/30',
-  2: 'text-sky-400/70',
+  2: 'text-[var(--module-color-400)]/70',
   3: 'text-amber-400/70',
   4: 'text-orange-400/70',
   5: 'text-rose-400',
@@ -137,7 +137,7 @@ export function DayTaskPanel({ date, tasks, scheduledTasks, onClose }: DayTaskPa
               <Clock
                 className={cn(
                   'w-3.5 h-3.5 mt-0.5 shrink-0',
-                  st.status === 'done' ? 'text-emerald-400' : 'text-sky-400/60'
+                  st.status === 'done' ? 'text-emerald-400' : 'text-[var(--module-color-400)]/60'
                 )}
                 aria-hidden
               />

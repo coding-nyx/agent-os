@@ -17,8 +17,8 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
     <div className="space-y-4 sm:space-y-5">
       <SurfaceCard className="p-4 sm:p-5">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center">
-            <ShieldAlert className="w-5 h-5 text-orange-400" />
+          <div className="w-10 h-10 rounded-xl bg-[var(--module-accent-glow)] border border-[var(--module-accent-border)] flex items-center justify-center">
+            <ShieldAlert className="w-5 h-5 text-[var(--module-color-400)]" />
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-wider text-white/40">Recovery Overview</p>
@@ -57,7 +57,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
 
       <SurfaceCard className="p-4 sm:p-5">
         <div className="flex items-center gap-2 mb-3">
-          <CalendarClock className="w-4 h-4 text-orange-400" />
+          <CalendarClock className="w-4 h-4 text-[var(--module-color-400)]" />
           <h3 className="text-[13px] uppercase tracking-wider text-white/80 font-black">
             Recovery Protocol
           </h3>
@@ -66,7 +66,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
         <ul className="space-y-2 text-sm text-white/70">
           {template.steps.map((step) => (
             <li key={step} className="flex items-start gap-2">
-              <span className="mt-1 w-1.5 h-1.5 rounded-full bg-orange-400/70" />
+              <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[var(--module-color-400)]" />
               <span>{step}</span>
             </li>
           ))}
@@ -95,7 +95,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
             {plan.aiSummary && (
               <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:col-span-2">
                 <div className="flex items-center gap-2 mb-1">
-                  <Sparkles className="w-4 h-4 text-orange-300" />
+                  <Sparkles className="w-4 h-4 text-[var(--module-color-300)]" />
                   <span className="text-[11px] uppercase tracking-wider text-white/50">Titan Overlay</span>
                 </div>
                 <p className="text-xs text-white/70">{plan.aiSummary}</p>

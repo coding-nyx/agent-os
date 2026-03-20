@@ -31,7 +31,7 @@
 
     --nexus: #8b5cf6;
     --agnes: #6366f1;
-    --titan: #f59e0b;
+    --titan: #DC4B1E;
     --soma: #10b981;
     --ledger: #06b6d4;
     --atlas: #0ea5e9;
@@ -168,6 +168,18 @@
     --module-accent-faint: rgb(99 102 241 / 0.05);
     --module-accent-border: rgb(99 102 241 / 0.20);
     --module-accent-ring: rgb(99 102 241 / 0.30);
+    --module-accent-text: #ffffff;
+    --module-accent-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+
+    --nb-orange-bg: #f97316;
+    --nb-orange-hover: #fb923c;
+    --nb-orange-text: #ffffff;
+    --nb-orange-border: rgba(251, 146, 60, 0.2);
+    --nb-orange-ring: #fb923c;
+    --nb-orange-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    --nb-orange-outline-text: #fdba74;
+    --nb-orange-outline-border: rgba(251, 146, 60, 0.25);
+    --nb-orange-outline-hover: rgba(249, 115, 22, 0.1);
   }
 
   .dark {
@@ -191,6 +203,27 @@
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
   }
+}
+
+.titan-theme {
+  --module-accent: #DC4B1E;
+  --module-accent-hover: #FF5C2A;
+  --module-accent-muted: rgba(220, 75, 30, 0.10);
+  --module-accent-faint: rgba(220, 75, 30, 0.05);
+  --module-accent-border: rgba(220, 75, 30, 0.25);
+  --module-accent-ring: rgba(220, 75, 30, 0.38);
+  --module-accent-text: #ffffff;
+  --module-accent-shadow: 0 8px 24px rgba(220, 75, 30, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
+  --nb-orange-bg: #dc4b1e;
+  --nb-orange-hover: #ff5c2a;
+  --nb-orange-text: #ffffff;
+  --nb-orange-border: rgba(220, 75, 30, 0.35);
+  --nb-orange-ring: #dc4b1e;
+  --nb-orange-shadow: 0 8px 24px rgba(220, 75, 30, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  --nb-orange-outline-text: #FFA882;
+  --nb-orange-outline-border: rgba(220, 75, 30, 0.30);
+  --nb-orange-outline-hover: rgba(220, 75, 30, 0.12);
 }
 
 @layer base {
@@ -591,6 +624,43 @@
 }
 
 @layer utilities {
+  /* ── Scroll & Overflow Utilities ── */
+  .scroll-container {
+    overflow-y: auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .scroll-container-x {
+    overflow-x: auto;
+    min-width: 0;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .text-safe {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow: hidden;
+  }
+
+  .card-padding {
+    padding: var(--space-4);
+  }
+
+  @media (min-width: 768px) {
+    .card-padding {
+      padding: var(--space-6);
+    }
+  }
+
+  .module-page-gutter {
+    padding-left: var(--shell-page-gutter);
+    padding-right: var(--shell-page-gutter);
+  }
+
+  /* ── Existing Utilities ── */
   .rounded-panel {
     border-radius: var(--radius-panel);
   }

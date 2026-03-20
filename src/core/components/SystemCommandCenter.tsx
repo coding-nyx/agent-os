@@ -62,7 +62,7 @@ export function SystemCommandCenter() {
   };
 
   return (
-    <div className="relative pointer-events-auto z-50">
+    <div className="relative pointer-events-auto z-[var(--z-header)]">
       <NeuralButton
         aria-label="User Menu"
         aria-expanded={isOpen}
@@ -220,31 +220,31 @@ export function SystemCommandCenter() {
                             <h3 className="text-xs font-black uppercase tracking-[0.3em] text-indigo-400 italic border-b border-indigo-500/20 pb-2">Vault Persistence</h3>
                             
                             <div className="space-y-3">
-                                 <NeuralButton 
-                                     variant="ghost"
+                                 <button
+                                     type="button"
                                      onClick={() => selectPersistence('STRICT')}
                                      aria-pressed={persistenceMode === 'STRICT'}
-                                     className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 h-auto block ${persistenceMode === 'STRICT' ? 'bg-indigo-500/20 border-indigo-500/60' : 'bg-white/[0.05] border-white/10 hover:border-white/20'}`}
+                                     className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${persistenceMode === 'STRICT' ? 'bg-indigo-500/20 border-indigo-500/60' : 'bg-white/[0.05] border-white/10 hover:border-white/20'}`}
                                  >
                                     <div className="flex items-center gap-3 mb-2">
                                         <Shield className="w-5 h-5 text-indigo-400" />
                                         <span className="text-xs font-black uppercase tracking-widest text-white">STRICT_MODE</span>
                                     </div>
-                                    <p className="text-[10px] text-white/60 leading-relaxed">Vault reference is purged on browser refresh. Maximum security.</p>
-                                </NeuralButton>
+                                    <p className="text-[10px] text-white/60 leading-relaxed whitespace-normal">Vault reference is purged on browser refresh. Maximum security.</p>
+                                </button>
 
-                                 <NeuralButton 
-                                     variant="ghost"
+                                 <button
+                                     type="button"
                                      onClick={() => selectPersistence('SESSION')}
                                      aria-pressed={persistenceMode === 'SESSION'}
-                                     className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 h-auto block ${persistenceMode === 'SESSION' ? 'bg-indigo-500/20 border-indigo-500/60' : 'bg-white/[0.05] border-white/10 hover:border-white/20'}`}
+                                     className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${persistenceMode === 'SESSION' ? 'bg-indigo-500/20 border-indigo-500/60' : 'bg-white/[0.05] border-white/10 hover:border-white/20'}`}
                                  >
                                     <div className="flex items-center gap-3 mb-2">
                                         <Clock className="w-5 h-5 text-indigo-400" />
                                         <span className="text-xs font-black uppercase tracking-widest text-white">SESSION_MODE</span>
                                     </div>
-                                    <p className="text-[10px] text-white/60 leading-relaxed">Vault reference survives page refresh. Purged when tab is closed.</p>
-                                </NeuralButton>
+                                    <p className="text-[10px] text-white/60 leading-relaxed whitespace-normal">Vault reference survives page refresh. Purged when tab is closed.</p>
+                                </button>
                             </div>
                         </div>
 

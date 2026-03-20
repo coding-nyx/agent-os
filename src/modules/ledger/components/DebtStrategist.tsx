@@ -16,6 +16,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
   LineChart,
   Line,
@@ -121,10 +122,10 @@ function StrategySummaryCard({ result, currency, isBetter }: StrategySummaryCard
   const accentColor = isAvalanche ? 'cyan' : 'purple';
 
   const accentBorder = isAvalanche
-    ? 'border-cyan-500/30'
+    ? 'border-[var(--module-accent-border)]'
     : 'border-purple-500/30';
-  const accentText = isAvalanche ? 'text-cyan-400' : 'text-purple-400';
-  const accentBg = isAvalanche ? 'bg-cyan-500/10' : 'bg-purple-500/10';
+  const accentText = isAvalanche ? 'text-[var(--module-color-400)]' : 'text-purple-400';
+  const accentBg = isAvalanche ? 'bg-[var(--module-accent-muted)]' : 'bg-purple-500/10';
   const glowColor = isAvalanche
     ? 'rgba(6,182,212,0.15)'
     : 'rgba(168,85,247,0.15)';
@@ -136,7 +137,7 @@ function StrategySummaryCard({ result, currency, isBetter }: StrategySummaryCard
 
   return (
     <GlassCard
-      className={cn('p-5 border', accentBorder, isBetter && 'ring-1 ring-offset-0', isAvalanche ? 'ring-cyan-500/40' : 'ring-purple-500/40')}
+      className={cn('p-5 border', accentBorder, isBetter && 'ring-1 ring-offset-0', isAvalanche ? 'ring-[var(--module-accent-ring)]' : 'ring-purple-500/40')}
       glow={isBetter}
       glowColor={glowColor}
     >
@@ -144,7 +145,7 @@ function StrategySummaryCard({ result, currency, isBetter }: StrategySummaryCard
       <div className="flex items-start justify-between mb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className={cn('w-2.5 h-2.5 rounded-full', isAvalanche ? 'bg-cyan-400' : 'bg-purple-400')} />
+            <div className={cn('w-2.5 h-2.5 rounded-full', isAvalanche ? 'bg-[var(--module-color-400)]' : 'bg-purple-400')} />
             <h3 className={cn('text-sm font-bold uppercase tracking-widest', accentText)}>
               {label}
             </h3>
@@ -184,7 +185,7 @@ function StrategySummaryCard({ result, currency, isBetter }: StrategySummaryCard
                 <Clock className="w-3.5 h-3.5 opacity-0" />
                 <span>Debt-free by</span>
               </div>
-              <span className={cn('font-semibold text-xs', isAvalanche ? 'text-cyan-300' : 'text-purple-300')}>
+              <span className={cn('font-semibold text-xs', isAvalanche ? 'text-[var(--module-color-300)]' : 'text-purple-300')}>
                 {debtFreeDate}
               </span>
             </div>
@@ -222,7 +223,7 @@ function StrategySummaryCard({ result, currency, isBetter }: StrategySummaryCard
       </div>
 
       {/* Colour bar accent */}
-      <div className={cn('mt-4 h-0.5 w-full rounded-full', isAvalanche ? 'bg-cyan-500/30' : 'bg-purple-500/30')} />
+      <div className={cn('mt-4 h-0.5 w-full rounded-full', isAvalanche ? 'bg-[var(--module-accent-border)]' : 'bg-purple-500/30')} />
     </GlassCard>
   );
 }
@@ -448,12 +449,15 @@ export function DebtStrategist({
             .filter((d) => d.balance > 0)
             .sort((a, b) => b.apr - a.apr)
             .map((debt) => (
-              <div
+              <motion.div
                 key={debt.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: debtItems.filter(d => d.balance > 0).sort((a, b) => b.apr - a.apr).indexOf(debt) * 0.04, duration: 0.2 }}
                 className="flex items-center justify-between py-2 border-b border-white/5 last:border-0"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 flex-shrink-0" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--module-color-400)] flex-shrink-0" />
                   <span className="text-white/80 text-sm truncate">{debt.name}</span>
                 </div>
                 <div className="flex items-center gap-4 flex-shrink-0 ml-4">
@@ -462,7 +466,7 @@ export function DebtStrategist({
                     {formatCurrency(debt.balance, currency)}
                   </span>
                 </div>
-              </div>
+              </motion.div>
             ))}
         </div>
       </GlassCard>

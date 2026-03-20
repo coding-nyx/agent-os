@@ -8,7 +8,7 @@ interface BootLoaderProps {
 
 export function BootLoader({ message = "ESTABLISHING NEURAL LINK..." }: BootLoaderProps) {
   return (
-    <div className="fixed inset-0 bg-[#020205] flex flex-col items-center justify-center z-[9999] overflow-hidden">
+    <div className="fixed inset-0 bg-[#020205] flex flex-col items-center justify-center z-[var(--z-modal)] overflow-hidden">
       {/* Background Grid/Matrix Effect */}
       <div className="absolute inset-0 opacity-10 pointer-events-none" 
            style={{ backgroundImage: 'radial-gradient(#6366f1 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }} />

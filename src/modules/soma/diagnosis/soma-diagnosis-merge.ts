@@ -1,5 +1,11 @@
 import type { ExtractedDataItem } from '@/core/diagnosis/types';
-import type { SomaProfile, BiomarkerRecord, LabSummaryRecord, ClearanceRecord, MedicalImageAnalysis } from '@/lib/types';
+import type { 
+  SomaProfile, 
+  BiomarkerRecord, 
+  LabSummaryRecord, 
+  ClearanceRecord, 
+  MedicalImageAnalysis 
+} from '../types';
 import { loadSomaProfile, saveSomaProfile } from '../services/soma-profile-service';
 
 /**

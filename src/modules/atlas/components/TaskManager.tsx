@@ -230,10 +230,10 @@ export function TaskManager({
           </div>
         </SurfaceCard>
         <SurfaceCard className="p-3">
-          <div className="text-[10px] text-sky-400/60 uppercase tracking-wider mb-1">
+          <div className="text-[10px] text-[var(--module-color-400)]/60 uppercase tracking-wider mb-1">
             Active
           </div>
-          <div className="text-2xl font-black text-sky-400 tabular-nums">
+          <div className="text-2xl font-black text-[var(--module-color-400)] tabular-nums">
             {stats.active}
           </div>
         </SurfaceCard>

@@ -138,9 +138,14 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
     return agent.analyzeImage(imageDataUrl, prompt, options);
   }, [agent]);
 
+  const analyzeImageJSON = useCallback(async (imageDataUrl: string, prompt: string, options?: any) => {
+    if (!agent) throw new Error('AI agent unavailable');
+    return agent.analyzeImageJSON(imageDataUrl, prompt, options);
+  }, [agent]);
+
   const aiContextValue = useMemo(
-    () => ({ sendMessage, streamMessage, generateJSON, analyzeImage, isInitialized, initFailed }),
-    [sendMessage, streamMessage, generateJSON, analyzeImage, isInitialized, initFailed]
+    () => ({ sendMessage, streamMessage, generateJSON, analyzeImage, analyzeImageJSON, isInitialized, initFailed }),
+    [sendMessage, streamMessage, generateJSON, analyzeImage, analyzeImageJSON, isInitialized, initFailed]
   );
 
   return (

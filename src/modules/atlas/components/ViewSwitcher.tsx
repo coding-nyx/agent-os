@@ -58,14 +58,13 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
     <nav
       role="tablist"
       aria-label="Atlas view switcher"
-      className="inline-flex items-center gap-0.5 rounded-2xl bg-white/[0.03] backdrop-blur-sm p-0.5"
+      className="inline-flex items-center gap-1.5 rounded-2xl bg-black/20 backdrop-blur-md border border-white/[0.05] shadow-inner p-1.5"
     >
       {VIEW_TABS.map(({ key, label, icon: Icon }) => {
         const isActive = activeView === key;
 
         return (
-          <NeuralButton
-            variant="emerald"
+          <button
             key={key}
             role="tab"
             id={`atlas-tab-${key}`}
@@ -75,27 +74,41 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
             onClick={() => onViewChange(key)}
             onKeyDown={(e) => handleKeyDown(e, key)}
             className={cn(
-              'relative shrink-0 flex items-center gap-1.5 px-2.5 py-1 min-h-[32px] rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
-              isActive ? 'text-white' : 'text-white/40 hover:text-white/60'
+              'relative flex min-h-[40px] shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-[12px] md:text-[13px] font-semibold tracking-[0.02em] whitespace-nowrap transition-all duration-300',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
+              isActive ? 'text-white' : 'text-white/30 hover:text-white/60 hover:bg-white/[0.02]',
+              isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'
             )}
+            style={{
+              textShadow: isActive ? `0 0 15px var(--module-accent)30` : 'none'
+            } as React.CSSProperties}
           >
-            <Icon className="w-3 h-3" aria-hidden />
-            <span>{label}</span>
+            <Icon className={cn("h-4 w-4 md:h-[1.125rem] md:w-[1.125rem]", isActive ? "text-white" : "text-white/40")} aria-hidden />
+            <span className="relative z-10">{label}</span>
 
             {/* Active background pill */}
             {isActive && (
               <motion.div
                 layoutId="atlas-view-pill"
-                className="absolute inset-0 rounded-xl bg-emerald-500/10"
+                className={cn(
+                  "absolute inset-0 rounded-xl",
+                  "bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]",
+                  "shadow-[inset_0_0_12px_rgba(255,255,255,0.05)]"
+                )}
                 transition={
                   reducedMotion
                     ? { duration: 0 }
                     : { type: 'spring', stiffness: 500, damping: 35 }
                 }
-              />
+              >
+                {/* Glow effect matching the theme color */}
+                <div 
+                  className="absolute inset-0 rounded-xl opacity-20 blur-md bg-[var(--module-accent)]" 
+                  style={{ filter: 'blur(12px)' }}
+                />
+              </motion.div>
             )}
-          </NeuralButton>
+          </button>
         );
       })}
     </nav>

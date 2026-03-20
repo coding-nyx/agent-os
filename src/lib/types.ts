@@ -350,7 +350,18 @@ export type SpineEventType =
   | 'DIGEST_GENERATED'
   | 'DIGEST_GENERATION_FAILED'
   | 'EXPORT_REQUESTED'
-  | 'SOURCE_ADDED';
+  | 'SOURCE_ADDED'
+  | 'KNOWLEDGE_SYNTHESIZED'
+  | 'RESEARCH_SEARCHING'
+  | 'RESEARCH_RESULTS'
+  // Ledger Field Management
+  | 'LEDGER_FIELD_SUGGESTION'
+  /** Emitted when an anomalous transaction or spending pattern is detected. */
+  | 'RISK_DETECTED'
+  /** Emitted when a user reaches a financial goal milestone. */
+  | 'FINANCIAL_STREAK_MILESTONE'
+  /** Emitted when high financial friction is detected. */
+  | 'FINANCIAL_STRESS';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'alert' | 'critical';

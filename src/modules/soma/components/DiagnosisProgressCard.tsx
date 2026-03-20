@@ -71,15 +71,21 @@ function StepIndicator({
       {/* Dot */}
       <div className="relative flex-shrink-0 w-8 h-8 flex items-center justify-center">
         {status === 'complete' && (
-          <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', damping: 12, stiffness: 300 }}
+          >
+            <CheckCircle2 className="w-7 h-7 text-[var(--module-color-400)]" />
+          </motion.div>
         )}
         {status === 'active' && (
           <motion.div
             animate={{ scale: [1, 1.15, 1], opacity: [1, 0.7, 1] }}
             transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-            className="w-7 h-7 rounded-full bg-emerald-500/20 border-2 border-emerald-500/60 flex items-center justify-center"
+            className="w-7 h-7 rounded-full bg-[var(--module-accent-glow)] border-2 border-[var(--module-accent-border)] flex items-center justify-center"
           >
-            <Loader2 className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+            <Loader2 className="w-3.5 h-3.5 text-[var(--module-color-400)] animate-spin" />
           </motion.div>
         )}
         {status === 'pending' && (
@@ -94,7 +100,7 @@ function StepIndicator({
       <div className="min-w-0">
         <p className={cn(
           'text-sm font-semibold leading-tight',
-          status === 'complete' ? 'text-emerald-400'
+          status === 'complete' ? 'text-[var(--module-color-400)]'
           : status === 'active'   ? 'text-white'
           : status === 'error'    ? 'text-red-400'
           : 'text-white/30',
@@ -137,8 +143,8 @@ export function DiagnosisProgressCard({
       {/* File name header */}
       {fileName && (
         <div className="flex items-center gap-2.5 pb-1">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
-            <FileText className="w-4 h-4 text-emerald-400" />
+          <div className="w-8 h-8 rounded-lg bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] flex items-center justify-center flex-shrink-0">
+            <FileText className="w-4 h-4 text-[var(--module-color-400)]" />
           </div>
           <p className="text-sm font-medium text-white/70 truncate" title={fileName}>
             {fileName}
@@ -170,17 +176,17 @@ export function DiagnosisProgressCard({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3"
+            className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] px-4 py-3"
           >
             <motion.div
               animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             >
-              <Sparkles className="w-5 h-5 text-emerald-400" />
+              <Sparkles className="w-5 h-5 text-[var(--module-color-400)]" />
             </motion.div>
             <div className="space-y-1">
-              <p className="text-sm font-medium text-emerald-300">Analysing with AI…</p>
-              <p className="text-xs text-emerald-200/60">
+              <p className="text-sm font-medium text-[var(--module-color-300)]">Analysing with AI…</p>
+              <p className="text-xs text-[var(--module-color-300)] opacity-60">
                 Running OCR → extracting fields → generating clinical summary
               </p>
             </div>
@@ -189,11 +195,11 @@ export function DiagnosisProgressCard({
           <motion.div key="upload-bar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="flex justify-between mb-1.5">
               <span className="text-xs text-white/50">Upload progress</span>
-              <span className="text-xs font-semibold text-emerald-400">{Math.round(progress)}%</span>
+              <span className="text-xs font-semibold text-[var(--module-color-400)]">{Math.round(progress)}%</span>
             </div>
             <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
               <div
-                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                className="h-full bg-[var(--module-accent)] rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
               />
             </div>
@@ -230,7 +236,7 @@ export function DiagnosisProgressCard({
             variant="secondary"
             size="sm"
             onClick={onRetry}
-            themeColor="emerald"
+            themeColor="module"
             className="min-h-[44px]"
           >
             <RotateCcw className="w-3.5 h-3.5 mr-1.5" />

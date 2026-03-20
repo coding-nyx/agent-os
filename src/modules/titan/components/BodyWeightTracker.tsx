@@ -166,7 +166,7 @@ function EntryRow({ entry, unit }: { entry: BodyWeightEntry; unit: 'kg' | 'lbs' 
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-black text-orange-400 tabular-nums">
+          <span className="text-sm font-black text-[var(--module-color-400)] tabular-nums">
             {formatWeight(entry.weight, unit)}
           </span>
           {hasMeasurements && (
@@ -316,7 +316,6 @@ export function BodyWeightTracker({
               <NeuralButton
                 size="sm"
                 variant="ghost"
-                themeColor="orange"
                 onClick={() => onAnalyze(
                   `Analyze my body weight trend from the last ${bodyWeightLog?.length ?? 0} entries and provide actionable insights on my body composition trajectory.`
                 )}
@@ -325,9 +324,14 @@ export function BodyWeightTracker({
                 Analyze
               </NeuralButton>
             )}
-            <NeuralButton size="sm" themeColor="orange" onClick={() => setShowModal(true)}>
-              <Plus className="w-3 h-3 mr-1.5" />
-              Log Weight
+            <NeuralButton
+              size="sm"
+              iconOnly
+              onClick={() => setShowModal(true)}
+              title="Log Weight"
+              aria-label="Log Weight"
+            >
+              <Scale className="w-3.5 h-3.5" />
             </NeuralButton>
           </div>
         </div>
@@ -339,9 +343,13 @@ export function BodyWeightTracker({
             title="No weight data yet"
             description="Track your body weight to monitor composition changes and set a baseline for your transformation."
             action={
-              <NeuralButton themeColor="orange" onClick={() => setShowModal(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Log First Entry
+              <NeuralButton
+                iconOnly
+                onClick={() => setShowModal(true)}
+                title="Log Weight"
+                aria-label="Log Weight"
+              >
+                <Scale className="w-4 h-4" />
               </NeuralButton>
             }
           />
@@ -410,7 +418,7 @@ export function BodyWeightTracker({
         title="Log Weight"
         subtitle="Track your body composition"
         icon={Scale}
-        themeColor="orange"
+        themeColor="module"
         maxWidth="lg"
       >
         <div className="space-y-5">
@@ -420,7 +428,7 @@ export function BodyWeightTracker({
             type="date"
             value={date}
             onChange={e => setDate(e.target.value)}
-            className="focus:border-orange-500/50"
+            className="focus:border-[var(--module-accent)]"
           />
 
           {/* Weight + unit toggle */}
@@ -445,7 +453,7 @@ export function BodyWeightTracker({
               placeholder={unit === 'kg' ? '75.0' : '165.0'}
               value={weightInput}
               onChange={e => setWeightInput(e.target.value)}
-              className="focus:border-orange-500/50 tabular-nums"
+              className="focus:border-[var(--module-accent)] tabular-nums"
             />
           </div>
 
@@ -459,7 +467,7 @@ export function BodyWeightTracker({
             placeholder="—"
             value={bodyFat}
             onChange={e => setBodyFat(e.target.value)}
-            className="focus:border-orange-500/50 tabular-nums"
+            className="focus:border-[var(--module-accent)] tabular-nums"
           />
 
           {/* Measurements accordion */}
@@ -484,7 +492,7 @@ export function BodyWeightTracker({
                     placeholder="—"
                     value={measurements[key] ?? ''}
                     onChange={e => setMeasurement(key, e.target.value)}
-                    className="focus:border-orange-500/50 tabular-nums h-10 min-h-[40px]"
+                    className="focus:border-[var(--module-accent)] tabular-nums h-10 min-h-[40px]"
                   />
                 ))}
               </div>
@@ -501,7 +509,7 @@ export function BodyWeightTracker({
               onChange={e => setNotes(e.target.value)}
               placeholder="Morning weigh-in, post-competition, etc."
               rows={2}
-              className="focus:border-orange-500/50"
+              className="focus:border-[var(--module-accent)]"
             />
           </div>
 
@@ -512,11 +520,10 @@ export function BodyWeightTracker({
           )}
 
           <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-            <NeuralButton variant="ghost" themeColor="orange" onClick={() => setShowModal(false)}>
+            <NeuralButton variant="ghost" onClick={() => setShowModal(false)}>
               Cancel
             </NeuralButton>
             <NeuralButton
-              themeColor="orange"
               onClick={handleSave}
               disabled={saving || (!directWriteMode && !onAnalyze)}
             >

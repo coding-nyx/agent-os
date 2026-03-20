@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain, Zap, Heart, Shield } from 'lucide-react';
+import { Zap, Heart, Shield } from 'lucide-react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { motion } from 'framer-motion';
 

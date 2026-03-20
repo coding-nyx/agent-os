@@ -277,7 +277,7 @@ export const AGNES_CASCADE_RULES: CascadeRule[] = [
   {
     id: 'agnes-burnout-to-somatic-support',
     trigger: 'BURNOUT_WARNING' as SpineEventType,
-    condition: (event) => event.type === 'BURNOUT_WARNING' && event.domain === 'B',
+    condition: (event) => event.type === 'BURNOUT_WARNING' && event.domain === 'system',
     transform: (event) => ({
       type: 'SOMATIC_SUPPORT_REQUESTED' as SpineEventType,
       domain: 'E' as const,
@@ -287,6 +287,25 @@ export const AGNES_CASCADE_RULES: CascadeRule[] = [
         triggeredBy: 'BURNOUT_WARNING',
         cnsFatigue: event.data.cnsFatigue,
         timestamp: new Date().toISOString()
+      }
+    })
+  },
+  {
+    // Agnes emits CRISIS_DETECTED; Atlas subscriptions listen for CRISIS_MODE.
+    // This cascade bridges the two so Agnes crisis flags trigger Atlas Recovery state.
+    id: 'agnes-crisis-detected-to-crisis-mode',
+    trigger: 'CRISIS_DETECTED' as SpineEventType,
+    condition: () => true,
+    transform: (event) => ({
+      type: 'CRISIS_MODE' as SpineEventType,
+      domain: 'E' as const,
+      source: 'spine-cascade',
+      priority: 'critical' as const,
+      data: {
+        triggeredBy: 'CRISIS_DETECTED',
+        trigger: event.data.trigger,
+        severity: event.data.severity,
+        timestamp: event.data.timestamp ?? new Date().toISOString(),
       }
     })
   }

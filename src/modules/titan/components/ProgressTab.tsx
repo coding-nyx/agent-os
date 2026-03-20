@@ -113,7 +113,7 @@ function PersonalRecordsPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Trophy className="w-4 h-4 text-orange-400" />
+        <Trophy className="w-4 h-4 text-[var(--module-color-400)]" />
         <h3 className="text-sm font-black text-white/80 uppercase tracking-wider">Personal Records</h3>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -132,7 +132,7 @@ function PersonalRecordsPanel({
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm font-black text-orange-400">{pr.e1RM} kg e1RM</p>
+              <p className="text-sm font-black text-[var(--module-color-400)]">{pr.e1RM} kg e1RM</p>
               <p className="text-[10px] text-white/50">
                 {pr.maxWeight}×{pr.repsAtMax}
               </p>
@@ -178,7 +178,7 @@ function VolumeChart({ sessions }: { sessions: WorkoutSession[] }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <TrendingUp className="w-4 h-4 text-orange-400" />
+        <TrendingUp className="w-4 h-4 text-[var(--module-color-400)]" />
         <h3 className="text-sm font-black text-white/80 uppercase tracking-wider">Weekly Volume</h3>
       </div>
 
@@ -189,7 +189,7 @@ function VolumeChart({ sessions }: { sessions: WorkoutSession[] }) {
           return (
             <div key={week} className="flex-1 flex flex-col items-center gap-1">
               <div
-                className="w-full rounded-t bg-orange-500/40 transition-all hover:bg-orange-500/60"
+                className="w-full rounded-t bg-[var(--module-accent-border)] transition-all hover:bg-[var(--module-accent)]"
                 style={{ height: `${barHeight}px` }}
                 title={`Week of ${week}: ${Math.round(vol).toLocaleString()} kg`}
               />
@@ -231,7 +231,7 @@ function SessionHistoryList({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <History className="w-4 h-4 text-orange-400" />
+        <History className="w-4 h-4 text-[var(--module-color-400)]" />
         <h3 className="text-sm font-black text-white/80 uppercase tracking-wider">Session History</h3>
       </div>
 

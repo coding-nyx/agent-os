@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { History, Heart, Activity, Calendar, Filter } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { cn } from '@/lib/utils';
@@ -78,7 +79,7 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
   const renderVitalEntry = (vital: VitalReading) => {
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-cyan-400">
+        <div className="flex items-center gap-2 text-[var(--module-color-400)]">
           <Heart className="w-4 h-4" />
           <span className="text-sm font-semibold">Vital Signs</span>
         </div>
@@ -121,8 +122,8 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
   const renderAssessmentEntry = (assessment: PhysicalAssessment) => {
     const typeColors = {
       strength: 'text-orange-400',
-      flexibility: 'text-cyan-400',
-      endurance: 'text-emerald-400',
+      flexibility: 'text-[var(--module-color-400)]',
+      endurance: 'text-[var(--module-color-400)]',
       general: 'text-indigo-400',
     };
 
@@ -135,7 +136,7 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
           </span>
           <span className={cn(
             'ml-auto text-lg font-bold',
-            assessment.score >= 80 ? 'text-emerald-400' :
+            assessment.score >= 80 ? 'text-[var(--module-color-400)]' :
             assessment.score >= 60 ? 'text-amber-400' : 'text-orange-400'
           )}>
             {assessment.score}/100
@@ -179,7 +180,7 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
                   key={type}
                   onClick={() => setFilter(type)}
                   variant={filter === type ? 'primary' : 'secondary'}
-                  themeColor="cyan"
+                  themeColor="module"
                   size="sm"
                   className="px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
                 >
@@ -199,7 +200,7 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
                   key={range}
                   onClick={() => setTimeRange(range)}
                   variant={timeRange === range ? 'primary' : 'secondary'}
-                  themeColor="cyan"
+                  themeColor="module"
                   size="sm"
                   className="px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
                 >
@@ -213,7 +214,7 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
 
       {/* Timeline */}
       <SurfaceCard className="p-6">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-6 sticky top-0 z-10 backdrop-blur-xl bg-black/60 border-b border-white/5 -mx-6 px-6 py-3">
           <History className="w-6 h-6 text-indigo-400" />
           <div>
             <h2 className="text-xl font-black text-white tracking-tight">History Timeline</h2>
@@ -228,8 +229,11 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
         ) : (
           <div className="space-y-4">
             {allEntries.map((entry, index) => (
-              <div
+              <motion.div
                 key={`${entry.type}-${entry.timestamp}-${index}`}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.04, duration: 0.2 }}
                 className="relative pl-8 pb-6 last:pb-0"
               >
                 {/* Timeline line */}
@@ -241,7 +245,7 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
                 <div className={cn(
                   'absolute left-0 top-1 w-4 h-4 rounded-full border-2',
                   entry.type === 'vital'
-                    ? 'bg-cyan-500/20 border-cyan-500'
+                    ? 'bg-[var(--module-accent-glow)] border-[var(--module-accent)]'
                     : 'bg-orange-500/20 border-orange-500'
                 )} />
 
@@ -258,7 +262,7 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
                     : renderAssessmentEntry(entry.data as PhysicalAssessment)
                   }
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}

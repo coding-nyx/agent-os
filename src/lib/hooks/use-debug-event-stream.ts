@@ -15,8 +15,6 @@ export function useDebugEventStream(
 ): DebugEvent[] {
   const [events, setEvents] = useState<DebugEvent[]>([]);
   const category = filter ?? '*';
-  const eventsRef = useRef(events);
-  eventsRef.current = events;
 
   // Seed with existing buffer on mount / debug-mode enable
   useEffect(() => {

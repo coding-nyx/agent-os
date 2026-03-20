@@ -223,13 +223,13 @@ export function AtlasAIPanel({
   const impactColors: Record<string, string> = {
     high: 'border-rose-500/20 bg-rose-500/5',
     medium: 'border-amber-500/20 bg-amber-500/5',
-    low: 'border-sky-500/20 bg-sky-500/5',
+    low: 'border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]',
   };
 
   const impactTextColors: Record<string, string> = {
     high: 'text-rose-400',
     medium: 'text-amber-400',
-    low: 'text-sky-400',
+    low: 'text-[var(--module-color-400)]',
   };
 
   return (
@@ -322,7 +322,7 @@ export function AtlasAIPanel({
                             suggestion.impact === 'medium' &&
                               'bg-amber-500/20 text-amber-400',
                             suggestion.impact === 'low' &&
-                              'bg-sky-500/20 text-sky-400'
+                              'bg-[var(--module-accent-glow)] text-[var(--module-color-400)]'
                           )}
                         >
                           {suggestion.impact}

@@ -22,6 +22,7 @@ export interface ContentRenderProps<TProfile> {
   profile: TProfile | null;
   encryptionKey: CryptoKey | null;
   setSessionActive?: (active: boolean) => void;
+  onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void;
 }
 
 interface UnifiedModulePageProps<TProfile extends { onboardingComplete?: boolean }> {
@@ -37,6 +38,7 @@ interface UnifiedModulePageProps<TProfile extends { onboardingComplete?: boolean
   renderLeftRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null; persistProfile: (profile: TProfile) => Promise<void> }) => React.ReactNode;
   renderRightRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
   renderMobileFooter?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
+  onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void;
 }
 
 export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolean }>({
@@ -51,7 +53,8 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   hideNavigation = false,
   renderLeftRail,
   renderRightRail,
-  renderMobileFooter
+  renderMobileFooter,
+  onActionParsed
   }: UnifiedModulePageProps<TProfile>) {
   const { isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
@@ -229,7 +232,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     </div>
                 )}
                 <div className="flex-1 flex flex-col min-h-0 min-w-0">
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
                 </div>
             </div>
         )}
@@ -251,7 +254,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     )}
                 </div>
                 <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col min-h-0 bg-black/20 backdrop-blur-md">
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
                 </div>
             </div>
         )}
@@ -264,7 +267,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                         !noContainer && "bg-black/10 backdrop-blur-[1px] rounded-panel border border-white/5 shadow-2xl overflow-hidden"
                     )}
                 >
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
                 </div>
                 <AnimatePresence>
                     {RenderDashboard && !noContainer && (
@@ -287,7 +290,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     {RenderDashboard ? <RenderDashboard profile={profile} encryptionKey={encryptionKey} /> : "FILE_SYSTEM_IDLE"}
                 </div>
                 <div className="h-[40%] flex flex-col min-h-0">
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
                 </div>
             </div>
         )}

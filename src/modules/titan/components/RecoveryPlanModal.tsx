@@ -195,7 +195,7 @@ export function RecoveryPlanModal({
       title="Start Recovery"
       subtitle="Build a recovery plan"
       icon={AlertTriangle}
-      themeColor="orange"
+      themeColor="module"
       maxWidth="lg"
     >
       <div className="space-y-5">
@@ -245,7 +245,7 @@ export function RecoveryPlanModal({
             )}
 
             {requiresConsult && (
-              <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-3 text-xs text-white/60">
+              <div className="rounded-xl border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] p-3 text-xs text-white/60">
                 Specialist consults will be requested from Soma/Agnes to refine this plan.
               </div>
             )}
@@ -360,7 +360,7 @@ export function RecoveryPlanModal({
             {template && (
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Activity className="w-4 h-4 text-orange-400" />
+                  <Activity className="w-4 h-4 text-[var(--module-color-400)]" />
                   <p className="text-xs uppercase tracking-wider text-white/40">Protocol Preview</p>
                 </div>
                 <ul className="space-y-1 text-xs text-white/60">

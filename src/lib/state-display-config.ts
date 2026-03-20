@@ -30,7 +30,7 @@ export const DOMAIN_PILLARS: Record<string, DomainPillarConfig> = {
     icon: Heart,
     accentColor: 'emerald',
     metrics: ['biological.recoveryScore', 'biological.sleepQuality', 'biological.cnsFatigue'],
-    words: { good: 'Strong', warn: 'Tired', bad: 'Drained', neutral: '—' },
+    words: { good: 'Strong', warn: 'Tired', bad: 'Drained', neutral: 'Offline' },
     owners: ['titan'],
     invertedMetrics: ['biological.cnsFatigue']
   },
@@ -39,7 +39,7 @@ export const DOMAIN_PILLARS: Record<string, DomainPillarConfig> = {
     icon: Brain,
     accentColor: 'sky',
     metrics: ['cognitive.energyBudget', 'cognitive.focusScore', 'cognitive.activeLoad'],
-    words: { good: 'Sharp', warn: 'Foggy', bad: 'Overloaded', neutral: '—' },
+    words: { good: 'Sharp', warn: 'Foggy', bad: 'Overloaded', neutral: 'Offline' },
     owners: ['atlas'],
     invertedMetrics: ['cognitive.activeLoad']
   },
@@ -48,7 +48,7 @@ export const DOMAIN_PILLARS: Record<string, DomainPillarConfig> = {
     icon: Sparkles,
     accentColor: 'indigo',
     metrics: ['emotional.emotionalResilience', 'emotional.stressLoad'],
-    words: { good: 'Resilient', warn: 'Tender', bad: 'Low', neutral: '—' },
+    words: { good: 'Resilient', warn: 'Tender', bad: 'Low', neutral: 'Offline' },
     owners: ['agnes'],
     invertedMetrics: ['emotional.stressLoad']
   },
@@ -57,7 +57,7 @@ export const DOMAIN_PILLARS: Record<string, DomainPillarConfig> = {
     icon: Waves,
     accentColor: 'cyan',
     metrics: ['resource.financialFriction', 'resource.resonanceROI'],
-    words: { good: 'Aligned', warn: 'Friction', bad: 'Stressed', neutral: '—' },
+    words: { good: 'Aligned', warn: 'Friction', bad: 'Stressed', neutral: 'Offline' },
     owners: ['ledger'],
     invertedMetrics: ['resource.financialFriction']
   }
@@ -225,6 +225,11 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   EVENING_CHECKIN_DUE: 'Evening check-in ready',
   COMMITMENT_MISSED: 'Commitment Missed',
   SOMATIC_SESSION_COMPLETE: 'Somatic session complete',
+  KNOWLEDGE_SYNTHESIZED: 'New research insight synthesized',
+  RESEARCH_SEARCHING: 'Web research in progress',
+  RESEARCH_RESULTS: 'Research results gathered',
+  LEDGER_FIELD_SUGGESTION: 'New tracking suggestion',
+  FINANCIAL_STREAK_MILESTONE: 'Financial discipline milestone',
 };
 
 // ---------------------------------------------------------------------------

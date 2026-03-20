@@ -5,6 +5,9 @@ import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
 import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralInput } from '@/core/components/NeuralInput';
+import { Loader2 } from 'lucide-react';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { useAuth } from '@/lib/auth-context';
 import { LedgerIntakeProfile, createEmptyLedgerProfile } from '../services/ledger-intake-service';
@@ -331,15 +334,14 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
   return (
     <GuidedIntakeFrame
       title="Ledger Finance Intake"
-      subtitle="Collecting your cashflow baseline before automated planning." 
-      statusLabel="FINANCE_BASELINE"
-      steps={[...LEDGER_STEPS]}
-      currentStep={intake.stepIndex}
+      subtitle="Collecting your cashflow baseline before automated planning."
+      statusLabel=""
+      steps={[...LEDGER_STEPS]}      currentStep={intake.stepIndex}
       themeColor="cyan"
       prelude={
-        <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-cyan-500/20 bg-cyan-500/5">
+        <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]">
           <div className="flex-1 w-full space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--module-color-400)] flex items-center gap-2">
               <Zap className="w-3 h-3" /> Fast Track Initialization
             </p>
             <div className="space-y-3">
@@ -348,67 +350,71 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
                   placeholder="Currency (e.g., USD, EUR, INR)"
                   value={fastCurrency}
                   onChange={e => setFastCurrency(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                  className="bg-black/20"
                 />
                 <input
                   type="number"
                   placeholder="Monthly Income"
                   value={fastIncome}
                   onChange={e => setFastIncome(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                  className="bg-black/20"
                 />
                 <input
                   placeholder="Fixed expenses (e.g., rent, insurance)"
                   value={fastFixedExpenses}
                   onChange={e => setFastFixedExpenses(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                  className="bg-black/20"
                 />
                 <input
                   placeholder="Variable expenses (e.g., groceries, dining)"
                   value={fastVariableExpenses}
                   onChange={e => setFastVariableExpenses(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                  className="bg-black/20"
                 />
                 <input
                   placeholder="Debt (e.g., student loan, credit card)"
                   value={fastDebt}
                   onChange={e => setFastDebt(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                  className="bg-black/20"
                 />
                 <input
                   placeholder="Savings goals (e.g., emergency fund)"
                   value={fastSavingsGoal}
                   onChange={e => setFastSavingsGoal(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-cyan-500/50"
+                  className="bg-black/20"
                 />
               </div>
               <div>
                 <p className="text-[9px] text-white/40 uppercase tracking-wider mb-2">Planning Horizon</p>
                 <div className="flex gap-2 flex-wrap">
                   {(['monthly', 'quarterly', 'yearly'] as const).map(h => (
-                    <button
+                    <NeuralButton
                       key={h}
+                      variant="outline"
                       onClick={() => setFastHorizon(h)}
                       className={cn(
-                        'px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all',
+                        'px-4 py-2 text-xs font-bold uppercase tracking-wider min-h-[44px] h-auto',
                         fastHorizon === h
-                          ? 'bg-cyan-600/30 border-cyan-500/50 text-cyan-300'
+                          ? 'bg-[var(--module-accent-glow)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
                           : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
                       )}
+                      aria-pressed={fastHorizon === h}
                     >
                       {h}
-                    </button>
+                    </NeuralButton>
                   ))}
                 </div>
               </div>
               <div className="flex justify-end">
-                <button
+                <NeuralButton
                   onClick={handleFastTrack}
                   disabled={!fastCurrency.trim() || !fastIncome.trim() || isValidatingFastTrack}
-                  className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center whitespace-nowrap"
+                  themeColor="cyan"
+                  className="px-6 min-h-[44px]"
+                  loading={isValidatingFastTrack}
                 >
-                  {isValidatingFastTrack ? 'Validating...' : 'Execute'}
-                </button>
+                  {isValidatingFastTrack ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Validating...</> : 'Execute'}
+                </NeuralButton>
               </div>
             </div>
             <p className="text-[9px] text-white/40 uppercase tracking-tight">

@@ -369,6 +369,12 @@ export function useModuleAI({
 
       const contentText = contentToText(content);
 
+      NexusLogger.emit('ai', {
+        moduleId,
+        label: 'send',
+        detail: typeof content === 'string' ? content.slice(0, 200) : '[multipart]',
+      });
+
       // --- Routing classification (delegated to useHandoffProcessor) ---
       const routingResult = await classifyAndRoute(contentText, messages);
       if (!mountedRef.current) return;
@@ -611,6 +617,16 @@ export function useModuleAI({
 
         const visibleAssistantText = response.publicText.trim();
         let finalContent = response.fullText;
+
+        NexusLogger.emit('ai', {
+          moduleId,
+          label: 'receive',
+          detail: {
+            publicTextLength: visibleAssistantText.length,
+            actionsCount: response.actions.length,
+            latencyMs: Date.now() - sendStartTime,
+          },
+        });
         
         // --- Silent Action Fallback ---
         // If the AI performed actions but left the public response empty, generate a confirmation label
@@ -689,6 +705,11 @@ export function useModuleAI({
       } catch (e: unknown) {
         if (e instanceof DOMException && e.name === 'AbortError') return; // stream was aborted on unmount — silent
         console.error(`Module ${moduleId} AI link failure:`, e);
+        NexusLogger.emit('ai', {
+          moduleId,
+          label: 'error',
+          detail: e instanceof Error ? e.message : String(e),
+        });
         if (mountedRef.current) {
           setError('The neural tunnel encountered an interference packet.');
         }

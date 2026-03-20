@@ -107,8 +107,8 @@ const TaskItem = React.memo(function TaskItem({ title, energyCost, status, block
           </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <Zap className="w-3 h-3 text-sky-400" aria-hidden="true" />
-          <span className="text-[10px] font-black text-sky-300 tabular-nums">{energyCost}</span>
+          <Zap className="w-3 h-3 text-[var(--module-color-400)]" aria-hidden="true" />
+          <span className="text-[10px] font-black text-[var(--module-color-300)] tabular-nums">{energyCost}</span>
         </div>
       </div>
 
@@ -248,7 +248,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
     return (profile?.habits ?? [])
       .filter((h): h is AtlasHabit => h.status === 'active')
       .sort((a, b) => b.currentStreak - a.currentStreak)
-      .slice(0, 5)
+      .slice(0, 3)
       .map(h => {
         const threshold = atRiskThresholdMs(h.frequency);
         const atRisk = h.lastCompleted
@@ -272,7 +272,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-sky-400 font-display">
+          <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--module-color-400)] font-display">
             Today's Plan
           </h3>
           <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">
@@ -296,7 +296,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
             Energy
           </span>
-          <span className="text-lg font-bold tabular-nums text-sky-300 font-display">
+          <span className="text-lg font-bold tabular-nums text-[var(--module-color-300)] font-display">
             {typeof cognitive?.energyBudget === 'number' ? cognitive.energyBudget.toFixed(1) : '—'}
           </span>
         </SurfaceCard>
@@ -304,7 +304,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
             Focus
           </span>
-          <span className="text-lg font-bold tabular-nums text-sky-300 font-display">
+          <span className="text-lg font-bold tabular-nums text-[var(--module-color-300)] font-display">
             {typeof cognitive?.focusScore === 'number' ? cognitive.focusScore.toFixed(1) : '—'}
           </span>
         </SurfaceCard>
@@ -312,7 +312,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
             Load
           </span>
-          <span className="text-lg font-bold tabular-nums text-sky-300 font-display">
+          <span className="text-lg font-bold tabular-nums text-[var(--module-color-300)] font-display">
             {typeof cognitive?.activeLoad === 'number' ? cognitive.activeLoad.toFixed(1) : '—'}
           </span>
         </SurfaceCard>
@@ -324,7 +324,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           <h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40 font-display">
             Tasks
           </h4>
-          {tasks.slice(0, 8).map(task => (
+          {tasks.slice(0, 5).map(task => (
             <TaskItem
               key={task.id}
               title={task.title}
@@ -342,6 +342,11 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
               }
             />
           ))}
+          {tasks.length > 5 && (
+            <p className="text-[10px] font-bold text-[var(--module-color-400)] pt-1">
+              + {tasks.length - 5} more tasks
+            </p>
+          )}
         </div>
       )}
 
@@ -352,13 +357,13 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
               Completion
             </span>
-            <span className="text-xs font-black text-sky-300 tabular-nums">
+            <span className="text-xs font-black text-[var(--module-color-300)] tabular-nums">
               {completionPct}%
             </span>
           </div>
           <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
             <motion.div
-              className="h-full rounded-full bg-sky-400"
+              className="h-full rounded-full bg-[var(--module-color-400)]"
               initial={{ width: 0 }}
               animate={{ width: `${completionPct}%` }}
               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}

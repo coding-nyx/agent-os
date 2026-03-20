@@ -31,7 +31,7 @@ const STATUS_BADGES: Record<
   },
   completed: {
     label: 'Completed',
-    className: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+    className: 'bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border-[var(--module-accent-border)]',
   },
   abandoned: {
     label: 'Abandoned',
@@ -103,14 +103,15 @@ export function GoalProgress({
             className="rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm overflow-hidden"
           >
             {/* ── Goal header (click to expand) ── */}
-            <button
+            <NeuralButton
               onClick={() => toggleExpand(goal.id)}
               aria-expanded={isExpanded}
               aria-label={`${goal.title}, ${goal.progressPercent}% progress, ${statusConfig.label}`}
+              variant="ghost"
               className={cn(
-                'w-full p-4 text-left transition-colors',
+                'w-full p-4 text-left transition-colors !rounded-none !h-auto',
                 'hover:bg-white/[0.02]',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-400/50'
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--module-accent-ring)]'
               )}
             >
               <div className="flex items-start justify-between gap-3">
@@ -207,7 +208,7 @@ export function GoalProgress({
                   aria-hidden="true"
                 />
               </div>
-            </button>
+            </NeuralButton>
 
             {/* ── Expanded content: milestones, description, notes ── */}
             <AnimatePresence>

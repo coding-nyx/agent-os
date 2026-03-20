@@ -174,7 +174,7 @@ export function SingleAgentLayout({
   return (
     <div
       className="relative flex h-full w-full min-w-0 max-w-full overflow-hidden"
-      style={{ '--spine-sidebar-width': isChatCollapsed ? '0px' : chatWidth } as React.CSSProperties}
+      style={{ '--spine-sidebar-width': (canDockChat && !isChatCollapsed) ? chatWidth : '0px' } as React.CSSProperties}
     >
       {/* Mobile module switcher */}
       {!canDockChat && (
@@ -192,7 +192,7 @@ export function SingleAgentLayout({
       {/* ── Mobile chat trigger (floating circular FAB) ── */}
       {!canDockChat && isChatCollapsed && !hideChatTrigger && (
         <div 
-          className="fixed z-[var(--z-fab)] flex flex-col items-end gap-3 transition-all duration-300"
+          className="fixed z-[calc(var(--z-fab)+2)] flex flex-col items-end gap-3 transition-all duration-300"
           style={{ right: floatingInlineEnd, bottom: floatingBottom }}
         >
           {primaryAction && (
@@ -232,7 +232,7 @@ export function SingleAgentLayout({
           whileTap={{ scale: 0.95 }}
           onClick={() => toggleChat(false)}
           className={cn(
-            'z-[var(--z-fab)] fixed border backdrop-blur-xl shadow-2xl transition-all duration-300 rounded-2xl font-semibold tracking-[0.04em]',
+            'z-[calc(var(--z-fab)+2)] fixed border backdrop-blur-xl shadow-2xl transition-all duration-300 rounded-2xl font-semibold tracking-[0.04em]',
             currentTheme.btnBg,
             currentTheme.btnBorder,
             currentTheme.btnText

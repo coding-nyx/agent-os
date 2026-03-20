@@ -18,7 +18,7 @@ export interface MetricCardProps {
 const COLOR_CONFIGS = {
   indigo: { text: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', stroke: 'rgba(99, 102, 241, 0.9)' },
   purple: { text: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', stroke: 'rgba(139, 92, 246, 0.9)' },
-  orange: { text: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', stroke: 'rgba(251, 146, 60, 0.9)' },
+  orange: { text: 'text-[#FF7252]', bg: 'bg-[#DC4B1E]/10', border: 'border-[#DC4B1E]/20', stroke: 'rgba(220, 75, 30, 0.9)' },
   amber: { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', stroke: 'rgba(245, 158, 11, 0.9)' },
   cyan: { text: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', stroke: 'rgba(6, 182, 212, 0.9)' },
   teal: { text: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20', stroke: 'rgba(20, 184, 166, 0.9)' },
@@ -89,7 +89,7 @@ export function MetricCard({
   return (
     <motion.div
       className={cn(
-        'surface-card p-6 space-y-4 relative overflow-hidden',
+        'surface-card p-4 sm:p-6 space-y-3 sm:space-y-4 relative overflow-hidden',
         colors.border,
         'border',
         className
@@ -111,16 +111,16 @@ export function MetricCard({
       <div className="relative z-10 space-y-4">
         {/* Label */}
         <div className="flex items-center justify-between">
-          <span className="text-xs uppercase tracking-wider text-white/60 font-bold">
+          <span className="text-[10px] sm:text-xs uppercase tracking-wider text-white/60 font-bold">
             {label}
           </span>
           {trendDirection !== 'stable' && <TrendArrow trend={trendDirection} size="sm" />}
         </div>
 
         {/* Value */}
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-1.5 sm:gap-2">
           <motion.span
-            className={cn('text-5xl font-black tracking-tight text-white tabular-nums', colors.text)}
+            className={cn('text-3xl sm:text-5xl font-black tracking-tight text-white tabular-nums', colors.text)}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.1 }}
@@ -128,7 +128,7 @@ export function MetricCard({
             {typeof value === 'number' ? value.toLocaleString() : value}
           </motion.span>
           {unit && (
-            <span className="text-xl font-bold text-white/60 tracking-tight">
+            <span className="text-base sm:text-xl font-bold text-white/60 tracking-tight">
               {unit}
             </span>
           )}

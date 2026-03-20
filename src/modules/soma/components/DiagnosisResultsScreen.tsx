@@ -51,7 +51,7 @@ function confidenceLevel(confidence: number): ConfidenceLevel {
 }
 
 const CONFIDENCE_CONFIG: Record<ConfidenceLevel, { label: string; className: string }> = {
-  high:   { label: 'High',          className: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' },
+  high:   { label: 'High',          className: 'bg-[var(--module-accent-glow)] border-[var(--module-accent-border)] text-[var(--module-color-300)]' },
   medium: { label: 'Medium',        className: 'bg-amber-500/20 border-amber-500/30 text-amber-300' },
   low:    { label: 'Low ~ inferred', className: 'bg-red-500/20 border-red-500/30 text-red-300' },
 };
@@ -120,11 +120,11 @@ function FieldRow({
       <button
         type="button"
         onClick={() => onToggle(id)}
-        className="flex-shrink-0 w-11 h-11 flex items-center justify-center -m-1 rounded-lg"
+        className="flex-shrink-0 w-11 h-11 flex items-center justify-center -m-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
         aria-label={selected ? `Deselect ${humanise(field.fieldName)}` : `Select ${humanise(field.fieldName)}`}
       >
         {selected
-          ? <CheckSquare className="w-5 h-5 text-emerald-400" />
+          ? <CheckSquare className="w-5 h-5 text-[var(--module-color-400)]" />
           : <Square className="w-5 h-5 text-white/30" />}
       </button>
 
@@ -219,18 +219,19 @@ export function DiagnosisResultsScreen({
       <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-white/10 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <FlaskConical className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <FlaskConical className="w-5 h-5 text-[var(--module-color-400)] flex-shrink-0" />
             <h2 className="text-lg font-bold text-white tracking-tight">Diagnosis Results</h2>
           </div>
-          <button
+          <NeuralButton
             type="button"
+            variant="ghost"
             onClick={onClose}
             disabled={isProcessing}
             className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors disabled:opacity-50"
             aria-label="Close results"
           >
             <X className="w-4 h-4" />
-          </button>
+          </NeuralButton>
         </div>
 
         {/* Detected panel chips */}
@@ -239,7 +240,7 @@ export function DiagnosisResultsScreen({
             {detectedPanels.map((panel) => (
               <span
                 key={panel}
-                className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[11px] font-medium"
+                className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)] text-[11px] font-medium"
               >
                 {panel}
               </span>
@@ -254,20 +255,23 @@ export function DiagnosisResultsScreen({
               {selectedCount} of {totalCount} fields selected
             </p>
             <div className="flex gap-3">
-              <button
+              <NeuralButton
                 type="button"
+                variant="ghost"
+                themeColor="module"
                 onClick={handleSelectAll}
-                className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+                className="text-xs text-[var(--module-color-400)] hover:text-[var(--module-color-300)] transition-colors"
               >
                 Select all
-              </button>
-              <button
+              </NeuralButton>
+              <NeuralButton
                 type="button"
+                variant="ghost"
                 onClick={handleDeselectAll}
                 className="text-xs text-white/40 hover:text-white/60 transition-colors"
               >
                 None
-              </button>
+              </NeuralButton>
             </div>
           </div>
         )}
@@ -322,13 +326,13 @@ export function DiagnosisResultsScreen({
         <NeuralButton
           onClick={onClose}
           disabled={isProcessing}
-          themeColor="emerald"
+          themeColor="module"
           variant="secondary"
           className="w-full min-h-[48px]"
         >
           {isProcessing ? (
             <span className="flex items-center gap-2">
-              <span className="w-4 h-4 border-2 border-emerald-400/40 border-t-emerald-400 rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-[var(--module-color-400)]/40 border-t-[var(--module-color-400)] rounded-full animate-spin" />
               Processing…
             </span>
           ) : (

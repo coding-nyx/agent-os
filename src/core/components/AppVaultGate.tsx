@@ -10,19 +10,24 @@
 
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Lock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Lock, AlertTriangle } from 'lucide-react';
 import { useVault } from '@/lib/vault-context';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import type { VaultPersistenceMode } from '@/lib/vault-context';
+import { NeuralModal } from '@/core/components/NeuralModal';
 
 export function AppVaultGate() {
-  const { unlockVault, isHandshaking, persistenceMode, setPersistenceMode } = useVault();
+  const { unlockVault, isHandshaking, persistenceMode, setPersistenceMode, destroyVault, hasVault } = useVault();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [shaking, setShaking] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/nexus';
@@ -40,6 +45,23 @@ export function AppVaultGate() {
       setTimeout(() => setShaking(false), 600);
     }
   };
+
+  const handleResetVault = async () => {
+    if (resetConfirmText !== 'DELETE VAULT') return;
+    setIsResetting(true);
+    try {
+      // Start destruction and navigate immediately.
+      // destroyVault is async but we don't need to wait for it to finish purging
+      // before we switch the route to /nexus (which will be locked down anyway).
+      void destroyVault();
+      navigate('/nexus', { replace: true });
+    } catch (e) {
+      console.error('Failed to reset vault:', e);
+      setIsResetting(false);
+    }
+  };
+
+  if (isResetting) return null;
 
   return (
     <div className="min-h-screen bg-[#020205] flex items-center justify-center relative overflow-hidden">
@@ -68,10 +90,12 @@ export function AppVaultGate() {
         {/* Title block */}
         <div className="text-center space-y-1">
           <div className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
-            NEXUS VAULT
+            {hasVault ? 'NEXUS VAULT' : 'INITIALIZE VAULT'}
           </div>
-          <div className="text-xs text-white/25 tracking-wide">
-            Enter your master key to continue
+          <div className="text-xs text-white/25 tracking-wide px-4">
+            {hasVault 
+              ? 'Enter your master key to continue' 
+              : 'Define your new master key to generate E2EE keys'}
           </div>
         </div>
 
@@ -79,7 +103,7 @@ export function AppVaultGate() {
         <div className="w-full space-y-3">
           <NeuralInput
             type="password"
-            placeholder="MASTER KEY"
+            placeholder={hasVault ? "MASTER KEY" : "NEW MASTER KEY"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
@@ -95,12 +119,13 @@ export function AppVaultGate() {
 
           <NeuralButton
             variant="primary"
+            themeColor={hasVault ? "indigo" : "cyan"}
             className="w-full"
             onClick={handleUnlock}
             loading={isHandshaking}
             disabled={isHandshaking || !password.trim()}
           >
-            {isHandshaking ? 'INITIALIZING...' : 'INITIALIZE HANDSHAKE'}
+            {isHandshaking ? 'INITIALIZING...' : (hasVault ? 'INITIALIZE HANDSHAKE' : 'GENERATE NEURAL KEYS')}
           </NeuralButton>
         </div>
 
@@ -122,7 +147,83 @@ export function AppVaultGate() {
             </button>
           ))}
         </div>
+
+        {/* Reset Link */}
+        {hasVault && (
+          <button
+            type="button"
+            onClick={() => setShowReset(true)}
+            className="mt-4 text-[10px] text-white/20 hover:text-white/40 uppercase tracking-widest transition-colors"
+          >
+            Lost Master Key?
+          </button>
+        )}
       </motion.div>
+
+      <AnimatePresence>
+        {showReset && (
+          <NeuralModal title="Reset Master Key" isOpen={showReset} onClose={() => setShowReset(false)}>
+            <div
+              className="w-full max-w-md bg-[#05050a] border border-rose-500/30 rounded-2xl p-6 shadow-2xl relative overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-red-600" />
+              
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-rose-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white tracking-tight">Irreversible Action</h3>
+                  <p className="text-[10px] text-rose-400 uppercase tracking-wider font-bold">Data Loss Warning</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 text-sm text-white/60 mb-6">
+                <p>
+                  Resetting your vault will <strong className="text-rose-400">permanently delete</strong> your current Master Key and its cryptographic salt.
+                </p>
+                <p>
+                  Because the vault uses true End-to-End Encryption, without your current Master Key, <strong className="text-white/90">all existing module data stored in the vault will be lost forever.</strong> We cannot recover it.
+                </p>
+                <p>
+                  If you proceed, you will be prompted to create a new Master Key, allowing you to start fresh.
+                </p>
+              </div>
+
+              <div className="space-y-3 mb-8">
+                <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider">
+                  Type "DELETE VAULT" to confirm
+                </label>
+                <NeuralInput
+                  type="text"
+                  placeholder="DELETE VAULT"
+                  value={resetConfirmText}
+                  onChange={(e) => setResetConfirmText(e.target.value)}
+                  className="border-rose-500/30 focus:border-rose-500/60"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <NeuralButton
+                  variant="ghost"
+                  onClick={() => setShowReset(false)}
+                >
+                  Cancel
+                </NeuralButton>
+                <button
+                  type="button"
+                  disabled={resetConfirmText !== 'DELETE VAULT' || isResetting}
+                  onClick={handleResetVault}
+                  className="px-5 py-2.5 rounded-xl text-sm font-bold bg-rose-500 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-rose-600 transition-colors shadow-[0_0_20px_rgba(244,63,94,0.2)]"
+                >
+                  {isResetting ? 'Destroying...' : 'Permanently Delete Vault'}
+                </button>
+              </div>
+            </div>
+          </NeuralModal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -3,6 +3,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -182,9 +183,9 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
   const statusConfig = {
     granted: {
       color: 'emerald',
-      bgClass: 'bg-emerald-500/10',
-      borderClass: 'border-emerald-500/30',
-      textClass: 'text-emerald-300',
+      bgClass: 'bg-[var(--module-accent-muted)]',
+      borderClass: 'border-[var(--module-accent-border)]',
+      textClass: 'text-[var(--module-color-300)]',
       icon: CheckCircle2,
       label: 'CLEARED',
       description: 'Full clearance for high-intensity training',
@@ -238,12 +239,16 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
           <div className="flex-1 space-y-3">
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <h3 className={cn(
+                <motion.h3
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', damping: 15, stiffness: 280 }}
+                  className={cn(
                   'text-2xl font-bold uppercase tracking-tight font-display',
                   currentStatus.textClass
                 )}>
                   {currentStatus.label}
-                </h3>
+                </motion.h3>
               </div>
               <p className="text-sm text-white/70">{currentStatus.description}</p>
             </div>
@@ -258,7 +263,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                 <div
                   className={cn(
                     'h-full transition-all duration-700',
-                    clearanceStatus === 'granted' && 'bg-gradient-to-r from-emerald-500 to-emerald-400',
+                    clearanceStatus === 'granted' && 'bg-gradient-to-r from-[var(--module-accent)] to-[var(--module-color-400)]',
                     clearanceStatus === 'conditional' && 'bg-gradient-to-r from-amber-500 to-amber-400',
                     clearanceStatus === 'denied' && 'bg-gradient-to-r from-rose-500 to-rose-400'
                   )}
@@ -290,7 +295,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
               className={cn(
                 'p-4 transition-all',
                 isMet 
-                  ? 'border-emerald-500/20 bg-emerald-500/5' 
+                  ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]' 
                   : 'border-white/10 bg-white/[0.03]'
               )}
             >
@@ -298,12 +303,12 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                 <div className={cn(
                   'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
                   isMet 
-                    ? 'bg-emerald-500/10 border border-emerald-500/20' 
+                    ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]' 
                     : 'bg-white/5 border border-white/10'
                 )}>
                   <ReqIcon className={cn(
                     'w-5 h-5',
-                    isMet ? 'text-emerald-400' : 'text-white/40'
+                    isMet ? 'text-[var(--module-color-400)]' : 'text-white/40'
                   )} />
                 </div>
 
@@ -311,12 +316,12 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <h4 className={cn(
                       'text-sm font-bold',
-                      isMet ? 'text-emerald-300' : 'text-white/70'
+                      isMet ? 'text-[var(--module-color-300)]' : 'text-white/70'
                     )}>
                       {req.label}
                     </h4>
                     {isMet ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-[var(--module-color-400)] shrink-0" />
                     ) : (
                       <XCircle className="w-4 h-4 text-white/30 shrink-0" />
                     )}
@@ -341,7 +346,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                     <div className={cn(
                       'px-2 py-0.5 rounded text-[10px] font-bold tabular-nums',
                       isMet 
-                        ? 'bg-emerald-500/10 text-emerald-300' 
+                        ? 'bg-[var(--module-accent-muted)] text-[var(--module-color-300)]' 
                         : 'bg-white/5 text-white/50'
                     )}>
                       {req.currentValue !== null ? req.currentValue.toFixed(1) : 'N/A'}

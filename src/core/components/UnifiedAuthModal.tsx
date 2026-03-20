@@ -54,7 +54,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
 
   const themeClasses: Record<ModuleTheme, { color: string; bg: string; border: string }> = {
     indigo: { color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
-    orange: { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+    orange: { color: 'text-[#FF7252]', bg: 'bg-[#DC4B1E]/10', border: 'border-[#DC4B1E]/20' },
     cyan: { color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
     emerald: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
     sky: { color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
@@ -115,7 +115,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                 <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="fixed inset-0 z-[calc(var(--z-modal)+1)] flex items-center justify-center p-4 pointer-events-none">
                   <div className="relative w-full max-w-md max-h-[90vh] overflow-hidden rounded-card border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,1)] flex flex-col pointer-events-auto">
                     <Dialog.Close asChild>
-                      <button className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors z-20"><X className="w-5 h-5" /></button>
+                      <button className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors z-[var(--z-content)]"><X className="w-5 h-5" /></button>
                     </Dialog.Close>
 
                     <div className={`p-8 sm:p-10 border-b border-white/5 ${activeTheme.bg} shrink-0`}>

@@ -77,11 +77,11 @@ export function SomaOnboarding({ profile, userId, encryptionKey, onComplete }: S
     <div className="h-full flex flex-col items-center justify-center p-4 md:p-8 overflow-y-auto">
       <div className="w-full max-w-2xl bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden">
         {/* Header */}
-        <div className="p-6 border-b border-white/5 bg-gradient-to-r from-emerald-500/5 to-transparent">
-          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400/70 mb-1">
+        <div className="p-6 border-b border-white/5 bg-gradient-to-r from-[var(--module-accent-faint)] to-transparent">
+          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--module-color-400)] opacity-70 mb-1">
             SOMA — MEDICAL INTAKE
           </p>
-          <h2 className="text-xl font-black uppercase tracking-widest text-emerald-400">
+          <h2 className="text-xl font-black uppercase tracking-widest text-[var(--module-color-400)]">
             Health Setup
           </h2>
           <p className="text-xs text-white/50 mt-1 leading-relaxed max-w-lg">
@@ -100,12 +100,12 @@ export function SomaOnboarding({ profile, userId, encryptionKey, onComplete }: S
             <React.Fragment key={s.label}>
               <div className={cn(
                 'flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors',
-                i === step ? 'text-emerald-400' : i < step ? 'text-white/40' : 'text-white/20'
+                i === step ? 'text-[var(--module-color-400)]' : i < step ? 'text-white/40' : 'text-white/20'
               )}>
                 <div className={cn(
                   'w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors',
                   i === step
-                    ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-300'
+                    ? 'bg-[var(--module-accent-glow)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]'
                     : i < step
                     ? 'bg-white/10 border border-white/20 text-white/50'
                     : 'bg-white/5 border border-white/10 text-white/20'
@@ -223,7 +223,7 @@ export function SomaOnboarding({ profile, userId, encryptionKey, onComplete }: S
             {step < 2 ? (
               <NeuralButton
                 size="sm"
-                themeColor="emerald"
+                themeColor="module"
                 onClick={() => setStep(s => (s + 1) as Step)}
                 disabled={saving}
                 className="flex items-center gap-1.5 font-semibold"
@@ -233,7 +233,7 @@ export function SomaOnboarding({ profile, userId, encryptionKey, onComplete }: S
             ) : (
               <NeuralButton
                 size="sm"
-                themeColor="emerald"
+                themeColor="module"
                 loading={saving}
                 onClick={handleComplete}
                 className="flex items-center gap-1.5 font-semibold"

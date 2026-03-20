@@ -50,7 +50,7 @@ export function DiagnosisActiveBanner({
         'w-full flex items-center gap-2 px-4 min-h-[48px] z-50',
         isError
           ? 'bg-red-500/20 border-b border-red-500/30'
-          : 'bg-emerald-500/15 border-b border-emerald-500/25',
+          : 'bg-[var(--module-accent-glow)] border-b border-[var(--module-accent-border)]',
       )}
       role="status"
       aria-live="polite"
@@ -60,14 +60,14 @@ export function DiagnosisActiveBanner({
       <div className="flex-shrink-0">
         {isProcessing ? (
           <Loader2
-            className="w-4 h-4 text-emerald-400 animate-spin"
+            className="w-4 h-4 text-[var(--module-color-400)] animate-spin"
             aria-hidden="true"
           />
         ) : (
           <FileText
             className={cn(
               'w-4 h-4 flex-shrink-0',
-              isError ? 'text-red-400' : 'text-emerald-400',
+              isError ? 'text-red-400' : 'text-[var(--module-color-400)]',
             )}
             aria-hidden="true"
           />
@@ -77,7 +77,7 @@ export function DiagnosisActiveBanner({
       {/* Text */}
       <p className={cn(
         'flex-1 min-w-0 text-xs font-medium truncate',
-        isError ? 'text-red-300' : 'text-emerald-200',
+        isError ? 'text-red-300' : 'text-[var(--module-color-300)]',
       )}>
         {isError ? (
           'Analysis failed'
@@ -94,7 +94,7 @@ export function DiagnosisActiveBanner({
               {fileName ?? 'Medical Document'}
             </span>
             {typeof itemCount === 'number' && itemCount > 0 && (
-              <> · <span className="text-emerald-300">{itemCount} items extracted</span></>
+              <> · <span className="text-[var(--module-color-300)]">{itemCount} items extracted</span></>
             )}
           </>
         )}
@@ -106,7 +106,7 @@ export function DiagnosisActiveBanner({
           <NeuralButton
             size="sm"
             onClick={onReview}
-            themeColor="emerald"
+            themeColor="module"
             variant="secondary"
             className="h-8 px-3 text-xs font-semibold min-w-[44px]"
           >
@@ -114,8 +114,9 @@ export function DiagnosisActiveBanner({
           </NeuralButton>
         )}
 
-        <button
+        <NeuralButton
           type="button"
+          variant="ghost"
           onClick={onEnd}
           className={cn(
             'h-9 min-w-[44px] w-9 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors',
@@ -126,7 +127,7 @@ export function DiagnosisActiveBanner({
           aria-label="End diagnosis session"
         >
           <X className="w-4 h-4" />
-        </button>
+        </NeuralButton>
       </div>
     </motion.div>
   );

@@ -28,6 +28,13 @@ export interface NotificationMessageTemplate {
   body: string;
 }
 
+export type NotificationActionType = 'NAVIGATE' | 'MARK_READ' | 'DISMISS' | 'CUSTOM_ACTION';
+
+export interface NotificationAction {
+  type: NotificationActionType;
+  payload?: Record<string, any>;
+}
+
 // ---------------------------------------------------------------------------
 // Recurrence representation (platform-agnostic)
 // ---------------------------------------------------------------------------

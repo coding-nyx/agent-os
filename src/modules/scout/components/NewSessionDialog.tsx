@@ -50,7 +50,7 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
           >
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-sm font-black uppercase tracking-widest text-lime-300">New Inquiry</h2>
+                <h2 className="text-sm font-black uppercase tracking-widest text-[var(--module-color-300)]">New Inquiry</h2>
                 <p className="text-xs text-white/40 mt-1">Initialize a new research thread</p>
               </div>
               <NeuralButton
@@ -70,7 +70,7 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
                   placeholder="e.g., Quantum Computing Trends"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  className="bg-white/5 border-white/10 focus:border-lime-500/50"
+                  className="bg-white/5 border-white/10 focus:border-[var(--module-accent-ring)]"
                 />
               </div>
 
@@ -85,7 +85,7 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
                     className={cn(
                       "flex flex-col items-center gap-2 p-4 rounded-xl transition-all text-center h-auto",
                       mode === 'standard'
-                        ? "bg-lime-500/10 border-lime-500/30 text-lime-300"
+                        ? "bg-[var(--module-accent-muted)] border-[var(--module-accent-ring)] text-[var(--module-color-300)]"
                         : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white/80"
                     )}
                   >
@@ -130,7 +130,7 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
                   type="submit"
                   disabled={!topic.trim()}
                   themeColor="lime"
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-black hover:bg-lime-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-auto"
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-[var(--module-accent-text)] hover:bg-[var(--module-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-auto"
                 >
                   Start Inquiry
                 </NeuralButton>

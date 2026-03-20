@@ -57,8 +57,8 @@ function paceStr(distKm: number, durationMin: number): string {
 
 function rpeColor(rpe: number): string {
   if (rpe >= 9) return 'text-rose-400';
-  if (rpe >= 7) return 'text-orange-400';
-  if (rpe >= 5) return 'text-amber-400';
+  if (rpe >= 7) return 'text-[var(--module-color-400)]';
+  if (rpe >= 5) return 'text-[var(--module-color-300)]';
   return 'text-emerald-400';
 }
 
@@ -86,7 +86,7 @@ function SessionRow({ session }: { session: CardioSession }) {
       <div className="flex items-center gap-4 shrink-0">
         {session.distanceKm != null && (
           <div className="text-right hidden sm:block">
-            <div className="text-xs font-black text-orange-400 tabular-nums">{session.distanceKm} km</div>
+            <div className="text-xs font-black text-[var(--module-color-400)] tabular-nums">{session.distanceKm} km</div>
             <div className="text-[9px] text-white/40">dist</div>
           </div>
         )}
@@ -183,7 +183,6 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
               <NeuralButton
                 size="sm"
                 variant="ghost"
-                themeColor="orange"
                 onClick={() => onAnalyze(
                   `Analyze my cardio performance from the last ${recent.length} sessions and provide insights on my aerobic fitness trend.`
                 )}
@@ -192,9 +191,14 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
                 Analyze
               </NeuralButton>
             )}
-            <NeuralButton size="sm" themeColor="orange" onClick={() => setShowModal(true)}>
-              <Plus className="w-3 h-3 mr-1.5" />
-              Log Session
+            <NeuralButton
+              size="sm"
+              iconOnly
+              onClick={() => setShowModal(true)}
+              title="Log Session"
+              aria-label="Log Session"
+            >
+              <Activity className="w-3.5 h-3.5" />
             </NeuralButton>
           </div>
         </div>
@@ -205,9 +209,13 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
             title="No cardio sessions yet"
             description="Track your runs, rides, swims and more. Titan uses cardio data to balance your aerobic and anaerobic training load."
             action={
-              <NeuralButton themeColor="orange" onClick={() => setShowModal(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Log First Session
+              <NeuralButton
+                iconOnly
+                onClick={() => setShowModal(true)}
+                title="Log Session"
+                aria-label="Log Session"
+              >
+                <Activity className="w-4 h-4" />
               </NeuralButton>
             }
           />
@@ -255,7 +263,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
         title="Log Cardio Session"
         subtitle="Track your conditioning work"
         icon={Activity}
-        themeColor="orange"
+        themeColor="module"
         maxWidth="lg"
       >
         <div className="space-y-5">
@@ -274,12 +282,11 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
                   key={ct.value}
                   onClick={() => setType(ct.value)}
                   variant={type === ct.value ? 'primary' : 'secondary'}
-                  themeColor="orange"
                   size="sm"
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border',
                     type === ct.value
-                      ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
+                      ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
                       : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
                   )}
                 >
@@ -293,7 +300,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">Duration</label>
             <div className="flex items-center gap-3">
-              <div className="flex flex-1 items-center bg-black/40 border border-white/10 rounded-2xl focus-within:border-orange-500/50 transition-all px-4 h-12">
+              <div className="flex flex-1 items-center bg-black/40 border border-white/10 rounded-2xl focus-within:border-[var(--module-accent)] transition-all px-4 h-12">
                 <input
                   type="number"
                   min={0}
@@ -316,7 +323,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
                 <span className="ml-auto text-[10px] text-white/40 font-semibold tracking-wider">HH:MM</span>
               </div>
               {totalDurationMins > 0 && (
-                <span className="text-sm font-black text-orange-400 shrink-0 min-w-[60px] text-right">{formatDuration(totalDurationMins)}</span>
+                <span className="text-sm font-black text-[var(--module-color-400)] shrink-0 min-w-[60px] text-right">{formatDuration(totalDurationMins)}</span>
               )}
             </div>
           </div>
@@ -367,7 +374,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
               step={1}
               value={rpe}
               onChange={e => setRpe(Number(e.target.value))}
-              className="w-full accent-orange-400"
+              className="w-full accent-[var(--module-color-400)]"
             />
           </div>
 
@@ -388,11 +395,10 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
           )}
 
           <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-            <NeuralButton variant="ghost" themeColor="orange" onClick={() => setShowModal(false)}>
+            <NeuralButton variant="ghost" onClick={() => setShowModal(false)}>
               Cancel
             </NeuralButton>
             <NeuralButton
-              themeColor="orange"
               onClick={handleSave}
               disabled={saving || (!directWriteMode && !onAnalyze)}
             >

@@ -118,7 +118,7 @@ export function RoutineEditor({ routine, onUpdate }: RoutineEditorProps) {
                     className={cn(
                       "w-8 h-8 min-w-0 px-0 rounded-lg text-[10px] font-bold border transition-all",
                       block.daysOfWeek.includes(day) 
-                        ? 'bg-sky-500/20 text-sky-400 border-sky-500/30' 
+                        ? 'bg-[var(--module-accent-glow)] text-[var(--module-color-400)] border-[var(--module-accent-border)]' 
                         : 'bg-white/5 text-white/20 border-transparent hover:border-white/10'
                     )}
                   >

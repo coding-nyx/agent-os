@@ -14,6 +14,8 @@ const DIRECT_USER_COLLECTIONS = [
   'ledger_profiles',
   'soma_profiles',
   'atlas_profiles',
+  'atlas_journals',
+  'soma_diagnoses',
   'scout_knowledge',
   'forge_sessions',
   'semantic_memory',

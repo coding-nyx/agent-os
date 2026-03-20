@@ -94,9 +94,10 @@ interface EnhancedAtlasDashboardProps {
   onDeleteGoal?: (goalId: string) => void;
   onUpdateRoutine?: (updates: Partial<AtlasRoutine>) => void;
   onUpdateIntention?: (updates: Partial<DailyIntention>) => void;
-  /** Extension field management */
   extensions?: import('@/lib/field-system/types').FieldDefinition[];
   fieldValues?: Record<string, import('@/lib/field-system/types').FieldValue>;
+  onSaveFieldValue?: (fieldId: string, value: any) => void;
+  onRemoveFieldValue?: (fieldId: string) => void;
   onAddField?: (field?: import('@/lib/field-system/types').FieldDefinition) => void;
   onDeleteField?: (fieldId: string) => void;
   onSendMessage?: (message: string) => void;
@@ -241,7 +242,7 @@ export function EnhancedAtlasDashboard({
             label="Cognitive Domain"
             title="Atlas Energy & Planning"
             subtitle="Energy management, routines, and cross-module execution."
-            accentClassName="text-sky-400"
+            accentClassName="text-[var(--module-color-400)]"
           />
           <span
             className={cn(
@@ -286,7 +287,7 @@ export function EnhancedAtlasDashboard({
               onReviewOpened();
             }
           }}
-          themeColor="sky"
+          themeColor="module"
         />
         </div>
       </div>
@@ -332,8 +333,8 @@ export function EnhancedAtlasDashboard({
         {/* ── Normal scroll container: token-based padding, section spacing ── */}
         {!(activeTab === 'dashboard' && activeView === 'focus') && (
         <div
-          className="flex-1 overflow-y-auto no-scrollbar space-y-[var(--atlas-space-section)]"
-          style={{ padding: 'var(--atlas-space-page-y) var(--atlas-space-page-x)' }}
+          className="flex-1 overflow-y-auto no-scrollbar space-y-4"
+          style={{ padding: 'var(--atlas-space-block) var(--atlas-space-page-x)' }}
         >
         {/* ══════════════ DASHBOARD TAB ══════════════ */}
         {activeTab === 'dashboard' && (
@@ -342,12 +343,13 @@ export function EnhancedAtlasDashboard({
             <QuickCaptureBar
               onAddTask={onCreateTask}
               onAddHabit={onCreateHabit}
+              onAddGoal={onCreateGoal}
               disabled={isLocked}
             />
 
             {/* ── Today view: MorningCheckIn + PriorityInbox + TodaysPlanCard ── */}
-            {activeView === 'today' && (
-              <div className="space-y-4">
+            {profile && activeView === 'today' && (
+              <div className="space-y-6">
                 {(morningBriefVisible || (!morningDismissed && shouldShowMorningCheckIn(user?.uid))) && (
                   <MorningCheckIn
                     profile={profile}
@@ -413,7 +415,7 @@ export function EnhancedAtlasDashboard({
 
             {/* ── Today view: main dashboard content ── */}
             {activeView === 'today' && (
-              <div className="space-y-6">
+              <div className="space-y-4">
             {/* Daily Intention & Focus */}
             {profile?.dailyIntentions && profile.dailyIntentions.length > 0 && (
               <section className="space-y-3">
@@ -422,7 +424,7 @@ export function EnhancedAtlasDashboard({
                     Today's Intent
                   </h4>
                   {!isEditingIntention && (
-                    <button 
+                    <NeuralButton 
                       onClick={() => {
                         const current = profile.dailyIntentions[0];
                         setIntentionForm({ 
@@ -432,13 +434,13 @@ export function EnhancedAtlasDashboard({
                         });
                         setIsEditingIntention(true);
                       }}
-                      className="text-[10px] text-sky-400 font-bold hover:text-sky-300 transition-colors"
+                      variant="ghost" size="sm" themeColor="module" className="text-[10px] text-[var(--module-color-400)] font-bold hover:text-[var(--module-color-300)] transition-colors" aria-label="Edit daily intent"
                     >
                       EDIT INTENT
-                    </button>
+                    </NeuralButton>
                   )}
                 </div>
-                <div className="p-5 rounded-2xl border border-sky-500/20 bg-sky-500/[0.03] backdrop-blur-md">
+                <div className="p-5 rounded-2xl border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] backdrop-blur-md">
                    {isEditingIntention ? (
                      <div className="space-y-4">
                         <NeuralInput 
@@ -476,7 +478,7 @@ export function EnhancedAtlasDashboard({
                                onUpdateIntention(intentionForm);
                                setIsEditingIntention(false);
                              }}
-                             themeColor="cyan"
+                             themeColor="module"
                              size="sm"
                              className="text-[10px] font-bold px-4 h-8"
                            >
@@ -488,8 +490,8 @@ export function EnhancedAtlasDashboard({
                      <>
                       <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <Target className="w-4 h-4 text-sky-400" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400">Focus Domain</span>
+                            <Target className="w-4 h-4 text-[var(--module-color-400)]" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--module-color-400)]">Focus Domain</span>
                           </div>
                           <span className="text-[10px] text-white/30 font-bold uppercase tabular-nums">
                             {profile.dailyIntentions[0].date}
@@ -500,7 +502,7 @@ export function EnhancedAtlasDashboard({
                       </h3>
                       <div className="mt-4 flex items-center gap-4">
                           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                            <div className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-[var(--module-color-400)]" />
                             <span className="text-[10px] font-bold text-white/60 uppercase">{profile.dailyIntentions[0].focusDomain}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -531,19 +533,19 @@ export function EnhancedAtlasDashboard({
                 label="Energy Budget"
                 value={energyBudget}
                 isEmpty={false}
-                accentClassName={energyBudget < 4 ? 'text-amber-300' : 'text-sky-300'}
+                accentClassName={energyBudget < 4 ? 'text-amber-300' : 'text-[var(--module-color-300)]'}
               />
               <StatCard
                 label="Focus Score"
                 value={focusScore}
                 isEmpty={false}
-                accentClassName={focusScore < 4 ? 'text-red-400' : 'text-sky-300'}
+                accentClassName={focusScore < 4 ? 'text-red-400' : 'text-[var(--module-color-300)]'}
               />
               <StatCard
                 label="Active Load"
                 value={activeLoad}
                 isEmpty={false}
-                accentClassName={activeLoad > 7 ? 'text-red-400' : 'text-sky-300'}
+                accentClassName={activeLoad > 7 ? 'text-red-400' : 'text-[var(--module-color-300)]'}
               />
               <StatCard
                 label="Routine Status"
@@ -736,7 +738,7 @@ export function EnhancedAtlasDashboard({
               <h3 className="text-lg font-bold font-display text-white/90">Temporal Reviews</h3>
               <NeuralButton
                 onClick={() => setIsReviewModalOpen(true)}
-                themeColor="cyan"
+                themeColor="module"
                 size="sm"
                 className="text-[10px] font-black uppercase tracking-widest px-6"
               >
@@ -767,13 +769,13 @@ export function EnhancedAtlasDashboard({
                       </div>
                       <div>
                         <span className="text-white/40">Avg Energy</span>
-                        <p className="text-lg font-bold text-sky-400 mt-1">
+                        <p className="text-lg font-bold text-[var(--module-color-400)] mt-1">
                           {review.nsvTrend?.energyBudgetAvg ?? '-'}/10
                         </p>
                       </div>
                       <div>
                         <span className="text-white/40">Avg Focus</span>
-                        <p className="text-lg font-bold text-sky-400 mt-1">
+                        <p className="text-lg font-bold text-[var(--module-color-400)] mt-1">
                           {review.nsvTrend?.focusScoreAvg ?? '-'}/10
                         </p>
                       </div>
@@ -790,7 +792,7 @@ export function EnhancedAtlasDashboard({
                             <span className="text-[10px] text-white/40 uppercase tracking-wider">Generated Insights</span>
                             <ul className="list-disc pl-4 mt-2 space-y-1">
                                 {review.insights.map((ins: string, i: number) => (
-                                    <li key={i} className="text-xs text-sky-200/80">{ins}</li>
+                                    <li key={i} className="text-xs text-[var(--module-color-300)]">{ins}</li>
                                 ))}
                             </ul>
                         </div>

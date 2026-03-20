@@ -99,9 +99,9 @@ export const TaskCard = React.memo(function TaskCard({
     <div
       onClick={() => onEntitySelect?.(task)}
       className={cn(
-        'group relative rounded-xl border overflow-hidden transition-all cursor-pointer',
+        'group relative rounded-xl border overflow-hidden transition-all cursor-pointer min-h-[44px]',
         'bg-white/[0.03] backdrop-blur-sm',
-        isEntitySelected && 'ring-2 ring-sky-400/40 shadow-[0_0_30px_rgba(14,165,233,0.15)]',
+        isEntitySelected && 'ring-2 ring-[var(--module-accent-ring)] shadow-[var(--module-accent-glow)]',
         isBlocked && 'opacity-60 border-white/5',
         isDone && 'border-emerald-500/15 bg-emerald-500/[0.03]',
         isDeferred && 'border-amber-500/10 bg-amber-500/[0.02]',
@@ -130,7 +130,7 @@ export const TaskCard = React.memo(function TaskCard({
           className="flex items-start gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 rounded-lg -m-1 p-1"
         >
           {/* Checkbox */}
-          <button
+          <NeuralButton
             onClick={handleComplete}
             onKeyDown={handleCheckboxKeyDown}
             disabled={isBlocked}
@@ -139,8 +139,10 @@ export const TaskCard = React.memo(function TaskCard({
                 ? `${task.title} completed`
                 : `Mark ${task.title} as complete`
             }
+            variant="ghost"
+            size="sm"
             className={cn(
-              'mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all',
+              'mt-0.5 flex-shrink-0 w-5 h-5 min-w-0 !p-0 rounded-md border-2 flex items-center justify-center transition-all min-h-[44px]',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
               isDone
                 ? 'bg-emerald-500 border-emerald-500'
@@ -155,7 +157,7 @@ export const TaskCard = React.memo(function TaskCard({
             {isBlocked && (
               <Lock className="w-3 h-3 text-white/30" aria-hidden="true" />
             )}
-          </button>
+          </NeuralButton>
 
           {/* Title, badges, description preview */}
           <div className="flex-1 min-w-0">
@@ -178,7 +180,7 @@ export const TaskCard = React.memo(function TaskCard({
               {/* Recurrence indicator */}
               {task.recurrenceRule && (
                 <span
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-500/10 text-sky-400 text-[10px] font-bold"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] text-[10px] font-bold"
                   title={`Recurring: ${task.recurrenceRule}`}
                   aria-label={`Recurring task, ${task.recurrenceRule}`}
                 >

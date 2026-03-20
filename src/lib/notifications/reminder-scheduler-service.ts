@@ -44,16 +44,12 @@ type ScheduleResult =
 class ReminderSchedulerService {
   private unsubscribers: Array<() => void> = [];
   private started = false;
-  private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private userId: string | null = null;
-  private fallbackActive = false;
-  private debugListeners = new Set<(active: boolean) => void>();
 
   start(uid: string): void {
     if (this.started) return;
     this.started = true;
     this.userId = uid;
-    this.fallbackActive = false;
 
     const { app } = getFirebase();
     if (!app) {
@@ -70,7 +66,15 @@ class ReminderSchedulerService {
     for (const [eventType, scheduleIds] of Object.entries(EVENT_SCHEDULE_MAP) as [SpineEventType, string[]][]) {
       const unsub = Spine.subscribe(eventType, async (_event) => {
         for (const scheduleId of scheduleIds) {
-          await this.scheduleReminderWithFallback(scheduleReminder, scheduleId);
+          try {
+            const result = await scheduleReminder({ scheduleId });
+            const data = result.data;
+            if ("scheduled" in data && data.scheduled) {
+              console.log(`[ReminderScheduler] Scheduled ${scheduleId} → ${data.dueAt}`);
+            }
+          } catch (err) {
+            console.warn(`[ReminderScheduler] Failed to schedule ${scheduleId}.`, err);
+          }
         }
       });
 
@@ -85,138 +89,18 @@ class ReminderSchedulerService {
     this.unsubscribers = [];
     this.started = false;
     this.userId = null;
-    this.timers.forEach((t) => clearTimeout(t));
-    this.timers.clear();
-    this.setFallbackActive(false);
     console.log("[ReminderScheduler] Stopped.");
   }
 
+  /** Legacy support for components expecting client-side scheduling fallback */
   async scheduleLocal(scheduleId: string): Promise<void> {
-    if (!import.meta.env.DEV) return;
-    this.setFallbackActive(true);
-    if (!this.userId) return;
-    const dataLayer = getNexusDataLayer();
-    const config = await dataLayer.getDocument<NotificationScheduleConfig>(
-      `users/${this.userId}/notification_schedules`,
-      scheduleId,
-    );
-    if (!config || !config.enabled) return;
-
-    const now = Date.now();
-    const windowEnd = now + 1000 * 60 * 60 * 24 * 31;
-    const due = computeDueOccurrencesInRange(config.recurrence, now, windowEnd)
-      .filter((t) => t > now)
-      .sort((a, b) => a - b)[0];
-
-    if (!due) return;
-
-    this.armLocalTimer(scheduleId, config, due);
+    console.log(`[ReminderScheduler] scheduleLocal(${scheduleId}) called. Note: Client-side timers are deprecated in the new server-driven architecture.`);
   }
 
-  private async scheduleReminderWithFallback(
-    scheduleReminder: (data: { scheduleId: string }) => Promise<{ data: ScheduleResult }>,
-    scheduleId: string,
-  ): Promise<void> {
-    try {
-      const result = await scheduleReminder({ scheduleId });
-      const data = result.data;
-      if ("scheduled" in data && data.scheduled) {
-        console.log(`[ReminderScheduler] Scheduled ${scheduleId} → ${data.dueAt}`);
-      } else if ("skipped" in data) {
-        console.log(`[ReminderScheduler] Skipped ${scheduleId}: ${data.reason}`);
-      }
-    } catch (err) {
-      // Non-fatal — user can still use the app without reminders
-      if (import.meta.env.DEV) {
-        console.warn(`[ReminderScheduler] Failed to schedule ${scheduleId}; using DEV fallback.`, err);
-        this.setFallbackActive(true);
-        await this.scheduleLocal(scheduleId);
-      } else {
-        console.warn(`[ReminderScheduler] Failed to schedule ${scheduleId}.`, err);
-      }
-    }
-  }
-
-  private armLocalTimer(
-    scheduleId: string,
-    config: NotificationScheduleConfig,
-    dueAtMs: number,
-  ): void {
-    const existing = this.timers.get(scheduleId);
-    if (existing) clearTimeout(existing);
-
-    const delay = Math.max(0, dueAtMs - Date.now());
-    const timer = setTimeout(async () => {
-      this.timers.delete(scheduleId);
-      await this.fireLocalReminder(scheduleId, config, dueAtMs);
-      if (this.started) {
-        await this.scheduleLocal(scheduleId);
-      }
-    }, delay);
-
-    this.timers.set(scheduleId, timer);
-  }
-
-  private async fireLocalReminder(
-    scheduleId: string,
-    config: NotificationScheduleConfig,
-    dueAtMs: number,
-  ): Promise<void> {
-    if (!this.userId) return;
-    const dataLayer = getNexusDataLayer();
-    const dueAt = new Date(dueAtMs).toISOString();
-    const occurrenceId = hashOccurrenceId(`${scheduleId}:${dueAt}`);
-    const moduleId = config.moduleId;
-    const title = config.messageTemplate?.title ?? 'Reminder due';
-    const body = config.messageTemplate?.body ?? '';
-    const deepLink = config.deepLink ?? { route: `/${moduleId}` };
-
-    await dataLayer.setDocument(`users/${this.userId}/notification_inbox`, occurrenceId, {
-      type: 'MODULE_REMINDER_DUE',
-      source: moduleId,
-      priority: config.priority,
-      data: {
-        title,
-        note: body,
-        deepLink,
-        moduleId,
-        scheduleId,
-        dueAt,
-      },
-      scheduleId,
-      occurrenceId,
-      read: false,
-      createdAt: new Date().toISOString(),
-    });
-
-    Spine.publish({
-      type: 'MODULE_REMINDER_DUE',
-      source: moduleId,
-      domain: 'system',
-      priority: config.priority,
-      data: {
-        title,
-        body,
-        moduleId,
-        scheduleId,
-        dueAt,
-        occurrenceId,
-      },
-    });
-
-    BridgeService.showInAppReminderToast({ title, body, moduleId });
-  }
-
+  /** Legacy support for debug/status listeners */
   subscribeDebug(listener: (active: boolean) => void): () => void {
-    this.debugListeners.add(listener);
-    listener(this.fallbackActive);
-    return () => this.debugListeners.delete(listener);
-  }
-
-  private setFallbackActive(active: boolean): void {
-    if (this.fallbackActive === active) return;
-    this.fallbackActive = active;
-    this.debugListeners.forEach((listener) => listener(active));
+    listener(false);
+    return () => {};
   }
 }
 

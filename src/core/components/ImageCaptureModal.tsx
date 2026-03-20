@@ -219,25 +219,23 @@ export function ImageCaptureModal({
         {mode === 'select' && (
           <>
             <div className="grid grid-cols-2 gap-4">
-              <NeuralButton
-                variant="secondary"
-                size="lg"
-                className={cn('flex flex-col items-center justify-center gap-3 h-32', accentColor.button, accentColor.glow)}
+              <button
+                type="button"
+                className={cn('flex flex-col items-center justify-center gap-3 h-32 rounded-button border transition-all duration-300', accentColor.button, accentColor.glow)}
                 onClick={startCamera}
               >
                 <Camera className="w-8 h-8" />
                 <span className="text-sm">Take Photo</span>
-              </NeuralButton>
+              </button>
 
-              <NeuralButton
-                variant="secondary"
-                size="lg"
-                className={cn('flex flex-col items-center justify-center gap-3 h-32', accentColor.button, accentColor.glow)}
+              <button
+                type="button"
+                className={cn('flex flex-col items-center justify-center gap-3 h-32 rounded-button border transition-all duration-300', accentColor.button, accentColor.glow)}
                 onClick={handleUploadClick}
               >
                 <Upload className="w-8 h-8" />
                 <span className="text-sm">Upload Image</span>
-              </NeuralButton>
+              </button>
 
               <input
                 ref={fileInputRef}

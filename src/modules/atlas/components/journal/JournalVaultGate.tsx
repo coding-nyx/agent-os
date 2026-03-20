@@ -12,6 +12,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Lock, BookOpen } from 'lucide-react';
 import { useVault } from '@/lib/vault-context';
+import { NeuralButton } from '@/core/components/NeuralButton';
 
 export function JournalVaultGate() {
   const { unlockVault, hasVault } = useVault();
@@ -63,13 +64,13 @@ export function JournalVaultGate() {
         </p>
 
         {/* CTA */}
-        <button
-          type="button"
+        <NeuralButton
           onClick={handleUnlock}
+          variant="outline"
           className="px-6 py-2.5 rounded-xl bg-violet-500/15 border border-violet-500/30 hover:bg-violet-500/25 hover:border-violet-500/50 transition-all text-sm font-semibold text-violet-300 hover:text-violet-200 tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
         >
           Unlock Journal
-        </button>
+        </NeuralButton>
       </div>
     </motion.div>
   );

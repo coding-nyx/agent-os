@@ -27,7 +27,8 @@ function sanitizeJsonPayload(input: string): string {
     .replace(/```(?:json)?/g, '')
     .replace(/```/g, '')
     // Remove ASCII control chars that can break JSON parsing.
-    .replace(/[\u0000-\u001F\u007F]/g, '');
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1F\x7F]/g, '');
 }
 
 // ---------------------------------------------------------------------------
@@ -101,7 +102,7 @@ const DOMAIN_FIELD_HINTS: Record<DocumentDomain, string[]> = {
 
 /** Shared ISO/US/EU date pattern. */
 const DATE_RE =
-  /(?:date|dated?|on)[:\s]*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})|([0-9]{4}-[0-9]{2}-[0-9]{2})/i;
+  /(?:date|dated?|on)[:\s]*([0-9]{1,2}[/\-.][0-9]{1,2}[/\-.][0-9]{2,4})|([0-9]{4}-[0-9]{2}-[0-9]{2})/i;
 
 /** Monetary amount with optional symbol or code. */
 const MONEY_RE = /\$?([0-9]{1,3}(?:[,\s][0-9]{3})*(?:\.[0-9]{2})?)/;
@@ -118,8 +119,8 @@ function first(re: RegExp, text: string, group = 1): string {
 
 function extractReceiptFields(text: string): Record<string, string> {
   const totalRe = /(?:total|amount due|grand total|balance due|total amount)[:\s]*\$?\s*([0-9,]+\.[0-9]{2})/i;
-  const merchantRe = /^([A-Z][A-Za-z0-9 &'.,\-]{2,59})$/m;
-  const itemsRe = /^([A-Za-z][A-Za-z0-9 &'.\-]{1,39})\s{2,}\$?\s*([0-9]+\.[0-9]{2})$/gm;
+  const merchantRe = /^([A-Z][A-Za-z0-9 &'.,-]{2,59})$/m;
+  const itemsRe = /^([A-Za-z][A-Za-z0-9 &'. -]{1,39})\s{2,}\$?\s*([0-9]+\.[0-9]{2})$/gm;
 
   const items: string[] = [];
   let m: RegExpExecArray | null;
@@ -137,9 +138,9 @@ function extractReceiptFields(text: string): Record<string, string> {
 }
 
 function extractInvoiceFields(text: string): Record<string, string> {
-  const invoiceNumRe = /invoice\s*(?:no\.?|number|#)[:\s]*([A-Za-z0-9\-]+)/i;
-  const dueDateRe = /(?:due\s*date|payment\s*due)[:\s]*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i;
-  const vendorRe = /(?:from|vendor|billed\s*by|seller)[:\s]*([A-Za-z][A-Za-z0-9 .,\-]{2,59})/i;
+  const invoiceNumRe = /invoice\s*(?:no\.?|number|#)[:\s]*([A-Za-z0-9-]+)/i;
+  const dueDateRe = /(?:due\s*date|payment\s*due)[:\s]*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4})/i;
+  const vendorRe = /(?:from|vendor|billed\s*by|seller)[:\s]*([A-Za-z][A-Za-z0-9 .,-]{2,59})/i;
   const amountRe = /(?:amount\s*due|total\s*due|balance\s*due|total)[:\s]*\$?\s*([0-9,]+\.[0-9]{2})/i;
 
   return {
@@ -151,9 +152,9 @@ function extractInvoiceFields(text: string): Record<string, string> {
 }
 
 function extractLabReportFields(text: string): Record<string, string> {
-  const testRe = /(?:test|examination|assay)[:\s]*([A-Za-z][A-Za-z0-9 \-()]{2,59})/i;
+  const testRe = /(?:test|examination|assay)[:\s]*([A-Za-z][A-Za-z0-9 -()]{2,59})/i;
   const valueRe = /(?:result|value|level)[:\s]*([0-9]+(?:\.[0-9]+)?)\s*([A-Za-z/%µ]+)?/i;
-  const rangeRe = /(?:reference\s*range|normal\s*range|ref\.?\s*range)[:\s]*([0-9.,\s\-–—]+(?:[A-Za-z/%µ]*))/i;
+  const rangeRe = /(?:reference\s*range|normal\s*range|ref\.?\s*range)[:\s]*([0-9.,\s-–—]+(?:[A-Za-z/%µ]*))/i;
 
   const valueMatch = valueRe.exec(text);
 

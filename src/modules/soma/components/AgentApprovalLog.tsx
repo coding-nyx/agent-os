@@ -53,8 +53,8 @@ const ACTION_CONFIG: Record<LogEntry['action'], ActionConfig> = {
   approved: {
     icon: CheckCircle2,
     label: 'Approved',
-    iconCls: 'text-emerald-400',
-    rowCls: 'border-l-emerald-500/40',
+    iconCls: 'text-[var(--module-color-400)]',
+    rowCls: 'border-l-[var(--module-accent-border)]',
   },
   rejected: {
     icon: XCircle,

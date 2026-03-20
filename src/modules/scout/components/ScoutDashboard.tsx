@@ -1,11 +1,9 @@
 import React from 'react';
-import { AlertTriangle, Clock, RefreshCcw } from 'lucide-react';
+import { AlertTriangle, Clock, Plus, RefreshCcw } from 'lucide-react';
 import type { GlobalProjection } from '@/lib/types';
 import type { ScoutProfile } from '../services/scout-knowledge-service';
 import type { ResearchSession } from '../types';
 import { cn } from '@/lib/utils';
-import { SectionHeader } from '@/core/components/SectionHeader';
-import { StatCard } from '@/core/components/StatCard';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { ScoutSessionList } from './ScoutSessionList';
@@ -21,10 +19,25 @@ interface ScoutDashboardProps {
   onRefreshNews?: () => void;
   isRefreshingNews?: boolean;
   isLocked?: boolean;
+  onStartSession?: () => void;
 }
 
 function formatSessionCountLabel(count: number) {
   return `${count} session${count === 1 ? '' : 's'}`;
+}
+
+function InlineStat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+  return (
+    <div className="flex min-w-[4.5rem] flex-col items-center gap-0.5 px-4 py-3">
+      <span className={cn('text-2xl font-black tabular-nums tracking-tight',
+        accent ? 'text-[var(--module-color-400)]' : 'text-white')}>
+        {value}
+      </span>
+      <span className="text-[9px] font-semibold uppercase tracking-[0.25em] text-white/35">
+        {label}
+      </span>
+    </div>
+  );
 }
 
 export function ScoutDashboard({
@@ -37,6 +50,7 @@ export function ScoutDashboard({
   onRefreshNews,
   isRefreshingNews,
   isLocked = false,
+  onStartSession,
 }: ScoutDashboardProps) {
   if (isLocked) {
     return (
@@ -60,77 +74,87 @@ export function ScoutDashboard({
   ).length;
 
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-[var(--shell-content-max,80rem)] flex-col gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:px-8">
-      <section className="surface-foundation-raised overflow-hidden p-5 sm:p-6">
-        <SectionHeader
-          className="flex-col gap-4 sm:flex-row sm:items-start"
-          label="Research domain"
-          title="Knowledge Node"
-          subtitle="Research assistant and fact-checking engine with verified knowledge graphs, active investigations, and current trend briefings."
-          accentClassName="text-lime-400"
-          action={
-            onRefreshNews ? (
-              <div className="w-full sm:w-auto sm:shrink-0">
-                <NeuralButton
-                  type="button"
-                  onClick={onRefreshNews}
-                  loading={isRefreshingNews}
-                  variant="secondary"
-                  themeColor="lime"
-                  className="w-full sm:w-auto"
-                >
-                  <RefreshCcw
-                    className={cn('h-4 w-4', isRefreshingNews && 'animate-spin')}
-                    aria-hidden="true"
-                  />
-                  <span>{isRefreshingNews ? 'Refreshing briefs…' : 'Refresh briefs'}</span>
-                </NeuralButton>
-              </div>
-            ) : null
-          }
-        />
+    <div className="mx-auto flex w-full min-w-0 max-w-[var(--shell-content-max,80rem)] flex-col gap-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+
+      {/* Inquiry hero */}
+      <section className="relative overflow-hidden rounded-3xl border border-white/8 bg-white/[0.02] px-6 py-5">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[var(--module-accent-glow)] blur-3xl" />
+
+        <p className="text-chip-soft text-[var(--module-color-400)]">Scout · Knowledge Node</p>
+
+        {activeSessionsCount > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+            <h1 className="text-section-heading text-white">
+              {activeSessionsCount} active inquir{activeSessionsCount !== 1 ? 'ies' : 'y'} in progress
+            </h1>
+            <NeuralButton type="button" onClick={onStartSession} themeColor="lime" className="min-h-10 shrink-0">
+              <Plus size={15} />
+              <span>New inquiry</span>
+            </NeuralButton>
+          </div>
+        ) : sessions.length > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-section-heading text-white">Pick up where you left off</h1>
+              <p className="mt-1 text-body-secondary text-white/45">
+                {sessions.length} prior session{sessions.length !== 1 ? 's' : ''} available
+              </p>
+            </div>
+            <NeuralButton type="button" onClick={onStartSession} themeColor="lime" className="min-h-10 shrink-0">
+              <Plus size={15} />
+              <span>New inquiry</span>
+            </NeuralButton>
+          </div>
+        ) : (
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-section-heading text-white">Start your first inquiry</h1>
+              <p className="mt-1 text-body-secondary text-white/45">
+                Research, synthesize evidence, and track knowledge across any topic.
+              </p>
+            </div>
+            <NeuralButton type="button" onClick={onStartSession} themeColor="lime" size="lg" className="min-h-11 shrink-0">
+              <Plus size={16} />
+              <span>Begin research</span>
+            </NeuralButton>
+          </div>
+        )}
       </section>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Knowledge Nodes"
-          value={nodes.length}
-          accentClassName="text-lime-300"
-          className="h-full min-w-0"
-        />
-        <StatCard
-          label="Verified"
-          value={verified}
-          accentClassName="text-emerald-300"
-          className="h-full min-w-0"
-        />
-        <StatCard
-          label="Tracked Topics"
-          value={interests.length}
-          accentClassName="text-fuchsia-300"
-          className="h-full min-w-0"
-        />
-        <StatCard
-          label="Active Sessions"
-          value={activeSessionsCount}
-          accentClassName="text-sky-300"
-          className="h-full min-w-0"
-        />
+      {/* Compact inline stats strip */}
+      <div className="flex items-stretch divide-x divide-white/8 overflow-x-auto scrollbar-none rounded-2xl border border-white/8 bg-white/[0.02]">
+        <InlineStat label="Nodes"    value={nodes.length} accent />
+        <InlineStat label="Verified" value={verified} />
+        <InlineStat label="Topics"   value={interests.length} />
+        <InlineStat label="Active"   value={activeSessionsCount} />
+        {onRefreshNews && (
+          <div className="ml-auto flex items-center px-4">
+            <NeuralButton
+              type="button"
+              onClick={onRefreshNews}
+              loading={isRefreshingNews}
+              variant="ghost"
+              themeColor="lime"
+              size="sm"
+              className="shrink-0"
+            >
+              <RefreshCcw
+                className={cn('h-3.5 w-3.5', isRefreshingNews && 'animate-spin')}
+                aria-hidden="true"
+              />
+              <span className="hidden sm:inline">{isRefreshingNews ? 'Refreshing…' : 'Refresh briefs'}</span>
+            </NeuralButton>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.95fr)] xl:items-start">
         <div className="space-y-4 sm:space-y-6">
           <section className="surface-foundation flex min-w-0 flex-col gap-4 p-4 sm:p-5" aria-label="Research sessions">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/8 pb-4">
-              <div className="min-w-0 space-y-1">
-                <div className="flex items-center gap-2 text-chip-soft text-lime-300">
-                  <Clock size={13} aria-hidden="true" />
-                  <span>Scout sessions</span>
-                </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-4">
+              <div className="flex items-center gap-2">
+                <Clock size={13} className="text-[var(--module-color-300)]" aria-hidden="true" />
                 <h2 className="text-panel-heading text-white">Research sessions</h2>
-                <p className="max-w-2xl text-body-secondary text-white/55">
-                  Continue active investigations, reopen prior inquiries, or jump back into evidence review without losing context.
-                </p>
               </div>
               <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/60">
                 {formatSessionCountLabel(sessions.length)}
@@ -150,9 +174,6 @@ export function ScoutDashboard({
               <div className="mb-4 space-y-1">
                 <p className="text-chip-soft text-white/45">Signal map</p>
                 <h2 className="text-panel-heading text-white">Momentum map</h2>
-                <p className="text-body-secondary text-white/55">
-                  Review which tracked topics are rising, steady, or cooling before you start a new research pass.
-                </p>
               </div>
               <SignalBubbleCanvas interests={interests} />
             </section>
@@ -164,9 +185,6 @@ export function ScoutDashboard({
             <div className="border-b border-white/8 pb-4">
               <p className="text-chip-soft text-fuchsia-300">Briefings</p>
               <h2 className="mt-1 text-panel-heading text-white">Trend briefings</h2>
-              <p className="mt-1 text-body-secondary text-white/55">
-                Short summaries from Scout&apos;s recent monitoring so you can scan developments on any screen size.
-              </p>
             </div>
 
             <div className="mt-4 space-y-3">

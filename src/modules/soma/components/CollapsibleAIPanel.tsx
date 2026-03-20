@@ -5,6 +5,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, AlertCircle, Info, CheckCircle, X } from 'lucide-react';
+import { NeuralButton } from '@/core/components/NeuralButton';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { cn } from '@/lib/utils';
 
@@ -35,10 +36,10 @@ export function CollapsibleAIPanel({ insights, onClose }: CollapsibleAIPanelProp
     switch (type) {
       case 'success':
         return {
-          bg: 'bg-emerald-500/10',
-          border: 'border-emerald-500/30',
-          text: 'text-emerald-400',
-          icon: 'text-emerald-400',
+          bg: 'bg-[var(--module-accent-muted)]',
+          border: 'border-[var(--module-accent-border)]',
+          text: 'text-[var(--module-color-400)]',
+          icon: 'text-[var(--module-color-400)]',
         };
       case 'warning':
         return {
@@ -64,18 +65,20 @@ export function CollapsibleAIPanel({ insights, onClose }: CollapsibleAIPanelProp
         initial={{ opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: 'auto' }}
         exit={{ opacity: 0, height: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="overflow-hidden"
       >
         <SurfaceCard className="p-6 relative">
           {/* Close button */}
           {onClose && (
-            <button
+            <NeuralButton
+              variant="ghost"
               onClick={onClose}
               className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/5 transition-colors"
               aria-label="Close AI panel"
             >
               <X className="w-4 h-4 text-white/40 hover:text-white/60" />
-            </button>
+            </NeuralButton>
           )}
 
           {/* Header */}

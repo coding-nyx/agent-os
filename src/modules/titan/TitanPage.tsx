@@ -12,7 +12,7 @@ import { PRBoard } from './components/PRBoard';
 import { BodyWeightTracker } from './components/BodyWeightTracker';
 import { CardioLogger } from './components/CardioLogger';
 import { AnalyticsTab } from './components/AnalyticsTab';
-import { TrainingCalendar } from './components/TrainingCalendar';
+import TrainingCalendar from './components/TrainingCalendar';
 import { QuickLogDrawer } from './components/QuickLogDrawer';
 import type { QuickLogPayload } from './components/QuickLogDrawer';
 import { QuickLogBar } from './components/QuickLogBar';
@@ -116,32 +116,41 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
   const [isQuickLogFocused, setIsQuickLogFocused] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
 
-  useEffect(() => {
-    if (activeTab === 'training') {
-      const totalHeight = Math.max(0, quickLogBarHeight + keyboardOffset);
-      setModuleBottomBarHeight(Math.round(totalHeight));
-      setHideGlobalFAB(true);
-    } else {
+  // Unified layout effect: synchronously measure QuickLogBar height and propagate
+  // to the UI store BEFORE the browser paints.  This prevents the chat FAB from
+  // rendering behind the QuickLogBar for even a single frame on tab switch.
+  useLayoutEffect(() => {
+    if (activeTab !== 'training') {
+      setQuickLogBarHeight(0);
       setModuleBottomBarHeight(0);
       setHideGlobalFAB(false);
+      return;
     }
+
+    setHideGlobalFAB(true);
+
+    const measure = () => {
+      const el = quickLogBarRef.current;
+      const h = el ? el.getBoundingClientRect().height : 0;
+      setQuickLogBarHeight(h);
+      setModuleBottomBarHeight(Math.round(Math.max(0, h + keyboardOffset)));
+    };
+
+    // Synchronous measurement — height is correct before first paint
+    measure();
+
+    // Observe for dynamic resizes (keyboard, content changes)
+    const el = quickLogBarRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(el);
     return () => {
+      observer.disconnect();
       setModuleBottomBarHeight(0);
       setHideGlobalFAB(false);
     };
-  }, [activeTab, keyboardOffset, quickLogBarHeight, setModuleBottomBarHeight, setHideGlobalFAB]);
-
-  useLayoutEffect(() => {
-    const element = quickLogBarRef.current;
-    if (!element || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setQuickLogBarHeight(entry.contentRect.height);
-      }
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+  }, [activeTab, keyboardOffset, setModuleBottomBarHeight, setHideGlobalFAB]);
 
   useEffect(() => {
     if (!isQuickLogFocused) {
@@ -1122,9 +1131,9 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="mx-4 sm:mx-6 md:mx-8 mb-3 sm:mb-4 flex items-start justify-between p-3 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/20"
+                  className="mx-4 sm:mx-6 md:mx-8 mb-3 sm:mb-4 flex items-start justify-between p-3 sm:p-4 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]"
                 >
-                  <p className="text-[11px] sm:text-xs text-amber-300 leading-relaxed">{advisoryBanner}</p>
+                  <p className="text-[11px] sm:text-xs text-[var(--module-color-300)] leading-relaxed">{advisoryBanner}</p>
                   <NeuralButton 
                     variant="ghost" 
                     size="sm"
@@ -1297,19 +1306,19 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       <SingleAgentLayout
         moduleId="titan"
         agentName={agentAlias}
-        themeColor="orange"
+        themeColor="module"
         ai={ai}
         authMode="titan"
         placeholder="Input training data or queries..."
       >
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="titan-theme flex flex-col h-full overflow-hidden">
           <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-3 sm:pb-4 md:pb-5">
           <div className="flex items-start justify-between gap-3">
             <SectionHeader
               label="Performance Domain"
               title="Titan Strategy & Readiness"
               subtitle="Elite physical performance optimization and biometric clearance."
-              accentClassName="text-orange-400"
+              accentClassName="text-[var(--module-color-400)]"
             />
           </div>
         </div>
@@ -1330,7 +1339,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               tabs={tabs}
               activeTab={activeTab}
               onTabChange={setActiveTab}
-              themeColor="orange"
+              themeColor="module"
             />
           </div>
 
@@ -1359,7 +1368,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
               color="orange"
               label={directWrite ? 'Direct Logbook Mode: sessions save instantly' : 'Coach Review Mode: Titan reviews session updates before commit'}
             />
-            <Zap className={cn('w-3 h-3 transition-colors', directWrite ? 'text-orange-400' : 'text-white/30')} />
+            <Zap className={cn('w-3 h-3 transition-colors', directWrite ? 'text-[var(--module-color-400)]' : 'text-white/30')} />
           </div>
         </div>
 
@@ -1381,8 +1390,11 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           {/* Quick-log bar footer — sticky within the Titan tab panel */}
           {activeTab === 'training' && (
             <div
-              className="fixed left-0 right-0 bottom-0 z-[var(--z-fab)]"
-              style={keyboardOffset > 0 ? { bottom: `${keyboardOffset}px` } : undefined}
+              className="fixed left-0 bottom-0 z-[var(--z-fab)] transition-[right] duration-300 ease-out"
+              style={{
+                right: 'var(--spine-sidebar-width, 0px)',
+                ...(keyboardOffset > 0 ? { bottom: `${keyboardOffset}px` } : {}),
+              }}
             >
               <div className="relative w-full">
                 <AnimatePresence>
@@ -1449,7 +1461,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         title="Resume Training"
         subtitle="Final recovery check-in"
         icon={ShieldAlert}
-        themeColor="orange"
+        themeColor="module"
         maxWidth="md"
       >
         <RecoveryCheckinPanel
@@ -1468,7 +1480,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         title="Recovery Mode Active"
         subtitle="Choose how to log this session"
         icon={ShieldAlert}
-        themeColor="orange"
+        themeColor="module"
         maxWidth="sm"
       >
         <div className="space-y-4">
@@ -1614,10 +1626,10 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             role="alert"
             aria-live="polite"
-            className="fixed bottom-6 right-6 z-[var(--z-toast)] w-[340px] max-w-[calc(100vw-3rem)] rounded-2xl border border-amber-500/30 bg-[#05050a]/95 backdrop-blur-xl p-4 shadow-2xl pointer-events-auto"
+            className="fixed bottom-6 right-6 z-[var(--z-toast)] w-[340px] max-w-[calc(100vw-3rem)] rounded-2xl border border-[var(--module-accent-border)] bg-[#05050a]/95 backdrop-blur-xl p-4 shadow-2xl pointer-events-auto"
           >
             <div className="flex items-start gap-3">
-              <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" aria-hidden="true" />
+              <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-[var(--module-color-400)]" aria-hidden="true" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-white/80 font-bold leading-snug">
                   Medical data is unprotected
@@ -1627,7 +1639,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                 </p>
                 <button
                   onClick={() => { lockVault(); setShowAdvisory(false); }}
-                  className="mt-3 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/25 text-[11px] font-semibold text-amber-300 transition-colors"
+                  className="mt-3 px-3 py-1.5 rounded-xl bg-[var(--module-accent-muted)] hover:bg-[var(--module-accent-glow)] border border-[var(--module-accent-border)] text-[11px] font-semibold text-[var(--module-color-300)] transition-colors"
                   aria-label="Lock vault now"
                 >
                   Lock Vault

@@ -63,7 +63,7 @@ When we're under pressure, muscles contract as if bracing for impact. This tells
    */
   throatTightness: {
     sensation: 'throat tightness or difficulty speaking',
-    normalize: 'That tightness in your throat is often the body\'s way of protecting itself when emotions feel too big or unsafe to express.',
+    normalize: `That tightness in your throat is often the body's way of protecting itself when emotions feel too big or unsafe to express.`,
     metaphor: 'It\'s like your throat is a gatekeeper, deciding what\'s safe to let out.',
     reframe: 'This tightness is your system saying something wants to come out but it\'s not sure it\'s safe.',
     exploration: 'What do you think is trying to come out? And what would need to happen for it to feel safe to let it?',
@@ -115,8 +115,8 @@ This isn't laziness or weakness. It's your system communicating that something n
    */
   tremor: {
     sensation: 'tremor or shakiness',
-    normalize: 'Tremor is often the body\'s way of releasing activation or emotion that needs to move through.',
-    metaphor: 'It\'s like your nervous system is discharging energy, the way thunder releases pressure from a storm.',
+    normalize: `Tremor is often the body's way of releasing activation or emotion that needs to move through.`,
+    metaphor: "It's like your nervous system is discharging energy, the way thunder releases pressure from a storm.",
     reframe: 'That shaking is actually a sign your body is trying to process and release, not that something is wrong.',
     exploration: 'First — let\'s help your system feel safe. Try pressing your feet firmly into the floor and looking slowly around the room, naming a few things you can see. How does that feel? If the shaking continues after grounding and you feel stable — not overwhelmed — that can sometimes be your system releasing. But let\'s not rush it.',
     fullResponse: () => `
@@ -187,12 +187,12 @@ This feels scary but isn't dangerous. Your body is trying to protect you, but it
     sensation: 'jaw clenching or teeth grinding',
     normalize: 'Your jaw often holds tension when you\'re under stress or when emotions feel unsafe to express.',
     metaphor: 'The jaw clench is like your system saying "I\'m holding this in, I\'m not letting this out."',
-    reframe: 'This tension is your body\'s way of controlling something — often speech, anger, or emotion that feels risky.',
+    reframe: "This tension is your body's way of controlling something — often speech, anger, or emotion that feels risky.",
     exploration: 'What is your jaw protecting you from expressing? What would happen if you slowly released that grip? Let\'s try gently unclenching and noticing what comes up.',
     fullResponse: () => `
 Your jaw often holds tension when you're under stress or when emotions feel unsafe to express. It's like your system is saying "I'm holding this in, I'm not letting this out."
 
-This is your body\'s way of controlling something — often speech, anger, or feeling that feels risky. What is your jaw protecting you from expressing? Try gently unclenching and noticing what comes up when you release that grip.
+This is your body's way of controlling something — often speech, anger, or feeling that feels risky. What is your jaw protecting you from expressing? Try gently unclenching and noticing what comes up when you release that grip.
     `.trim()
   }
 };

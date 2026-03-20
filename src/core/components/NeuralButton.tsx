@@ -14,7 +14,8 @@ export type NeuralButtonThemeColor =
   | 'white'
   | 'module'
   | 'red'
-  | 'fuchsia';
+  | 'fuchsia'
+  | 'violet';
 
 type NeuralButtonVariant =
   | 'primary'
@@ -32,7 +33,8 @@ type NeuralButtonVariant =
   | 'white'
   | 'module'
   | 'red'
-  | 'fuchsia';
+  | 'fuchsia'
+  | 'violet';
 
 interface NeuralButtonProps extends Omit<HTMLMotionProps<'button'>, "onAnimationStart" | "onDragStart" | "onDragEnd" | "onDrag"> {
   variant?: NeuralButtonVariant;
@@ -46,21 +48,22 @@ interface NeuralButtonProps extends Omit<HTMLMotionProps<'button'>, "onAnimation
 
 const THEME_STYLES: Record<NeuralButtonThemeColor, string> = {
   indigo: 'bg-indigo-600 text-white hover:bg-indigo-500 border-indigo-400/20 focus-visible:ring-indigo-400',
-  orange: 'bg-orange-600 text-white hover:bg-orange-500 border-orange-400/20 focus-visible:ring-orange-400',
+  orange: 'bg-[var(--nb-orange-bg,#f97316)] text-[var(--nb-orange-text,#ffffff)] hover:bg-[var(--nb-orange-hover,#fb923c)] border-[var(--nb-orange-border,rgba(251,146,60,0.2))] focus-visible:ring-[var(--nb-orange-ring,#fb923c)] shadow-[var(--nb-orange-shadow,0_0_0_0)]',
   cyan: 'bg-cyan-600 text-white hover:bg-cyan-500 border-cyan-400/20 focus-visible:ring-cyan-400',
   lime: 'bg-lime-600 text-white hover:bg-lime-500 border-lime-400/20 focus-visible:ring-lime-400',
   rose: 'bg-rose-600 text-white hover:bg-rose-500 border-rose-400/20 focus-visible:ring-rose-500',
   amber: 'bg-amber-600 text-white hover:bg-amber-500 border-amber-400/20 focus-visible:ring-amber-400',
   emerald: 'bg-emerald-600 text-white hover:bg-emerald-500 border-emerald-400/20 focus-visible:ring-emerald-400',
   white: 'bg-white text-black hover:bg-white/90 border-white/20 focus-visible:ring-white',
-  module: 'bg-[var(--module-accent)] text-white hover:bg-[var(--module-accent-hover)] border-[var(--module-accent-border)] focus-visible:ring-[var(--module-accent-ring)]',
+  module: 'bg-[var(--module-accent)] text-[var(--module-accent-text,#fff)] hover:bg-[var(--module-accent-hover)] border-[var(--module-accent-border)] focus-visible:ring-[var(--module-accent-ring)] shadow-[var(--module-accent-shadow,0_0_0_0)]',
   red: 'bg-red-600 text-white hover:bg-red-500 border-red-400/20 focus-visible:ring-red-400',
   fuchsia: 'bg-fuchsia-600 text-white hover:bg-fuchsia-500 border-fuchsia-400/20 focus-visible:ring-fuchsia-400',
+  violet: 'bg-violet-600 text-white hover:bg-violet-500 border-violet-400/20 focus-visible:ring-violet-400',
 };
 
 const OUTLINE_THEME_STYLES: Record<NeuralButtonThemeColor, string> = {
   indigo: 'bg-transparent text-indigo-300 hover:bg-indigo-500/10 border-indigo-400/25 focus-visible:ring-indigo-400',
-  orange: 'bg-transparent text-orange-300 hover:bg-orange-500/10 border-orange-400/25 focus-visible:ring-orange-400',
+  orange: 'bg-transparent text-[var(--nb-orange-outline-text,#fdba74)] hover:bg-[var(--nb-orange-outline-hover,rgba(249,115,22,0.1))] border-[var(--nb-orange-outline-border,rgba(251,146,60,0.25))] focus-visible:ring-[var(--nb-orange-ring,#fb923c)]',
   cyan: 'bg-transparent text-cyan-300 hover:bg-cyan-500/10 border-cyan-400/25 focus-visible:ring-cyan-400',
   lime: 'bg-transparent text-lime-300 hover:bg-lime-500/10 border-lime-400/25 focus-visible:ring-lime-400',
   rose: 'bg-transparent text-rose-300 hover:bg-rose-500/10 border-rose-400/25 focus-visible:ring-rose-400',
@@ -70,6 +73,7 @@ const OUTLINE_THEME_STYLES: Record<NeuralButtonThemeColor, string> = {
   module: 'bg-transparent text-[var(--module-accent)] hover:bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] focus-visible:ring-[var(--module-accent-ring)]',
   red: 'bg-transparent text-red-300 hover:bg-red-500/10 border-red-400/25 focus-visible:ring-red-400',
   fuchsia: 'bg-transparent text-fuchsia-300 hover:bg-fuchsia-500/10 border-fuchsia-400/25 focus-visible:ring-fuchsia-400',
+  violet: 'bg-transparent text-violet-300 hover:bg-violet-500/10 border-violet-400/25 focus-visible:ring-violet-400',
 };
 
 const NeuralButtonImpl = React.forwardRef<any, NeuralButtonProps>(function NeuralButton({
@@ -102,27 +106,38 @@ const NeuralButtonImpl = React.forwardRef<any, NeuralButtonProps>(function Neura
     module: THEME_STYLES.module,
     red: THEME_STYLES.red,
     fuchsia: THEME_STYLES.fuchsia,
+    violet: THEME_STYLES.violet,
   };
 
   const sizes = {
-    sm: 'h-9 px-4.5 text-[11px]',
-    md: 'h-10 px-6 text-sm',
+    sm: 'h-9 min-h-[44px] sm:min-h-0 px-4.5 text-[11px]',
+    md: 'h-10 min-h-[44px] sm:min-h-0 px-6 text-sm',
     lg: 'h-12 px-8 text-base',
     xl: 'h-13 px-10 text-base'
   };
-  const iconOnlySize = 'h-11 w-11 p-0';
+  const orangeSizes = {
+    sm: 'h-8 min-h-[40px] sm:min-h-0 px-3.5 text-[10px]',
+    md: 'h-9 min-h-[42px] sm:min-h-0 px-5 text-[13px]',
+    lg: 'h-10 px-6 text-sm',
+    xl: 'h-11 px-7 text-sm'
+  };
+  const iconOnlySize = themeColor === 'orange' ? 'h-10 w-10 p-0' : 'h-11 w-11 p-0';
+  const resolvedSizes = themeColor === 'orange' ? orangeSizes : sizes;
 
   const Component = as === 'div' ? motion.div : as === 'span' ? motion.span : motion.button;
   const isDisabled = Boolean(disabled || loading);
   const motionScaleProps: HTMLMotionProps<'button'> | {} =
     !isDisabled ? { whileHover: { scale: 1.02 }, whileTap: { scale: 0.98 } } : {};
   const overflowClass = iconOnly || allowOverflow ? 'overflow-visible' : 'overflow-hidden';
-  const resolvedChildren = React.Children.map(children, (child) => {
+  const resolvedChildren = React.Children.map(children as React.ReactNode, (child) => {
     if (typeof child === 'function') {
       const Child = child as React.ComponentType<any>;
       return <Child />;
     }
     if (React.isValidElement(child)) {
+      // Only inject icon props on component elements (e.g. Lucide icons),
+      // skip native DOM elements (div, span, p) which don't accept SVG props.
+      if (typeof child.type === 'string') return child;
       const props = child.props as Record<string, unknown>;
       const nextProps: Record<string, unknown> = { ...props };
       const needsSize = nextProps.size == null && nextProps.width == null && nextProps.height == null;
@@ -141,7 +156,7 @@ const NeuralButtonImpl = React.forwardRef<any, NeuralButtonProps>(function Neura
         'relative isolate font-medium tracking-[0.04em] rounded-button border transition-all duration-300 flex items-center justify-center group disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none whitespace-nowrap',
         overflowClass,
         variants[variant],
-        iconOnly ? iconOnlySize : sizes[size],
+        iconOnly ? iconOnlySize : resolvedSizes[size],
         className
       )}
       {...(motionScaleProps as any)}

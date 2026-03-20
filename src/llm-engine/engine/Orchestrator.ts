@@ -368,9 +368,20 @@ export class Orchestrator {
 
     const url = 'https://openrouter.ai/api/v1/chat/completions';
     
+    // Support multi-modal messages for vision analysis
     const body = JSON.stringify({
       model,
-      messages,
+      messages: messages.map(m => ({
+        role: m.role,
+        content: Array.isArray(m.content) 
+          ? m.content.map(c => {
+              if (typeof c === 'object' && 'type' in c && c.type === 'image_url') {
+                return { type: 'image_url', image_url: c.image_url };
+              }
+              return c;
+            })
+          : m.content
+      })),
       temperature: options.temperature ?? 0.3,
       max_tokens: options.maxTokens ?? 2048,
       ...(options.format === 'text' ? {} : { response_format: { type: 'json_object' } })

@@ -11,6 +11,8 @@
 import React, { useEffect, useState } from 'react';
 import { X, Brain, Search, CheckCircle, AlertCircle, RefreshCw, Edit2, ArrowRight, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
+import { NeuralToggle } from '@/core/components/NeuralToggle';
 import type { UseDeepResearchReturn, SubQuestion, DeepResearchResult } from '../../hooks/useDeepResearch';
 import { ConfirmDialog } from '@/core/components/ConfirmDialog';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -110,6 +112,8 @@ export function DeepResearchPanel({
   deepResearch,
 }: DeepResearchPanelProps) {
   const [query, setQuery] = useState(initialQuery);
+  const [depth, setDepth] = useState<'quick' | 'deep'>('quick');
+  const [useExpertSources, setUseExpertSources] = useState(false);
   const [editedQuestions, setEditedQuestions] = useState<SubQuestion[]>([]);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
 
@@ -138,7 +142,9 @@ export function DeepResearchPanel({
   };
 
   const handleStart = () => {
-    if (query.trim()) deepResearch.start(query.trim());
+    if (query.trim()) {
+      deepResearch.start(query.trim(), { depth, useExpertSources });
+    }
   };
 
   const handleConfirm = () => {
@@ -167,10 +173,7 @@ export function DeepResearchPanel({
         aria-hidden="true"
       />
 
-      {/* Slide-over panel — full height, right-anchored.
-           Mobile: full width.  md+: fixed 600px.  lg+: 680px.
-           Slides in from the right so the user keeps spatial context of the
-           research workspace behind it.                                        */}
+      {/* Slide-over panel — full height, right-anchored. */}
       <motion.div
         initial={{ opacity: 0, x: '100%' }}
         animate={{ opacity: 1, x: 0 }}
@@ -226,6 +229,46 @@ export function DeepResearchPanel({
                     <Zap className="w-3.5 h-3.5" />
                     Research
                   </NeuralButton>
+                </div>
+              </div>
+
+              {/* Research Settings */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Depth</p>
+                  <div className="flex bg-black/40 rounded-lg p-1">
+                    <button
+                      onClick={() => setDepth('quick')}
+                      className={cn(
+                        "flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                        depth === 'quick' ? "bg-white/10 text-white" : "text-white/30 hover:text-white/50"
+                      )}
+                    >
+                      Quick Scan
+                    </button>
+                    <button
+                      onClick={() => setDepth('deep')}
+                      className={cn(
+                        "flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                        depth === 'deep' ? "bg-violet-500/20 text-violet-300" : "text-white/30 hover:text-white/50"
+                      )}
+                    >
+                      Deep Dive
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Expert Sources</p>
+                    <p className="text-[9px] text-white/20 uppercase">Academic & Clinical</p>
+                  </div>
+                  <NeuralToggle
+                    checked={useExpertSources}
+                    onChange={setUseExpertSources}
+                    size="sm"
+                    color="indigo"
+                  />
                 </div>
               </div>
 

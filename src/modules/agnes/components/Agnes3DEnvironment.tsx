@@ -52,10 +52,8 @@ interface Agnes3DEnvironmentProps {
 export function Agnes3DEnvironment({ activeSession, isProcessing }: Agnes3DEnvironmentProps) {
   const { globalSoul } = useGlobalSoul();
   const [webglError, setWebglError] = useState(false);
-  
-  const isFigmaCapture = typeof window !== 'undefined' && window.location.hash.includes('figmacapture=');
-  const shouldRender3D = !webglError && !isFigmaCapture;
 
+  const shouldRender3D = !webglError;
   if (!shouldRender3D) {
     return (
       <div className="absolute inset-0 z-0 bg-[#020205] overflow-hidden transition-opacity duration-1000">

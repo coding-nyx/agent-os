@@ -16,7 +16,6 @@ import { useAI } from '@/llm-engine/ai-context';
 import { WebCrawlerService as WebSearchService, type WebCrawlerResponse as WebSearchResponse } from '@/lib/services/web-crawler-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { ScoutKnowledgeNode } from '../services/scout-knowledge-service';
-import type { SourceEntryDecrypted } from '../services/scout-sources-service';
 import type { AddSourceInput } from '../services/scout-sources-service';
 
 // ---------------------------------------------------------------------------
@@ -62,6 +61,8 @@ export interface DeepResearchProgress {
 export interface DeepResearchState {
   status: DeepResearchStatus;
   query: string;
+  depth: 'quick' | 'deep';
+  useExpertSources: boolean;
   subQuestions: SubQuestion[];
   results: SubQuestionResult[];
   result: DeepResearchResult | null;
@@ -70,7 +71,7 @@ export interface DeepResearchState {
 }
 
 export type UseDeepResearchReturn = DeepResearchState & {
-  start: (query: string) => Promise<void>;
+  start: (query: string, options?: { depth?: 'quick' | 'deep'; useExpertSources?: boolean }) => Promise<void>;
   confirmSubQuestions: (edited: SubQuestion[]) => Promise<void>;
   abort: () => void;
   reset: () => void;
@@ -90,6 +91,8 @@ interface UseDeepResearchOptions {
 const INITIAL_STATE: DeepResearchState = {
   status: 'idle',
   query: '',
+  depth: 'quick',
+  useExpertSources: false,
   subQuestions: [],
   results: [],
   result: null,
@@ -127,14 +130,19 @@ export function useDeepResearch({
   // ── Start: generate sub-questions ────────────────────────────────────────
 
   const start = useCallback(
-    async (query: string) => {
+    async (query: string, options: { depth?: 'quick' | 'deep'; useExpertSources?: boolean } = {}) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
+      const depth = options.depth || 'quick';
+      const useExpertSources = options.useExpertSources || false;
+
       updateState({
         status: 'generating_questions',
         query,
+        depth,
+        useExpertSources,
         subQuestions: [],
         results: [],
         result: null,
@@ -147,12 +155,19 @@ export function useDeepResearch({
         source: 'scout',
         domain: 'C',
         priority: 'info',
-        data: { query },
+        data: { query, depth, useExpertSources },
       });
 
       try {
+        const prompt = [
+          `Research topic: "${query}"`,
+          `Research depth: ${depth}`,
+          useExpertSources ? `Priority: Peer-reviewed, academic, and clinical sources.` : null,
+          `Generate ${depth === 'deep' ? '5-8' : '3-5'} targeted sub-questions as a JSON array.`
+        ].filter(Boolean).join('\n\n');
+
         const response = await generateJSON<any>(
-          `Research topic: "${query}"\n\nGenerate 3-5 targeted sub-questions as a JSON array.`,
+          prompt,
           {
             systemPrompt: SUB_QUESTION_SYSTEM_PROMPT,
             temperature: 0.4,
@@ -227,7 +242,7 @@ export function useDeepResearch({
       try {
         // Use batch search for efficiency
         searchResults = await WebSearchService.searchBatch(queries, {
-          maxResults: 5,
+          maxResults: state.depth === 'deep' ? 8 : 5,
           signal: controller.signal,
         });
       } catch (err) {
@@ -360,7 +375,7 @@ Base confidence on source quality and consensus. Respond with JSON only.`;
         });
       }
     },
-    [state.query, updateState, onComplete],
+    [state.query, state.depth, updateState, generateJSON, onComplete],
   );
 
   // ── Abort ─────────────────────────────────────────────────────────────────

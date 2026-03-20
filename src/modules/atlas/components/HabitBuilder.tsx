@@ -244,7 +244,7 @@ export function HabitBuilder({
   return (
     <div className="space-y-6">
       {/* ── Header with stats ── */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
         <SurfaceCard className="p-3">
           <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">
             Total Habits
@@ -280,11 +280,11 @@ export function HabitBuilder({
           </div>
         </SurfaceCard>
         <SurfaceCard className="p-3">
-          <div className="text-[10px] text-sky-400/60 uppercase tracking-wider mb-1 flex items-center gap-1">
+          <div className="text-[10px] text-[var(--module-color-400)]/60 uppercase tracking-wider mb-1 flex items-center gap-1">
             <Zap className="w-3 h-3" />
             Energy Impact
           </div>
-          <div className="text-2xl font-black text-sky-400 tabular-nums">
+          <div className="text-2xl font-black text-[var(--module-color-400)] tabular-nums">
             {stats.totalEnergyImpact}
           </div>
         </SurfaceCard>
@@ -426,10 +426,11 @@ export function HabitBuilder({
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {HABIT_TEMPLATES.map((template) => (
-                      <button
+                      <NeuralButton
                         key={template.id}
                         onClick={() => handleSelectTemplate(template)}
-                        className="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-left transition-colors group"
+                        variant="ghost"
+                        className="p-3 !h-auto rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-left transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] !justify-start !items-start !flex-col"
                       >
                         <div className="text-sm font-semibold text-white/90 mb-1 group-hover:text-emerald-400 transition-colors">
                           {template.title}
@@ -437,7 +438,7 @@ export function HabitBuilder({
                         <div className="text-[10px] text-white/40">
                           {template.frequency} • {template.energyCost} energy
                         </div>
-                      </button>
+                      </NeuralButton>
                     ))}
                   </div>
                 </div>
@@ -542,12 +543,12 @@ export function HabitBuilder({
                 )}
 
                 {/* Energy Impact Info */}
-                <div className="p-4 rounded-xl bg-sky-500/10 border border-sky-500/20">
-                  <h4 className="text-xs font-bold text-sky-400 mb-2 flex items-center gap-1">
+                <div className="p-4 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]">
+                  <h4 className="text-xs font-bold text-[var(--module-color-400)] mb-2 flex items-center gap-1">
                     <Zap className="w-3 h-3" />
                     Energy Impact Analysis
                   </h4>
-                  <p className="text-xs text-sky-300/70 leading-relaxed">
+                  <p className="text-xs text-[var(--module-color-300)]/70 leading-relaxed">
                     {formData.energyCost && formData.energyCost <= 3 && (
                       <>
                         <strong>Low energy habit.</strong> Easy to maintain even on low-energy

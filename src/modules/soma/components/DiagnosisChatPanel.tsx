@@ -21,7 +21,7 @@ const CONFIDENCE_CONFIG: Record<
   SomaDiagnosisSummary['confidenceLevel'],
   { label: string; className: string }
 > = {
-  high:     { label: 'HIGH CONFIDENCE',     className: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' },
+  high:     { label: 'HIGH CONFIDENCE',     className: 'bg-[var(--module-accent-glow)] border-[var(--module-accent-border)] text-[var(--module-color-300)]' },
   moderate: { label: 'MODERATE CONFIDENCE', className: 'bg-amber-500/20 border-amber-500/30 text-amber-300' },
   low:      { label: 'LOW CONFIDENCE',      className: 'bg-red-500/20 border-red-500/30 text-red-300' },
 };
@@ -125,7 +125,7 @@ export function DiagnosisChatPanel({ summary, sessionId }: DiagnosisChatPanelPro
     <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl min-h-[60vh] max-h-[80dvh] md:min-h-0 md:max-h-none">
       <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-widest text-emerald-300 font-semibold">Clinical Analysis</p>
+          <p className="text-xs uppercase tracking-widest text-[var(--module-color-300)] font-semibold">Clinical Analysis</p>
           <p className="text-[11px] text-white/40 mt-1">Ask Soma about this report.</p>
         </div>
         <span className={cn('text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border', conf.className)}>
@@ -141,7 +141,7 @@ export function DiagnosisChatPanel({ summary, sessionId }: DiagnosisChatPanelPro
               'rounded-xl px-3 py-2 text-sm whitespace-pre-wrap',
               m.role === 'assistant'
                 ? 'bg-white/[0.04] text-white/80 border border-white/5'
-                : 'bg-emerald-500/10 text-emerald-100 border border-emerald-500/20'
+                : 'bg-[var(--module-accent-muted)] text-[var(--module-color-300)] border border-[var(--module-accent-border)]'
             )}
           >
             {m.content}
@@ -161,7 +161,7 @@ export function DiagnosisChatPanel({ summary, sessionId }: DiagnosisChatPanelPro
           <NeuralButton
             onClick={handleSend}
             disabled={isSending || input.trim().length === 0}
-            themeColor="emerald"
+            themeColor="module"
             className="w-10 h-10 min-h-0 px-0 rounded-lg"
             aria-label="Send"
           >

@@ -36,12 +36,12 @@ export function RecoveryCheckinPanel({
   return (
     <SurfaceCard className="p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-3">
-        <HeartPulse className="w-4 h-4 text-orange-400" />
+        <HeartPulse className="w-4 h-4 text-[var(--module-color-400)]" />
         <h3 className="text-[13px] uppercase tracking-wider text-white/80 font-black">
           Daily Recovery Check-in
         </h3>
         {isNudge && (
-          <span className="ml-2 text-[10px] uppercase tracking-wider text-amber-300/70">
+          <span className="ml-2 text-[10px] uppercase tracking-wider text-[var(--module-color-300)] opacity-70">
             Nudge
           </span>
         )}

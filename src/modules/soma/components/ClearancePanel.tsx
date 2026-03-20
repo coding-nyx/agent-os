@@ -44,14 +44,14 @@ function formatRelativeTime(dateStr: string): string {
 
 function recoveryColor(score: number | null | undefined): string {
   if (typeof score !== 'number') return 'text-white/40';
-  if (score >= 7) return 'text-emerald-400';
+  if (score >= 7) return 'text-[var(--module-color-400)]';
   if (score >= 4) return 'text-amber-400';
   return 'text-rose-400';
 }
 
 function recoveryBg(score: number | null | undefined): string {
   if (typeof score !== 'number') return 'border-white/10 bg-white/[0.03]';
-  if (score >= 7) return 'border-emerald-500/20 bg-emerald-500/5';
+  if (score >= 7) return 'border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]';
   if (score >= 4) return 'border-amber-500/20 bg-amber-500/5';
   return 'border-rose-500/20 bg-rose-500/5';
 }
@@ -59,7 +59,7 @@ function recoveryBg(score: number | null | undefined): string {
 const STATUS_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; badge: string; label: string }> = {
   granted: {
     icon: CheckCircle2,
-    badge: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300',
+    badge: 'bg-[var(--module-accent-glow)] border-[var(--module-accent-border)] text-[var(--module-color-300)]',
     label: 'Granted',
   },
   denied: {
@@ -189,7 +189,7 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
                 <div className={cn(
                   'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
                   latestClearance.status === 'granted'
-                    ? 'bg-emerald-500/10 border border-emerald-500/20'
+                    ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]'
                     : latestClearance.status === 'conditional'
                       ? 'bg-amber-500/10 border border-amber-500/20'
                       : 'bg-rose-500/10 border border-rose-500/20'
@@ -198,7 +198,7 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
                     className={cn(
                       'w-5 h-5',
                       latestClearance.status === 'granted'
-                        ? 'text-emerald-400'
+                        ? 'text-[var(--module-color-400)]'
                         : latestClearance.status === 'conditional'
                           ? 'text-amber-400'
                           : 'text-rose-400'
@@ -254,7 +254,7 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
                       className={cn(
                         'absolute -left-6 top-1 w-4 h-4 rounded-full border-2 flex items-center justify-center',
                         record.status === 'granted'
-                          ? 'border-emerald-500/40 bg-emerald-500/10'
+                          ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]'
                           : record.status === 'conditional'
                             ? 'border-amber-500/40 bg-amber-500/10'
                             : 'border-rose-500/40 bg-rose-500/10'
@@ -265,7 +265,7 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
                         className={cn(
                           'w-2.5 h-2.5',
                           record.status === 'granted'
-                            ? 'text-emerald-400'
+                            ? 'text-[var(--module-color-400)]'
                             : record.status === 'conditional'
                               ? 'text-amber-400'
                               : 'text-rose-400'

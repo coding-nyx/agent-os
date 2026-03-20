@@ -66,7 +66,7 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+        className="flex items-center gap-2 px-3 py-2.5 sm:py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 min-h-[44px] sm:min-h-0"
         aria-label="Switch module"
         aria-expanded={isOpen}
         aria-haspopup="true"
@@ -84,7 +84,7 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -4 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute top-full right-0 mt-2 z-[9999] w-64 bg-black/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 shadow-2xl"
+            className="absolute top-full right-0 mt-2 z-[var(--z-modal)] w-64 bg-black/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 shadow-2xl"
             role="menu"
             aria-label="Module navigation"
           >
@@ -95,7 +95,7 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
                   type="button"
                   onClick={() => handleNavigate('/nexus')}
                   role="menuitem"
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl w-full text-left transition-colors hover:bg-violet-500/10 mb-1"
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl w-full text-left transition-colors hover:bg-violet-500/10 mb-1 min-h-[44px]"
                 >
                   <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#8B5CF620', border: '1px solid #8B5CF640' }}>
                     <Sparkles className="w-3 h-3" style={{ color: '#8B5CF6' }} />
@@ -127,7 +127,7 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
                     onClick={() => handleNavigate(manifest.route)}
                     role="menuitem"
                     className={cn(
-                      'flex items-center gap-2.5 px-3 py-2 rounded-xl w-full text-left transition-colors hover:bg-white/10',
+                      'flex items-center gap-2.5 px-3 py-2.5 rounded-xl w-full text-left transition-colors hover:bg-white/10 min-h-[44px]',
                       active && 'bg-white/5 ring-1 ring-white/20'
                     )}
                   >
@@ -155,7 +155,7 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
               onClick={() => handleNavigate('/hub')}
               role="menuitem"
               className={cn(
-                'flex items-center gap-2.5 px-3 py-2 rounded-xl w-full text-left transition-colors hover:bg-white/10',
+                'flex items-center gap-2.5 px-3 py-2.5 rounded-xl w-full text-left transition-colors hover:bg-white/10 min-h-[44px]',
                 isActiveModule('/hub') && 'bg-white/5 ring-1 ring-white/20'
               )}
             >

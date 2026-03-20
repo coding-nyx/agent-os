@@ -115,7 +115,7 @@ export function HabitTracker({
           >
             <div className="flex items-center gap-3">
               {/* Completion checkbox */}
-              <button
+              <NeuralButton
                 onClick={() => !doneToday && onComplete(habit.id)}
                 disabled={doneToday}
                 aria-label={
@@ -123,8 +123,10 @@ export function HabitTracker({
                     ? `${habit.title} completed today`
                     : `Complete ${habit.title} for today`
                 }
+                variant="ghost"
+                size="sm"
                 className={cn(
-                  'flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all',
+                  'flex-shrink-0 w-6 h-6 min-w-0 !p-0 rounded-lg border-2 flex items-center justify-center transition-all min-h-[44px]',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
                   doneToday
                     ? 'bg-emerald-500 border-emerald-500 cursor-default'
@@ -137,7 +139,7 @@ export function HabitTracker({
                     aria-hidden="true"
                   />
                 )}
-              </button>
+              </NeuralButton>
 
               {/* Habit title & meta */}
               <div className="flex-1 min-w-0">
@@ -211,18 +213,20 @@ export function HabitTracker({
               </div>
 
               {/* Pause button — appears on hover */}
-              <button
+              <NeuralButton
                 onClick={() => onPause(habit.id)}
                 aria-label={`Pause ${habit.title}`}
+                variant="ghost"
+                size="sm"
                 className={cn(
                   'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0',
-                  'w-7 h-7 rounded-lg flex items-center justify-center',
+                  'w-7 h-7 min-w-0 !p-0 rounded-lg flex items-center justify-center min-h-[44px]',
                   'text-white/20 hover:text-white/40 hover:bg-white/5 transition-all',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50'
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]'
                 )}
               >
                 <Pause className="w-3 h-3" aria-hidden="true" />
-              </button>
+              </NeuralButton>
             </div>
 
             {/* At-risk warning text */}

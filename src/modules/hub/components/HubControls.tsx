@@ -148,7 +148,7 @@ export function HubBottomDashboard({
   lockedModules, wellnessGauge, stabilityGauge, resilienceGauge, openAuth, primaryLockedModule
 }: HubBottomDashboardProps) {
   return (
-    <div className="mt-auto pb-4 sm:pb-10 px-2 sm:px-6 md:px-12 pointer-events-auto relative z-20 w-full max-w-7xl mx-auto">
+    <div className="mt-auto pb-4 sm:pb-10 px-2 sm:px-6 md:px-12 pointer-events-auto relative z-[var(--z-content)] w-full max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 sm:gap-4 bg-black/60 backdrop-blur-3xl border border-white/10 p-2 sm:p-2 rounded-3xl md:rounded-[32px] shadow-2xl">
         {lockedModules.length > 0 ? (
           <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-4 px-4 sm:px-6 py-3 bg-amber-500/5 rounded-[24px] border border-amber-500/10">

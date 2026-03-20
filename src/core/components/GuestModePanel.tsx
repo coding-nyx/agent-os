@@ -58,7 +58,7 @@ export function GuestModePanel({
           {limitations.map((item) => (
             <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
               <Lock className="w-4 h-4 text-white/40 mt-0.5" />
-              <span className="text-[11px] text-white/60 uppercase tracking-[0.12em] font-semibold">{item}</span>
+              <span className="text-[11px] text-white/60 uppercase tracking-[0.12em] font-semibold break-words">{item}</span>
             </div>
           ))}
         </div>

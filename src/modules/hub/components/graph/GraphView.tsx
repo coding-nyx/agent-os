@@ -107,7 +107,7 @@ const NodeCard = React.memo(function NodeCard({
               initial={{ opacity: 0, y: 4, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 4, scale: 0.95 }}
-              className="absolute left-1/2 -translate-x-1/2 w-52 p-3 rounded-xl bg-[#05050a]/95 backdrop-blur-2xl border border-white/20 shadow-2xl z-50 pointer-events-none text-left"
+              className="absolute left-1/2 -translate-x-1/2 w-52 p-3 rounded-xl bg-[#05050a]/95 backdrop-blur-2xl border border-white/20 shadow-2xl z-[var(--z-header)] pointer-events-none text-left"
               style={{ top: node.y > 50 ? 'auto' : '100%', bottom: node.y > 50 ? '100%' : 'auto', marginTop: node.y > 50 ? undefined : '8px', marginBottom: node.y > 50 ? '8px' : undefined }}
             >
               <div className="flex items-center gap-2 mb-2">

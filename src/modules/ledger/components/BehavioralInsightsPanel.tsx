@@ -82,7 +82,7 @@ function SavingsRing({
           cx="36"
           cy="36"
           r={radius}
-          stroke="#06b6d4"
+          stroke="var(--module-accent)"
           strokeWidth="6"
           fill="none"
           strokeDasharray={`${dash} ${gap}`}
@@ -92,7 +92,7 @@ function SavingsRing({
       </svg>
       {/* Overlay text rendered separately (SVG text inside rotated SVG is awkward) */}
       <div className="-mt-[58px] mb-[30px] text-center pointer-events-none select-none">
-        <span className="text-[11px] font-bold text-cyan-300">{percent}%</span>
+        <span className="text-[11px] font-bold text-[var(--module-color-300)]">{percent}%</span>
       </div>
       <p className="text-[9px] font-black uppercase tracking-widest text-white/50 text-center truncate max-w-[80px]">
         {label}
@@ -100,7 +100,7 @@ function SavingsRing({
       <p className="text-[8px] text-white/30 text-center">
         {formatCurrency(targetAmount, currency)}
       </p>
-      <p className="text-[8px] text-cyan-400/70 text-center">
+      <p className="text-[8px] text-[var(--module-color-400)] text-center">
         {isFinite(monthsToGoal) ? `${monthsToGoal} mo` : '∞'}
       </p>
     </div>
@@ -223,7 +223,7 @@ export function BehavioralInsightsPanel({
     <div className={cn('space-y-6', className)}>
       {/* ── Section header ──────────────────────────────────────────────── */}
       <div className="flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-cyan-400" />
+        <Sparkles className="w-4 h-4 text-[var(--module-color-400)]" />
         <h3 className="text-[9px] font-black uppercase tracking-[0.25em] text-white/50">
           Behavioral Insights
         </h3>
@@ -249,7 +249,7 @@ export function BehavioralInsightsPanel({
           </div>
           <div className="space-y-1">
             <p className="text-[9px] text-white/40 uppercase tracking-widest">Est. Tax Saving</p>
-            <p className="text-lg font-black text-cyan-300 tabular-nums">
+            <p className="text-lg font-black text-[var(--module-color-300)] tabular-nums">
               {currency}{' '}
               {analysis.estimatedTaxSaving.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </p>
@@ -416,7 +416,7 @@ export function BehavioralInsightsPanel({
           <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">
             Savings Goals
           </span>
-          <TrendingUp className="w-3.5 h-3.5 text-cyan-400/60" />
+          <TrendingUp className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
         </div>
 
         {!hasGoals ? (
@@ -447,7 +447,7 @@ export function BehavioralInsightsPanel({
             {(
               [
                 ['Optimistic', analysis.savingsProjections[0].confidenceBand.optimistic, 'text-emerald-400'],
-                ['Base', analysis.savingsProjections[0].confidenceBand.base, 'text-cyan-400'],
+                ['Base', analysis.savingsProjections[0].confidenceBand.base, 'text-[var(--module-color-400)]'],
                 ['Pessimistic', analysis.savingsProjections[0].confidenceBand.pessimistic, 'text-amber-400'],
               ] as const
             ).map(([label, months, color]) => (

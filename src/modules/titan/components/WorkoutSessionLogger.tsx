@@ -421,19 +421,19 @@ function SessionModal({
       title={routine.name}
       subtitle={`${routine.weekday?.toUpperCase()} — Log Session`}
       icon={Flame}
-      themeColor="orange"
+      themeColor="module"
       maxWidth="2xl"
     >
       <div className="flex flex-col gap-5 max-h-[70vh]">
 
         {/* ── Progress summary ───────────────────────────────────────────── */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-orange-500/[0.06] border border-orange-500/20">
-          <span className="text-xs text-orange-300/80 font-bold">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]">
+          <span className="text-xs text-[var(--module-color-300)] font-bold">
             {completedSetsCount} / {totalSetsCount} sets done
           </span>
           <div className="w-32 h-1.5 rounded-full bg-white/10">
             <div
-              className="h-full rounded-full bg-orange-500/70 transition-all"
+              className="h-full rounded-full bg-[var(--module-accent)] transition-all"
               style={{ width: totalSetsCount > 0 ? `${(completedSetsCount / totalSetsCount) * 100}%` : '0%' }}
             />
           </div>
@@ -441,7 +441,7 @@ function SessionModal({
 
         {/* ── Pending sync warning ───────────────────────────────────────── */}
         {hasStagedSession && (
-          <p className="text-[10px] text-amber-400">⚠ Previous session pending sync</p>
+          <p className="text-[10px] text-[var(--module-color-400)]">⚠ Previous session pending sync</p>
         )}
 
         {/* ── Exercise list (scrollable) ─────────────────────────────────── */}
@@ -477,7 +477,7 @@ function SessionModal({
                       variant="ghost"
                       size="sm"
                       onClick={() => addSet(exIdx)}
-                      className="p-1 h-7 w-7 min-w-0 hover:text-orange-400"
+                      className="p-1 h-7 w-7 min-w-0 hover:text-[var(--module-color-400)]"
                     >
                       <Plus className="w-3 h-3" />
                     </NeuralButton>
@@ -505,7 +505,7 @@ function SessionModal({
                       className={cn(
                         'flex items-center gap-2 px-3 py-2 rounded-lg border transition-all',
                         s.completed
-                          ? 'bg-orange-500/10 border-orange-500/20'
+                          ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)]'
                           : 'bg-white/[0.02] border-white/10',
                       )}
                     >
@@ -518,7 +518,7 @@ function SessionModal({
                           placeholder="kg"
                           value={s.weight}
                           onChange={e => updateSet(exIdx, setIdx, 'weight', e.target.value)}
-                          className="h-9 min-h-0 px-2 text-center focus:border-orange-400"
+                          className="h-9 min-h-0 px-2 text-center focus:border-[var(--module-color-400)]"
                           min={0}
                         />
                       </div>
@@ -531,7 +531,7 @@ function SessionModal({
                           placeholder="reps"
                           value={s.repsCompleted}
                           onChange={e => updateSet(exIdx, setIdx, 'repsCompleted', e.target.value)}
-                          className="h-9 min-h-0 px-2 text-center focus:border-orange-400"
+                          className="h-9 min-h-0 px-2 text-center focus:border-[var(--module-color-400)]"
                           min={0}
                         />
                       </div>
@@ -548,7 +548,7 @@ function SessionModal({
                           onChange={e =>
                             updateSetRpe(exIdx, setIdx, parseFloat(e.target.value) || undefined)
                           }
-                          className="h-9 min-h-0 px-2 text-center focus:border-orange-500/30"
+                          className="h-9 min-h-0 px-2 text-center focus:border-[var(--module-accent)]"
                         />
                       </div>
 
@@ -560,7 +560,7 @@ function SessionModal({
                         className="ml-auto p-0 h-8 w-8"
                       >
                         {s.completed
-                          ? <CheckCircle2 className="w-5 h-5 text-orange-400" />
+                          ? <CheckCircle2 className="w-5 h-5 text-[var(--module-color-400)]" />
                           : <Circle className="w-5 h-5 text-white/20 hover:text-white/50 transition-colors" />
                         }
                       </NeuralButton>
@@ -580,7 +580,7 @@ function SessionModal({
             </span>
             <span className={cn(
               'text-xs font-bold tabular-nums',
-              rpe >= 9 ? 'text-rose-400' : rpe >= 7 ? 'text-orange-400' : 'text-green-400',
+              rpe >= 9 ? 'text-rose-400' : rpe >= 7 ? 'text-[var(--module-color-400)]' : 'text-green-400',
             )}>
               {rpe}/10
             </span>
@@ -591,7 +591,7 @@ function SessionModal({
             max={10}
             value={rpe}
             onChange={e => setRpe(Number(e.target.value))}
-            className="w-full accent-orange-500"
+            className="w-full accent-[var(--module-accent)]"
           />
           <div className="flex justify-between text-[9px] text-white/30">
             <span>Easy</span>
@@ -606,12 +606,12 @@ function SessionModal({
           onChange={e => setNotes(e.target.value)}
           placeholder="Session notes (PR, form issues, fatigue, etc.)..."
           rows={2}
-          className="text-xs focus:border-orange-500/40"
+          className="text-xs focus:border-[var(--module-accent)]"
         />
 
         {/* ── Stale session warning ──────────────────────────────────────── */}
         {isStale && (
-          <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
+          <p className="text-xs text-[var(--module-color-400)] bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] rounded-xl px-3 py-2">
             Session started {elapsedMinutes} min ago — is this data still accurate?
           </p>
         )}
@@ -623,11 +623,11 @@ function SessionModal({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex items-center justify-between p-3 rounded-xl bg-orange-500/10 border border-orange-500/20"
+              className="flex items-center justify-between p-3 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]"
             >
-              <span className="text-xs font-bold text-orange-300">Rest Timer</span>
+              <span className="text-xs font-bold text-[var(--module-color-300)]">Rest Timer</span>
               <div className="flex items-center gap-3">
-                <span className="text-lg font-black text-orange-400 tabular-nums">
+                <span className="text-lg font-black text-[var(--module-color-400)] tabular-nums">
                   {Math.floor(restTimer.seconds / 60)}:{String(restTimer.seconds % 60).padStart(2, '0')}
                 </span>
                 <NeuralButton
@@ -645,7 +645,7 @@ function SessionModal({
 
         {/* ── Logbook Mode indicator ────────────────────────────────────── */}
         {directWriteMode && (
-          <div className="flex items-center gap-1.5 text-[10px] text-orange-400/70">
+          <div className="flex items-center gap-1.5 text-[10px] text-[var(--module-color-400)]">
             <Zap className="w-3 h-3" />
             <span>Logbook Mode — saves instantly</span>
           </div>
@@ -711,10 +711,10 @@ export function WorkoutSessionLogger({ routines, recentSessions, onSubmitSession
               variant="secondary"
               onClick={() => handleStartSession(todayRoutine)}
               disabled={todayRoutine.exercises.length === 0}
-              className="w-full flex items-center justify-between px-4 py-3 h-auto min-h-[3.5rem] bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/15 transition-all text-left"
+              className="w-full flex items-center justify-between px-4 py-3 h-auto min-h-[3.5rem] bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] hover:bg-[var(--module-accent-glow)] transition-all text-left"
             >
               <div className="flex-1">
-                <div className="text-xs font-bold text-orange-300">Today — {todayRoutine.name}</div>
+                <div className="text-xs font-bold text-[var(--module-color-300)]">Today — {todayRoutine.name}</div>
                 <div className="text-[10px] text-white/40 mt-0.5">
                   {todayRoutine.exercises.length === 0 ? 'No exercises — configure in Titan AI' : `${todayRoutine.exercises.length} exercises`}
                 </div>
