@@ -70,7 +70,7 @@ describe('ScoutDashboard', () => {
       />
     );
 
-    expect(screen.getByText('Knowledge Node')).toBeInTheDocument();
+    expect(screen.getByText(/Scout.*Knowledge Node/i)).toBeInTheDocument();
     expect(screen.getByText('Research sessions')).toBeInTheDocument();
     expect(screen.getByText('2 sessions')).toBeInTheDocument();
     expect(screen.getByText('Trend briefings')).toBeInTheDocument();

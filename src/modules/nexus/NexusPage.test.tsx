@@ -183,8 +183,8 @@ describe('NexusPage', () => {
       isGuest: false,
       user: AUTHED_USER,
       // Provide a profile so initializeNewUser isn't triggered; leave
-      // onboardingComplete false so the page stays in ONBOARDING state.
-      profile: { onboardingComplete: false, preferredName: 'Alice' },
+      // onboardingComplete true so the nudge condition can be reached.
+      profile: { onboardingComplete: true, preferredName: 'Alice' },
       loading: false,
       refreshProfile: vi.fn(),
       initializeNewUser: vi.fn(),
@@ -198,6 +198,10 @@ describe('NexusPage', () => {
     );
 
     render(<NexusPage />);
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    expect(screen.getByTestId('nexus-dashboard')).toBeInTheDocument();
 
     // Nudge must NOT be present before the timer fires
     expect(screen.queryByTestId('vault-setup-nudge')).not.toBeInTheDocument();

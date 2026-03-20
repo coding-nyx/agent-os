@@ -82,13 +82,14 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   const internalText = internalParts.length > 0 ? internalParts.join('\n\n') : null;
 
   // Aggressively clean public text of all internal tags.
-  // Replace with empty string to avoid "ghost spaces" and redundant lines.
+  // Replace with a single space so surrounding user-visible tokens don't fuse
+  // together (e.g. "Hello<action>..</action>World" -> "Hello World").
   let publicText = normalized
-    .replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/g, '')
-    .replace(/<action[\s\S]*?<\/action>/g, '')
-    .replace(/<tool_calls_begin>[\s\S]*?<tool_calls_end>/g, '')
-    .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/g, '')
-    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
+    .replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/g, ' ')
+    .replace(/<action[\s\S]*?<\/action>/g, ' ')
+    .replace(/<tool_calls_begin>[\s\S]*?<tool_calls_end>/g, ' ')
+    .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/g, ' ')
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, ' ');
 
   // Remove any unclosed tags at the end (for streaming)
   if (!hasThoughtCloser) {

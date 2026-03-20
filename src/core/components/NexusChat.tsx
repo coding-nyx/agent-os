@@ -71,7 +71,7 @@ export function NexusChat({
 
     const canRenderReminderActions = !renderMessageActions && !!moduleId;
     const { activeProposal, confirm, dismiss } = useReminderProposals(
-      moduleId === 'orchestrator' ? 'any' : (moduleId ?? 'any'),
+      (moduleId === 'orchestrator' || moduleId === 'nexus') ? 'any' : (moduleId ?? 'any'),
     );
     const lastAssistantIndex = useMemo(() => {
       for (let i = messages.length - 1; i >= 0; i--) {

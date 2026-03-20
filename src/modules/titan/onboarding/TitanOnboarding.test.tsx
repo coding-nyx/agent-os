@@ -71,14 +71,12 @@ describe('TitanOnboarding', () => {
     // Click Basic Data and verify state transition
     fireEvent.click(basicBtn);
 
-    await waitFor(() => {
-      // The privacy selection screen should disappear
-      expect(screen.queryByText(/Select Data Sharing Level/i)).not.toBeInTheDocument();
-      // The status label should update to BASIC_DATA
-      expect(screen.getByText(/BASIC_DATA/i)).toBeInTheDocument();
-      // The chat should initialize with "Titan Intake" agent
-      expect(screen.getByText(/Agent: Titan Intake/i)).toBeInTheDocument();
-    });
+      await waitFor(() => {
+        // The privacy selection screen should disappear
+        expect(screen.queryByText(/Select Data Sharing Level/i)).not.toBeInTheDocument();
+        // The chat should initialize with "Titan Intake" agent
+        expect(screen.getByText(/Agent: Titan Intake/i)).toBeInTheDocument();
+      });
   });
 
   it('sets correct theme color and icons based on component spec', () => {

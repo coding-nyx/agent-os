@@ -235,6 +235,7 @@ export function NexusOverlay() {
                     isProcessing: ai.isProcessing || isNexusBusy,
                   }}
                   agentName="Nexus"
+                  moduleId="nexus"
                   themeColor="indigo"
                   placeholder="Consult the master node..."
                   showInternalSignals={false}

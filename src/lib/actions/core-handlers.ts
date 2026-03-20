@@ -41,12 +41,19 @@ function normalizePriority(value: unknown): NotificationPriority {
 }
 
 function normalizeDeepLink(moduleId: ModuleId, value: unknown, focusId?: string): NotificationDeepLink {
+  const safeFocusId = typeof focusId === 'string' && focusId.trim().length > 0 ? focusId : undefined;
   if (value && typeof value === 'object') {
     const dl = value as { route?: string; focusId?: string };
     const route = typeof dl.route === 'string' && dl.route.length > 0 ? dl.route : `/${moduleId}`;
-    return { route, focusId: typeof dl.focusId === 'string' ? dl.focusId : focusId };
+    const deepLink: NotificationDeepLink = { route };
+    if (typeof dl.focusId === 'string' && dl.focusId.trim().length > 0) {
+      deepLink.focusId = dl.focusId;
+    } else if (safeFocusId) {
+      deepLink.focusId = safeFocusId;
+    }
+    return deepLink;
   }
-  return { route: `/${moduleId}`, focusId };
+  return safeFocusId ? { route: `/${moduleId}`, focusId: safeFocusId } : { route: `/${moduleId}` };
 }
 
 function normalizeReminderPayload(moduleId: ModuleId, payload: Record<string, unknown>): ReminderProposal {
@@ -60,14 +67,21 @@ function normalizeReminderPayload(moduleId: ModuleId, payload: Record<string, un
   const focusId = safeString(payload.focusId);
   const deepLink = normalizeDeepLink(moduleId, payload.deepLink, focusId);
 
-  const source = payload.source && typeof payload.source === 'object'
-    ? (payload.source as ReminderProposal['source'])
-    : {
-      moduleId,
-      entityType: safeString(payload.entityType) ?? safeString(payload.sourceType),
-      entityId: safeString(payload.entityId),
-      label: safeString(payload.sourceLabel) ?? safeString(payload.label),
-    };
+  const sourceCandidate =
+    payload.source && typeof payload.source === 'object'
+      ? (payload.source as { moduleId?: unknown; entityType?: unknown; entityId?: unknown; label?: unknown })
+      : undefined;
+  const sourceEntityType = safeString(sourceCandidate?.entityType) ?? safeString(payload.entityType) ?? safeString(payload.sourceType);
+  const sourceEntityId = safeString(sourceCandidate?.entityId) ?? safeString(payload.entityId);
+  const sourceLabel = safeString(sourceCandidate?.label) ?? safeString(payload.sourceLabel) ?? safeString(payload.label);
+  const sourceModuleIdRaw = safeString(sourceCandidate?.moduleId);
+  const sourceModuleId = (sourceModuleIdRaw ?? moduleId) as ModuleId;
+  const source: ReminderProposal['source'] = {
+    moduleId: sourceModuleId,
+    ...(sourceEntityType ? { entityType: sourceEntityType } : {}),
+    ...(sourceEntityId ? { entityId: sourceEntityId } : {}),
+    ...(sourceLabel ? { label: sourceLabel } : {}),
+  };
 
   const tags = safeStringArray(payload.tags) ?? undefined;
 

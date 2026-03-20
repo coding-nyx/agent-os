@@ -93,7 +93,7 @@ describe('NexusOnboarding', () => {
       />
     );
 
-    expect(screen.getByText(/Nexus Interactive Intake/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nexus Onboarding/i)).toBeInTheDocument();
     expect(screen.getByText(/assistant: Welcome to Nexus guided onboarding/i)).toBeInTheDocument();
   });
 

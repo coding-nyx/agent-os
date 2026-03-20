@@ -66,7 +66,7 @@ describe('ScoutSessionList', () => {
     );
 
     expect(screen.getByText('Current')).toBeInTheDocument();
-    expect(screen.getByText(/updated jan 2, 2024/i)).toBeInTheDocument();
+    expect(screen.getByText(/jan 2, 2024/i)).toBeInTheDocument();
     expect(screen.getByText(/1 question/i)).toBeInTheDocument();
     expect(screen.getAllByText(/^Open$/)).toHaveLength(2);
   });

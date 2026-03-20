@@ -129,15 +129,16 @@ export function ScoutDashboard({
         <InlineStat label="Active"   value={activeSessionsCount} />
         {onRefreshNews && (
           <div className="ml-auto flex items-center px-4">
-            <NeuralButton
-              type="button"
-              onClick={onRefreshNews}
-              loading={isRefreshingNews}
-              variant="ghost"
-              themeColor="lime"
-              size="sm"
-              className="shrink-0"
-            >
+              <NeuralButton
+                type="button"
+                onClick={onRefreshNews}
+                loading={isRefreshingNews}
+                variant="ghost"
+                themeColor="lime"
+                size="sm"
+                aria-label={isRefreshingNews ? 'Refreshing briefs' : 'Refresh briefs'}
+                className="shrink-0"
+              >
               <RefreshCcw
                 className={cn('h-3.5 w-3.5', isRefreshingNews && 'animate-spin')}
                 aria-hidden="true"

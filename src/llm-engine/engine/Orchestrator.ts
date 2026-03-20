@@ -118,12 +118,14 @@ export class Orchestrator {
 
       const structured = this.finalizeResponse(fullResponse, interruptionControlSeen);
 
-      // If the model described a state change but omitted the action tag, attempt
-      // a silent non-streaming correction re-prompt to recover the action data.
+      // If the model described a state change but omitted the action tag (or emitted a
+      // bare <action> without type), attempt a silent correction re-prompt to recover.
+      const hasBareTypelessAction = structured.actions.length === 0 &&
+        /<action(?:\s*>|\s[^t][^y][^p][^e])/i.test(fullResponse);
       if (
         structured.actions.length === 0 &&
         !structured.isInterrupted &&
-        this.hasActionIntent(structured.publicText)
+        (this.hasActionIntent(structured.publicText) || hasBareTypelessAction)
       ) {
         const recovered = await this.attemptActionCorrection(currentMessages, fullResponse, signal);
         if (recovered.length > 0) {
@@ -198,10 +200,10 @@ export class Orchestrator {
       {
         role: 'user',
         content:
-          'SYSTEM CORRECTION: Your previous response described a state change ' +
-          'but you did not emit the required <action type="...">...</action> tag. ' +
-          'The data has NOT been saved. Output ONLY the required ' +
-          '<action type="...">...</action> tag with the complete payload now. ' +
+          'SYSTEM CORRECTION: Your previous response either described a state change without emitting ' +
+          'an action tag, or emitted <action> without the required type attribute. ' +
+          'The correct format is: <action type="action_name">{...json payload...}</action>. ' +
+          'Output ONLY the correctly formatted action tag(s) with type attribute and complete payload. ' +
           'Do not include any other text.',
       },
     ];
@@ -292,6 +294,27 @@ export class Orchestrator {
           console.warn(`[Orchestrator] Recovered JSON action tag without type attribute — type: "${actionType}"`);
         } catch {
           // Ignore malformed JSON blocks
+        }
+      }
+    }
+
+    // Payload-shape inference fallback: models that emit <action>{ fields... }</action> with no
+    // type attribute and no "type" key in JSON.  Infer known action types from discriminating fields.
+    if (actions.length === 0) {
+      const barePayloadRegex = /<action>\s*([\s\S]*?)\s*<\/action>/gi;
+      while ((match = barePayloadRegex.exec(normalized)) !== null) {
+        try {
+          const parsed = JSON.parse(nexusCleaner(match[1]));
+          let inferredType: string | undefined;
+          // propose_reminder: always has dueAt + title
+          if (typeof parsed?.dueAt === 'string' && typeof parsed?.title === 'string') {
+            inferredType = 'propose_reminder';
+          }
+          if (!inferredType) continue;
+          actions.push({ type: inferredType, payload: parsed, raw: match[0] });
+          console.warn(`[Orchestrator] Inferred action type "${inferredType}" from payload shape`);
+        } catch {
+          // Ignore malformed JSON
         }
       }
     }

@@ -71,6 +71,9 @@ export function ScoutSessionList({ sessions, onSelect, onDelete, activeSessionId
           <Search size={20} aria-hidden="true" />
         </div>
         <p className="text-item-title text-white/72">No research sessions yet</p>
+        <p className="max-w-sm text-body-secondary text-white/45">
+          Start a deep research session and your active investigations will appear here.
+        </p>
       </div>
     );
   }
@@ -100,41 +103,50 @@ export function ScoutSessionList({ sessions, onSelect, onDelete, activeSessionId
               <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDotClasses[session.status])} />
 
               {/* Clickable topic + meta */}
-              <button
-                type="button"
-                onClick={() => onSelect(session.id)}
-                className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
-                aria-label={`Open research session: ${session.topic}`}
-              >
-                <p className={cn('truncate text-[13px] font-semibold',
-                  isActive ? 'text-[var(--module-color-300)]' : 'text-white/85 group-hover:text-white')}>
-                  {session.topic}
-                </p>
+                <button
+                  type="button"
+                  onClick={() => onSelect(session.id)}
+                  className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
+                  aria-label={`Open research session ${session.topic}`}
+                >
+                  <p className={cn('truncate text-[13px] font-semibold',
+                    isActive ? 'text-[var(--module-color-300)]' : 'text-white/85 group-hover:text-white')}>
+                    {session.topic}
+                  </p>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span className={cn('rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider',
                     statusBadgeClasses[session.status])}>
                     {statusLabelMap[session.status]}
                   </span>
+                  {isActive && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--module-color-300)]">
+                      Current
+                    </span>
+                  )}
                   <span className="text-[10px] text-white/28">{formatUpdatedDate(session.updatedAt)}</span>
                   {subQuestionCount > 0 && (
-                    <span className="text-[10px] text-white/35">{subQuestionCount}q</span>
+                    <span className="text-[10px] text-white/35">{subQuestionCount} question{subQuestionCount === 1 ? '' : 's'}</span>
                   )}
                 </div>
               </button>
 
               {/* Open arrow */}
-              <ArrowRight size={14} className={cn('shrink-0 transition-colors',
-                isActive ? 'text-[var(--module-color-400)]' : 'text-white/20 group-hover:text-white/45')} />
+              <div className="shrink-0">
+                <ArrowRight size={14} className={cn('transition-colors',
+                  isActive ? 'text-[var(--module-color-400)]' : 'text-white/20 group-hover:text-white/45')} />
+                <span className="sr-only">Open</span>
+              </div>
 
               {/* Delete — hidden until hover */}
               <NeuralButton
                 type="button"
                 variant="ghost"
                 onClick={() => onDelete(session.id)}
-                aria-label={`Delete ${session.topic}`}
-                className="h-8 w-8 shrink-0 p-0 text-white/30 opacity-0 group-hover:opacity-100 hover:bg-rose-500/10 hover:text-rose-300"
+                aria-label={`Delete research session ${session.topic}`}
+                className="h-8 w-8 shrink-0 p-0 text-white/30 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 hover:bg-rose-500/10 hover:text-rose-300"
               >
                 <Trash2 size={13} />
+                <span className="sr-only">Delete</span>
               </NeuralButton>
             </motion.article>
           );
