@@ -25,7 +25,11 @@ export interface NotificationRequest {
 
 export class NotificationEngine {
   private static instance: NotificationEngine;
-  private db = getFirestore();
+  private db = (() => {
+    const db = getFirestore();
+    db.settings({ ignoreUndefinedProperties: true });
+    return db;
+  })();
   private messaging = getMessaging();
 
   private constructor() {}
@@ -197,18 +201,11 @@ export class NotificationEngine {
   }
 
   private deriveAction(req: NotificationRequest): NotificationAction {
-    // If we have a deepLink in data, convert it to a NAVIGATE action
     if (req.data?.deepLink) {
-      return {
-        type: "NAVIGATE",
-        payload: {
-          route: req.data.deepLink.route,
-          focusId: req.data.deepLink.focusId
-        }
-      };
+      const payload: Record<string, string> = { route: req.data.deepLink.route };
+      if (req.data.deepLink.focusId) payload.focusId = req.data.deepLink.focusId;
+      return { type: "NAVIGATE", payload };
     }
-
-    // Default action is just to dismiss/mark read if nothing else specified
     return { type: "MARK_READ" };
   }
 }
