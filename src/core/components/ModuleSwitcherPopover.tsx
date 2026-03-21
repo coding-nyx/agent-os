@@ -13,7 +13,6 @@ interface ModuleSwitcherPopoverProps {
 // separately as the HOME button above, so exclude it here.
 const POPOVER_MODULE_IDS: ModuleId[] = [
   ...HUB_MODULE_ORDER,
-  'soma',
 ];
 
 export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopoverProps) {

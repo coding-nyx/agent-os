@@ -13,6 +13,8 @@ import { Message } from '@/lib/types';
 import type { TitanProfile, BiomarkerRecord, Routine, Exercise } from '@/lib/types';
 import type { BeliefGraph, BeliefNode, BeliefEdge } from '@/modules/agnes/services/belief-graph-service';
 import { loadTitanProfile, saveTitanProfile } from '@/modules/titan/services/titan-profile-service';
+import { loadSomaProfile, saveSomaProfile } from '@/modules/soma/services/soma-profile-service';
+import type { SomaProfile } from '@/modules/soma/types';
 import { loadLedgerProfile, saveLedgerProfile, type LedgerIntakeProfile } from '@/modules/ledger/services/ledger-intake-service';
 import { saveBeliefGraph } from '@/modules/agnes/services/belief-graph-service';
 
@@ -55,25 +57,25 @@ export async function parseHealthReport(context: ActionContext): Promise<void> {
 
   try {
     // Load existing profile only when persistence is possible.
-    const loadedProfile = encryptionKey
-      ? await loadTitanProfile({ userId, encryptionKey })
+    const loadedSomaProfile = encryptionKey
+      ? await loadSomaProfile({ userId, encryptionKey })
       : null;
 
-    if (encryptionKey && !loadedProfile) {
-      pushAssistantMessage?.('⚠️ Unable to load Titan profile.');
+    if (encryptionKey && !loadedSomaProfile) {
+      pushAssistantMessage?.('⚠️ Unable to load Soma profile.');
       return;
     }
 
     // Always provide a baseline profile so extraction + validation can proceed even if
     // the vault is locked (tests run with `encryptionKey: null`).
-    const profile: TitanProfile = loadedProfile ?? ({
+    const sProfile: SomaProfile = loadedSomaProfile ?? ({
       biomarkers: [],
       knownConditions: [],
       medications: [],
       allergies: [],
       labSummaries: [],
       updatedAt: new Date().toISOString()
-    } as unknown as TitanProfile);
+    } as unknown as SomaProfile);
 
     // Prepare LLM extraction prompt
     const systemPrompt: Message = {
@@ -172,33 +174,31 @@ If a field is not found, use an empty array or omit it.`
       ? extractedData.labFindings.filter((f: unknown) => typeof f === 'string')
       : [];
 
-    // Update profile
-    const updatedProfile: TitanProfile = {
-      ...profile,
-      biomarkers: [...newBiomarkers, ...profile.biomarkers].slice(0, 200),
-      knownConditions: [...new Set([...newConditions, ...profile.knownConditions])].slice(0, 50),
-      medications: [...new Set([...newMedications, ...profile.medications])].slice(0, 100),
-      allergies: [...new Set([...newAllergies, ...profile.allergies])].slice(0, 50),
+    // Update Soma Profile
+    const updatedSomaProfile: SomaProfile = {
+      ...sProfile,
+      biomarkers: [...newBiomarkers, ...sProfile.biomarkers].slice(0, 200),
+      knownConditions: [...new Set([...newConditions, ...sProfile.knownConditions])].slice(0, 50),
+      medications: [...new Set([...newMedications, ...sProfile.medications])].slice(0, 100),
+      allergies: [...new Set([...newAllergies, ...sProfile.allergies])].slice(0, 50),
       updatedAt: new Date().toISOString()
     };
 
     // Add lab summary if findings exist
     if (labFindings.length > 0) {
-      updatedProfile.labSummaries = [
-        {
-          id: crypto.randomUUID(),
-          panel: 'Parsed Health Report',
-          findings: labFindings,
-          flags: [],
-          recordedAt: new Date().toISOString()
-        },
-        ...profile.labSummaries
-      ].slice(0, 50);
+      const summary = {
+        id: crypto.randomUUID(),
+        panel: 'Parsed Health Report',
+        findings: labFindings,
+        flags: [],
+        recordedAt: new Date().toISOString()
+      };
+      updatedSomaProfile.labSummaries = [summary, ...sProfile.labSummaries].slice(0, 50);
     }
 
     // Save profile
     if (encryptionKey) {
-      await saveTitanProfile(updatedProfile, { userId, encryptionKey });
+      await saveSomaProfile(updatedSomaProfile, { userId, encryptionKey });
     }
 
     // Report results
@@ -768,19 +768,19 @@ export async function parseBiometricData(context: ActionContext): Promise<void> 
   }
 
   try {
-    const loadedProfile = encryptionKey
-      ? await loadTitanProfile({ userId, encryptionKey })
+    const loadedSomaProfile = encryptionKey
+      ? await loadSomaProfile({ userId, encryptionKey })
       : null;
 
-    if (encryptionKey && !loadedProfile) {
-      pushAssistantMessage?.('⚠️ Unable to load Titan profile.');
+    if (encryptionKey && !loadedSomaProfile) {
+      pushAssistantMessage?.('⚠️ Unable to load Soma profile.');
       return;
     }
 
-    const profile: TitanProfile = loadedProfile ?? ({
+    const sProfile: SomaProfile = loadedSomaProfile ?? ({
       biomarkers: [],
       updatedAt: new Date().toISOString()
-    } as unknown as TitanProfile);
+    } as unknown as SomaProfile);
 
     const systemPrompt: Message = {
       role: 'system',
@@ -903,15 +903,15 @@ Confidence: 0.0-1.0`
       return;
     }
 
-    // Update profile
-    const updatedProfile: TitanProfile = {
-      ...profile,
-      biomarkers: [...newBiomarkers, ...profile.biomarkers].slice(0, 200),
+    // Update Soma profile
+    const updatedSomaProfile: SomaProfile = {
+      ...sProfile,
+      biomarkers: [...newBiomarkers, ...sProfile.biomarkers].slice(0, 200),
       updatedAt: now
     };
 
     if (encryptionKey) {
-      await saveTitanProfile(updatedProfile, { userId, encryptionKey });
+      await saveSomaProfile(updatedSomaProfile, { userId, encryptionKey });
     }
 
     const confidence = typeof extractedData.confidence === 'number'

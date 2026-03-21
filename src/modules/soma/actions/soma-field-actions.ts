@@ -17,7 +17,7 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import type { FieldDefinition } from '@/lib/field-system/types';
 import { loadSomaProfile, saveSomaProfile, addVitalReading } from '../services/soma-profile-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import type { BiomarkerRecord, ClearanceRecord, LabSummaryRecord } from '@/lib/types';
+import type { BiomarkerRecord, ClearanceRecord, LabSummaryRecord, SomaProfile } from '@/lib/types';
 
 // ============================================================================
 // Soma Spine Event Types
@@ -361,6 +361,11 @@ export const SOMA_TOAST_TEMPLATES = {
 // ============================================================================
 
 let somaActionsRegistered = false;
+
+/** Internal testing helper to reset registration state. */
+export function resetSomaActionsRegistered(): void {
+  somaActionsRegistered = false;
+}
 
 /**
  * Register Soma-specific field actions with ActionHub.
@@ -822,6 +827,72 @@ export function registerSomaFieldActions(): void {
         priority: 'alert',
       });
       pushAssistantMessage?.(`⚠️ Diagnosis merge rejected for session "${sessionId}": ${payload?.reason ?? 'no reason given'}.`);
+    },
+
+    // ── Get Biomarker History ──────────────────────────────────────────
+    get_biomarker_history: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to retrieve history: vault is locked.');
+        return;
+      }
+      const name = typeof payload?.name === 'string' ? payload.name.trim().toLowerCase() : '';
+      if (!name) {
+        pushAssistantMessage?.('Please specify a biomarker name.');
+        return;
+      }
+
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) return;
+
+      const history = profile.biomarkers
+        .filter(b => b.name.toLowerCase().includes(name))
+        .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
+        .slice(0, 20);
+
+      if (history.length === 0) {
+        pushAssistantMessage?.(`No historical records found for "${name}".`);
+        return;
+      }
+
+      const formatted = history.map(b => 
+        `- ${new Date(b.recordedAt).toLocaleDateString()}: ${b.value}${b.unit ? ` ${b.unit}` : ''} (${b.source})`
+      ).join('\n');
+
+      pushAssistantMessage?.(`Historical readings for "${history[0].name}":\n${formatted}`);
+    },
+
+    // ── Get Lab History ────────────────────────────────────────────────
+    get_lab_history: async ({ userId, encryptionKey, pushAssistantMessage }) => {
+      if (!userId || !encryptionKey) return;
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile || profile.labSummaries.length === 0) {
+        pushAssistantMessage?.('No historical lab reports found.');
+        return;
+      }
+
+      const formatted = profile.labSummaries
+        .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
+        .slice(0, 10)
+        .map(l => `- ${new Date(l.recordedAt).toLocaleDateString()}: ${l.panel} (${l.findings.length} findings, ${l.flags.length} flags)`)
+        .join('\n');
+
+      pushAssistantMessage?.(`Recent lab panels:\n${formatted}`);
+    },
+
+    // ── Get Medical Summary ─────────────────────────────────────────────
+    get_medical_summary: async ({ userId, encryptionKey, pushAssistantMessage }) => {
+      if (!userId || !encryptionKey) return;
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) return;
+
+      const summary = [
+        `[CONDITIONS] ${profile.knownConditions.join(', ') || 'None'}`,
+        `[MEDICATIONS] ${profile.medications.join(', ') || 'None'}`,
+        `[ALLERGIES] ${profile.allergies.join(', ') || 'None'}`,
+        `[SUMMARY] ${profile.medicalSummary || 'No clinical summary drafted.'}`
+      ].join('\n');
+
+      pushAssistantMessage?.(`Current Medical Profile:\n${summary}`);
     },
   });
 }

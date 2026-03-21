@@ -25,11 +25,14 @@ import { SomaProfile } from './types';
 import { buildSomaAgentSystemPrompt, SOMA_MEDICAL_DISCLAIMER } from './prompts/soma-prompt-builder';
 import { SomaOnboarding } from './onboarding/SomaOnboarding';
 
+import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
+import { somaDiagnosisSpec } from './diagnosis/soma-diagnosis-spec';
 import { registerSomaFieldActions } from './actions/soma-field-actions';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { SomaNotificationSettingsPanel } from './components/SomaNotificationSettingsPanel';
 
 registerSomaFieldActions();
+registerDiagnosisSpec(somaDiagnosisSpec);
 
 interface SomaContentProps {
   profile: SomaProfile | null;
@@ -252,7 +255,6 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
           onUpdateProfile={handleUpdateProfile}
           onAddVitalReading={handleAddVitalReading}
           onAddAssessment={handleAddAssessment}
-          onAnalyzeDocument={handleAnalyzeDocument}
           queuedUpload={queuedUpload}
           onQueuedUploadHandled={() => setQueuedUpload(null)}
         />
@@ -269,6 +271,12 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
 export default function SomaPage() {
   const { globalSoul } = useGlobalSoul();
   const agentAlias = globalSoul?.displayNames?.soma || 'Soma';
+
+  // Register diagnosis specialization
+  // moved to module scope to avoid race condition with useDiagnosis hook
+  // useEffect(() => {
+  //   registerDiagnosisSpec(somaDiagnosisSpec);
+  // }, []);
 
   return (
     <UnifiedModulePage<SomaProfile>

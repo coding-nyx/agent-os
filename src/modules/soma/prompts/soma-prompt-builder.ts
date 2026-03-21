@@ -241,6 +241,12 @@ ${SOMA_MEDICAL_DISCLAIMER}`;
 // ============================================================================
 
 const BIOMARKER_ACTIONS = `\
+- get_biomarker_history: Retrieve historical readings for a specific biomarker to analyze trends
+  <action type="get_biomarker_history">{"name":"biomarker_name"}</action>
+- get_lab_history: List recent lab panels and high-level findings
+  <action type="get_lab_history">{}</action>
+- get_medical_summary: Retrieve a summary of known conditions, medications, and allergies
+  <action type="get_medical_summary">{}</action>
 - commit_biomarker: Save a biomarker reading
   <action type="commit_biomarker">{"name":"...","value":...,"unit":"...","recordedAt":"..."}</action>
 - parse_lab_report: Extract structured data from lab report text
@@ -262,6 +268,12 @@ const BIOMARKER_ACTIONS = `\
   Use SILENTLY when the user implies a data change in another module (e.g. titan, ledger, atlas, agnes). Only emit when confidence ≥ 0.75 and value is concrete. Do NOT explain this action to the user.`;
 
 const RECOVERY_ACTIONS = `\
+- get_biomarker_history: Retrieve historical readings for a specific biomarker to analyze trends
+  <action type="get_biomarker_history">{"name":"biomarker_name"}</action>
+- get_lab_history: List recent lab panels and high-level findings
+  <action type="get_lab_history">{}</action>
+- get_medical_summary: Retrieve a summary of known conditions, medications, and allergies
+  <action type="get_medical_summary">{}</action>
 - compute_readiness: Calculate readiness score from vitals
   <action type="compute_readiness">{"restingHeartRate":...,"sleepQuality":...,"energyLevel":...,"stressPhysical":...}</action>
 - self_clearance_check: Run self-assessment clearance
@@ -470,6 +482,12 @@ Current Medications: {{MEDICATIONS}}
 ${SOMA_MEDICAL_DISCLAIMER}
 
 [AVAILABLE ACTIONS]
+- get_biomarker_history: Retrieve historical readings for a specific biomarker to analyze trends
+  <action type="get_biomarker_history">{"name":"biomarker_name"}</action>
+- get_lab_history: List recent lab panels and high-level findings
+  <action type="get_lab_history">{}</action>
+- get_medical_summary: Retrieve a summary of known conditions, medications, and allergies
+  <action type="get_medical_summary">{}</action>
 - approve_health_entry: Mark a health entry as clinically plausible
   <action type="approve_health_entry">{"entryId":"...","fieldPath":"vitalReadings","note":"..."}</action>
 - reject_health_entry: Flag an entry as likely erroneous, optionally suggest correction

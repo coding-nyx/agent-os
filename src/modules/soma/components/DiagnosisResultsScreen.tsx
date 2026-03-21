@@ -11,20 +11,44 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckSquare, Square, FlaskConical, X, AlertCircle } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
-import type { ExtractedField } from '@/lib/services/document-analysis-service';
+import type { ExtractedDataItem } from '@/core/diagnosis/types';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface DiagnosisResultsScreenProps {
   sessionId: string;
   detectedPanels: string[];
-  extractedFields: ExtractedField[];
+  items: ExtractedDataItem[];
   onSelectionChange: (selectedIds: string[]) => void;
   onClose: () => void;
   isProcessing?: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Map ExtractedDataItem to a common display format. */
+interface DisplayField {
+  id: string;
+  name: string;
+  value: string | number;
+  unit?: string;
+  referenceRange?: string;
+  confidence: number;
+  category?: string;
+}
+
+function mapItemToDisplay(item: ExtractedDataItem): DisplayField {
+  const data = item.data;
+  return {
+    id: item.id,
+    name: String(data.name || data.fieldName || item.label),
+    value: String(data.value ?? ''),
+    unit: typeof data.unit === 'string' ? data.unit : undefined,
+    referenceRange: typeof data.referenceRange === 'string' ? data.referenceRange : undefined,
+    confidence: typeof data.confidence === 'number' ? data.confidence : 1.0,
+    category: typeof data.category === 'string' ? data.category : item.type
+  };
+}
 
 /** Convert camelCase to human-readable label: "totalCholesterol" → "Total Cholesterol" */
 function humanise(fieldName: string): string {
@@ -35,11 +59,6 @@ function humanise(fieldName: string): string {
     .split(' ')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
-}
-
-/** Unique stable ID for an extracted field based on its position in the array. */
-function fieldId(field: ExtractedField, index: number): string {
-  return `${field.fieldName}-${index}`;
 }
 
 type ConfidenceLevel = 'high' | 'medium' | 'low';
@@ -97,12 +116,10 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
 
 function FieldRow({
   field,
-  id,
   selected,
   onToggle,
 }: {
-  field: ExtractedField;
-  id: string;
+  field: DisplayField;
   selected: boolean;
   onToggle: (id: string) => void;
 }) {
@@ -119,9 +136,9 @@ function FieldRow({
       {/* Checkbox */}
       <button
         type="button"
-        onClick={() => onToggle(id)}
+        onClick={() => onToggle(field.id)}
         className="flex-shrink-0 w-11 h-11 flex items-center justify-center -m-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
-        aria-label={selected ? `Deselect ${humanise(field.fieldName)}` : `Select ${humanise(field.fieldName)}`}
+        aria-label={selected ? `Deselect ${humanise(field.name)}` : `Select ${humanise(field.name)}`}
       >
         {selected
           ? <CheckSquare className="w-5 h-5 text-[var(--module-color-400)]" />
@@ -132,7 +149,7 @@ function FieldRow({
       <div className="flex-1 min-w-0 space-y-0.5">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-white/90 truncate">
-            {humanise(field.fieldName)}
+            {humanise(field.name)}
           </p>
           <ConfidenceBadge confidence={field.confidence} />
         </div>
@@ -159,18 +176,18 @@ function FieldRow({
 export function DiagnosisResultsScreen({
   sessionId: _sessionId,
   detectedPanels,
-  extractedFields,
+  items,
   onSelectionChange,
   onClose,
   isProcessing = false,
 }: DiagnosisResultsScreenProps) {
   // Build stable IDs once so they don't change between renders.
-  const fieldsWithIds = useMemo(
-    () => extractedFields.map((f, i) => ({ field: f, id: fieldId(f, i) })),
-    [extractedFields],
+  const fields = useMemo(
+    () => items.map(mapItemToDisplay),
+    [items],
   );
 
-  const allIds = useMemo(() => fieldsWithIds.map((f) => f.id), [fieldsWithIds]);
+  const allIds = useMemo(() => fields.map((f) => f.id), [fields]);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(allIds));
 
@@ -200,17 +217,17 @@ export function DiagnosisResultsScreen({
 
   // Group fields by category, preserving category insertion order.
   const grouped = useMemo(() => {
-    const map = new Map<string, Array<{ field: ExtractedField; id: string }>>();
-    for (const { field, id } of fieldsWithIds) {
+    const map = new Map<string, DisplayField[]>();
+    for (const field of fields) {
       const key = field.category ?? 'other';
       if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push({ field, id });
+      map.get(key)!.push(field);
     }
     return Array.from(map.entries());
-  }, [fieldsWithIds]);
+  }, [fields]);
 
   const selectedCount = selectedIds.size;
-  const totalCount    = fieldsWithIds.length;
+  const totalCount    = fields.length;
   const isEmpty       = totalCount === 0;
 
   return (
@@ -291,7 +308,7 @@ export function DiagnosisResultsScreen({
           </div>
         ) : (
           <AnimatePresence>
-            {grouped.map(([category, items]) => (
+            {grouped.map(([category, itemsInGroup]) => (
               <section key={category}>
                 {/* Group header */}
                 <div className="flex items-center gap-2 px-3 py-2 sticky top-0 bg-black/40 backdrop-blur-sm z-10 rounded-lg mb-1">
@@ -299,18 +316,17 @@ export function DiagnosisResultsScreen({
                     {categoryLabel(category)}
                   </h3>
                   <span className="text-[10px] text-white/25 font-medium">
-                    {items.length}
+                    {itemsInGroup.length}
                   </span>
                 </div>
 
                 {/* Field rows */}
                 <div className="space-y-0.5">
-                  {items.map(({ field, id }) => (
+                  {itemsInGroup.map((field) => (
                     <FieldRow
-                      key={id}
+                      key={field.id}
                       field={field}
-                      id={id}
-                      selected={selectedIds.has(id)}
+                      selected={selectedIds.has(field.id)}
                       onToggle={handleToggle}
                     />
                   ))}

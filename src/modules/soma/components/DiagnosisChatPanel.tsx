@@ -1,20 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAI } from '@/llm-engine/ai-context';
 import type { SomaDiagnosisSummary } from '../types';
-import { SOMA_MEDICAL_DISCLAIMER } from '../prompts/soma-prompt-builder';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
-
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
 
 interface DiagnosisChatPanelProps {
   summary: SomaDiagnosisSummary;
   sessionId: string;
+  /** AI extraction engine from useDiagnosis hook. */
+  ai: {
+    handleSendMessage: (content: string) => Promise<void>;
+    messages: { role: string; content: any }[];
+    isProcessing: boolean;
+  };
 }
 
 const CONFIDENCE_CONFIG: Record<
@@ -69,57 +68,35 @@ function formatSummary(summary: SomaDiagnosisSummary): string {
   return lines.join('\n');
 }
 
-function buildSystemPrompt(summary: SomaDiagnosisSummary): string {
-  return `You are Soma — a clinical analysis engine. You interpret medical documents with the directness of a senior clinician.
-
-BEHAVIOR:
-- State findings plainly and confidently. Do not hedge with "may" or "could possibly" when the data is clear.
-- When asked follow-up questions, give direct clinical answers. Acknowledge uncertainty only when data genuinely does not support a clear answer.
-- Confidence level for this report: ${(summary.confidenceLevel ?? 'moderate').toUpperCase()}. ${summary.confidenceRationale ?? ''}
-- Do NOT emit action tags.
-
-${SOMA_MEDICAL_DISCLAIMER}
-
-DIAGNOSIS CONTEXT:
-${formatSummary(summary)}`;
-}
-
-export function DiagnosisChatPanel({ summary, sessionId }: DiagnosisChatPanelProps) {
-  const { sendMessage } = useAI();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function DiagnosisChatPanel({ summary, sessionId: _sessionId, ai }: DiagnosisChatPanelProps) {
   const [input, setInput] = useState('');
-  const [isSending, setIsSending] = useState(false);
 
-  const systemPrompt = useMemo(() => buildSystemPrompt(summary), [summary]);
   const seededMessage = useMemo(() => formatSummary(summary), [summary]);
-
-  useEffect(() => {
-    setMessages([{ role: 'assistant', content: seededMessage }]);
-  }, [sessionId, seededMessage]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
-    if (!text || isSending) return;
+    if (!text || ai.isProcessing) return;
     setInput('');
-    setIsSending(true);
-    const nextMessages = [...messages, { role: 'user' as const, content: text }];
-    setMessages(nextMessages);
-
-    try {
-      const { response } = await sendMessage(text, {
-        systemPrompt,
-        memoryContext: [],
-        summary: 'Soma diagnosis chat.',
-        history: nextMessages.map((m) => ({ role: m.role, content: m.content })),
-      });
-      const reply = response.publicText?.trim() || 'I did not receive a response. Please try again.';
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-    } finally {
-      setIsSending(false);
-    }
-  }, [input, isSending, messages, sendMessage, systemPrompt]);
+    await ai.handleSendMessage(text);
+  }, [input, ai]);
 
   const conf = CONFIDENCE_CONFIG[summary.confidenceLevel ?? 'moderate'];
+
+  // Filter out system messages and the analysis prompt from display history.
+  // The first message is often the document analysis prompt.
+  const displayMessages = useMemo(() => {
+    const history = ai.messages
+      .filter(m => m.role !== 'system')
+      .slice(1); // Skip the initial "Extract data from this document..." prompt
+
+    return [
+      { role: 'assistant', content: seededMessage },
+      ...history.map(m => ({
+        role: m.role,
+        content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+      }))
+    ];
+  }, [seededMessage, ai.messages]);
 
   return (
     <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl min-h-[60vh] max-h-[80dvh] md:min-h-0 md:max-h-none">
@@ -134,7 +111,7 @@ export function DiagnosisChatPanel({ summary, sessionId }: DiagnosisChatPanelPro
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3 space-y-3">
-        {messages.map((m, i) => (
+        {displayMessages.map((m, i) => (
           <div
             key={`${m.role}-${i}`}
             className={cn(
@@ -160,7 +137,7 @@ export function DiagnosisChatPanel({ summary, sessionId }: DiagnosisChatPanelPro
           />
           <NeuralButton
             onClick={handleSend}
-            disabled={isSending || input.trim().length === 0}
+            disabled={ai.isProcessing || input.trim().length === 0}
             themeColor="module"
             className="w-10 h-10 min-h-0 px-0 rounded-lg"
             aria-label="Send"

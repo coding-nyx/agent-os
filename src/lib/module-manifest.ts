@@ -126,7 +126,7 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
     themeColor: 'emerald',
     chatTheme: 'emerald',
     icon: HeartPulse,
-    isCore: false,
+    isCore: true,
     hasPage: true,
     securityPolicy: { defaultLocked: true, mandatory: false },
     onboarding: { mode: 'optional', fastTrack: { enabled: false, confidenceThreshold: 0.75 } }
@@ -209,6 +209,7 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
 export const HUB_MODULE_ORDER: ModuleId[] = [
   'agnes',
   'titan',
+  'soma',
   'ledger',
   'atlas',
   'scout',

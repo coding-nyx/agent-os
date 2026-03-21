@@ -69,6 +69,10 @@ export interface UseDiagnosisReturn {
   mergeSelected: (itemIds: string[]) => Promise<void>;
   discardAll: () => Promise<void>;
 
+  // Expose for DiagnosisMergeDialog
+  _showMergeReview: boolean;
+  _setShowMergeReview: (show: boolean) => void;
+
   // Specialization config
   spec: DiagnosisSpecialization;
 }

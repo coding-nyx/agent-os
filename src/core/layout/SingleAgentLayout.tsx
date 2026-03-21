@@ -126,18 +126,22 @@ export function SingleAgentLayout({
   }, [ai.setRoutingSuggestion]);
 
   useEffect(() => {
+    // Keep track of previous width to detect crossing the breakpoint
+    let prevWidth = window.innerWidth;
+
     const handleResize = () => {
       const width = window.innerWidth;
       const mobile = width < mobileBreakpoint;
-      setViewportWidth((prevWidth) => {
-        // Only auto-collapse if we just transitioned from desktop to mobile mode.
-        // This prevents the chat from closing on mobile when the virtual keyboard 
-        // triggers a window resize event.
-        if (mobile && prevWidth >= mobileBreakpoint) {
-          toggleChat(true);
-        }
-        return width;
-      });
+      
+      // Only auto-collapse if we just transitioned from desktop to mobile mode.
+      // This prevents the chat from closing on mobile when the virtual keyboard 
+      // triggers a window resize event.
+      if (mobile && prevWidth >= mobileBreakpoint) {
+        toggleChat(true);
+      }
+      
+      prevWidth = width;
+      setViewportWidth(width);
     };
 
     window.addEventListener('resize', handleResize);

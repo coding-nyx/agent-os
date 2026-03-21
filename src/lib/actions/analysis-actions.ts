@@ -70,18 +70,28 @@ async function loadModuleProfile(
   encryptionKey: CryptoKey | null
 ): Promise<Record<string, unknown> | null> {
   try {
+    const isSoma = moduleId === 'soma';
+    const collection = isSoma ? 'soma_profiles' : 'intake_profiles';
+    const docId = isSoma ? userId : `${userId}_${moduleId}`;
+
     const record = await getNexusDataLayer().getDocument<Record<string, unknown>>(
-      'intake_profiles',
-      `${userId}_${moduleId}`
+      collection,
+      docId
     );
     if (!record) return null;
 
-    const data = record as Record<string, unknown>;
+    const data = record as Record<string, any>;
 
-    // Check if data is encrypted
-    if (data?.encrypted && encryptionKey) {
+    // Handle Soma's specific E2EE envelope
+    const ciphertext = data?.encryptedData || data?.encrypted;
+    const iv = data?.iv;
+
+    if (ciphertext && encryptionKey) {
       try {
-        const decrypted = await decryptWithKey(data.encrypted as Parameters<typeof decryptWithKey>[0], encryptionKey);
+        const decrypted = await decryptWithKey(
+          { ciphertext: ciphertext as string, iv: (iv as string) || '' },
+          encryptionKey
+        );
         return JSON.parse(decrypted) as Record<string, unknown>;
       } catch (error) {
         console.error(`[Analysis] Failed to decrypt ${moduleId} profile:`, error);
@@ -858,7 +868,7 @@ export function registerAnalysisActions() {
   ActionHub.registerMultiple('nexus', analysisHandlers);
 
   // Register with specific modules that benefit from analysis
-  const modules = ['hub', 'ledger', 'atlas'];
+  const modules = ['hub', 'ledger', 'atlas', 'soma'];
   modules.forEach((moduleId) => {
     ActionHub.registerMultiple(moduleId, analysisHandlers);
   });

@@ -251,14 +251,15 @@ class BridgeServiceClass {
       });
 
     } catch (err) {
-      const code = (err as any)?.code ?? '';
-      const message = (err as any)?.message ?? '';
-      console.error(`[Bridge] FCM init failed — code: ${code}, message: ${message}`, err);
       if (isPushServiceError(err)) {
         if (!fcmUnavailableLogged) {
           console.warn('[Bridge] Push notifications unavailable in this environment (browser-level push API blocked).');
           fcmUnavailableLogged = true;
         }
+      } else {
+        const code = (err as any)?.code ?? '';
+        const message = (err as any)?.message ?? '';
+        console.error(`[Bridge] FCM init failed — code: ${code}, message: ${message}`, err);
       }
     }
   }

@@ -52,6 +52,18 @@ export function useModuleStats(
           : `${formatNumber(cnsFatigue, 1)}/10`,
         tone: isLocked('titan') ? 'neutral' : toneFromValue(cnsFatigue, true)
       },
+      soma: {
+        label: 'Readiness',
+        display: isLocked('soma')
+          ? '—'
+          : globalSoul?.crossFunctionalState?.biological?.recoveryScore !== undefined && globalSoul?.crossFunctionalState?.biological?.recoveryScore !== null
+          ? `${Math.round(globalSoul.crossFunctionalState.biological.recoveryScore)}%`
+          : '—',
+        tone: isLocked('soma') 
+          ? 'neutral' 
+          : (globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? 0) >= 80 ? 'good' 
+          : (globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? 0) >= 60 ? 'warn' : 'bad'
+      },
       ledger: {
         label: 'Resonance ROI',
         display: isLocked('ledger')
@@ -99,14 +111,15 @@ export function useHubLayout(modules: ModuleItem[]) {
     return modules.map((module) => {
       let position: [number, number, number] = [0, 0, 0];
       switch (module.id) {
-        // Core triangle — Agnes at apex
-        case 'agnes':   position = [0, 3.5, 1];      break;
-        case 'titan':   position = [4, -2.5, 0.5];   break;
-        case 'ledger':  position = [-4, -2.5, 0.5];  break;
+        // Core pentagon — Agnes at apex (top)
+        case 'agnes':   position = [0, 4, 1];        break;
+        case 'titan':   position = [4.5, 1, 0.5];    break;
+        case 'soma':    position = [3, -3.5, 0.5];   break;
+        case 'ledger':  position = [-3, -3.5, 0.5];  break;
+        case 'atlas':   position = [-4.5, 1, 0.5];   break;
         // Plugins orbit
         case 'forge':   position = [8, 0, -2];        break;
         case 'scout':   position = [-8, 0, -2];       break;
-        case 'atlas':   position = [0, -5.5, -1];     break;
         default:        position = [0, 0, 0];
       }
       return { ...module, position };
@@ -115,27 +128,29 @@ export function useHubLayout(modules: ModuleItem[]) {
 
   const spinePoints = useMemo(
     () => [
-      new THREE.Vector3(0, 3.5, 1),       // Agnes (top)
-      new THREE.Vector3(4, -2.5, 0.5),    // Titan (bottom right)
-      new THREE.Vector3(0, -5.5, -1),     // Atlas (bottom center)
-      new THREE.Vector3(-4, -2.5, 0.5),   // Ledger (bottom left)
-      new THREE.Vector3(0, 3.5, 1),       // Close loop back to Agnes
+      new THREE.Vector3(0, 4, 1),         // Agnes (top)
+      new THREE.Vector3(4.5, 1, 0.5),     // Titan
+      new THREE.Vector3(3, -3.5, 0.5),    // Soma
+      new THREE.Vector3(-3, -3.5, 0.5),   // Ledger
+      new THREE.Vector3(-4.5, 1, 0.5),    // Atlas
+      new THREE.Vector3(0, 4, 1),         // Close loop
     ],
     []
   );
 
   const orchestratorNodes: OrchestratorNode[] = useMemo(() => {
-    // 4 core modules: diamond shape
+    // 5 core modules: pentagon shape
     const corePositions: Record<string, { x: number; y: number }> = {
-      agnes:   { x: 50, y: 18 },   // top center (primary agent)
-      titan:   { x: 76, y: 68 },   // bottom right
-      ledger:  { x: 24, y: 68 },   // bottom left
-      atlas:   { x: 50, y: 88 },   // bottom center
+      agnes:   { x: 50, y: 15 },   // top
+      titan:   { x: 85, y: 45 },   // right
+      soma:    { x: 72, y: 85 },   // bottom right
+      ledger:  { x: 28, y: 85 },   // bottom left
+      atlas:   { x: 15, y: 45 },   // left
     };
-    // Plugins: orbiting outside the core triangle
+    // Plugins: orbiting outside the core pentagon
     const pluginPositions: Record<string, { x: number; y: number }> = {
-      forge:   { x: 88, y: 50 },   // far right
-      scout:   { x: 12, y: 50 },   // far left
+      forge:   { x: 92, y: 70 },   // far right
+      scout:   { x: 8, y: 70 },    // far left
     };
 
     return modules.map((module) => {
