@@ -6,7 +6,6 @@ import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import { DailyBriefSection } from './DailyBriefSection';
 import { SynthesisPanel } from './SynthesisPanel';
-import { ModuleHealthFAB } from './ModuleHealthFAB';
 import { CommandPalette } from './CommandPalette';
 import { Trash2 } from 'lucide-react';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
@@ -301,11 +300,6 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
 
       {/* Chat area — fills remaining space */}
       <div className="flex-1 min-h-0 flex flex-col relative">
-        {/* Module Health FAB */}
-        <NexusErrorBoundary name="ModuleHealth">
-          <ModuleHealthFAB />
-        </NexusErrorBoundary>
-
         <NexusChat
           ai={{
             ...ai,
