@@ -688,7 +688,7 @@ export const ChatInterface = React.memo(function ChatInterface({
       </AnimatePresence>
 
       {/* Input area pinned to bottom via flex layout */}
-      <div className="shrink-0 px-3 sm:px-6 pb-1 pt-2">
+      <div className="shrink-0 px-3 sm:px-6 pb-3 sm:pb-4 pt-2">
         <AnimatePresence>
           {pendingRequest && (
             <motion.div

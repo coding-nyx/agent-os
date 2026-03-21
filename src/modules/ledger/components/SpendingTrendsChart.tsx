@@ -32,7 +32,7 @@ import { BarChart2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { EmptyState } from '@/core/components/EmptyState';
 import type { Transaction } from '../services/ledger-intake-service';
-import { computeCategoryTrends } from '../services/ledger-aggregation-service';
+import { computeCategoryTrends } from '../services/aggregation';
 
 // ---------------------------------------------------------------------------
 // Constants

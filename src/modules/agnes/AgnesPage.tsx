@@ -589,7 +589,36 @@ function AgnesContent({
       </div>
 
       <AnimatePresence>
-        <NeuralModal key="session-summary-modal" isOpen={!!sessionSummary} onClose={() => setSessionSummary(null)} title="Session Complete" subtitle="Neural synthesis finalized" icon={Brain} maxWidth="lg">
+        {isSummarizing && (
+          <motion.div
+            key="summary-loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[var(--z-modal)] flex flex-col items-center justify-center bg-[#05050a]/90 backdrop-blur-2xl"
+          >
+            <div className="flex flex-col items-center gap-6">
+              <div className="relative w-16 h-16">
+                <div className="absolute inset-0 rounded-full border-4 border-indigo-500/10" />
+                <div className="absolute inset-0 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="text-xs font-black uppercase tracking-[0.4em] text-indigo-400">Synthesizing</h3>
+                <p className="text-[10px] text-white/30 uppercase tracking-[0.2em]">Neural link distillation in progress</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        <NeuralModal 
+          key="session-summary-modal" 
+          isOpen={!!sessionSummary} 
+          onClose={() => setSessionSummary(null)} 
+          title="Session Complete" 
+          subtitle="Neural synthesis finalized" 
+          icon={Brain} 
+          maxWidth="lg"
+        >
           <div className="space-y-8">
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="p-4 rounded-2xl sm:rounded-[2rem] bg-white/[0.03] border border-white/5">
@@ -626,16 +655,19 @@ function AgnesContent({
             <div className="space-y-3">
               {sessionType !== 'impromptu' && (
                 <NeuralButton size="xl" className="w-full rounded-full" loading={isClosingSession} onClick={handleMergeAndClose}>
-                  <CheckSquare className="w-4 h-4 mr-2" /> Sync to Vault
+                  <CheckSquare className="w-4 h-4 mr-2" /> End Session
                 </NeuralButton>
               )}
               <NeuralButton
                 variant="ghost"
                 onClick={handleDiscardAndClose}
                 disabled={isClosingSession}
-                className="w-full h-auto py-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white/40 hover:bg-transparent border-none transition-colors disabled:opacity-30"
+                className={cn(
+                  "w-full h-auto text-[10px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white/40 hover:bg-transparent border-none transition-colors disabled:opacity-30",
+                  sessionType === 'impromptu' ? "py-2" : "py-3"
+                )}
               >
-                {sessionType === 'impromptu' ? 'Finalize Session' : 'Discard Session Data'}
+                {sessionType === 'impromptu' ? 'End to End' : 'Discard Session'}
               </NeuralButton>
             </div>
           </div>

@@ -11,7 +11,7 @@ import {
   saveLedgerProfile
 } from './ledger-intake-service';
 import { parseFinancialStatement } from '@/lib/actions/parsing-actions';
-import { matchCategoryToTransaction } from './ledger-aggregation-service';
+import { matchCategoryToTransaction } from './aggregation';
 
 let registered = false;
 
@@ -473,7 +473,7 @@ export function registerLedgerActions() {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
-      const { computeDebtPayoffSchedule } = await import('./ledger-aggregation-service');
+      const { computeDebtPayoffSchedule } = await import('./aggregation');
 
       const debts = profile.debtItems ?? [];
       if (debts.length === 0) {
@@ -537,7 +537,7 @@ export function registerLedgerActions() {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
-      const { computeSavingsProjection } = await import('./ledger-aggregation-service');
+      const { computeSavingsProjection } = await import('./aggregation');
 
       const goals = profile.financialGoals ?? [];
       const targetGoalId = typeof payload?.goalId === 'string' ? payload.goalId : null;

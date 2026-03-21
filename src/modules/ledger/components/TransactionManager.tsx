@@ -11,6 +11,8 @@ import { NeuralModal } from '@/core/components/NeuralModal';
 import { DynamicFormBuilder } from '@/core/components/forms/DynamicFormBuilder';
 import { FieldSchema, FieldType } from '@/lib/field-system/types';
 import { cn } from '@/lib/utils';
+import { useLedgerActions } from '../context/LedgerActionsContext';
+import { useCRUDModal } from './shared/useCRUDModal';
 
 export interface Transaction {
   id: string;
@@ -25,12 +27,6 @@ export interface Transaction {
   notes?: string;
 }
 
-/**
- * ⚡ Bolt Performance Optimization:
- * Extracted individual transaction rows into a memoized component.
- * This prevents O(N) evaluation cascades when the parent component re-renders
- * due to frequent state updates (like typing in the search input).
- */
 const TransactionRow = React.memo(function TransactionRow({
   transaction,
   currency,
@@ -45,9 +41,7 @@ const TransactionRow = React.memo(function TransactionRow({
   onDelete: (id: string) => void;
 }) {
   return (
-    <tr
-      className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
-    >
+    <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
       <td className="px-4 py-3 text-xs text-white/70">
         {new Date(transaction.date).toLocaleDateString()}
       </td>
@@ -95,8 +89,6 @@ const TransactionRow = React.memo(function TransactionRow({
     </tr>
   );
 }, (prevProps, nextProps) => {
-  // Custom equality check: Ignore inline callback references (onEdit, onDelete)
-  // to prevent re-renders, as they solely invoke stable setters and do not risk stale closures.
   return (
     prevProps.transaction === nextProps.transaction &&
     prevProps.currency === nextProps.currency &&
@@ -108,23 +100,15 @@ interface TransactionManagerProps {
   transactions: Transaction[];
   categories: string[];
   currency?: string;
-  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
-  onUpdateTransaction: (id: string, transaction: Partial<Transaction>) => void;
-  onDeleteTransaction: (id: string) => void;
-  onImportCSV?: (file: File) => void;
-  onExportCSV?: () => void;
   disabled?: boolean;
-  /** Optional external control for the add modal */
   isAddModalOpen?: boolean;
   onAddModalOpenChange?: (open: boolean) => void;
-  /** Whether to show the internal add button. Defaults to true. */
   showAddButton?: boolean;
 }
 
 type SortField = 'date' | 'amount' | 'description' | 'category';
 type SortOrder = 'asc' | 'desc';
 
-// @schema-guard: allow-hardcoded (UI-only transaction form pending SchemaRegistry wiring)
 const TRANSACTION_SCHEMA: FieldSchema = {
   version: '1.0.0',
   coreFields: [
@@ -166,7 +150,7 @@ const TRANSACTION_SCHEMA: FieldSchema = {
       name: 'Category',
       type: FieldType.SELECT,
       required: true,
-      options: [], // Populated dynamically
+      options: [],
       metadata: { category: 'Basic', order: 4 }
     },
     {
@@ -205,44 +189,68 @@ export function TransactionManager({
   transactions,
   categories,
   currency = 'USD',
-  onAddTransaction,
-  onUpdateTransaction,
-  onDeleteTransaction,
-  onImportCSV,
-  onExportCSV,
   disabled = false,
   isAddModalOpen: controlledIsAddModalOpen,
   onAddModalOpenChange,
   showAddButton = true
 }: TransactionManagerProps) {
-  const [internalIsAddModalOpen, setInternalIsAddModalOpen] = useState(false);
-  const isAddModalOpen = controlledIsAddModalOpen !== undefined ? controlledIsAddModalOpen : internalIsAddModalOpen;
-  const setIsAddModalOpen = (val: boolean) => {
-    if (onAddModalOpenChange) onAddModalOpenChange(val);
-    else setInternalIsAddModalOpen(val);
-  };
-
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const { onAddTransaction, onUpdateTransaction, onDeleteTransaction, onImportCSV, onExportCSV } = useLedgerActions();
+  
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [formValues, setFormValues] = useState<Record<string, any>>({});
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Reset form when modal opens via external control
+  const {
+    isOpen: isAddModalOpen,
+    editingItem: editingTransaction,
+    formData: formValues,
+    setFormData: setFormValues,
+    openCreate,
+    openEdit,
+    handleClose: handleCloseModal,
+    handleSave: handleSubmit
+  } = useCRUDModal<Transaction>({
+    initialForm: {
+      date: new Date().toISOString().split('T')[0],
+      type: 'expense',
+      recurring: false
+    },
+    validate: (form) => {
+      const errors: Record<string, string> = {};
+      if (!form.date) errors.date = 'Date is required';
+      if (!form.description?.trim()) errors.description = 'Description is required';
+      if (!form.amount || form.amount <= 0) errors.amount = 'Amount must be greater than 0';
+      if (!form.type) errors.type = 'Type is required';
+      if (!form.category) errors.category = 'Category is required';
+      if (form.recurring && !form.recurringFrequency) {
+        errors.recurringFrequency = 'Frequency is required for recurring transactions';
+      }
+      setFormErrors(errors);
+      return Object.keys(errors).length === 0;
+    },
+    onCreate: (form) => onAddTransaction(form as Omit<Transaction, 'id'>),
+    onUpdate: (id, form) => onUpdateTransaction(id, form as Partial<Transaction>)
+  });
+
+  // Sync controlled modal state
   useEffect(() => {
-    if (isAddModalOpen && !editingTransaction && Object.keys(formValues).length === 0) {
-      setFormValues({
-        date: new Date().toISOString().split('T')[0],
-        type: 'expense',
-        recurring: false
-      });
+    if (controlledIsAddModalOpen && !isAddModalOpen) {
+      openCreate();
+    } else if (controlledIsAddModalOpen === false && isAddModalOpen) {
+      handleCloseModal();
     }
-  }, [isAddModalOpen, editingTransaction]);
+  }, [controlledIsAddModalOpen, isAddModalOpen, openCreate, handleCloseModal]);
 
-  // Update schema with dynamic categories
+  // Report modal state changes upward
+  useEffect(() => {
+    if (onAddModalOpenChange) {
+      onAddModalOpenChange(isAddModalOpen);
+    }
+  }, [isAddModalOpen, onAddModalOpenChange]);
+
   const transactionSchema = useMemo(() => {
     const schema = { ...TRANSACTION_SCHEMA };
     const categoryField = schema.coreFields.find(f => f.id === 'category');
@@ -252,151 +260,43 @@ export function TransactionManager({
     return schema;
   }, [categories]);
 
-  // Filter and sort transactions
   const filteredTransactions = useMemo(() => {
     const filtered = transactions.filter(t => {
-      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        if (!t.description.toLowerCase().includes(query) && 
-            !t.category.toLowerCase().includes(query)) {
-          return false;
-        }
+        if (!t.description.toLowerCase().includes(query) && !t.category.toLowerCase().includes(query)) return false;
       }
-
-      // Type filter
-      if (filterType !== 'all' && t.type !== filterType) {
-        return false;
-      }
-
-      // Category filter
-      if (filterCategory !== 'all' && t.category !== filterCategory) {
-        return false;
-      }
-
+      if (filterType !== 'all' && t.type !== filterType) return false;
+      if (filterCategory !== 'all' && t.category !== filterCategory) return false;
       return true;
     });
 
-    // Sort
     filtered.sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
-        case 'date':
-          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
-          break;
-        case 'amount':
-          comparison = a.amount - b.amount;
-          break;
-        case 'description':
-          comparison = a.description.localeCompare(b.description);
-          break;
-        case 'category':
-          comparison = a.category.localeCompare(b.category);
-          break;
+        case 'date': comparison = new Date(a.date).getTime() - new Date(b.date).getTime(); break;
+        case 'amount': comparison = a.amount - b.amount; break;
+        case 'description': comparison = a.description.localeCompare(b.description); break;
+        case 'category': comparison = a.category.localeCompare(b.category); break;
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-
     return filtered;
   }, [transactions, searchQuery, filterType, filterCategory, sortField, sortOrder]);
 
-  // Statistics
   const stats = useMemo(() => {
-    // ⚡ Bolt: Single-pass O(n) calculation to prevent multiple filter+reduce passes
     let totalIncome = 0;
     let totalExpenses = 0;
-
     for (const t of transactions) {
-      if (t.type === 'income') {
-        totalIncome += t.amount;
-      } else if (t.type === 'expense') {
-        totalExpenses += t.amount;
-      }
+      if (t.type === 'income') totalIncome += t.amount;
+      else if (t.type === 'expense') totalExpenses += t.amount;
     }
-
-    const netCashFlow = totalIncome - totalExpenses;
-
-    return { totalIncome, totalExpenses, netCashFlow };
+    return { totalIncome, totalExpenses, netCashFlow: totalIncome - totalExpenses };
   }, [transactions]);
 
   const toggleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('desc');
-    }
-  };
-
-  const handleOpenAddModal = () => {
-    setFormValues({
-      date: new Date().toISOString().split('T')[0],
-      type: 'expense',
-      recurring: false
-    });
-    setFormErrors({});
-    setIsAddModalOpen(true);
-  };
-
-  const handleOpenEditModal = (transaction: Transaction) => {
-    setEditingTransaction(transaction);
-    setFormValues({
-      date: transaction.date,
-      description: transaction.description,
-      amount: transaction.amount,
-      type: transaction.type,
-      category: transaction.category,
-      recurring: transaction.recurring || false,
-      recurringFrequency: transaction.recurringFrequency,
-      notes: transaction.notes
-    });
-    setFormErrors({});
-  };
-
-  const handleCloseModal = () => {
-    setIsAddModalOpen(false);
-    setEditingTransaction(null);
-    setFormValues({});
-    setFormErrors({});
-  };
-
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (!formValues.date) errors.date = 'Date is required';
-    if (!formValues.description?.trim()) errors.description = 'Description is required';
-    if (!formValues.amount || formValues.amount <= 0) errors.amount = 'Amount must be greater than 0';
-    if (!formValues.type) errors.type = 'Type is required';
-    if (!formValues.category) errors.category = 'Category is required';
-    if (formValues.recurring && !formValues.recurringFrequency) {
-      errors.recurringFrequency = 'Frequency is required for recurring transactions';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = () => {
-    if (!validateForm()) return;
-
-    const transactionData: Omit<Transaction, 'id'> = {
-      date: formValues.date,
-      description: formValues.description,
-      amount: parseFloat(formValues.amount),
-      type: formValues.type,
-      category: formValues.category,
-      recurring: formValues.recurring || false,
-      recurringFrequency: formValues.recurring ? formValues.recurringFrequency : undefined,
-      notes: formValues.notes
-    };
-
-    if (editingTransaction) {
-      onUpdateTransaction(editingTransaction.id, transactionData);
-    } else {
-      onAddTransaction(transactionData);
-    }
-
-    handleCloseModal();
+    if (sortField === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortOrder('desc'); }
   };
 
   const handleImportClick = () => {
@@ -405,16 +305,13 @@ export function TransactionManager({
     input.accept = '.csv,.txt';
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file && onImportCSV) {
-        onImportCSV(file);
-      }
+      if (file) onImportCSV(file);
     };
     input.click();
   };
 
   return (
     <div className="space-y-6">
-      {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Total Income</div>
@@ -426,22 +323,16 @@ export function TransactionManager({
         </SurfaceCard>
         <SurfaceCard className="p-4">
           <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Net Cash Flow</div>
-          <div className={cn(
-            "mt-2 text-2xl font-black",
-            stats.netCashFlow >= 0 ? "text-[var(--module-color-400)]" : "text-amber-400"
-          )}>
+          <div className={cn("mt-2 text-2xl font-black", stats.netCashFlow >= 0 ? "text-[var(--module-color-400)]" : "text-amber-400")}>
             {formatCurrency(stats.netCashFlow, currency)}
           </div>
         </SurfaceCard>
       </div>
 
-      {/* Controls */}
       <SurfaceCard className="p-4">
         <div className="flex flex-wrap gap-3">
-          {/* Search */}
           <div className="flex-1 min-w-[200px]">
             <NeuralInput
-              type="text"
               placeholder="Search transactions..."
               value={searchQuery}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
@@ -449,8 +340,6 @@ export function TransactionManager({
               className="w-full"
             />
           </div>
-
-          {/* Type Filter */}
           <NeuralSelectMenu
             value={filterType}
             onChange={(next) => setFilterType(next as any)}
@@ -462,8 +351,6 @@ export function TransactionManager({
             triggerClassName="w-[150px]"
             ariaLabel="Filter type"
           />
-
-          {/* Category Filter */}
           <NeuralSelectMenu
             value={filterCategory}
             onChange={(next) => setFilterCategory(String(next))}
@@ -474,39 +361,17 @@ export function TransactionManager({
             triggerClassName="w-[180px]"
             ariaLabel="Filter category"
           />
-
-          {/* Actions */}
           <div className="flex gap-2 ml-auto">
-            {onImportCSV && (
-              <NeuralButton
-                onClick={handleImportClick}
-                variant="secondary"
-                size="sm"
-                disabled={disabled}
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Import
-              </NeuralButton>
-            )}
-            {onExportCSV && (
-              <NeuralButton
-                onClick={onExportCSV}
-                variant="secondary"
-                size="sm"
-                disabled={disabled}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </NeuralButton>
-            )}
+            <NeuralButton onClick={handleImportClick} variant="secondary" size="sm" disabled={disabled}>
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </NeuralButton>
+            <NeuralButton onClick={onExportCSV} variant="secondary" size="sm" disabled={disabled}>
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </NeuralButton>
             {showAddButton && (
-              <NeuralButton
-                onClick={handleOpenAddModal}
-                variant="primary"
-                size="sm"
-                disabled={disabled}
-                className="bg-[var(--module-accent)] hover:bg-[var(--module-accent)]"
-              >
+              <NeuralButton onClick={() => openCreate()} variant="primary" size="sm" disabled={disabled} className="bg-[var(--module-accent)] hover:bg-[var(--module-accent)]">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Transaction
               </NeuralButton>
@@ -515,15 +380,12 @@ export function TransactionManager({
         </div>
       </SurfaceCard>
 
-      {/* Transaction List */}
       <SurfaceCard className="overflow-hidden">
         {filteredTransactions.length === 0 ? (
           <div className="p-8">
             <EmptyState
               title="No transactions"
-              description={searchQuery || filterType !== 'all' || filterCategory !== 'all' 
-                ? "No transactions match your filters" 
-                : "Add your first transaction to get started"}
+              description={searchQuery || filterType !== 'all' || filterCategory !== 'all' ? "No transactions match your filters" : "Add your first transaction to get started"}
               icon={Filter}
               size="md"
             />
@@ -533,45 +395,19 @@ export function TransactionManager({
             <table className="w-full" role="table">
               <thead>
                 <tr className="border-b border-white/10 sticky top-0 z-10 backdrop-blur-xl bg-black/60">
-                  <th 
-                    className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60"
-                    onClick={() => toggleSort('date')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Date
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
+                  <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('date')}>
+                    <div className="flex items-center gap-1">Date <ArrowUpDown className="w-3 h-3" /></div>
                   </th>
-                  <th 
-                    className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60"
-                    onClick={() => toggleSort('description')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Description
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
+                  <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('description')}>
+                    <div className="flex items-center gap-1">Description <ArrowUpDown className="w-3 h-3" /></div>
                   </th>
-                  <th 
-                    className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60"
-                    onClick={() => toggleSort('category')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Category
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
+                  <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('category')}>
+                    <div className="flex items-center gap-1">Category <ArrowUpDown className="w-3 h-3" /></div>
                   </th>
-                  <th 
-                    className="px-4 py-3 text-right text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60"
-                    onClick={() => toggleSort('amount')}
-                  >
-                    <div className="flex items-center justify-end gap-1">
-                      Amount
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
+                  <th className="px-4 py-3 text-right text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('amount')}>
+                    <div className="flex items-center justify-end gap-1">Amount <ArrowUpDown className="w-3 h-3" /></div>
                   </th>
-                  <th className="px-4 py-3 text-right text-[9px] uppercase tracking-[0.2em] text-white/40 font-black">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-right text-[9px] uppercase tracking-[0.2em] text-white/40 font-black">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -581,7 +417,7 @@ export function TransactionManager({
                     transaction={transaction}
                     currency={currency}
                     disabled={disabled}
-                    onEdit={handleOpenEditModal}
+                    onEdit={openEdit}
                     onDelete={onDeleteTransaction}
                   />
                 ))}
@@ -591,9 +427,8 @@ export function TransactionManager({
         )}
       </SurfaceCard>
 
-      {/* Add/Edit Modal */}
       <NeuralModal
-        isOpen={isAddModalOpen || editingTransaction !== null}
+        isOpen={isAddModalOpen}
         onClose={handleCloseModal}
         title={editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
         themeColor="module"
@@ -604,7 +439,6 @@ export function TransactionManager({
           values={formValues}
           onChange={(fieldId, value) => {
             setFormValues(prev => ({ ...prev, [fieldId]: value }));
-            // Clear error when field is edited
             if (formErrors[fieldId]) {
               setFormErrors(prev => {
                 const next = { ...prev };

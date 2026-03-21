@@ -1,6 +1,6 @@
 import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
 import { LoadContext } from '@/lib/types/encrypted-document';
-import { TitanProfile, CustomField } from '@/lib/types';
+import { TitanProfile, CustomField, TitanRecoveryPlan, TitanRecoveryCheckin } from '@/lib/types';
 import { normalizeRoutines } from '../utils';
 
 const GUEST_PROFILE_KEY = 'nexus_titan_profile_guest';
@@ -77,6 +77,20 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
     exerciseLibrary: Array.isArray(data.exerciseLibrary) ? (data.exerciseLibrary as NonNullable<TitanProfile['exerciseLibrary']>) : base.exerciseLibrary,
     directWriteMode: data.directWriteMode === true,
     customFields: Array.isArray(data.customFields) ? (data.customFields as CustomField[]).slice(0, 20) : undefined,
+    // Recovery — must survive the normalizer or isRecoveryActive is always false
+    recoveryPlan: data.recoveryPlan && typeof data.recoveryPlan === 'object'
+      ? (data.recoveryPlan as TitanRecoveryPlan)
+      : undefined,
+    recoveryCheckins: Array.isArray(data.recoveryCheckins)
+      ? (data.recoveryCheckins as TitanRecoveryCheckin[]).slice(0, 180)
+      : undefined,
+    // Body logs — must survive the normalizer or logs are always empty
+    bodyWeightLog: Array.isArray(data.bodyWeightLog)
+      ? (data.bodyWeightLog as NonNullable<TitanProfile['bodyWeightLog']>).slice(0, 1000)
+      : base.bodyWeightLog,
+    cardioLog: Array.isArray(data.cardioLog)
+      ? (data.cardioLog as NonNullable<TitanProfile['cardioLog']>).slice(0, 1000)
+      : base.cardioLog,
   };
 }
 

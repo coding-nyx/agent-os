@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import { PieChart, Sliders, Plus, Edit2, Trash2, AlertCircle, ChevronDown } from 'lucide-react';
+import { PieChart, Sliders, Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { EmptyState } from '@/core/components/EmptyState';
@@ -8,8 +8,8 @@ import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { ProgressRow } from '@/core/components/ProgressRow';
 import { cn } from '@/lib/utils';
-import { TaxTracker } from './TaxTracker';
-import type { LedgerIntakeProfile } from '../services/ledger-intake-service';
+import { useLedgerActions } from '../context/LedgerActionsContext';
+import { useCRUDModal } from './shared/useCRUDModal';
 
 export interface BudgetCategory {
   id: string;
@@ -30,14 +30,7 @@ interface BudgetPlannerProps {
   categories: BudgetCategory[];
   monthlyIncome: number;
   currency?: string;
-  onUpdateCategory: (id: string, allocated: number) => void;
-  onAddCategory: (name: string, allocated: number) => void;
-  onDeleteCategory: (id: string) => void;
-  onApplyTemplate?: (template: BudgetTemplate) => void;
   disabled?: boolean;
-  /** TaxTracker props — passed through to the embedded Tax Overview sub-section */
-  taxTrackerProfile?: LedgerIntakeProfile;
-  taxEncryptionKey?: CryptoKey;
 }
 
 const BUDGET_TEMPLATES: BudgetTemplate[] = [
@@ -92,20 +85,27 @@ export function BudgetPlanner({
   categories,
   monthlyIncome,
   currency = 'USD',
-  onUpdateCategory,
-  onAddCategory,
-  onDeleteCategory,
-  onApplyTemplate,
   disabled = false,
-  taxTrackerProfile,
-  taxEncryptionKey,
 }: BudgetPlannerProps) {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<BudgetCategory | null>(null);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryAmount, setNewCategoryAmount] = useState('');
-  const [isTaxOpen, setIsTaxOpen] = useState(false);
+  const { onUpdateCategory, onAddCategory, onDeleteCategory, onApplyTemplate } = useLedgerActions();
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = React.useState(false);
+
+  const {
+    isOpen: isAddModalOpen,
+    setIsOpen: setIsAddModalOpen,
+    editingItem: editingCategory,
+    formData,
+    setField,
+    openCreate,
+    openEdit,
+    handleClose,
+    handleSave: handleSubmitCategory
+  } = useCRUDModal<BudgetCategory>({
+    initialForm: { name: '', allocated: 0 },
+    validate: (form) => !!form.name?.trim() && (form.allocated !== undefined && form.allocated > 0),
+    onCreate: (form) => onAddCategory(form.name!.trim(), form.allocated!),
+    onUpdate: (id, form) => onUpdateCategory(id, form.allocated!)
+  });
 
   // Calculate totals and percentages
   const stats = useMemo(() => {
@@ -128,39 +128,6 @@ export function BudgetPlanner({
   const overspendingCategories = useMemo(() => {
     return categories.filter(cat => cat.spent > cat.allocated);
   }, [categories]);
-
-  const handleOpenAddModal = () => {
-    setNewCategoryName('');
-    setNewCategoryAmount('');
-    setEditingCategory(null);
-    setIsAddModalOpen(true);
-  };
-
-  const handleOpenEditModal = (category: BudgetCategory) => {
-    setEditingCategory(category);
-    setNewCategoryName(category.name);
-    setNewCategoryAmount(category.allocated.toString());
-    setIsAddModalOpen(true);
-  };
-
-  const handleSubmitCategory = () => {
-    const amount = parseFloat(newCategoryAmount);
-    
-    if (!newCategoryName.trim() || isNaN(amount) || amount <= 0) {
-      return;
-    }
-
-    if (editingCategory) {
-      onUpdateCategory(editingCategory.id, amount);
-    } else {
-      onAddCategory(newCategoryName.trim(), amount);
-    }
-
-    setIsAddModalOpen(false);
-    setEditingCategory(null);
-    setNewCategoryName('');
-    setNewCategoryAmount('');
-  };
 
   const handleApplyTemplate = (template: BudgetTemplate) => {
     if (onApplyTemplate) {
@@ -326,19 +293,17 @@ export function BudgetPlanner({
               <p className="text-[10px] text-white/50 mt-1">Spending vs budget</p>
             </div>
             <div className="flex gap-2">
-              {onApplyTemplate && (
-                <NeuralButton
-                  onClick={() => setIsTemplateModalOpen(true)}
-                  variant="secondary"
-                  size="sm"
-                  disabled={disabled}
-                >
-                  <Sliders className="w-4 h-4 mr-2" />
-                  Templates
-                </NeuralButton>
-              )}
               <NeuralButton
-                onClick={handleOpenAddModal}
+                onClick={() => setIsTemplateModalOpen(true)}
+                variant="secondary"
+                size="sm"
+                disabled={disabled}
+              >
+                <Sliders className="w-4 h-4 mr-2" />
+                Templates
+              </NeuralButton>
+              <NeuralButton
+                onClick={() => openCreate()}
                 variant="primary"
                 size="sm"
                 disabled={disabled}
@@ -372,7 +337,7 @@ export function BudgetPlanner({
                       <NeuralButton
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleOpenEditModal(cat)}
+                        onClick={() => openEdit(cat)}
                         disabled={disabled}
                         className="p-1 h-auto min-h-[44px] text-white/60 hover:text-white"
                         aria-label={`Edit ${cat.name}`}
@@ -405,49 +370,10 @@ export function BudgetPlanner({
         </SurfaceCard>
       </div>
 
-      {/* Tax Overview — collapsible sub-section */}
-      {taxTrackerProfile && (
-        <div className="rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm overflow-hidden">
-          <button
-            onClick={() => setIsTaxOpen((prev) => !prev)}
-            className={cn(
-              'w-full flex items-center justify-between px-5 py-4 min-h-[44px]',
-              'text-sm font-bold text-white hover:bg-white/5 transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] focus-visible:ring-inset',
-            )}
-            aria-expanded={isTaxOpen}
-          >
-            <span className="flex items-center gap-2">
-              <span className="text-amber-400">&#9654;</span>
-              Tax Overview
-            </span>
-            <ChevronDown
-              size={16}
-              className={cn(
-                'text-white/50 transition-transform duration-200',
-                isTaxOpen && 'rotate-180',
-              )}
-            />
-          </button>
-
-          {isTaxOpen && (
-            <div className="border-t border-white/10">
-              <TaxTracker
-                profile={taxTrackerProfile}
-                encryptionKey={taxEncryptionKey}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Add/Edit Category Modal */}
       <NeuralModal
         isOpen={isAddModalOpen}
-        onClose={() => {
-          setIsAddModalOpen(false);
-          setEditingCategory(null);
-        }}
+        onClose={handleClose}
         title={editingCategory ? 'Edit Category' : 'Add Budget Category'}
         themeColor="module"
         maxWidth="md"
@@ -459,8 +385,8 @@ export function BudgetPlanner({
             </label>
             <NeuralInput
               type="text"
-              value={newCategoryName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCategoryName(e.target.value)}
+              value={formData.name || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('name', e.target.value)}
               disabled={editingCategory !== null}
               placeholder="e.g., Groceries, Entertainment"
             />
@@ -476,17 +402,17 @@ export function BudgetPlanner({
               </span>
               <NeuralInput
                 type="number"
-                value={newCategoryAmount}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCategoryAmount(e.target.value)}
+                value={formData.allocated || ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('allocated', parseFloat(e.target.value))}
                 placeholder="0.00"
                 min="0"
                 step="0.01"
                 className="pl-14"
               />
             </div>
-            {monthlyIncome > 0 && newCategoryAmount && (
+            {monthlyIncome > 0 && formData.allocated && (
               <p className="text-[10px] text-white/50 mt-1">
-                {((parseFloat(newCategoryAmount) / monthlyIncome) * 100).toFixed(1)}% of monthly income
+                {((formData.allocated / monthlyIncome) * 100).toFixed(1)}% of monthly income
               </p>
             )}
           </div>
@@ -495,16 +421,13 @@ export function BudgetPlanner({
             <NeuralButton
               onClick={handleSubmitCategory}
               variant="primary"
-              disabled={!newCategoryName.trim() || !newCategoryAmount || disabled}
+              disabled={!formData.name?.trim() || !formData.allocated || disabled}
               className="flex-1 bg-[var(--module-accent)] hover:bg-[var(--module-accent)]"
             >
               {editingCategory ? 'Update' : 'Add'}
             </NeuralButton>
             <NeuralButton
-              onClick={() => {
-                setIsAddModalOpen(false);
-                setEditingCategory(null);
-              }}
+              onClick={handleClose}
               variant="secondary"
               className="flex-1"
             >

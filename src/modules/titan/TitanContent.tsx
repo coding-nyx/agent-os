@@ -57,6 +57,8 @@ import type { NexusHandoff } from '@/lib/services/nexus-handoff-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import type { ModuleId } from '@/lib/module-manifest';
 import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
+import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import { Spine } from '@/lib/spine/spine-event-bus';
 import { TITAN_PERSONA } from './personas';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
@@ -169,7 +171,10 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
   useEffect(() => {
     if (isRecoveryActive) {
-      setActiveTab((prev) => (prev === 'recovery' ? prev : 'recovery'));
+      // In recovery mode only recovery, body, and cycles are valid tabs
+      setActiveTab((prev) =>
+        prev === 'recovery' || prev === 'body' || prev === 'cycles' ? prev : 'recovery'
+      );
     }
   }, [isRecoveryActive]);
 
@@ -849,6 +854,30 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       updatedAt: new Date().toISOString(),
     };
     await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+
+    // Emit TITAN_RECOVERY_NEEDED → cascades to SOMATIC_SUPPORT_REQUESTED (Soma notified)
+    Spine.emit({
+      type: 'TITAN_RECOVERY_NEEDED',
+      source: 'titan',
+      domain: 'B',
+      data: {
+        type: plan.type,
+        reasons: plan.reasons,
+        durationDays: plan.suggestedDurationDays,
+        bodyRegion: plan.bodyRegion ?? null,
+        startDate: plan.startDate,
+      },
+      cascadeDepth: 0,
+      priority: 'alert',
+    });
+
+    // Update NSV biological state — lower recovery score reflects impaired state
+    const recoveryScoreOnStart =
+      plan.type === 'rehab' ? 2 : plan.type === 'rest' ? 4 : plan.type === 'active' ? 5 : 6;
+    GlobalProjectionService.updateCrossFunctionalState(user.uid, {
+      biological: { recoveryScore: recoveryScoreOnStart, cnsFatigue: 8 },
+    }).catch((e) => console.error('[Titan] recovery start NSV update failed:', e));
+
     setIsRecoveryModalOpen(false);
     setActiveTab('recovery');
     setRecoveryDraft(null);
@@ -876,17 +905,70 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       updatedAt: new Date().toISOString(),
     };
     await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+
+    // Compute recovery score: pain/fatigue are impairment (inverted), sleep is positive
+    if (!payload.skipped) {
+      const checkinRecoveryScore = Math.min(10, Math.max(0, Math.round(
+        (10 - nextEntry.pain) * 0.3 +
+        (10 - nextEntry.fatigue) * 0.4 +
+        nextEntry.sleepQuality * 0.3
+      )));
+      GlobalProjectionService.updateCrossFunctionalState(user.uid, {
+        biological: {
+          recoveryScore: checkinRecoveryScore,
+          sleepQuality: nextEntry.sleepQuality,
+        },
+      }).catch((e) => console.error('[Titan] checkin NSV update failed:', e));
+
+      // Early recovery signal — notify other modules if score is high
+      if (checkinRecoveryScore >= 8) {
+        Spine.emit({
+          type: 'RECOVERY_AVAILABLE',
+          source: 'titan',
+          domain: 'B',
+          data: {
+            recoveryScore: checkinRecoveryScore,
+            source: 'daily_checkin',
+            date,
+          },
+          cascadeDepth: 0,
+          priority: 'info',
+        });
+      }
+    }
   }, [profile, encryptionKey, user]);
 
   const handleResumeTraining = useCallback(async () => {
     if (!profile || !encryptionKey || !user || !profile.recoveryPlan) return;
+    const prevPlan = profile.recoveryPlan;
     const updated: TitanProfile = {
       ...profile,
-      recoveryPlan: { ...profile.recoveryPlan, active: false },
+      recoveryPlan: { ...prevPlan, active: false },
       updatedAt: new Date().toISOString(),
     };
     await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
+
+    // Notify all modules that recovery is complete and training can resume
+    Spine.emit({
+      type: 'RECOVERY_AVAILABLE',
+      source: 'titan',
+      domain: 'B',
+      data: {
+        previousType: prevPlan.type,
+        durationDays: prevPlan.suggestedDurationDays,
+        source: 'manual_resume',
+      },
+      cascadeDepth: 0,
+      priority: 'info',
+    });
+
+    // Restore biological NSV to baseline recovered state
+    GlobalProjectionService.updateCrossFunctionalState(user.uid, {
+      biological: { recoveryScore: 7, cnsFatigue: 2 },
+    }).catch((e) => console.error('[Titan] resume NSV update failed:', e));
+
     setIsResumeModalOpen(false);
+    setActiveTab('train');
   }, [profile, encryptionKey, user]);
 
   const requestRecoveryConsults = useCallback((reasons: TitanRecoveryReason[], bodyRegion?: TitanRecoveryBodyRegion) => {
@@ -945,14 +1027,19 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   const activeCycleCount = (profile?.cycles ?? []).filter(c => c.status === 'active').length;
   const prCount = Object.keys(profile?.personalRecords ?? {}).length;
 
-  const tabs: NeuralTabItem<TitanTab>[] = [
-    ...(isRecoveryActive ? [{ id: 'recovery' as const, label: 'Recovery', icon: ShieldAlert }] : []),
-    { id: 'train', label: isRecoveryActive ? 'Recovery Training' : 'Train', icon: Activity },
-    { id: 'plan', label: 'Plan', icon: Dumbbell },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'body', label: 'Body', icon: Scale, badge: prCount > 0 ? prCount : undefined },
-    { id: 'cycles', label: 'Cycles', icon: RefreshCw, badge: activeCycleCount > 0 ? activeCycleCount : undefined },
-  ];
+  const tabs: NeuralTabItem<TitanTab>[] = isRecoveryActive
+    ? [
+        { id: 'recovery' as const, label: 'Recovery', icon: ShieldAlert },
+        { id: 'body' as const, label: 'Body', icon: Scale, badge: prCount > 0 ? prCount : undefined },
+        { id: 'cycles' as const, label: 'Cycles', icon: RefreshCw, badge: activeCycleCount > 0 ? activeCycleCount : undefined },
+      ]
+    : [
+        { id: 'train' as const, label: 'Train', icon: Activity },
+        { id: 'plan' as const, label: 'Plan', icon: Dumbbell },
+        { id: 'analytics' as const, label: 'Analytics', icon: TrendingUp },
+        { id: 'body' as const, label: 'Body', icon: Scale, badge: prCount > 0 ? prCount : undefined },
+        { id: 'cycles' as const, label: 'Cycles', icon: RefreshCw, badge: activeCycleCount > 0 ? activeCycleCount : undefined },
+      ];
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -1062,9 +1149,9 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
           <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-3 sm:pb-4 md:pb-5">
             <div className="flex items-start justify-between gap-3">
               <SectionHeader
-                label="Performance Domain"
-                title="Titan Strategy & Readiness"
-                subtitle="Elite physical performance optimization and biometric clearance."
+                label={isRecoveryActive ? 'Recovery Mode' : 'Performance Domain'}
+                title={isRecoveryActive ? 'Recovery Protocol Active' : 'Titan Strategy & Readiness'}
+                subtitle={isRecoveryActive ? 'Focused on recovery tracking, body metrics, and cycle management.' : 'Elite physical performance optimization and biometric clearance.'}
                 accentClassName="text-[var(--module-color-400)]"
               />
             </div>
@@ -1108,14 +1195,18 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                 </NeuralButton>
               )}
               <div className="w-px h-4 bg-white/10 hidden sm:block" />
-              <span className="text-white/40">{directWrite ? 'Direct Logbook' : 'Coach Review'}</span>
-              <NeuralToggle
-                checked={directWrite}
-                onChange={handleToggleDirectWrite}
-                color="orange"
-                label={directWrite ? 'Direct Logbook Mode: sessions save instantly' : 'Coach Review Mode: Titan reviews session updates before commit'}
-              />
-              <Zap className={cn('w-3 h-3 transition-colors', directWrite ? 'text-[var(--module-color-400)]' : 'text-white/30')} />
+              {!isRecoveryActive && (
+                <>
+                  <span className="text-white/40">{directWrite ? 'Direct Logbook' : 'Coach Review'}</span>
+                  <NeuralToggle
+                    checked={directWrite}
+                    onChange={handleToggleDirectWrite}
+                    color="orange"
+                    label={directWrite ? 'Direct Logbook Mode: sessions save instantly' : 'Coach Review Mode: Titan reviews session updates before commit'}
+                  />
+                  <Zap className={cn('w-3 h-3 transition-colors', directWrite ? 'text-[var(--module-color-400)]' : 'text-white/30')} />
+                </>
+              )}
             </div>
           </div>
 

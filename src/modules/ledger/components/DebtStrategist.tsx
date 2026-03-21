@@ -36,10 +36,11 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils';
 
 import type { DebtItem } from '../services/ledger-intake-service';
+import { useLedgerActions } from '../context/LedgerActionsContext';
 import {
   computeDebtPayoffSchedule,
   type DebtPayoffResult,
-} from '../services/ledger-aggregation-service';
+} from '../services/aggregation';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -246,10 +247,8 @@ export function DebtStrategist({
   extraMonthlyPayment: controlledExtra,
   onExtraPaymentChange,
   recommendSnowball = false,
-  onAddDebt,
-  onUpdateDebt: _onUpdateDebt,
-  onDeleteDebt,
 }: DebtStrategistProps) {
+  const { onAddDebt, onUpdateDebt, onDeleteDebt } = useLedgerActions();
   // Semi-controlled: internal state seeded from prop; reports changes upward.
   const [internalExtra, setInternalExtra] = useState<number>(controlledExtra ?? 0);
   const extra = controlledExtra ?? internalExtra;

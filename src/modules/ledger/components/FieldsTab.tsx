@@ -30,6 +30,7 @@ import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
+import { useLedgerActions } from '../context/LedgerActionsContext';
 import type { FieldDefinition } from '@/lib/field-system/types';
 import { FieldType } from '@/lib/field-system/types';
 import { SchemaRegistry } from '@/lib/schema-registry';
@@ -323,12 +324,10 @@ function FieldCard({
 export function FieldsTab({
   currency,
   extensionValues,
-  onValueChange,
-  onAddField,
-  onDeleteField,
   onSelectField,
   selectedFieldId,
 }: FieldsTabProps) {
+  const { onValueChange, onAddField, onDeleteField } = useLedgerActions();
   const extensions = useMemo(() => {
     return SchemaRegistry.getExtensions('ledger');
   }, []);

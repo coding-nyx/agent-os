@@ -16,8 +16,8 @@ import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { NSV_DERIVED_METRICS, isMetricStale } from '@/lib/services/nsv-ownership';
 import { CashFlowChart, DebtPayoffTracker } from './FinancialCharts';
 import { SpendingTrendsChart } from './SpendingTrendsChart';
-import { computeDashboardMetrics, computeMonthlyTotals, computeBudgetActuals, evaluateAlerts } from '../services/ledger-aggregation-service';
-import type { LedgerAlert } from '../services/ledger-aggregation-service';
+import { computeDashboardMetrics, computeMonthlyTotals, computeBudgetActuals, evaluateAlerts } from '../services/aggregation';
+import type { LedgerAlert } from '../services/aggregation';
 import { AIFinancialAdvisor } from './AIFinancialAdvisor';
 import { cn } from '@/lib/utils';
 
@@ -595,9 +595,9 @@ export function LedgerDashboard({
         <SurfaceCard className="p-6">
           {totalDebt > 0 ? (
             <>
-              <DebtPayoffTracker 
-                data={debtData} 
-                currency={profile?.currency || 'USD'}
+              <DebtPayoffTracker
+                debts={debtData.map(d => ({ name: d.month, balance: d.balance, color: '#ef4444' }))}
+                currency={profile.currency}
               />
               <div className="mt-6 space-y-3">
                 <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">Debt Items</h4>

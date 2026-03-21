@@ -35,7 +35,7 @@ import {
   computeCategorySpend,
   computeBudgetActuals,
   computeDashboardMetrics,
-} from '../services/ledger-aggregation-service';
+} from '../services/aggregation';
 import type { LedgerIntakeProfile } from '../services/ledger-intake-service';
 
 interface AnalyticsTabProps {
