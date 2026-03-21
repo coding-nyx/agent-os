@@ -18,7 +18,7 @@ export function LedgerNotificationSettingsPanel() {
         moduleId: 'ledger',
         channelPrefs: { os: true, inApp: true },
         timezone,
-        recurrence: { kind: 'daily_window', startAt: now, timezone, windowStart: '09:00', windowEnd: '09:30', intervalMinutes: 1440 },
+        recurrence: { kind: 'weekly_by_days', intervalWeeks: 1, daysOfWeek: [1, 2, 3, 4, 5], timeOfDay: '09:00', startAt: now, timezone },
         messageTemplate: { title: 'Log spend', body: 'Log today\'s spending so Ledger can update your financial picture.' },
         priority: 'alert'
       }),
@@ -27,7 +27,7 @@ export function LedgerNotificationSettingsPanel() {
         moduleId: 'ledger',
         channelPrefs: { os: true, inApp: true },
         timezone,
-        recurrence: { kind: 'daily_window', startAt: now, timezone, windowStart: '17:00', windowEnd: '18:00', intervalMinutes: 1440 },
+        recurrence: { kind: 'weekly_by_days', intervalWeeks: 1, daysOfWeek: [1, 2, 3, 4, 5], timeOfDay: '17:00', startAt: now, timezone },
         messageTemplate: { title: 'Log income', body: 'Capture income to keep cashflow calculations accurate.' },
         priority: 'info'
       }),

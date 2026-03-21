@@ -18,7 +18,7 @@ export function TitanNotificationSettingsPanel() {
         moduleId: 'titan',
         channelPrefs: { os: true, inApp: true },
         timezone,
-        recurrence: { kind: 'daily_window', startAt: now, timezone, windowStart: '06:00', windowEnd: '10:00', intervalMinutes: 1440 },
+        recurrence: { kind: 'weekly_by_days', intervalWeeks: 1, daysOfWeek: [1, 2, 3, 4, 5], timeOfDay: '07:00', startAt: now, timezone },
         messageTemplate: { title: 'Workout time', body: 'Log your workout session so Titan can update readiness and recovery.' },
         priority: 'alert'
       }),
@@ -27,7 +27,7 @@ export function TitanNotificationSettingsPanel() {
         moduleId: 'titan',
         channelPrefs: { os: true, inApp: true },
         timezone,
-        recurrence: { kind: 'daily_window', startAt: now, timezone, windowStart: '21:00', windowEnd: '23:00', intervalMinutes: 1440 },
+        recurrence: { kind: 'weekly_by_days', intervalWeeks: 1, daysOfWeek: [0, 1, 2, 3, 4, 5, 6], timeOfDay: '21:30', startAt: now, timezone },
         messageTemplate: { title: 'Sleep log due', body: 'Log tonight\'s sleep to keep recovery calculations accurate.' },
         priority: 'alert'
       })

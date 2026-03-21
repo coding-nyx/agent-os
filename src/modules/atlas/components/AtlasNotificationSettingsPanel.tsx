@@ -18,7 +18,7 @@ export function AtlasNotificationSettingsPanel() {
         moduleId: 'atlas',
         channelPrefs: { os: true, inApp: true },
         timezone,
-        recurrence: { kind: 'hourly', intervalHours: 1, dtStart: now, timezone },
+        recurrence: { kind: 'weekly_by_days', intervalWeeks: 1, daysOfWeek: [0, 1, 2, 3, 4, 5, 6], timeOfDay: '09:00', startAt: now, timezone },
         messageTemplate: { title: 'Task check-in', body: 'Log the next task progress or mark it as handled for today.' },
         priority: 'alert'
       }),
@@ -27,7 +27,7 @@ export function AtlasNotificationSettingsPanel() {
         moduleId: 'atlas',
         channelPrefs: { os: true, inApp: true },
         timezone,
-        recurrence: { kind: 'daily_window', startAt: now, timezone, windowStart: '20:00', windowEnd: '22:00', intervalMinutes: 1440 },
+        recurrence: { kind: 'weekly_by_days', intervalWeeks: 1, daysOfWeek: [0, 1, 2, 3, 4, 5, 6], timeOfDay: '21:00', startAt: now, timezone },
         messageTemplate: { title: 'Journal time', body: 'Capture what changed today — wins, friction, and next focus.' },
         priority: 'alert'
       }),

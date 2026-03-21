@@ -25,12 +25,12 @@ export function SomaNotificationSettingsPanel() {
         channelPrefs: { os: true, inApp: true },
         timezone,
         recurrence: {
-          kind: 'daily_window',
+          kind: 'weekly_by_days',
+          intervalWeeks: 1,
+          daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+          timeOfDay: '07:30',
           startAt: now,
           timezone,
-          windowStart: '07:00',
-          windowEnd: '08:30',
-          intervalMinutes: 1440,
         },
         messageTemplate: {
           title: 'Morning vitals',

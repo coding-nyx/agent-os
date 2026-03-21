@@ -8,7 +8,6 @@ import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
 import { getFirebase } from '@/lib/firebase';
 import { BridgeService } from '@/lib/services/bridge-service';
-import { ReminderScheduler } from '@/lib/notifications/reminder-scheduler-service';
 import { useLocation } from 'react-router-dom';
 import type { ModuleId } from '@/lib/module-manifest';
 import type { NotificationScheduleConfig, Recurrence } from '../types';
@@ -228,8 +227,6 @@ export function NotificationSettingsPanel({
   const location = useLocation();
   const [schedules, setSchedules] = useState<NexusRecord<NotificationScheduleConfig>[]>([]);
   const [hydrating, setHydrating] = useState(true);
-  const didEnsureDefaultsRef = useRef(false);
-
   useEffect(() => {
     if (!user || isGuest) {
       setHydrating(false);
@@ -255,6 +252,12 @@ export function NotificationSettingsPanel({
   const saveSchedule = useCallback(
     async (scheduleId: string, next: NotificationScheduleConfig) => {
       if (!user || isGuest) return;
+
+      // Determine if this is a disabled→enabled transition (new or re-enabled).
+      const existing = schedules.find((s) => s.id === scheduleId);
+      const wasEnabled = existing?.enabled ?? false;
+      const isNewlyEnabled = next.enabled && !wasEnabled;
+
       await dataLayer.setDocument<NotificationScheduleConfig>(
         `users/${user.uid}/notification_schedules`,
         scheduleId,
@@ -262,14 +265,13 @@ export function NotificationSettingsPanel({
       );
 
       // Request OS notification permission the first time a user enables a schedule.
-      // This ties the permission prompt to a clear user intent rather than firing on login.
-      if (next.enabled && 'Notification' in window && Notification.permission !== 'granted') {
+      if (isNewlyEnabled && 'Notification' in window && Notification.permission !== 'granted') {
         await BridgeService.requestPermissionAndInit();
       }
 
-      // Bootstrap the first Cloud Task whenever a schedule is saved as enabled,
-      // so the user doesn't have to log data to trigger the first reminder.
-      if (next.enabled) {
+      // Enqueue the first Cloud Task only when the schedule transitions to enabled.
+      // Saves that only update message/recurrence text do not re-enqueue.
+      if (isNewlyEnabled) {
         try {
           const { app } = getFirebase();
           if (app) {
@@ -282,36 +284,18 @@ export function NotificationSettingsPanel({
           }
         } catch (err) {
           const maybe = err as { code?: string; message?: string; details?: unknown };
-          // Non-fatal — reminder will still be scheduled on next data-logging event
-          console.warn('[NotificationSettingsPanel] Bootstrap scheduleReminder failed:', {
+          console.warn('[NotificationSettingsPanel] scheduleReminder failed:', {
             scheduleId,
             code: maybe?.code,
             message: maybe?.message,
             details: maybe?.details,
           });
-          ReminderScheduler.scheduleLocal(user.uid, scheduleId, next);
         }
       }
     },
-    [dataLayer, isGuest, user],
+    [dataLayer, isGuest, schedules, user],
   );
 
-  // Auto-persist default enabled presets to DB on first view
-  useEffect(() => {
-    if (hydrating || !user || isGuest || didEnsureDefaultsRef.current) return;
-
-    const loadedIds = new Set(schedules.map(s => s.id));
-    const missingPresets = presets.filter(p => !loadedIds.has(p.scheduleId));
-
-    if (missingPresets.length > 0) {
-      didEnsureDefaultsRef.current = true;
-      missingPresets.forEach(p => {
-        if (p.config.enabled) {
-          void saveSchedule(p.scheduleId, p.config);
-        }
-      });
-    }
-  }, [hydrating, user, isGuest, schedules, presets, saveSchedule]);
 
   const scheduleEditors = useMemo(() => {
     const loadedMap = new Map<string, NotificationScheduleConfig>();

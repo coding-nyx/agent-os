@@ -25,11 +25,7 @@ export interface NotificationRequest {
 
 export class NotificationEngine {
   private static instance: NotificationEngine;
-  private db = (() => {
-    const db = getFirestore();
-    db.settings({ ignoreUndefinedProperties: true });
-    return db;
-  })();
+  private db = getFirestore();
   private messaging = getMessaging();
 
   private constructor() {}
@@ -61,6 +57,7 @@ export class NotificationEngine {
       // 3. Prepare common payload
       const now = new Date().toISOString();
       const inboxRecord = {
+        id,
         type,
         source,
         priority,

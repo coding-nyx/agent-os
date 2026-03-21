@@ -1,7 +1,6 @@
 import { getFirebase } from '@/lib/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import { ReminderScheduler } from '@/lib/notifications/reminder-scheduler-service';
 import type { ModuleId } from '@/lib/module-manifest';
 import type {
   NotificationScheduleConfig,
@@ -64,9 +63,6 @@ export async function createReminderSchedule(
     payload,
   );
 
-  // Always register client-side timer as a reliable fallback regardless of CF outcome.
-  ReminderScheduler.scheduleLocal(userId, id, payload);
-
   try {
     const { app } = getFirebase();
     if (app) {
@@ -78,7 +74,7 @@ export async function createReminderSchedule(
       await scheduleReminder({ scheduleId: id });
     }
   } catch (err) {
-    console.warn('[createReminderSchedule] scheduleReminder Cloud Function failed — client-side timer already registered.', err);
+    console.warn('[createReminderSchedule] scheduleReminder Cloud Function failed.', err);
   }
 
   return id;

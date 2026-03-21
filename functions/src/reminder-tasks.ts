@@ -13,6 +13,10 @@ import { getFirestore } from "firebase-admin/firestore";
 import { CloudTasksClient } from "@google-cloud/tasks";
 import crypto from "node:crypto";
 import { nextDue } from "./reminder-evaluation.js";
+import { NotificationEngine, type NotificationPriority } from "./notification-engine";
+
+// Module-level singleton — reused across invocations to avoid re-init overhead.
+const tasksClient = new CloudTasksClient();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -136,6 +140,70 @@ function mapCloudTasksError(error: unknown): HttpsError {
 }
 
 // ---------------------------------------------------------------------------
+// scheduleNextOccurrence — shared helper used by scheduleReminder and
+// deliverReminder to compute + persist + enqueue the next occurrence of a
+// recurring schedule. No pre-flight queue check (caller is responsible).
+// ---------------------------------------------------------------------------
+
+async function scheduleNextOccurrence(
+  db: ReturnType<typeof getFirestore>,
+  uid: string,
+  scheduleId: string,
+  schedule: Record<string, unknown>,
+  afterMs: number,
+): Promise<{ scheduled: true; dueAt: string } | { skipped: true; reason: string; dueAt?: string }> {
+  const moduleId = typeof schedule.moduleId === "string" ? schedule.moduleId : null;
+  if (!moduleId) return { skipped: true, reason: "missing_moduleId" };
+
+  const dueAtMs = nextDue(schedule.recurrence, afterMs);
+  if (dueAtMs === null) {
+    return { skipped: true, reason: "no_next_occurrence" };
+  }
+
+  const dueAtIso = new Date(dueAtMs).toISOString();
+  const occId = occurrenceId(moduleId, scheduleId, dueAtIso);
+
+  const occRef = db.doc(`users/${uid}/notification_occurrences/${occId}`);
+  const occSnap = await occRef.get();
+  if (occSnap.exists) {
+    return { skipped: true, reason: "already_scheduled", dueAt: dueAtIso };
+  }
+
+  await occRef.set({
+    occurrenceId: occId,
+    scheduleId,
+    moduleId,
+    dueAt: dueAtIso,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const targetUrl = deliverReminderUrl();
+  const payload = JSON.stringify({ uid, scheduleId, moduleId, occurrenceId: occId, dueAt: dueAtIso });
+  const oidcEmail = await oidcServiceAccountEmail();
+  const queueName = tasksQueueName();
+
+  await tasksClient.createTask({
+    parent: queueName,
+    task: {
+      name: `${queueName}/tasks/${occId}`,
+      scheduleTime: { seconds: Math.floor(dueAtMs / 1000) },
+      httpRequest: {
+        httpMethod: "POST" as const,
+        url: targetUrl,
+        headers: { "Content-Type": "application/json" },
+        body: Buffer.from(payload).toString("base64"),
+        oidcToken: { serviceAccountEmail: oidcEmail },
+      },
+    },
+  });
+
+  logger.info("[scheduleNextOccurrence] Enqueued", { uid, scheduleId, dueAt: dueAtIso, occId });
+  return { scheduled: true, dueAt: dueAtIso };
+}
+
+// ---------------------------------------------------------------------------
 // scheduleReminder — callable from the client after a logging event
 // ---------------------------------------------------------------------------
 
@@ -165,43 +233,11 @@ export const scheduleReminder = onCall(
       const moduleId = typeof schedule.moduleId === "string" ? schedule.moduleId : null;
       if (!moduleId) throw new HttpsError("internal", "Schedule missing moduleId.");
 
-      const dueAtMs = nextDue(schedule.recurrence, Date.now());
-      if (dueAtMs === null) {
-        logger.warn("[scheduleReminder] Could not compute next due time", { uid, scheduleId });
-        return { skipped: true, reason: "no_next_occurrence" };
-      }
-
-      const dueAtIso = new Date(dueAtMs).toISOString();
-      const occId = occurrenceId(moduleId, scheduleId, dueAtIso);
-
-      // Check for existing occurrence to prevent duplicates
-      const occRef = db.doc(`users/${uid}/notification_occurrences/${occId}`);
-      const occSnap = await occRef.get();
-      if (occSnap.exists) {
-        return { skipped: true, reason: "already_scheduled", dueAt: dueAtIso };
-      }
-
-      // Write occurrence record immediately (status: pending)
-      await occRef.set({
-        occurrenceId: occId,
-        scheduleId,
-        moduleId,
-        dueAt: dueAtIso,
-        status: "pending",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-
-      // Enqueue Cloud Task to fire at dueAtMs
-      const client = new CloudTasksClient();
+      // Pre-flight: verify the queue is visible (good error messages for misconfiguration).
       const queueName = tasksQueueName();
-      const targetUrl = deliverReminderUrl();
-      const payload = JSON.stringify({ uid, scheduleId, moduleId, occurrenceId: occId, dueAt: dueAtIso });
       const projId = projectId();
-
       try {
-        // Pre-flight: verify the queue is visible to the function (API enabled + IAM).
-        await client.getQueue({ name: queueName });
+        await tasksClient.getQueue({ name: queueName });
       } catch (preflightErr: unknown) {
         const code = isRecord(preflightErr) && typeof (preflightErr as { code?: number }).code === "number"
           ? (preflightErr as { code: number }).code
@@ -227,38 +263,18 @@ export const scheduleReminder = onCall(
         throw preflightErr;
       }
 
-      const oidcEmail = await oidcServiceAccountEmail();
       try {
-        await client.createTask({
-          parent: queueName,
-          task: {
-            name: `${queueName}/tasks/${occId}`,
-            scheduleTime: { seconds: Math.floor(dueAtMs / 1000) },
-            httpRequest: {
-              httpMethod: "POST" as const,
-              url: targetUrl,
-              headers: { "Content-Type": "application/json" },
-              body: Buffer.from(payload).toString("base64"),
-              oidcToken: {
-                serviceAccountEmail: oidcEmail,
-              },
-            },
-          },
-        });
+        const result = await scheduleNextOccurrence(db, uid, scheduleId, schedule, Date.now());
+        if ("skipped" in result) {
+          logger.info("[scheduleReminder] Skipped", { uid, scheduleId, reason: result.reason });
+        } else {
+          logger.info("[scheduleReminder] Task enqueued", { uid, scheduleId, dueAt: result.dueAt });
+        }
+        return result;
       } catch (error) {
-        logger.error("[scheduleReminder] Cloud Tasks enqueue failed", {
-          uid,
-          scheduleId,
-          occId,
-          queue: queueName,
-          targetUrl,
-          error,
-        });
+        logger.error("[scheduleReminder] Cloud Tasks enqueue failed", { uid, scheduleId, error });
         throw mapCloudTasksError(error);
       }
-
-      logger.info("[scheduleReminder] Task enqueued", { uid, scheduleId, dueAt: dueAtIso, occId });
-      return { scheduled: true, dueAt: dueAtIso };
     } catch (error) {
       if (error instanceof HttpsError) {
         throw error;
@@ -268,12 +284,6 @@ export const scheduleReminder = onCall(
     }
   }
 );
-
-import { NotificationEngine, type NotificationPriority } from "./notification-engine";
-
-// ... (helpers same as before)
-
-// ... (scheduleReminder same as before)
 
 // ---------------------------------------------------------------------------
 // deliverReminder — HTTP handler invoked by Cloud Tasks at the scheduled time
@@ -372,6 +382,29 @@ export const deliverReminder = onRequest(async (req, res) => {
       { status: "delivered", updatedAt: new Date().toISOString() },
       { merge: true }
     );
+
+    const recurrenceKind = (schedule?.recurrence as any)?.kind;
+
+    // Re-enqueue next occurrence for recurring schedules (self-sustaining chain).
+    if (recurrenceKind && recurrenceKind !== "once") {
+      try {
+        await scheduleNextOccurrence(db, uid, scheduleId, schedule, Date.now());
+      } catch (reenqueueErr) {
+        // Non-fatal: log but don't fail the delivery response.
+        logger.warn("[deliverReminder] Re-enqueue failed", {
+          uid, scheduleId, occId,
+          errorMessage: (reenqueueErr as any)?.message ?? String(reenqueueErr),
+        });
+      }
+    }
+
+    // Auto-disable one-shot schedules after delivery so they no longer appear active.
+    if (recurrenceKind === "once") {
+      await db.doc(`users/${uid}/notification_schedules/${scheduleId}`).set(
+        { enabled: false, updatedAt: new Date().toISOString() },
+        { merge: true }
+      );
+    }
 
     logger.info("[deliverReminder] Reminder processed via Engine", { uid, moduleId, occId });
     res.status(200).send("ok");

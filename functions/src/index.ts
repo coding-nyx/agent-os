@@ -2,12 +2,14 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import { onDocumentCreated, type FirestoreEvent, type QueryDocumentSnapshot } from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
 import { NotificationEngine, type NotificationPriority } from "./notification-engine";
 
 setGlobalOptions({ maxInstances: 10 });
 
 initializeApp();
+getFirestore().settings({ ignoreUndefinedProperties: true });
 
 export { webCrawler } from "./webCrawler";
 
