@@ -30,7 +30,7 @@ export const DOMAIN_PILLARS: Record<string, DomainPillarConfig> = {
     icon: Heart,
     accentColor: 'emerald',
     metrics: ['biological.recoveryScore', 'biological.sleepQuality', 'biological.cnsFatigue'],
-    words: { good: 'Strong', warn: 'Tired', bad: 'Drained', neutral: 'Offline' },
+    words: { good: 'Strong', warn: 'Tired', bad: 'Drained', neutral: 'OFFLINE' },
     owners: ['titan'],
     invertedMetrics: ['biological.cnsFatigue']
   },
@@ -39,7 +39,7 @@ export const DOMAIN_PILLARS: Record<string, DomainPillarConfig> = {
     icon: Brain,
     accentColor: 'sky',
     metrics: ['cognitive.energyBudget', 'cognitive.focusScore', 'cognitive.activeLoad'],
-    words: { good: 'Sharp', warn: 'Foggy', bad: 'Overloaded', neutral: 'Offline' },
+    words: { good: 'Sharp', warn: 'Foggy', bad: 'Overloaded', neutral: 'OFFLINE' },
     owners: ['atlas'],
     invertedMetrics: ['cognitive.activeLoad']
   },
@@ -48,7 +48,7 @@ export const DOMAIN_PILLARS: Record<string, DomainPillarConfig> = {
     icon: Sparkles,
     accentColor: 'indigo',
     metrics: ['emotional.emotionalResilience', 'emotional.stressLoad'],
-    words: { good: 'Resilient', warn: 'Tender', bad: 'Low', neutral: 'Offline' },
+    words: { good: 'Resilient', warn: 'Tender', bad: 'Low', neutral: 'OFFLINE' },
     owners: ['agnes'],
     invertedMetrics: ['emotional.stressLoad']
   },
@@ -57,7 +57,7 @@ export const DOMAIN_PILLARS: Record<string, DomainPillarConfig> = {
     icon: Waves,
     accentColor: 'cyan',
     metrics: ['resource.financialFriction', 'resource.resonanceROI'],
-    words: { good: 'Aligned', warn: 'Friction', bad: 'Stressed', neutral: 'Offline' },
+    words: { good: 'Aligned', warn: 'Friction', bad: 'Stressed', neutral: 'OFFLINE' },
     owners: ['ledger'],
     invertedMetrics: ['resource.financialFriction']
   }

@@ -1,12 +1,11 @@
 /**
  * Client-side reminder scheduling service.
  *
- * Listens to relevant Spine events (data logged by the user) and calls the
- * `scheduleReminder` Cloud Function to enqueue a Cloud Task for precise
- * background delivery via FCM.
- *
- * This replaces the polling scheduler — reminders are only (re)scheduled
- * when the user actually interacts with a module.
+ * Two delivery paths:
+ * 1. Server-driven: Listens to Spine events and calls the `scheduleReminder` Cloud Function
+ *    to enqueue a Cloud Task for precise background delivery via FCM.
+ * 2. Client-side fallback: `scheduleLocal` registers a browser setTimeout that fires a
+ *    browser Notification and writes to `notification_inbox` when the CF path is unavailable.
  */
 
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -37,12 +36,17 @@ const EVENT_SCHEDULE_MAP: Partial<Record<SpineEventType, string[]>> = {
   INCOME_CHANGE: ["ledger-income-due"],
 };
 
+// Max delay for client-side timers: 24 hours. Reminders beyond this won't have
+// a client-side timer (they rely entirely on the server CF path).
+const MAX_CLIENT_TIMER_MS = 24 * 60 * 60 * 1000;
+
 type ScheduleResult =
   | { scheduled: true; dueAt: string }
   | { skipped: true; reason: string; dueAt?: string };
 
 class ReminderSchedulerService {
   private unsubscribers: Array<() => void> = [];
+  private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private started = false;
   private userId: string | null = null;
 
@@ -87,14 +91,110 @@ class ReminderSchedulerService {
   stop(): void {
     this.unsubscribers.forEach((u) => u());
     this.unsubscribers = [];
+    for (const timer of this.timers.values()) clearTimeout(timer);
+    this.timers.clear();
     this.started = false;
     this.userId = null;
     console.log("[ReminderScheduler] Stopped.");
   }
 
-  /** Legacy support for components expecting client-side scheduling fallback */
-  async scheduleLocal(scheduleId: string): Promise<void> {
-    console.log(`[ReminderScheduler] scheduleLocal(${scheduleId}) called. Note: Client-side timers are deprecated in the new server-driven architecture.`);
+  /**
+   * Client-side fallback scheduler. Registers a browser setTimeout so the reminder
+   * fires even when the Cloud Function / FCM path is unavailable.
+   * Only schedules reminders with dueAt within the next 24 hours.
+   */
+  scheduleLocal(userId: string, scheduleId: string, config: NotificationScheduleConfig): void {
+    const recurrence = config.recurrence;
+    const dueAt = recurrence?.kind === 'once' ? recurrence.dueAt
+      : recurrence?.kind === 'every_n_days' ? recurrence.dtStart
+      : recurrence?.kind === 'rrule' ? recurrence.dtStart
+      : undefined;
+    if (!dueAt) return;
+
+    const dueMs = new Date(dueAt).getTime();
+    const delay = dueMs - Date.now();
+
+    if (delay <= 0) {
+      // Already past — fire immediately
+      this._fireLocalNotification(userId, scheduleId, config);
+      return;
+    }
+
+    if (delay > MAX_CLIENT_TIMER_MS) {
+      // Too far in the future for a reliable browser timer
+      console.log(`[ReminderScheduler] scheduleLocal: ${scheduleId} is > 24h away — skipping client timer.`);
+      return;
+    }
+
+    // Cancel any existing timer for this schedule
+    const existing = this.timers.get(scheduleId);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      this.timers.delete(scheduleId);
+      this._fireLocalNotification(userId, scheduleId, config);
+    }, delay);
+
+    this.timers.set(scheduleId, timer);
+    console.log(`[ReminderScheduler] scheduleLocal: ${scheduleId} in ${Math.round(delay / 1000)}s`);
+  }
+
+  private async _fireLocalNotification(
+    userId: string,
+    scheduleId: string,
+    config: NotificationScheduleConfig
+  ): Promise<void> {
+    const title = config.messageTemplate?.title ?? 'Reminder';
+    const body = config.messageTemplate?.body ?? '';
+
+    // 1. OS browser notification
+    if (config.channelPrefs?.os !== false && typeof Notification !== 'undefined') {
+      if (Notification.permission === 'granted') {
+        try {
+          new Notification(title, { body, tag: scheduleId, icon: '/icons/nexus-192.png' });
+        } catch (e) {
+          console.warn('[ReminderScheduler] Browser Notification failed:', e);
+        }
+      } else if (Notification.permission === 'default') {
+        Notification.requestPermission().then((perm) => {
+          if (perm === 'granted') {
+            try {
+              new Notification(title, { body, tag: scheduleId, icon: '/icons/nexus-192.png' });
+            } catch (e) {
+              console.warn('[ReminderScheduler] Browser Notification failed:', e);
+            }
+          }
+        });
+      }
+    }
+
+    // 2. In-app inbox entry
+    if (config.channelPrefs?.inApp !== false) {
+      try {
+        const dataLayer = getNexusDataLayer();
+        const now = new Date().toISOString();
+        const inboxId = `${scheduleId}-${Date.now()}`;
+        await dataLayer.setDocument(
+          `users/${userId}/notification_inbox`,
+          inboxId,
+          {
+            id: inboxId,
+            type: 'reminder',
+            source: config.moduleId ?? 'nexus',
+            priority: config.priority ?? 'info',
+            title,
+            note: body,
+            data: { scheduleId, deepLink: config.deepLink },
+            action: config.deepLink ? { type: 'NAVIGATE', route: config.deepLink.route } : undefined,
+            read: false,
+            createdAt: now,
+            updatedAt: now,
+          },
+        );
+      } catch (e) {
+        console.warn('[ReminderScheduler] Failed to write notification_inbox:', e);
+      }
+    }
   }
 
   /** Legacy support for debug/status listeners */

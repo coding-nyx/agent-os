@@ -21,21 +21,21 @@ const TONE_ACCENT: Record<StatusTone, string> = {
   good: 'border-emerald-500/30 bg-emerald-500/5',
   warn: 'border-amber-500/30 bg-amber-500/5',
   bad: 'border-rose-500/30 bg-rose-500/5',
-  neutral: 'border-white/20 bg-white/[0.05]',
+  neutral: 'border-white/35 bg-white/[0.08]',
 };
 
 const TONE_DOT: Record<StatusTone, string> = {
   good: 'bg-emerald-400',
   warn: 'bg-amber-400',
   bad: 'bg-rose-400',
-  neutral: 'bg-white/50',
+  neutral: 'bg-white/70',
 };
 
 const TONE_TEXT: Record<StatusTone, string> = {
   good: 'text-emerald-300',
   warn: 'text-amber-300',
   bad: 'text-rose-300',
-  neutral: 'text-white/60',
+  neutral: 'text-white/75',
 };
 
 function getGreeting(name: string): string {
@@ -153,10 +153,10 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
                   <GlassCard className={cn('w-full cursor-pointer px-4 py-3.5 space-y-2 hover:border-white/15 transition-colors', TONE_ACCENT[p.tone])}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Icon className={cn('w-4 h-4', p.tone === 'neutral' ? 'text-white/50' : TONE_TEXT[p.tone])} />
+                        <Icon className={cn('w-4 h-4', p.tone === 'neutral' ? 'text-white/70' : TONE_TEXT[p.tone])} />
                         <span className={cn(
                           "text-[11px] uppercase tracking-[0.12em] font-bold",
-                          p.tone === 'neutral' ? "text-white/50" : "text-white/50"
+                          p.tone === 'neutral' ? "text-white/70" : "text-white/50"
                         )}>
                           {p.config.label}
                         </span>
@@ -167,7 +167,7 @@ export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAb
                       {p.tone !== 'neutral' && <div className={cn('w-2 h-2 rounded-full', TONE_DOT[p.tone])} />}
                       <span className={cn(
                         'text-base font-bold uppercase tracking-tight font-display', 
-                        p.tone === 'neutral' ? 'text-white/70' : TONE_TEXT[p.tone]
+                        p.tone === 'neutral' ? 'text-white/85' : TONE_TEXT[p.tone]
                       )}>
                         {p.word}
                       </span>

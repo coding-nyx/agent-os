@@ -64,6 +64,9 @@ export async function createReminderSchedule(
     payload,
   );
 
+  // Always register client-side timer as a reliable fallback regardless of CF outcome.
+  ReminderScheduler.scheduleLocal(userId, id, payload);
+
   try {
     const { app } = getFirebase();
     if (app) {
@@ -75,8 +78,7 @@ export async function createReminderSchedule(
       await scheduleReminder({ scheduleId: id });
     }
   } catch (err) {
-    console.warn('[createReminderSchedule] scheduleReminder failed; using fallback.', err);
-    await ReminderScheduler.scheduleLocal(id);
+    console.warn('[createReminderSchedule] scheduleReminder Cloud Function failed — client-side timer already registered.', err);
   }
 
   return id;

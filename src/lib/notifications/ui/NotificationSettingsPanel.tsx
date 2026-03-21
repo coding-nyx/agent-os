@@ -289,7 +289,7 @@ export function NotificationSettingsPanel({
             message: maybe?.message,
             details: maybe?.details,
           });
-          await ReminderScheduler.scheduleLocal(scheduleId);
+          ReminderScheduler.scheduleLocal(user.uid, scheduleId, next);
         }
       }
     },

@@ -87,6 +87,23 @@ function rewriteReminderClaim(text: string): { text: string; didRewrite: boolean
   return { text: next, didRewrite };
 }
 
+function extractRelativeMinutes(text: string): number | null {
+  const lower = text.toLowerCase();
+  const match = lower.match(/\b(?:in\s+)?(\d{1,3})\s*(?:mins?|minutes?)\s*(?:from\s+now)?\b/);
+  if (!match) return null;
+  const minutes = parseInt(match[1], 10);
+  if (Number.isNaN(minutes) || minutes <= 0 || minutes > 24 * 60) return null;
+  return minutes;
+}
+
+function buildRelativeReminderOverride(text: string): { dueAt: string; recurrence: { kind: 'once'; dueAt: string; timezone: string }; timezone: string } | null {
+  const minutes = extractRelativeMinutes(text);
+  if (!minutes) return null;
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const dueAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+  return { dueAt, recurrence: { kind: 'once', dueAt, timezone }, timezone };
+}
+
 function buildPendingContextHash(moduleId: string, contextPolicy: ContextPolicy, content: MessageContent): string {
   const text = contentToText(content).trim().slice(0, 512);
   return `${moduleId}:${contextPolicy}:${text}`;
@@ -456,6 +473,30 @@ export function useModuleAI({
           userProfile: profile,
           globalSoul: globalSoul
         });
+        const now = new Date();
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const localTime = now.toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+          timeZone: timezone,
+        });
+        const offsetMinutes = -now.getTimezoneOffset();
+        const offsetSign = offsetMinutes >= 0 ? '+' : '-';
+        const offsetHours = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0');
+        const offsetMins = String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+        const isoWithOffset = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}${offsetSign}${offsetHours}:${offsetMins}`;
+        const timeContext = [
+          '[CURRENT_TIME]',
+          `ISO: ${isoWithOffset}`,
+          `Local: ${localTime}`,
+          `Timezone: ${timezone}`,
+        ].join('\n');
+        const finalSystemPromptWithTime = `${finalSystemPrompt}\n\n${timeContext}`;
 
         const memorySummarySections = [
           `[MODULE]: ${moduleId}`,
@@ -478,7 +519,7 @@ export function useModuleAI({
         const { response } = await streamMessage(
           content,
           resolvedEnhanceContext({
-            systemPrompt: finalSystemPrompt,
+            systemPrompt: finalSystemPromptWithTime,
             memoryContext: memoryContextFacts,
             summary: memoryStatus === 'vault_blocked'
               ? `Memory unavailable: vault locked for ${moduleId}.`
@@ -552,6 +593,18 @@ export function useModuleAI({
 
         for (const parsedAction of response.actions) {
           const { type, payload } = parsedAction;
+          const adjustedPayload = { ...payload };
+
+          // If the user asked for a relative-time reminder ("in 10 minutes"),
+          // override the model-provided dueAt with a client-calculated timestamp.
+          if (type === 'propose_reminder') {
+            const override = buildRelativeReminderOverride(contentText);
+            if (override) {
+              (adjustedPayload as Record<string, unknown>).dueAt = override.dueAt;
+              (adjustedPayload as Record<string, unknown>).recurrence = override.recurrence;
+              (adjustedPayload as Record<string, unknown>).timezone = override.timezone;
+            }
+          }
 
           // Ephemeral (impromptu) sessions produce zero side-effects
           if (persistencePolicy === 'ephemeral') break;
@@ -571,7 +624,7 @@ export function useModuleAI({
             userId: user?.uid,
             isGuest: !!isGuest,
             moduleId,
-            payload,
+            payload: adjustedPayload as Record<string, unknown>,
             persistencePolicy,
             encryptionKey,
             navigateTo,
