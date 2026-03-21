@@ -102,7 +102,12 @@ export class NotificationEngine {
 
       logger.info("[NotificationEngine] Processed notification", { uid, id, type, shouldSendPush });
     } catch (error) {
-      logger.error("[NotificationEngine] Failed to process notification", { uid, id, error });
+      logger.error("[NotificationEngine] Failed to process notification", {
+        uid, id,
+        errorMessage: (error as any)?.message ?? String(error),
+        errorCode: (error as any)?.code,
+        errorStack: (error as any)?.stack,
+      });
       throw error;
     }
   }
@@ -110,7 +115,15 @@ export class NotificationEngine {
   private evaluatePushRules(req: NotificationRequest, pushConfig: any): boolean {
     const { type, priority } = req;
 
-    if (pushConfig.enabled !== true) return false;
+    if (pushConfig.enabled !== true) {
+      logger.info("[NotificationEngine] Push blocked: enabled !== true", { uid: req.uid, type, pushEnabled: pushConfig.enabled });
+      return false;
+    }
+
+    if (!Array.isArray(pushConfig.tokens) || pushConfig.tokens.length === 0) {
+      logger.info("[NotificationEngine] Push blocked: no FCM tokens", { uid: req.uid, type });
+      return false;
+    }
 
     // Priority check
     const minPriority = typeof pushConfig.minPriority === "string" ? pushConfig.minPriority : "alert";
@@ -118,11 +131,17 @@ export class NotificationEngine {
     const reqRank = priorityRank[priority] ?? 0;
     const minRank = priorityRank[minPriority as NotificationPriority] ?? 1;
 
-    if (reqRank < minRank) return false;
+    if (reqRank < minRank) {
+      logger.info("[NotificationEngine] Push blocked: priority too low", { uid: req.uid, type, priority, minPriority });
+      return false;
+    }
 
     // Event type filtering
     const allowedEvents: string[] = Array.isArray(pushConfig.eventTypes) ? pushConfig.eventTypes : [];
-    if (allowedEvents.length > 0 && !allowedEvents.includes(type)) return false;
+    if (allowedEvents.length > 0 && !allowedEvents.includes(type)) {
+      logger.info("[NotificationEngine] Push blocked: event type not in allowedEvents", { uid: req.uid, type, allowedEvents });
+      return false;
+    }
 
     return true;
   }

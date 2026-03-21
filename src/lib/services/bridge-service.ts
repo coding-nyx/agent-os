@@ -28,25 +28,19 @@ const FCM_SW_PATH = `/${FCM_SW_NAME}`;
 // Log FCM "push service unavailable" only once per page load (e.g. localhost).
 let fcmUnavailableLogged = false;
 
+// Only treat as "environment unavailable" for true browser-level push service errors
+// (AbortError, DOMException from the Push API). Do NOT catch messaging/* codes here —
+// those are Firebase config errors (invalid VAPID key, token-subscribe-failed, etc.)
+// that must surface as real errors so they can be diagnosed.
 function isPushServiceError(err: unknown): boolean {
-  const msg = String((err as any)?.toString?.() || '').toLowerCase();
   const name = String((err as any)?.name || '').toLowerCase();
   const message = String((err as any)?.message || '').toLowerCase();
-  const code = String((err as any)?.code || '').toLowerCase();
 
   return (
     name === 'aborterror' ||
-    name === 'domexception' ||
-    name.includes('abort') ||
-    code.startsWith('messaging/') ||
-    msg.includes('abort') ||
-    msg.includes('registration failed') ||
-    msg.includes('push service error') ||
-    msg.includes('service worker') ||
-    message.includes('abort') ||
-    message.includes('registration failed') ||
-    message.includes('push service') ||
-    message.includes('service worker')
+    (name === 'domexception' && (message.includes('push') || message.includes('subscribe') || message.includes('registration'))) ||
+    message.includes('push service unavailable') ||
+    message.includes('push service error')
   );
 }
 
@@ -203,13 +197,26 @@ class BridgeServiceClass {
         return;
       }
 
+      if (!vapidKey) {
+        console.error('[Bridge] VITE_FIREBASE_VAPID_KEY is not set — cannot obtain FCM token.');
+        return;
+      }
+
       const token = await this.getTokenWithRetry(messaging, {
         vapidKey,
         serviceWorkerRegistration: readyRegistration,
       });
 
-      if (this.userId && token) {
+      if (!token) {
+        console.error('[Bridge] getToken returned empty — FCM token not registered. Push will not work.');
+        return;
+      }
+
+      console.log('[Bridge] FCM token obtained:', token.slice(0, 20) + '…');
+
+      if (this.userId) {
         await this.persistFCMToken(token);
+        console.log('[Bridge] FCM token persisted to bridge_config.');
       }
 
       // Cleanup old listener if any
@@ -244,13 +251,14 @@ class BridgeServiceClass {
       });
 
     } catch (err) {
+      const code = (err as any)?.code ?? '';
+      const message = (err as any)?.message ?? '';
+      console.error(`[Bridge] FCM init failed — code: ${code}, message: ${message}`, err);
       if (isPushServiceError(err)) {
         if (!fcmUnavailableLogged) {
-          console.warn('[Bridge] Push notifications unavailable in this environment (likely browser restriction).');
+          console.warn('[Bridge] Push notifications unavailable in this environment (browser-level push API blocked).');
           fcmUnavailableLogged = true;
         }
-      } else {
-        console.error('[Bridge] FCM init failed:', err);
       }
     }
   }

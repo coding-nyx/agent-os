@@ -376,7 +376,12 @@ export const deliverReminder = onRequest(async (req, res) => {
     logger.info("[deliverReminder] Reminder processed via Engine", { uid, moduleId, occId });
     res.status(200).send("ok");
   } catch (error) {
-    logger.error("[deliverReminder] Failed to process reminder", { uid, occId, error });
+    logger.error("[deliverReminder] Failed to process reminder", {
+      uid, occId,
+      errorMessage: (error as any)?.message ?? String(error),
+      errorCode: (error as any)?.code,
+      errorStack: (error as any)?.stack,
+    });
     res.status(500).send("internal error");
   }
 });

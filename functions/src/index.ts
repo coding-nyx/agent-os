@@ -138,7 +138,13 @@ export const bridgeSpineEvents = onDocumentCreated(
       });
 
     } catch (error) {
-      logger.error("Bridge spine event handler failed", error);
+      logger.error("Bridge spine event handler failed", {
+        uid: event.params.uid,
+        eventId: event.params.eventId,
+        errorMessage: (error as any)?.message ?? String(error),
+        errorCode: (error as any)?.code,
+        errorStack: (error as any)?.stack,
+      });
     }
   }
 );
