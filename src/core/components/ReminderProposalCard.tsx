@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Check, X } from 'lucide-react';
+import { Clock, Check, X, Loader2 } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import type { ReminderProposal } from '@/lib/notifications/types';
 import { cn } from '@/lib/utils';
@@ -17,13 +17,18 @@ export function ReminderProposalCard({
   proposal,
   onConfirm,
   onDismiss,
+  isConfirming,
+  isDismissing,
   className,
 }: {
   proposal: ReminderProposal;
   onConfirm: () => void;
   onDismiss: () => void;
+  isConfirming?: boolean;
+  isDismissing?: boolean;
   className?: string;
 }) {
+  const isBusy = isConfirming || isDismissing;
   return (
     <div className={cn('rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-4 space-y-3', className)}>
       <div className="flex items-start gap-3">
@@ -52,18 +57,24 @@ export function ReminderProposalCard({
           variant="ghost"
           size="sm"
           onClick={onDismiss}
+          disabled={isBusy}
           className="text-white/50 hover:text-white"
         >
-          <X className="h-3.5 w-3.5 mr-2" />
+          {isDismissing
+            ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+            : <X className="h-3.5 w-3.5 mr-2" />}
           Dismiss
         </NeuralButton>
         <NeuralButton
           size="sm"
           onClick={onConfirm}
+          disabled={isBusy}
           className="bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-500/20"
         >
-          <Check className="h-3.5 w-3.5 mr-2" />
-          Confirm
+          {isConfirming
+            ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+            : <Check className="h-3.5 w-3.5 mr-2" />}
+          {isConfirming ? 'Scheduling…' : 'Confirm'}
         </NeuralButton>
       </div>
     </div>

@@ -47,6 +47,7 @@ interface NexusChatProps {
     moduleId?: string;
     onUploadDocument?: (file: File) => void;
     onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
+    processingLabel?: string;
 }
 
 export function NexusChat({ 
@@ -65,6 +66,7 @@ export function NexusChat({
     moduleId,
     onUploadDocument,
     onUploadDocuments,
+    processingLabel,
 }: NexusChatProps) {
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
@@ -72,7 +74,7 @@ export function NexusChat({
     const { messages, isProcessing, aiState, streamingText, error, quota, handleSendMessage, pendingRequest, clearPendingRequest } = ai;
 
     const canRenderReminderActions = !renderMessageActions && !!moduleId;
-    const { activeProposal, confirm, dismiss } = useReminderProposals(
+    const { activeProposal, confirm, dismiss, isConfirming, isDismissing } = useReminderProposals(
       (moduleId === 'orchestrator' || moduleId === 'nexus') ? 'any' : (moduleId ?? 'any'),
     );
     const lastAssistantIndex = useMemo(() => {
@@ -91,9 +93,11 @@ export function NexusChat({
           proposal={activeProposal}
           onConfirm={confirm}
           onDismiss={dismiss}
+          isConfirming={isConfirming}
+          isDismissing={isDismissing}
         />
       );
-    }, [activeProposal, confirm, dismiss, lastAssistantIndex]);
+    }, [activeProposal, confirm, dismiss, isConfirming, isDismissing, lastAssistantIndex]);
 
     const prevMessagesLength = useRef(messages.length);
     const prevIsProcessing = useRef(isProcessing);
@@ -193,6 +197,7 @@ export function NexusChat({
                 onUploadDocument={onUploadDocument}
                 onUploadDocuments={onUploadDocuments}
                 headerActions={headerActions}
+                processingLabel={processingLabel}
                 pendingRequest={pendingRequest}
                 onRecoverPendingRequest={() => {
                   if (pendingRequest) {

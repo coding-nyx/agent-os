@@ -62,6 +62,7 @@ interface ChatInterfaceProps {
   onDismissPendingRequest?: () => void;
   onUploadDocument?: (file: File) => void;
   onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
+  processingLabel?: string;
 }
 
 const THEMES = {
@@ -317,6 +318,7 @@ export const ChatInterface = React.memo(function ChatInterface({
   onDismissPendingRequest,
   onUploadDocument,
   onUploadDocuments,
+  processingLabel,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -658,8 +660,35 @@ export const ChatInterface = React.memo(function ChatInterface({
         )}
       </AnimatePresence>
 
+      {/* Processing status strip — always visible above input regardless of scroll position */}
+      <AnimatePresence>
+        {(isSyncing || !!processingLabel) && (
+          <motion.div
+            key="processing-strip"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="shrink-0 overflow-hidden px-3 sm:px-6 pb-2"
+          >
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06]">
+              <Loader2 className="w-3 h-3 animate-spin text-white/40 shrink-0" />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35 truncate">
+                {processingLabel
+                  ? processingLabel
+                  : aiState?.isActing && aiState.currentActionType
+                  ? getActionLabel(aiState.currentActionType)
+                  : isSyncing
+                  ? 'Saving…'
+                  : 'Thinking…'}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input area pinned to bottom via flex layout */}
-      <div className="shrink-0 px-3 sm:px-6 pb-3 sm:pb-4 pt-2">
+      <div className="shrink-0 px-3 sm:px-6 pb-1 pt-2">
         <AnimatePresence>
           {pendingRequest && (
             <motion.div
@@ -840,22 +869,13 @@ export const ChatInterface = React.memo(function ChatInterface({
               </NeuralButton>
             </div>
 
-            <div className="mt-1 flex justify-between items-center px-2 sm:px-4 text-white">
-              <div className="flex gap-8">
-                  {isSyncing ? (
-                      <span className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                          <RefreshCw className="w-3 h-3 animate-spin" /> RESONANCE_STABILIZING_SYNC
-                      </span>
-                  ) : isGuestTrial ? (
-                      <span className="text-[9px] font-semibold text-orange-400 uppercase tracking-[0.12em] flex items-center gap-2">
-                          <Zap className="w-3 h-3 animate-pulse" /> GUEST_QUOTA: {quota?.totalTurnsUsed} / {quota?.maxTurnsAllowed}
-                      </span>
-                  ) : (
-                      <span className="text-[9px] font-semibold text-white/15 uppercase tracking-[0.12em] flex items-center gap-2"><Shield className="w-3 h-3" /> E2EE</span>
-                  )}
+            {isGuestTrial && (
+              <div className="mt-1 px-2 sm:px-4">
+                <span className="text-[9px] font-semibold text-orange-400 uppercase tracking-[0.12em] flex items-center gap-2">
+                  <Zap className="w-3 h-3 animate-pulse" /> GUEST_QUOTA: {quota?.totalTurnsUsed} / {quota?.maxTurnsAllowed}
+                </span>
               </div>
-              <span className="text-[9px] font-mono text-white/10 uppercase tracking-[0.12em] italic leading-none">{themeColor.toUpperCase()}_LINK</span>
-            </div>
+            )}
           </form>
         </div>
       </div>

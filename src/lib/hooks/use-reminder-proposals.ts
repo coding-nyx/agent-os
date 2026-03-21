@@ -12,6 +12,8 @@ export interface ReminderProposalState {
 export function useReminderProposals(moduleId: string | 'any') {
   const { user, isGuest } = useAuth();
   const [active, setActive] = useState<ReminderProposalState | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
   const pendingId = useRef<string | null>(null);
 
   useSpineEvent('REMINDER_PROPOSED', (event) => {
@@ -26,53 +28,63 @@ export function useReminderProposals(moduleId: string | 'any') {
 
   const confirm = useCallback(async () => {
     if (!active || !user || isGuest) return;
-    const targetModuleId = moduleId === 'any' ? active.proposal.moduleId : moduleId;
-    const ctx: ActionContext = {
-      userId: user.uid,
-      isGuest: !!isGuest,
-      moduleId: targetModuleId,
-      payload: { proposalId: active.proposal.id },
-      emitSpineEvent: (type, data) => {
-        Spine.publish({
-          type,
-          source: targetModuleId,
-          domain: 'system',
-          priority: 'info',
-          data,
-        });
-      },
-      updateGlobalSoul: async () => {},
-      delegateToModule: () => {},
-    };
-    await ActionHub.execute(targetModuleId, 'confirm_reminder', ctx);
-    setActive(null);
-    pendingId.current = null;
+    setIsConfirming(true);
+    try {
+      const targetModuleId = moduleId === 'any' ? active.proposal.moduleId : moduleId;
+      const ctx: ActionContext = {
+        userId: user.uid,
+        isGuest: !!isGuest,
+        moduleId: targetModuleId,
+        payload: { proposalId: active.proposal.id },
+        emitSpineEvent: (type, data) => {
+          Spine.publish({
+            type,
+            source: targetModuleId,
+            domain: 'system',
+            priority: 'info',
+            data,
+          });
+        },
+        updateGlobalSoul: async () => {},
+        delegateToModule: () => {},
+      };
+      await ActionHub.execute(targetModuleId, 'confirm_reminder', ctx);
+      setActive(null);
+      pendingId.current = null;
+    } finally {
+      setIsConfirming(false);
+    }
   }, [active, isGuest, moduleId, user]);
 
   const dismiss = useCallback(async () => {
     if (!active) return;
-    const targetModuleId = moduleId === 'any' ? active.proposal.moduleId : moduleId;
-    const ctx: ActionContext = {
-      userId: user?.uid,
-      isGuest: !!isGuest,
-      moduleId: targetModuleId,
-      payload: { proposalId: active.proposal.id },
-      emitSpineEvent: (type, data) => {
-        Spine.publish({
-          type,
-          source: targetModuleId,
-          domain: 'system',
-          priority: 'info',
-          data,
-        });
-      },
-      updateGlobalSoul: async () => {},
-      delegateToModule: () => {},
-    };
-    await ActionHub.execute(targetModuleId, 'dismiss_reminder', ctx);
-    setActive(null);
-    pendingId.current = null;
+    setIsDismissing(true);
+    try {
+      const targetModuleId = moduleId === 'any' ? active.proposal.moduleId : moduleId;
+      const ctx: ActionContext = {
+        userId: user?.uid,
+        isGuest: !!isGuest,
+        moduleId: targetModuleId,
+        payload: { proposalId: active.proposal.id },
+        emitSpineEvent: (type, data) => {
+          Spine.publish({
+            type,
+            source: targetModuleId,
+            domain: 'system',
+            priority: 'info',
+            data,
+          });
+        },
+        updateGlobalSoul: async () => {},
+        delegateToModule: () => {},
+      };
+      await ActionHub.execute(targetModuleId, 'dismiss_reminder', ctx);
+      setActive(null);
+      pendingId.current = null;
+    } finally {
+      setIsDismissing(false);
+    }
   }, [active, isGuest, moduleId, user?.uid]);
 
-  return { activeProposal: active?.proposal ?? null, confirm, dismiss };
+  return { activeProposal: active?.proposal ?? null, confirm, dismiss, isConfirming, isDismissing };
 }

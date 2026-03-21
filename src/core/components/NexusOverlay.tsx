@@ -293,6 +293,7 @@ export function NexusOverlay() {
                   themeColor="indigo"
                   placeholder="Ask Nexus anything…"
                   showInternalSignals={false}
+                  processingLabel={isNexusBusy ? busyLabel : undefined}
                   onUploadDocuments={handleUploadDocuments}
                 />
 

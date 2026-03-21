@@ -163,7 +163,10 @@ class BridgeServiceClass {
       const existing = await this.findFirebaseMessagingRegistration();
       if (existing && existing.active) {
         this.swRegistration = existing;
-        console.log('[Bridge] Using existing service worker');
+        // Trigger a background update check so a stale SW (e.g. cached with wrong
+        // Firebase config) gets replaced without requiring manual unregistration.
+        void existing.update().catch(() => {});
+        console.log('[Bridge] Using existing service worker (update check triggered)');
         return;
       }
 
@@ -233,12 +236,11 @@ class BridgeServiceClass {
       if (this.fcmUnsubscribe) this.fcmUnsubscribe();
       this.fcmUnsubscribe = onMessage(messaging, (payload) => {
         console.log('[Bridge] FCM message received:', payload);
-        
-        if (document.visibilityState !== 'visible') {
-          const title = payload.notification?.title ?? 'Nexus Alert';
-          const body = payload.notification?.body ?? '';
-          this.showNativeNotification(title, body, (payload.data as any) ?? {});
-        }
+        // Show OS notification for all foreground/hidden-tab FCM messages.
+        // (True background/closed-app messages are handled by the SW's onBackgroundMessage.)
+        const title = payload.notification?.title ?? 'Nexus Alert';
+        const body = payload.notification?.body ?? '';
+        this.showNativeNotification(title, body, (payload.data as any) ?? {});
       });
 
     } catch (err) {
