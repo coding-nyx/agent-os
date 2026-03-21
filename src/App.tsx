@@ -174,7 +174,9 @@ function BridgeMount() {
 
     void BridgeService.start(user.uid)
       .then(() => {
-        if ('Notification' in window && Notification.permission === 'default') {
+        // Only request permission once per session, not on every login
+        if ('Notification' in window && Notification.permission === 'default' && !sessionStorage.getItem('notification_permission_requested')) {
+          sessionStorage.setItem('notification_permission_requested', 'true');
           void BridgeService.requestPermissionAndInit();
         }
       });

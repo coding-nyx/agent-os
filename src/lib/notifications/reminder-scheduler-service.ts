@@ -104,31 +104,48 @@ class ReminderSchedulerService {
    * Only schedules reminders with dueAt within the next 24 hours.
    */
   scheduleLocal(userId: string, scheduleId: string, config: NotificationScheduleConfig): void {
+    console.log(`[ReminderScheduler] scheduleLocal called: ${scheduleId}`, { config });
+
     const recurrence = config.recurrence;
-    const dueAt = recurrence?.kind === 'once' ? recurrence.dueAt
-      : recurrence?.kind === 'every_n_days' ? recurrence.dtStart
-      : recurrence?.kind === 'rrule' ? recurrence.dtStart
+    if (!recurrence) {
+      console.log(`[ReminderScheduler] No recurrence config - cannot schedule`);
+      return;
+    }
+
+    const dueAt = recurrence.kind === 'once' ? recurrence.dueAt
+      : recurrence.kind === 'every_n_days' ? recurrence.dtStart
+      : recurrence.kind === 'rrule' ? recurrence.dtStart
       : undefined;
-    if (!dueAt) return;
+
+    if (!dueAt) {
+      console.log(`[ReminderScheduler] No dueAt found in recurrence`);
+      return;
+    }
 
     const dueMs = new Date(dueAt).getTime();
-    const delay = dueMs - Date.now();
+    const now = Date.now();
+    const delay = dueMs - now;
+
+    console.log(`[ReminderScheduler] ${scheduleId}: dueAt=${dueAt}, now=${new Date(now).toISOString()}, delay=${delay}ms`);
 
     if (delay <= 0) {
       // Already past — fire immediately
+      console.log(`[ReminderScheduler] ${scheduleId} is in the past - firing immediately`);
       this._fireLocalNotification(userId, scheduleId, config);
       return;
     }
 
     if (delay > MAX_CLIENT_TIMER_MS) {
-      // Too far in the future for a reliable browser timer
-      console.log(`[ReminderScheduler] scheduleLocal: ${scheduleId} is > 24h away — skipping client timer.`);
+      console.log(`[ReminderScheduler] ${scheduleId} is > 24h away (${Math.round(delay / 3600000)}h) — skipping client timer.`);
       return;
     }
 
     // Cancel any existing timer for this schedule
     const existing = this.timers.get(scheduleId);
-    if (existing) clearTimeout(existing);
+    if (existing) {
+      clearTimeout(existing);
+      console.log(`[ReminderScheduler] Cleared existing timer for ${scheduleId}`);
+    }
 
     const timer = setTimeout(() => {
       this.timers.delete(scheduleId);
@@ -136,7 +153,7 @@ class ReminderSchedulerService {
     }, delay);
 
     this.timers.set(scheduleId, timer);
-    console.log(`[ReminderScheduler] scheduleLocal: ${scheduleId} in ${Math.round(delay / 1000)}s`);
+    console.log(`[ReminderScheduler] Timer set: ${scheduleId} will fire in ${Math.round(delay / 1000)}s`);
   }
 
   private async _fireLocalNotification(
@@ -144,32 +161,51 @@ class ReminderSchedulerService {
     scheduleId: string,
     config: NotificationScheduleConfig
   ): Promise<void> {
+    console.log(`[ReminderScheduler] _fireLocalNotification fired for ${scheduleId}`);
+
     const title = config.messageTemplate?.title ?? 'Reminder';
     const body = config.messageTemplate?.body ?? '';
+    const channelPrefs = config.channelPrefs ?? { os: true, inApp: true };
 
-    // 1. OS browser notification
-    if (config.channelPrefs?.os !== false && typeof Notification !== 'undefined') {
-      if (Notification.permission === 'granted') {
+    // 1. OS browser notification (with fallback to request permission)
+    if (channelPrefs.os !== false && typeof Notification !== 'undefined') {
+      const perm = Notification.permission;
+      console.log(`[ReminderScheduler] Notification permission: ${perm}`);
+
+      // Only show browser notification if granted
+      if (perm === 'granted') {
         try {
           new Notification(title, { body, tag: scheduleId, icon: '/icons/nexus-192.png' });
+          console.log(`[ReminderScheduler] Browser notification shown`);
         } catch (e) {
-          console.warn('[ReminderScheduler] Browser Notification failed:', e);
+          console.warn('[ReminderScheduler] Browser Notification throw:', e);
         }
-      } else if (Notification.permission === 'default') {
-        Notification.requestPermission().then((perm) => {
-          if (perm === 'granted') {
-            try {
+      } else if (perm === 'default') {
+        // Only request permission once per session to avoid spamming the user
+        const alreadyRequested = sessionStorage.getItem('notification_permission_requested');
+        if (!alreadyRequested) {
+          sessionStorage.setItem('notification_permission_requested', 'true');
+          try {
+            const newPerm = await Notification.requestPermission();
+            console.log(`[ReminderScheduler] Permission request result: ${newPerm}`);
+            if (newPerm === 'granted') {
               new Notification(title, { body, tag: scheduleId, icon: '/icons/nexus-192.png' });
-            } catch (e) {
-              console.warn('[ReminderScheduler] Browser Notification failed:', e);
             }
+          } catch (e) {
+            console.warn('[ReminderScheduler] Permission request failed:', e);
           }
-        });
+        } else {
+          console.log(`[ReminderScheduler] Permission already requested this session - skipping`);
+        }
+      } else {
+        console.log(`[ReminderScheduler] Notification permission denied - user must enable in browser settings`);
       }
+    } else {
+      console.log(`[ReminderScheduler] OS notifications disabled in channelPrefs`);
     }
 
-    // 2. In-app inbox entry
-    if (config.channelPrefs?.inApp !== false) {
+    // 2. In-app inbox entry (always write - this triggers the in-app toast)
+    if (channelPrefs.inApp !== false) {
       try {
         const dataLayer = getNexusDataLayer();
         const now = new Date().toISOString();
@@ -191,9 +227,12 @@ class ReminderSchedulerService {
             updatedAt: now,
           },
         );
+        console.log(`[ReminderScheduler] Inbox entry written: ${inboxId}`);
       } catch (e) {
         console.warn('[ReminderScheduler] Failed to write notification_inbox:', e);
       }
+    } else {
+      console.log(`[ReminderScheduler] In-app notifications disabled in channelPrefs`);
     }
   }
 
