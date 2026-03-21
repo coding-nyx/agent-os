@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Plus, MessageSquare, Database, AlertCircle, Utensils, Zap } from 'lucide-react';
+import { Plus, MessageSquare, Database, AlertCircle, Utensils, Zap, Settings } from 'lucide-react';
 import { DynamicFormBuilder } from '@/core/components/forms/DynamicFormBuilder';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
@@ -56,7 +56,8 @@ export function CustomFieldManager({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [macrosCreating, setMacrosCreating] = useState(false);
 
-  const hasMacroFields = (customFields?.length ?? 0) > 0;
+  const MACRO_NAMES = new Set(DEFAULT_MACRO_FIELDS.map(f => f.name.toLowerCase()));
+  const hasMacroFields = customFields?.some(f => MACRO_NAMES.has(f.name.toLowerCase())) ?? false;
 
   const handleSetupMacros = useCallback(async () => {
     if (macrosCreating) return;
@@ -316,11 +317,13 @@ export function CustomFieldManager({
           </div>
           <NeuralButton
             size="sm"
+            variant="ghost"
+            iconOnly
             onClick={handleSetupMacros}
             disabled={macrosCreating}
+            title={macrosCreating ? 'Creating…' : 'Set Up Macros'}
           >
-            <Zap className="w-3 h-3 mr-1.5" />
-            {macrosCreating ? 'Creating…' : 'Set Up'}
+            <Zap className="w-3.5 h-3.5" />
           </NeuralButton>
         </div>
       )}
@@ -343,10 +346,12 @@ export function CustomFieldManager({
 
           <NeuralButton
             size="sm"
+            variant="ghost"
+            iconOnly
             onClick={() => setIsModalOpen(true)}
+            title={hasCustomData ? 'Edit Fields' : 'Add Fields'}
           >
-            <Plus className="w-3 h-3 mr-1.5" />
-            {hasCustomData ? 'Edit' : 'Add'} Fields
+            {hasCustomData ? <Settings className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
           </NeuralButton>
         </div>
 

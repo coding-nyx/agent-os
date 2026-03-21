@@ -22,6 +22,8 @@ const NOTIFICATION_ICON = '/assets/images/soma.png';
 // Maximum number of FCM tokens retained per user in bridge_config.
 // Oldest excess tokens are evicted on each update.
 const MAX_FCM_TOKENS = 5;
+const FCM_SW_NAME = 'firebase-messaging-sw.js';
+const FCM_SW_PATH = `/${FCM_SW_NAME}`;
 
 // Log FCM "push service unavailable" only once per page load (e.g. localhost).
 let fcmUnavailableLogged = false;
@@ -59,6 +61,16 @@ class BridgeServiceClass {
   private userId: string | null = null;
   private started = false;
   private initPromise: Promise<void> | null = null;
+
+  private isFirebaseMessagingRegistration(registration: ServiceWorkerRegistration | null | undefined): boolean {
+    return !!registration?.active?.scriptURL.includes(FCM_SW_NAME);
+  }
+
+  private async findFirebaseMessagingRegistration(): Promise<ServiceWorkerRegistration | null> {
+    if (!('serviceWorker' in navigator)) return null;
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    return registrations.find((r) => this.isFirebaseMessagingRegistration(r)) ?? null;
+  }
 
   // -------------------------------------------------------------------------
   // Public API
@@ -147,8 +159,8 @@ class BridgeServiceClass {
     if (!('serviceWorker' in navigator)) return;
 
     try {
-      // Check for existing registration first
-      const existing = await navigator.serviceWorker.getRegistration('/');
+      // Reuse only the Firebase messaging SW registration, never an unrelated root SW.
+      const existing = await this.findFirebaseMessagingRegistration();
       if (existing && existing.active) {
         this.swRegistration = existing;
         console.log('[Bridge] Using existing service worker');
@@ -156,7 +168,7 @@ class BridgeServiceClass {
       }
 
       this.swRegistration = await navigator.serviceWorker.register(
-        '/firebase-messaging-sw.js',
+        FCM_SW_PATH,
         { scope: '/' }
       );
       console.log('[Bridge] Service worker registered');
@@ -170,11 +182,7 @@ class BridgeServiceClass {
   // -------------------------------------------------------------------------
 
   private async initFCM(): Promise<void> {
-    const isLocalhost = typeof window !== 'undefined' && 
-      (window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1');
-    const isSecure = window.location?.protocol === 'https:';
-    
-    if (isLocalhost && !isSecure) return;
+    if (!window.isSecureContext) return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
     try {
@@ -207,7 +215,10 @@ class BridgeServiceClass {
       const handleVisibilityChange = async () => {
         if (document.visibilityState !== 'visible' || !this.userId) return;
         try {
-          const refreshed = await getToken(messaging, { vapidKey });
+          const refreshed = await getToken(messaging, {
+            vapidKey,
+            serviceWorkerRegistration: readyRegistration,
+          });
           if (this.userId && refreshed && refreshed !== token) {
             await this.persistFCMToken(refreshed);
           }
@@ -244,9 +255,15 @@ class BridgeServiceClass {
 
   private async ensureServiceWorkerReady(): Promise<ServiceWorkerRegistration | null> {
     if (!('serviceWorker' in navigator)) return null;
-    
-    let registration = this.swRegistration || await navigator.serviceWorker.getRegistration('/');
-    if (!registration) return null;
+
+    const currentRegistration = this.isFirebaseMessagingRegistration(this.swRegistration)
+      ? this.swRegistration
+      : await this.findFirebaseMessagingRegistration();
+
+    const registration = currentRegistration
+      ?? await navigator.serviceWorker.register(FCM_SW_PATH, { scope: '/' });
+
+    this.swRegistration = registration;
 
     if (registration.active) return registration;
 
@@ -267,7 +284,7 @@ class BridgeServiceClass {
       });
     }
 
-    return registration;
+    return registration.active ? registration : null;
   }
 
   private async getTokenWithRetry(
@@ -281,11 +298,7 @@ class BridgeServiceClass {
         // One retry with refreshed registration
         options.serviceWorkerRegistration = await this.ensureServiceWorkerReady();
         if (options.serviceWorkerRegistration) {
-          try {
-            return await getToken(messaging, options);
-          } catch (err2) {
-            throw err2;
-          }
+          return getToken(messaging, options);
         }
       }
       throw err;
@@ -390,4 +403,3 @@ export async function diagnoseFCM(): Promise<void> {
   }
   console.groupEnd();
 }
-

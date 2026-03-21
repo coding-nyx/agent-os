@@ -80,6 +80,14 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   const themeColor = manifest.themeColor;
   const title = manifest.title;
 
+  const setHideGlobalFAB = useUIStore(s => s.setHideGlobalFAB);
+  useEffect(() => {
+    if (isOnboarding && onboardingMode !== 'optional') {
+      setHideGlobalFAB(true);
+      return () => setHideGlobalFAB(false);
+    }
+  }, [isOnboarding, onboardingMode, setHideGlobalFAB]);
+
   const renderContentRef = useRef(renderContent);
   renderContentRef.current = renderContent;
   const RenderContent = useMemo(() => {

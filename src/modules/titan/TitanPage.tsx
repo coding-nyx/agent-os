@@ -271,6 +271,15 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
     encryptionKey
   });
 
+  const [isChatCollapsed, setIsChatCollapsed] = useState(true);
+
+  // Opens the chat panel then sends the prompt — used for all user-initiated AI actions.
+  // Spine events and system signals call ai.handleSendMessage directly (background).
+  const openChatAndSend = useCallback((prompt: string) => {
+    setIsChatCollapsed(false);
+    ai.handleSendMessage(prompt);
+  }, [ai.handleSendMessage]);
+
   const parseRecoveryConsult = useCallback((content: string): RecoveryConsultResult | null => {
     if (!content) return null;
     const start = content.indexOf('{');
@@ -302,24 +311,24 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
 
     if (handoff.type === 'delegate') {
       if (handoff.type === 'delegate' && handoff.sourceModuleId === 'agnes') {
-        ai.handleSendMessage(`[Context from Agnes] ${handoff.content}`);
+        openChatAndSend(`[Context from Agnes] ${handoff.content}`);
       } else if (handoff.sourceModuleId === 'atlas') {
-        ai.handleSendMessage(
+        openChatAndSend(
           `[Atlas] A physical commitment was missed: "${handoff.content}". ` +
           `Should we reschedule or adjust the training plan?`
         );
       } else if (handoff.type === 'delegate') {
-        ai.handleSendMessage(`[${handoff.sourceModuleId ?? 'System'}] ${handoff.content}`);
+        openChatAndSend(`[${handoff.sourceModuleId ?? 'System'}] ${handoff.content}`);
       }
       return;
     }
 
     if (handoff.type === 'query_result' && handoff.content) {
-      ai.handleSendMessage(
+      openChatAndSend(
         `[Query Result from ${handoff.sourceModuleId ?? 'module'}] ${handoff.content}`
       );
     }
-  }, [ai, parseRecoveryConsult]);
+  }, [openChatAndSend, parseRecoveryConsult]);
 
   // ── Direct Write (Logbook) Mode ────────────────────────────────────────────
   // Bypasses AI validation for session logging; persists directly to Firestore.
@@ -618,18 +627,18 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         '\nIs this well-balanced? Any improvements for injury prevention or performance?'
       ].filter(Boolean).join('\n');
 
-      ai.handleSendMessage(prompt);
+      openChatAndSend(prompt);
     },
-    [ai.handleSendMessage]
+    [openChatAndSend]
   );
 
   const handleGeneratePlan = useCallback(() => {
-    ai.handleSendMessage('Generate a personalized weekly training routine based on my profile, goals, and current recovery state.');
-  }, [ai.handleSendMessage]);
+    openChatAndSend('Generate a personalized weekly training routine based on my profile, goals, and current recovery state.');
+  }, [openChatAndSend]);
 
   const handleImportRoutine = useCallback(() => {
-    ai.handleSendMessage("I already have a training routine I'd like to log. Let me describe it to you.");
-  }, [ai.handleSendMessage]);
+    openChatAndSend("I already have a training routine I'd like to log. Let me describe it to you.");
+  }, [openChatAndSend]);
 
   // Send a manually-built routine to Titan AI for validation before it is committed.
   // Titan reviews it against the user's goals, recovery state, and training history,
@@ -658,8 +667,8 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       'If you have concerns or improvements, raise them first — but be concise.',
     ].filter(Boolean).join('\n');
 
-    ai.handleSendMessage(prompt);
-  }, [profile?.routines, ai.handleSendMessage]);
+    openChatAndSend(prompt);
+  }, [profile?.routines, openChatAndSend]);
 
   // Send custom tracking field values to Titan AI for validation before commit.
   // The AI checks relevance to goals/nutrition/cycle context then emits update_titan_profile.
@@ -679,8 +688,8 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
       'Flag anything that looks inconsistent or out of range.',
     ].join('\n');
 
-    ai.handleSendMessage(prompt);
-  }, [ai.handleSendMessage]);
+    openChatAndSend(prompt);
+  }, [openChatAndSend]);
 
   // ── Fast Quick-Log bar handlers ────────────────────────────────────────────
   const handleQuickLogBarSubmit = useCallback((input: string) => {
@@ -1057,14 +1066,14 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
             {/* Body composition tracker — below session history */}
             <BodyWeightTracker
               bodyWeightLog={profile?.bodyWeightLog ?? []}
-              onAnalyze={directWrite ? undefined : (prompt) => ai.handleSendMessage(prompt)}
+              onAnalyze={directWrite ? undefined : openChatAndSend}
               directWriteMode={directWrite}
               onDirectSave={handleDirectSaveBodyWeight}
             />
             {/* Cardio tracker */}
             <CardioLogger
               cardioLog={profile?.cardioLog ?? []}
-              onAnalyze={directWrite ? undefined : (prompt) => ai.handleSendMessage(prompt)}
+              onAnalyze={directWrite ? undefined : openChatAndSend}
               directWriteMode={directWrite}
               onDirectSave={handleDirectSaveCardio}
             />
@@ -1076,7 +1085,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           <div className="px-4 sm:px-6 md:px-8 pb-5 sm:pb-6 md:pb-8 pt-4 sm:pt-5">
             <CycleManager
               cycles={profile?.cycles ?? []}
-              onSubmitForApproval={ai.handleSendMessage}
+              onSubmitForApproval={openChatAndSend}
               directWriteMode={directWrite}
               onDirectCreate={async (cycle: CycleEntry) => {
                 if (!profile || !encryptionKey || !user) return;
@@ -1105,7 +1114,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
           <div className="pb-5 sm:pb-6 md:pb-8">
             <SleepTracker
               sleepLog={profile?.sleepLog ?? []}
-              onAnalyze={directWrite ? undefined : (prompt: string) => { ai.handleSendMessage(prompt); }}
+              onAnalyze={directWrite ? undefined : openChatAndSend}
               directWriteMode={directWrite}
               onDirectSave={async (entry: SleepEntry) => {
                 if (!profile || !encryptionKey || !user) return;
@@ -1185,11 +1194,11 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                   onSubmitSession={(prompt) => {
                     guardRecoveryAction(
                       () => {
-                        ai.handleSendMessage(`[Recovery Session] ${prompt}`);
+                        openChatAndSend(`[Recovery Session] ${prompt}`);
                         setCalendarSelectedRoutine(null);
                       },
                       () => {
-                        ai.handleSendMessage(prompt);
+                        openChatAndSend(prompt);
                         setCalendarSelectedRoutine(null);
                       }
                     );
@@ -1249,8 +1258,8 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                   recentSessions={profile?.workoutSessions ?? []}
                   onSubmitSession={(prompt) => {
                     guardRecoveryAction(
-                      () => ai.handleSendMessage(`[Recovery Session] ${prompt}`),
-                      () => ai.handleSendMessage(prompt)
+                      () => openChatAndSend(`[Recovery Session] ${prompt}`),
+                      () => openChatAndSend(prompt)
                     );
                   }}
                   directWriteMode={directWrite}
@@ -1288,8 +1297,7 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
                   currentValues={profile.nutrition || {}}
                   onSubmitForApproval={handleSubmitCustomFieldsForApproval}
                   customFields={profile.customFields}
-                  onDirectCreateMacros={directWrite ? handleDirectCreateMacros : undefined}
-                  onAICreateMacros={directWrite ? undefined : ai.handleSendMessage}
+                  onDirectCreateMacros={handleDirectCreateMacros}
                 />
               </div>
             )}
@@ -1310,6 +1318,8 @@ function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null
         ai={ai}
         authMode="titan"
         placeholder="Input training data or queries..."
+        isChatCollapsed={isChatCollapsed}
+        onToggleChat={setIsChatCollapsed}
       >
         <div className="titan-theme flex flex-col h-full overflow-hidden">
           <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-3 sm:pb-4 md:pb-5">

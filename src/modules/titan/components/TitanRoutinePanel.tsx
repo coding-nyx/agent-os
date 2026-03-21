@@ -81,8 +81,8 @@ export function TitanRoutinePanel({
             description="Build your weekly routine manually, or let Titan generate one based on your goals and recovery state."
             icon={Dumbbell}
             action={
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-1 relative">
-                <NeuralButton onClick={handleOpenCreate}>
+              <div className="flex flex-row flex-wrap items-center justify-center gap-3 pt-1 relative">
+                <NeuralButton onClick={handleOpenCreate} variant="outline">
                   <Plus className="w-4 h-4 mr-2" />
                   Build Manually
                 </NeuralButton>

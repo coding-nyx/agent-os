@@ -157,10 +157,18 @@ export class Orchestrator {
    */
   private getActionCapableModel(): string {
     const failedModel = this.state.activeModelId;
-    const candidates = ModelRegistry.getActionCapableFreeModels(ACTION_CAPABLE_FREE_MODELS)
+    const preferredCandidates = ACTION_CAPABLE_FREE_MODELS
       .filter((id) => id !== failedModel);
 
-    return candidates[0] ?? ACTION_CAPABLE_FREE_MODELS[0];
+    if (preferredCandidates.length > 0) {
+      return preferredCandidates[0];
+    }
+
+    const registryCandidates = ModelRegistry.getActionCapableFreeModels(ACTION_CAPABLE_FREE_MODELS)
+      .filter((id) => ACTION_CAPABLE_FREE_MODELS.includes(id as typeof ACTION_CAPABLE_FREE_MODELS[number]))
+      .filter((id) => id !== failedModel);
+
+    return registryCandidates[0] ?? ACTION_CAPABLE_FREE_MODELS[0];
   }
 
   /**
