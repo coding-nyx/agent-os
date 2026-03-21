@@ -232,7 +232,7 @@ export function NexusOverlay() {
                 'h-[88dvh] border-t border-l border-r border-white/[0.06]',
                 'shadow-[0_-20px_60px_rgba(0,0,0,0.55)]',
                 // Desktop: right panel overrides
-                'lg:inset-y-0 lg:right-0 lg:left-auto lg:bottom-auto',
+                'lg:inset-y-0 lg:right-0 lg:left-auto lg:h-auto lg:bottom-0',
                 'lg:w-full lg:max-w-[420px]',
                 'lg:rounded-none lg:border-t-0 lg:border-r-0 lg:border-l lg:border-white/[0.06]',
                 'lg:shadow-[-24px_0_60px_rgba(0,0,0,0.45)]',
