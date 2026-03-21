@@ -466,7 +466,7 @@ export const ChatInterface = React.memo(function ChatInterface({
   return (
     <div
       className={cn(
-        "flex-1 flex flex-col w-full mx-auto relative min-h-0"
+        "flex-1 flex flex-col w-full mx-auto relative min-h-0 h-full"
       )}
     >
       {/* Header actions (full-width, e.g. DiagnosisToolbar) */}

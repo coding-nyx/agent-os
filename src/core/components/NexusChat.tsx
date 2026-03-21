@@ -173,7 +173,7 @@ export function NexusChat({
     const isSyncing = isProcessing && !hasVisibleStream && !isActuallyThinking;
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 relative">
+        <div className="flex-1 flex flex-col min-h-0 relative h-full">
             <ChatInterface 
                 messages={renderedMessages}
                 onSendMessage={(content) => handleSendMessage(content, onActionParsed)}

@@ -4,20 +4,14 @@
  */
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
-  Filter,
   Search,
   Link2,
   Calendar,
   Zap,
-  AlertTriangle,
   CheckCircle2,
-  Clock,
-  Trash2,
-  Edit2,
   GitBranch,
   X,
 } from 'lucide-react';
@@ -32,8 +26,14 @@ import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
-import { ConfirmDialog } from '@/core/components/ConfirmDialog';
 import { QuickReminderModal } from '@/core/components/QuickReminderModal';
+
+// Shared primitives
+import { StatsGrid } from './shared/StatsGrid';
+import { PortalledModal } from './shared/PortalledModal';
+import { ItemActionButtons } from './shared/ItemActionButtons';
+import { useDeleteConfirmation } from './shared/useDeleteConfirmation';
+import { useFilteredSortedList } from './shared/useFilteredSortedList';
 
 interface TaskManagerProps {
   tasks: AtlasTask[];
@@ -68,8 +68,9 @@ export function TaskManager({
   const [editingTask, setEditingTask] = useState<AtlasTask | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showDependencyGraph, setShowDependencyGraph] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [remindTask, setRemindTask] = useState<AtlasTask | null>(null);
+
+  const { promptDelete, ConfirmationDialog } = useDeleteConfirmation<AtlasTask>(onDeleteTask);
 
   useEffect(() => {
     if (!focusTaskId) return;
@@ -90,28 +91,18 @@ export function TaskManager({
   });
 
   // ── Filtered & sorted tasks ──
-  const filteredTasks = useMemo(() => {
-    let filtered = tasks;
-
-    // Apply status filter
-    if (filter !== 'all') {
-      filtered = filtered.filter((t) => t.status === filter);
-    }
-
-    // Apply search
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (t) =>
-          t.title.toLowerCase().includes(query) ||
-          t.description?.toLowerCase().includes(query) ||
-          t.tags?.some((tag) => tag.toLowerCase().includes(query))
-      );
-    }
-
-    // Sort
-    filtered = [...filtered].sort((a, b) => {
-      switch (sortBy) {
+  const filteredTasks = useFilteredSortedList({
+    items: tasks,
+    filter,
+    searchQuery,
+    sortBy,
+    filterFn: (t, f) => f === 'all' || t.status === f,
+    searchFn: (t, q) =>
+      t.title.toLowerCase().includes(q) ||
+      (t.description?.toLowerCase().includes(q) ?? false) ||
+      (t.tags?.some((tag) => tag.toLowerCase().includes(q)) ?? false),
+    sortFn: (a, b, s) => {
+      switch (s) {
         case 'priority':
           return a.priority - b.priority;
         case 'deadline':
@@ -125,10 +116,8 @@ export function TaskManager({
         default:
           return 0;
       }
-    });
-
-    return filtered;
-  }, [tasks, filter, searchQuery, sortBy]);
+    },
+  });
 
   // ── Task statistics ──
   const stats = useMemo(() => {
@@ -221,49 +210,36 @@ export function TaskManager({
   return (
     <div className="space-y-6">
       {/* ── Header with stats ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">
-            Total Tasks
-          </div>
-          <div className="text-2xl font-black text-white/90 tabular-nums">
-            {stats.total}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-[var(--module-color-400)]/60 uppercase tracking-wider mb-1">
-            Active
-          </div>
-          <div className="text-2xl font-black text-[var(--module-color-400)] tabular-nums">
-            {stats.active}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-amber-400/60 uppercase tracking-wider mb-1">
-            Blocked
-          </div>
-          <div className="text-2xl font-black text-amber-400 tabular-nums">
-            {stats.blocked}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-emerald-400/60 uppercase tracking-wider mb-1">
-            Done
-          </div>
-          <div className="text-2xl font-black text-emerald-400 tabular-nums">
-            {stats.completed}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-orange-400/60 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <Zap className="w-3 h-3" />
-            Energy
-          </div>
-          <div className="text-2xl font-black text-orange-400 tabular-nums">
-            {stats.totalEnergy}
-          </div>
-        </SurfaceCard>
-      </div>
+      <StatsGrid
+        stats={[
+          { label: 'Total Tasks', value: stats.total },
+          {
+            label: 'Active',
+            value: stats.active,
+            colorClass: 'text-[var(--module-color-400)]',
+            labelColorClass: 'text-[var(--module-color-400)]/60',
+          },
+          {
+            label: 'Blocked',
+            value: stats.blocked,
+            colorClass: 'text-amber-400',
+            labelColorClass: 'text-amber-400/60',
+          },
+          {
+            label: 'Done',
+            value: stats.completed,
+            colorClass: 'text-emerald-400',
+            labelColorClass: 'text-emerald-400/60',
+          },
+          {
+            label: 'Energy',
+            value: stats.totalEnergy,
+            icon: <Zap className="w-3 h-3" />,
+            colorClass: 'text-orange-400',
+            labelColorClass: 'text-orange-400/60',
+          },
+        ]}
+      />
 
       {/* ── Controls: Search, Filter, Sort, Actions ── */}
       <div className="flex flex-wrap gap-2">
@@ -403,248 +379,209 @@ export function TaskManager({
                 onRemind={(t) => setRemindTask(t)}
               />
               {/* Quick action buttons on hover */}
-              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                <NeuralButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenForm(task);
-                  }}
-                  className="p-1.5 h-8 w-8 min-w-0 bg-white/10 hover:bg-white/20 text-white/60 hover:text-white/90"
-                  aria-label={`Edit ${task.title}`}
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </NeuralButton>
-                <NeuralButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteTarget({ id: task.id, title: task.title });
-                  }}
-                  className="p-1.5 h-8 w-8 min-w-0 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400"
-                  aria-label={`Delete ${task.title}`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </NeuralButton>
-              </div>
+              <ItemActionButtons
+                onEdit={() => handleOpenForm(task)}
+                onDelete={() => promptDelete(task)}
+                itemTitle={task.title}
+              />
             </div>
           ))
         )}
       </div>
 
-      {/* ── Task Form Modal — portalled to body to escape Framer Motion transform containment ── */}
-      {createPortal(
-        <AnimatePresence>
-          {showForm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-              onClick={handleCloseForm}
-            >
-              <motion.div
-                initial={reducedMotion ? false : { scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl"
-              >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-black text-white/90">
-                  {editingTask ? 'Edit Task' : 'Create New Task'}
-                </h2>
-                <NeuralButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCloseForm}
-                  className="p-2 h-9 w-9 min-w-0 hover:bg-white/10 text-white/40 hover:text-white/70"
-                >
-                  <X className="w-5 h-5" />
-                </NeuralButton>
-              </div>
+      {/* ── Task Form Modal ── */}
+      <PortalledModal isOpen={showForm} onClose={handleCloseForm}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-black text-white/90">
+            {editingTask ? 'Edit Task' : 'Create New Task'}
+          </h2>
+          <NeuralButton
+            variant="ghost"
+            size="sm"
+            onClick={handleCloseForm}
+            className="p-2 h-9 w-9 min-w-0 hover:bg-white/10 text-white/40 hover:text-white/70"
+          >
+            <X className="w-5 h-5" />
+          </NeuralButton>
+        </div>
 
-              <div className="space-y-4">
-                {/* Title */}
-                <NeuralInput
-                  label="Title *"
-                  placeholder="Enter task title..."
-                  value={formData.title || ''}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                />
+        <div className="space-y-4">
+          {/* Title */}
+          <NeuralInput
+            label="Title *"
+            placeholder="Enter task title..."
+            value={formData.title || ''}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          />
 
-                {/* Description */}
-                <div className="space-y-2">
-                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
-                    Description
-                  </label>
-                  <NeuralTextarea
-                    value={formData.description || ''}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Add task details..."
-                    rows={3}
-                  />
-                </div>
+          {/* Description */}
+          <div className="space-y-2">
+            <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+              Description
+            </label>
+            <NeuralTextarea
+              value={formData.description || ''}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Add task details..."
+              rows={3}
+            />
+          </div>
 
-                {/* Priority & Energy Cost */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
-                      Priority (1-5)
-                    </label>
-                    <NeuralSelectMenu
-                      value={formData.priority || 3}
-                      onChange={(next) =>
-                        setFormData({ ...formData, priority: Number(next) as 1 | 2 | 3 | 4 | 5 })
-                      }
-                      options={[
-                        { value: 1, label: '1 - Critical' },
-                        { value: 2, label: '2 - High' },
-                        { value: 3, label: '3 - Medium' },
-                        { value: 4, label: '4 - Low' },
-                        { value: 5, label: '5 - Minimal' },
-                      ]}
-                      ariaLabel="Priority"
-                    />
-                  </div>
-                  <NeuralInput
-                    label="Energy Cost (0-10)"
-                    type="number"
-                    min={0}
-                    max={10}
-                    icon={<Zap className="w-4 h-4" />}
-                    value={formData.energyCost || 5}
-                    onChange={(e) =>
-                      setFormData({ ...formData, energyCost: Math.max(0, Math.min(10, parseInt(e.target.value) || 5)) })
-                    }
-                  />
-                </div>
+          {/* Priority & Energy Cost */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+                Priority (1-5)
+              </label>
+              <NeuralSelectMenu
+                value={formData.priority || 3}
+                onChange={(next) =>
+                  setFormData({ ...formData, priority: Number(next) as 1 | 2 | 3 | 4 | 5 })
+                }
+                options={[
+                  { value: 1, label: '1 - Critical' },
+                  { value: 2, label: '2 - High' },
+                  { value: 3, label: '3 - Medium' },
+                  { value: 4, label: '4 - Low' },
+                  { value: 5, label: '5 - Minimal' },
+                ]}
+                ariaLabel="Priority"
+              />
+            </div>
+            <NeuralInput
+              label="Energy Cost (0-10)"
+              type="number"
+              min={0}
+              max={10}
+              icon={<Zap className="w-4 h-4" />}
+              value={formData.energyCost || 5}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  energyCost: Math.max(0, Math.min(10, parseInt(e.target.value) || 5)),
+                })
+              }
+            />
+          </div>
 
-                {/* Deadline & Project */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <NeuralInput
-                    label="Deadline"
-                    type="date"
-                    icon={<Calendar className="w-4 h-4" />}
-                    value={formData.deadline || ''}
-                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                  />
-                  <div className="space-y-2">
-                    <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
-                      Project
-                    </label>
-                    <NeuralSelectMenu
-                      value={formData.projectId || NO_PROJECT_VALUE}
-                      onChange={(next) => {
-                        const selected = String(next);
+          {/* Deadline & Project */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <NeuralInput
+              label="Deadline"
+              type="date"
+              icon={<Calendar className="w-4 h-4" />}
+              value={formData.deadline || ''}
+              onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+            />
+            <div className="space-y-2">
+              <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+                Project
+              </label>
+              <NeuralSelectMenu
+                value={formData.projectId || NO_PROJECT_VALUE}
+                onChange={(next) => {
+                  const selected = String(next);
+                  setFormData({
+                    ...formData,
+                    projectId: selected === NO_PROJECT_VALUE ? undefined : selected,
+                  });
+                }}
+                options={[
+                  { value: NO_PROJECT_VALUE, label: 'None' },
+                  ...projects.map((p) => ({ value: p.id, label: p.title })),
+                ]}
+                ariaLabel="Project"
+              />
+            </div>
+          </div>
+
+          {/* Dependencies */}
+          <div className="space-y-2">
+            <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1 flex items-center gap-1">
+              <Link2 className="w-3 h-3" />
+              Dependencies
+            </label>
+            <div className="space-y-2 max-h-40 overflow-y-auto p-1">
+              {tasks
+                .filter((t) => t.id !== editingTask?.id)
+                .map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
+                  >
+                    <span className="text-xs text-white/70">{t.title}</span>
+                    <NeuralToggle
+                      checked={formData.dependencies?.includes(t.id) || false}
+                      onChange={(checked) => {
+                        const deps = formData.dependencies || [];
                         setFormData({
                           ...formData,
-                          projectId: selected === NO_PROJECT_VALUE ? undefined : selected,
+                          dependencies: checked
+                            ? [...deps, t.id]
+                            : deps.filter((id) => id !== t.id),
                         });
                       }}
-                      options={[
-                        { value: NO_PROJECT_VALUE, label: 'None' },
-                        ...projects.map((p) => ({ value: p.id, label: p.title })),
-                      ]}
-                      ariaLabel="Project"
+                      size="sm"
                     />
                   </div>
-                </div>
+                ))}
+            </div>
+          </div>
 
-                {/* Dependencies */}
-                <div className="space-y-2">
-                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1 flex items-center gap-1">
-                    <Link2 className="w-3 h-3" />
-                    Dependencies
-                  </label>
-                  <div className="space-y-2 max-h-40 overflow-y-auto p-1">
-                    {tasks
-                      .filter((t) => t.id !== editingTask?.id)
-                      .map((t) => (
-                        <div
-                          key={t.id}
-                          className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
-                        >
-                          <span className="text-xs text-white/70">{t.title}</span>
-                          <NeuralToggle
-                            checked={formData.dependencies?.includes(t.id) || false}
-                            onChange={(checked) => {
-                              const deps = formData.dependencies || [];
-                              setFormData({
-                                ...formData,
-                                dependencies: checked
-                                  ? [...deps, t.id]
-                                  : deps.filter((id) => id !== t.id),
-                              });
-                            }}
-                            size="sm"
-                          />
-                        </div>
-                      ))}
-                  </div>
-                </div>
+          {/* Tags */}
+          <NeuralInput
+            label="Tags (comma-separated)"
+            value={formData.tags?.join(', ') || ''}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                tags: e.target.value
+                  .split(',')
+                  .map((t) => t.trim())
+                  .filter(Boolean),
+              })
+            }
+            placeholder="work, urgent, research..."
+          />
+        </div>
 
-                {/* Tags */}
-                <NeuralInput
-                  label="Tags (comma-separated)"
-                  value={formData.tags?.join(', ') || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean),
-                    })
-                  }
-                  placeholder="work, urgent, research..."
-                />
-              </div>
+        {/* Actions */}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+          <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
+            Cancel
+          </NeuralButton>
+          <NeuralButton
+            onClick={handleSubmitForm}
+            disabled={!formData.title?.trim()}
+            className="w-full sm:w-auto"
+          >
+            {editingTask ? 'Update Task' : 'Create Task'}
+          </NeuralButton>
+        </div>
+      </PortalledModal>
 
-              {/* Actions */}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
-                <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
-                  Cancel
-                </NeuralButton>
-                <NeuralButton onClick={handleSubmitForm} disabled={!formData.title?.trim()} className="w-full sm:w-auto">
-                  {editingTask ? 'Update Task' : 'Create Task'}
-                </NeuralButton>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>,
-      document.body
-    )}
       <QuickReminderModal
         open={!!remindTask}
         moduleId="atlas"
         defaultTitle={remindTask ? `Task: ${remindTask.title}` : ''}
         defaultNote={remindTask?.description}
         deepLink={
-          remindTask
-            ? { route: '/atlas', focusId: `task:${remindTask.id}` }
-            : undefined
+          remindTask ? { route: '/atlas', focusId: `task:${remindTask.id}` } : undefined
         }
         source={
           remindTask
-            ? { moduleId: 'atlas', entityType: 'task', entityId: remindTask.id, label: remindTask.title }
+            ? {
+                moduleId: 'atlas',
+                entityType: 'task',
+                entityId: remindTask.id,
+                label: remindTask.title,
+              }
             : undefined
         }
         tags={remindTask?.tags}
         onClose={() => setRemindTask(null)}
       />
-      <ConfirmDialog
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (deleteTarget) onDeleteTask(deleteTarget.id);
-          setDeleteTarget(null);
-        }}
-        title={`Delete "${deleteTarget?.title}"?`}
-        description="This action cannot be undone."
-        variant="danger"
-        confirmLabel="Delete"
-      />
+      <ConfirmationDialog />
     </div>
   );
 }

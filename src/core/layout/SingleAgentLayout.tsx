@@ -254,129 +254,51 @@ export function SingleAgentLayout({
 
       {/* ── Main Dashboard Content ── */}
       <div className="relative flex h-full flex-1 min-w-0 max-w-full flex-col overflow-hidden bg-black/5">
-        <div className={cn(
-          "flex min-h-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden no-scrollbar scroll-smooth",
-          !canDockChat && isChatCollapsed && !hideGlobalFAB && "pb-24"
-        )}>
+        <div 
+          className={cn(
+            "flex min-h-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden no-scrollbar scroll-smooth",
+            !canDockChat && isChatCollapsed && !hideGlobalFAB && "pb-24"
+          )}
+        >
           <div className={cn("flex w-full min-w-0 flex-1 flex-col", contentClassName)}>
             {children}
           </div>
         </div>
-      </div>
 
-      {/* ── Agent Sidebar (Desktop) ── */}
-      {canDockChat && (
-        <motion.aside
-          initial={false}
-          animate={{
-            width: isChatCollapsed ? 0 : chatWidth,
-            opacity: isChatCollapsed ? 0 : 1,
-            pointerEvents: isChatCollapsed ? 'none' : 'auto'
-          }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className={cn(
-            "relative flex h-full shrink-0 flex-col border-l bg-black/20 backdrop-blur-md",
-            currentTheme.sidebarBorder
-          )}
-        >
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col relative">
-            <NexusChat
-              moduleId={moduleId}
-              ai={ai}
-              agentName={agentName}
-              themeColor={themeColor as any}
-              placeholder={placeholder}
-              authMode={authMode}
-              showInternalSignals={false}
-              onClearHistory={ai.clearSession}
-              onUploadDocument={onUploadDocument}
-              onUploadDocuments={onUploadDocuments}
-            />
-            {/* Routing suggestion — inline below chat input */}
-            <RoutingSuggestion
-              target={ai.routingSuggestion?.target || 'agnes'}
-              reason={ai.routingSuggestion?.reason}
-              onConfirm={handleRouteConfirm}
-              onDismiss={handleRouteDismiss}
-              visible={ai.routingSuggestion !== undefined && ai.routingSuggestion !== null}
-            />
-          </div>
-          
-          {/* Collapse Handle */}
-          {!isChatCollapsed && (
-            <button
-              onClick={() => toggleChat(true)}
-              className={cn(
-                'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-[var(--z-fab)] w-6 h-12 flex items-center justify-center border transition-all rounded-l-xl backdrop-blur-xl',
-                currentTheme.btnBg,
-                currentTheme.btnBorder,
-                currentTheme.btnText
-              )}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          )}
-        </motion.aside>
-      )}
-
-      {/* ── Agent Overlay (Mobile/Tablet) — portaled to body to escape stacking context ── */}
-      {!canDockChat && createPortal(
-        <AnimatePresence>
-          {!isChatCollapsed && (
-            <motion.div
-              key="mobile-chat-overlay"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              role="dialog"
-              aria-modal="true"
-              aria-label={`${agentName} chat`}
-              className="fixed inset-0 z-[var(--z-modal)] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[#020205]/95 backdrop-blur-xl"
-            >
-              <div className={cn("shell-overlay-panel relative flex min-h-0 flex-1 flex-col", currentTheme.sidebarBorder)}>
-                <div
-                  className={cn("relative flex items-center justify-between border-b px-4 py-3 sm:px-6 sm:py-4", currentTheme.sidebarBorder)}
-                  style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + var(--space-3))' }}
-                >
-                  <SpineMobileBar accentColor={undefined} />
-                  <div className="flex items-center gap-3">
-                    <div className={cn("h-2 w-2 rounded-full animate-pulse", 
-                      currentTheme.indicatorBg
-                    )} />
-                    <span className={cn("font-display text-[12px] font-semibold tracking-[0.04em]", currentTheme.btnText)}>
-                      {agentName} Resonance
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => toggleChat(true)}
-                    className={cn(
-                      "p-2 rounded-xl border transition-all",
-                      currentTheme.btnBg,
-                      currentTheme.btnBorder,
-                      currentTheme.btnText
-                    )}
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-                <div
-                  className="flex min-h-0 flex-1 flex-col"
-                  style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-                >
-                  <NexusChat
-                    moduleId={moduleId}
-                    ai={ai}
-                    agentName={agentName}
-                    themeColor={themeColor as any}
-                    placeholder={placeholder}
-                     authMode={authMode}
-                     showInternalSignals={false}
-                     onClearHistory={ai.clearSession}
-                     onUploadDocument={onUploadDocument}
-                     onUploadDocuments={onUploadDocuments}
-                   />
-                  {/* Routing suggestion — inline below chat input */}
+        {/* ── Desktop: Right Overlay Command Deck ── */}
+        {canDockChat && (
+          <motion.div
+            initial={false}
+            animate={{
+              x: isChatCollapsed ? '100%' : '0%',
+              opacity: 1, // Always visible for slide animation
+              pointerEvents: isChatCollapsed ? 'none' : 'auto'
+            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className={cn(
+              "absolute top-0 bottom-0 right-0 z-[20] flex flex-col border-l bg-black/40 backdrop-blur-xl shadow-[-8px_0_30px_rgba(0,0,0,0.5)]",
+              currentTheme.sidebarBorder
+            )}
+            style={{ width: chatWidth }}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-black/20 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", currentTheme.indicatorBg)} />
+                <span className="text-[10px] font-mono uppercase tracking-wider text-white/50">{agentName} Terminal</span>
+              </div>
+              <button 
+                onClick={() => toggleChat(true)}
+                className="p-1 hover:bg-white/5 rounded-md transition-colors"
+                title="Collapse Chat"
+              >
+                 <ChevronRight className="w-4 h-4 text-white/40" />
+              </button>
+            </div>
+            
+            <div className="flex-1 min-h-0 flex flex-col relative">
+              {/* Routing suggestion — positioned at top to avoid blocking input */}
+              <div className="absolute top-2 left-0 right-0 z-30 px-4 pointer-events-none">
+                <div className="pointer-events-auto w-full">
                   <RoutingSuggestion
                     target={ai.routingSuggestion?.target || 'agnes'}
                     reason={ai.routingSuggestion?.reason}
@@ -386,6 +308,101 @@ export function SingleAgentLayout({
                   />
                 </div>
               </div>
+
+              <div className="flex-1 min-w-0 w-full h-full flex flex-col">
+                <NexusChat
+                  moduleId={moduleId}
+                  ai={ai}
+                  agentName={agentName}
+                  themeColor={themeColor as any}
+                  placeholder={placeholder}
+                  authMode={authMode}
+                  showInternalSignals={false}
+                  onClearHistory={ai.clearSession}
+                  onUploadDocument={onUploadDocument}
+                  onUploadDocuments={onUploadDocuments}
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* ── Agent Overlay (Mobile/Tablet) — Bottom Sheet ── */}
+      {!canDockChat && createPortal(
+        <AnimatePresence>
+          {!isChatCollapsed && (
+            <motion.div
+              key="mobile-chat-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[var(--z-modal)] flex flex-col justify-end bg-black/60 backdrop-blur-[2px]"
+              onClick={() => toggleChat(true)} // Click backdrop to close
+            >
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "relative flex flex-col h-[85dvh] w-full bg-[#09090b] rounded-t-3xl overflow-hidden shadow-2xl border-t",
+                  currentTheme.sidebarBorder
+                )}
+              >
+                {/* Drag Handle */}
+                <div className="w-full flex justify-center pt-3 pb-1 shrink-0" onPointerDown={() => toggleChat(true)}>
+                  <div className="w-12 h-1.5 rounded-full bg-white/20" />
+                </div>
+
+                <div className={cn("shell-overlay-panel relative flex min-h-0 flex-1 flex-col")}>
+                  <div
+                    className={cn("relative flex items-center justify-between border-b px-4 py-2", currentTheme.sidebarBorder)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn("h-2 w-2 rounded-full animate-pulse", 
+                        currentTheme.indicatorBg
+                      )} />
+                      <span className={cn("font-display text-[12px] font-semibold tracking-[0.04em]", currentTheme.btnText)}>
+                        {agentName}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => toggleChat(true)}
+                      className={cn(
+                        "p-2 rounded-full hover:bg-white/5 transition-colors"
+                      )}
+                    >
+                      <X size={18} className="text-white/50" />
+                    </button>
+                  </div>
+                  <div
+                    className="flex min-h-0 flex-1 flex-col pb-safe"
+                  >
+                    <NexusChat
+                      moduleId={moduleId}
+                      ai={ai}
+                      agentName={agentName}
+                      themeColor={themeColor as any}
+                      placeholder={placeholder}
+                       authMode={authMode}
+                       showInternalSignals={false}
+                       onClearHistory={ai.clearSession}
+                       onUploadDocument={onUploadDocument}
+                       onUploadDocuments={onUploadDocuments}
+                     />
+                    {/* Routing suggestion — inline below chat input */}
+                    <RoutingSuggestion
+                      target={ai.routingSuggestion?.target || 'agnes'}
+                      reason={ai.routingSuggestion?.reason}
+                      onConfirm={handleRouteConfirm}
+                      onDismiss={handleRouteDismiss}
+                      visible={ai.routingSuggestion !== undefined && ai.routingSuggestion !== null}
+                    />
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>,

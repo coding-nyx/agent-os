@@ -22,6 +22,7 @@ import { NeuralModal } from '@/core/components/NeuralModal';
 export function AppVaultGate() {
   const { unlockVault, isHandshaking, persistenceMode, setPersistenceMode, destroyVault, hasVault } = useVault();
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [shaking, setShaking] = useState(false);
   const [showReset, setShowReset] = useState(false);
@@ -34,6 +35,14 @@ export function AppVaultGate() {
 
   const handleUnlock = async () => {
     if (!password.trim() || isHandshaking) return;
+    if (!hasVault && password !== confirmPassword) {
+      setError('KEYS DO NOT MATCH — PLEASE RE-ENTER');
+      setPassword('');
+      setConfirmPassword('');
+      setShaking(true);
+      setTimeout(() => setShaking(false), 600);
+      return;
+    }
     setError('');
     try {
       await unlockVault(password);
@@ -41,6 +50,7 @@ export function AppVaultGate() {
     } catch {
       setError('HANDSHAKE FAILED — INVALID KEY');
       setPassword('');
+      setConfirmPassword('');
       setShaking(true);
       setTimeout(() => setShaking(false), 600);
     }
@@ -50,10 +60,7 @@ export function AppVaultGate() {
     if (resetConfirmText !== 'DELETE VAULT') return;
     setIsResetting(true);
     try {
-      // Start destruction and navigate immediately.
-      // destroyVault is async but we don't need to wait for it to finish purging
-      // before we switch the route to /nexus (which will be locked down anyway).
-      void destroyVault();
+      await destroyVault();
       navigate('/nexus', { replace: true });
     } catch (e) {
       console.error('Failed to reset vault:', e);
@@ -106,10 +113,21 @@ export function AppVaultGate() {
             placeholder={hasVault ? "MASTER KEY" : "NEW MASTER KEY"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
+            onKeyDown={(e) => { if (e.key === 'Enter' && hasVault) handleUnlock(); }}
             autoFocus
             className={cn(error && 'border-rose-500/60')}
           />
+
+          {!hasVault && (
+            <NeuralInput
+              type="password"
+              placeholder="CONFIRM MASTER KEY"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
+              className={cn(error && 'border-rose-500/60')}
+            />
+          )}
 
           {error && (
             <div className="text-[10px] text-rose-400/80 tracking-widest uppercase text-center">
@@ -123,7 +141,7 @@ export function AppVaultGate() {
             className="w-full"
             onClick={handleUnlock}
             loading={isHandshaking}
-            disabled={isHandshaking || !password.trim()}
+            disabled={isHandshaking || !password.trim() || (!hasVault && !confirmPassword.trim())}
           >
             {isHandshaking ? 'INITIALIZING...' : (hasVault ? 'INITIALIZE HANDSHAKE' : 'GENERATE NEURAL KEYS')}
           </NeuralButton>

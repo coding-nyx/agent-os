@@ -1,14 +1,12 @@
-import React, { useMemo } from 'react';
-import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
+import React, { useCallback, useMemo } from 'react';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
-import {
-  ScoutProfile,
-  createEmptyScoutProfile
-} from '../services/scout-knowledge-service';
+import { ScoutProfile, createEmptyScoutProfile } from '../services/scout-knowledge-service';
+import { UnifiedOnboardingShell } from '@/core/intake/UnifiedOnboardingShell';
+import { SCOUT_BASE_SPEC } from '@/core/intake/onboarding-configs';
 
 interface ScoutOnboardingProps {
   initialProfile?: ScoutProfile | null;
@@ -17,11 +15,7 @@ interface ScoutOnboardingProps {
   onComplete: (profile: ScoutProfile) => void;
 }
 
-type ScoutIntakeState = {
-  profile: ScoutProfile;
-  baseContext: GlobalBaseIntakeContext;
-  stepProgress: number;
-};
+type ScoutIntakeState = { profile: ScoutProfile; baseContext: GlobalBaseIntakeContext; stepProgress: number };
 
 const SCOUT_ONBOARDING_PROMPT = `
 IDENTITY:
@@ -47,8 +41,7 @@ ACTION TAGS:
 
 RULES:
 - Keep questions short and direct.
-- Keep questions concise and sequential.
-- Emit the relevant focus action whenever you move to a new intake section or if the user redirects you.
+- Emit the relevant focus action whenever you move to a new intake section.
 - Avoid fabrication; log uncertainty explicitly.
 `.trim();
 
@@ -59,39 +52,34 @@ const SCOUT_STEPS = [
   { key: 'summary', label: 'Baseline Summary', helperText: 'Finalize scout baseline and activate mode.' }
 ] as const;
 
-function hasBaseContext(context: GlobalBaseIntakeContext): boolean {
-  return Boolean(context.name || context.pronouns || context.occupation);
-}
-
 function buildBasePrompt(context: GlobalBaseIntakeContext): string {
   const chunks = [
     context.name ? `name as ${context.name}` : null,
-    context.pronouns ? `pronouns as ${context.pronouns}` : null,
     context.occupation ? `occupation as ${context.occupation}` : null
   ].filter(Boolean);
-
-  if (chunks.length === 0) {
-    return 'Scout intake initialized. What topics should I continuously track and verify for you?';
-  }
-
+  if (chunks.length === 0) return 'Scout intake initialized. What topics should I continuously track and verify for you?';
   return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we configure your research baseline?`;
 }
 
-export function ScoutOnboarding({
-  initialProfile,
-  initialBaseContext,
-  onGlobalBaseContextFinalize,
-  onComplete
-}: ScoutOnboardingProps) {
+export function ScoutOnboarding({ initialProfile, initialBaseContext, onGlobalBaseContextFinalize, onComplete }: ScoutOnboardingProps) {
   const initialContext = useMemo(() => initialBaseContext ?? {}, [initialBaseContext]);
 
-  const spec = useMemo<GuidedChatSpec<ScoutIntakeState>>(
+  const handleExpressComplete = useCallback(async (values: Record<string, unknown>) => {
+    const now = new Date().toISOString();
+    const domains = Array.isArray(values.research_domains) ? values.research_domains as string[] : [];
+    onComplete({
+      ...createEmptyScoutProfile(),
+      onboardingComplete: true,
+      researchFocus: domains,
+      summary: `Domains: ${domains.join(', ') || 'general'}. Evidence: ${values.evidence_quality ?? 'balanced'}. Format: ${values.output_format ?? 'summary'}.`,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }, [onComplete]);
+
+  const chatSpec = useMemo<GuidedChatSpec<ScoutIntakeState>>(
     () => ({
-      initialState: {
-        profile: initialProfile ?? createEmptyScoutProfile(),
-        baseContext: initialContext,
-        stepProgress: 0
-      },
+      initialState: { profile: initialProfile ?? createEmptyScoutProfile(), baseContext: initialContext, stepProgress: 0 },
       initialMessages: [{ role: 'assistant', content: buildBasePrompt(initialContext) }],
       initialStep: 0,
       steps: [...SCOUT_STEPS],
@@ -101,110 +89,68 @@ export function ScoutOnboarding({
         systemPrompt: `${SCOUT_ONBOARDING_PROMPT}
 [PREFILLED_BASE_CONTEXT]
 - Name: ${state.baseContext.name || 'Unknown'}
-- Pronouns: ${state.baseContext.pronouns || 'Unknown'}
 - Occupation: ${state.baseContext.occupation || 'Unknown'}
-${hasBaseContext(state.baseContext) ? '- Confirm/correct this handoff context briefly first.' : ''}
 `,
         memoryContext: [],
         summary: 'Scout onboarding intake.',
         history
       }),
-      onResponse: (response, state) => {
+      onResponse: (response: StructuredResponse, state) => {
         let nextProfile = { ...state.profile };
         const nextBaseContext = { ...state.baseContext };
         let nextStep = state.stepProgress;
 
-        const profileUpdates = response.actions
-          .filter(a => a.type === 'update_scout_profile')
-          .map(a => a.payload as Partial<ScoutProfile>);
-
-        if (profileUpdates.length > 0) {
-          for (const update of profileUpdates) {
-            nextProfile = {
-              ...nextProfile,
-              ...update,
-              updatedAt: new Date().toISOString()
-            };
-          }
+        const profileUpdates = response.actions.filter(a => a.type === 'update_scout_profile').map(a => a.payload as Partial<ScoutProfile>);
+        for (const update of profileUpdates) {
+          nextProfile = { ...nextProfile, ...update, updatedAt: new Date().toISOString() };
         }
 
-        const baseContextUpdates = response.actions
-          .filter(a => a.type === 'update_global_base_context')
-          .map(a => a.payload as Partial<GlobalBaseIntakeContext>);
-
-        if (baseContextUpdates.length > 0) {
-          for (const update of baseContextUpdates) {
-            if (typeof update.name === 'string' && update.name.trim()) nextBaseContext.name = update.name.trim();
-            if (typeof update.pronouns === 'string' && update.pronouns.trim()) nextBaseContext.pronouns = update.pronouns.trim();
-            if (typeof update.occupation === 'string' && update.occupation.trim()) nextBaseContext.occupation = update.occupation.trim();
-          }
+        const baseContextUpdates = response.actions.filter(a => a.type === 'update_global_base_context').map(a => a.payload as Partial<GlobalBaseIntakeContext>);
+        for (const update of baseContextUpdates) {
+          if (typeof update.name === 'string' && update.name.trim()) nextBaseContext.name = update.name.trim();
+          if (typeof update.occupation === 'string' && update.occupation.trim()) nextBaseContext.occupation = update.occupation.trim();
         }
 
         const focusAction = [...response.actions].reverse().find((a) =>
           ['focus_research_focus', 'focus_evidence_quality', 'focus_output_shape', 'focus_baseline_summary'].includes(a.type)
         );
-        let explicitFocus: number | undefined;
         if (focusAction) {
-          if (focusAction.type === 'focus_research_focus') explicitFocus = 0;
-          if (focusAction.type === 'focus_evidence_quality') explicitFocus = 1;
-          if (focusAction.type === 'focus_output_shape') explicitFocus = 2;
-          if (focusAction.type === 'focus_baseline_summary') explicitFocus = 3;
-        }
-
-        if (explicitFocus !== undefined) {
-          nextStep = explicitFocus;
+          if (focusAction.type === 'focus_research_focus') nextStep = 0;
+          if (focusAction.type === 'focus_evidence_quality') nextStep = 1;
+          if (focusAction.type === 'focus_output_shape') nextStep = 2;
+          if (focusAction.type === 'focus_baseline_summary') nextStep = 3;
         }
 
         const completed = response.actions.some(a => a.type === 'complete_scout_onboarding');
-        if (completed) {
-          nextProfile.onboardingComplete = true;
-          nextProfile.updatedAt = new Date().toISOString();
-          nextStep = SCOUT_STEPS.length - 1;
-        }
+        if (completed) { nextProfile.onboardingComplete = true; nextProfile.updatedAt = new Date().toISOString(); nextStep = SCOUT_STEPS.length - 1; }
 
-        return {
-          nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep },
-          nextStep,
-          completed
-        };
+        return { nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep }, nextStep, completed };
       }
     }),
     [initialContext, initialProfile]
   );
 
   const intake = useGuidedChatIntake({
-    spec,
+    spec: chatSpec,
     onComplete: async (state) => {
-      if (onGlobalBaseContextFinalize) {
-        await onGlobalBaseContextFinalize(state.baseContext);
-      }
+      if (onGlobalBaseContextFinalize) await onGlobalBaseContextFinalize(state.baseContext);
       onComplete({ ...state.profile, onboardingComplete: true });
     }
   });
 
   return (
-    <GuidedIntakeFrame
-      title="Scout Guided Intake"
-      subtitle="Configuring your verification and research baseline."
-      statusLabel=""
-      steps={[...SCOUT_STEPS]}
-      currentStep={intake.stepIndex}
-      themeColor="lime"
-    >
-      <NexusChat
-        ai={{
-          messages: intake.messages,
-          isProcessing: intake.isProcessing,
-          streamingText: intake.streamingText,
-          error: intake.error,
-          quota: null,
-          handleSendMessage: intake.handleSendMessage
-        }}
-        agentName="Scout Intake"
-        themeColor="lime"
-        placeholder={spec.placeholder}
-        showInternalSignals={false}
-      />
-    </GuidedIntakeFrame>
+    <UnifiedOnboardingShell
+      spec={SCOUT_BASE_SPEC}
+      onExpressComplete={handleExpressComplete}
+      guidedContent={
+        <NexusChat
+          ai={{ messages: intake.messages, isProcessing: intake.isProcessing, streamingText: intake.streamingText, error: intake.error, quota: null, handleSendMessage: intake.handleSendMessage }}
+          agentName="Scout Intake"
+          themeColor="sky"
+          placeholder={chatSpec.placeholder}
+          showInternalSignals={false}
+        />
+      }
+    />
   );
 }

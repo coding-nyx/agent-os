@@ -12,6 +12,7 @@ import { PanelLabel } from '@/core/components/PanelLabel';
 import { BarChart } from '@/core/components/viz/BarChart';
 import { MetricCard } from '@/core/components/viz/MetricCard';
 import { getTodayIso } from '../utils';
+import { useDataLogger } from './shared/useDataLogger';
 
 interface SleepTrackerProps {
   sleepLog: SleepEntry[];
@@ -43,7 +44,6 @@ function durationColor(h: number): string {
 }
 
 export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onDirectSave }: SleepTrackerProps) {
-  const [showModal, setShowModal] = useState(false);
   const [date, setDate] = useState(getTodayIso());
   const [bedtime, setBedtime] = useState('23:00');
   const [wakeTime, setWakeTime] = useState('07:00');
@@ -53,7 +53,9 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
   const [awakenings, setAwakenings] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [formError, setFormError] = useState<string | null>(null);
+
+  const { showModal, openModal, closeModal, formError, setFormError, saving, handleSave } =
+    useDataLogger<SleepEntry>({ directWriteMode, onDirectSave, onAnalyze });
 
   const durationHours = useMemo(() => {
     if (!bedtime || !wakeTime) return null;
@@ -68,42 +70,31 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   }, []);
 
-  const handleSave = useCallback(async () => {
-    if (!directWriteMode && !onAnalyze) return;
-    if (typeof deepSleepPct === 'number' && typeof remSleepPct === 'number' && deepSleepPct + remSleepPct > 100) {
-      setFormError('Deep sleep % + REM % cannot exceed 100%.');
-      return;
-    }
-    setFormError(null);
-    const dur = durationHours ?? 7;
-
-    const entry: SleepEntry = {
-      id: crypto.randomUUID(),
-      date,
-      bedtime,
-      wakeTime,
-      durationHours: dur,
-      quality,
-      deepSleepPct: deepSleepPct || undefined,
-      remSleepPct: remSleepPct || undefined,
-      awakenings: awakenings || undefined,
-      notes: notes.trim() || undefined,
-      tags: selectedTags.length > 0 ? selectedTags : undefined,
-      recordedAt: new Date().toISOString(),
-    };
-
-    try {
-      if (directWriteMode && onDirectSave) {
-        await onDirectSave(entry);
-      } else if (onAnalyze) {
-        const msg = `Log sleep: ${dur}h, quality ${quality}/10 on ${date}. ` + (notes ? `Notes: ${notes}` : '');
-        onAnalyze(msg);
+  const onSave = useCallback(async () => {
+    await handleSave(() => {
+      if (typeof deepSleepPct === 'number' && typeof remSleepPct === 'number' && deepSleepPct + remSleepPct > 100) {
+        setFormError('Deep sleep % + REM % cannot exceed 100%.');
+        return null;
       }
-      setShowModal(false);
-    } catch (err) {
-      setFormError('Failed to save entry.');
-    }
-  }, [date, bedtime, wakeTime, durationHours, quality, deepSleepPct, remSleepPct, awakenings, notes, selectedTags, directWriteMode, onDirectSave, onAnalyze]);
+      const dur = durationHours ?? 7;
+      const entry: SleepEntry = {
+        id: crypto.randomUUID(),
+        date,
+        bedtime,
+        wakeTime,
+        durationHours: dur,
+        quality,
+        deepSleepPct: deepSleepPct || undefined,
+        remSleepPct: remSleepPct || undefined,
+        awakenings: awakenings || undefined,
+        notes: notes.trim() || undefined,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
+        recordedAt: new Date().toISOString(),
+      };
+      const analyzePrompt = `Log sleep: ${dur}h, quality ${quality}/10 on ${date}. ` + (notes ? `Notes: ${notes}` : '');
+      return { entry, analyzePrompt };
+    });
+  }, [handleSave, date, bedtime, wakeTime, durationHours, quality, deepSleepPct, remSleepPct, awakenings, notes, selectedTags, setFormError]);
 
   const recent = useMemo(() => [...sleepLog].sort((a, b) => b.date.localeCompare(a.date)), [sleepLog]);
   const avgQuality = sleepLog.length ? sleepLog.reduce((s, e) => s + e.quality, 0) / sleepLog.length : null;
@@ -136,7 +127,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
             <NeuralButton
               size="sm"
               iconOnly
-              onClick={() => setShowModal(true)}
+              onClick={() => openModal()}
               title="Log Sleep"
               aria-label="Log Sleep"
             >
@@ -153,7 +144,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
             action={
               <NeuralButton
                 iconOnly
-                onClick={() => setShowModal(true)}
+                onClick={() => openModal()}
                 title="Log Sleep"
                 aria-label="Log Sleep"
               >
@@ -263,7 +254,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
 
       <NeuralModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={() => closeModal()}
         title="Log Sleep"
         subtitle="Track your recovery"
         icon={Moon}
@@ -394,10 +385,10 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
           )}
 
           <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-            <NeuralButton variant="ghost" onClick={() => setShowModal(false)}>
+            <NeuralButton variant="ghost" onClick={() => closeModal()}>
               Cancel
             </NeuralButton>
-            <NeuralButton onClick={handleSave} disabled={!directWriteMode && !onAnalyze}>
+            <NeuralButton onClick={onSave} disabled={!directWriteMode && !onAnalyze}>
               <Moon className="w-4 h-4 mr-2" />
               {directWriteMode ? 'Save Entry' : 'Save & Analyze'}
             </NeuralButton>

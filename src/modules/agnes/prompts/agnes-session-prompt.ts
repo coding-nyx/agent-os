@@ -1,3 +1,4 @@
+import type { GenderPersonality } from '@/lib/types';
 import { BaseContext } from '../types';
 
 function listOrUnknown(value?: string | string[]): string {
@@ -8,7 +9,7 @@ function listOrUnknown(value?: string | string[]): string {
   return value;
 }
 
-export function buildAgnesSessionPrompt(basePrompt: string, context?: Partial<BaseContext> | null): string {
+export function buildAgnesSessionPrompt(basePrompt: string, context?: Partial<BaseContext> | null, globalAgentGender?: GenderPersonality): string {
   if (!context || Object.keys(context).length === 0) {
     return basePrompt;
   }
@@ -17,7 +18,7 @@ export function buildAgnesSessionPrompt(basePrompt: string, context?: Partial<Ba
     ? context.identity
     : context.identity?.name || 'Unknown';
   const pronouns = typeof context.identity === 'string' ? 'Unknown' : context.identity?.pronouns || 'Unknown';
-  const agnesGender = context.preferredAgnes?.gender || 'Unspecified';
+  const agnesGender = context.preferredAgnes?.gender || globalAgentGender || 'Unspecified';
   const agnesTone = context.preferredAgnes?.tone || 'Unspecified';
   const agnesTraits = context.preferredAgnes?.traits;
   const somaticEnabled = context?.somaticEnabled !== false;

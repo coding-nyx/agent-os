@@ -26,17 +26,28 @@ export function TextFieldRenderer({
     onChange(e.target.value);
   };
 
+  const autocomplete = field.metadata?.autocomplete as string[] | undefined;
+  const listId = autocomplete?.length ? `${field.id}-list` : undefined;
+
   return (
-    <NeuralInput
-      id={field.id}
-      type="text"
-      value={value || ''}
-      onChange={handleChange}
-      placeholder={field.metadata?.placeholder || field.name}
-      disabled={disabled}
-      aria-invalid={Boolean(error)}
-      aria-describedby={error ? `${field.id}-error` : undefined}
-      className={error ? 'border-red-500/50' : undefined}
-    />
+    <>
+      <NeuralInput
+        id={field.id}
+        type="text"
+        value={value || ''}
+        onChange={handleChange}
+        placeholder={field.metadata?.placeholder || field.name}
+        disabled={disabled}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${field.id}-error` : undefined}
+        className={error ? 'border-red-500/50' : undefined}
+        list={listId}
+      />
+      {listId && (
+        <datalist id={listId}>
+          {autocomplete!.map((v) => <option key={v} value={v} />)}
+        </datalist>
+      )}
+    </>
   );
 }

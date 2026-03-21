@@ -4,32 +4,31 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   Target,
   CheckCircle2,
-  Clock,
-  Trash2,
-  Edit2,
   X,
   Calendar,
   ListTodo,
   TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasGoal, AtlasMilestone, AtlasTask } from '../services/atlas-profile-service';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
-import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
-import { ConfirmDialog } from '@/core/components/ConfirmDialog';
 import { GoalProgress } from './GoalProgress';
+
+// Shared primitives
+import { useDeleteConfirmation } from './shared/useDeleteConfirmation';
+import { PortalledModal } from './shared/PortalledModal';
+import { ItemActionButtons } from './shared/ItemActionButtons';
+import { StatsGrid } from './shared/StatsGrid';
+import { useFilteredSortedList } from './shared/useFilteredSortedList';
 
 interface GoalTrackerProps {
   goals: AtlasGoal[];
@@ -50,13 +49,12 @@ export function GoalTracker({
   onDeleteGoal,
   onUpdateGoalProgress,
 }: GoalTrackerProps) {
-  const reducedMotion = useReducedMotion();
-
   // ── State ──
   const [filter, setFilter] = useState<GoalFilter>('all');
   const [showForm, setShowForm] = useState(false);
   const [editingGoal, setEditingGoal] = useState<AtlasGoal | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+
+  const { promptDelete, ConfirmationDialog } = useDeleteConfirmation<AtlasGoal>(onDeleteGoal);
 
   // ── Form state ──
   const [formData, setFormData] = useState<Partial<AtlasGoal>>({
@@ -73,13 +71,14 @@ export function GoalTracker({
   const [newMilestone, setNewMilestone] = useState({ title: '', dueDate: '' });
 
   // ── Filtered goals ──
-  const filteredGoals = useMemo(() => {
-    if (filter === 'all') return goals;
-    return goals.filter((g) => g.status === filter);
-  }, [goals, filter]);
+  const filteredGoals = useFilteredSortedList({
+    items: goals,
+    filter,
+    filterFn: (goal, currentFilter) => currentFilter === 'all' || goal.status === currentFilter,
+  });
 
   // ── Goal statistics ──
-  const stats = useMemo(() => {
+  const statsData = useMemo(() => {
     const total = goals.length;
     const active = goals.filter((g) => g.status === 'active').length;
     const completed = goals.filter((g) => g.status === 'completed').length;
@@ -88,7 +87,28 @@ export function GoalTracker({
         ? Math.round(goals.reduce((sum, g) => sum + g.progressPercent, 0) / goals.length)
         : 0;
 
-    return { total, active, completed, avgProgress };
+    return [
+      { label: 'Total Goals', value: total },
+      { 
+        label: 'Active', 
+        value: active, 
+        colorClass: 'text-emerald-400', 
+        labelColorClass: 'text-emerald-400/60' 
+      },
+      { 
+        label: 'Completed', 
+        value: completed, 
+        colorClass: 'text-[var(--module-color-400)]', 
+        labelColorClass: 'text-[var(--module-color-400)]/60' 
+      },
+      { 
+        label: 'Avg Progress', 
+        value: `${avgProgress}%`, 
+        icon: <TrendingUp className="w-3 h-3" />,
+        colorClass: 'text-orange-400', 
+        labelColorClass: 'text-orange-400/60' 
+      },
+    ];
   }, [goals]);
 
   // ── Handlers ──
@@ -181,41 +201,7 @@ export function GoalTracker({
   return (
     <div className="space-y-6">
       {/* ── Header with stats ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">
-            Total Goals
-          </div>
-          <div className="text-2xl font-black text-white/90 tabular-nums">
-            {stats.total}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-emerald-400/60 uppercase tracking-wider mb-1">
-            Active
-          </div>
-          <div className="text-2xl font-black text-emerald-400 tabular-nums">
-            {stats.active}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-[var(--module-color-400)]/60 uppercase tracking-wider mb-1">
-            Completed
-          </div>
-          <div className="text-2xl font-black text-[var(--module-color-400)] tabular-nums">
-            {stats.completed}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-orange-400/60 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <TrendingUp className="w-3 h-3" />
-            Avg Progress
-          </div>
-          <div className="text-2xl font-black text-orange-400 tabular-nums">
-            {stats.avgProgress}%
-          </div>
-        </SurfaceCard>
-      </div>
+      <StatsGrid stats={statsData} className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" />
 
       {/* ── Controls: Filter & Actions ── */}
       <div className="flex flex-wrap items-center gap-2">
@@ -261,279 +247,227 @@ export function GoalTracker({
                   onUpdateProgress={onUpdateGoalProgress}
                   onExpandGoal={() => {}}
                 />
-                {/* Quick action buttons on hover */}
-                <div className="absolute top-3 right-12 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
-                  <NeuralButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenForm(goal);
-                    }}
-                    className="p-1.5 h-8 w-8 min-w-0 bg-white/10 hover:bg-white/20 text-white/60 hover:text-white/90"
-                    aria-label={`Edit ${goal.title}`}
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </NeuralButton>
-                  <NeuralButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteTarget({ id: goal.id, title: goal.title });
-                    }}
-                    className="p-1.5 h-8 w-8 min-w-0 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400"
-                    aria-label={`Delete ${goal.title}`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </NeuralButton>
-                </div>
+                <ItemActionButtons 
+                  onEdit={() => handleOpenForm(goal)} 
+                  onDelete={() => promptDelete(goal)} 
+                  itemTitle={goal.title}
+                  className="right-12"
+                />
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* ── Goal Form Modal — portalled to body to escape Framer Motion transform containment ── */}
-      {createPortal(
-        <AnimatePresence>
-          {showForm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-              onClick={handleCloseForm}
-            >
-              <motion.div
-                initial={reducedMotion ? false : { scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl"
-              >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-black text-white/90">
-                  {editingGoal ? 'Edit Goal' : 'Create New Goal'}
-                </h2>
-                <NeuralButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCloseForm}
-                  className="p-2 h-9 w-9 min-w-0 hover:bg-white/10 text-white/40 hover:text-white/70"
+      {/* ── Goal Form Modal ── */}
+      <PortalledModal isOpen={showForm} onClose={handleCloseForm}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-black text-white/90">
+            {editingGoal ? 'Edit Goal' : 'Create New Goal'}
+          </h2>
+          <NeuralButton
+            variant="ghost"
+            size="sm"
+            onClick={handleCloseForm}
+            className="p-2 h-9 w-9 min-w-0 hover:bg-white/10 text-white/40 hover:text-white/70"
+          >
+            <X className="w-5 h-5" />
+          </NeuralButton>
+        </div>
+
+        <div className="space-y-4">
+          {/* Title */}
+          <NeuralInput
+            label="Title *"
+            placeholder="Enter goal title..."
+            value={formData.title || ''}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          />
+
+          {/* Description */}
+          <div className="space-y-2">
+            <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+              Description
+            </label>
+            <NeuralTextarea
+              value={formData.description || ''}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder="Describe your goal..."
+              rows={3}
+            />
+          </div>
+
+          {/* Deadline & Status */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <NeuralInput
+              label="Deadline"
+              type="date"
+              icon={<Calendar className="w-4 h-4" />}
+              value={formData.deadline || ''}
+              onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+            />
+            <div className="space-y-2">
+              <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+                Status
+              </label>
+              <NeuralSelectMenu
+                value={formData.status || 'active'}
+                onChange={(next) =>
+                  setFormData({
+                    ...formData,
+                    status: next as AtlasGoal['status'],
+                  })
+                }
+                options={[
+                  { value: 'active', label: 'Active' },
+                  { value: 'paused', label: 'Paused' },
+                  { value: 'completed', label: 'Completed' },
+                  { value: 'abandoned', label: 'Abandoned' },
+                ]}
+                ariaLabel="Status"
+              />
+            </div>
+          </div>
+
+          {/* Success Criteria */}
+          <div className="space-y-2">
+            <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+              Success Criteria
+            </label>
+            <NeuralTextarea
+              value={formData.successCriteria || ''}
+              onChange={(e) =>
+                setFormData({ ...formData, successCriteria: e.target.value })
+              }
+              placeholder="How will you know you've achieved this goal?"
+              rows={2}
+            />
+          </div>
+
+          {/* Milestones */}
+          <div className="space-y-2">
+            <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+              Milestones
+            </label>
+            <div className="space-y-2">
+              {/* Existing milestones */}
+              {(formData.milestones || []).map((milestone) => (
+                <div
+                  key={milestone.id}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10"
                 >
-                  <X className="w-5 h-5" />
-                </NeuralButton>
-              </div>
-
-              <div className="space-y-4">
-                {/* Title */}
-                <NeuralInput
-                  label="Title *"
-                  placeholder="Enter goal title..."
-                  value={formData.title || ''}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                />
-
-                {/* Description */}
-                <div className="space-y-2">
-                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
-                    Description
-                  </label>
-                  <NeuralTextarea
-                    value={formData.description || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    placeholder="Describe your goal..."
-                    rows={3}
+                  <CheckCircle2
+                    className={cn(
+                      'w-4 h-4 shrink-0',
+                      milestone.completed ? 'text-emerald-400' : 'text-white/20'
+                    )}
                   />
+                  <span
+                    className={cn(
+                      'flex-1 text-xs',
+                      milestone.completed
+                        ? 'text-white/40 line-through'
+                        : 'text-white/70'
+                    )}
+                  >
+                    {milestone.title}
+                  </span>
+                  {milestone.dueDate && (
+                    <span className="text-[10px] text-white/30">
+                      {new Date(milestone.dueDate).toLocaleDateString()}
+                    </span>
+                  )}
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveMilestone(milestone.id)}
+                    className="h-7 w-7 min-w-0 p-0 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400"
+                  >
+                    <X className="w-3 h-3" />
+                  </NeuralButton>
                 </div>
+              ))}
 
-                {/* Deadline & Status */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Add new milestone */}
+              <div className="flex flex-col sm:flex-row gap-2 items-end">
+                <div className="flex-1 w-full">
                   <NeuralInput
-                    label="Deadline"
-                    type="date"
-                    icon={<Calendar className="w-4 h-4" />}
-                    value={formData.deadline || ''}
-                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                  />
-                  <div className="space-y-2">
-                    <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
-                      Status
-                    </label>
-                    <NeuralSelectMenu
-                      value={formData.status || 'active'}
-                      onChange={(next) =>
-                        setFormData({
-                          ...formData,
-                          status: next as AtlasGoal['status'],
-                        })
-                      }
-                      options={[
-                        { value: 'active', label: 'Active' },
-                        { value: 'paused', label: 'Paused' },
-                        { value: 'completed', label: 'Completed' },
-                        { value: 'abandoned', label: 'Abandoned' },
-                      ]}
-                      ariaLabel="Status"
-                    />
-                  </div>
-                </div>
-
-                {/* Success Criteria */}
-                <div className="space-y-2">
-                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
-                    Success Criteria
-                  </label>
-                  <NeuralTextarea
-                    value={formData.successCriteria || ''}
+                    placeholder="Add milestone..."
+                    value={newMilestone.title}
                     onChange={(e) =>
-                      setFormData({ ...formData, successCriteria: e.target.value })
+                      setNewMilestone({ ...newMilestone, title: e.target.value })
                     }
-                    placeholder="How will you know you've achieved this goal?"
-                    rows={2}
+                    className="h-10 min-h-[40px]"
                   />
                 </div>
-
-                {/* Milestones */}
-                <div className="space-y-2">
-                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
-                    Milestones
-                  </label>
-                  <div className="space-y-2">
-                    {/* Existing milestones */}
-                    {(formData.milestones || []).map((milestone) => (
-                      <div
-                        key={milestone.id}
-                        className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10"
-                      >
-                        <CheckCircle2
-                          className={cn(
-                            'w-4 h-4 shrink-0',
-                            milestone.completed ? 'text-emerald-400' : 'text-white/20'
-                          )}
-                        />
-                        <span
-                          className={cn(
-                            'flex-1 text-xs',
-                            milestone.completed
-                              ? 'text-white/40 line-through'
-                              : 'text-white/70'
-                          )}
-                        >
-                          {milestone.title}
-                        </span>
-                        {milestone.dueDate && (
-                          <span className="text-[10px] text-white/30">
-                            {new Date(milestone.dueDate).toLocaleDateString()}
-                          </span>
-                        )}
-                        <NeuralButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveMilestone(milestone.id)}
-                          className="h-7 w-7 min-w-0 p-0 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400"
-                        >
-                          <X className="w-3 h-3" />
-                        </NeuralButton>
-                      </div>
-                    ))}
-
-                    {/* Add new milestone */}
-                    <div className="flex flex-col sm:flex-row gap-2 items-end">
-                      <div className="flex-1 w-full">
-                        <NeuralInput
-                          placeholder="Add milestone..."
-                          value={newMilestone.title}
-                          onChange={(e) =>
-                            setNewMilestone({ ...newMilestone, title: e.target.value })
-                          }
-                          className="h-10 min-h-[40px]"
-                        />
-                      </div>
-                      <div className="w-full sm:w-auto">
-                        <NeuralInput
-                          type="date"
-                          value={newMilestone.dueDate}
-                          onChange={(e) =>
-                            setNewMilestone({ ...newMilestone, dueDate: e.target.value })
-                          }
-                          className="h-10 min-h-[40px]"
-                        />
-                      </div>
-                      <NeuralButton
-                        onClick={handleAddMilestone}
-                        size="sm"
-                        className="h-10 w-10 min-w-0"
-                        disabled={!newMilestone.title.trim()}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </NeuralButton>
-                    </div>
-                  </div>
+                <div className="w-full sm:w-auto">
+                  <NeuralInput
+                    type="date"
+                    value={newMilestone.dueDate}
+                    onChange={(e) =>
+                      setNewMilestone({ ...newMilestone, dueDate: e.target.value })
+                    }
+                    className="h-10 min-h-[40px]"
+                  />
                 </div>
-
-                {/* Associated Tasks */}
-                <div className="space-y-2">
-                  <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1 flex items-center gap-1">
-                    <ListTodo className="w-3 h-3" />
-                    Associated Tasks
-                  </label>
-                  <div className="space-y-2 max-h-40 overflow-y-auto p-1">
-                    {tasks.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
-                      >
-                        <span className="text-xs text-white/70">{t.title}</span>
-                        <NeuralToggle
-                          checked={formData.associatedTaskIds?.includes(t.id) || false}
-                          onChange={(checked) => {
-                            const taskIds = formData.associatedTaskIds || [];
-                            setFormData({
-                              ...formData,
-                              associatedTaskIds: checked
-                                ? [...taskIds, t.id]
-                                : taskIds.filter((id) => id !== t.id),
-                            });
-                          }}
-                          size="sm"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
-                <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
-                  Cancel
-                </NeuralButton>
-                <NeuralButton onClick={handleSubmitForm} disabled={!formData.title?.trim()} className="w-full sm:w-auto">
-                  {editingGoal ? 'Update Goal' : 'Create Goal'}
+                <NeuralButton
+                  onClick={handleAddMilestone}
+                  size="sm"
+                  className="h-10 w-10 min-w-0"
+                  disabled={!newMilestone.title.trim()}
+                >
+                  <Plus className="w-4 h-4" />
                 </NeuralButton>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>,
-      document.body
-    )}
-      <ConfirmDialog
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (deleteTarget) onDeleteGoal(deleteTarget.id);
-          setDeleteTarget(null);
-        }}
-        title={`Delete "${deleteTarget?.title}"?`}
-        description="This action cannot be undone."
-        variant="danger"
-        confirmLabel="Delete"
-      />
+            </div>
+          </div>
+
+          {/* Associated Tasks */}
+          <div className="space-y-2">
+            <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1 flex items-center gap-1">
+              <ListTodo className="w-3 h-3" />
+              Associated Tasks
+            </label>
+            <div className="space-y-2 max-h-40 overflow-y-auto p-1">
+              {tasks.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <span className="text-xs text-white/70">{t.title}</span>
+                  <NeuralToggle
+                    checked={formData.associatedTaskIds?.includes(t.id) || false}
+                    onChange={(checked) => {
+                      const taskIds = formData.associatedTaskIds || [];
+                      setFormData({
+                        ...formData,
+                        associatedTaskIds: checked
+                          ? [...taskIds, t.id]
+                          : taskIds.filter((id) => id !== t.id),
+                      });
+                    }}
+                    size="sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+          <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
+            Cancel
+          </NeuralButton>
+          <NeuralButton onClick={handleSubmitForm} disabled={!formData.title?.trim()} className="w-full sm:w-auto">
+            {editingGoal ? 'Update Goal' : 'Create Goal'}
+          </NeuralButton>
+        </div>
+      </PortalledModal>
+
+      <ConfirmationDialog />
     </div>
   );
 }

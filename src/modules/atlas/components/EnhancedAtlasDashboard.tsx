@@ -4,20 +4,22 @@
  * Reverted visual style to original dashboard sections while keeping unified logic.
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/lib/auth-context';
 import { GlobalProjection } from '@/lib/types';
 import {
   CalendarRange,
   Inbox,
   Clock,
-  GitCommitVertical,
-  SlidersHorizontal,
-  Lock,
-  History,
   Target,
   Zap,
-  Settings2
+  BookOpen,
+  BarChart2,
+  Settings,
+  X,
+  ChevronDown,
+  Crosshair
 } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
@@ -28,7 +30,6 @@ import {
   AtlasHabit,
   AtlasRoutine,
   DailyIntention,
-  ScheduledTask,
 } from '../services/atlas-profile-service';
 import { MorningCheckIn, shouldShowMorningCheckIn } from './MorningCheckIn';
 import { EveningCheckIn, shouldShowEveningCheckIn, type EveningCheckInSubmitData } from './EveningCheckIn';
@@ -58,7 +59,6 @@ import { FieldsTab } from './FieldsTab';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
 import { TodaysPlanCard } from './TodaysPlanCard';
 import { FocusView } from './FocusView';
-import { ViewSwitcher } from './ViewSwitcher';
 import { MonthPlanner } from './MonthPlanner';
 import { DayTaskPanel } from './DayTaskPanel';
 import { QuickAddForm } from './QuickAddForm';
@@ -66,9 +66,12 @@ import { QuickCaptureBar } from './QuickCaptureBar';
 import { JournalTab } from './journal/JournalTab';
 import { ManualEnergyLog } from './ManualEnergyLog';
 import { AtlasAnalytics } from './AtlasAnalytics';
-import { BookOpen, BarChart2 } from 'lucide-react';
+import { WeeklyReviewCard } from './WeeklyReviewModal';
+import { PortalledModal } from './shared/PortalledModal';
+import { useAtlasActions } from '../context/AtlasActionsContext';
+import { motion } from 'framer-motion';
 
-type AtlasTab = 'dashboard' | 'backlog' | 'routines' | 'journal' | 'analytics' | 'fields' | 'review';
+type AtlasTab = 'dashboard' | 'backlog' | 'rhythms' | 'journal' | 'insights';
 type AtlasView = 'today' | 'week' | 'month' | 'focus';
 
 interface EnhancedAtlasDashboardProps {
@@ -76,57 +79,87 @@ interface EnhancedAtlasDashboardProps {
   profile: AtlasProfile | null;
   isLocked?: boolean;
   activeTab?: AtlasTab;
-  onTabChange?: (tab: AtlasTab) => void;
   activeView?: AtlasView;
-  onViewChange?: (view: AtlasView) => void;
-  onCompleteTask?: (taskId: string) => void;
-  onCompleteHabit?: (habitId: string) => void;
-  onUpdateGoalProgress?: (goalId: string, milestoneId: string) => void;
-  onPauseHabit?: (habitId: string) => void;
-  onCreateTask?: (task: Partial<AtlasTask>) => void;
-  onCreateHabit?: (habit: Partial<AtlasHabit>) => void;
-  onCreateGoal?: (goal: Partial<AtlasGoal>) => void;
-  onUpdateTask?: (taskId: string, updates: Partial<AtlasTask>) => void;
-  onUpdateHabit?: (habitId: string, updates: Partial<AtlasHabit>) => void;
-  onUpdateGoal?: (goalId: string, updates: Partial<AtlasGoal>) => void;
-  onDeleteTask?: (taskId: string) => void;
-  onDeleteHabit?: (habitId: string) => void;
-  onDeleteGoal?: (goalId: string) => void;
-  onUpdateRoutine?: (updates: Partial<AtlasRoutine>) => void;
-  onUpdateIntention?: (updates: Partial<DailyIntention>) => void;
   extensions?: import('@/lib/field-system/types').FieldDefinition[];
   fieldValues?: Record<string, import('@/lib/field-system/types').FieldValue>;
-  onSaveFieldValue?: (fieldId: string, value: any) => void;
-  onRemoveFieldValue?: (fieldId: string) => void;
-  onAddField?: (field?: import('@/lib/field-system/types').FieldDefinition) => void;
-  onDeleteField?: (fieldId: string) => void;
-  onSendMessage?: (message: string) => void;
   /** Encryption key for vault-gated journal tab */
   encryptionKey?: CryptoKey | null;
   /** S9-005: Weekly review pending indicator */
   weeklyReviewPending?: boolean;
-  /** S9-005: Called when user opens the review tab */
-  onReviewOpened?: () => void;
-  /** Persist weekly review to profile.reviews (Run Weekly Review → Complete review) */
-  onSaveWeeklyReview?: () => void;
   /** S9-007: Set true to force-show the morning brief card (from Spine event) */
   morningBriefVisible?: boolean;
-  /** S9-007: Called when the morning brief card is dismissed from the parent */
-  onMorningBriefDismiss?: () => void;
   /** S9-007: Set true to force-show the evening check-in card (from Spine event) */
   eveningCheckinVisible?: boolean;
-  /** S9-007: Called when the evening check-in card is dismissed from the parent */
-  onEveningCheckinDismiss?: (data?: EveningCheckInSubmitData) => void;
-  /** S9-006: Preference mode for QuickAdd layout */
-  preferenceMode?: 'conversational' | 'structured';
-  /** S9-006: Toggle callback for preference mode */
-  onTogglePreferenceMode?: () => void;
   /** S9-001: Evaluated Atlas predictive state — sourced from useAtlasPredictiveState in AtlasPage. */
   predictiveDisplay: AtlasStateDisplay;
-  /** Optional manual energy log callback — shown when energyWave has no data */
-  onLogEnergy?: (level: number, timeOfDay: 'morning' | 'midday' | 'afternoon' | 'evening' | 'night') => void;
   /** Optional focus target from deep links (e.g., task:ID, journal:ID). */
   focusId?: string;
+}
+
+function ViewDropdown({ activeView, onViewChange }: { activeView: string; onViewChange: (v: any) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+
+  const toggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setCoords({ top: rect.bottom + 8, left: rect.left });
+    }
+    setIsOpen(!isOpen);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (triggerRef.current?.contains(e.target as Node)) return;
+      setIsOpen(false);
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, [isOpen]);
+
+  return (
+    <div className="relative flex items-center ml-1">
+      <button
+        ref={triggerRef}
+        onClick={toggle}
+        className={cn(
+          "h-7 w-7 flex items-center justify-center rounded-md transition-all duration-200 text-white/40 hover:text-white/90",
+          isOpen ? "bg-[var(--module-color-400)]/20 text-white/90" : "hover:bg-white/10"
+        )}
+        aria-label="View options"
+      >
+        <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", isOpen && "rotate-180")} />
+      </button>
+
+      {isOpen && createPortal(
+        <div 
+          className="fixed w-32 bg-zinc-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] py-1 z-[1000] overflow-hidden"
+          style={{ top: coords.top, left: coords.left }}
+        >
+          {(['today', 'week', 'month'] as const).map((v) => (
+            <button
+              key={v}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewChange(v);
+                setIsOpen(false);
+              }}
+              className={cn(
+                "w-full text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors",
+                activeView === v ? "text-[var(--module-color-400)] bg-white/5" : "text-white/40 hover:text-white/70 hover:bg-white/5"
+              )}
+            >
+              {v}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
 }
 
 const noop = () => {};
@@ -136,43 +169,17 @@ export function EnhancedAtlasDashboard({
   profile,
   isLocked = false,
   activeTab = 'dashboard',
-  onTabChange = noop,
   activeView = 'today',
-  onViewChange = noop,
-  onCompleteTask = noop,
-  onCompleteHabit = noop,
-  onUpdateGoalProgress = noop,
-  onPauseHabit = noop,
-  onCreateTask = noop,
-  onCreateHabit = noop,
-  onCreateGoal = noop,
-  onUpdateTask = noop,
-  onUpdateHabit = noop,
-  onUpdateGoal = noop,
-  onDeleteTask = noop,
-  onDeleteHabit = noop,
-  onDeleteGoal = noop,
-  onUpdateRoutine = noop,
-  onUpdateIntention = noop,
   extensions = [],
   fieldValues = {},
-  onAddField = noop,
-  onDeleteField,
-  onSendMessage = noop,
   encryptionKey = null,
   weeklyReviewPending = false,
-  onReviewOpened = noop,
-  onSaveWeeklyReview,
   morningBriefVisible = false,
-  onMorningBriefDismiss = noop,
   eveningCheckinVisible = false,
-  onEveningCheckinDismiss = noop,
-  preferenceMode = 'conversational',
-  onTogglePreferenceMode = noop,
   predictiveDisplay,
-  onLogEnergy,
   focusId,
 }: EnhancedAtlasDashboardProps) {
+  const actions = useAtlasActions();
   const [isEditingIntention, setIsEditingIntention] = useState(false);
   const [intentionForm, setIntentionForm] = useState({ theme: '', focusDomain: '', energyTarget: 5 });
 
@@ -181,6 +188,7 @@ export function EnhancedAtlasDashboard({
   const [morningDismissed, setMorningDismissed] = useState(false);
   const [selectedWeekDate, setSelectedWeekDate] = useState<string | undefined>(undefined);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isFieldsModalOpen, setIsFieldsModalOpen] = useState(false);
   const [focusTaskId, setFocusTaskId] = useState<string | undefined>(undefined);
   const [focusJournalId, setFocusJournalId] = useState<string | undefined>(undefined);
 
@@ -189,30 +197,35 @@ export function EnhancedAtlasDashboard({
     if (focusId.startsWith('task:')) {
       const id = focusId.replace('task:', '');
       setFocusTaskId(id);
-      onTabChange('backlog');
+      actions.onTabChange('backlog');
     } else if (focusId.startsWith('journal:')) {
       const id = focusId.replace('journal:', '');
       setFocusJournalId(id);
-      onTabChange('journal');
+      actions.onTabChange('journal');
     }
-  }, [focusId, onTabChange, onViewChange]);
+  }, [focusId, actions]);
 
   const queuedCount = profile?.tasks.filter(t => t.status === 'queued').length;
   const tabs = useMemo<NeuralTabItem<AtlasTab>[]>(() => [
-    { id: 'dashboard', label: 'Dashboard', icon: CalendarRange },
+    { 
+      id: 'dashboard', 
+      label: 'Dashboard', 
+      icon: CalendarRange,
+      renderRight: (isActive) => isActive ? (
+        <ViewDropdown activeView={activeView} onViewChange={actions.onViewChange} />
+      ) : null
+    },
     { id: 'backlog', label: 'Backlog', icon: Inbox, badge: queuedCount || undefined },
-    { id: 'routines', label: 'Routines & Habits', icon: Clock },
+    { id: 'rhythms', label: 'Rhythms', icon: Clock },
     { id: 'journal', label: 'Journal', icon: BookOpen },
-    { id: 'analytics', label: 'Analytics', icon: BarChart2 },
-    { id: 'fields', label: 'Fields', icon: SlidersHorizontal },
     {
-      id: 'review',
-      label: 'Review',
-      icon: GitCommitVertical,
+      id: 'insights',
+      label: 'Insights',
+      icon: BarChart2,
       badge: weeklyReviewPending ? '●' : undefined,
       badgeVariant: weeklyReviewPending ? 'warning' : undefined,
     },
-  ], [queuedCount, weeklyReviewPending]);
+  ], [queuedCount, weeklyReviewPending, activeView, actions.onViewChange]);
 
   if (isLocked) {
     return (
@@ -260,71 +273,52 @@ export function EnhancedAtlasDashboard({
             {predictiveDisplay.label}
           </span>
         </div>
-        <NeuralButton
-          onClick={onTogglePreferenceMode}
-          title={preferenceMode === 'structured' ? 'Switch to conversational mode' : 'Switch to structured mode'}
-          variant="secondary"
-          size="sm"
-          className="shrink-0 h-9 px-3 rounded-full"
-        >
-          <Settings2 className="h-3.5 w-3.5" aria-hidden />
-          <span className="hidden sm:inline">{preferenceMode === 'structured' ? 'Structured' : 'Conversational'}</span>
-        </NeuralButton>
+        <div className="flex items-center gap-2 shrink-0">
+          <NeuralButton
+            onClick={() => actions.onViewChange('focus')}
+            title="Focus Mode"
+            variant={activeView === 'focus' ? 'primary' : 'secondary'}
+            size="sm"
+            className="h-9 px-3 rounded-full gap-2"
+          >
+            <Crosshair className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden sm:inline text-[11px] font-bold uppercase tracking-wider">Focus</span>
+          </NeuralButton>
+          <NeuralButton
+            onClick={() => setIsFieldsModalOpen(true)}
+            title="Atlas Settings"
+            variant="secondary"
+            size="sm"
+            className="h-9 w-9 p-0 rounded-full"
+          >
+            <Settings className="h-4 w-4" aria-hidden />
+          </NeuralButton>
+        </div>
       </header>
 
-      {/* ── Tab Navigation: scroll padding so first tab isn't clipped on narrow viewports ── */}
-      <div
-        className="border-b border-white/5 overflow-x-auto no-scrollbar flex-shrink-0"
-        style={{ scrollPaddingLeft: 'var(--atlas-space-page-x)' }}
-      >
-        <div className="px-[var(--atlas-space-page-x)] pb-[var(--atlas-space-section)]">
-          <NeuralTabGroup
+      {/* ── Tab Navigation ── */}
+      <div className="border-b border-white/5 relative z-50">
+        <NeuralTabGroup
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={(tab) => {
-            onTabChange(tab);
-            if (tab === 'review' && weeklyReviewPending) {
-              onReviewOpened();
-            }
+            actions.onTabChange(tab);
+            if (tab === 'insights' && weeklyReviewPending) actions.onReviewOpened();
           }}
           themeColor="module"
         />
-        </div>
       </div>
-
-      {/* ── Dashboard view switcher — always visible on dashboard tab ── */}
-      {activeTab === 'dashboard' && (
-        <div className="shrink-0 px-[var(--atlas-space-page-x)] pt-[var(--atlas-space-section)] pb-[var(--atlas-space-block)]">
-          <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />
-        </div>
-      )}
 
       {/* ── Tab Content ── */}
       <div className="flex-1 overflow-hidden flex">
-        {/* S9-006: Structured mode — persistent sidebar QuickAdd panel (hidden in focus mode) */}
-        {preferenceMode === 'structured' && activeTab === 'dashboard' && activeView !== 'focus' && (
-          <aside className="hidden md:flex shrink-0 w-72 border-r border-white/5 overflow-y-auto no-scrollbar" style={{ padding: 'var(--atlas-space-section)' }}>
-            <QuickAddForm
-              projects={profile?.projects ?? []}
-              onCreateTask={onCreateTask}
-              onCreateHabit={onCreateHabit}
-              onCreateGoal={onCreateGoal}
-              isOpen
-              onOpenChange={() => {}}
-              showFAB={false}
-              isFluid
-            />
-          </aside>
-        )}
-
         {/* ── Focus mode: full-bleed wrapper — bypasses padded scroll container ── */}
         {activeTab === 'dashboard' && activeView === 'focus' && (
           <div className="flex-1 overflow-y-auto no-scrollbar">
             <FocusView
               activeTask={tasks.find(t => t.status === 'active' || t.status === 'queued') ?? null}
               energyLevel={energyBudget}
-              onComplete={onCompleteTask}
-              onDefer={(id) => onUpdateTask(id, { status: 'deferred' })}
+              onComplete={actions.onCompleteTask}
+              onDefer={(id) => actions.onUpdateTask(id, { status: 'deferred' })}
               onOpenChat={() => window.dispatchEvent(new CustomEvent('atlas:focus-chat'))}
             />
           </div>
@@ -341,9 +335,9 @@ export function EnhancedAtlasDashboard({
           <div className="space-y-6">
             {/* ── Quick Capture Bar — always visible on Dashboard ── */}
             <QuickCaptureBar
-              onAddTask={onCreateTask}
-              onAddHabit={onCreateHabit}
-              onAddGoal={onCreateGoal}
+              onAddTask={actions.onCreateTask}
+              onAddHabit={actions.onCreateHabit}
+              onAddGoal={actions.onCreateGoal}
               disabled={isLocked}
             />
 
@@ -357,24 +351,24 @@ export function EnhancedAtlasDashboard({
                     userId={user?.uid ?? null}
                     onDismiss={() => {
                       setMorningDismissed(true);
-                      onMorningBriefDismiss();
+                      actions.onMorningBriefDismiss();
                     }}
-                    onSendMessage={onSendMessage}
+                    onSendMessage={actions.onSendMessage}
                     predictiveState={predictiveDisplay.state}
                   />
                 )}
                 <PriorityInbox
                   tasks={profile?.tasks ?? []}
                   energyBudget={energyBudget}
-                  onCompleteTask={onCompleteTask}
-                  onDeferTask={(id) => onUpdateTask(id, { status: 'deferred' as const })}
-                  onSendMessage={onSendMessage}
+                  onCompleteTask={actions.onCompleteTask}
+                  onDeferTask={(id) => actions.onUpdateTask(id, { status: 'deferred' as const })}
+                  onSendMessage={actions.onSendMessage}
                 />
                 {(eveningCheckinVisible || shouldShowEveningCheckIn(user?.uid)) && profile && (
                   <EveningCheckIn
                     profile={profile}
                     userId={user?.uid}
-                    onDismiss={onEveningCheckinDismiss}
+                    onDismiss={actions.onEveningCheckinDismiss}
                   />
                 )}
                 <TodaysPlanCard profile={profile} isLocked={isLocked} />
@@ -475,7 +469,7 @@ export function EnhancedAtlasDashboard({
                            </NeuralButton>
                            <NeuralButton 
                              onClick={() => {
-                               onUpdateIntention(intentionForm);
+                               actions.onUpdateIntention(intentionForm);
                                setIsEditingIntention(false);
                              }}
                              themeColor="module"
@@ -574,16 +568,14 @@ export function EnhancedAtlasDashboard({
                 />
               )}
               {/* Manual energy log — always visible on today view for non-AI users */}
-              {onLogEnergy && (
-                <ManualEnergyLog
-                  onLogEnergy={onLogEnergy}
-                  lastLoggedAt={
-                    energyWave.length > 0
-                      ? (energyWave[energyWave.length - 1] as { timestamp?: string }).timestamp
-                      : undefined
-                  }
-                />
-              )}
+              <ManualEnergyLog
+                onLogEnergy={actions.onLogEnergy}
+                lastLoggedAt={
+                  energyWave.length > 0
+                    ? (energyWave[energyWave.length - 1] as { timestamp?: string }).timestamp
+                    : undefined
+                }
+              />
             </section>
 
             {/* Unified Timeline / Task timeline */}
@@ -595,7 +587,7 @@ export function EnhancedAtlasDashboard({
                 tasks={tasks}
                 scheduledTasks={profile?.scheduledTasks ?? []}
                 energyWave={energyWave}
-                onComplete={onCompleteTask}
+                onComplete={actions.onCompleteTask}
                 onExpand={noop}
               />
             </section>
@@ -607,8 +599,8 @@ export function EnhancedAtlasDashboard({
               </h4>
               <HabitTracker
                 habits={habits.filter((h) => h.status === 'active').slice(0, 5)}
-                onComplete={onCompleteHabit}
-                onPause={onPauseHabit}
+                onComplete={actions.onCompleteHabit}
+                onPause={actions.onPauseHabit}
               />
             </section>
 
@@ -619,7 +611,7 @@ export function EnhancedAtlasDashboard({
               </h4>
               <GoalProgress
                 goals={goals.filter((g) => g.status === 'active').slice(0, 3)}
-                onUpdateProgress={onUpdateGoalProgress}
+                onUpdateProgress={actions.onUpdateGoalProgress}
                 onExpandGoal={noop}
               />
             </section>
@@ -651,10 +643,10 @@ export function EnhancedAtlasDashboard({
                   <TaskManager
                     tasks={tasks}
                     projects={profile?.projects ?? []}
-                    onCreateTask={onCreateTask}
-                    onUpdateTask={onUpdateTask}
-                    onDeleteTask={onDeleteTask}
-                    onCompleteTask={onCompleteTask}
+                    onCreateTask={actions.onCreateTask}
+                    onUpdateTask={actions.onUpdateTask}
+                    onDeleteTask={actions.onDeleteTask}
+                    onCompleteTask={actions.onCompleteTask}
                     focusTaskId={focusTaskId}
                   />
               </section>
@@ -664,41 +656,43 @@ export function EnhancedAtlasDashboard({
                   <GoalTracker
                     goals={goals}
                     tasks={tasks}
-                    onCreateGoal={onCreateGoal}
-                    onUpdateGoal={onUpdateGoal}
-                    onDeleteGoal={onDeleteGoal}
-                    onUpdateGoalProgress={onUpdateGoalProgress}
+                    onCreateGoal={actions.onCreateGoal}
+                    onUpdateGoal={actions.onUpdateGoal}
+                    onDeleteGoal={actions.onDeleteGoal}
+                    onUpdateGoalProgress={actions.onUpdateGoalProgress}
                   />
               </section>
            </div>
         )}
 
-        {/* ══════════════ ROUTINES TAB ══════════════ */}
-        {activeTab === 'routines' && (
+        {/* ══════════════ RHYTHMS TAB ══════════════ */}
+        {activeTab === 'rhythms' && (
            <div className="space-y-8">
               <section className="space-y-3">
-                 <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
-                    Weekly Routine Skeleton
-                 </h4>
+                 <div className="flex flex-col gap-1">
+                    <h3 className="text-lg font-bold font-display text-white/90">Weekly Template</h3>
+                    <p className="text-xs text-white/40">Define your ideal week structure and recurring time blocks.</p>
+                 </div>
                  {profile && (
                     <RoutineEditor 
                       routine={profile.routine}
-                      onUpdate={onUpdateRoutine}
+                      onUpdate={actions.onUpdateRoutine}
                     />
                  )}
               </section>
               
               <section className="space-y-3">
-                  <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
-                     Habit Builder
-                  </h4>
+                  <div className="flex flex-col gap-1">
+                    <h3 className="text-lg font-bold font-display text-white/90">Daily Habits</h3>
+                    <p className="text-xs text-white/40">Small, consistent actions that build long-term momentum.</p>
+                  </div>
                   <HabitBuilder
                     habits={habits}
-                    onCreateHabit={onCreateHabit}
-                    onUpdateHabit={onUpdateHabit}
-                    onDeleteHabit={onDeleteHabit}
-                    onCompleteHabit={onCompleteHabit}
-                    onPauseHabit={onPauseHabit}
+                    onCreateHabit={actions.onCreateHabit}
+                    onUpdateHabit={actions.onUpdateHabit}
+                    onDeleteHabit={actions.onDeleteHabit}
+                    onCompleteHabit={actions.onCompleteHabit}
+                    onPauseHabit={actions.onPauseHabit}
                   />
               </section>
            </div>
@@ -711,102 +705,86 @@ export function EnhancedAtlasDashboard({
             userId={user?.uid ?? null}
             encryptionKey={encryptionKey}
             isLocked={isLocked}
-            onSendMessage={onSendMessage}
+            onSendMessage={actions.onSendMessage}
             focusEntryId={focusJournalId}
           />
         )}
 
-        {/* ══════════════ ANALYTICS TAB ══════════════ */}
-        {activeTab === 'analytics' && (
-          <AtlasAnalytics profile={profile} />
-        )}
-
-        {/* ══════════════ FIELDS TAB ══════════════ */}
-        {activeTab === 'fields' && (
-          <FieldsTab
-            extensions={extensions}
-            fieldValues={fieldValues}
-            onAddField={onAddField}
-            onDeleteField={onDeleteField}
-          />
-        )}
-
-        {/* ══════════════ REVIEW TAB ══════════════ */}
-        {activeTab === 'review' && (
+        {/* ══════════════ INSIGHTS TAB ══════════════ */}
+        {activeTab === 'insights' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between gap-4">
-              <h3 className="text-lg font-bold font-display text-white/90">Temporal Reviews</h3>
-              <NeuralButton
-                onClick={() => setIsReviewModalOpen(true)}
-                themeColor="module"
-                size="sm"
-                className="text-[10px] font-black uppercase tracking-widest px-6"
-              >
-                Run Weekly Review
-              </NeuralButton>
+            <WeeklyReviewCard
+              soul={soul}
+              energyWave={energyWave}
+              scheduledTasks={profile?.scheduledTasks ?? []}
+              predictiveDisplay={predictiveDisplay}
+              weeklyReviewPending={weeklyReviewPending}
+              onOpenReview={() => setIsReviewModalOpen(true)}
+            />
+            
+            <div className="border-t border-white/5 pt-6">
+              <h3 className="text-lg font-bold font-display text-white/90 mb-4">Historical Analytics</h3>
+              <AtlasAnalytics profile={profile} />
             </div>
-            {profile?.reviews && profile.reviews.length > 0 ? (
-              <div className="space-y-4">
-                {profile.reviews.map((review: any) => (
-                  <div
-                    key={review.id}
-                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-sm font-bold text-white/90 capitalize">
-                        {review.scope} Review · {new Date(review.periodStart).toLocaleDateString()}
-                      </h4>
-                      <span className="text-xs text-white/40">
-                        {review.totalCompleted}/{review.totalScheduled} completed
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs mb-4">
-                      <div>
-                        <span className="text-white/40">Completion</span>
-                        <p className="text-lg font-bold text-emerald-400 mt-1">
-                          {Math.round(review.completionRate * 100)}%
-                        </p>
+
+            {profile?.reviews && profile.reviews.length > 0 && (
+              <div className="space-y-4 border-t border-white/5 pt-6">
+                <h3 className="text-lg font-bold font-display text-white/90">Past Reviews</h3>
+                <div className="space-y-4">
+                  {profile.reviews.map((review: any) => (
+                    <div
+                      key={review.id}
+                      className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-bold text-white/90 capitalize">
+                          {review.scope} Review · {new Date(review.periodStart).toLocaleDateString()}
+                        </h4>
+                        <span className="text-xs text-white/40">
+                          {review.totalCompleted}/{review.totalScheduled} completed
+                        </span>
                       </div>
-                      <div>
-                        <span className="text-white/40">Avg Energy</span>
-                        <p className="text-lg font-bold text-[var(--module-color-400)] mt-1">
-                          {review.nsvTrend?.energyBudgetAvg ?? '-'}/10
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-white/40">Avg Focus</span>
-                        <p className="text-lg font-bold text-[var(--module-color-400)] mt-1">
-                          {review.nsvTrend?.focusScoreAvg ?? '-'}/10
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-white/40">Drift Score</span>
-                        <p className="text-lg font-bold text-rose-400 mt-1">
-                          {review.driftScore ?? '-'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {review.insights && review.insights.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-white/10">
-                            <span className="text-[10px] text-white/40 uppercase tracking-wider">Generated Insights</span>
-                            <ul className="list-disc pl-4 mt-2 space-y-1">
-                                {review.insights.map((ins: string, i: number) => (
-                                    <li key={i} className="text-xs text-[var(--module-color-300)]">{ins}</li>
-                                ))}
-                            </ul>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs mb-4">
+                        <div>
+                          <span className="text-white/40">Completion</span>
+                          <p className="text-lg font-bold text-emerald-400 mt-1">
+                            {Math.round(review.completionRate * 100)}%
+                          </p>
                         </div>
-                    )}
-                  </div>
-                ))}
+                        <div>
+                          <span className="text-white/40">Avg Energy</span>
+                          <p className="text-lg font-bold text-[var(--module-color-400)] mt-1">
+                            {review.nsvTrend?.energyBudgetAvg ?? '-'}/10
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-white/40">Avg Focus</span>
+                          <p className="text-lg font-bold text-[var(--module-color-400)] mt-1">
+                            {review.nsvTrend?.focusScoreAvg ?? '-'}/10
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-white/40">Drift Score</span>
+                          <p className="text-lg font-bold text-rose-400 mt-1">
+                            {review.driftScore ?? '-'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {review.insights && review.insights.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-white/10">
+                              <span className="text-[10px] text-white/40 uppercase tracking-wider">Generated Insights</span>
+                              <ul className="list-disc pl-4 mt-2 space-y-1">
+                                  {review.insights.map((ins: string, i: number) => (
+                                      <li key={i} className="text-xs text-[var(--module-color-300)]">{ins}</li>
+                                  ))}
+                              </ul>
+                          </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : (
-              <EmptyState
-                title="No reviews yet"
-                description="Run your first weekly review using the button above to save a snapshot to this list."
-                icon={History}
-                size="lg"
-              />
             )}
           </div>
         )}
@@ -822,7 +800,45 @@ export function EnhancedAtlasDashboard({
         energyWave={energyWave}
         scheduledTasks={profile?.scheduledTasks ?? []}
         predictiveDisplay={predictiveDisplay}
-        onCompleteReview={onSaveWeeklyReview}
+        onCompleteReview={actions.onSaveWeeklyReview}
+      />
+
+      {/* ── Fields/Settings Modal ── */}
+      <PortalledModal
+        isOpen={isFieldsModalOpen}
+        onClose={() => setIsFieldsModalOpen(false)}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col">
+            <h2 className="text-xl font-bold font-display text-white/90">Atlas Settings</h2>
+            <p className="text-xs text-white/40">Manage your Atlas module extensions and custom fields.</p>
+          </div>
+          <NeuralButton
+            onClick={() => setIsFieldsModalOpen(false)}
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5"
+            aria-label="Close settings"
+          >
+            <X className="h-4 w-4" />
+          </NeuralButton>
+        </div>
+        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+          <FieldsTab
+            extensions={extensions}
+            fieldValues={fieldValues}
+            onAddField={actions.onAddField}
+            onDeleteField={actions.onDeleteField}
+          />
+        </div>
+      </PortalledModal>
+
+      {/* S9-006: Re-add QuickAddForm as a FAB (accessible from any tab) */}
+      <QuickAddForm
+        projects={profile?.projects ?? []}
+        onCreateTask={actions.onCreateTask}
+        onCreateHabit={actions.onCreateHabit}
+        onCreateGoal={actions.onCreateGoal}
       />
     </div>
   );

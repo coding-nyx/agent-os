@@ -25,6 +25,7 @@ import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { getTodayIso } from '../utils';
+import { useDataLogger } from './shared/useDataLogger';
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -200,7 +201,6 @@ export function BodyWeightTracker({
   directWriteMode = false,
   onDirectSave,
 }: BodyWeightTrackerProps) {
-  const [showModal, setShowModal] = useState(false);
   const [unit, setUnit] = useState<'kg' | 'lbs'>('kg');
   const [showMeasurements, setShowMeasurements] = useState(false);
 
@@ -210,8 +210,9 @@ export function BodyWeightTracker({
   const [bodyFat, setBodyFat] = useState('');
   const [measurements, setMeasurements] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+
+  const { showModal, openModal, closeModal, formError, setFormError, saving, handleSave } =
+    useDataLogger<BodyWeightEntry>({ directWriteMode, onDirectSave, onAnalyze });
 
   const setMeasurement = useCallback((key: string, val: string) => {
     setMeasurements(prev => ({ ...prev, [key]: val }));
@@ -227,61 +228,53 @@ export function BodyWeightTracker({
     { key: 'rightLeg', label: 'R. Leg' },
   ];
 
-  const handleSave = useCallback(async () => {
-    const rawWeight = parseFloat(weightInput);
-    if (!weightInput || isNaN(rawWeight) || rawWeight <= 0) {
-      setFormError('Enter a valid weight.');
-      return;
-    }
-    const weightKg = unit === 'lbs' ? lbsToKg(rawWeight) : rawWeight;
-    if (weightKg < 20 || weightKg > 300) {
-      setFormError('Weight must be between 20 and 300 kg.');
-      return;
-    }
-    setFormError(null);
-    setSaving(true);
-
-    const parsedBF = bodyFat ? parseFloat(bodyFat) : undefined;
-    const parsedMeasurements: BodyWeightEntry['measurements'] = {};
-    let hasMeasurements = false;
-    for (const { key } of MEASUREMENT_FIELDS) {
-      const v = measurements[key];
-      if (v) {
-        (parsedMeasurements as Record<string, number>)[key] = parseFloat(v);
-        hasMeasurements = true;
+  const onSave = useCallback(async () => {
+    await handleSave(() => {
+      const rawWeight = parseFloat(weightInput);
+      if (!weightInput || isNaN(rawWeight) || rawWeight <= 0) {
+        setFormError('Enter a valid weight.');
+        return null;
       }
-    }
-
-    const entry: BodyWeightEntry = {
-      id: crypto.randomUUID(),
-      date,
-      weight: Math.round(weightKg * 100) / 100,
-      bodyFatPct: parsedBF != null && !isNaN(parsedBF) ? parsedBF : undefined,
-      measurements: hasMeasurements ? parsedMeasurements : undefined,
-      notes: notes.trim() || undefined,
-      recordedAt: new Date().toISOString(),
-    };
-
-    try {
-      if (directWriteMode && onDirectSave) {
-        await onDirectSave(entry);
-      } else if (onAnalyze) {
-        const bfStr = entry.bodyFatPct != null ? ` Body fat: ${entry.bodyFatPct}%.` : '';
-        onAnalyze(
-          `Log my body weight for ${date}: ${weightKg} kg.${bfStr}` +
-          (notes.trim() ? ` Notes: "${notes.trim()}".` : '') +
-          ' Save this entry and give me a brief body composition analysis.'
-        );
+      const weightKg = unit === 'lbs' ? lbsToKg(rawWeight) : rawWeight;
+      if (weightKg < 20 || weightKg > 300) {
+        setFormError('Weight must be between 20 and 300 kg.');
+        return null;
       }
-      setShowModal(false);
-      setWeightInput('');
-      setBodyFat('');
-      setMeasurements({});
-      setNotes('');
-    } finally {
-      setSaving(false);
-    }
-  }, [weightInput, unit, date, bodyFat, measurements, notes, directWriteMode, onDirectSave, onAnalyze]);
+
+      const parsedBF = bodyFat ? parseFloat(bodyFat) : undefined;
+      const parsedMeasurements: BodyWeightEntry['measurements'] = {};
+      let hasMeasurements = false;
+      for (const { key } of MEASUREMENT_FIELDS) {
+        const v = measurements[key];
+        if (v) {
+          (parsedMeasurements as Record<string, number>)[key] = parseFloat(v);
+          hasMeasurements = true;
+        }
+      }
+
+      const entry: BodyWeightEntry = {
+        id: crypto.randomUUID(),
+        date,
+        weight: Math.round(weightKg * 100) / 100,
+        bodyFatPct: parsedBF != null && !isNaN(parsedBF) ? parsedBF : undefined,
+        measurements: hasMeasurements ? parsedMeasurements : undefined,
+        notes: notes.trim() || undefined,
+        recordedAt: new Date().toISOString(),
+      };
+
+      const bfStr = entry.bodyFatPct != null ? ` Body fat: ${entry.bodyFatPct}%.` : '';
+      const analyzePrompt =
+        `Log my body weight for ${date}: ${weightKg} kg.${bfStr}` +
+        (notes.trim() ? ` Notes: "${notes.trim()}".` : '') +
+        ' Save this entry and give me a brief body composition analysis.';
+
+      return { entry, analyzePrompt };
+    });
+    setWeightInput('');
+    setBodyFat('');
+    setMeasurements({});
+    setNotes('');
+  }, [handleSave, weightInput, unit, date, bodyFat, measurements, notes, setFormError]);
 
   // Derived stats
   const latest = bodyWeightLog?.[0] ?? null;
@@ -327,7 +320,7 @@ export function BodyWeightTracker({
             <NeuralButton
               size="sm"
               iconOnly
-              onClick={() => setShowModal(true)}
+              onClick={() => openModal()}
               title="Log Weight"
               aria-label="Log Weight"
             >
@@ -345,7 +338,7 @@ export function BodyWeightTracker({
             action={
               <NeuralButton
                 iconOnly
-                onClick={() => setShowModal(true)}
+                onClick={() => openModal()}
                 title="Log Weight"
                 aria-label="Log Weight"
               >
@@ -414,7 +407,7 @@ export function BodyWeightTracker({
       {/* Log Weight Modal */}
       <NeuralModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={() => closeModal()}
         title="Log Weight"
         subtitle="Track your body composition"
         icon={Scale}
@@ -520,11 +513,11 @@ export function BodyWeightTracker({
           )}
 
           <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-            <NeuralButton variant="ghost" onClick={() => setShowModal(false)}>
+            <NeuralButton variant="ghost" onClick={() => closeModal()}>
               Cancel
             </NeuralButton>
             <NeuralButton
-              onClick={handleSave}
+              onClick={onSave}
               disabled={saving || (!directWriteMode && !onAnalyze)}
             >
               <Scale className="w-4 h-4 mr-2" />

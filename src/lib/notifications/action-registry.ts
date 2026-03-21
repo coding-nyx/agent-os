@@ -31,6 +31,10 @@ class NotificationActionRegistry {
     this.register('DISMISS', async () => {
       // Logic for DISMISS is usually handled by UI state
     });
+
+    this.register('CUSTOM_ACTION', async () => {
+      // No default behavior — handled by module-specific logic if needed
+    });
   }
 
   public register(type: string, handler: ActionHandler) {

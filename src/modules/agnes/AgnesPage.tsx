@@ -78,7 +78,7 @@ function AgnesContent({
 }: AgnesContentProps) {
   const { globalSoul, updateCrossFunctionalState } = useGlobalSoul();
 
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, profile: coreProfile } = useAuth();
   const { isModuleAccessible } = useVault();
   const navigate = useNavigate();
   const isAccessible = isModuleAccessible('agnes');
@@ -153,8 +153,8 @@ function AgnesContent({
   const isImpromptu = sessionType === 'impromptu';
 
   const regularSystemPrompt = useMemo(
-    () => buildAgnesSessionPrompt(AGNES_PERSONA, profile?.baseContext),
-    [profile?.baseContext]
+    () => buildAgnesSessionPrompt(AGNES_PERSONA, profile?.baseContext, coreProfile?.agentPersonalityProvision?.agentGenders?.agnes),
+    [profile?.baseContext, coreProfile?.agentPersonalityProvision?.agentGenders?.agnes]
   );
 
   // Impromptu uses bare persona — no profile context injected

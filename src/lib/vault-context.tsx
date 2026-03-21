@@ -296,8 +296,9 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     const requiresVault = manifestPolicy.mandatory || (userPref ?? manifestPolicy.defaultLocked);
 
     if (!requiresVault) return true;
+    if (!hasVault) return true; // no vault set up yet — module accessible, data unencrypted
     return isUnlocked;
-  }, [isGuest, profile?.securityPreferences, isUnlocked]);
+  }, [isGuest, profile?.securityPreferences, isUnlocked, hasVault]);
 
   // ── Vault setup nudge ────────────────────────────────────────────────────
   const [nudgeSeen, setNudgeSeen] = useState<boolean>(() =>
@@ -337,11 +338,12 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     setHasVault(false);
     clearSessionPassword();
 
-    // 2. Purge all encrypted module data (and the vault record) to prevent decryption 
+    // 2. Purge all encrypted module data (and the vault record) to prevent decryption
     //    errors when a new vault/key is created.
     //    This also triggers the onboardingComplete: false reset inside SoulTerminationService.
     try {
       await SoulTerminationService.purgeUserData(user.uid);
+      SoulTerminationService.clearLocalArtifacts(); // clears nexus_vault_nudge_seen + session keys
     } catch (err) {
       console.error('[Vault] Purge failed during destruction:', err);
     }

@@ -4,31 +4,29 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   Flame,
   TrendingUp,
   Zap,
   X,
-  Edit2,
-  Trash2,
   Sparkles,
   Calendar,
-  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasHabit } from '../services/atlas-profile-service';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
-import { NeuralToggle } from '@/core/components/NeuralToggle';
-import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
-import { ConfirmDialog } from '@/core/components/ConfirmDialog';
 import { HabitTracker } from './HabitTracker';
+
+// Shared primitives
+import { useDeleteConfirmation } from './shared/useDeleteConfirmation';
+import { PortalledModal } from './shared/PortalledModal';
+import { ItemActionButtons } from './shared/ItemActionButtons';
+import { StatsGrid, type StatItem } from './shared/StatsGrid';
+import { useFilteredSortedList } from './shared/useFilteredSortedList';
 
 interface HabitBuilderProps {
   habits: AtlasHabit[];
@@ -124,14 +122,23 @@ export function HabitBuilder({
   onCompleteHabit,
   onPauseHabit,
 }: HabitBuilderProps) {
-  const reducedMotion = useReducedMotion();
-
   // ── State ──
   const [filter, setFilter] = useState<HabitFilter>('all');
   const [showForm, setShowForm] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [editingHabit, setEditingHabit] = useState<AtlasHabit | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+
+  // ── Shared Primitives ──
+  const { promptDelete, ConfirmationDialog } = useDeleteConfirmation<AtlasHabit>(onDeleteHabit);
+
+  const filteredHabits = useFilteredSortedList({
+    items: habits,
+    filter,
+    filterFn: (habit, currentFilter) => {
+      if (currentFilter === 'all') return true;
+      return habit.status === currentFilter;
+    }
+  });
 
   // ── Form state ──
   const [formData, setFormData] = useState<Partial<AtlasHabit>>({
@@ -144,12 +151,6 @@ export function HabitBuilder({
     bestStreak: 0,
     status: 'active',
   });
-
-  // ── Filtered habits ──
-  const filteredHabits = useMemo(() => {
-    if (filter === 'all') return habits;
-    return habits.filter((h) => h.status === filter);
-  }, [habits, filter]);
 
   // ── Habit statistics ──
   const stats = useMemo(() => {
@@ -170,6 +171,14 @@ export function HabitBuilder({
 
     return { total, active, avgStreak, longestStreak, totalEnergyImpact };
   }, [habits]);
+
+  const statItems: StatItem[] = [
+    { label: 'Total Habits', value: stats.total },
+    { label: 'Active', value: stats.active, colorClass: 'text-emerald-400', labelColorClass: 'text-emerald-400/60' },
+    { label: 'Avg Streak', value: stats.avgStreak, icon: <Flame className="w-3 h-3" />, colorClass: 'text-orange-400', labelColorClass: 'text-orange-400/60' },
+    { label: 'Best Streak', value: stats.longestStreak, icon: <TrendingUp className="w-3 h-3" />, colorClass: 'text-amber-400', labelColorClass: 'text-amber-400/60' },
+    { label: 'Energy Impact', value: stats.totalEnergyImpact, icon: <Zap className="w-3 h-3" />, colorClass: 'text-[var(--module-color-400)]', labelColorClass: 'text-[var(--module-color-400)]/60' },
+  ];
 
   // ── Handlers ──
   const handleOpenForm = (habit?: AtlasHabit) => {
@@ -244,51 +253,7 @@ export function HabitBuilder({
   return (
     <div className="space-y-6">
       {/* ── Header with stats ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">
-            Total Habits
-          </div>
-          <div className="text-2xl font-black text-white/90 tabular-nums">
-            {stats.total}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-emerald-400/60 uppercase tracking-wider mb-1">
-            Active
-          </div>
-          <div className="text-2xl font-black text-emerald-400 tabular-nums">
-            {stats.active}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-orange-400/60 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <Flame className="w-3 h-3" />
-            Avg Streak
-          </div>
-          <div className="text-2xl font-black text-orange-400 tabular-nums">
-            {stats.avgStreak}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-amber-400/60 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <TrendingUp className="w-3 h-3" />
-            Best Streak
-          </div>
-          <div className="text-2xl font-black text-amber-400 tabular-nums">
-            {stats.longestStreak}
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <div className="text-[10px] text-[var(--module-color-400)]/60 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <Zap className="w-3 h-3" />
-            Energy Impact
-          </div>
-          <div className="text-2xl font-black text-[var(--module-color-400)] tabular-nums">
-            {stats.totalEnergyImpact}
-          </div>
-        </SurfaceCard>
-      </div>
+      <StatsGrid stats={statItems} />
 
       {/* ── Controls: Filter & Actions ── */}
       <div className="flex flex-col md:flex-row gap-3 justify-between">
@@ -347,258 +312,203 @@ export function HabitBuilder({
               onPause={onPauseHabit}
             />
 
-            {/* Edit/Delete actions overlaid on each habit */}
+            {/* Action buttons overlaid on each habit */}
             {filteredHabits.map((habit) => (
               <div key={habit.id} className="relative group -mt-4">
-                {/* Invisible overlay for hover detection */}
-                <div className="absolute inset-0 pointer-events-none" />
-                {/* Quick action buttons on hover */}
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10 pointer-events-auto">
-                  <NeuralButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenForm(habit);
-                    }}
-                    className="p-1.5 h-8 w-8 min-w-0 bg-white/10 hover:bg-white/20 text-white/60 hover:text-white/90"
-                    aria-label={`Edit ${habit.title}`}
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </NeuralButton>
-                  <NeuralButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteTarget({ id: habit.id, title: habit.title });
-                    }}
-                    className="p-1.5 h-8 w-8 min-w-0 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400/60 hover:text-rose-400"
-                    aria-label={`Delete ${habit.title}`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </NeuralButton>
-                </div>
+                <ItemActionButtons
+                  onEdit={() => handleOpenForm(habit)}
+                  onDelete={() => promptDelete(habit)}
+                  itemTitle={habit.title}
+                />
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* ── Habit Form Modal — portalled to body to escape Framer Motion transform containment ── */}
-      {createPortal(
-        <AnimatePresence>
-          {showForm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-              onClick={handleCloseForm}
-            >
-              <motion.div
-                initial={reducedMotion ? false : { scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl"
-              >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-black text-white/90">
-                  {editingHabit ? 'Edit Habit' : 'Create New Habit'}
-                </h2>
+      {/* ── Habit Form Modal ── */}
+      <PortalledModal isOpen={showForm} onClose={handleCloseForm}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-black text-white/90">
+            {editingHabit ? 'Edit Habit' : 'Create New Habit'}
+          </h2>
+          <NeuralButton
+            variant="ghost"
+            size="sm"
+            onClick={handleCloseForm}
+            className="p-2 h-9 w-9 min-w-0 hover:bg-white/10 text-white/40 hover:text-white/70"
+          >
+            <X className="w-5 h-5" />
+          </NeuralButton>
+        </div>
+
+        {/* ── Templates section ── */}
+        {showTemplates && !editingHabit && (
+          <div className="mb-6 pb-6 border-b border-white/10">
+            <h3 className="text-sm font-bold text-white/70 mb-3 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Habit Templates
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {HABIT_TEMPLATES.map((template) => (
                 <NeuralButton
+                  key={template.id}
+                  onClick={() => handleSelectTemplate(template)}
                   variant="ghost"
-                  size="sm"
-                  onClick={handleCloseForm}
-                  className="p-2 h-9 w-9 min-w-0 hover:bg-white/10 text-white/40 hover:text-white/70"
+                  className="p-3 !h-auto rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-left transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] !justify-start !items-start !flex-col"
                 >
-                  <X className="w-5 h-5" />
-                </NeuralButton>
-              </div>
-
-              {/* ── Templates section ── */}
-              {showTemplates && !editingHabit && (
-                <div className="mb-6 pb-6 border-b border-white/10">
-                  <h3 className="text-sm font-bold text-white/70 mb-3 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" />
-                    Habit Templates
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {HABIT_TEMPLATES.map((template) => (
-                      <NeuralButton
-                        key={template.id}
-                        onClick={() => handleSelectTemplate(template)}
-                        variant="ghost"
-                        className="p-3 !h-auto rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-left transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] !justify-start !items-start !flex-col"
-                      >
-                        <div className="text-sm font-semibold text-white/90 mb-1 group-hover:text-emerald-400 transition-colors">
-                          {template.title}
-                        </div>
-                        <div className="text-[10px] text-white/40">
-                          {template.frequency} • {template.energyCost} energy
-                        </div>
-                      </NeuralButton>
-                    ))}
+                  <div className="text-sm font-semibold text-white/90 mb-1 group-hover:text-emerald-400 transition-colors">
+                    {template.title}
                   </div>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                {/* Title */}
-                <NeuralInput
-                  label="Habit Name *"
-                  placeholder="e.g., Morning meditation, Daily exercise..."
-                  value={formData.title || ''}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                />
-
-                {/* Frequency & Energy Cost */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      Frequency
-                    </label>
-                    <NeuralSelectMenu
-                      value={formData.frequency || 'daily'}
-                      onChange={(next) =>
-                        setFormData({
-                          ...formData,
-                          frequency: next as AtlasHabit['frequency'],
-                        })
-                      }
-                      options={FREQUENCY_OPTIONS}
-                      ariaLabel="Frequency"
-                    />
+                  <div className="text-[10px] text-white/40">
+                    {template.frequency} • {template.energyCost} energy
                   </div>
-                  <NeuralInput
-                    label="Energy Cost (0-10)"
-                    type="number"
-                    min={0}
-                    max={10}
-                    icon={<Zap className="w-4 h-4" />}
-                    value={formData.energyCost || 3}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        energyCost: Math.max(0, Math.min(10, parseInt(e.target.value) || 3)),
-                      })
-                    }
-                  />
-                </div>
-
-                {/* Minimum Viable Version */}
-                <div className="space-y-1">
-                  <NeuralInput
-                    label="Minimum Viable Version"
-                    placeholder="e.g., 5 minutes instead of 30, 1 page instead of a chapter..."
-                    value={formData.minimumViableVersion || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, minimumViableVersion: e.target.value })
-                    }
-                  />
-                  <p className="text-[10px] text-white/30 ml-1 italic">
-                    The smallest version you can do on low-energy days
-                  </p>
-                </div>
-
-                {/* Target Streak */}
-                <NeuralInput
-                  label="Target Streak (days)"
-                  type="number"
-                  min={1}
-                  icon={<Flame className="w-4 h-4" />}
-                  value={formData.targetStreak || 30}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      targetStreak: Math.max(1, parseInt(e.target.value) || 30),
-                    })
-                  }
-                />
-
-                {/* Status (only when editing) */}
-                {editingHabit && (
-                  <div className="space-y-2">
-                    <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
-                      Status
-                    </label>
-                    <NeuralSelectMenu
-                      value={formData.status || 'active'}
-                      onChange={(next) =>
-                        setFormData({
-                          ...formData,
-                          status: next as AtlasHabit['status'],
-                        })
-                      }
-                      options={[
-                        { value: 'active', label: 'Active' },
-                        { value: 'paused', label: 'Paused' },
-                        { value: 'archived', label: 'Archived' },
-                      ]}
-                      ariaLabel="Status"
-                    />
-                  </div>
-                )}
-
-                {/* Energy Impact Info */}
-                <div className="p-4 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]">
-                  <h4 className="text-xs font-bold text-[var(--module-color-400)] mb-2 flex items-center gap-1">
-                    <Zap className="w-3 h-3" />
-                    Energy Impact Analysis
-                  </h4>
-                  <p className="text-xs text-[var(--module-color-300)]/70 leading-relaxed">
-                    {formData.energyCost && formData.energyCost <= 3 && (
-                      <>
-                        <strong>Low energy habit.</strong> Easy to maintain even on low-energy
-                        days. Great for building consistency.
-                      </>
-                    )}
-                    {formData.energyCost && formData.energyCost >= 4 && formData.energyCost <= 6 && (
-                      <>
-                        <strong>Moderate energy habit.</strong> Best scheduled during your peak
-                        productivity times. Have a lighter version ready for off days.
-                      </>
-                    )}
-                    {formData.energyCost && formData.energyCost >= 7 && (
-                      <>
-                        <strong>High energy habit.</strong> Requires significant focus and
-                        energy. Consider pairing with recovery windows or making frequency less
-                        demanding.
-                      </>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
-                <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
-                  Cancel
                 </NeuralButton>
-                <NeuralButton onClick={handleSubmitForm} disabled={!formData.title?.trim()} className="w-full sm:w-auto">
-                  {editingHabit ? 'Update Habit' : 'Create Habit'}
-                </NeuralButton>
-              </div>
-            </motion.div>
-          </motion.div>
+              ))}
+            </div>
+          </div>
         )}
-      </AnimatePresence>,
-      document.body
-    )}
-      <ConfirmDialog
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (deleteTarget) onDeleteHabit(deleteTarget.id);
-          setDeleteTarget(null);
-        }}
-        title={`Delete "${deleteTarget?.title}"?`}
-        description="This action cannot be undone."
-        variant="danger"
-        confirmLabel="Delete"
-      />
+
+        <div className="space-y-4">
+          {/* Title */}
+          <NeuralInput
+            label="Habit Name *"
+            placeholder="e.g., Morning meditation, Daily exercise..."
+            value={formData.title || ''}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          />
+
+          {/* Frequency & Energy Cost */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1 flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                Frequency
+              </label>
+              <NeuralSelectMenu
+                value={formData.frequency || 'daily'}
+                onChange={(next) =>
+                  setFormData({
+                    ...formData,
+                    frequency: next as AtlasHabit['frequency'],
+                  })
+                }
+                options={FREQUENCY_OPTIONS}
+                ariaLabel="Frequency"
+              />
+            </div>
+            <NeuralInput
+              label="Energy Cost (0-10)"
+              type="number"
+              min={0}
+              max={10}
+              icon={<Zap className="w-4 h-4" />}
+              value={formData.energyCost || 3}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  energyCost: Math.max(0, Math.min(10, parseInt(e.target.value) || 3)),
+                })
+              }
+            />
+          </div>
+
+          {/* Minimum Viable Version */}
+          <div className="space-y-1">
+            <NeuralInput
+              label="Minimum Viable Version"
+              placeholder="e.g., 5 minutes instead of 30, 1 page instead of a chapter..."
+              value={formData.minimumViableVersion || ''}
+              onChange={(e) =>
+                setFormData({ ...formData, minimumViableVersion: e.target.value })
+              }
+            />
+            <p className="text-[10px] text-white/30 ml-1 italic">
+              The smallest version you can do on low-energy days
+            </p>
+          </div>
+
+          {/* Target Streak */}
+          <NeuralInput
+            label="Target Streak (days)"
+            type="number"
+            min={1}
+            icon={<Flame className="w-4 h-4" />}
+            value={formData.targetStreak || 30}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                targetStreak: Math.max(1, parseInt(e.target.value) || 30),
+              })
+            }
+          />
+
+          {/* Status (only when editing) */}
+          {editingHabit && (
+            <div className="space-y-2">
+              <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+                Status
+              </label>
+              <NeuralSelectMenu
+                value={formData.status || 'active'}
+                onChange={(next) =>
+                  setFormData({
+                    ...formData,
+                    status: next as AtlasHabit['status'],
+                  })
+                }
+                options={[
+                  { value: 'active', label: 'Active' },
+                  { value: 'paused', label: 'Paused' },
+                  { value: 'archived', label: 'Archived' },
+                ]}
+                ariaLabel="Status"
+              />
+            </div>
+          )}
+
+          {/* Energy Impact Info */}
+          <div className="p-4 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]">
+            <h4 className="text-xs font-bold text-[var(--module-color-400)] mb-2 flex items-center gap-1">
+              <Zap className="w-3 h-3" />
+              Energy Impact Analysis
+            </h4>
+            <p className="text-xs text-[var(--module-color-300)]/70 leading-relaxed">
+              {formData.energyCost && formData.energyCost <= 3 && (
+                <>
+                  <strong>Low energy habit.</strong> Easy to maintain even on low-energy
+                  days. Great for building consistency.
+                </>
+              )}
+              {formData.energyCost && formData.energyCost >= 4 && formData.energyCost <= 6 && (
+                <>
+                  <strong>Moderate energy habit.</strong> Best scheduled during your peak
+                  productivity times. Have a lighter version ready for off days.
+                </>
+              )}
+              {formData.energyCost && formData.energyCost >= 7 && (
+                <>
+                  <strong>High energy habit.</strong> Requires significant focus and
+                  energy. Consider pairing with recovery windows or making frequency less
+                  demanding.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+          <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
+            Cancel
+          </NeuralButton>
+          <NeuralButton onClick={handleSubmitForm} disabled={!formData.title?.trim()} className="w-full sm:w-auto">
+            {editingHabit ? 'Update Habit' : 'Create Habit'}
+          </NeuralButton>
+        </div>
+      </PortalledModal>
+
+      <ConfirmationDialog />
     </div>
   );
 }

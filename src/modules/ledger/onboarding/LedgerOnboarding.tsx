@@ -1,23 +1,17 @@
-import React, { useMemo, useState } from 'react';
-import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
+import React, { useCallback, useMemo } from 'react';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { NexusChat } from '@/core/components/NexusChat';
-import { Zap } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { NeuralButton } from '@/core/components/NeuralButton';
-import { NeuralInput } from '@/core/components/NeuralInput';
-import { Loader2 } from 'lucide-react';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { useAuth } from '@/lib/auth-context';
 import { LedgerIntakeProfile, createEmptyLedgerProfile } from '../services/ledger-intake-service';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import { mergeNSVPatch } from '@/lib/services/nsv-service';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 import type { NeuralStateVectorPatch } from '@/lib/types';
-import { useFastTrackValidation } from '@/lib/onboarding/fast-track-validation';
+import { UnifiedOnboardingShell } from '@/core/intake/UnifiedOnboardingShell';
+import { LEDGER_BASE_SPEC } from '@/core/intake/onboarding-configs';
 
 interface LedgerOnboardingProps {
   initialProfile?: LedgerIntakeProfile | null;
@@ -64,29 +58,6 @@ RULES:
 - No investment/legal advice.
 `.trim();
 
-const LEDGER_STEPS = [
-  {
-    key: 'income',
-    label: 'Income & Currency',
-    helperText: 'Capture monthly income and primary currency.'
-  },
-  {
-    key: 'expenses',
-    label: 'Expense Map',
-    helperText: 'Capture fixed and variable spend categories.'
-  },
-  {
-    key: 'debt_goals',
-    label: 'Debt & Goals',
-    helperText: 'Capture debt pressure and savings targets.'
-  },
-  {
-    key: 'plan_horizon',
-    label: 'Planning Horizon',
-    helperText: 'Set monthly, quarterly, or yearly planning mode.'
-  }
-] as const;
-
 function hasBaseContext(context: GlobalBaseIntakeContext): boolean {
   return Boolean(context.name || context.pronouns || context.occupation || typeof context.typicalSleepHours === 'number');
 }
@@ -99,102 +70,55 @@ function buildBasePrompt(context: GlobalBaseIntakeContext): string {
     typeof context.typicalSleepHours === 'number' ? `typical sleep around ${context.typicalSleepHours} hours/night` : null
   ].filter(Boolean);
 
-  if (chunks.length === 0) {
-    return 'Ledger intake initialized. What is your monthly income and preferred currency?';
-  }
-
+  if (chunks.length === 0) return 'Ledger intake initialized. What is your monthly income and preferred currency?';
   return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we start financial intake?`;
 }
 
-export function LedgerOnboarding({
-  initialProfile,
-  initialBaseContext,
-  onGlobalBaseContextFinalize,
-  onComplete
-}: LedgerOnboardingProps) {
+function parseLineItems(text: string): Array<{ id: string; label: string; amount: number }> {
+  return String(text || '').split(',').map((s, i) => ({ id: `ft-${i}`, label: s.trim(), amount: 0 })).filter(e => e.label);
+}
+
+export function LedgerOnboarding({ initialProfile, initialBaseContext, onGlobalBaseContextFinalize, onComplete }: LedgerOnboardingProps) {
   const { user } = useAuth();
   const initialContext = useMemo(() => initialBaseContext ?? {}, [initialBaseContext]);
 
-  const [fastCurrency, setFastCurrency] = useState('');
-  const [fastIncome, setFastIncome] = useState('');
-  const [fastFixedExpenses, setFastFixedExpenses] = useState('');
-  const [fastVariableExpenses, setFastVariableExpenses] = useState('');
-  const [fastDebt, setFastDebt] = useState('');
-  const [fastSavingsGoal, setFastSavingsGoal] = useState('');
-  const [fastHorizon, setFastHorizon] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
-  const [fastTrackError, setFastTrackError] = useState<string | null>(null);
-  const [isValidatingFastTrack, setIsValidatingFastTrack] = useState(false);
-  const { validateFastTrack } = useFastTrackValidation('ledger');
-
-  const handleFastTrack = async () => {
-    if (!fastCurrency.trim() || !fastIncome.trim()) return;
-    setFastTrackError(null);
-    setIsValidatingFastTrack(true);
-    const income = Number.parseFloat(fastIncome);
-    if (!Number.isFinite(income) || income < 0) {
-      setFastTrackError('Fast-track validation failed. Provide a valid non-negative monthly income.');
-      setIsValidatingFastTrack(false);
-      return;
-    }
+  // Express complete — maps canonical field IDs to LedgerIntakeProfile
+  const handleExpressComplete = useCallback(async (values: Record<string, unknown>) => {
     const now = new Date().toISOString();
-    const fixedExpenses = fastFixedExpenses.trim()
-      ? fastFixedExpenses.split(',').map((s, i) => ({ id: `ft-fix-${i}`, label: s.trim(), amount: 0 })).filter(e => e.label)
-      : [];
-    const variableExpenses = fastVariableExpenses.trim()
-      ? fastVariableExpenses.split(',').map((s, i) => ({ id: `ft-var-${i}`, label: s.trim(), amount: 0 })).filter(e => e.label)
-      : [];
-    const debtItems = fastDebt.trim()
-      ? fastDebt.split(',').map((s, i) => ({ id: `ft-debt-${i}`, name: s.trim(), balance: 0, minPayment: 0, apr: 0 })).filter(d => d.name)
-      : [];
-    const savingsGoals = fastSavingsGoal.trim()
-      ? fastSavingsGoal.split(',').map((s, i) => ({ id: `ft-sav-${i}`, name: s.trim(), targetAmount: 0, currentAmount: 0, monthlyContribution: 0, priority: 'medium' as const })).filter(g => g.name)
-      : [];
     const profile: LedgerIntakeProfile = {
+      ...createEmptyLedgerProfile(),
       onboardingComplete: true,
-      currency: fastCurrency.trim().toUpperCase(),
-      monthlyIncome: income,
-      fixedExpenses,
-      variableExpenses,
-      debtItems,
-      savingsGoals,
-      planningHorizon: fastHorizon,
-      summary: `Express onboarding: ${fastCurrency.trim().toUpperCase()} ${income}/mo, ${fastHorizon} horizon.`,
-      plans: [],
-      activePlanId: null,
-      plannerBotState: 'idle',
-      documentAnalysisEnabled: false,
+      currency: String(values.currency ?? 'USD').trim().toUpperCase(),
+      monthlyIncome: Number(values.monthly_income ?? 0),
+      fixedExpenses: parseLineItems(String(values.fixed_expenses ?? '')),
+      variableExpenses: parseLineItems(String(values.variable_expenses ?? '')),
+      debtItems: parseLineItems(String(values.debts ?? '')).map((e, i) => ({
+        id: `debt-${i}`, name: e.label, balance: 0, minPayment: 0, apr: 0
+      })),
+      savingsGoals: parseLineItems(String(values.savings_goals ?? '')).map((e, i) => ({
+        id: `sav-${i}`, name: e.label, targetAmount: 0, currentAmount: 0
+      })),
+      planningHorizon: (['monthly', 'quarterly', 'yearly'].includes(String(values.planning_horizon))
+        ? String(values.planning_horizon) : 'monthly') as 'monthly' | 'quarterly' | 'yearly',
+      summary: `Express onboarding: ${String(values.currency ?? 'USD').toUpperCase()} ${values.monthly_income}/mo.`,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
-
-    const validation = await validateFastTrack(profile as unknown as Record<string, unknown>, {
-      requiredFields: ['currency', 'monthlyIncome', 'planningHorizon'],
-      objective: 'Confirm Ledger fast-track baseline is coherent enough to skip guided onboarding.'
-    });
-    setIsValidatingFastTrack(false);
-    if (!validation.accepted) {
-      setFastTrackError('Fast-track validation failed. Continue with guided onboarding for a safer financial baseline.');
-      return;
-    }
-
     onComplete(profile);
-  };
+  }, [onComplete]);
 
-  const spec = useMemo<GuidedChatSpec<LedgerIntakeState>>(
+  // Guided chat spec (unchanged)
+  const chatSpec = useMemo<GuidedChatSpec<LedgerIntakeState>>(
     () => ({
-      initialState: {
-        profile: initialProfile ?? createEmptyLedgerProfile(),
-        baseContext: initialContext,
-        stepProgress: 0
-      },
-      initialMessages: [
-        {
-          role: 'assistant',
-          content: buildBasePrompt(initialContext)
-        }
-      ],
+      initialState: { profile: initialProfile ?? createEmptyLedgerProfile(), baseContext: initialContext, stepProgress: 0 },
+      initialMessages: [{ role: 'assistant', content: buildBasePrompt(initialContext) }],
       initialStep: 0,
-      steps: [...LEDGER_STEPS],
+      steps: [
+        { key: 'income', label: 'Income & Currency', helperText: 'Capture monthly income and primary currency.' },
+        { key: 'expenses', label: 'Expense Map', helperText: 'Capture fixed and variable spend categories.' },
+        { key: 'debt_goals', label: 'Debt & Goals', helperText: 'Capture debt pressure and savings targets.' },
+        { key: 'plan_horizon', label: 'Planning Horizon', helperText: 'Set monthly, quarterly, or yearly planning mode.' }
+      ],
       summary: 'Ledger finance onboarding intake.',
       placeholder: 'Share your financial baseline...',
       buildContext: (state, history) => ({
@@ -203,16 +127,14 @@ export function LedgerOnboarding({
 - Name: ${state.baseContext.name || 'Unknown'}
 - Pronouns: ${state.baseContext.pronouns || 'Unknown'}
 - Occupation: ${state.baseContext.occupation || 'Unknown'}
-- Typical Sleep Hours: ${
-          typeof state.baseContext.typicalSleepHours === 'number' ? state.baseContext.typicalSleepHours : 'Unknown'
-        }
-${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or pronouns again if they are already known in this context. Move directly to the next missing piece of information.' : ''}
+- Typical Sleep Hours: ${typeof state.baseContext.typicalSleepHours === 'number' ? state.baseContext.typicalSleepHours : 'Unknown'}
+${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or pronouns again if they are already known in this context.' : ''}
 `,
         memoryContext: [],
         summary: 'Ledger finance onboarding intake.',
         history
       }),
-      onResponse: async (response, state) => {
+      onResponse: async (response: StructuredResponse, state) => {
         let nextProfile = { ...state.profile };
         const nextBaseContext = { ...state.baseContext };
         let nextStep = state.stepProgress;
@@ -220,52 +142,29 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
         const focusAction = [...response.actions].reverse().find((a) =>
           ['focus_income', 'focus_expenses', 'focus_debt_goals', 'focus_plan_horizon'].includes(a.type)
         );
-        let explicitFocus: number | undefined;
         if (focusAction) {
-          if (focusAction.type === 'focus_income') explicitFocus = 0;
-          if (focusAction.type === 'focus_expenses') explicitFocus = 1;
-          if (focusAction.type === 'focus_debt_goals') explicitFocus = 2;
-          if (focusAction.type === 'focus_plan_horizon') explicitFocus = 3;
+          if (focusAction.type === 'focus_income') nextStep = 0;
+          if (focusAction.type === 'focus_expenses') nextStep = 1;
+          if (focusAction.type === 'focus_debt_goals') nextStep = 2;
+          if (focusAction.type === 'focus_plan_horizon') nextStep = 3;
         }
 
         const updatePayloads = response.actions
           .filter(a => a.type === 'update_ledger_profile')
           .map(a => a.payload as Partial<LedgerIntakeProfile>);
-
-        if (updatePayloads.length > 0) {
-          for (const parsed of updatePayloads) {
-            nextProfile = {
-              ...nextProfile,
-              ...parsed,
-              updatedAt: new Date().toISOString()
-            };
-          }
-        }
-
-        // Use explicit focus if provided, otherwise move forward based on context updates
-        if (explicitFocus !== undefined) {
-          nextStep = explicitFocus;
+        for (const parsed of updatePayloads) {
+          nextProfile = { ...nextProfile, ...parsed, updatedAt: new Date().toISOString() };
         }
 
         const baseContextUpdates = response.actions
           .filter(a => a.type === 'update_global_base_context')
           .map(a => a.payload as Partial<GlobalBaseIntakeContext>);
-
-        if (baseContextUpdates.length > 0) {
-          for (const parsed of baseContextUpdates) {
-            if (typeof parsed.name === 'string' && parsed.name.trim()) nextBaseContext.name = parsed.name.trim();
-            if (typeof parsed.pronouns === 'string' && parsed.pronouns.trim())
-              nextBaseContext.pronouns = parsed.pronouns.trim();
-            if (typeof parsed.occupation === 'string' && parsed.occupation.trim())
-              nextBaseContext.occupation = parsed.occupation.trim();
-            if (
-              typeof parsed.typicalSleepHours === 'number' &&
-              Number.isFinite(parsed.typicalSleepHours) &&
-              parsed.typicalSleepHours > 0 &&
-              parsed.typicalSleepHours <= 24
-            ) {
-              nextBaseContext.typicalSleepHours = parsed.typicalSleepHours;
-            }
+        for (const parsed of baseContextUpdates) {
+          if (typeof parsed.name === 'string' && parsed.name.trim()) nextBaseContext.name = parsed.name.trim();
+          if (typeof parsed.pronouns === 'string' && parsed.pronouns.trim()) nextBaseContext.pronouns = parsed.pronouns.trim();
+          if (typeof parsed.occupation === 'string' && parsed.occupation.trim()) nextBaseContext.occupation = parsed.occupation.trim();
+          if (typeof parsed.typicalSleepHours === 'number' && Number.isFinite(parsed.typicalSleepHours) && parsed.typicalSleepHours > 0 && parsed.typicalSleepHours <= 24) {
+            nextBaseContext.typicalSleepHours = parsed.typicalSleepHours;
           }
         }
 
@@ -273,174 +172,63 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
         if (completed) {
           nextProfile.onboardingComplete = true;
           nextProfile.updatedAt = new Date().toISOString();
-          nextStep = LEDGER_STEPS.length - 1;
+          nextStep = 3;
         }
 
         const rawVitalsPayload = response.actions
-          .filter((action) => action.type === 'sync_vitals')
-          .map((action) => action.payload as Partial<NeuralStateVectorPatch>);
-
+          .filter((a) => a.type === 'sync_vitals')
+          .map((a) => a.payload as Partial<NeuralStateVectorPatch>);
         let vitalsPatch: NeuralStateVectorPatch = {};
         if (rawVitalsPayload.length > 0) {
-           const payload = rawVitalsPayload[rawVitalsPayload.length - 1]; // Take the latest sync
-           if (payload && payload.resource) {
-              const res: NonNullable<NeuralStateVectorPatch['resource']> = {};
-              if (typeof payload.resource.financialFriction === 'number') res.financialFriction = payload.resource.financialFriction;
-              if (typeof payload.resource.resonanceROI === 'number') res.resonanceROI = payload.resource.resonanceROI;
-              vitalsPatch = { resource: res };
-           }
+          const payload = rawVitalsPayload[rawVitalsPayload.length - 1];
+          if (payload?.resource) {
+            const res: NonNullable<NeuralStateVectorPatch['resource']> = {};
+            if (typeof payload.resource.financialFriction === 'number') res.financialFriction = payload.resource.financialFriction;
+            if (typeof payload.resource.resonanceROI === 'number') res.resonanceROI = payload.resource.resonanceROI;
+            vitalsPatch = { resource: res };
+          }
         }
-
         if (user?.uid && Object.keys(vitalsPatch).length > 0 && Object.keys(vitalsPatch.resource || {}).length > 0) {
-          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch((e) => {
-            console.error('Ledger onboarding sync_vitals failed:', e);
-          });
+          await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch(console.error);
         }
         if (completed && Object.keys(vitalsPatch).length === 0) {
-          NexusHandoffService.store({
-            moduleId: 'ledger',
-            type: 'delegate',
-            content: buildCalibrationPrompt('ledger'),
-            reason: 'calibration_request',
-            sourceModuleId: 'ledger',
-            createdAt: new Date().toISOString()
-          });
+          NexusHandoffService.store({ moduleId: 'ledger', type: 'delegate', content: buildCalibrationPrompt('ledger'), reason: 'calibration_request', sourceModuleId: 'ledger', createdAt: new Date().toISOString() });
         }
 
-        return {
-          nextState: {
-            profile: nextProfile,
-            baseContext: nextBaseContext,
-            stepProgress: nextStep
-          },
-          nextStep,
-          completed
-        };
+        return { nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep }, nextStep, completed };
       }
     }),
-    [initialContext, initialProfile]
+    [initialContext, initialProfile, user]
   );
 
   const intake = useGuidedChatIntake({
-    spec,
+    spec: chatSpec,
     onComplete: async (state) => {
-      if (onGlobalBaseContextFinalize) {
-        await onGlobalBaseContextFinalize(state.baseContext);
-      }
+      if (onGlobalBaseContextFinalize) await onGlobalBaseContextFinalize(state.baseContext);
       onComplete({ ...state.profile, onboardingComplete: true });
     }
   });
 
   return (
-    <GuidedIntakeFrame
-      title="Ledger Finance Intake"
-      subtitle="Collecting your cashflow baseline before automated planning."
-      statusLabel=""
-      steps={[...LEDGER_STEPS]}      currentStep={intake.stepIndex}
-      themeColor="cyan"
-      prelude={
-        <div className="p-4 md:p-6 flex flex-col gap-4 border-b border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]">
-          <div className="flex-1 w-full space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--module-color-400)] flex items-center gap-2">
-              <Zap className="w-3 h-3" /> Fast Track Initialization
-            </p>
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input
-                  placeholder="Currency (e.g., USD, EUR, INR)"
-                  value={fastCurrency}
-                  onChange={e => setFastCurrency(e.target.value)}
-                  className="bg-black/20"
-                />
-                <input
-                  type="number"
-                  placeholder="Monthly Income"
-                  value={fastIncome}
-                  onChange={e => setFastIncome(e.target.value)}
-                  className="bg-black/20"
-                />
-                <input
-                  placeholder="Fixed expenses (e.g., rent, insurance)"
-                  value={fastFixedExpenses}
-                  onChange={e => setFastFixedExpenses(e.target.value)}
-                  className="bg-black/20"
-                />
-                <input
-                  placeholder="Variable expenses (e.g., groceries, dining)"
-                  value={fastVariableExpenses}
-                  onChange={e => setFastVariableExpenses(e.target.value)}
-                  className="bg-black/20"
-                />
-                <input
-                  placeholder="Debt (e.g., student loan, credit card)"
-                  value={fastDebt}
-                  onChange={e => setFastDebt(e.target.value)}
-                  className="bg-black/20"
-                />
-                <input
-                  placeholder="Savings goals (e.g., emergency fund)"
-                  value={fastSavingsGoal}
-                  onChange={e => setFastSavingsGoal(e.target.value)}
-                  className="bg-black/20"
-                />
-              </div>
-              <div>
-                <p className="text-[9px] text-white/40 uppercase tracking-wider mb-2">Planning Horizon</p>
-                <div className="flex gap-2 flex-wrap">
-                  {(['monthly', 'quarterly', 'yearly'] as const).map(h => (
-                    <NeuralButton
-                      key={h}
-                      variant="outline"
-                      onClick={() => setFastHorizon(h)}
-                      className={cn(
-                        'px-4 py-2 text-xs font-bold uppercase tracking-wider min-h-[44px] h-auto',
-                        fastHorizon === h
-                          ? 'bg-[var(--module-accent-glow)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                          : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
-                      )}
-                      aria-pressed={fastHorizon === h}
-                    >
-                      {h}
-                    </NeuralButton>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <NeuralButton
-                  onClick={handleFastTrack}
-                  disabled={!fastCurrency.trim() || !fastIncome.trim() || isValidatingFastTrack}
-                  themeColor="cyan"
-                  className="px-6 min-h-[44px]"
-                  loading={isValidatingFastTrack}
-                >
-                  {isValidatingFastTrack ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Validating...</> : 'Execute'}
-                </NeuralButton>
-              </div>
-            </div>
-            <p className="text-[9px] text-white/40 uppercase tracking-tight">
-              Bypass conversational intake. Requires currency and income.
-            </p>
-            {fastTrackError && (
-              <p className="text-[10px] text-rose-300">{fastTrackError}</p>
-            )}
-          </div>
-        </div>
+    <UnifiedOnboardingShell
+      spec={LEDGER_BASE_SPEC}
+      onExpressComplete={handleExpressComplete}
+      guidedContent={
+        <NexusChat
+          ai={{
+            messages: intake.messages,
+            isProcessing: intake.isProcessing,
+            streamingText: intake.streamingText,
+            error: intake.error,
+            quota: null,
+            handleSendMessage: intake.handleSendMessage
+          }}
+          agentName="Ledger Intake"
+          themeColor="cyan"
+          placeholder={chatSpec.placeholder}
+          showInternalSignals={false}
+        />
       }
-    >
-      <NexusChat
-        ai={{
-          messages: intake.messages,
-          isProcessing: intake.isProcessing,
-          streamingText: intake.streamingText,
-          error: intake.error,
-          quota: null,
-          handleSendMessage: intake.handleSendMessage
-        }}
-        agentName="Ledger Intake"
-        themeColor="cyan"
-        placeholder={spec.placeholder}
-        showInternalSignals={false}
-      />
-    </GuidedIntakeFrame>
+    />
   );
 }

@@ -12,34 +12,13 @@ import { useLocation } from 'react-router-dom';
 import type { ModuleId } from '@/lib/module-manifest';
 import type { NotificationScheduleConfig, Recurrence } from '../types';
 import { RecurrenceEditor } from './RecurrenceEditor';
+import { recurrenceSummary } from '../recurrence-summary';
+import { type NotificationSchedulePreset } from '../preset-registry';
 
 import type { NexusRecord } from '@/lib/data-layer';
 import { cn } from '@/lib/utils';
 
-function recurrenceSummary(r: Recurrence): string {
-  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  switch (r.kind) {
-    case 'once':
-      return `Once at ${new Date(r.dueAt).toLocaleString()}`;
-    case 'every_n_days':
-      return r.intervalDays === 1 ? 'Every day' : `Every ${r.intervalDays} days`;
-    case 'hourly':
-      return r.intervalHours === 1 ? 'Every hour' : `Every ${r.intervalHours} hours`;
-    case 'weekly_by_days': {
-      const days = r.daysOfWeek.map((d) => DAY_NAMES[d]).join(', ');
-      return `${days} at ${r.timeOfDay}`;
-    }
-    case 'daily_window':
-      return `Daily ${r.windowStart}–${r.windowEnd}`;
-    default:
-      return 'Custom schedule';
-  }
-}
-
-export interface NotificationSchedulePreset {
-  scheduleId: string;
-  config: NotificationScheduleConfig;
-}
+export type { NotificationSchedulePreset } from '../preset-registry';
 
 function formatNowIso(): string {
   return new Date().toISOString();

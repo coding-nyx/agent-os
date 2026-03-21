@@ -28,7 +28,7 @@ export function SelectFieldRenderer({
 
   return (
     <Select.Root
-      value={value ? String(value) : undefined}
+      value={value !== undefined && value !== null && value !== '' ? String(value) : undefined}
       onValueChange={(val) => {
         // Try to preserve original type
         const option = options.find((opt) => String(opt.value) === val);
@@ -59,7 +59,7 @@ export function SelectFieldRenderer({
       <Select.Portal>
         <Select.Content
           className={cn(
-            'overflow-hidden',
+            'overflow-hidden z-50',
             'bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl',
             'shadow-2xl shadow-black/50'
           )}

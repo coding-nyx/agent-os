@@ -32,6 +32,15 @@ interface WeeklyReviewModalProps {
   onCompleteReview?: () => void;
 }
 
+export interface WeeklyReviewCardProps {
+  soul: GlobalProjection | null;
+  energyWave: EnergyWavePoint[];
+  scheduledTasks: ScheduledTask[];
+  predictiveDisplay: AtlasStateDisplay;
+  weeklyReviewPending: boolean;
+  onOpenReview: () => void;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Compute burnout risk 0–100 from weighted domain signals. */
@@ -204,6 +213,90 @@ function PressureBar({ source }: { source: PressureSource }) {
           transition={{ duration: 0.5, ease: 'easeOut' }}
         />
       </div>
+    </div>
+  );
+}
+
+// ─── Main Components ──────────────────────────────────────────────────────────
+
+export function WeeklyReviewCard({
+  soul,
+  energyWave,
+  scheduledTasks,
+  predictiveDisplay,
+  weeklyReviewPending,
+  onOpenReview,
+}: WeeklyReviewCardProps) {
+  const burnoutRisk = useMemo(() => computeBurnoutRisk(soul), [soul]);
+  const weekly = useMemo(() => computeWeeklyEnergy(energyWave), [energyWave]);
+  const completion = useMemo(() => computeWeeklyCompletion(scheduledTasks), [scheduledTasks]);
+
+  const completionPct =
+    completion.total > 0
+      ? Math.round((completion.done / completion.total) * 100)
+      : null;
+
+  return (
+    <div
+      className={cn(
+        'group relative flex flex-col gap-4 rounded-2xl border bg-white/[0.02] p-4 transition-all duration-300',
+        weeklyReviewPending
+          ? 'border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
+          : 'border-white/10 hover:border-white/20'
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-[var(--module-color-400)]" />
+          <h3 className="text-xs font-black text-white/90 uppercase tracking-widest">
+            Weekly Review
+          </h3>
+        </div>
+        {weeklyReviewPending && (
+          <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+        )}
+      </div>
+
+      <div className="space-y-4">
+        {/* Burnout Risk */}
+        <BurnoutGauge risk={burnoutRisk} />
+
+        {/* Capacity Stats */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <p className="text-[10px] text-white/30 uppercase tracking-widest">Capacity</p>
+            <p className="text-sm font-black text-white/80">
+              {weekly.planned}<span className="text-[10px] text-white/30 ml-0.5">/{weekly.max}</span>
+            </p>
+          </div>
+          <div className="space-y-1 text-right">
+            <p className="text-[10px] text-white/30 uppercase tracking-widest">Done</p>
+            <p className="text-sm font-black text-emerald-400">
+              {completion.done}<span className="text-[10px] text-white/30 ml-0.5">/{completion.total}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-2">
+        <NeuralButton
+          onClick={onOpenReview}
+          themeColor="module"
+          variant="outline"
+          className={cn(
+            "w-full text-[10px] font-black uppercase tracking-[0.2em] h-10",
+            weeklyReviewPending && "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+          )}
+        >
+          {weeklyReviewPending ? 'Run Review' : 'View Full Review'}
+        </NeuralButton>
+      </div>
+
+      {weeklyReviewPending && (
+        <p className="text-[9px] text-amber-400/70 text-center font-medium">
+          New predictive data available. Run review now.
+        </p>
+      )}
     </div>
   );
 }

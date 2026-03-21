@@ -25,12 +25,10 @@ import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { QuickReminderModal } from '@/core/components/QuickReminderModal';
 import { cn } from '@/lib/utils';
 import type { NexusRecord } from '@/lib/data-layer';
-import { AgnesNotificationSettingsPanel } from '@/modules/agnes/components/AgnesNotificationSettingsPanel';
-import { TitanNotificationSettingsPanel } from '@/modules/titan/components/TitanNotificationSettingsPanel';
-import { LedgerNotificationSettingsPanel } from '@/modules/ledger/components/LedgerNotificationSettingsPanel';
-import { SomaNotificationSettingsPanel } from '@/modules/soma/components/SomaNotificationSettingsPanel';
-import { AtlasNotificationSettingsPanel } from '@/modules/atlas/components/AtlasNotificationSettingsPanel';
-import type { NotificationScheduleConfig, Recurrence } from '@/lib/notifications/types';
+import type { NotificationScheduleConfig } from '@/lib/notifications/types';
+import { buildAllPresets } from '@/lib/notifications/preset-registry';
+import { recurrenceSummary } from '@/lib/notifications/recurrence-summary';
+import { BridgeService } from '@/lib/services/bridge-service';
 import { useNotifications, type InboxRecord } from '@/lib/notifications/NotificationContext';
 import { type ModuleId } from '@/lib/module-manifest';
 import { ModuleIcon, moduleTextColor } from '@/core/components/ModuleIcon';
@@ -81,25 +79,6 @@ function formatEventType(type: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function recurrenceSummary(r: Recurrence): string {
-  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  switch (r.kind) {
-    case 'once':
-      return `Once at ${new Date(r.dueAt).toLocaleString()}`;
-    case 'every_n_days':
-      return r.intervalDays === 1 ? 'Every day' : `Every ${r.intervalDays} days`;
-    case 'hourly':
-      return r.intervalHours === 1 ? 'Every hour' : `Every ${r.intervalHours} hours`;
-    case 'weekly_by_days': {
-      const days = r.daysOfWeek.map((d) => DAY_NAMES[d]).join(', ');
-      return `${days} at ${r.timeOfDay}`;
-    }
-    case 'daily_window':
-      return `Daily ${r.windowStart}–${r.windowEnd}`;
-    default:
-      return 'Custom schedule';
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Components
@@ -182,6 +161,7 @@ function NotificationCard({
   const title = item.title || formatEventType(item.type);
   const body = item.note || '';
   const source = item.source?.replace(/^cascade:/, '') ?? 'system';
+  const typeLabel = item.type ? formatEventType(item.type) : null;
   const hasAction = !!item.action || !!item.data?.deepLink?.route;
 
   return (
@@ -194,101 +174,81 @@ function NotificationCard({
         layout: { type: 'spring', stiffness: 400, damping: 35 },
         default: { duration: 0.25, delay: index * 0.04 },
       }}
+      onClick={hasAction ? () => onNavigate(item) : undefined}
       className={cn(
-        'group relative rounded-2xl bg-gradient-to-br border overflow-hidden',
+        'relative rounded-2xl bg-gradient-to-br border overflow-hidden',
         moduleColor(source),
         !item.read && 'ring-1 ring-white/[0.07]',
+        hasAction && 'cursor-pointer active:scale-[0.99] transition-transform duration-100',
       )}
     >
-      <AnimatePresence>
-        {!item.read && (
-          <motion.div
-            initial={{ scaleY: 0 }}
-            animate={{ scaleY: 1 }}
-            exit={{ scaleY: 0 }}
-            className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full bg-indigo-400/60"
-          />
-        )}
-      </AnimatePresence>
+      {!item.read && (
+        <span className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-indigo-400 pointer-events-none" />
+      )}
 
-      <div className="flex items-start gap-3 px-4 py-3.5">
-        <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
-          <ModuleIcon source={source} withBackground className="w-6 h-6" />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            {priorityIcon(item.priority)}
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/40">
-              {source}
-            </span>
-            {!item.read && (
-              <span className="ml-auto text-[9px] font-black uppercase tracking-[0.15em] text-indigo-400/80">
-                NEW
-              </span>
-            )}
-          </div>
-
-          <p className={cn(
-            'text-sm font-semibold leading-snug mb-1 break-words',
-            item.read ? 'text-white/55' : 'text-white/90',
-          )}>
-            {title}
-          </p>
-
-          {body && (
-            <p className="text-[11px] text-white/35 leading-relaxed line-clamp-2 break-words">
-              {body}
-            </p>
+      <div className="px-4 pt-3.5 pb-2">
+        <div className="flex items-center gap-1.5 mb-1">
+          <ModuleIcon source={source} withBackground className="w-5 h-5 shrink-0" />
+          {priorityIcon(item.priority)}
+          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/40">
+            {source}
+          </span>
+          {typeLabel && (
+            <span className="text-[10px] text-white/25 truncate">· {typeLabel}</span>
           )}
-
-          <div className="flex items-center gap-2 mt-2">
-            <Clock className="w-3 h-3 text-white/20 shrink-0" />
-            <span className="text-[10px] text-white/25">{timeAgo(item.createdAt)}</span>
-
-            <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-              {!item.read && (
-                <NeuralButton
-                  variant="ghost"
-                  onClick={(e) => { e.stopPropagation(); onRead(item.id); }}
-                  className="w-7 h-7 !px-0 rounded-xl bg-white/5 hover:bg-white/10"
-                  aria-label="Mark as read"
-                >
-                  <Check className="w-3 h-3 text-white/50" />
-                </NeuralButton>
-              )}
-              <NeuralButton
-                variant="ghost"
-                onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
-                className="w-7 h-7 !px-0 rounded-xl bg-white/5 hover:bg-rose-500/20"
-                aria-label="Delete notification"
-              >
-                <Trash2 className="w-3 h-3 text-white/40 group-hover:text-rose-400 transition-colors" />
-              </NeuralButton>
-              {hasAction && (
-                <NeuralButton
-                  variant="ghost"
-                  onClick={(e) => { e.stopPropagation(); onNavigate(item); }}
-                  className="w-7 h-7 !px-0 rounded-xl bg-white/5 hover:bg-indigo-500/20"
-                  aria-label="Perform action"
-                >
-                  <ChevronRight className="w-3 h-3 text-white/40 hover:text-indigo-400 transition-colors" />
-                </NeuralButton>
-              )}
-            </div>
-          </div>
         </div>
+
+        <p className={cn(
+          'text-sm font-semibold leading-snug mb-1 break-words pr-5',
+          item.read ? 'text-white/55' : 'text-white/90',
+        )}>
+          {title}
+        </p>
+
+        {body && (
+          <p className="text-[11px] text-white/35 leading-relaxed line-clamp-2 break-words">
+            {body}
+          </p>
+        )}
       </div>
 
-      {hasAction && (
+      {/* Footer — always visible, stops card-click propagation */}
+      <div
+        className="flex items-center gap-1.5 px-3 pb-2.5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Clock className="w-3 h-3 text-white/20 shrink-0" />
+        <span className="text-[10px] text-white/25 flex-1">{timeAgo(item.createdAt)}</span>
+
+        {!item.read && (
+          <NeuralButton
+            variant="ghost"
+            onClick={() => onRead(item.id)}
+            className="h-7 w-7 !px-0 rounded-xl bg-white/5 hover:bg-white/10"
+            aria-label="Mark as read"
+          >
+            <Check className="w-3 h-3 text-white/50" />
+          </NeuralButton>
+        )}
         <NeuralButton
           variant="ghost"
-          onClick={() => onNavigate(item)}
-          className="absolute inset-0 opacity-0 !px-0 !h-auto border-none hover:bg-transparent"
-          aria-label="Open"
-          tabIndex={-1}
-        />
-      )}
+          onClick={() => onDelete(item.id)}
+          className="h-7 w-7 !px-0 rounded-xl bg-white/5 hover:bg-rose-500/20"
+          aria-label="Delete notification"
+        >
+          <Trash2 className="w-3 h-3 text-white/40 hover:text-rose-400 transition-colors" />
+        </NeuralButton>
+        {hasAction && (
+          <NeuralButton
+            variant="ghost"
+            onClick={() => onNavigate(item)}
+            className="h-7 !px-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
+            aria-label="Open"
+          >
+            Open <ChevronRight className="w-3 h-3" />
+          </NeuralButton>
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -314,11 +274,11 @@ export default function NotificationsPage() {
   } = useNotifications();
 
   const [schedules, setSchedules] = useState<NexusRecord<NotificationScheduleConfig>[]>([]);
-  const [schedulesLoading, setSchedulesLoading] = useState(true);
   const [filter, setFilter] = useState<FilterMode>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('notifications');
   const [isWide, setIsWide] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 1024 : false));
   const [deleteScheduleTarget, setDeleteScheduleTarget] = useState<{ id: string; title: string } | null>(null);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
@@ -330,10 +290,8 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (!user || isGuest) {
       setSchedules([]);
-      setSchedulesLoading(false);
-      return;
+            return;
     }
-    setSchedulesLoading(true);
     const unsub = dataLayer.subscribeToQuery<NotificationScheduleConfig>(
       {
         collection: `users/${user.uid}/notification_schedules`,
@@ -342,8 +300,7 @@ export default function NotificationsPage() {
       },
       (docs) => {
         setSchedules(docs);
-        setSchedulesLoading(false);
-      },
+              },
     );
     return () => unsub?.();
   }, [dataLayer, isGuest, user]);
@@ -387,6 +344,62 @@ export default function NotificationsPage() {
       }
     }
   }, [dataLayer, user]);
+
+  // ── Preset state ──────────────────────────────────────────────────────────
+  const allPresets = useMemo(() => buildAllPresets(), []);
+  const PRESET_IDS = useMemo(() => new Set(allPresets.map((p) => p.scheduleId)), [allPresets]);
+
+  const scheduleMap = useMemo(() => {
+    const m = new Map<string, NexusRecord<NotificationScheduleConfig>>();
+    for (const s of schedules) m.set(s.id, s);
+    return m;
+  }, [schedules]);
+
+  const mergedPresets = useMemo(() =>
+    allPresets.map((p) => ({
+      scheduleId: p.scheduleId,
+      config: (scheduleMap.get(p.scheduleId) ?? p.config) as NotificationScheduleConfig,
+      moduleId: p.config.moduleId,
+    })), [allPresets, scheduleMap]
+  );
+
+  const agentSchedules = useMemo(() =>
+    schedules.filter((s) => s.createdBy === 'agent' && !PRESET_IDS.has(s.id)),
+    [schedules, PRESET_IDS]
+  );
+
+  const userSchedules = useMemo(() =>
+    schedules.filter((s) => s.createdBy !== 'agent' && !PRESET_IDS.has(s.id)),
+    [schedules, PRESET_IDS]
+  );
+
+  const savePreset = useCallback(async (scheduleId: string, next: NotificationScheduleConfig) => {
+    if (!user || isGuest) return;
+    const existing = scheduleMap.get(scheduleId);
+    const wasEnabled = existing?.enabled ?? false;
+    const isNewlyEnabled = next.enabled && !wasEnabled;
+
+    await dataLayer.setDocument<NotificationScheduleConfig>(
+      `users/${user.uid}/notification_schedules`,
+      scheduleId,
+      next,
+    );
+
+    if (isNewlyEnabled && 'Notification' in window && Notification.permission !== 'granted') {
+      await BridgeService.requestPermissionAndInit();
+    }
+    if (isNewlyEnabled) {
+      try {
+        const { app } = getFirebase();
+        if (app) {
+          const scheduleReminderFn = httpsCallable<{ scheduleId: string }, unknown>(getFunctions(app), 'scheduleReminder');
+          await scheduleReminderFn({ scheduleId });
+        }
+      } catch (err) {
+        console.warn('[NotificationsPage] scheduleReminder preset failed:', err);
+      }
+    }
+  }, [dataLayer, isGuest, scheduleMap, user]);
 
   const navigateToItem = useCallback((item: InboxRecord) => {
     if (item.action) {
@@ -451,7 +464,7 @@ export default function NotificationsPage() {
             {items.length > 0 && (
               <NeuralButton
                 variant="ghost"
-                onClick={clearAll}
+                onClick={() => setConfirmClearAll(true)}
                 className="w-9 h-9 !px-0 rounded-xl bg-white/[0.04] hover:bg-rose-500/10 border border-white/[0.06] hover:border-rose-500/20"
                 aria-label="Clear all notifications"
               >
@@ -547,90 +560,152 @@ export default function NotificationsPage() {
           )}
 
           {(isWide || viewMode === 'reminders') && !isGuest && (
-            <div className={cn('space-y-4', isWide ? 'max-h-[calc(100vh-170px)] overflow-y-auto pr-1 no-scrollbar' : '')}>
+            <div className={cn('space-y-3', isWide ? 'max-h-[calc(100vh-170px)] overflow-y-auto pr-1 no-scrollbar' : '')}>
+
+              {/* Presets */}
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-white/50 font-semibold mb-3">
+                  Presets
+                </p>
+                <div className="space-y-1.5">
+                  {mergedPresets.map((p) => (
+                    <div
+                      key={p.scheduleId}
+                      className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2 transition-all hover:border-white/10"
+                    >
+                      <ModuleIcon source={p.moduleId} withBackground className="w-5 h-5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className={cn('text-xs font-semibold truncate leading-none mb-0.5', p.config.enabled ? 'text-white/80' : 'text-white/35')}>
+                          {p.config.messageTemplate.title}
+                        </p>
+                        <p className="text-[10px] text-white/35">
+                          {recurrenceSummary(p.config.recurrence)}
+                        </p>
+                      </div>
+                      <span className={cn('text-[8px] font-black uppercase px-1.5 py-0.5 rounded border shrink-0', moduleTextColor(p.moduleId), 'bg-white/[0.03]')}>
+                        {p.moduleId}
+                      </span>
+                      <NeuralToggle
+                        checked={p.config.enabled}
+                        onChange={(checked) => {
+                          void savePreset(p.scheduleId, { ...p.config, enabled: checked, updatedAt: new Date().toISOString() });
+                        }}
+                        size="sm"
+                        color="emerald"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Nexus Reminders */}
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/50 font-semibold">
+                    Nexus Reminders
+                  </p>
+                  {agentSchedules.length > 0 && (
+                    <span className="text-[10px] text-white/30">{agentSchedules.length}</span>
+                  )}
+                </div>
+                {agentSchedules.length === 0 ? (
+                  <p className="text-xs text-white/25">No agent-created reminders yet.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {agentSchedules.map((s) => (
+                      <div
+                        key={s.id}
+                        className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2 transition-all hover:border-white/10"
+                      >
+                        <ModuleIcon source={s.moduleId} withBackground className="w-5 h-5 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className={cn('text-xs font-semibold truncate leading-none mb-0.5', s.enabled ? 'text-white/80' : 'text-white/35')}>
+                            {s.messageTemplate?.title || 'Reminder'}
+                          </p>
+                          <p className="text-[10px] text-white/35">
+                            {recurrenceSummary(s.recurrence)}
+                          </p>
+                        </div>
+                        <NeuralToggle
+                          checked={s.enabled}
+                          onChange={(checked) => toggleSchedule(s.id, checked)}
+                          size="sm"
+                          color="emerald"
+                        />
+                        <NeuralButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteScheduleTarget({ id: s.id, title: s.messageTemplate?.title || 'Reminder' })}
+                          className="h-7 w-7 p-0 text-white/20 hover:text-rose-400"
+                          aria-label={`Delete reminder ${s.messageTemplate?.title || 'Reminder'}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </NeuralButton>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Your Reminders */}
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-white/50 font-semibold">
-                      All Reminders
+                      Your Reminders
                     </p>
-                    <NeuralButton 
-                      variant="ghost" 
-                      size="sm" 
+                    <NeuralButton
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setIsCreateModalOpen(true)}
                       className="h-6 w-6 !px-0 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </NeuralButton>
                   </div>
-                  <span className="text-[10px] text-white/30">
-                    {schedules.length} total
-                  </span>
+                  {userSchedules.length > 0 && (
+                    <span className="text-[10px] text-white/30">{userSchedules.length}</span>
+                  )}
                 </div>
-                {schedules.length === 0 ? (
-                  <p className="text-xs text-white/30">No reminder schedules yet.</p>
+                {userSchedules.length === 0 ? (
+                  <p className="text-xs text-white/25">No custom reminders yet. Use + to create one.</p>
                 ) : (
-                  <div className="space-y-2">
-                    {schedules.map((s) => (
+                  <div className="space-y-1.5">
+                    {userSchedules.map((s) => (
                       <div
                         key={s.id}
-                        className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2 transition-all hover:border-white/10"
+                        className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2 transition-all hover:border-white/10"
                       >
-                        <ModuleIcon source={s.moduleId} withBackground className="w-6 h-6 mt-0.5" />
+                        <ModuleIcon source={s.moduleId} withBackground className="w-5 h-5 shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <p className={cn("text-xs font-semibold truncate", s.enabled ? "text-white/80" : "text-white/30")}>
-                              {s.messageTemplate?.title || 'Reminder'}
-                            </p>
-                            <span className={cn(
-                              "text-[8px] font-black uppercase px-1 rounded-sm border",
-                              s.createdBy === 'agent' 
-                                ? "border-violet-500/30 text-violet-400 bg-violet-500/10" 
-                                : "border-white/10 text-white/30 bg-white/5"
-                            )}>
-                              {s.createdBy === 'agent' ? 'Nexus' : 'User'}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-white/40">
-                            {s.moduleId} · {recurrenceSummary(s.recurrence)}
+                          <p className={cn('text-xs font-semibold truncate leading-none mb-0.5', s.enabled ? 'text-white/80' : 'text-white/35')}>
+                            {s.messageTemplate?.title || 'Reminder'}
+                          </p>
+                          <p className="text-[10px] text-white/35">
+                            {recurrenceSummary(s.recurrence)}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <NeuralToggle
-                            checked={s.enabled}
-                            onChange={(checked) => toggleSchedule(s.id, checked)}
-                            size="sm"
-                            color="emerald"
-                          />
-                          <NeuralButton
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteScheduleTarget({ id: s.id, title: s.messageTemplate?.title || 'Reminder' })}
-                            className="h-7 w-7 p-0 text-white/20 hover:text-rose-400"
-                            aria-label={`Delete reminder ${s.messageTemplate?.title || 'Reminder'}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </NeuralButton>
-                        </div>
+                        <NeuralToggle
+                          checked={s.enabled}
+                          onChange={(checked) => toggleSchedule(s.id, checked)}
+                          size="sm"
+                          color="emerald"
+                        />
+                        <NeuralButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteScheduleTarget({ id: s.id, title: s.messageTemplate?.title || 'Reminder' })}
+                          className="h-7 w-7 p-0 text-white/20 hover:text-rose-400"
+                          aria-label={`Delete reminder ${s.messageTemplate?.title || 'Reminder'}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </NeuralButton>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/50 font-semibold">
-                    Reminder Presets
-                  </p>
-                </div>
-                <div className={cn('grid gap-3', isWide ? 'grid-cols-1' : 'md:grid-cols-2')}>
-                  <AgnesNotificationSettingsPanel />
-                  <TitanNotificationSettingsPanel />
-                  <LedgerNotificationSettingsPanel />
-                  <SomaNotificationSettingsPanel />
-                  <AtlasNotificationSettingsPanel />
-                </div>
-              </div>
+
             </div>
           )}
         </div>
@@ -673,6 +748,16 @@ export default function NotificationsPage() {
         description="This reminder will be removed and no longer fire."
         variant="danger"
         confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        isOpen={confirmClearAll}
+        onClose={() => setConfirmClearAll(false)}
+        onConfirm={() => { void clearAll(); setConfirmClearAll(false); }}
+        title="Clear all notifications?"
+        description="This will permanently delete all notifications in your inbox."
+        variant="danger"
+        confirmLabel="Clear All"
       />
     </div>
   );

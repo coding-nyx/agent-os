@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { useAtlasPredictiveState } from '@/lib/hooks/use-atlas-predictive-state';
@@ -9,6 +9,7 @@ import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import { SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { ATLAS_PERSONA } from './personas';
+import { AtlasActionsProvider } from './context/AtlasActionsContext';
 import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
 import { AtlasNotificationSettingsPanel } from './components/AtlasNotificationSettingsPanel';
 import { QuickAddForm } from './components/QuickAddForm';
@@ -129,16 +130,27 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handledSpineEventsRef = useRef<Set<string>>(new Set());
+
   // React to WEEKLY_REVIEW_DUE Spine events fired by cascade rules or direct publish.
-  useSpineEvent('WEEKLY_REVIEW_DUE', () => {
+  useSpineEvent('WEEKLY_REVIEW_DUE', (event) => {
+    const eventKey = `weekly-review-${event.id}`;
+    if (handledSpineEventsRef.current.has(eventKey)) return;
+    handledSpineEventsRef.current.add(eventKey);
     setWeeklyReviewPending(true);
   });
 
   // S9-007: React to morning/evening cadence events from cascade rules.
-  useSpineEvent('MORNING_BRIEF_DUE', () => {
+  useSpineEvent('MORNING_BRIEF_DUE', (event) => {
+    const eventKey = `morning-brief-${event.id}`;
+    if (handledSpineEventsRef.current.has(eventKey)) return;
+    handledSpineEventsRef.current.add(eventKey);
     setShowMorningBrief(true);
   });
-  useSpineEvent('EVENING_CHECKIN_DUE', () => {
+  useSpineEvent('EVENING_CHECKIN_DUE', (event) => {
+    const eventKey = `evening-checkin-${event.id}`;
+    if (handledSpineEventsRef.current.has(eventKey)) return;
+    handledSpineEventsRef.current.add(eventKey);
     setShowEveningCheckin(true);
   });
 
@@ -624,7 +636,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       authMode="atlas"
       placeholder="Share task pressure or schedule constraints..."
       primaryAction={
-        activeTab === 'dashboard' && activeView !== 'focus' && profile?.preferenceMode !== 'structured' ? (
+        activeTab === 'dashboard' && activeView !== 'focus' ? (
           <QuickAddForm
             projects={profile?.projects ?? []}
             onCreateTask={handleCreateTask}
@@ -671,58 +683,51 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
             }}
           />
         )}
-        <EnhancedAtlasDashboard
-          soul={globalSoul}
-          profile={profile}
-          isLocked={isLocked}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          activeView={activeView}
-          onViewChange={setActiveView}
-          onCompleteTask={handleCompleteTask}
-          onCompleteHabit={handleCompleteHabit}
-          onUpdateGoalProgress={handleUpdateGoalProgress}
-          onPauseHabit={handlePauseHabit}
-          onCreateTask={handleCreateTask}
-          onCreateHabit={handleCreateHabit}
-          onCreateGoal={handleCreateGoal}
-          onUpdateTask={handleUpdateTask}
-          onUpdateHabit={handleUpdateHabit}
-          onUpdateGoal={handleUpdateGoal}
-          onDeleteTask={handleDeleteTask}
-          onDeleteHabit={handleDeleteHabit}
-          onDeleteGoal={handleDeleteGoal}
-          onUpdateRoutine={handleUpdateRoutine}
-          onUpdateIntention={handleUpdateIntention}
-          extensions={extensions}
-          fieldValues={fieldValues}
-          onSaveFieldValue={handleSaveFieldValue}
-          onRemoveFieldValue={handleRemoveFieldValue}
-          onAddField={handleAddField}
-          onDeleteField={handleDeleteField}
-          onSendMessage={ai.handleSendMessage}
-          onLogEnergy={handleManualEnergyLog}
-          encryptionKey={encryptionKey}
-          predictiveDisplay={predictiveDisplay}
-          weeklyReviewPending={weeklyReviewPending}
-          onReviewOpened={handleReviewOpened}
-          onSaveWeeklyReview={handleSaveWeeklyReview}
-          morningBriefVisible={showMorningBrief}
-          onMorningBriefDismiss={handleMorningBriefDismiss}
-          eveningCheckinVisible={showEveningCheckin}
-          onEveningCheckinDismiss={handleEveningCheckinDismiss}
-          preferenceMode={profile?.preferenceMode ?? 'conversational'}
-          focusId={(location.state as { focusId?: string } | null)?.focusId}
-          onTogglePreferenceMode={() => {
-          if (!profile) return;
-          const next: AtlasProfile = {
-            ...profile,
-            preferenceMode: profile.preferenceMode === 'structured' ? 'conversational' : 'structured',
-            updatedAt: new Date().toISOString()
-          };
-          persistUpdate(next);
-        }}
-        />
+        <AtlasActionsProvider actions={{
+          onCompleteTask: handleCompleteTask,
+          onCompleteHabit: handleCompleteHabit,
+          onUpdateGoalProgress: handleUpdateGoalProgress,
+          onPauseHabit: handlePauseHabit,
+          onCreateTask: handleCreateTask,
+          onCreateHabit: handleCreateHabit,
+          onCreateGoal: handleCreateGoal,
+          onUpdateTask: handleUpdateTask,
+          onUpdateHabit: handleUpdateHabit,
+          onUpdateGoal: handleUpdateGoal,
+          onDeleteTask: handleDeleteTask,
+          onDeleteHabit: handleDeleteHabit,
+          onDeleteGoal: handleDeleteGoal,
+          onUpdateRoutine: handleUpdateRoutine,
+          onUpdateIntention: handleUpdateIntention,
+          onSaveFieldValue: handleSaveFieldValue,
+          onRemoveFieldValue: handleRemoveFieldValue,
+          onAddField: handleAddField,
+          onDeleteField: handleDeleteField,
+          onSendMessage: ai.handleSendMessage,
+          onSaveWeeklyReview: handleSaveWeeklyReview,
+          onTabChange: setActiveTab,
+          onViewChange: setActiveView,
+          onLogEnergy: handleManualEnergyLog,
+          onReviewOpened: handleReviewOpened,
+          onMorningBriefDismiss: handleMorningBriefDismiss,
+          onEveningCheckinDismiss: handleEveningCheckinDismiss,
+        }}>
+          <EnhancedAtlasDashboard
+            soul={globalSoul}
+            profile={profile}
+            isLocked={isLocked}
+            activeTab={activeTab}
+            activeView={activeView}
+            extensions={extensions}
+            fieldValues={fieldValues}
+            encryptionKey={encryptionKey}
+            predictiveDisplay={predictiveDisplay}
+            weeklyReviewPending={weeklyReviewPending}
+            morningBriefVisible={showMorningBrief}
+            eveningCheckinVisible={showEveningCheckin}
+            focusId={(location.state as { focusId?: string } | null)?.focusId}
+          />
+        </AtlasActionsProvider>
       </>
     </SingleAgentLayout>
   );

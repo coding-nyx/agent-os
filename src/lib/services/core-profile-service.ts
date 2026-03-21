@@ -125,15 +125,16 @@ export const CoreProfileService = {
     dataLayer: NexusDataLayer = getNexusDataLayer(),
   ): Promise<void> {
     if (!uid) return;
-    const patch = {
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
+    const patch = Object.fromEntries(
+      Object.entries({ ...updates, updatedAt: new Date().toISOString() })
+        .filter(([, v]) => v !== undefined)
+    ) as Partial<CoreUserProfile> & { updatedAt: string };
 
     try {
       await dataLayer.updateDocument(COLLECTION, uid, patch);
     } catch (error) {
       console.error('[CoreProfileService] Failed to update profile:', error);
+      throw error;
     }
   },
 

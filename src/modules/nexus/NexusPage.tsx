@@ -75,8 +75,11 @@ export default function NexusPage() {
       if (messages.length === 0) {
         setMessages([{ role: 'assistant', content: ORCHESTRATOR_WELCOME(profile.preferredName) }]);
       }
+    } else if (!isGuest && profile !== null && !profile.onboardingComplete) {
+      setPageState('ONBOARDING');
+      clearSession();
     }
-  }, [isGuest, profile?.onboardingComplete, messages.length, profile?.preferredName, setMessages]);
+  }, [isGuest, profile?.onboardingComplete, profile, messages.length, profile?.preferredName, setMessages, clearSession]);
 
   // Show the one-time vault setup nudge once the page has settled.
   // Conditions: authenticated user, no vault yet, nudge not previously dismissed, ONBOARDING COMPLETE.

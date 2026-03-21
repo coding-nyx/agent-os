@@ -1,14 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import { GuidedIntakeFrame } from '@/core/intake/GuidedIntakeFrame';
+import React, { useCallback, useMemo } from 'react';
 import { GuidedIntakeStep, IntakeModuleConfig } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
 import { NexusChat } from '@/core/components/NexusChat';
-import { NeuralButton } from '@/core/components/NeuralButton';
-import { NeuralInput } from '@/core/components/NeuralInput';
-import { Zap } from 'lucide-react';
 import { AgentPersonalityProvision, CoreUserProfile } from '@/lib/types';
 import { ORCHESTRATOR_ONBOARDING_PERSONA } from '../personas';
+import { UnifiedOnboardingShell } from '@/core/intake/UnifiedOnboardingShell';
+import { NEXUS_BASE_SPEC } from '@/core/intake/onboarding-configs';
+import { applyAgentGender } from '@/core/intake/agent-gender';
 
 type OrchestratorIntakeState = {
   profileUpdates: Partial<CoreUserProfile>;
@@ -48,37 +47,32 @@ const ORCHESTRATOR_STEPS: GuidedIntakeStep[] = [
 const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
   orchestratorAlias: 'Nexus',
   moduleAliases: {
-    agnes: 'Agnes',
-    titan: 'Titan',
-    soma: 'Soma',
-    ledger: 'Ledger',
-    atlas: 'Atlas',
-    scout: 'Scout',
-    forge: 'Forge'
+    agnes: 'Agnes', titan: 'Titan', soma: 'Soma', ledger: 'Ledger',
+    atlas: 'Atlas', scout: 'Scout', forge: 'Forge'
   },
   agentGenders: {
-    orchestrator: 'female',
-    agnes: 'female',
-    titan: 'non-binary',
-    soma: 'female',
-    ledger: 'female',
-    atlas: 'female',
-    scout: 'female',
-    forge: 'female'
+    orchestrator: 'female', agnes: 'female', titan: 'non-binary',
+    soma: 'female', ledger: 'female', atlas: 'female', scout: 'female', forge: 'female'
   },
   personaOverlays: {}
 };
-
-function normalizeOptionalString(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
 
 function compactProfileUpdates(updates: Partial<CoreUserProfile>): Partial<CoreUserProfile> {
   return Object.fromEntries(
     Object.entries(updates).filter(([, value]) => value !== undefined && value !== null)
   ) as Partial<CoreUserProfile>;
+}
+
+function buildProvision(existingProvision: AgentPersonalityProvision): AgentPersonalityProvision {
+  const provision: AgentPersonalityProvision = {
+    ...DEFAULT_PERSONALITY,
+    ...existingProvision,
+    moduleAliases: { ...DEFAULT_PERSONALITY.moduleAliases, ...(existingProvision.moduleAliases || {}) },
+    agentGenders: { ...DEFAULT_PERSONALITY.agentGenders, ...(existingProvision.agentGenders || {}) },
+    personaOverlays: existingProvision.personaOverlays || {}
+  };
+  provision.orchestratorAlias = existingProvision.orchestratorAlias || 'Nexus';
+  return provision;
 }
 
 export function NexusOnboarding({ profile, isSubmitting, onComplete }: NexusOnboardingProps) {
@@ -94,94 +88,69 @@ export function NexusOnboarding({ profile, isSubmitting, onComplete }: NexusOnbo
     typicalSleepHours: profile?.typicalSleepHours
   }), [profile]);
 
-  const [fastName, setFastName] = useState('');
-  const [fastPronouns, setFastPronouns] = useState('');
+  const initialValues = useMemo(() => ({
+    preferred_name: profile?.preferredName || '',
+    pronouns: profile?.pronouns || '',
+    occupation: profile?.occupation || '',
+    typical_sleep_hours: profile?.typicalSleepHours,
+    age: profile?.age,
+  }), [profile]);
 
-  const handleFastTrack = async () => {
-    if (!fastName.trim() || !fastPronouns.trim()) return;
-    const provision: AgentPersonalityProvision = {
-        ...DEFAULT_PERSONALITY,
-        ...existingProvision,
-        moduleAliases: {
-          ...DEFAULT_PERSONALITY.moduleAliases,
-          ...(existingProvision.moduleAliases || {})
-        },
-        agentGenders: {
-          ...DEFAULT_PERSONALITY.agentGenders,
-          ...(existingProvision.agentGenders || {})
-        },
-        personaOverlays: existingProvision.personaOverlays || {}
-    };
-
-    provision.orchestratorAlias = existingProvision.orchestratorAlias || 'Nexus';
-
-    await onComplete({
-      preferredName: fastName.trim(),
-      pronouns: fastPronouns.trim(),
+  // Express complete — maps canonical field IDs to CoreUserProfile
+  const handleExpressComplete = useCallback(async (values: Record<string, unknown>) => {
+    const provision = buildProvision(existingProvision);
+    if (values.agent_gender) {
+      provision.agentGenders = applyAgentGender(provision.agentGenders, String(values.agent_gender));
+    }
+    await onComplete(compactProfileUpdates({
+      preferredName: String(values.preferred_name ?? '').trim() || undefined,
+      pronouns: String(values.pronouns ?? '').trim() || undefined,
+      occupation: String(values.occupation ?? '').trim() || undefined,
+      typicalSleepHours: values.typical_sleep_hours != null ? Number(values.typical_sleep_hours) : undefined,
+      age: values.age != null ? Number(values.age) : undefined,
       onboardingComplete: true,
       schemaVersion: 2,
-      agentPersonalityProvision: provision
-    });
-  };
+      agentPersonalityProvision: provision,
+    }));
+  }, [existingProvision, onComplete]);
 
+  // Guided chat spec (unchanged logic)
   const config: IntakeModuleConfig<OrchestratorIntakeState, Partial<CoreUserProfile>> = {
     moduleId: 'nexus',
     steps: ORCHESTRATOR_STEPS,
     updateActionType: 'update_orchestrator_intake',
     completeActionType: 'complete_orchestrator_onboarding',
-    applyPatch: (state, patch) => ({
-      ...state,
-      profileUpdates: { ...state.profileUpdates, ...patch }
-    }),
+    applyPatch: (state, patch) => ({ ...state, profileUpdates: { ...state.profileUpdates, ...patch } }),
     extractFromUser: (message) => {
-        const updates: Partial<CoreUserProfile> = {};
-
-        const pronounsMatch = message.match(/\b(she\/her|he\/him|they\/them|she her|he him|they them)\b/i);
-        if (pronounsMatch) {
-            updates.pronouns = pronounsMatch[1].replace(/\s+/g, '/').toLowerCase();
-        }
-
-        const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|occupation is|my job is)\s+([a-z][a-z0-9'/&,\- ]{1,50})/i);
-        if (occupationMatch) {
-            updates.occupation = occupationMatch[1].trim();
-        }
-
-        const sleepMatch = message.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:hours?|hrs?)\b/i);
-        if (sleepMatch) {
-            const parsed = Number.parseFloat(sleepMatch[1]);
-            if (Number.isFinite(parsed) && parsed > 0 && parsed <= 24) {
-                updates.typicalSleepHours = parsed;
-            }
-        }
-
-        const nameMatch = message.match(/\b(?:my name is|call me|i'm)\s+([a-z][a-z' -]{0,30})/i);
-        if (nameMatch) {
-            const raw = nameMatch[1].trim().split(/\s+/)[0];
-            updates.preferredName = raw.charAt(0).toUpperCase() + raw.slice(1);
-        }
-
-        return updates;
+      const updates: Partial<CoreUserProfile> = {};
+      const pronounsMatch = message.match(/\b(she\/her|he\/him|they\/them|she her|he him|they them)\b/i);
+      if (pronounsMatch) updates.pronouns = pronounsMatch[1].replace(/\s+/g, '/').toLowerCase();
+      const occupationMatch = message.match(/\b(?:i(?:'m| am)|i work as|occupation is|my job is)\s+([a-z][a-z0-9'/&,\- ]{1,50})/i);
+      if (occupationMatch) updates.occupation = occupationMatch[1].trim();
+      const sleepMatch = message.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:hours?|hrs?)\b/i);
+      if (sleepMatch) {
+        const parsed = Number.parseFloat(sleepMatch[1]);
+        if (Number.isFinite(parsed) && parsed > 0 && parsed <= 24) updates.typicalSleepHours = parsed;
+      }
+      const nameMatch = message.match(/\b(?:my name is|call me|i'm)\s+([a-z][a-z' -]{0,30})/i);
+      if (nameMatch) {
+        const raw = nameMatch[1].trim().split(/\s+/)[0];
+        updates.preferredName = raw.charAt(0).toUpperCase() + raw.slice(1);
+      }
+      return updates;
     },
     validateCompletion: (state) => {
-        if (!state.profileUpdates.preferredName || !state.profileUpdates.pronouns) {
-            return { valid: false, error: 'Before we finalize, share your preferred name and pronouns so Nexus can address you correctly.' };
-        }
-        return { valid: true };
+      if (!state.profileUpdates.preferredName || !state.profileUpdates.pronouns) {
+        return { valid: false, error: 'Before we finalize, share your preferred name and pronouns so Nexus can address you correctly.' };
+      }
+      return { valid: true };
     }
   };
 
-  const spec = useIntakeOrchestrator({
+  const chatSpec = useIntakeOrchestrator({
     ...config,
-    initialState: {
-      profileUpdates: initialProfileUpdates,
-      stepProgress: 0
-    },
-    initialMessages: [
-      {
-        role: 'assistant',
-        content: `Welcome to Nexus guided onboarding. I only need your core identity and Nexus preferences. What should I call you, and what pronouns should I use?`
-      }
-    ],
+    initialState: { profileUpdates: initialProfileUpdates, stepProgress: 0 },
+    initialMessages: [{ role: 'assistant', content: 'Welcome to Nexus guided onboarding. I only need your core identity and Nexus preferences. What should I call you, and what pronouns should I use?' }],
     summary: 'Nexus onboarding intake.',
     placeholder: 'Respond to Nexus...',
     systemPrompt: ORCHESTRATOR_ONBOARDING_PERSONA,
@@ -189,95 +158,39 @@ export function NexusOnboarding({ profile, isSubmitting, onComplete }: NexusOnbo
   });
 
   const intake = useGuidedChatIntake({
-    spec,
+    spec: chatSpec,
     onComplete: async (state) => {
-      const provision: AgentPersonalityProvision = {
-        ...DEFAULT_PERSONALITY,
-        ...existingProvision,
-        moduleAliases: {
-          ...DEFAULT_PERSONALITY.moduleAliases,
-          ...(existingProvision.moduleAliases || {})
-        },
-        agentGenders: {
-          ...DEFAULT_PERSONALITY.agentGenders,
-          ...(existingProvision.agentGenders || {})
-        },
-        personaOverlays: existingProvision.personaOverlays || {}
-      };
-
-      provision.orchestratorAlias = existingProvision.orchestratorAlias || 'Nexus';
-
       const safeUpdates = compactProfileUpdates(state.profileUpdates);
       await onComplete({
         ...safeUpdates,
         onboardingComplete: true,
         schemaVersion: 2,
-        agentPersonalityProvision: provision
+        agentPersonalityProvision: buildProvision(existingProvision)
       });
     }
   });
 
   return (
-    <GuidedIntakeFrame
-      title="Nexus Onboarding"
-      subtitle="Configure your core identity and Nexus only. Other bots onboard independently."
-      statusLabel=""
-      steps={ORCHESTRATOR_STEPS}
-      currentStep={intake.stepIndex}
-      themeColor="indigo"
-      prelude={
-        <div className="p-4 md:p-6 flex flex-col sm:flex-row items-center gap-4 border-b border-indigo-500/20 bg-indigo-500/5">
-          <div className="flex-1 w-full space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
-              <Zap className="w-3 h-3" /> Fast Track Initialization
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-              <div className="flex-1 min-w-0">
-                <NeuralInput
-                  placeholder="Preferred Name"
-                  value={fastName}
-                  onChange={e => setFastName(e.target.value)}
-                />
-              </div>
-              <div className="flex-1 sm:flex-[1.5] min-w-0">
-                <NeuralInput
-                  placeholder="Pronouns (e.g., they/them)"
-                  value={fastPronouns}
-                  onChange={e => setFastPronouns(e.target.value)}
-                />
-              </div>
-              <NeuralButton
-                themeColor="cyan"
-                size="sm"
-                onClick={handleFastTrack}
-                disabled={!fastName.trim() || !fastPronouns.trim()}
-                loading={isSubmitting}
-                className="w-full sm:w-auto"
-              >
-                Execute
-              </NeuralButton>
-            </div>
-            <p className="text-[9px] text-white/40 uppercase tracking-tight">
-              Bypass conversational proxy. Requires name and pronouns.
-            </p>
-          </div>
-        </div>
+    <UnifiedOnboardingShell
+      spec={NEXUS_BASE_SPEC}
+      initialValues={initialValues}
+      onExpressComplete={handleExpressComplete}
+      guidedContent={
+        <NexusChat
+          ai={{
+            messages: intake.messages,
+            isProcessing: intake.isProcessing || isSubmitting,
+            streamingText: intake.streamingText,
+            error: intake.error,
+            quota: null,
+            handleSendMessage: intake.handleSendMessage
+          }}
+          agentName="Nexus Intake"
+          themeColor="indigo"
+          placeholder={chatSpec.placeholder}
+          showInternalSignals={false}
+        />
       }
-    >
-      <NexusChat
-        ai={{
-          messages: intake.messages,
-          isProcessing: intake.isProcessing || isSubmitting,
-          streamingText: intake.streamingText,
-          error: intake.error,
-          quota: null,
-          handleSendMessage: intake.handleSendMessage
-        }}
-        agentName="Nexus Intake"
-        themeColor="indigo"
-        placeholder={spec.placeholder}
-        showInternalSignals={false}
-      />
-    </GuidedIntakeFrame>
+    />
   );
 }

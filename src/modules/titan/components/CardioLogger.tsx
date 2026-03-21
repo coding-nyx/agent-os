@@ -17,6 +17,7 @@ import { MetricCard } from '@/core/components/viz/MetricCard';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { getTodayIso } from '../utils';
+import { useDataLogger } from './shared/useDataLogger';
 
 // ---------------------------------------------------------------------------
 // Cardio type metadata
@@ -102,7 +103,6 @@ function SessionRow({ session }: { session: CardioSession }) {
 }
 
 export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSave }: CardioLoggerProps) {
-  const [showModal, setShowModal] = useState(false);
   const [date, setDate] = useState(getTodayIso());
   const [type, setType] = useState<CardioSessionType>('run');
   const [durationHours, setDurationHours] = useState<string | number>('');
@@ -112,8 +112,9 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
   const [calories, setCalories] = useState<string | number>('');
   const [rpe, setRpe] = useState<number>(6);
   const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+
+  const { showModal, openModal, closeModal, formError, setFormError, saving, handleSave } =
+    useDataLogger<CardioSession>({ directWriteMode: directWriteMode ?? false, onDirectSave, onAnalyze });
 
   const recent = useMemo(() => [...cardioLog].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7), [cardioLog]);
 
@@ -130,48 +131,38 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
 
   const totalDurationMins = (parseInt(durationHours as string) || 0) * 60 + (parseInt(durationMins as string) || 0);
 
-  const handleSave = useCallback(async () => {
-    if (totalDurationMins <= 0) {
-      setFormError('Duration must be greater than 0.');
-      return;
-    }
-    setFormError(null);
-    setSaving(true);
-
-    const session: CardioSession = {
-      id: crypto.randomUUID(),
-      date,
-      type,
-      durationMinutes: totalDurationMins,
-      distanceKm: distance ? parseFloat(distance as string) : undefined,
-      avgHeartRate: avgHR ? parseInt(avgHR as string) : undefined,
-      calories: calories ? parseInt(calories as string) : undefined,
-      rpe,
-      notes: notes.trim() || undefined,
-      status: 'completed',
-      recordedAt: new Date().toISOString(),
-    };
-
-    try {
-      if (directWriteMode && onDirectSave) {
-        await onDirectSave(session);
-      } else if (onAnalyze) {
-        const typeLabel = CARDIO_TYPES.find(t => t.value === type)?.label || type;
-        const msg = `Log cardio session: ${typeLabel} for ${formatDuration(totalDurationMins)} on ${date}. ` +
-          (distance ? `Distance: ${distance}km. ` : '') +
-          (avgHR ? `Avg HR: ${avgHR}bpm. ` : '') +
-          (calories ? `Calories: ${calories}. ` : '') +
-          `RPE: ${rpe}/10. ` +
-          (notes ? `Notes: ${notes}` : '');
-        onAnalyze(msg);
+  const onSave = useCallback(async () => {
+    await handleSave(() => {
+      if (totalDurationMins <= 0) {
+        setFormError('Duration must be greater than 0.');
+        return null;
       }
-      setShowModal(false);
-    } catch (err) {
-      setFormError('Failed to save session.');
-    } finally {
-      setSaving(false);
-    }
-  }, [date, type, totalDurationMins, distance, avgHR, calories, rpe, notes, directWriteMode, onDirectSave, onAnalyze]);
+
+      const entry: CardioSession = {
+        id: crypto.randomUUID(),
+        date,
+        type,
+        durationMinutes: totalDurationMins,
+        distanceKm: distance ? parseFloat(distance as string) : undefined,
+        avgHeartRate: avgHR ? parseInt(avgHR as string) : undefined,
+        calories: calories ? parseInt(calories as string) : undefined,
+        rpe,
+        notes: notes.trim() || undefined,
+        status: 'completed',
+        recordedAt: new Date().toISOString(),
+      };
+
+      const typeLabel = CARDIO_TYPES.find(t => t.value === type)?.label || type;
+      const analyzePrompt = `Log cardio session: ${typeLabel} for ${formatDuration(totalDurationMins)} on ${date}. ` +
+        (distance ? `Distance: ${distance}km. ` : '') +
+        (avgHR ? `Avg HR: ${avgHR}bpm. ` : '') +
+        (calories ? `Calories: ${calories}. ` : '') +
+        `RPE: ${rpe}/10. ` +
+        (notes ? `Notes: ${notes}` : '');
+
+      return { entry, analyzePrompt };
+    });
+  }, [handleSave, date, type, totalDurationMins, distance, avgHR, calories, rpe, notes, setFormError]);
 
   return (
     <>
@@ -194,7 +185,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
             <NeuralButton
               size="sm"
               iconOnly
-              onClick={() => setShowModal(true)}
+              onClick={() => openModal()}
               title="Log Session"
               aria-label="Log Session"
             >
@@ -211,7 +202,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
             action={
               <NeuralButton
                 iconOnly
-                onClick={() => setShowModal(true)}
+                onClick={() => openModal()}
                 title="Log Session"
                 aria-label="Log Session"
               >
@@ -259,7 +250,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
 
       <NeuralModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={() => closeModal()}
         title="Log Cardio Session"
         subtitle="Track your conditioning work"
         icon={Activity}
@@ -395,11 +386,11 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
           )}
 
           <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-            <NeuralButton variant="ghost" onClick={() => setShowModal(false)}>
+            <NeuralButton variant="ghost" onClick={() => closeModal()}>
               Cancel
             </NeuralButton>
             <NeuralButton
-              onClick={handleSave}
+              onClick={onSave}
               disabled={saving || (!directWriteMode && !onAnalyze)}
             >
               <Activity className="w-4 h-4 mr-2" />
