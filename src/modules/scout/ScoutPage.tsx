@@ -670,6 +670,8 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           <ScoutDashboard
             soul={globalSoul}
             profile={profile}
+            knowledgeNodes={knowledgeNodes}
+            sources={sources}
             sessions={sessions}
             activeSessionId={activeSessionId || undefined}
             onSelectSession={handleSelectSession}

@@ -226,6 +226,8 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   COMMITMENT_MISSED: 'Commitment Missed',
   SOMATIC_SESSION_COMPLETE: 'Somatic session complete',
   KNOWLEDGE_SYNTHESIZED: 'New research insight synthesized',
+  SCOUT_PROFILE_UPDATED: 'Research profile updated',
+  HABIT_SUGGESTED: 'New habit suggested by Scout',
   RESEARCH_SEARCHING: 'Web research in progress',
   RESEARCH_RESULTS: 'Research results gathered',
   LEDGER_FIELD_SUGGESTION: 'New tracking suggestion',

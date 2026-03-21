@@ -29,6 +29,7 @@ import { registerLedgerFieldActions } from './modules/ledger/actions/ledger-fiel
 import { registerLedgerTransactionActions } from './modules/ledger/actions/transaction-actions'
 import { registerTitanActions } from './modules/titan/services/actions'
 import { registerScoutActions } from './modules/scout/services/actions'
+import { registerScoutProjectionListeners } from './modules/scout/services/scout-projection-listener'
 import { registerForgeActions } from './modules/forge/services/actions'
 import { registerSomaFieldActions } from './modules/soma/actions/soma-field-actions'
 import { registerOrchestratorActions } from './modules/nexus/services/actions'
@@ -68,6 +69,7 @@ registerLedgerFieldActions();
 registerLedgerTransactionActions();
 registerTitanActions();
 registerScoutActions();
+registerScoutProjectionListeners();
 registerForgeActions();
 registerSomaFieldActions();
 

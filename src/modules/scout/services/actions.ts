@@ -10,6 +10,7 @@ import { WebCrawlerService } from '@/lib/services/web-crawler-service';
 import { addSource, loadSources, normalizeUrl, extractDomain } from './scout-sources-service';
 import { createSession, updateSession, getSession, loadSessions } from './scout-session-service';
 import { generateDigest } from './scout-digest-service';
+import { ScoutQueryService } from './scout-query-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { ResearchSession, ScoutKnowledgeNode, SourceEntry } from '../types';
 
@@ -73,22 +74,19 @@ export function registerScoutActions() {
     },
 
     /**
-     * Search the existing knowledge base for past findings.
+     * Search the existing knowledge base for past findings via semantic RAG.
      */
     query_knowledge: async (context) => {
       const { userId, encryptionKey, payload, pushAssistantMessage } = context;
       const query = typeof payload?.query === 'string' ? payload.query : '';
       if (!query) return;
 
-      const nodes = await loadKnowledgeNodes({ userId: userId ?? null, encryptionKey });
-      const results = nodes.filter(n => 
-        n.claim.toLowerCase().includes(query.toLowerCase()) || 
-        n.title?.toLowerCase().includes(query.toLowerCase())
-      );
+      pushAssistantMessage?.(`🔍 Querying your research library for "${query}"...`);
 
-      if (results.length > 0) {
-        const summary = results.slice(0, 3).map(n => `- **${n.title || 'Claim'}**: ${n.claim} (Confidence: ${Math.round(n.confidence * 100)}%)`).join('\n');
-        pushAssistantMessage?.(`I recall some findings related to "${query}" in our knowledge base:\n\n${summary}`);
+      const result = await ScoutQueryService.queryLibrary(query, { userId: userId ?? null, encryptionKey });
+
+      if (result && result.supportingNodes.length > 0) {
+        pushAssistantMessage?.(`${result.answer}\n\n*Supporting Evidence:* ${result.supportingSources.slice(0, 2).map(s => `[${s.domain}]`).join(', ')}`);
       } else {
         pushAssistantMessage?.(`I don't see any specific claims in our local knowledge base regarding "${query}". Shall I search the web?`);
       }
@@ -311,6 +309,35 @@ export function registerScoutActions() {
       });
       
       pushAssistantMessage?.(`🔬 Initiating deep research protocol for: "${query}"`);
+    },
+
+    /**
+     * Handoff a research finding to Atlas for actionable scheduling.
+     */
+    handoff_to_atlas: async (context) => {
+      const { payload, pushAssistantMessage } = context;
+      const claim = typeof payload?.claim === 'string' ? payload.claim : '';
+      const suggestion = typeof payload?.suggestion === 'string' ? payload.suggestion : '';
+      
+      if (!claim || !suggestion) {
+        pushAssistantMessage?.('Please specify a finding and a concrete suggestion for Atlas.');
+        return;
+      }
+
+      Spine.emit({
+        type: 'HABIT_SUGGESTED' as any,
+        source: 'scout',
+        domain: 'C',
+        data: { 
+          title: suggestion, 
+          description: `Based on research finding: "${claim}"`,
+          origin: 'scout' 
+        },
+        cascadeDepth: 0,
+        priority: 'info'
+      });
+      
+      pushAssistantMessage?.(`📋 I've shared that finding with Atlas. You'll see a suggested task/habit in your timeline to put this research into practice.`);
     }
   });
 }

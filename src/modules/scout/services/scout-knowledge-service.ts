@@ -9,7 +9,9 @@
 
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
+import { Spine } from '@/lib/spine/spine-event-bus';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import { EmbeddingService, cosineSimilarity } from '@/lib/services/embedding-service';
 import { ScoutKnowledgeNode as ScoutKnowledgeNodeBase } from '../types';
 
 export interface ScoutKnowledgeNode extends ScoutKnowledgeNodeBase {
@@ -104,12 +106,22 @@ export async function saveScoutProfile(profile: ScoutProfile, { userId, encrypti
   const researchLoad = Math.min(1, nodes.filter(n => n.status === 'pending').length / 20);
   const verifiedCount = nodes.filter(n => n.status === 'verified').length;
   const researchDepth = nodes.length > 0 ? verifiedCount / nodes.length : 0;
-  
-  await GlobalProjectionService.updateCrossFunctionalState(userId, {
-    cognitive: { 
-      researchLoad, 
-      researchDepth,
-      interestDiversity: Math.min(1, profile.interests.length / 10)
+  const interestDiversity = Math.min(1, profile.interests.length / 10);
+
+  // Notify Spine for asynchronous processing (metrics, RAG indexing, etc.)
+  Spine.publish({
+    type: 'SCOUT_PROFILE_UPDATED',
+    source: 'scout',
+    domain: 'C',
+    priority: 'info',
+    data: { 
+      userId, 
+      onboardingComplete: profile.onboardingComplete,
+      metrics: {
+        researchLoad,
+        researchDepth,
+        interestDiversity
+      }
     }
   });
 }
@@ -127,9 +139,20 @@ export async function addKnowledgeNode(
   const id = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const now = new Date().toISOString();
 
+  // Generate embedding for semantic search if not already provided
+  let embedding = node.embedding;
+  if (!embedding) {
+    try {
+      embedding = await EmbeddingService.embed(node.claim);
+    } catch (err) {
+      console.warn('[ScoutKnowledgeService] Failed to generate embedding for new node:', err);
+    }
+  }
+
   const newNode: ScoutKnowledgeNode = {
     ...node,
     id,
+    embedding,
     updatedAt: now
   };
 
@@ -142,6 +165,39 @@ export async function addKnowledgeNode(
   });
 
   return newNode;
+}
+
+export async function queryKnowledgeNodes(
+  query: string,
+  { userId, encryptionKey }: LoadContext,
+  options: { limit?: number; threshold?: number } = {}
+): Promise<Array<ScoutKnowledgeNode & { similarity: number }>> {
+  if (!userId || !encryptionKey) return [];
+  
+  const nodes = await loadKnowledgeNodes({ userId, encryptionKey });
+  if (nodes.length === 0) return [];
+
+  try {
+    const queryVector = await EmbeddingService.embed(query);
+    const threshold = options.threshold ?? 0.7;
+
+    const results = nodes
+      .map(node => {
+        const similarity = node.embedding ? cosineSimilarity(queryVector, node.embedding) : 0;
+        return { ...node, similarity };
+      })
+      .filter(node => node.similarity >= threshold)
+      .sort((a, b) => b.similarity - a.similarity);
+
+    return options.limit ? results.slice(0, options.limit) : results;
+  } catch (err) {
+    console.error('[ScoutKnowledgeService] Semantic query failed:', err);
+    // Fallback to simple keyword match
+    return nodes
+      .filter(n => n.claim.toLowerCase().includes(query.toLowerCase()))
+      .map(n => ({ ...n, similarity: 0.5 }))
+      .slice(0, options.limit);
+  }
 }
 
 export async function loadKnowledgeNodes({ userId, encryptionKey }: LoadContext): Promise<ScoutKnowledgeNode[]> {
@@ -180,6 +236,15 @@ export async function updateKnowledgeNode(
     ...patch,
     updatedAt: new Date().toISOString()
   };
+
+  // Update embedding if claim changed and embedding not explicitly provided
+  if (patch.claim && patch.claim !== current.claim && !patch.embedding) {
+    try {
+      updated.embedding = await EmbeddingService.embed(patch.claim);
+    } catch (err) {
+      console.warn('[ScoutKnowledgeService] Failed to regenerate embedding for node update:', err);
+    }
+  }
 
   const encrypted = await encryptWithKey(JSON.stringify(updated), encryptionKey);
   await dataLayer.setDocument(nodesCollection(userId), id, {

@@ -8,10 +8,14 @@ import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { ScoutSessionList } from './ScoutSessionList';
 import { SignalBubbleCanvas } from './SignalBubbleCanvas';
+import { KnowledgeGraph } from './graph/KnowledgeGraph';
+import type { ScoutKnowledgeNode, SourceEntry } from '../types';
 
 interface ScoutDashboardProps {
   soul: GlobalProjection | null;
   profile: ScoutProfile | null;
+  knowledgeNodes?: ScoutKnowledgeNode[];
+  sources?: SourceEntry[];
   sessions?: ResearchSession[];
   onSelectSession?: (id: string) => void;
   onDeleteSession?: (id: string) => void;
@@ -43,6 +47,8 @@ function InlineStat({ label, value, accent }: { label: string; value: number; ac
 export function ScoutDashboard({
   soul: _soul,
   profile,
+  knowledgeNodes = [],
+  sources = [],
   sessions = [],
   onSelectSession,
   onDeleteSession,
@@ -61,13 +67,13 @@ export function ScoutDashboard({
     );
   }
 
-  const nodes = profile?.knowledgeNodes || [];
+  const nodes = knowledgeNodes.length > 0 ? knowledgeNodes : (profile?.knowledgeNodes || []);
   const interests = profile?.interests || [];
   const newsBriefs = profile?.newsBriefs || [];
   const verified = nodes.filter((node) => node.status === 'verified').length;
   const avgConfidence =
     nodes.length > 0
-      ? Math.round((nodes.reduce((acc, node) => acc + node.confidence, 0) / nodes.length) * 100)
+      ? Math.round((nodes.reduce((acc, node) => acc + (node.confidence || 0), 0) / nodes.length) * 100)
       : null;
   const activeSessionsCount = sessions.filter((session) =>
     ['decomposing', 'searching', 'synthesizing'].includes(session.status)
@@ -80,7 +86,7 @@ export function ScoutDashboard({
       <section className="relative overflow-hidden rounded-3xl border border-white/8 bg-white/[0.02] px-6 py-5">
         <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[var(--module-accent-glow)] blur-3xl" />
 
-        <p className="text-chip-soft text-[var(--module-color-400)]">Scout · Knowledge Node</p>
+        <p className="text-chip-soft text-[var(--module-color-400)]">Scout · Knowledge Cartographer</p>
 
         {activeSessionsCount > 0 ? (
           <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
@@ -124,6 +130,7 @@ export function ScoutDashboard({
       {/* Compact inline stats strip */}
       <div className="flex items-stretch divide-x divide-white/8 overflow-x-auto scrollbar-none rounded-2xl border border-white/8 bg-white/[0.02]">
         <InlineStat label="Nodes"    value={nodes.length} accent />
+        <InlineStat label="Sources"  value={sources.length} />
         <InlineStat label="Verified" value={verified} />
         <InlineStat label="Topics"   value={interests.length} />
         <InlineStat label="Active"   value={activeSessionsCount} />
@@ -151,6 +158,11 @@ export function ScoutDashboard({
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.95fr)] xl:items-start">
         <div className="space-y-4 sm:space-y-6">
+          {/* Knowledge Cartography Section */}
+          <section className="surface-foundation overflow-hidden p-0 aspect-[4/3] sm:aspect-video lg:aspect-[16/10] xl:aspect-video relative" aria-label="Knowledge Graph">
+            <KnowledgeGraph nodes={nodes} sources={sources} className="w-full h-full" />
+          </section>
+
           <section className="surface-foundation flex min-w-0 flex-col gap-4 p-4 sm:p-5" aria-label="Research sessions">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-4">
               <div className="flex items-center gap-2">
@@ -169,16 +181,6 @@ export function ScoutDashboard({
               activeSessionId={activeSessionId}
             />
           </section>
-
-          {interests.length > 0 && (
-            <section className="surface-foundation overflow-hidden p-4 sm:p-5" aria-label="Interest momentum map">
-              <div className="mb-4 space-y-1">
-                <p className="text-chip-soft text-white/45">Signal map</p>
-                <h2 className="text-panel-heading text-white">Momentum map</h2>
-              </div>
-              <SignalBubbleCanvas interests={interests} />
-            </section>
-          )}
         </div>
 
         <div className="space-y-4 sm:space-y-6">

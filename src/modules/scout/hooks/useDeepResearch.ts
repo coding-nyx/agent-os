@@ -28,6 +28,7 @@ export type DeepResearchStatus =
   | 'reviewing'
   | 'searching'
   | 'synthesizing'
+  | 'recursive_analysis'
   | 'complete'
   | 'error';
 
@@ -62,6 +63,7 @@ export interface DeepResearchState {
   status: DeepResearchStatus;
   query: string;
   depth: 'quick' | 'deep';
+  recursionLevel: number;
   useExpertSources: boolean;
   subQuestions: SubQuestion[];
   results: SubQuestionResult[];
@@ -92,6 +94,7 @@ const INITIAL_STATE: DeepResearchState = {
   status: 'idle',
   query: '',
   depth: 'quick',
+  recursionLevel: 0,
   useExpertSources: false,
   subQuestions: [],
   results: [],
@@ -107,6 +110,12 @@ Respond with a JSON array strictly: [{"id":"q1","question":"...","rationale":"..
 
 const SYNTHESIS_SYSTEM_PROMPT = `You are a research analyst synthesizing multiple web search results into a single knowledge node.
 Respond with a JSON object matching the ScoutKnowledgeNode schema exactly.`;
+
+const RECURSIVE_ANALYSIS_PROMPT = `You are a research quality controller.
+Analyze the current synthesized finding and the supporting search results.
+If there are unresolved contradictions, "contested" status, or low confidence (< 0.6) for a "deep" research task, generate 2-3 follow-up sub-questions to resolve these gaps.
+If the finding is solid, return an empty array.
+Respond with a JSON array: [{"id":"r1","question":"...","rationale":"..."}]`;
 
 export function useDeepResearch({
   onComplete,
@@ -227,7 +236,7 @@ export function useDeepResearch({
 
   const confirmSubQuestions = useCallback(
     async (edited: SubQuestion[]) => {
-      const controller = abortRef.current;
+      let controller = abortRef.current;
       if (!controller || controller.signal.aborted) return;
 
       updateState({
@@ -264,15 +273,16 @@ export function useDeepResearch({
 
       updateState({
         status: 'synthesizing',
-        results,
+        results: [...state.results, ...results],
         progress: { current: edited.length, total: edited.length },
       });
 
       // ── Synthesis ──────────────────────────────────────────────────────────
 
       const currentQuery = state.query || edited[0]?.question || 'Research topic';
+      const allResults = [...state.results, ...results];
 
-      const searchSummary = results
+      const searchSummary = allResults
         .map(
           (r) =>
             `### ${r.question}\n` +
@@ -329,14 +339,44 @@ Base confidence on source quality and consensus. Respond with JSON only.`;
           }
         }
 
+        // ── Recursive Logic ──────────────────────────────────────────────────
+
+        if (state.depth === 'deep' && state.recursionLevel < 1) {
+          updateState({ status: 'recursive_analysis' });
+          
+          const recursivePrompt = `Topic: ${currentQuery}\nFinding: ${synthesisNode.claim}\nStatus: ${synthesisNode.status}\nConfidence: ${synthesisNode.confidence}`;
+          
+          const followUps = await generateJSON<any[]>(
+            recursivePrompt,
+            {
+              systemPrompt: RECURSIVE_ANALYSIS_PROMPT,
+              temperature: 0.4,
+              signal: controller.signal
+            }
+          );
+
+          if (Array.isArray(followUps) && followUps.length > 0) {
+            updateState({
+              status: 'reviewing',
+              subQuestions: followUps.map((q, i) => ({
+                id: `r${state.recursionLevel}_${i}`,
+                question: q.question,
+                rationale: q.rationale
+              })),
+              recursionLevel: state.recursionLevel + 1
+            });
+            return; // Loop back to reviewing state
+          }
+        }
+
         // Build captured sources list for auto-save into source library
-        const capturedSources: AddSourceInput[] = results
+        const capturedSources: AddSourceInput[] = allResults
           .flatMap((r) =>
             r.searchResponse.results.slice(0, 3).map((res, i) => ({
               url: res.url,
               title: res.title,
               snippet: res.content?.slice(0, 300),
-              imageUrl: r.searchResponse.images?.[i] || r.searchResponse.images?.[0], // Try to match by index or fallback to first
+              imageUrl: r.searchResponse.images?.[indexByUrl(res.url, r.searchResponse.images)] || r.searchResponse.images?.[0], 
               nodeId: synthesisNode.id || `deep_${Date.now()}`,
             })),
           )
@@ -344,8 +384,8 @@ Base confidence on source quality and consensus. Respond with JSON only.`;
 
         const finalResult: DeepResearchResult = {
           query: currentQuery,
-          subQuestions: edited,
-          results,
+          subQuestions: [...state.subQuestions, ...edited],
+          results: allResults,
           synthesisNode: {
             ...synthesisNode,
             id: synthesisNode.id ?? `deep_${Date.now()}`,
@@ -375,8 +415,14 @@ Base confidence on source quality and consensus. Respond with JSON only.`;
         });
       }
     },
-    [state.query, state.depth, updateState, generateJSON, onComplete],
+    [state.query, state.depth, state.results, state.subQuestions, state.recursionLevel, updateState, generateJSON, onComplete],
   );
+
+function indexByUrl(url: string, images?: string[]): number {
+  if (!images) return 0;
+  // Simple heuristic mapping
+  return Math.abs(url.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)) % images.length;
+}
 
   // ── Abort ─────────────────────────────────────────────────────────────────
 

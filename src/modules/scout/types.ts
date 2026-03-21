@@ -1,3 +1,14 @@
+export interface EvidenceHighlight {
+  id: string;
+  sourceId: string;
+  text: string;
+  contextBefore?: string;
+  contextAfter?: string;
+  pageNumber?: number;
+  confidence: number;
+  addedAt: string;
+}
+
 export interface SourceEntry {
   id: string;
   url: string;
@@ -16,6 +27,7 @@ export interface SourceEntry {
   notes?: string;
   tags: string[];
   citingNodeIds: string[];
+  highlights?: EvidenceHighlight[];
 }
 
 export interface SubQuestion {
@@ -51,6 +63,8 @@ export interface ScoutKnowledgeNode {
   claim: string;
   confidence: number;
   evidence: string[]; // Array of SourceEntry IDs
+  highlights?: string[]; // Array of EvidenceHighlight IDs
+  embedding?: number[]; // Vector embedding for semantic search
   // Optional aliases used by export/UI layers.
   // Some views treat these as either a single source URL/domain or a list.
   source?: string;
