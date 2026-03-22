@@ -21,12 +21,17 @@ export { DiagnosisProgressCard } from './DiagnosisProgressCard';
 export { DiagnosisResultsScreen } from './DiagnosisResultsScreen';
 export { DiagnosisActiveBanner } from './DiagnosisActiveBanner';
 export { DiagnosisCloseModal }   from './DiagnosisCloseModal';
+export { DiagnosisChatPanel }    from './DiagnosisChatPanel';
+export { DiagnosisDocumentPreview } from './DiagnosisDocumentPreview';
+export { MobileDiagnosisTabs }   from './MobileDiagnosisTabs';
+export { MobileExtractedDataSheet } from './MobileExtractedDataSheet';
 
 export type { DiagnosisUploadZoneProps }    from './DiagnosisUploadZone';
 export type { DiagnosisProgressCardProps, AnalysisPhase } from './DiagnosisProgressCard';
 export type { DiagnosisResultsScreenProps } from './DiagnosisResultsScreen';
 export type { DiagnosisActiveBannerProps }  from './DiagnosisActiveBanner';
 export type { DiagnosisCloseModalProps }    from './DiagnosisCloseModal';
+export type { MobileDiagnosisTab }          from './MobileDiagnosisTabs';
 
 // Agent validation UI components
 export { AgentPendingBadge }  from './AgentPendingBadge';

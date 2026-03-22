@@ -49,6 +49,9 @@ import { DiagnosisResultsScreen } from './DiagnosisResultsScreen';
 import { DiagnosisActiveBanner } from './DiagnosisActiveBanner';
 import { DiagnosisCloseModal } from './DiagnosisCloseModal';
 import { DiagnosisChatPanel } from './DiagnosisChatPanel';
+import { DiagnosisDocumentPreview } from './DiagnosisDocumentPreview';
+import { MobileDiagnosisTabs, type MobileDiagnosisTab } from './MobileDiagnosisTabs';
+import { MobileExtractedDataSheet } from './MobileExtractedDataSheet';
 import { useDiagnosis } from '@/core/diagnosis/use-diagnosis';
 import type { SomaDiagnosisSummary } from '../types';
 import { useAuth } from '@/lib/auth-context';
@@ -335,7 +338,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
     profile
   });
 
-  const [diagnosisActiveTab, setDiagnosisActiveTab] = useState<'findings' | 'analysis'>('findings');
+  const [diagnosisActiveTab, setDiagnosisActiveTab] = useState<MobileDiagnosisTab>('results');
   const [selectedFieldIds, setSelectedFieldIds] = useState<string[]>([]);
   const [isMerging, setIsMerging] = useState(false);
 
@@ -348,7 +351,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
 
   useEffect(() => {
     if (diagnosis.phase === 'reviewing') {
-      setDiagnosisActiveTab('findings');
+      setDiagnosisActiveTab('results');
     }
   }, [diagnosis.phase]);
 
@@ -536,14 +539,29 @@ export const SomaDashboard = React.memo(function SomaDashboard({
           </motion.div>
 
           <div className="lg:hidden flex flex-col gap-3">
-            <NeuralTabGroup
-              tabs={[{ id: 'findings', label: 'Findings', icon: List }, { id: 'analysis', label: 'Analysis', icon: MessageSquare }]}
+            {/* Document preview */}
+            {diagnosis.parsedDocInfo && (
+              <DiagnosisDocumentPreview
+                docInfo={diagnosis.parsedDocInfo}
+                previewUrl={diagnosis.documentPreviewUrl}
+              />
+            )}
+            
+            {/* Mobile extracted data sheet trigger */}
+            <MobileExtractedDataSheet
+              items={diagnosis.extractedData.items}
+              isProcessing={diagnosis.isProcessing}
+            />
+            
+            {/* Mobile tab switcher */}
+            <MobileDiagnosisTabs
               activeTab={diagnosisActiveTab}
               onTabChange={setDiagnosisActiveTab}
-              themeColor="module"
-              variant="pill"
+              resultCount={diagnosis.extractedData.items.length}
             />
-            {diagnosisActiveTab === 'findings' ? (
+            
+            {/* Tab content */}
+            {diagnosisActiveTab === 'results' ? (
               <DiagnosisResultsScreen
                 sessionId="diagnosis"
                 detectedPanels={[]}
@@ -558,15 +576,25 @@ export const SomaDashboard = React.memo(function SomaDashboard({
           </div>
 
           <div className="hidden lg:flex gap-4 items-start h-[calc(100vh-200px)]">
-            <div className="flex-1 min-w-0 h-full overflow-hidden">
-              <DiagnosisResultsScreen
-                sessionId="diagnosis"
-                detectedPanels={[]}
-                items={diagnosis.extractedData.items}
-                onSelectionChange={setSelectedFieldIds}
-                onClose={diagnosis.endDiagnosis}
-                isProcessing={diagnosis.isProcessing}
-              />
+            <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col gap-3">
+              {/* Document preview - desktop */}
+              {diagnosis.parsedDocInfo && (
+                <DiagnosisDocumentPreview
+                  docInfo={diagnosis.parsedDocInfo}
+                  previewUrl={diagnosis.documentPreviewUrl}
+                  className="flex-shrink-0"
+                />
+              )}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <DiagnosisResultsScreen
+                  sessionId="diagnosis"
+                  detectedPanels={[]}
+                  items={diagnosis.extractedData.items}
+                  onSelectionChange={setSelectedFieldIds}
+                  onClose={diagnosis.endDiagnosis}
+                  isProcessing={diagnosis.isProcessing}
+                />
+              </div>
             </div>
             <div className="w-[400px] xl:w-[460px] flex-shrink-0 h-full">
               <DiagnosisChatPanel summary={diagnosisSummary ?? null} sessionId="diagnosis" ai={diagnosis} />

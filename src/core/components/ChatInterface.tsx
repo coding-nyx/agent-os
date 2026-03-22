@@ -195,7 +195,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
     const hasDebugChips = actionChips.length > 0 || spineChips.length > 0;
 
     return (
-        <div className="flex flex-col w-full max-w-[95%] sm:max-w-[85%] items-start">
+        <div className="flex flex-col w-full max-w-[98%] sm:max-w-[95%] md:max-w-[85%] items-start">
             {(showProcessingPulse || showCompletedThought) && (
                 <div className="mb-3 w-full">
                     <NeuralButton 
@@ -551,7 +551,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                       const uploadParsed = parseDocumentUploadMessage(textContent);
                       if (uploadParsed) {
                         return (
-                          <div className="flex flex-col max-w-[85%] w-fit items-end">
+                          <div className="flex flex-col max-w-[95%] sm:max-w-[85%] w-fit items-end">
                             <DocumentMessageCard upload={uploadParsed} themeAccent={theme.accent} />
                             <div className="mt-1.5 opacity-30 px-1">
                               <span className="text-[9px] font-mono uppercase tracking-wider text-white">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -562,7 +562,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                       const docParsed = parseDocumentMessage(textContent);
                       if (docParsed) {
                         return (
-                          <div className="flex flex-col max-w-[85%] w-fit items-end">
+                          <div className="flex flex-col max-w-[95%] sm:max-w-[85%] w-fit items-end">
                             <DocumentMessageCard doc={docParsed} themeAccent={theme.accent} />
                             <div className="mt-1.5 opacity-30 px-1">
                               <span className="text-[9px] font-mono uppercase tracking-wider text-white">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -571,12 +571,12 @@ export const ChatInterface = React.memo(function ChatInterface({
                         );
                       }
                       return (
-                        <div className="flex flex-col max-w-[75%] w-fit items-end">
+                        <div className="flex flex-col max-w-[90%] sm:max-w-[80%] md:max-w-[75%] w-fit items-end">
                             <div className={cn(
                               "border backdrop-blur-3xl transition-all min-w-0 break-words break-all sm:break-normal",
                               isAgnes
-                                ? "p-4 sm:p-5 bg-gradient-to-br from-indigo-500/[0.12] to-violet-500/[0.08] border-indigo-400/20 rounded-2xl rounded-tr-sm shadow-lg shadow-indigo-500/10"
-                                : cn("p-3.5 sm:p-5", theme.userBubble, theme.glow)
+                                ? "p-3 sm:p-4 md:p-5 bg-gradient-to-br from-indigo-500/[0.12] to-violet-500/[0.08] border-indigo-400/20 rounded-2xl rounded-tr-sm shadow-lg shadow-indigo-500/10"
+                                : cn("p-3 sm:p-3.5 md:p-5", theme.userBubble, theme.glow)
                             )}>
                                 <div className={cn(
                                   "leading-relaxed break-words overflow-hidden min-w-0 break-all sm:break-normal",
@@ -584,7 +584,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                                     ? "agnes-user-text text-white/95 whitespace-pre-wrap"
                                     : "text-sm text-white/90 font-medium whitespace-pre-wrap"
                                 )}>{textContent}</div>
-                                <div className="mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-2">
+                                <div className="mt-2 sm:mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-1.5 sm:pt-2">
                                     <span className="text-[9px] font-mono uppercase tracking-wider">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             </div>
@@ -688,7 +688,7 @@ export const ChatInterface = React.memo(function ChatInterface({
       </AnimatePresence>
 
       {/* Input area pinned to bottom via flex layout */}
-      <div className="shrink-0 px-3 sm:px-6 pb-3 sm:pb-4 pt-2">
+      <div className="shrink-0 px-3 sm:px-6 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4 pt-2">
         <AnimatePresence>
           {pendingRequest && (
             <motion.div

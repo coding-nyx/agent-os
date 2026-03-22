@@ -126,26 +126,27 @@ function FieldRow({
   onToggle: (id: string) => void;
 }) {
   return (
-    <motion.div
+    <motion.button
+      type="button"
       layout
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
+      onClick={() => onToggle(field.id)}
       className={cn(
-        'flex items-start gap-3 px-3 py-3 rounded-xl transition-colors',
-        selected ? 'bg-white/[0.04]' : 'bg-transparent hover:bg-white/[0.02]',
+        'w-full flex items-start gap-3 px-3 py-3.5 rounded-xl transition-colors text-left',
+        'min-h-[56px]', // Ensure comfortable tap height
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-black/50',
+        selected ? 'bg-white/[0.04]' : 'bg-transparent hover:bg-white/[0.02] active:bg-white/[0.04]',
       )}
+      aria-pressed={selected}
+      aria-label={`${humanise(field.name)}: ${field.value}${field.unit ? ` ${field.unit}` : ''}${selected ? ' (selected)' : ''}`}
     >
-      {/* Checkbox */}
-      <button
-        type="button"
-        onClick={() => onToggle(field.id)}
-        className="flex-shrink-0 w-11 h-11 flex items-center justify-center -m-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
-        aria-label={selected ? `Deselect ${humanise(field.name)}` : `Select ${humanise(field.name)}`}
-      >
+      {/* Checkbox indicator */}
+      <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center mt-0.5">
         {selected
           ? <CheckSquare className="w-5 h-5 text-[var(--module-color-400)]" />
           : <Square className="w-5 h-5 text-white/30" />}
-      </button>
+      </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0 space-y-0.5">
@@ -169,7 +170,7 @@ function FieldRow({
           </p>
         )}
       </div>
-    </motion.div>
+    </motion.button>
   );
 }
 
@@ -235,18 +236,18 @@ export function DiagnosisResultsScreen({
   return (
     <div className="flex flex-col h-full">
       {/* ── Header ── */}
-      <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-white/10 space-y-3">
+      <div className="flex-shrink-0 px-3 sm:px-4 pt-3 sm:pt-4 pb-2.5 sm:pb-3 border-b border-white/10 space-y-2 sm:space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <FlaskConical className="w-5 h-5 text-[var(--module-color-400)] flex-shrink-0" />
-            <h2 className="text-lg font-bold text-white tracking-tight">Diagnosis Results</h2>
+          <div className="flex items-center gap-2 min-w-0">
+            <FlaskConical className="w-4 sm:w-5 h-4 sm:h-5 text-[var(--module-color-400)] flex-shrink-0" />
+            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight truncate">Diagnosis Results</h2>
           </div>
           <NeuralButton
             type="button"
             variant="ghost"
             onClick={onClose}
             disabled={isProcessing}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors disabled:opacity-50"
+            className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors disabled:opacity-50 flex-shrink-0"
             aria-label="Close results"
           >
             <X className="w-4 h-4" />
@@ -259,7 +260,7 @@ export function DiagnosisResultsScreen({
             {detectedPanels.map((panel) => (
               <span
                 key={panel}
-                className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)] text-[11px] font-medium"
+                className="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)] text-[10px] sm:text-[11px] font-medium"
               >
                 {panel}
               </span>
@@ -269,17 +270,17 @@ export function DiagnosisResultsScreen({
 
         {/* Selection controls */}
         {!isEmpty && (
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-white/50">
-              {selectedCount} of {totalCount} fields selected
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] sm:text-xs text-white/50">
+              {selectedCount} of {totalCount} selected
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <NeuralButton
                 type="button"
                 variant="ghost"
                 themeColor="module"
                 onClick={handleSelectAll}
-                className="text-xs text-[var(--module-color-400)] hover:text-[var(--module-color-300)] transition-colors"
+                className="text-[11px] sm:text-xs text-[var(--module-color-400)] hover:text-[var(--module-color-300)] transition-colors px-2 py-1 min-h-[36px]"
               >
                 Select all
               </NeuralButton>
@@ -287,7 +288,7 @@ export function DiagnosisResultsScreen({
                 type="button"
                 variant="ghost"
                 onClick={handleDeselectAll}
-                className="text-xs text-white/40 hover:text-white/60 transition-colors"
+                className="text-[11px] sm:text-xs text-white/40 hover:text-white/60 transition-colors px-2 py-1 min-h-[36px]"
               >
                 None
               </NeuralButton>
@@ -367,7 +368,7 @@ export function DiagnosisResultsScreen({
       </div>
 
       {/* ── Sticky footer ── */}
-      <div className="flex-shrink-0 px-4 py-4 border-t border-white/10 bg-black/40 backdrop-blur-sm">
+      <div className="flex-shrink-0 px-3 sm:px-4 py-3 sm:py-4 border-t border-white/10 bg-black/40 backdrop-blur-sm pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <NeuralButton
           onClick={onClose}
           disabled={isProcessing}

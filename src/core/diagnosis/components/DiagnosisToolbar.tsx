@@ -90,25 +90,25 @@ export function DiagnosisToolbar({
       {/* Context toggle */}
       <button
         onClick={togglePolicy}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors shrink-0"
+        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors shrink-0"
         title={
           contextPolicy === 'isolated'
             ? 'AI cannot see your base profile. Click to enable.'
             : 'AI can see your base profile. Click to disable.'
         }
       >
-        <PolicyIcon className="w-3 h-3" />
-        {policyLabel}
+        <PolicyIcon className="w-3.5 h-3.5" />
+        <span className="hidden xs:inline">{policyLabel}</span>
       </button>
 
       {/* Upload */}
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={isParsing}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors disabled:opacity-40 shrink-0"
+        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors disabled:opacity-40 shrink-0"
       >
-        <FileUp className="w-3 h-3" />
-        Upload
+        <FileUp className="w-3.5 h-3.5" />
+        <span className="hidden xs:inline">Upload</span>
       </button>
 
       <input
@@ -122,19 +122,19 @@ export function DiagnosisToolbar({
       {/* New */}
       <button
         onClick={onNew}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors shrink-0"
+        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors shrink-0"
       >
-        <Plus className="w-3 h-3" />
-        New
+        <Plus className="w-3.5 h-3.5" />
+        <span className="hidden xs:inline">New</span>
       </button>
 
       {/* End */}
       <button
         onClick={onEnd}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-red-400/20 bg-red-500/5 text-[9px] font-bold uppercase tracking-[0.12em] text-red-300/60 hover:text-red-200 hover:bg-red-500/10 transition-colors shrink-0"
+        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-red-400/20 bg-red-500/5 text-[9px] font-bold uppercase tracking-[0.12em] text-red-300/60 hover:text-red-200 hover:bg-red-500/10 transition-colors shrink-0"
       >
-        <Square className="w-3 h-3" />
-        End
+        <Square className="w-3.5 h-3.5" />
+        <span className="hidden xs:inline">End</span>
       </button>
     </motion.div>
   );

@@ -42,6 +42,7 @@ export interface UseDiagnosisReturn {
   isParsing: boolean;
   parseProgress: ParseProgressEvent | null;
   parseError: string | null;
+  documentPreviewUrl: string | null;
 
   // AI (forwarded)
   messages: ReturnType<typeof useModuleAI>['messages'];
@@ -116,6 +117,7 @@ export function useDiagnosis({
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsedDocInfo, setParsedDocInfo] = useState<DocumentParseResult['metadata'] | null>(null);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
+  const [documentPreviewUrl, setDocumentPreviewUrl] = useState<string | null>(null);
   
   // ---- onAfterExtraction lifecycle state -----------------------------------
   const [lastParsedRawText, setLastParsedRawText] = useState<string | null>(null);
@@ -374,6 +376,7 @@ export function useDiagnosis({
       setIsParsing(true);
       setParseError(null);
       setParseProgress(null);
+      setDocumentPreviewUrl(null);
       
       // Reset onAfterExtraction state for new document
       afterExtractionCalledRef.current = false;
@@ -381,6 +384,16 @@ export function useDiagnosis({
       setLastParsedDocType(null);
 
       try {
+        // Generate preview URL for images before parsing
+        const fileType = file.type.startsWith('image/') ? 'image' : 
+                         file.type === 'application/pdf' ? 'pdf' : 'other';
+        
+        if (fileType === 'image') {
+          // Create object URL for image preview
+          const previewUrl = URL.createObjectURL(file);
+          setDocumentPreviewUrl(previewUrl);
+        }
+
         const result = await parseDocument(file, setParseProgress);
         setParsedDocInfo(result.metadata);
         
@@ -479,6 +492,11 @@ export function useDiagnosis({
     setParseError(null);
     setActiveDocId(null);
     setDocuments([]);
+    // Clean up preview URL
+    if (documentPreviewUrl) {
+      URL.revokeObjectURL(documentPreviewUrl);
+    }
+    setDocumentPreviewUrl(null);
     // Reset onAfterExtraction state
     afterExtractionCalledRef.current = false;
     setLastParsedRawText(null);
@@ -503,6 +521,7 @@ export function useDiagnosis({
     isParsing,
     parseProgress,
     parseError,
+    documentPreviewUrl,
     messages: ai.messages,
     isProcessing: ai.isProcessing,
     streamingText: ai.streamingText,
