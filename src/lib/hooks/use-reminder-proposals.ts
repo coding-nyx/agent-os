@@ -12,6 +12,7 @@ export interface ReminderProposalState {
 export function useReminderProposals(moduleId: string | 'any') {
   const { user, isGuest } = useAuth();
   const [active, setActive] = useState<ReminderProposalState | null>(null);
+  const [status, setStatus] = useState<'idle' | 'proposed' | 'confirmed' | 'dismissed'>('idle');
   const [isConfirming, setIsConfirming] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
   const pendingId = useRef<string | null>(null);
@@ -24,6 +25,7 @@ export function useReminderProposals(moduleId: string | 'any') {
     if (pendingId.current === proposal.id) return;
     pendingId.current = proposal.id;
     setActive({ proposal });
+    setStatus('proposed');
   });
 
   const confirm = useCallback(async () => {
@@ -51,6 +53,7 @@ export function useReminderProposals(moduleId: string | 'any') {
       await ActionHub.execute(targetModuleId, 'confirm_reminder', ctx);
       setActive(null);
       pendingId.current = null;
+      setStatus('confirmed');
     } finally {
       setIsConfirming(false);
     }
@@ -81,10 +84,15 @@ export function useReminderProposals(moduleId: string | 'any') {
       await ActionHub.execute(targetModuleId, 'dismiss_reminder', ctx);
       setActive(null);
       pendingId.current = null;
+      setStatus('dismissed');
     } finally {
       setIsDismissing(false);
     }
   }, [active, isGuest, moduleId, user?.uid]);
 
-  return { activeProposal: active?.proposal ?? null, confirm, dismiss, isConfirming, isDismissing };
+  const resetStatus = useCallback(() => {
+    setStatus('idle');
+  }, []);
+
+  return { activeProposal: active?.proposal ?? null, status, confirm, dismiss, isConfirming, isDismissing, resetStatus };
 }

@@ -76,7 +76,7 @@ export function NexusChat({
     const { messages, isProcessing, aiState, streamingText, error, quota, handleSendMessage, pendingRequest, clearPendingRequest } = ai;
 
     const canRenderReminderActions = !renderMessageActions && !!moduleId;
-    const { activeProposal, confirm, dismiss, isConfirming, isDismissing } = useReminderProposals(
+    const { activeProposal, status: proposalStatus, confirm, dismiss, isConfirming, isDismissing, resetStatus } = useReminderProposals(
       (moduleId === 'orchestrator' || moduleId === 'nexus') ? 'any' : (moduleId ?? 'any'),
     );
     const lastAssistantIndex = useMemo(() => {
@@ -87,19 +87,60 @@ export function NexusChat({
     }, [messages]);
 
     const reminderMessageActions = useCallback((message: Message, index: number) => {
-      if (!activeProposal) return null;
       if (message.role !== 'assistant') return null;
       if (index !== lastAssistantIndex) return null;
-      return (
-        <ReminderProposalCard
-          proposal={activeProposal}
-          onConfirm={confirm}
-          onDismiss={dismiss}
-          isConfirming={isConfirming}
-          isDismissing={isDismissing}
-        />
-      );
-    }, [activeProposal, confirm, dismiss, isConfirming, isDismissing, lastAssistantIndex]);
+
+      // Determine if a proposal action was initiated by this message
+      const contentStr = typeof message.content === 'string'
+        ? message.content
+        : message.content.filter(p => p.type === 'text').map(p => (p as any).text).join(' ');
+      const hasProposeAction = contentStr.includes('<action type="propose_reminder"');
+
+      if (activeProposal) {
+        return (
+          <ReminderProposalCard
+            proposal={activeProposal}
+            onConfirm={confirm}
+            onDismiss={dismiss}
+            isConfirming={isConfirming}
+            isDismissing={isDismissing}
+          />
+        );
+      }
+
+      if (!isProcessing && hasProposeAction) {
+        if (proposalStatus === 'confirmed') {
+          return (
+            <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 w-fit">
+              <span className="text-[11px] font-black uppercase tracking-widest">Reminder Scheduled</span>
+            </div>
+          );
+        }
+        if (proposalStatus === 'dismissed') {
+          return (
+            <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-white/5 border border-white/10 text-white/40 w-fit">
+              <span className="text-[11px] font-black uppercase tracking-widest">Proposal Dismissed</span>
+            </div>
+          );
+        }
+        if (proposalStatus === 'idle') {
+          return (
+             <div className="flex items-center gap-3 px-4 py-3 mt-2 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 w-fit">
+               <div className="min-w-0">
+                 <p className="text-[11px] font-black uppercase tracking-[0.2em] text-rose-300/70">
+                   Proposal Failed
+                 </p>
+                 <p className="mt-1 text-[11px] text-rose-200/80 break-words">
+                   The agent could not schedule the reminder.
+                 </p>
+               </div>
+             </div>
+          );
+        }
+      }
+
+      return null;
+    }, [activeProposal, confirm, dismiss, isConfirming, isDismissing, lastAssistantIndex, isProcessing, proposalStatus]);
 
     const prevMessagesLength = useRef(messages.length);
     const prevIsProcessing = useRef(isProcessing);
@@ -167,8 +208,22 @@ export function NexusChat({
     //    a. We haven't started the stream yet (last message is from user/empty)
     //    b. OR the AI is explicitly in an acting state (performing an internal action)
     // )
+    const isGeneratingReminderProposal = isProcessing && streamingText.includes('<action type="propose_reminder"');
+
+    // Show the loading/thinking bubble if:
+    // 1. AI is processing AND (
+    //    a. We haven't started the stream yet (last message is from user/empty)
+    //    b. OR the AI is explicitly in an acting state (performing an internal action)
+    //    c. OR the AI is actively streaming a reminder proposal, to satisfy "just show loading until proposal appears"
+    // )
     const isInitialThinking = (messages.length === 0 || messages[messages.length - 1].role === 'user') && !hasVisibleStream;
-    const isActuallyThinking = isProcessing && (isInitialThinking || !!aiState?.isActing);
+    const isActuallyThinking = isProcessing && (isInitialThinking || !!aiState?.isActing || isGeneratingReminderProposal);
+
+    useEffect(() => {
+        if (isGeneratingReminderProposal && proposalStatus !== 'idle') {
+            resetStatus();
+        }
+    }, [isGeneratingReminderProposal, proposalStatus, resetStatus]);
 
     // Sync phase: AI has finished its entire stream (public + internal) but 
     // background handlers (database writes, resonance synthesis) are still running.
