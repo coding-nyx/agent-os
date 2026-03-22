@@ -473,32 +473,33 @@ describe('set_deadline with past dates', () => {
   });
 });
 
-// ─── 9. update_goal_progress ON MILESTONE-LESS GOALS ─────────────────────────
+// ─── 9. update_goal_progress ON MILESTONE-LESS GOALS (fix applied) ───────────
 
-describe('update_goal_progress without milestones', () => {
+describe('update_goal_progress without milestones (fix applied)', () => {
   /**
-   * MISSING FEATURE: update_goal_progress always calculates progressPercent
-   * from milestones. If a goal has zero milestones (milestone-less goal),
-   * progressPercent is ALWAYS 0 and can never be updated.
+   * FIX: update_goal_progress now falls back to payload.progressPercent
+   * when the goal has zero milestones (milestone-less goal).
    *
-   * This is a data integrity gap — goals defined by direct effort (no formal
-   * milestones) are permanently stuck at 0% and will never trigger GOAL_COMPLETED.
+   * Goals defined by direct effort can now have their progress updated
+   * manually via the progressPercent payload.
    */
-  it('goal with no milestones stays at 0% even after explicit progress payload', () => {
+  it('goal with no milestones accepts explicit progressPercent payload (fix applied)', () => {
     // Simulate the update_goal_progress logic:
     function calculateProgress(milestones: Array<{ completed: boolean }>, payloadProgressPercent?: number): number {
       const total = milestones.length;
       const completed = milestones.filter(m => m.completed).length;
-      // BUG: payloadProgressPercent is ignored entirely
-      return total > 0 ? Math.round((completed / total) * 100) : 0;
+      if (total > 0) return Math.round((completed / total) * 100);
+      if (typeof payloadProgressPercent === 'number' && Number.isFinite(payloadProgressPercent)) {
+        return Math.max(0, Math.min(100, Math.round(payloadProgressPercent)));
+      }
+      return 0;
     }
 
     const progressFromPayload = 75; // user said "I'm 75% done"
     const result = calculateProgress([], progressFromPayload);
 
-    // Bug: result is 0, not 75
-    expect(result).toBe(0); // Documents the bug
-    // Expected fix: when milestones.length === 0, fall back to payload.progressPercent if provided
+    // After fix: result is 75
+    expect(result).toBe(75);
   });
 });
 

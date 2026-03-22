@@ -155,7 +155,11 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
 
     const completedMilestones = goal.milestones.filter(m => m.completed).length;
     const totalMilestones = goal.milestones.length;
-    goal.progressPercent = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+    if (totalMilestones > 0) {
+      goal.progressPercent = Math.round((completedMilestones / totalMilestones) * 100);
+    } else if (typeof payload?.progressPercent === 'number' && Number.isFinite(payload.progressPercent)) {
+      goal.progressPercent = Math.max(0, Math.min(100, Math.round(payload.progressPercent)));
+    }
 
     goal.updatedAt = now;
 
