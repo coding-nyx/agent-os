@@ -424,14 +424,14 @@ function SessionModal({
       themeColor="module"
       maxWidth="2xl"
     >
-      <div className="flex flex-col gap-5 max-h-[70vh]">
+      <div className="flex flex-col gap-5 max-h-[70dvh]">
 
         {/* ── Progress summary ───────────────────────────────────────────── */}
         <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]">
           <span className="text-xs text-[var(--module-color-300)] font-bold">
             {completedSetsCount} / {totalSetsCount} sets done
           </span>
-          <div className="w-32 h-1.5 rounded-full bg-white/10">
+          <div className="w-full max-w-[8rem] h-1.5 rounded-full bg-white/10">
             <div
               className="h-full rounded-full bg-[var(--module-accent)] transition-all"
               style={{ width: totalSetsCount > 0 ? `${(completedSetsCount / totalSetsCount) * 100}%` : '0%' }}
@@ -512,32 +512,32 @@ function SessionModal({
                       <span className="text-[10px] text-white/40 w-8 shrink-0">Set {setIdx + 1}</span>
 
                       {/* Weight */}
-                      <div className="w-20">
+                      <div className="w-14 sm:w-20">
                         <NeuralInput
                           type="number"
                           placeholder="kg"
                           value={s.weight}
                           onChange={e => updateSet(exIdx, setIdx, 'weight', e.target.value)}
-                          className="h-9 min-h-0 px-2 text-center focus:border-[var(--module-color-400)]"
+                          className="h-9 min-h-0 px-2 text-center focus:border-[var(--module-color-400)] text-xs sm:text-sm"
                           min={0}
                         />
                       </div>
                       <span className="text-white/20 text-xs">×</span>
 
                       {/* Reps */}
-                      <div className="w-16">
+                      <div className="w-12 sm:w-16">
                         <NeuralInput
                           type="number"
                           placeholder="reps"
                           value={s.repsCompleted}
                           onChange={e => updateSet(exIdx, setIdx, 'repsCompleted', e.target.value)}
-                          className="h-9 min-h-0 px-2 text-center focus:border-[var(--module-color-400)]"
+                          className="h-9 min-h-0 px-2 text-center focus:border-[var(--module-color-400)] text-xs sm:text-sm"
                           min={0}
                         />
                       </div>
 
                       {/* Per-set RPE (feature #5) */}
-                      <div className="w-20">
+                      <div className="w-14 sm:w-20">
                         <NeuralInput
                           type="number"
                           min={1}

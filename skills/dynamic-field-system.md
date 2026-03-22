@@ -16,47 +16,292 @@ Every module has a **dashboard** displaying structured data fields. Fields come 
 
 ## Architecture Pattern
 
-### Field Definition (JSON Schema v7)
+### File Structure (Verified)
+
+```
+src/lib/field-system/
+├── field-system.ts                  # Core field creation/validation logic
+├── types.ts                         # FieldDefinition, FieldType, ValidationRules
+├── json-schema-utils.ts             # JSON Schema v7 conversion utilities
+├── examples.ts                      # Example field definitions and patterns
+├── index.ts                         # Public exports
+├── field-system.test.ts             # Unit tests
+└── README.md
+
+src/lib/schema-registry.ts           # SchemaRegistry singleton service
+src/lib/schemas/                     # Module-specific schemas
+├── therapy-schema.ts                # Agnes/Therapy module schema
+├── trainer-schema.ts                # Titan/Training module schema
+├── ledger-schema.ts                 # Ledger/Finance module schema
+├── soma-schema.ts                   # Soma/Health module schema
+├── atlas-schema.ts                  # Atlas/Productivity module schema
+├── module-validators.ts             # Module-specific validators
+├── migrations/schema-migrations.ts  # Schema migration definitions
+├── init.ts                          # Startup registration
+├── index.ts                         # Schema exports
+└── examples.ts
+
+src/lib/validation/
+├── json-schema-validator.ts         # JSON Schema validation
+├── validation-engine.ts             # Core validation engine
+├── validators.ts                    # Validator functions
+├── module-validators.ts             # Module validator registry
+├── types.ts                         # Validation types
+└── index.ts
+```
+
+### FieldType Enum
 
 ```typescript
-interface FieldDefinition {
-  id: string;               // kebab-case unique ID
-  name: string;             // Human-readable display name
-  type: FieldType;          // TEXT | NUMBER | RANGE | SELECT | MULTI_SELECT | BOOLEAN | DATE | TEXTAREA | OBJECT
-  description?: string;     // What this field tracks
-  required?: boolean;
-  defaultValue?: any;
-  validation?: ValidationRules;  // min, max, pattern, enum, etc.
-  metadata?: {
-    category?: string;      // Grouping for dashboard sections
-    order?: number;         // Display order within category
-    uiHint?: string;        // Rendering hint (e.g., 'slider', 'chip-group')
-    helpText?: string;
-    placeholder?: string;
-    icon?: string;          // Lucide icon name
-    searchable?: boolean;
-  };
-  options?: Array<{ value: any; label: string }>;  // For SELECT/MULTI_SELECT
+enum FieldType {
+  TEXT = 'text',
+  NUMBER = 'number',
+  SELECT = 'select',
+  MULTI_SELECT = 'multiSelect',
+  DATE = 'date',
+  TEXTAREA = 'textarea',
+  BOOLEAN = 'boolean',
+  RANGE = 'range',
+  OBJECT = 'object',
 }
 ```
 
-### Schema Registry (Singleton)
+### FieldDefinition Interface
 
-- `SchemaRegistry.registerSchema(moduleId, schema)` — Register core + extension schemas
-- `SchemaRegistry.addExtensionField(moduleId, field)` — Add a custom field (structural validation only)
-- `SchemaRegistry.removeExtensionField(moduleId, fieldId)` — Remove a custom field
-- `SchemaRegistry.getSchema(moduleId)` → `{ coreFields, extensionFields, version }`
-- Max extension fields per module: configurable (trainer=20, soma=25, ledger=15, atlas=15)
+```typescript
+interface FieldDefinition {
+  /** Unique identifier (alphanumeric, underscore, hyphen) */
+  id: string;
+  /** Human-readable display name */
+  name: string;
+  /** Field type from FieldType enum */
+  type: FieldType;
+  /** Description of the field's purpose */
+  description?: string;
+  /** Whether the field is required */
+  required?: boolean;
+  /** Default value for the field */
+  defaultValue?: any;
+  /** Validation rules in JSON Schema format */
+  validation?: ValidationRules;
+  /** Additional metadata for UI and categorization */
+  metadata?: FieldMetadata;
+  /** For nested object fields */
+  properties?: Record<string, FieldDefinition>;
+  /** For SELECT/MULTI_SELECT: available options */
+  options?: Array<{ value: any; label: string }>;
+}
 
-### Structural Validation (Code — Always Runs)
+interface ValidationRules {
+  minimum?: number;      // For numbers/range
+  maximum?: number;      // For numbers/range
+  minLength?: number;    // For strings
+  maxLength?: number;    // For strings
+  pattern?: string;      // Regex for string validation
+  enum?: any[];          // Allowed values for select
+  items?: { enum?: any[] };  // For multiSelect arrays
+  multipleOf?: number;   // Step increment for range
+  [key: string]: any;    // Custom JSON Schema rules
+}
 
-1. Field ID uniqueness (no duplicates with core or other extensions)
-2. Extension count limit
-3. Restricted field IDs (cannot shadow core fields like `userId`)
-4. Type consistency (defaultValue matches field type)
-5. Valid JSON Schema validation rules
+interface FieldMetadata {
+  category?: string;     // Grouping for dashboard sections
+  order?: number;        // Display order hint
+  uiHint?: string;       // Rendering hint (e.g., 'slider', 'chip-group')
+  helpText?: string;     // Help text for users
+  placeholder?: string;  // Placeholder text
+  icon?: string;         // Icon identifier
+  searchable?: boolean;  // Whether field is searchable
+  [key: string]: any;    // Custom metadata
+}
+```
 
-### Domain Validation (LLM — Always Runs)
+### FieldValue Interface
+
+```typescript
+interface FieldValue {
+  fieldId: string;           // Reference to field definition
+  value: any;                // The actual value
+  timestamp: number;         // When set/updated (ms)
+  source: 'user' | 'ai';     // Value origin
+  isValid?: boolean;         // Validation state
+  errors?: string[];         // Validation errors
+}
+```
+
+### FieldSchema Interface
+
+```typescript
+interface FieldSchema {
+  version: string;                     // Schema version for compatibility
+  coreFields: FieldDefinition[];       // System-defined fields
+  extensionFields: FieldDefinition[];  // User/AI-defined fields
+  metadata?: {
+    createdAt?: number;
+    updatedAt?: number;
+    createdBy?: string;
+    [key: string]: any;
+  };
+}
+```
+
+---
+
+## Schema Registry API
+
+The `SchemaRegistry` is a singleton service managing all module schemas:
+
+```typescript
+import { SchemaRegistry } from '@/lib/schema-registry';
+
+// Register a module schema definition
+SchemaRegistry.registerSchema(definition: ModuleSchemaDefinition): void
+
+// Register a module-specific validator
+SchemaRegistry.registerValidator(moduleId: string, validator: ModuleSchemaValidator): void
+
+// Register schema migrations
+SchemaRegistry.registerMigrations(moduleId: string, migrations: SchemaMigration[]): void
+
+// Get complete schema (core + extensions) for a module
+SchemaRegistry.getSchema(moduleId: string): FieldSchema | null
+
+// Get only the core schema
+SchemaRegistry.getCoreSchema(moduleId: string): FieldSchema | null
+
+// Get extension fields for a module
+SchemaRegistry.getExtensions(moduleId: string): FieldDefinition[]
+
+// Check if extensions are allowed
+SchemaRegistry.isExtensionAllowed(moduleId: string): boolean
+
+// Validate an extension field before adding
+SchemaRegistry.validateExtension(moduleId: string, field: FieldDefinition): ValidationResult
+
+// Add extension fields (validates first)
+SchemaRegistry.extendSchema(moduleId: string, fields: FieldDefinition[]): Promise<ValidationResult>
+
+// Remove an extension field
+SchemaRegistry.removeExtension(moduleId: string, fieldId: string): Promise<void>
+
+// Load extensions from Firestore for a user
+SchemaRegistry.loadExtensions(userId: string, moduleId: string): Promise<void>
+
+// Save extensions to Firestore for a user
+SchemaRegistry.saveExtensions(userId: string, moduleId: string): Promise<void>
+
+// Compare two schemas
+SchemaRegistry.compareSchemas(schema1: FieldSchema, schema2: FieldSchema): SchemaDiff
+
+// Migrate schema between versions
+SchemaRegistry.migrateSchema(moduleId: string, fromVersion: string, toVersion: string): Promise<void>
+```
+
+### ModuleSchemaDefinition
+
+```typescript
+interface ModuleSchemaDefinition {
+  moduleId: string;
+  version: string;
+  coreSchema: FieldSchema;
+  allowExtensions: boolean;
+  maxExtensionFields?: number;
+}
+```
+
+### Max Extension Fields Per Module
+
+| Module | Max Extensions |
+|--------|----------------|
+| Therapy | — |
+| Trainer (Titan) | 20 |
+| Soma | 25 |
+| Ledger | 15 |
+| Atlas | 15 |
+
+---
+
+## Field System Core Functions
+
+```typescript
+import {
+  createFieldDefinition,
+  validateFieldValue,
+  serializeFieldValue,
+  deserializeFieldValue,
+  createFieldValue,
+  createEmptySchema,
+  addFieldToSchema,
+  removeFieldFromSchema,
+  getFieldFromSchema,
+  compareFieldSchemas,
+} from '@/lib/field-system';
+
+// Create a validated FieldDefinition
+const field = createFieldDefinition({
+  id: 'creatine-cycle',
+  name: 'Creatine Cycle',
+  type: FieldType.SELECT,
+  options: [
+    { value: 'loading', label: 'Loading Phase' },
+    { value: 'maintenance', label: 'Maintenance' },
+    { value: 'off', label: 'Off Cycle' },
+  ],
+  metadata: { category: 'supplements' },
+});
+
+// Validate a value against field definition
+const result = validateFieldValue(field, 'maintenance');
+if (!result.isValid) {
+  console.error(result.errors);
+}
+
+// Serialize for storage (handles Date, arrays, etc.)
+const serialized = serializeFieldValue(field, value);
+
+// Deserialize from storage
+const deserialized = deserializeFieldValue(field, rawValue);
+```
+
+### JSON Schema Utilities
+
+```typescript
+import {
+  fieldToJsonSchema,
+  jsonSchemaToField,
+  mergeSchemas,
+  validateAgainstSchema,
+  fieldSchemaToJsonSchema,
+} from '@/lib/field-system';
+
+// Convert FieldDefinition to JSON Schema v7
+const jsonSchema = fieldToJsonSchema(field);
+
+// Convert JSON Schema to FieldDefinition
+const fieldDef = jsonSchemaToField('age', { type: 'number', minimum: 0 });
+
+// Merge core and extension schemas
+const merged = mergeSchemas(coreSchema, extensionSchema);
+
+// Validate data against JSON Schema
+const result = validateAgainstSchema(data, schema);
+```
+
+---
+
+## Structural Validation (Code — Always Runs)
+
+1. **Field ID uniqueness** — No duplicates with core or other extensions
+2. **Extension count limit** — Enforced per module (see table above)
+3. **Restricted field IDs** — Cannot shadow core fields like `userId`
+4. **Type consistency** — defaultValue matches field type
+5. **Valid JSON Schema rules** — Validation rules are structurally correct
+6. **Required options** — SELECT/MULTI_SELECT must have options array
+7. **Required properties** — OBJECT type must have properties defined
+
+---
+
+## Domain Validation (LLM — Always Runs)
 
 **No keyword lists.** The LLM is the sole semantic domain validator for all field creation paths.
 
@@ -83,8 +328,8 @@ User: "I want to track my creatine cycle"
   → System prompt: schema definitions only, NO user wellness data
   → Allowed actions: suggest_field, create_field, delete_field ONLY
   → LLM generates: <action type="create_field">{field JSON}</action>
-  → ActionHub → SchemaRegistry.addExtensionField() (structural validation)
-  → Spine event: FIELD_CREATED
+  → ActionHub → SchemaRegistry.extendSchema() (structural validation)
+  → Spine event: SCHEMA_EXTENDED
   → Toast notification
   → Dashboard re-renders with new field
 ```
@@ -95,7 +340,7 @@ User: "I want to track my creatine cycle"
 User clicks "Add Field" → minimal form opens
   → User fills: name, type, description, options (if select)
   → Submit → single LLM call with field-CRUD prompt
-  → LLM approves → SchemaRegistry.addExtensionField()
+  → LLM approves → SchemaRegistry.extendSchema()
   → Same Spine event → toast → dashboard update
   OR
   → LLM rejects → natural language explanation shown to user
@@ -146,7 +391,7 @@ This block is appended to the system prompt alongside NSV vectors and compacted 
 
 ### Data Storage
 
-- Field definitions: `custom_schemas/{moduleId}` in SchemaRegistry
+- Field definitions: `custom_schemas/{userId}/modules/{moduleId}` in Firestore
 - Field values: `extension_field_values/{userId}/modules/{moduleId}` in Firestore
 - Both encrypted client-side before persistence (AES-256-GCM)
 
@@ -157,23 +402,135 @@ This block is appended to the system prompt alongside NSV vectors and compacted 
 Each module registers its core schema at app initialization (`src/lib/schemas/init.ts`):
 
 ```typescript
-export function initializeSchemas() {
-  SchemaRegistry.registerSchema('trainer', TRAINER_CORE_SCHEMA);
-  SchemaRegistry.registerSchema('soma', SOMA_CORE_SCHEMA);
-  SchemaRegistry.registerSchema('ledger', LEDGER_CORE_SCHEMA);
-  SchemaRegistry.registerSchema('atlas', ATLAS_CORE_SCHEMA);
-  
-  // Register validators (structural only — no keyword gates)
-  SchemaRegistry.registerValidator('trainer', trainerStructuralValidator);
-  SchemaRegistry.registerValidator('soma', somaStructuralValidator);
-  // ...
-  
-  // Load persisted extensions from Firestore
-  SchemaRegistry.loadExtensions(userId);
+import { SchemaRegistry } from '../schema-registry';
+import {
+  THERAPY_CORE_SCHEMA,
+  TRAINER_CORE_SCHEMA,
+  LEDGER_CORE_SCHEMA,
+  SOMA_CORE_SCHEMA,
+  ATLAS_CORE_SCHEMA,
+} from './index';
+import { MODULE_VALIDATORS } from './module-validators';
+import { ALL_MIGRATIONS } from './migrations/schema-migrations';
+
+export function initializeSchemas(): void {
+  // Register schemas
+  SchemaRegistry.registerSchema(THERAPY_CORE_SCHEMA);
+  SchemaRegistry.registerSchema(TRAINER_CORE_SCHEMA);
+  SchemaRegistry.registerSchema(LEDGER_CORE_SCHEMA);
+  SchemaRegistry.registerSchema(SOMA_CORE_SCHEMA);
+  SchemaRegistry.registerSchema(ATLAS_CORE_SCHEMA);
+
+  // Register validators
+  SchemaRegistry.registerValidator('therapy', MODULE_VALIDATORS.therapy);
+  SchemaRegistry.registerValidator('trainer', MODULE_VALIDATORS.trainer);
+  SchemaRegistry.registerValidator('ledger', MODULE_VALIDATORS.ledger);
+  SchemaRegistry.registerValidator('soma', MODULE_VALIDATORS.soma);
+  SchemaRegistry.registerValidator('atlas', MODULE_VALIDATORS.atlas);
+
+  // Register migrations
+  SchemaRegistry.registerMigrations('therapy', ALL_MIGRATIONS.therapy);
+  SchemaRegistry.registerMigrations('trainer', ALL_MIGRATIONS.trainer);
+  SchemaRegistry.registerMigrations('ledger', ALL_MIGRATIONS.ledger);
+  SchemaRegistry.registerMigrations('soma', ALL_MIGRATIONS.soma);
+  SchemaRegistry.registerMigrations('atlas', ALL_MIGRATIONS.atlas);
 }
 ```
 
 Templates define the base dashboard layout. Extension fields appear in a dedicated "Custom Fields" section or integrated into relevant categories.
+
+---
+
+## Per-Module Core Field Templates
+
+### Titan (Trainer) — Fitness & Training
+**moduleId:** `trainer` | **maxExtensions:** 20
+
+| Field ID | Name | Type | Description |
+|----------|------|------|-------------|
+| `fitnessLevel` | Fitness Level | SELECT | beginner/intermediate/advanced/elite |
+| `fitnessGoals` | Fitness Goals | MULTI_SELECT | weight_loss, muscle_gain, strength, etc. |
+| `currentWeight` | Current Weight | NUMBER | Weight in kg/lbs |
+| `targetWeight` | Target Weight | NUMBER | Target weight |
+| `height` | Height | NUMBER | Height in cm/inches |
+| `workoutFrequency` | Workout Frequency | SELECT | 1-2/3-4/5-6/daily per week |
+| `preferredActivities` | Preferred Activities | MULTI_SELECT | cardio, strength, yoga, etc. |
+| `injuries` | Injuries/Limitations | TEXTAREA | Physical limitations |
+| `activityLevel` | Daily Activity Level | SELECT | sedentary to extra active |
+| `nutritionGoals` | Nutrition Goals | MULTI_SELECT | calorie deficit/surplus, etc. |
+| `sleepQuality` | Sleep Quality | RANGE | 0-10 |
+| `recoveryScore` | Recovery Score | RANGE | 0-10 |
+| `lastWorkout` | Last Workout | DATE | — |
+| `nextWorkout` | Next Scheduled | DATE | — |
+
+### Soma — Physical Health & Biometrics
+**moduleId:** `soma` | **maxExtensions:** 25
+
+| Field ID | Name | Type | Description |
+|----------|------|------|-------------|
+| `age` | Age | NUMBER | 0-150 |
+| `biologicalSex` | Biological Sex | SELECT | male/female |
+| `height` | Height | NUMBER | cm |
+| `weight` | Weight | NUMBER | kg |
+| `bmi` | BMI | NUMBER | Calculated |
+| `restingHeartRate` | Resting Heart Rate | NUMBER | 30-200 bpm |
+| `bloodPressure` | Blood Pressure | TEXT | e.g., "120/80" |
+| `vo2Max` | VO2 Max | NUMBER | ml/kg/min |
+| `bodyFatPercentage` | Body Fat % | NUMBER | 0-100 |
+| `muscleMass` | Muscle Mass | NUMBER | kg |
+| `sleepHours` | Avg Sleep Hours | NUMBER | 0-24 |
+| `sleepQuality` | Sleep Quality | RANGE | 0-10 |
+| `dailySteps` | Daily Steps | NUMBER | — |
+| `activeMinutes` | Active Minutes | NUMBER | — |
+| `hydrationLevel` | Daily Hydration | NUMBER | liters |
+| `chronicConditions` | Chronic Conditions | MULTI_SELECT | diabetes, hypertension, etc. |
+| `medications` | Current Medications | TEXTAREA | — |
+| `supplements` | Supplements | MULTI_SELECT | multivitamin, vitamin_d, etc. |
+| `energyLevel` | Energy Level | RANGE | 0-10 |
+| `stressPhysical` | Physical Stress | RANGE | 0-10 |
+| `lastCheckup` | Last Medical Checkup | DATE | — |
+| `nextCheckup` | Next Checkup | DATE | — |
+
+### Atlas — Energy & Productivity
+**moduleId:** `atlas` | **maxExtensions:** 15
+
+| Field ID | Name | Type | Description |
+|----------|------|------|-------------|
+| `energyBudget` | Daily Energy Budget | RANGE | 0-10 |
+| `planningLoad` | Planning Load | RANGE | 0-10 complexity |
+| `taskCompletionRate` | Task Completion Rate | NUMBER | 0-1 ratio |
+| `streakHealth` | Habit Streak Health | RANGE | 0-10 |
+| `urgencyPressure` | Urgency Pressure | RANGE | 0-10 |
+| `peakProductivityTime` | Peak Productivity Time | SELECT | early_morning to night |
+| `workStyle` | Work Style Preference | SELECT | deep_focus/pomodoro/flexible/structured |
+| `priorityAreas` | Priority Life Areas | MULTI_SELECT | career, health, relationships, etc. |
+| `habitTracking` | Active Habits | MULTI_SELECT | exercise, meditation, journaling, etc. |
+| `goalReviewFrequency` | Goal Review Frequency | SELECT | daily/weekly/biweekly/monthly |
+| `procrastinationTriggers` | Procrastination Triggers | TEXTAREA | — |
+| `focusScore` | Focus Score | RANGE | 0-10 |
+| `openLoopCount` | Open Loops | NUMBER | Unfinished commitments |
+| `lastReview` | Last Goal Review | DATE | — |
+| `nextReview` | Next Goal Review | DATE | — |
+
+### Ledger — Finance
+**moduleId:** `ledger` | **maxExtensions:** 15
+
+| Field ID | Name | Type | Description |
+|----------|------|------|-------------|
+| `monthlyIncome` | Monthly Income | NUMBER | ≥0 |
+| `currency` | Currency | SELECT | USD/EUR/GBP/CAD/AUD |
+| `financialGoals` | Financial Goals | MULTI_SELECT | emergency_fund, debt_payoff, etc. |
+| `budgetCategories` | Budget Categories | MULTI_SELECT | housing, transportation, food, etc. |
+| `totalDebt` | Total Debt | NUMBER | ≥0 |
+| `totalSavings` | Total Savings | NUMBER | ≥0 |
+| `totalInvestments` | Total Investments | NUMBER | ≥0 |
+| `riskTolerance` | Risk Tolerance | SELECT | conservative/moderate/aggressive |
+| `spendingHabits` | Spending Habits | SELECT | frugal/moderate/liberal |
+| `financialStressLevel` | Financial Stress | RANGE | 0-10 |
+| `creditScore` | Credit Score | NUMBER | 300-850 |
+| `paymentSchedule` | Payment Schedule | SELECT | weekly/biweekly/monthly/irregular |
+| `lastBudgetReview` | Last Budget Review | DATE | — |
+| `nextBudgetReview` | Next Budget Review | DATE | — |
 
 ---
 
@@ -224,12 +581,12 @@ Each custom field renders as an interactive card:
 
 Each module applies this pattern within its own domain scope:
 
-| Module | Domain | Example Core Fields | Example Custom Fields |
-|--------|--------|--------------------|-----------------------|
-| **Titan (Training)** | Fitness, workout, nutrition | fitnessLevel, workoutFrequency, currentWeight | Creatine Cycle, Max Deadlift, Sprint Time |
-| **Titan-Soma (Health)** | Biometrics, vitals, medical | restingHeartRate, bloodPressure, vo2Max | Cortisol Level, Vitamin D Status, Allergy Severity |
-| **Atlas (Productivity)** | Planning, habits, energy | energyBudget, focusScore, taskCompletionRate | Pomodoro Count, Deep Work Hours, Meeting Load |
-| **Ledger (Financial)** | Budget, debt, investments | monthlyIncome, totalDebt, totalSavings | Side Hustle Income, Crypto Portfolio, Subscription Cost |
+| Module | Domain | Example Custom Fields |
+|--------|--------|----------------------|
+| **Titan (Trainer)** | Fitness, workout, nutrition | Creatine Cycle, Max Deadlift, Sprint Time, Grip Strength PR |
+| **Soma** | Biometrics, vitals, medical | Cortisol Level, Vitamin D Status, Allergy Severity, HRV |
+| **Atlas** | Planning, habits, energy | Pomodoro Count, Deep Work Hours, Meeting Load |
+| **Ledger** | Budget, debt, investments | Side Hustle Income, Crypto Portfolio, Subscription Cost |
 
 ### LLM Domain Validation Examples
 
@@ -251,8 +608,8 @@ Field operations are registered as ActionHub actions:
 | Action | Trigger | Effect |
 |--------|---------|--------|
 | `suggest_field` | LLM proactively suggests | Shows inline suggestion card |
-| `create_field` | LLM or user confirms | SchemaRegistry.addExtensionField() → Spine FIELD_CREATED |
-| `delete_field` | LLM or user confirms | SchemaRegistry.removeExtensionField() → Spine FIELD_DELETED |
+| `create_field` | LLM or user confirms | SchemaRegistry.extendSchema() → Spine SCHEMA_EXTENDED |
+| `delete_field` | LLM or user confirms | SchemaRegistry.removeExtension() → Spine SCHEMA_MODIFIED |
 | `update_field_value` | LLM or user edits | Updates extension_field_values → Spine FIELD_VALUE_UPDATED |
 
 ### Spine Event Flow
@@ -262,6 +619,35 @@ Action executes → Spine event emitted → SpineToastProvider shows toast
                                       → Dashboard components re-render
                                       → Schema registry cache invalidated
                                       → Context injection picks up new values
+```
+
+### Spine Events
+
+| Event Type | Payload | Trigger |
+|------------|---------|---------|
+| `SCHEMA_EXTENDED` | `{ moduleId, fields[], count }` | Field(s) added |
+| `SCHEMA_MODIFIED` | `{ moduleId, action: 'remove_extension', fieldId }` | Field removed |
+| `SCHEMA_MIGRATED` | `{ moduleId, fromVersion, toVersion }` | Schema migrated |
+
+---
+
+## Module Validators
+
+Built-in validators are auto-registered at startup (`src/lib/validation/module-validators.ts`):
+
+```typescript
+// Available validators
+agnesValidator   // Therapy intake/session validation
+titanValidator   // Training profiles, fitness levels, injuries
+ledgerValidator  // Amounts, currencies, categories
+somaValidator    // Sleep hours, heart rate, weight
+atlasValidator   // Priorities, deadlines, durations
+
+// Usage via registry
+import { validateModuleField, validateModuleProfile } from '@/lib/validation/module-validators';
+
+await validateModuleField('titan', 'fitnessLevel', 'intermediate');
+await validateModuleProfile('ledger', financialData);
 ```
 
 ---
@@ -298,33 +684,94 @@ When implementing this pattern for a new module:
 
 1. **Define core schema** in `src/lib/schemas/{module}-schema.ts`
 2. **Register schema** in `src/lib/schemas/init.ts`
-3. **Create structural validator** (no keyword lists — structural checks only)
+3. **Create structural validator** in `src/lib/validation/module-validators.ts` (no keyword lists — structural checks only)
 4. **Build dashboard page** with tab layout and field card grid
 5. **Wire interactive selection** via componentSelectionStore
 6. **Add "Add Field" button** → FieldCrudChatPanel or direct LLM validation
 7. **Create module prompt modes** — general, scoped, field-crud
 8. **Wire context injection** — ensure `enhanceContextForModule()` includes extension field values
 9. **Register field actions** — suggest_field, create_field, delete_field for module
-10. **Subscribe to Spine events** — FIELD_CREATED, FIELD_DELETED, FIELD_VALUE_UPDATED
+10. **Subscribe to Spine events** — SCHEMA_EXTENDED, SCHEMA_MODIFIED
 11. **Test flows** — chat creation, button creation, AI suggestion, value editing, deletion
 12. **Verify context** — extension fields appear in LLM system prompt
 
 ---
 
-## File Locations
+## Key Exports Reference
 
+### From `@/lib/field-system`
+
+```typescript
+// Types
+export type {
+  FieldDefinition,
+  FieldValue,
+  FieldSchema,
+  FieldExtensionRequest,
+  FieldMetadata,
+  ValidationRules,
+  ValidationResult,
+  ValidationOptions,
+  SchemaComparison,
+  FieldValueSource,
+  CreateFieldParams,
+  JSONSchema,
+};
+
+// Enum
+export { FieldType };
+
+// Functions
+export {
+  createFieldDefinition,
+  validateFieldValue,
+  serializeFieldValue,
+  deserializeFieldValue,
+  compareFieldSchemas,
+  createFieldValue,
+  createEmptySchema,
+  addFieldToSchema,
+  removeFieldFromSchema,
+  getFieldFromSchema,
+  fieldToJsonSchema,
+  jsonSchemaToField,
+  mergeSchemas,
+  validateAgainstSchema,
+  fieldSchemaToJsonSchema,
+};
 ```
-src/lib/field-system/          — Core field types, validation, JSON Schema utils
-src/lib/schema-registry.ts     — Schema registration and extension management
-src/lib/schemas/               — Module-specific schema definitions
-src/lib/schemas/init.ts        — Startup registration
-src/lib/schemas/module-validators.ts — Structural validators (LLM replaces keyword validation)
-src/lib/validation/            — Generic validation engine
-src/lib/actions/field-suggestion-actions.ts — AI field CRUD actions
-src/lib/hooks/use-scoped-conversation.ts   — Scoped conversation hook (NEW)
-src/lib/hooks/use-extension-field-values.ts — Extension field values hook (NEW)
-src/lib/stores/component-selection-store.ts — Selection store (NEW)
-src/lib/global-soul-context.tsx — Context injection (enhanceContextForModule)
-src/core/components/FieldCrudChatPanel.tsx  — Field CRUD chat panel (NEW)
-src/core/components/ScopedChatPanel.tsx     — Scoped chat panel (NEW)
+
+### From `@/lib/schema-registry`
+
+```typescript
+export { SchemaRegistry };  // Singleton instance
+export { SchemaRegistryService };  // Class for testing
+export type {
+  ModuleSchemaDefinition,
+  SchemaDiff,
+  ModuleSchemaValidator,
+  ValidationResult,
+  SchemaMigration,
+};
+```
+
+### From `@/lib/validation/module-validators`
+
+```typescript
+export {
+  registerModuleValidator,
+  getModuleValidator,
+  validateModuleField,
+  validateModuleProfile,
+  hasModuleValidator,
+  getRegisteredModules,
+  moduleValidatorRegistry,
+  // Built-in validators
+  agnesValidator,
+  titanValidator,
+  ledgerValidator,
+  somaValidator,
+  atlasValidator,
+};
+export type { ModuleValidator };
 ```

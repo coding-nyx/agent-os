@@ -3,7 +3,7 @@ name: ledger
 description: >
   Invoke this skill when working on the Ledger financial intelligence module of the Nexus AGNES SPA.
   It covers the full module: AI persona, data models, action tags, UI structure, services layer,
-  diagnosis pipeline, NSV signal ownership, cross-module cascades, known type gaps, and development
+  diagnosis pipeline, NSV signal ownership, cross-module cascades, spine events, and development
   patterns — everything needed to build or debug Ledger features without reading the raw codebase.
 ---
 
@@ -17,17 +17,18 @@ description: >
 5. [Data Model](#5-data-model)
 6. [Onboarding Flow](#6-onboarding-flow)
 7. [Action Tags Reference](#7-action-tags-reference)
-8. [UI Structure](#8-ui-structure)
-9. [Services Layer](#9-services-layer)
-10. [Diagnosis Pipeline](#10-diagnosis-pipeline)
-11. [Prompt Builder](#11-prompt-builder)
-12. [Resonance ROI Service](#12-resonance-roi-service)
-13. [Starter Plan Auto-Bootstrap](#13-starter-plan-auto-bootstrap)
-14. [Extension Fields](#14-extension-fields)
-15. [File Structure](#15-file-structure)
-16. [Development Patterns](#16-development-patterns)
-17. [Common Development Tasks](#17-common-development-tasks)
-18. [Known Issues & Gotchas](#18-known-issues--gotchas)
+8. [Spine Events](#8-spine-events)
+9. [Prompt Builder & Conversation Modes](#9-prompt-builder--conversation-modes)
+10. [UI Structure](#10-ui-structure)
+11. [Services Layer](#11-services-layer)
+12. [Diagnosis Pipeline](#12-diagnosis-pipeline)
+13. [Resonance ROI Service](#13-resonance-roi-service)
+14. [Starter Plan Auto-Bootstrap](#14-starter-plan-auto-bootstrap)
+15. [Extension Fields](#15-extension-fields)
+16. [File Structure](#16-file-structure)
+17. [Development Patterns](#17-development-patterns)
+18. [Common Development Tasks](#18-common-development-tasks)
+19. [Known Issues & Gotchas](#19-known-issues--gotchas)
 
 ---
 
@@ -41,6 +42,7 @@ description: >
 | NSV Domain | `resource` |
 | Firestore collection | `ledger_profiles` |
 | Vault | **Mandatory lock** — E2EE required to access any financial data |
+| Total source files | 49 (`.ts` and `.tsx`) |
 
 > **Critical vault rule:** Always call `isModuleAccessible('ledger')` before rendering any financial data. Never bypass the vault gate.
 
@@ -60,7 +62,7 @@ Ledger does not operate in isolation — it reads wellness signals from peer mod
 
 ## 3. AI Persona & Behavioral Economics
 
-**Source:** `src/modules/ledger/personas.ts` → `LEDGER_PERSONA`
+**Source:** `src/modules/ledger/personas.ts` (115 lines) + embedded in `prompts/ledger-prompt-builder.ts`
 
 ### Core Behavioral Economics Anchors
 
@@ -80,9 +82,9 @@ Ledger actively reads NSV signals from other modules and adjusts its analysis:
 
 | NSV Source | Signal | Ledger Response |
 |---|---|---|
-| **Agnes** | High cortisol / stress | Flags 23% elevated variable spend risk; stress-spending advisory |
-| **Atlas** | Cognitive fatigue | Flags convenience/decision-fatigue spending risk |
-| **Titan** | Low resilience score | Flags health cost inflation risk; recovery-compressing spend |
+| **Agnes** | High cortisol / stress (`emotional.stressLoad`) | Flags 23% elevated variable spend risk; stress-spending advisory |
+| **Atlas** | Cognitive fatigue (`cognitive.activeLoad`) | Flags convenience/decision-fatigue spending risk |
+| **Titan** | Low resilience (`biological.recoveryScore`, `emotional.emotionalResilience`) | Flags health cost inflation risk; recovery-compressing spend |
 
 ### Response Methodology
 
@@ -106,13 +108,23 @@ Ledger actively reads NSV signals from other modules and adjusts its analysis:
 
 **Write path:**
 ```typescript
-GlobalProjectionService.updateCrossFunctionalState(uid, {
+// Via updateGlobalSoul in action context
+await updateGlobalSoul({
   resource: {
     financialFriction: score,
     resonanceROI: value,
   }
 });
 ```
+
+### Signals Ledger Reads
+
+| NSV Key | Source Module | Purpose |
+|---|---|---|
+| `emotional.stressLoad` | Agnes | Detect stress-spending risk |
+| `emotional.emotionalResilience` | Agnes | Assess emotional bandwidth |
+| `cognitive.activeLoad` | Atlas | Detect decision-fatigue spending risk |
+| `biological.recoveryScore` | Titan | Detect health-cost inflation risk |
 
 ### Cascade Triggers (Ledger → Other Modules)
 
@@ -137,7 +149,7 @@ GlobalProjectionService.updateCrossFunctionalState(uid, {
 
 **Source:** `src/modules/ledger/services/ledger-intake-service.ts`
 
-### Supporting Types
+### Core Types
 
 ```typescript
 export type TaxCategory =
@@ -162,6 +174,9 @@ export interface DebtItem {
   balance: number;
   minPayment: number;
   apr?: number;
+  type?: string;
+  originalBalance?: number;
+  dueDay?: number;
 }
 
 export interface SavingsGoal {
@@ -169,7 +184,6 @@ export interface SavingsGoal {
   name: string;
   targetAmount: number;
   targetDate?: string;
-  // ⚠️ NOTE: does NOT have `currentAmount` — see Known Issues §18
 }
 
 export interface FinancialPlan {
@@ -186,6 +200,42 @@ export interface FinancialPlan {
   status: 'draft' | 'active' | 'archived';
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Transaction {
+  id: string;
+  date: string;               // ISO 8601 (YYYY-MM-DD)
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  category: string;
+  isRecurring?: boolean;
+  goalId?: string;
+  budgetCategoryId?: string;
+  taxCategory?: TaxCategory;
+  notes?: string;
+}
+
+export interface BudgetCategory {
+  id: string;
+  name: string;
+  allocated: number;
+  spent: number;
+  color: string;
+}
+
+export interface FinancialGoal {
+  id: string;
+  name: string;
+  type: 'savings' | 'debt_payoff' | 'investment' | 'purchase' | 'other';
+  targetAmount: number;
+  currentAmount: number;
+  targetDate?: string;
+  monthlyContribution: number;
+  priority: 'low' | 'medium' | 'high';
+  milestones?: Array<{ name: string; amount: number; reached: boolean }>;
+  notes?: string;
+  createdAt?: string;
 }
 ```
 
@@ -211,47 +261,13 @@ export interface LedgerIntakeProfile {
   createdAt: string;
   updatedAt: string;
 
-  // ⚠️ MISSING — accessed via `as any` in LedgerWorkspace.tsx:
-  // transactions?: Transaction[]
-  // budgetCategories?: BudgetCategory[]
-  // financialGoals?: FinancialGoal[]
+  // First-class transaction/budget/goal fields:
+  transactions?: Transaction[];
+  budgetCategories?: BudgetCategory[];
+  financialGoals?: FinancialGoal[];
+  extensionValues?: Record<string, unknown>;
 }
 ```
-
-### Transaction Type (not in main profile — defined in component)
-
-**Source:** `src/modules/ledger/components/TransactionManager.tsx`
-
-```typescript
-export interface Transaction {
-  id: string;
-  date: string;               // ISO 8601
-  description: string;
-  amount: number;
-  category: string;
-  type: 'income' | 'expense';
-  recurring?: boolean;
-  recurringFrequency?: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
-  tags?: string[];
-  notes?: string;
-}
-```
-
-### FinancialGoal Type (component-local, GoalTracker.tsx)
-
-```typescript
-// Defined in GoalTracker.tsx — NOT in ledger-intake-service.ts
-interface FinancialGoal {
-  id: string;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;  // ⚠️ SavingsGoal in service does NOT have this field
-  targetDate?: string;
-  // ... other goal-tracker fields
-}
-```
-
-> **Type mismatch warning:** `FinancialGoal.currentAmount` exists in `GoalTracker.tsx` but `SavingsGoal` in `ledger-intake-service.ts` does not have `currentAmount`. These two types are divergent and will conflict when you try to unify them.
 
 ---
 
@@ -268,7 +284,7 @@ interface FinancialGoal {
 | 3 | **Debt & Goals** | Debt items (comma-separated labels), Savings goals (comma-separated labels) |
 | 4 | **Planning Horizon** | `planningHorizon` toggle: `monthly` / `quarterly` / `yearly` |
 
-> **Fast-track UX note:** The fast-track form collects comma-separated **labels only** — no amounts at intake. Expense items are created with `amount: 0` and must be filled in post-onboarding. This is a known gap (see §18, issue #6).
+> **Fast-track UX note:** The fast-track form collects comma-separated **labels only** — no amounts at intake. Expense items are created with `amount: 0` and must be filled in post-onboarding.
 
 ### Onboarding Action Tags
 
@@ -287,69 +303,231 @@ complete_ledger_onboarding     // finalize onboarding, trigger starter plan boot
 
 ### Post-Onboarding Bootstrap
 
-When `complete_ledger_onboarding` fires and no active plan exists, the system auto-creates a Starter Plan (see §13).
+When `complete_ledger_onboarding` fires and no active plan exists, the system auto-creates a Starter Plan (see §14).
 
 ---
 
 ## 7. Action Tags Reference
 
-### Working Action Tags (confirmed in codebase)
+### All Implemented Action Tags (26 total)
+
+Actions are registered across three files:
+- `services/actions.ts` — 15 handlers (738 LOC)
+- `actions/ledger-field-actions.ts` — 6 handlers
+- `actions/transaction-actions.ts` — 9 handlers (some overlap with services/actions.ts)
+
+#### Field Management Actions
 
 | Tag | Payload Shape | Description |
 |---|---|---|
-| `create_financial_plan` | `{ title, summary, monthlyTarget, allocation: { essentials, growth, buffer }, tasks[] }` | Create a new `FinancialPlan` and set as active |
-| `update_budget_snapshot` | `{ monthlyIncome, fixedExpenses[], variableExpenses[], debtItems[], savingsGoals[] }` | Replace the full budget snapshot on the profile |
-| `update_financial_friction` | `{ score: number, analysis: string }` | Write friction score (0–10) to profile + NSV |
-| `compute_resonance_roi` | `{ financialFriction: number, resonanceROI: number }` | Write both ROI metrics to profile + NSV |
-| `analyze_financial_document` | `{ monthlyIncome, currency, periodLabel, fixedExpenses[], variableExpenses[], transactions[] }` | Commit extracted document data after user confirmation |
-| `log_transaction_summary` | *(from `ledger-prompt-builder.ts`)* | Summarize transaction context for AI memory |
-| `suggest_field` | `{ fieldId, label, type, description }` | Propose a new extension field to user |
-| `create_field` | `{ fieldId, label, type, defaultValue, ... }` | Create schema-validated extension field |
-| `delete_field` | `{ fieldId }` | Remove extension field |
+| `suggest_field` | `{ description, purpose, suggestedType? }` | Emit suggestion for new extension field |
+| `create_field` | `{ id, name, type, description?, defaultValue?, validation?, metadata?, options? }` | Create schema-validated extension field |
+| `delete_field` | `{ fieldId }` | Remove extension field from schema |
+| `set_field_value` | `{ fieldId, value, fieldName? }` | Update a custom field value with LLM validation |
 
-**To add a new action:**
-1. Register handler in `services/actions.ts` → `registerLedgerActions()`
-2. Add the tag to `LEDGER_PERSONA` in `personas.ts` (action tags section)
-3. Add the tag to `LEDGER_ALL_ACTIONS` in `prompts/ledger-prompt-builder.ts`
+#### Financial Metrics Actions
 
-All three locations must be updated — missing any one silently breaks the action.
+| Tag | Payload Shape | Description |
+|---|---|---|
+| `update_financial_friction` | `{ score: 0-10, analysis: string }` | Write friction score to profile + NSV |
+| `compute_resonance_roi` | `{ financialFriction: 0-10, resonanceROI: 0.0-1.0 }` | Write both ROI metrics to profile + NSV |
+| `financial_health_check` | `{ healthScore: 0-10, healthStatus: string }` | Emit health check event |
+| `detect_risk` | `{ riskType: string, riskDescription: string }` | Emit risk detection event |
 
-### ⚠️ Missing AI Action Tags (not yet implemented)
+#### Transaction Actions
 
-These are UI operations the AI cannot currently perform autonomously:
+| Tag | Payload Shape | Description |
+|---|---|---|
+| `create_transaction` / `add_transaction` | `{ type, amount, description?, category?, date?, merchant?, note?, budgetCategoryId? }` | Create new transaction (auto-links to budget category) |
+| `update_transaction` | `{ id, amount?, description?, category?, date?, type?, notes? }` | Update existing transaction |
+| `delete_transaction` | `{ transactionId }` | Remove transaction and reverse budget spent |
+| `commit_transaction` | `{ type, amount, description?, category?, date? }` | Alternative create with commit semantics |
+| `categorize_expense` | `{ transactionId, category }` | Update transaction category |
+| `log_transaction_summary` | `{ summary: string }` | Persist transaction context summary |
 
-| Missing Tag | What It Would Do |
-|---|---|
-| `add_transaction` | AI autonomously logs a new transaction |
-| `update_transaction` | AI edits an existing transaction |
-| `delete_transaction` | AI removes a transaction |
-| `add_goal` | AI creates a new savings goal |
-| `update_goal` | AI updates goal progress or metadata |
-| `add_debt_item` | AI adds a debt entry |
-| `update_debt_item` | AI updates debt balance/APR |
-| `update_budget_category` | AI adjusts budget category amounts |
-| `categorize_transaction` | AI classifies uncategorized transactions |
-| `generate_tax_summary` | AI produces a tax-category breakdown |
-| `suggest_debt_strategy` | AI runs avalanche/snowball simulation |
+#### Budget Actions
+
+| Tag | Payload Shape | Description |
+|---|---|---|
+| `create_budget` | `{ name, amount, color? }` | Create new BudgetCategory |
+| `modify_budget` | `{ budgetId, amount?, name?, changeSummary? }` | Update BudgetCategory |
+| `update_budget_snapshot` | `{ monthlyIncome?, currency?, fixedExpenses[]?, variableExpenses[]?, debtItems[]?, savingsGoals[]? }` | Replace full budget snapshot |
+
+#### Goal Actions
+
+| Tag | Payload Shape | Description |
+|---|---|---|
+| `create_goal` / `set_financial_goal` | `{ name, type?, targetAmount, currentAmount?, targetDate?, monthlyContribution?, priority?, notes? }` | Create new FinancialGoal |
+| `update_goal_progress` | `{ goalId, newAmount?, delta?, note? }` | Update goal currentAmount |
+| `complete_goal` | `{ goalId, goalName?, achievement? }` | Mark goal as completed |
+
+#### Analysis & Planning Actions
+
+| Tag | Payload Shape | Description |
+|---|---|---|
+| `create_financial_plan` | `{ title, summary, monthlyTarget, allocation: { essentials, growth, buffer }, tasks[] }` | Create and activate a FinancialPlan |
+| `analyze_financial_document` | `{ monthlyIncome?, currency?, periodLabel?, fixedExpenses[]?, variableExpenses[]?, transactions[]? }` | Commit extracted document data |
+| `parse_financial_document` | `{ transactions[]?, monthlyIncome? }` | Parse and add transactions from document |
+| `parse_financial_statement` | *(delegated to parsing-actions)* | Vision AI statement parsing |
+
+#### Simulation Actions
+
+| Tag | Payload Shape | Description |
+|---|---|---|
+| `run_debt_simulation` | `{ extraMonthlyPayment?: number }` | Run avalanche/snowball payoff simulation, push formatted result |
+| `project_savings_timeline` | `{ goalId?: string }` | Project completion timeline for goals |
+
+#### Anomaly Detection
+
+| Tag | Payload Shape | Description |
+|---|---|---|
+| `flag_anomaly` | `{ anomalyType: string, description: string }` | Emit risk event for detected anomaly |
+
+### Action Registration Checklist
+
+**To add a new action, update ALL THREE locations:**
+1. **`services/actions.ts`** or **`actions/*.ts`** — register handler with ActionHub
+2. **`personas.ts`** — add to `LEDGER_PERSONA` action tags section
+3. **`prompts/ledger-prompt-builder.ts`** — add to `LEDGER_ALL_ACTIONS` and appropriate scope in `LEDGER_SCOPE_ACTIONS`
+
+Missing any one silently breaks the action.
+---
+
+## 8. Spine Events
+
+**Source:** `src/modules/ledger/actions/ledger-field-actions.ts` (lines 33-51)
+
+Ledger emits 18 distinct Spine event types:
+
+| Event Type | Trigger | Key Data |
+|---|---|---|
+| `BUDGET_UPDATED` | Budget snapshot saved | `netCashflow`, `currency` |
+| `GOAL_PROGRESS` | Goal currentAmount updated | `goalName`, `percentComplete`, `currentAmount`, `targetAmount` |
+| `FINANCIAL_FRICTION_CHANGED` | Friction score updated | `newScore`, `analysis`, `tier` |
+| `RESONANCE_ROI_UPDATED` | ROI metrics computed | `newROI`, `newFriction` |
+| `FINANCIAL_PLAN_CREATED` | New plan activated | `planId`, `planTitle`, `monthlyTarget` |
+| `DOCUMENT_ANALYZED` | Statement/document parsed | `periodLabel`, `transactionCount` |
+| `FIELD_CREATED` | Extension field added | `fieldId`, `fieldName`, `fieldType` |
+| `FIELD_DELETED` | Extension field removed | `fieldId`, `fieldName` |
+| `FIELD_VALUE_UPDATED` | Custom field value saved | `fieldId`, `fieldName`, `value` |
+| `TRANSACTION_CREATED` | New transaction added | `transactionId`, `amount`, `type`, `category` |
+| `TRANSACTION_UPDATED` | Transaction modified | `transactionId`, `amount`, `description` |
+| `TRANSACTION_DELETED` | Transaction removed | `transactionId`, `description` |
+| `BUDGET_CREATED` | New BudgetCategory created | `budgetId`, `budgetName`, `amount` |
+| `BUDGET_MODIFIED` | BudgetCategory updated | `budgetId`, `budgetName`, `changeSummary` |
+| `GOAL_CREATED` | New goal created | `goalId`, `goalName`, `targetAmount`, `goalPriority` |
+| `GOAL_COMPLETED` | Goal target reached | `goalId`, `goalName`, `achievement` |
+| `FINANCIAL_HEALTH_CHECK` | Health check performed | `healthScore`, `healthStatus` |
+| `RISK_DETECTED` | Financial risk identified | `riskType`, `riskDescription` |
+
+### Toast Templates
+
+Each Spine event maps to a toast notification via `buildLedgerToast()`. Toast variants:
+- **success**: green — BUDGET_UPDATED, GOAL_PROGRESS, PLAN_CREATED, etc.
+- **info**: blue — RESONANCE_ROI_UPDATED, TRANSACTION_UPDATED
+- **warning**: yellow — TRANSACTION_DELETED, RISK_DETECTED
+- **error**: red — FINANCIAL_FRICTION_CHANGED (when tier = critical)
 
 ---
 
-## 8. UI Structure
+## 9. Prompt Builder & Conversation Modes
 
-### Main Page (`LedgerPage.tsx`)
+**Source:** `src/modules/ledger/prompts/ledger-prompt-builder.ts`
 
-Wrapped in `UnifiedModulePage`. Two top-level tabs:
+### Four Conversation Modes
+
+| Mode | Context Included | Use Case | Actions Allowed |
+|---|---|---|---|
+| `general` | Full persona + full profile + extension fields | Default AI chat | 14 actions |
+| `budget-review` | Persona + scoped to single budget category | Deep-dive on one spend category | 7 actions |
+| `goal-focus` | Persona + scoped to single financial goal | Progress review for one goal | 7 actions |
+| `field-crud` | Schema management ONLY — **no user data** | Create/edit/delete extension fields | 4 actions |
+
+> **Security note for `field-crud` mode:** No user financial data should ever be included in the field-crud prompt. The AI in this mode should only see schema metadata.
+
+### Actions Per Mode
+
+```typescript
+const LEDGER_SCOPE_ACTIONS = {
+  general: [
+    'create_financial_plan',
+    'update_budget_snapshot',
+    'update_financial_friction',
+    'compute_resonance_roi',
+    'analyze_financial_document',
+    'log_transaction_summary',
+    'propose_reminder',
+    'query_reminders',
+    'suggest_field',
+    'create_transaction',
+    'set_financial_goal',
+    'run_debt_simulation',
+    'financial_health_check',
+    'detect_risk',
+  ],
+  'budget-review': [
+    'update_budget_snapshot',
+    'create_transaction',
+    'create_budget',
+    'modify_budget',
+    'financial_health_check',
+    'propose_reminder',
+    'query_reminders',
+  ],
+  'goal-focus': [
+    'update_budget_snapshot',
+    'set_financial_goal',
+    'update_goal_progress',
+    'complete_goal',
+    'project_savings_timeline',
+    'create_transaction',
+    'propose_reminder',
+    'query_reminders',
+  ],
+  'field-crud': [
+    'suggest_field',
+    'create_field',
+    'delete_field',
+    'set_field_value',
+  ],
+};
+```
+
+### Action Filtering
+
+`isActionAllowed(actionType, scopeKind)` — Returns true if the action is valid for the current conversation mode. Used at runtime to silently drop hallucinated out-of-scope actions.
+
+### Prompt Composition
+
+The builder references `LEDGER_ALL_ACTIONS` — the canonical list of all valid action tags Ledger's AI may emit. This list must be kept in sync with `services/actions.ts` and `personas.ts`.
+
+---
+
+## 10. UI Structure
+
+### Main Entry Point (`LedgerPage.tsx`)
+
+Wrapped in `UnifiedModulePage`. Routes to `LedgerContent.tsx` which manages 5 tabs.
+
+### LedgerContent.tsx — 5 Main Tabs
 
 ```
-[Dashboard]  [Workspace]
+[Dashboard]  [Transactions]  [Budget]  [Goals]  [Analytics]
 ```
 
-### Dashboard Tab (`LedgerDashboard.tsx`)
+### Tab Components (in `tabs/`)
 
-**Secondary view tabs:** Overview | Cash Flow | Debt Tracker
+| Tab | File | Primary Component |
+|---|---|---|
+| Dashboard | `DashboardTab.tsx` | `LedgerDashboard` |
+| Transactions | `TransactionsTab.tsx` | `TransactionManager` |
+| Budget | `BudgetTab.tsx` | `BudgetPlanner` |
+| Goals | `GoalsTab.tsx` | `GoalTracker` |
+| Tax | `TaxTab.tsx` | `TaxTracker` |
 
-#### Stat Cards
+### Dashboard (`LedgerDashboard.tsx`)
 
+**Stat Cards:**
 | Card | Data Source |
 |---|---|
 | Monthly Income | `profile.monthlyIncome` |
@@ -357,74 +535,102 @@ Wrapped in `UnifiedModulePage`. Two top-level tabs:
 | Net Savings | `monthlyIncome - totalExpenses` |
 | Resonance ROI | `resource.resonanceROI` from NSV |
 
-#### Dashboard Panels
+**Panels:**
+- `AIFinancialAdvisor.tsx` — inline AI chat scoped to financial advice
+- `BehavioralInsightsPanel.tsx` — surfaces behavioral economics insights based on NSV signals
+- `FinancialCharts.tsx` — CashFlowChart + DebtPayoffTracker
+- `QuickLogPanel.tsx` — quick transaction entry
 
-- **ProgressRow**: Top 5 expenses as percentage bars of income
-- **CashFlowChart**: ⚠️ **Currently uses `Math.random()` mock data** — NOT derived from real transactions
-- **DebtPayoffTracker**: ⚠️ **Also mock data**
-- **AI Financial Advisor panel**: inline AI chat scoped to financial advice
-- **BehavioralInsightsPanel**: surfaces behavioral economics insights based on NSV signals
-
-#### Dashboard Warnings (auto-shown)
-
+**Dashboard Warnings (auto-shown):**
 | Condition | Warning Shown |
 |---|---|
 | `monthlyIncome < totalExpenses` | Negative cashflow alert |
 | `financialFriction > 7` | High friction warning |
 | `activePlanId === null` | No active plan prompt |
 
-### Workspace Tab (`LedgerWorkspace.tsx`)
-
-Four sub-tabs:
-
-#### 1. Transactions (`TransactionManager.tsx`)
+### TransactionManager.tsx
 
 - Add / edit / delete transactions manually
 - Search by description, filter by category and type, sort by date/amount
 - CSV import and export
 - Recurring transaction flag with frequency selection
 - Tags and notes per transaction
+- Links transactions to BudgetCategories
 
-#### 2. Budget Planner (`BudgetPlanner.tsx`)
+### BudgetPlanner.tsx
 
 - Budget categories with amount targets
 - Template presets:
   - **50/30/20** — Needs / Wants / Savings
   - **70/20/10** — Living / Savings / Giving
   - **Zero-based** — Every dollar assigned
+- Visual progress bars showing spent vs allocated
 
-#### 3. Goals (`GoalTracker.tsx`)
+### GoalTracker.tsx
 
-Fields per goal: type, target amount, current amount, contribution schedule, priority, milestones
+Fields per goal: type, target amount, current amount, target date, monthly contribution, priority, milestones
 
-> **Type mismatch:** `currentAmount` exists here but not in `SavingsGoal` in the service — they will diverge on persistence.
+Goal types: `savings`, `debt_payoff`, `investment`, `purchase`, `other`
+Priority levels: `low`, `medium`, `high`
 
-#### 4. Fields (`FieldsTab.tsx`)
+### Additional Components
 
-Manage extension fields. Renders suggested fields from `LEDGER_SUGGESTED_EXTENSIONS` in `field-templates.ts`.
-
-### Top-Bar Document Actions
-
-| Action | Flow |
+| Component | Purpose |
 |---|---|
-| 📷 **Camera Capture** | Vision AI via `openai/gpt-4o` → extract financial data → confirmation modal → `analyze_financial_document` |
-| 📁 **File Upload** | Document intelligence pipeline → structured extraction → confirmation modal → commit |
-| 📂 **Embedded Doc Analysis** | Opens AI chat mode scoped to uploaded document |
+| `AnalyticsTab.tsx` | Spending trends and financial analytics |
+| `SpendingTrendsChart.tsx` | Visualize spending patterns over time |
+| `DebtStrategist.tsx` | Avalanche/snowball debt payoff analysis |
+| `TaxTracker.tsx` | Tax category tracking and estimates |
+| `FieldsTab.tsx` | Extension fields management UI |
+| `LedgerNotificationSettingsPanel.tsx` | Configure Ledger notifications |
+| `shared/useCRUDModal.ts` | Reusable modal hook for CRUD operations |
 
-> **Camera capture prerequisite:** Requires `openrouter_api_key` in `localStorage`. Fails gracefully but **silently** if key is absent — no visible error to user.
+### LedgerActionsContext
+
+**Source:** `context/LedgerActionsContext.tsx`
+
+Provides 11 action callbacks to child components:
+
+```typescript
+interface LedgerActionsContextValue {
+  onAddTransaction, onUpdateTransaction, onDeleteTransaction,
+  onImportCSV, onExportCSV,
+  onUpdateCategory, onAddCategory, onDeleteCategory, onApplyTemplate,
+  onAddGoal, onUpdateGoal, onDeleteGoal,
+  onAddDebt, onUpdateDebt, onDeleteDebt,
+  onValueChange, onAddField, onDeleteField,
+  onAskAI
+}
+```
 
 ---
 
-## 9. Services Layer
+## 11. Services Layer
 
 ```
 src/modules/ledger/services/
-├── ledger-intake-service.ts
-├── ledger-cross-verification-engine.ts
-├── resonance-roi-service.ts
-├── spine-event-service.ts
-└── actions.ts
+├── actions.ts                           — 738 LOC, registerLedgerActions(), 15+ handlers
+├── ledger-intake-service.ts             — Firestore CRUD, normalizeLedgerProfile
+├── ledger-cross-verification-engine.ts  — Cross-verify stated vs. actual spend
+├── cross-verification-service.ts        — Verification service integration
+├── ledger-field-validator.ts            — LLM-powered field validation
+├── ledger-document-policy.ts            — Document handling policies
+├── resonance-roi-service.ts             — computeFinancialFriction, computeResonanceROI
+├── spine-event-service.ts               — getLedgerEvents, logLedgerEvent
+└── aggregation/
+    ├── transaction-aggregation.ts       — Transaction analysis utilities
+    ├── budget-aggregation.ts            — Budget analysis utilities
+    ├── dashboard-aggregation.ts         — Dashboard data aggregation
+    ├── utils.ts                         — Shared aggregation utilities
+    └── index.ts                         — Barrel export
 ```
+
+### `actions.ts` (738 LOC)
+
+Entry point: `registerLedgerActions()`. Called at module init. Registers all Ledger action tags with the global ActionHub. Includes:
+- `createStarterPlan()` helper for auto-bootstrap
+- 15+ action handlers
+- Profile load/persist helpers
 
 ### `ledger-intake-service.ts`
 
@@ -432,6 +638,8 @@ Responsibilities:
 - Firestore CRUD operations on `ledger_profiles/{uid}` (encrypted via vault)
 - `normalizeLedgerProfile(raw)` — coerces raw Firestore document into typed `LedgerIntakeProfile`
 - `createEmptyLedgerProfile()` — returns a zeroed profile for new users
+- `loadLedgerProfile({ userId, encryptionKey })` — load with vault decryption
+- `saveLedgerProfile(profile, { userId, encryptionKey })` — save with vault encryption
 
 ### `ledger-cross-verification-engine.ts`
 
@@ -440,41 +648,36 @@ Cross-verifies stated budget figures against actual transaction data. Surfaces d
 ### `resonance-roi-service.ts`
 
 ```typescript
-// computeResonanceROI(profile: LedgerIntakeProfile): { resonanceROI: number, financialFriction: number }
+function computeFinancialFriction(profile: LedgerIntakeProfile): number
+function computeResonanceROI(profile: LedgerIntakeProfile): { resonanceROI: number, financialFriction: number }
 ```
 
-Inputs it uses:
+Inputs used:
 - `fixedExpenses`, `variableExpenses`
 - `debtItems`
 - `savingsGoals`
 - `monthlyIncome`
 - `activePlan` (allocation percentages)
 
-See §12 for full algorithm details.
-
 ### `spine-event-service.ts`
 
 ```typescript
 getLedgerEvents({ type: string, startDate: string }): Promise<SpineEvent[]>
+logLedgerEvent(event: LedgerSpineEvent): Promise<void>
 ```
 
-Spine event types emitted by Ledger:
+### `aggregation/` — Data Aggregation Utilities
 
-| Event Type | Trigger |
+| File | Purpose |
 |---|---|
-| `TRANSACTION_CREATED` | New transaction added |
-| `BUDGET_UPDATED` | Budget snapshot updated |
-| `GOAL_ACHIEVED` | Savings goal reached |
-| `FINANCIAL_FRICTION_UPDATED` | Friction score changes |
-| `PLAN_ACTIVATED` | A financial plan set as active |
-
-### `actions.ts`
-
-Entry point: `registerLedgerActions()`. Called at module init. Registers all Ledger action tags with the global ActionHub. Must be the single source of truth for action registration.
+| `transaction-aggregation.ts` | `aggregateTransactionsByMonth()`, `matchCategoryToTransaction()`, `computeDebtPayoffSchedule()`, `computeSavingsProjection()` |
+| `budget-aggregation.ts` | Budget category analysis and summaries |
+| `dashboard-aggregation.ts` | Dashboard stat card computation |
+| `utils.ts` | Shared utility functions |
 
 ---
 
-## 10. Diagnosis Pipeline
+## 12. Diagnosis Pipeline
 
 **Source:** `src/modules/ledger/diagnosis/`
 
@@ -499,36 +702,14 @@ The diagnosis spec registers with `registerDiagnosisSpec()` — it runs as part 
 
 ---
 
-## 11. Prompt Builder
-
-**Source:** `src/modules/ledger/prompts/ledger-prompt-builder.ts`
-
-### Four Conversation Modes
-
-| Mode | Context Included | Use Case |
-|---|---|---|
-| `general` | Full persona + full profile + extension fields | Default AI chat in Ledger |
-| `budget-review` | Persona + scoped to single budget category | Deep-dive on one spend category |
-| `goal-focus` | Persona + scoped to single financial goal | Progress review for one goal |
-| `field-crud` | Schema management ONLY — **no user financial data** | Create/edit/delete extension fields |
-
-> **Security note for `field-crud` mode:** No user financial data should ever be included in the field-crud prompt. The AI in this mode should only see schema metadata.
-
-### Prompt Composition
-
-The builder references `LEDGER_ALL_ACTIONS` — the canonical list of all valid action tags Ledger's AI may emit. This list must be kept in sync with `services/actions.ts` and `personas.ts`.
-
-`log_transaction_summary` is emitted from this layer to summarize transaction context for AI memory without sending raw transaction arrays.
-
----
-
-## 12. Resonance ROI Service
+## 13. Resonance ROI Service
 
 **Source:** `src/modules/ledger/services/resonance-roi-service.ts`
 
 ### Algorithm Overview
 
 ```typescript
+function computeFinancialFriction(profile: LedgerIntakeProfile): number  // 0-10
 function computeResonanceROI(profile: LedgerIntakeProfile): {
   resonanceROI: number;    // 0.0–1.0
   financialFriction: number; // 0–10
@@ -549,7 +730,7 @@ function computeResonanceROI(profile: LedgerIntakeProfile): {
 
 **Write path after computation:**
 ```typescript
-GlobalProjectionService.updateCrossFunctionalState(uid, {
+await updateGlobalSoul({
   resource: {
     financialFriction: result.financialFriction,
     resonanceROI: result.resonanceROI,
@@ -559,9 +740,23 @@ GlobalProjectionService.updateCrossFunctionalState(uid, {
 
 This also triggers cascade checks (§4) — if thresholds are crossed, peer modules are notified.
 
+### Friction Tier Classification
+
+```typescript
+function getFrictionTier(score: number): FrictionTier
+// Returns: 'low' | 'moderate' | 'elevated' | 'critical'
+```
+
+| Score Range | Tier | Toast Variant |
+|---|---|---|
+| 0–3 | low | success (green) |
+| 4–5 | moderate | info (blue) |
+| 6–7 | elevated | warning (yellow) |
+| 8–10 | critical | error (red) |
+
 ---
 
-## 13. Starter Plan Auto-Bootstrap
+## 14. Starter Plan Auto-Bootstrap
 
 Fires automatically when `complete_ledger_onboarding` action executes and `profile.activePlanId === null`.
 
@@ -571,9 +766,9 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
   const totalVariable = sum(profile.variableExpenses.map(e => e.amount));
 
   return {
-    id: generateId(),
+    id: crypto.randomUUID(),
     title: 'Starter Financial Plan',
-    summary: 'AI-generated baseline plan from onboarding data.',
+    summary: 'Baseline cashflow stabilization with weekly execution checkpoints.',
     monthlyTarget: Math.max(profile.monthlyIncome - (totalFixed + totalVariable), 0),
     allocation: {
       essentials: 60,  // %
@@ -581,9 +776,9 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
       buffer: 15,      // %
     },
     tasks: [
-      'Track every variable expense for 30 days to establish baseline.',
-      'Cap discretionary spend at 80% of current variable total.',
-      'Apply buffer deposit on first paycheck of each month.',
+      'Track every variable expense for the next 7 days.',
+      'Cap discretionary spending at 80% of current baseline.',
+      'Apply first buffer deposit to emergency reserve this month.',
     ],
     status: 'active',
     createdAt: now(),
@@ -596,9 +791,9 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
 
 ---
 
-## 14. Extension Fields
+## 15. Extension Fields
 
-**Source:** `src/modules/ledger/field-templates.ts` → `LEDGER_SUGGESTED_EXTENSIONS`
+**Source:** `src/modules/ledger/field-templates.ts` (412 LOC)
 
 10 built-in field suggestions across 4 categories:
 
@@ -615,58 +810,107 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
 | **Expenses** | `charitable-giving` | Charitable Giving |
 | **Liabilities** | `tax-liability` | Estimated Tax Liability |
 
-AI can suggest and create extension fields using `suggest_field` → `create_field` flow. All fields are schema-validated before persistence.
+### Allowed Field Types for Ledger
+
+```typescript
+const LEDGER_ALLOWED_FIELD_TYPES = [
+  FieldType.NUMBER,
+  FieldType.RANGE,
+  FieldType.SELECT,
+  FieldType.MULTI_SELECT,
+  FieldType.DATE,
+];
+```
+
+AI can suggest and create extension fields using `suggest_field` → `create_field` flow. All fields are schema-validated via `SchemaRegistry` before persistence.
+
+### Field Validation
+
+`set_field_value` uses LLM-powered semantic validation via `ledger-field-validator.ts`:
+- Validates value makes sense for the field name
+- Falls back to keyword heuristics if LLM unavailable
+- Can auto-correct values (e.g., "5k" → "5000")
 
 ---
 
-## 15. File Structure
+## 16. File Structure
 
 ```
-src/modules/ledger/
-├── LedgerPage.tsx                        — Main page; UnifiedModulePage wrapper, tab routing
-├── field-templates.ts                    — LEDGER_SUGGESTED_EXTENSIONS, field builder utilities
-├── personas.ts                           — LEDGER_PERSONA (system prompt, action tags, behavioral anchors)
+src/modules/ledger/                       — 49 source files total
+├── LedgerPage.tsx                        — Main page wrapper
+├── LedgerContent.tsx                     — Tab routing (5 tabs: Dashboard, Transactions, Budget, Goals, Analytics)
+├── field-templates.ts                    — 412 LOC, LEDGER_SUGGESTED_EXTENSIONS, getFrictionTier
+├── personas.ts                           — 115 LOC, LEDGER_PERSONA
 │
 ├── actions/
-│   ├── ledger-field-actions.ts           — Field system action handlers + spine event registrations
-│   └── transaction-actions.ts            — Transaction-related action registrations
+│   ├── ledger-field-actions.ts           — 610 LOC, field CRUD + friction actions, Spine event types, toast templates
+│   └── transaction-actions.ts            — 627 LOC, transaction/budget/goal action handlers
 │
-├── components/
-│   ├── LedgerDashboard.tsx               — Dashboard tab: stat cards, charts, advisor panel
-│   ├── LedgerWorkspace.tsx               — Workspace tab: sub-tab router (⚠️ contains `as any` casts)
+├── components/                           — 17 component files
+│   ├── LedgerDashboard.tsx               — Dashboard with stat cards, charts, AI advisor
+│   ├── AnalyticsTab.tsx                  — Spending analytics view
 │   ├── TransactionManager.tsx            — Transaction CRUD, search/filter, CSV import/export
-│   ├── BudgetPlanner.tsx                 — Budget categories, allocation templates
-│   ├── GoalTracker.tsx                   — Savings goals with currentAmount (type-divergent from service)
-│   ├── FinancialCharts.tsx               — CashFlowChart + DebtPayoffTracker (⚠️ MOCK DATA — Math.random)
+│   ├── BudgetPlanner.tsx                 — Budget categories, 50/30/20 & 70/20/10 templates
+│   ├── GoalTracker.tsx                   — Savings goals with milestones
+│   ├── DebtStrategist.tsx                — Avalanche/snowball debt analysis
+│   ├── TaxTracker.tsx                    — Tax category tracking
+│   ├── FinancialCharts.tsx               — CashFlowChart, DebtPayoffTracker
 │   ├── AIFinancialAdvisor.tsx            — Inline AI advisor panel
-│   ├── BehavioralInsightsPanel.tsx       — Behavioral economics signal surface
-│   ├── FieldsTab.tsx                     — Extension fields management UI
-│   └── index.ts                          — Component barrel exports
+│   ├── BehavioralInsightsPanel.tsx       — Behavioral economics insights
+│   ├── QuickLogPanel.tsx                 — Quick transaction entry
+│   ├── SpendingTrendsChart.tsx           — Spending trend visualization
+│   ├── FieldsTab.tsx                     — Extension fields management
+│   ├── LedgerNotificationSettingsPanel.tsx — Notification settings
+│   ├── shared/useCRUDModal.ts            — Reusable CRUD modal hook
+│   ├── index.ts                          — Component barrel exports
+│   └── README.md                         — Component documentation
+│
+├── context/
+│   └── LedgerActionsContext.tsx          — 11 action callbacks for child components
 │
 ├── diagnosis/
-│   ├── ledger-diagnosis-spec.ts          — Registers diagnosis spec with global diagnosis system
-│   ├── ledger-diagnosis-extractor.ts     — Extracts financial signals from profile
-│   ├── ledger-diagnosis-prompt.ts        — Builds AI prompt for diagnosis run
-│   └── ledger-diagnosis-merge.ts         — Merges AI diagnosis output back into profile
+│   ├── ledger-diagnosis-spec.ts          — Registers diagnosis spec
+│   ├── ledger-diagnosis-extractor.ts     — Extracts financial signals
+│   ├── ledger-diagnosis-prompt.ts        — Builds diagnosis AI prompt
+│   └── ledger-diagnosis-merge.ts         — Merges AI output back
+│
+├── hooks/
+│   └── use-ledger-cross-verify.ts        — Cross-verification hook
 │
 ├── onboarding/
 │   ├── LedgerOnboarding.tsx              — 4-step onboarding wizard
 │   └── LedgerOnboarding.test.tsx         — Onboarding unit tests
 │
 ├── prompts/
-│   └── ledger-prompt-builder.ts          — Builds AI prompts (4 modes); owns LEDGER_ALL_ACTIONS
+│   └── ledger-prompt-builder.ts          — 4 modes, LEDGER_ALL_ACTIONS, LEDGER_SCOPE_ACTIONS
 │
-└── services/
-    ├── ledger-intake-service.ts          — Firestore CRUD, normalizeLedgerProfile, createEmptyLedgerProfile
-    ├── ledger-cross-verification-engine.ts — Cross-verify stated vs. actual spend
-    ├── resonance-roi-service.ts          — computeResonanceROI → NSV write
-    ├── spine-event-service.ts            — getLedgerEvents (typed Spine event queries)
-    └── actions.ts                        — registerLedgerActions — ActionHub registration entry point
+├── services/
+│   ├── actions.ts                        — 738 LOC, registerLedgerActions(), 15+ handlers
+│   ├── ledger-intake-service.ts          — Firestore CRUD, profile normalization
+│   ├── ledger-cross-verification-engine.ts — Stated vs actual spend verification
+│   ├── cross-verification-service.ts     — Verification service integration
+│   ├── ledger-field-validator.ts         — LLM-powered field validation
+│   ├── ledger-document-policy.ts         — Document handling policies
+│   ├── resonance-roi-service.ts          — computeFinancialFriction, computeResonanceROI
+│   ├── spine-event-service.ts            — getLedgerEvents, logLedgerEvent
+│   └── aggregation/
+│       ├── transaction-aggregation.ts    — Transaction analysis, debt simulation
+│       ├── budget-aggregation.ts         — Budget analysis
+│       ├── dashboard-aggregation.ts      — Dashboard stat aggregation
+│       ├── utils.ts                      — Shared utilities
+│       └── index.ts                      — Barrel export
+│
+└── tabs/
+    ├── DashboardTab.tsx                  — Dashboard tab wrapper
+    ├── TransactionsTab.tsx               — Transactions tab wrapper
+    ├── BudgetTab.tsx                     — Budget tab wrapper
+    ├── GoalsTab.tsx                      — Goals tab wrapper
+    └── TaxTab.tsx                        — Tax tab wrapper
 ```
 
 ---
 
-## 16. Development Patterns
+## 17. Development Patterns
 
 ### Vault Gate Pattern
 
@@ -686,17 +930,15 @@ Never render raw financial figures outside this guard.
 
 All three locations must be updated in lockstep — missing any one silently breaks the action:
 
-1. **`services/actions.ts`** — register the handler with ActionHub
+1. **`services/actions.ts`** or **`actions/*.ts`** — register handler with `ActionHub.registerMultiple('ledger', {...})`
 2. **`personas.ts`** — add the tag to `LEDGER_PERSONA`'s action tag section
-3. **`prompts/ledger-prompt-builder.ts`** — add the tag to `LEDGER_ALL_ACTIONS`
+3. **`prompts/ledger-prompt-builder.ts`** — add to `LEDGER_ALL_ACTIONS` and appropriate scope in `LEDGER_SCOPE_ACTIONS`
 
 ### Writing NSV Signals
 
 ```typescript
-// Always use GlobalProjectionService, never direct Firestore writes for NSV:
-import { GlobalProjectionService } from '@/services/global-projection-service';
-
-await GlobalProjectionService.updateCrossFunctionalState(uid, {
+// Always use updateGlobalSoul in action context, never direct Firestore writes for NSV:
+await updateGlobalSoul({
   resource: {
     financialFriction: score,
     resonanceROI: value,
@@ -723,94 +965,140 @@ Ledger has two philosophical operating modes depending on user context:
 
 The AI should infer the mode from `profile.onboardingComplete`, `profile.activePlanId`, and the depth of transaction history. Do not hard-code mode selection — let it emerge from profile completeness signals.
 
+### Spine Event Emission Pattern
+
+```typescript
+// In action handlers:
+emitSpineEvent('TRANSACTION_CREATED', {
+  domain: 'R',
+  source: 'ledger',
+  priority: 'alert',
+  transactionId: tx.id,
+  amount: absAmount,
+  type: txType,
+  category: tx.category,
+  date: tx.date,
+});
+
+// For persistent logging:
+await spineEventService.logLedgerEvent({
+  type: 'TRANSACTION_CREATED',
+  domain: 'R',
+  source: `transaction:${tx.id}`,
+  data: { ... },
+  financialImpact: { amount, currency, netCashflow, frictionScore, frictionTier },
+});
+```
+
 ---
 
-## 17. Common Development Tasks
+## 18. Common Development Tasks
 
-### Task 1: Fix Type Gaps (Priority: High)
+### Task 1: Add a New Action Tag
 
-Add `transactions`, `budgetCategories`, and `financialGoals` as first-class typed fields in `LedgerIntakeProfile`.
+Example: Adding `generate_tax_summary`:
 
-**File:** `src/modules/ledger/services/ledger-intake-service.ts`
-
-```typescript
-// Add to LedgerIntakeProfile:
-transactions?: Transaction[];
-budgetCategories?: BudgetCategory[];
-financialGoals?: FinancialGoal[];  // align currentAmount with SavingsGoal
-```
-
-Also update `normalizeLedgerProfile()` to default these arrays to `[]`.
-
-> **Gotcha:** `FinancialGoal.currentAmount` in `GoalTracker.tsx` does not exist in `SavingsGoal`. Decide whether to add `currentAmount` to `SavingsGoal` or keep them as separate types with a mapping layer.
-
-### Task 2: Fix Charts (Priority: High)
-
-**File:** `src/modules/ledger/components/FinancialCharts.tsx`
-
-Replace all `Math.random()` calls with aggregation over `profile.transactions[]`.
-
-```typescript
-// Instead of:
-const data = months.map(m => ({ month: m, income: Math.random() * 5000, expenses: Math.random() * 4000 }));
-
-// Derive from real data:
-const data = aggregateTransactionsByMonth(profile.transactions ?? [], months);
-```
-
-Write a pure `aggregateTransactionsByMonth(transactions, months)` utility — keep it in a separate file for testability.
-
-### Task 3: Add AI Transaction Action
-
-1. Create action handler in `services/actions.ts`:
+1. **Register handler** in `services/actions.ts`:
    ```typescript
-   ActionHub.register('add_transaction', async (payload: Partial<Transaction>, ctx) => {
-     const tx: Transaction = { id: generateId(), ...payload, createdAt: now() };
-     await updateLedgerProfile(ctx.uid, { transactions: arrayUnion(tx) });
-   });
+   generate_tax_summary: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+     const profile = await loadProfile(userId, encryptionKey);
+     if (!profile) return;
+     // Group transactions by taxCategory
+     const summary = generateTaxCategorySummary(profile);
+     pushAssistantMessage?.(formatTaxSummary(summary));
+   },
    ```
-2. Add `add_transaction` to `LEDGER_PERSONA` action tags
-3. Add `add_transaction` to `LEDGER_ALL_ACTIONS`
 
-### Task 4: Add Tax Summary Feature
+2. **Add to personas.ts** — include in the action tags section
 
-1. Create `src/modules/ledger/services/ledger-tax-service.ts`
-2. Implement `generateTaxSummary(profile)` — group by `taxCategory` field on `BudgetLineItem`
-3. Register `generate_tax_summary` action in all three locations (§16 pattern)
+3. **Add to prompt builder** — `LEDGER_ALL_ACTIONS` and `LEDGER_SCOPE_ACTIONS.general`
 
-### Task 5: Add Debt Strategy AI Action
+### Task 2: Add a New Spine Event Type
 
-1. Implement `suggest_debt_strategy` action
-2. Support both avalanche (highest APR first) and snowball (lowest balance first) simulation
-3. Payload: `{ strategy: 'avalanche' | 'snowball', extraMonthlyPayment: number }`
-4. Response: payoff timeline per debt item, total interest saved
+1. **Add to type** in `ledger-field-actions.ts`:
+   ```typescript
+   export type LedgerSpineEventType = ... | 'TAX_SUMMARY_GENERATED';
+   ```
+
+2. **Add toast template** in `buildLedgerToast()`:
+   ```typescript
+   case 'TAX_SUMMARY_GENERATED':
+     return { title: 'Tax Summary', description: '...', variant: 'success', icon: 'FileText', duration: 3000 };
+   ```
+
+3. **Add to LEDGER_TOAST_EVENTS array**
+
+4. **Emit in action handler**:
+   ```typescript
+   emitSpineEvent('TAX_SUMMARY_GENERATED', { ... });
+   ```
+
+### Task 3: Add Budget Template
+
+In `BudgetPlanner.tsx`, add to the templates array:
+
+```typescript
+const BUDGET_TEMPLATES: BudgetTemplate[] = [
+  { name: '50/30/20', categories: [...] },
+  { name: '70/20/10', categories: [...] },
+  { name: 'Zero-Based', categories: [...] },
+  // Add new template:
+  { name: 'Minimalist', categories: [
+    { name: 'Essentials', percent: 80 },
+    { name: 'Savings', percent: 20 },
+  ]},
+];
+```
+
+### Task 4: Add Transaction Aggregation
+
+In `aggregation/transaction-aggregation.ts`:
+
+```typescript
+export function aggregateByCategory(transactions: Transaction[]): CategorySummary[] {
+  return transactions.reduce((acc, tx) => {
+    // Group by category
+  }, []);
+}
+```
 
 ---
 
-## 18. Known Issues & Gotchas
+## 19. Known Issues & Gotchas
 
 | # | Issue | Severity | Location |
 |---|---|---|---|
-| 1 | `transactions` stored on profile via `as any` | 🔴 High | `LedgerWorkspace.tsx` |
-| 2 | `budgetCategories` stored via `as any` — may not persist correctly with `update_budget_snapshot` | 🔴 High | `LedgerWorkspace.tsx` |
-| 3 | `financialGoals` stored via `as any` | 🔴 High | `LedgerWorkspace.tsx` |
-| 4 | `FinancialGoal.currentAmount` (GoalTracker) vs. `SavingsGoal` (service) — type divergence | 🔴 High | `GoalTracker.tsx` / `ledger-intake-service.ts` |
-| 5 | `CashFlowChart` and `DebtPayoffTracker` use `Math.random()` — different data every render | 🟠 Medium | `FinancialCharts.tsx` |
-| 6 | Fast-track onboarding creates expense items with `amount: 0` — needs amount input in form | 🟠 Medium | `LedgerOnboarding.tsx` |
-| 7 | Camera capture silently fails if `openrouter_api_key` absent in localStorage | 🟡 Low | `LedgerWorkspace.tsx` (top-bar) |
-| 8 | `update_budget_snapshot` action exists but targets a field (`budgetCategories`) that is `as any` typed | 🟠 Medium | `services/actions.ts` |
-| 9 | No AI action to autonomously add/update/delete transactions — user must do this manually | 🟠 Medium | Missing action tags |
-| 10 | `generate_tax_summary` and `suggest_debt_strategy` not implemented — AI cannot perform these | 🟡 Low | Missing service + action tags |
+| 1 | Some actions registered in multiple files (e.g., `create_transaction`) | 🟡 Low | `services/actions.ts` + `actions/transaction-actions.ts` |
+| 2 | `SavingsGoal` (onboarding) vs `FinancialGoal` (active use) have different shapes | 🟠 Medium | `ledger-intake-service.ts` vs `GoalTracker.tsx` |
+| 3 | Fast-track onboarding creates expense items with `amount: 0` | 🟡 Low | `LedgerOnboarding.tsx` |
+| 4 | `FinancialCharts.tsx` may use simplified data visualization | 🟡 Low | `FinancialCharts.tsx` |
+| 5 | Debt simulation assumes all debts have APR | 🟡 Low | `aggregation/transaction-aggregation.ts` |
 
 ### Debugging Checklist
 
 Before debugging any Ledger AI action failure, verify:
-- [ ] Action tag is in `services/actions.ts` (registered with ActionHub)
+- [ ] Action tag is registered in one of: `services/actions.ts`, `actions/ledger-field-actions.ts`, `actions/transaction-actions.ts`
 - [ ] Action tag is in `LEDGER_PERSONA` (personas.ts)
-- [ ] Action tag is in `LEDGER_ALL_ACTIONS` (ledger-prompt-builder.ts)
+- [ ] Action tag is in `LEDGER_ALL_ACTIONS` and appropriate scope in `LEDGER_SCOPE_ACTIONS` (ledger-prompt-builder.ts)
 - [ ] Vault gate passes (`isModuleAccessible('ledger')` returns `true`)
 - [ ] Profile has been normalized (not raw Firestore document)
-- [ ] If touching transactions/goals/categories — check for `as any` cast issues
+- [ ] Spine event type is in `LedgerSpineEventType` union
+
+### Common Debugging Commands
+
+```bash
+# Find all action registrations
+grep -r "ActionHub.register" src/modules/ledger/
+
+# Find all Spine event emissions
+grep -r "emitSpineEvent" src/modules/ledger/
+
+# Find all profile loads
+grep -r "loadLedgerProfile\|loadProfile" src/modules/ledger/
+
+# Check action scope definitions
+grep -n "LEDGER_SCOPE_ACTIONS" src/modules/ledger/prompts/
+```
 
 ---
 
@@ -822,18 +1110,28 @@ Before debugging any Ledger AI action failure, verify:
 |---|---|---|
 | `LEDGER_PERSONA` | `personas.ts` | Full AI system prompt and behavioral config |
 | `LEDGER_SUGGESTED_EXTENSIONS` | `field-templates.ts` | 10 suggested extension fields |
-| `LEDGER_ALL_ACTIONS` | `prompts/ledger-prompt-builder.ts` | Canonical list of all valid AI action tags |
+| `LEDGER_ALL_ACTIONS` | `prompts/ledger-prompt-builder.ts` | All valid AI action tags |
+| `LEDGER_SCOPE_ACTIONS` | `prompts/ledger-prompt-builder.ts` | Actions per conversation mode |
+| `LedgerSpineEventType` | `actions/ledger-field-actions.ts` | 18 Spine event types |
+| `LEDGER_TOAST_EVENTS` | `actions/ledger-field-actions.ts` | Events that trigger toasts |
 
 ### Key Functions
 
 | Function | Location | Signature |
 |---|---|---|
+| `computeFinancialFriction` | `resonance-roi-service.ts` | `(profile) → number` |
 | `computeResonanceROI` | `resonance-roi-service.ts` | `(profile) → { resonanceROI, financialFriction }` |
 | `normalizeLedgerProfile` | `ledger-intake-service.ts` | `(raw) → LedgerIntakeProfile` |
 | `createEmptyLedgerProfile` | `ledger-intake-service.ts` | `() → LedgerIntakeProfile` |
-| `registerLedgerActions` | `services/actions.ts` | `() → void` (called at module init) |
+| `loadLedgerProfile` | `ledger-intake-service.ts` | `({ userId, encryptionKey }) → Promise<LedgerIntakeProfile>` |
+| `saveLedgerProfile` | `ledger-intake-service.ts` | `(profile, { userId, encryptionKey }) → Promise<void>` |
+| `registerLedgerActions` | `services/actions.ts` | `() → void` |
+| `registerLedgerFieldActions` | `actions/ledger-field-actions.ts` | `() → void` |
+| `registerLedgerTransactionActions` | `actions/transaction-actions.ts` | `() → void` |
 | `getLedgerEvents` | `spine-event-service.ts` | `({ type, startDate }) → Promise<SpineEvent[]>` |
-| `registerDiagnosisSpec` | *(global)* | Called with `ledgerDiagnosisSpec` at startup |
+| `buildLedgerToast` | `actions/ledger-field-actions.ts` | `(eventType, data) → ToastTemplate \| null` |
+| `isActionAllowed` | `actions/ledger-field-actions.ts` | `(actionType, scopeKind) → boolean` |
+| `getFrictionTier` | `field-templates.ts` | `(score) → FrictionTier` |
 
 ### NSV Domain Summary
 
@@ -842,4 +1140,4 @@ resource.financialFriction   0–10     Written by Ledger
 resource.resonanceROI        0.0–1.0  Written by Ledger
 ```
 
-Ledger reads from `agnes.*`, `titan.*`, `atlas.*` domains — it does not write to them.
+Ledger reads from `emotional.*`, `cognitive.*`, `biological.*` domains — it does not write to them.

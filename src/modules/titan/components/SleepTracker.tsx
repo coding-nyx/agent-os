@@ -313,7 +313,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <NeuralInput
               label="Deep Sleep %"
               type="number"

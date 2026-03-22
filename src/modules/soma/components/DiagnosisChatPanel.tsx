@@ -71,17 +71,51 @@ export function DiagnosisChatPanel({ summary, sessionId: _sessionId, ai }: Diagn
 
   const conf = summary ? CONFIDENCE_CONFIG[summary.confidenceLevel ?? 'moderate'] : CONFIDENCE_CONFIG['moderate'];
 
-  // Filter out system messages and the analysis prompt from display history.
-  // The first message is often the document analysis prompt.
+  // Filter out system messages, the analysis prompt, and extraction confirmation messages.
   const displayMessages = useMemo(() => {
+    // Skip system messages and the initial document analysis prompt (first user message)
     const history = ai.messages
       .filter(m => m.role !== 'system')
       .slice(1); // Skip the initial "Extract data from this document..." prompt
 
-    // Base messages (seeded message + history)
+    // Filter out assistant messages that are just extraction confirmations
+    // or action-only responses (e.g. the diagnosis_summary action response).
+    const filteredHistory = history.filter(m => {
+      if (m.role !== 'assistant') return true;
+
+      const content = typeof m.content === 'string' ? m.content : '';
+      const lowerContent = content.toLowerCase().trim();
+
+      // Filter any message containing the diagnosis_summary action tag —
+      // the summary is rendered as the seeded first message via formatSummary().
+      if (content.includes('<action type="diagnosis_summary">')) return false;
+
+      // Filter messages whose entire content is action tags (extraction-only responses).
+      const strippedOfActions = content.trim().replace(/<action[^>]*>[\s\S]*?<\/action>/g, '').trim();
+      if (strippedOfActions.length === 0) return false;
+
+      // Filter out common short extraction confirmation patterns
+      const isExtractionConfirmation =
+        lowerContent.includes('medical image analysis completed') ||
+        lowerContent.includes('medical image analysis.') ||
+        lowerContent.includes('analysis completed') ||
+        lowerContent.includes('i have extracted') ||
+        lowerContent.includes('extraction complete') ||
+        lowerContent.includes('data has been extracted') ||
+        // Very short responses are likely just confirmations
+        (content.length < 50 && (
+          lowerContent.includes('completed') ||
+          lowerContent.includes('extracted') ||
+          lowerContent.includes('analysis')
+        ));
+
+      return !isExtractionConfirmation;
+    });
+
+    // Base messages (seeded message + filtered history)
     const messages = [
       { role: 'assistant', content: seededMessage },
-      ...history.map(m => ({
+      ...filteredHistory.map(m => ({
         role: m.role,
         content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
       }))

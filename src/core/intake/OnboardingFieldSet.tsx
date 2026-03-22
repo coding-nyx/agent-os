@@ -204,7 +204,7 @@ export function OnboardingFieldSet({
       <div
         className="shrink-0 flex items-center justify-between gap-3 pt-4"
         style={{
-          paddingBottom: keyboard.isKeyboardOpen ? 'var(--keyboard-clearance, 80px)' : undefined,
+          paddingBottom: keyboard.isKeyboardOpen ? 'var(--keyboard-clearance, 16px)' : undefined,
         }}
       >
         {(currentSection > 0 || onBack) ? (

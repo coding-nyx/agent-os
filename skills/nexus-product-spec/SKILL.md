@@ -10,9 +10,10 @@ description: >
 
 # Nexus Product Specification
 
-> **Version**: 1.0 — Vision-First Spec
+> **Version**: 2.0 — Codebase-Aligned Spec
 > **Platform**: Currently implemented as a React 19 Vite SPA (AGNES codebase)
 > **Purpose**: Cross-verification, reimplementation guide, logic migration reference
+> **Last Updated**: Aligned with codebase as of Sprint 17
 
 ---
 
@@ -30,7 +31,8 @@ description: >
    - [5.5 Ledger (Financial)](#55-ledger-financial)
    - [5.6 Scout (Research)](#56-scout-research)
    - [5.7 Forge (Execution)](#57-forge-execution)
-   - [5.8 Peripheral Modules](#58-peripheral-modules)
+   - [5.8 Soma (Biomedical Data Layer)](#58-soma-biomedical-data-layer)
+   - [5.9 Peripheral Modules](#59-peripheral-modules)
 6. [Data Flow Contracts](#6-data-flow-contracts)
 7. [Security & Privacy Model](#7-security--privacy-model)
 8. [Soul Priority Hierarchy](#8-soul-priority-hierarchy)
@@ -75,44 +77,61 @@ Nexus is a **user-centric, fully integrated AI life management platform**. It fu
 
 The Global Soul is the **root data and source of truth** for the user as an entity within Nexus. It represents who the user is — their identity, state, patterns, and trajectory — as understood across all modules.
 
-### Identity Data Model
+### Identity Data Model (CoreUserProfile)
 
-The Global Soul starts with the user's **external identity**, collected during Nexus onboarding:
+The Global Soul starts with the user's **external identity**, collected during Nexus onboarding. This is stored in the `CoreUserProfile` interface:
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `preferredName` | ✅ Yes | How the user wants to be addressed |
-| `pronouns` | ✅ Yes | Preferred pronouns (They/Them, She/Her, He/Him, etc.) |
-| `genderIdentity` | ✅ Yes | Self-identified gender |
-| `assignedSexAtBirth` | ❌ Optional | For medical/hormonal context (female, male) |
-| `age` | ❌ Optional | Age or age group |
-| `occupation` | ❌ Optional | Current work/role |
-| `typicalSleepHours` | ❌ Optional | Baseline sleep expectation |
-| `history` | ❌ Optional | Relevant life history, background |
+```typescript
+interface CoreUserProfile {
+  uid: string;
+  email: string;
+  preferredName: string;                    // ✅ Required
+  pronouns: string;                         // ✅ Required
+  age?: number;                             // ❌ Optional
+  assignedSexAtBirth?: 'female' | 'male';   // ❌ Optional
+  genderIdentity?: string;                  // ❌ Optional
+  occupation?: string;                      // ❌ Optional
+  typicalSleepHours?: number;               // ❌ Optional
+  onboardingComplete: boolean;
+  agentPersonalityProvision: AgentPersonalityProvision;
+  securityPreferences: UserSecurityPreferences;
+  schemaVersion: number;
+  createdAt: string;
+  updatedAt: string;
+}
+```
 
-**Only `preferredName`, `pronouns`, and `genderIdentity` are absolutely required at Nexus onboarding.** Everything else is optional and can be provided later through conversations with any agent.
+**Only `preferredName` and `pronouns` are absolutely required at Nexus onboarding.** Everything else is optional and can be provided later through conversations with any agent.
 
 ### Agent Personality Provision
 
-Users can customize each agent's presentation:
+Users can customize each agent's presentation via the `AgentPersonalityProvision` interface:
 
-```
-agentPersonalityProvision:
-  orchestratorAlias: "Nexus"          // Custom name for Nexus
-  moduleAliases:
-    agnes: "Agnes"                    // Custom name per agent
-    titan: "Titan"
-    ledger: "Ledger"
-    atlas: "Atlas"
-    ...
-  agentGenders:
-    orchestrator: "non-binary"        // female | male | non-binary | gender-fluid
-    agnes: "female"
-    titan: "male"
-    ...
-  personaOverlays:
-    agnes: { tone: "warm", style: "direct" }
-    ...
+```typescript
+type GenderPersonality = 'female' | 'male' | 'non-binary' | 'gender-fluid';
+
+interface AgentPersonalityProvision {
+  orchestratorAlias: string;                  // Custom name for Nexus
+  moduleAliases: {
+    agnes: string;                            // Custom name per agent
+    titan: string;
+    ledger: string;
+    [key: string]: string;                    // Extensible for new modules
+  };
+  agentGenders: {
+    orchestrator: GenderPersonality;
+    agnes: GenderPersonality;
+    titan: GenderPersonality;
+    ledger: GenderPersonality;
+    [key: string]: GenderPersonality;
+  };
+  personaOverlays: {
+    [moduleId: string]: {
+      tone?: string;                          // e.g., "warm", "direct"
+      style?: string;
+    };
+  };
+}
 ```
 
 ### Neural State Vector (NSV)
@@ -225,38 +244,104 @@ SpineEvent:
   priority: "info" | "alert" | "critical"
 ```
 
-### Event Categories (65+ types)
+### Event Categories (~170 types)
 
-**Health & Vitals**: VITAL_UPDATED, BLOCK_HIGH_INTENSITY, REDUCE_TRAINING_LOAD, BURNOUT_WARNING, MEDICAL_ALERT, SOMA_BIOMARKER_COMMITTED, SOMA_READINESS_UPDATED, SOMA_CLEARANCE_CHANGED, SOMA_VITAL_LOGGED, SOMA_LAB_REPORT_PARSED, SOMA_PROFILE_UPDATED, HEALTH_CONTEXT_STALE
+The Spine event bus defines ~170 event types across all modules. Full type definition is in `src/lib/types.ts`.
+
+**Health & Vitals**: VITAL_UPDATED, BLOCK_HIGH_INTENSITY, REDUCE_TRAINING_LOAD, BURNOUT_WARNING, RECOVERY_AVAILABLE, MEDICAL_ALERT, COMPOUND_STRESS, HEALTH_CONTEXT_STALE
+
+**Soma**: SOMA_BIOMARKER_COMMITTED, SOMA_READINESS_UPDATED, SOMA_CLEARANCE_CHANGED, SOMA_FIELD_CREATED, SOMA_FIELD_UPDATED, SOMA_FIELD_DELETED, SOMA_VITAL_LOGGED, SOMA_LAB_REPORT_PARSED, SOMA_PROFILE_UPDATED, SOMA_DIAGNOSIS_MERGED, SOMA_DIAGNOSIS_DISCARDED
+
+**Titan**: CYCLE_STARTED, CYCLE_COMPLETED, WORKOUT_COMPLETED, TITAN_BODY_WEIGHT_LOGGED, TITAN_RECOVERY_NEEDED, TITAN_TRAINING_STREAK
 
 **Cognitive & Planning**: FLATTEN_ENERGY_WAVE, COGNITIVE_OVERLOAD, PLANNING_OVERLOAD, DEADLINE_CRUNCH, CRISIS_MODE, EXECUTION_COLLAPSE
 
-**Training**: CYCLE_STARTED, CYCLE_COMPLETED, WORKOUT_COMPLETED
+**Atlas**: ATLAS_TASK_COMPLETED, ATLAS_TASK_CREATED, ATLAS_TASK_BLOCKED, ATLAS_TASK_UNBLOCKED, ATLAS_HABIT_LOGGED, ATLAS_HABIT_MILESTONE, ATLAS_GOAL_MILESTONE, ATLAS_GOAL_COMPLETED, ATLAS_GOAL_UPDATED, ATLAS_ENERGY_UPDATED, ATLAS_ENERGY_OVERLOAD, ATLAS_RECOVERY_WINDOW_CREATED, ATLAS_RECOVERY_SCHEDULED, ATLAS_PREDICTIVE_ALERT, ATLAS_STATE_CHANGED, ATLAS_OVERLOAD_DETECTED, ATLAS_FIELD_CREATED, ATLAS_FIELD_DELETED, ATLAS_FIELD_VALUE_UPDATED, DEADLINE_PRESSURE_CHANGED, PLANNING_STATE_UPDATED, WEEKLY_REVIEW_DUE, ROUTINE_UPDATED, MORNING_BRIEF_DUE, MORNING_BRIEF, EVENING_CHECKIN_DUE, COMMITMENT_MISSED, JOURNAL_ENTRY_CREATED, JOURNAL_ENTRY_UPDATED, HABIT_STREAK_MILESTONE, STREAK_BROKEN, TASK_COMPLETED, DEADLINE_APPROACHING, HABIT_STREAK_BROKEN
 
-**Planning**: STREAK_BROKEN, TASK_COMPLETED, DEADLINE_APPROACHING, ATLAS_TASK_COMPLETED, ATLAS_HABIT_LOGGED, ATLAS_GOAL_MILESTONE, ATLAS_ENERGY_UPDATED
+**Ledger**: FINANCIAL_STRESS, BUDGET_UPDATED, BUDGET_CREATED, BUDGET_MODIFIED, BUDGET_ALERT, FINANCIAL_FRICTION_CHANGED, FINANCIAL_FRICTION_UPDATED, FINANCIAL_HEALTH_CHECK, FINANCIAL_PLAN_CREATED, FINANCIAL_STREAK_MILESTONE, RESONANCE_ROI_UPDATED, DOCUMENT_ANALYZED, TRANSACTION_CREATED, TRANSACTION_UPDATED, TRANSACTION_DELETED, GOAL_PROGRESS, GOAL_CREATED, GOAL_COMPLETED, RISK_DETECTED, OVERSPEND_DETECTED, DEBT_MILESTONE, SAVINGS_MILESTONE, INCOME_CHANGE, EXPENSE_SPIKE, CASHFLOW_POSITIVE, CASHFLOW_NEGATIVE, LEDGER_FIELD_SUGGESTION, SPENDING_DETECTED
 
-**Financial**: FINANCIAL_STRESS, BUDGET_UPDATED, FINANCIAL_FRICTION_CHANGED, FINANCIAL_PLAN_CREATED
+**Agnes**: CRISIS_DETECTED, SOMATIC_SUPPORT_REQUESTED, SOMATIC_SESSION_COMPLETE
 
-**Cross-Module**: SESSION_STARTED, SESSION_ENDED, MODULE_DELEGATED, DELEGATION_REQUEST, NSV_CALIBRATION_REQUEST
+**Scout**: DEEP_RESEARCH_REQUESTED, DEEP_RESEARCH_BACKUP_FOUND, DEEP_RESEARCH_STARTED, DEEP_RESEARCH_COMPLETED, DIGEST_GENERATION_STARTED, DIGEST_GENERATED, DIGEST_GENERATION_FAILED, EXPORT_REQUESTED, SOURCE_ADDED, KNOWLEDGE_SYNTHESIZED, SCOUT_PROFILE_UPDATED, HABIT_SUGGESTED, RESEARCH_SEARCHING, RESEARCH_RESULTS
 
-**Schema/System**: SCHEMA_EXTENDED, SCHEMA_MODIFIED, SCHEMA_MIGRATED, FIELD_CREATED, FIELD_UPDATED, FIELD_DELETED, SECURITY_POLICY_UPDATED
+**Cross-Module**: SESSION_STARTED, SESSION_ENDED, MODULE_DELEGATED, MODULE_PROFILE_UPDATED, MODULE_REMINDER_DUE, MODULE_REMINDER_COMPLETED, DELEGATION_REQUEST, NSV_CALIBRATION_REQUEST, CONFLICT_DETECTED, CONFLICT_RESOLVED
+
+**Schema/System**: SCHEMA_EXTENDED, SCHEMA_MODIFIED, SCHEMA_MIGRATED, FIELD_CREATED, FIELD_DELETED, FIELD_VALUE_UPDATED, SECURITY_POLICY_UPDATED
+
+**AI Draft Flow**: DRAFT_PROPOSED, DRAFT_APPROVED, DRAFT_DISMISSED
+
+**Reminder Lifecycle**: REMINDER_PROPOSED, REMINDER_CONFIRMED, REMINDER_DISMISSED
+
+**Soul Write Protocol**: SOUL_WRITE_REQUESTED, SOUL_WRITE_APPROVED, SOUL_WRITE_REJECTED
+
+**Contextual Inference**: CONTEXT_HINT_DETECTED, CONTEXT_HINT_CONFIRMED, CONTEXT_HINT_DISMISSED
+
+**AI Validation**: ai_validation_suggestion, ai_contextual_validation, ai_error_explanation
 
 ### Cascade Rules
 
-Cascades are automatic event chains where one event triggers follow-up events:
+Cascades are automatic event chains where one event triggers follow-up events. All cascade rules are defined in `src/lib/spine/cascade-rules.ts` and registered in `SpineRuntimeBootstrap` (App.tsx).
 
-| Trigger | Condition | Produces | Priority | Description |
-|---------|-----------|----------|----------|-------------|
-| VITAL_UPDATED | cnsFatigue ≥ 8 AND emotionalResilience ≤ 3 | BURNOUT_WARNING | critical | User is at burnout risk |
-| VITAL_UPDATED | cnsFatigue ≥ 8 | BLOCK_HIGH_INTENSITY | alert | Titan must avoid high-intensity training |
-| BLOCK_HIGH_INTENSITY / BURNOUT_WARNING / DEADLINE_CRUNCH | — | FLATTEN_ENERGY_WAVE | alert | Atlas compresses schedule, reduces load |
-| SOMA_PROFILE_UPDATED | — | HEALTH_CONTEXT_STALE | info | Global Soul needs refresh |
-| SOMA_READINESS_UPDATED | score < 40 | MEDICAL_ALERT | critical | Readiness below safe threshold |
-| SOMA_BIOMARKER_COMMITTED | field includes sleep/hrv/cortisol | FLATTEN_ENERGY_WAVE | info | Atlas recalculates energy budget |
+**Registered Cascade Rule Sets:**
+- `CORE_CASCADE_RULES` — energy wave logic + Ledger rules
+- `LEDGER_CASCADE_RULES` — financial cascades
+- `AGNES_CASCADE_RULES` — burnout/crisis handling
+- `ATLAS_CASCADE_RULES` — weekly review triggers
+- `ATLAS_MORNING_RULES` — morning brief / evening check-in
+- `ATLAS_JOURNAL_RULES` — reflection streak milestones
+- `ATLAS_FAILURE_RULES` — missed commitment handling
+- `ATLAS_PLANNING_CASCADE_RULES` — goal/deadline/task cascades
+- `SOMA_CASCADE_RULES` — biomarker and readiness cascades
+- `TITAN_CASCADE_RULES` — workout/recovery cascades
+
+**Key Cascade Rules:**
+
+| Trigger | Condition | Produces | Priority |
+|---------|-----------|----------|----------|
+| VITAL_UPDATED | cnsFatigue ≥ 8 AND emotionalResilience ≤ 3 | BURNOUT_WARNING | critical |
+| BURNOUT_WARNING | always | FLATTEN_ENERGY_WAVE → atlas | alert |
+| BURNOUT_WARNING | domain === 'system' | SOMATIC_SUPPORT_REQUESTED | alert |
+| BLOCK_HIGH_INTENSITY | always | FLATTEN_ENERGY_WAVE → atlas | alert |
+| CRISIS_DETECTED | always | CRISIS_MODE | critical |
+| SESSION_STARTED | isWeeklyReviewDue() | WEEKLY_REVIEW_DUE | info |
+| SESSION_STARTED | isMorningBriefDue() (05:00–11:00) | MORNING_BRIEF_DUE | info |
+| SESSION_STARTED | isEveningCheckinDue() (19:00–22:00) | EVENING_CHECKIN_DUE | info |
+| JOURNAL_ENTRY_CREATED | reflectionStreak ≥ 7 | HABIT_STREAK_MILESTONE | info |
+| COMMITMENT_MISSED | always | ROUTINE_UPDATED | alert |
+| HABIT_STREAK_BROKEN | streakDays ≥ 3 | SOMATIC_SUPPORT_REQUESTED | alert |
+| ATLAS_GOAL_UPDATED | always | ATLAS_STATE_CHANGED | info |
+| ATLAS_GOAL_UPDATED | action === 'completed' | ATLAS_GOAL_MILESTONE | info |
+| DEADLINE_PRESSURE_CHANGED | deadlinePressure ≥ 8 | DEADLINE_CRUNCH | alert |
+| PLANNING_STATE_UPDATED | always | VITAL_UPDATED | info |
+| ATLAS_TASK_COMPLETED | always | VITAL_UPDATED | info |
+| ATLAS_PREDICTIVE_ALERT | riskScore ≥ 0.6 | FLATTEN_ENERGY_WAVE | alert |
+| SOMA_READINESS_UPDATED | score ≤ 30 | COMPOUND_STRESS | alert |
+| SOMA_CLEARANCE_CHANGED | action === 'revoked' | VITAL_UPDATED | alert |
+| WORKOUT_COMPLETED | rpe ≥ 9 | REDUCE_TRAINING_LOAD | alert |
+| TITAN_RECOVERY_NEEDED | always | SOMATIC_SUPPORT_REQUESTED | alert |
+| TRANSACTION_CREATED | domain === 'R' | BUDGET_UPDATED | info |
+| FINANCIAL_FRICTION_CHANGED | newScore ≥ 7 | SOMATIC_SUPPORT_REQUESTED | alert |
+| GOAL_COMPLETED | domain === 'R' | VITAL_UPDATED | info |
+
+### Scheduler Service
+
+The `SchedulerService` enables time-based Spine event triggers for recurring module cadences.
+
+**Registered Schedules (from SchedulerRuntimeBootstrap):**
+
+| Schedule ID | Type | Time | Event Type |
+|---|---|---|---|
+| `atlas.morning_brief` | Morning Brief | `09:00` daily | `MORNING_BRIEF_DUE` |
+| `atlas.evening_checkin` | Evening Check-in | `20:30` daily | `EVENING_CHECKIN_DUE` |
+| `atlas.weekly_review` | Weekly Review | `Sun 18:00` weekly | `WEEKLY_REVIEW_DUE` |
 
 ### Debouncing
 
-Events are debounced at 500ms per `(eventType:source)` pair to prevent duplicate cascade storms.
+Events are debounced at 500ms per `(eventType:source:target)` tuple to prevent duplicate cascade storms.
+
+### Cascade Depth Limit
+
+Max cascade depth is **3 levels** (0-indexed: depth 0 → 1 → 2 → ⛔ truncated at 3).
 
 ### Agent Linking
 
@@ -271,6 +356,48 @@ The Spine links agents as required:
 ## 4. Module Architecture Pattern
 
 Every Nexus module follows a consistent architecture pattern. This section describes the generic pattern; module-specific details are in Section 5.
+
+### 4.0 Application Provider Stack & Routes
+
+The application is wrapped in a **10-layer provider stack** (outermost to innermost):
+
+```
+ThemeProvider
+  └─ DataLayerProvider
+       └─ Router (BrowserRouter)
+            └─ AuthProvider
+                 └─ AIWrapper (AIProvider)
+                      └─ NotificationProvider
+                           └─ VaultProvider
+                                └─ GlobalSoulProvider
+                                     └─ AppErrorBoundary
+                                          └─ AIRuntimeGate
+                                               └─ AppContent (routes + overlays)
+```
+
+**13 Routes** (defined in `src/App.tsx`):
+
+| Path | Component | Protected | Notes |
+|------|-----------|-----------|-------|
+| `/` | LandingPage | ❌ | Public landing |
+| `/vault-gate` | AppVaultGate | ❌ | Vault unlock portal |
+| `/nexus` | NexusPage | ✅ (no onboarding required) | Orchestrator / Platform onboarding |
+| `/hub` | HubPage | ✅ | Central dashboard |
+| `/agnes` | AgnesPage | ✅ | Mental health module |
+| `/titan` | TitanPage | ✅ | Physical/biomedical module |
+| `/ledger` | LedgerPage | ✅ | Financial module |
+| `/soma` | SomaPage | ✅ | Biomedical data layer |
+| `/atlas` | AtlasPage | ✅ | Life planning module |
+| `/scout` | ScoutPage | ✅ | Research module |
+| `/forge` | ForgePage | ✅ | Execution engine |
+| `/profile` | ProfilePage | ✅ | User identity/settings |
+| `/notifications` | NotificationsPage | ✅ | Alert center |
+
+**Module Categories:**
+- **Core**: Nexus (orchestrator), Agnes, Titan, Ledger
+- **Extended**: Atlas, Soma
+- **Support**: Scout, Forge
+- **Peripheral**: Hub, Profile, Notifications, Landing
 
 ### 4.1 Agent as Root
 
@@ -935,7 +1062,64 @@ Forge classifies every operation by risk level:
 
 ---
 
-### 5.8 Peripheral Modules
+### 5.8 Soma (Biomedical Data Layer)
+
+| Property | Value |
+|----------|-------|
+| **ID** | `soma` |
+| **Alias** | Soma |
+| **Theme** | Emerald |
+| **Core Module** | No (Extended) |
+| **Has Page** | Yes |
+| **Security** | Locked by default |
+
+#### Purpose
+
+Soma is the **biomedical data layer** — a dedicated module for managing health metrics, biomarkers, lab results, and medical clearances. While Titan handles active training and fitness, Soma focuses on passive health data and medical context.
+
+#### Personality
+
+- **Archetype**: Clinical health data specialist
+- **Tone**: Precise, medical, supportive
+- **Focus**: Biomarker tracking, lab result interpretation, readiness assessment
+
+#### Core Data
+
+```
+SomaProfile:
+  biomarkers: BiomarkerRecord[]        // Cortisol, testosterone, thyroid, iron, glucose, etc.
+  clearances: ClearanceRecord[]         // Medical clearances for activities
+  labSummaries: LabSummaryRecord[]      // Parsed lab results
+  medicalImages: MedicalImageAnalysis[] // MRI, X-ray analysis
+  vitalHistory: VitalRecord[]
+```
+
+**Biomarker categories**: Vitals, Hormones, Metabolic, General Health
+**Clinical ranges**: Pre-defined normal/warning/critical bands for ~50 biomarkers
+
+#### NSV Ownership
+
+- **Writes**: `biological.cnsFatigue`, `biological.sleepQuality`, `biological.recoveryScore`, `biological.hormonalContext`
+- **Reads**: `biological.*`, `emotional.*`
+
+#### Key Actions
+
+| Action | Description |
+|--------|-------------|
+| `commit_biomarker` | Record a biomarker value |
+| `update_clearance` | Update medical clearance status |
+| `parse_lab_report` | Process uploaded lab results |
+| `update_readiness` | Update readiness score |
+
+#### Spine Integration
+
+- **Emits**: SOMA_BIOMARKER_COMMITTED, SOMA_READINESS_UPDATED, SOMA_CLEARANCE_CHANGED, SOMA_VITAL_LOGGED, SOMA_LAB_REPORT_PARSED, SOMA_PROFILE_UPDATED, SOMA_DIAGNOSIS_MERGED
+- **Listens**: BURNOUT_WARNING, health context requests
+- **Cascade**: Poor readiness (≤30) triggers COMPOUND_STRESS; clearance revoked triggers VITAL_UPDATED
+
+---
+
+### 5.9 Peripheral Modules
 
 #### Documents
 
@@ -980,6 +1164,16 @@ Hub is the user's **command center** — a single view showing the health/status
 | **Has Page** | Yes |
 
 Profile manages the user's core identity (name, pronouns, age), agent personality provisions (agent names, genders, tones), security preferences (vault locks), and data export/management.
+
+#### Notifications
+
+| Property | Value |
+|----------|-------|
+| **ID** | `notifications` |
+| **Purpose** | Alert center — system notifications and reminders |
+| **Has Page** | Yes |
+
+Notifications provides a centralized view of all system alerts, module reminders, and Spine events that require user attention. Works in conjunction with the Bridge service for background monitoring.
 
 ---
 
@@ -1147,13 +1341,14 @@ Today, the runtime derives a single shared master key and verifies it using a ca
 |--------|---------------|----------------|-------|
 | Agnes | ✅ Yes | ✅ Yes | Therapy data is ALWAYS encrypted |
 | Soma | ✅ Yes | ❌ No | Medical data locked by default |
-| Ledger | ✅ Yes | ❌ No | Financial data locked by default |
+| Ledger | ✅ Yes | ✅ Yes | Financial data is ALWAYS encrypted |
 | Atlas | ✅ Yes | ❌ No | Planning data locked by default |
 | Scout | ✅ Yes | ❌ No | Research data locked by default |
-| Documents | ✅ Yes | ❌ No | Document data locked by default |
 | Forge | ❌ No | ❌ No | Tool, open by default |
 | Nexus | ❌ No | ❌ No | System, open by default |
 | Titan | ❌ No | ❌ No | Training data open by default |
+
+**Access Control**: Per-module access is controlled via `isModuleAccessible(moduleId)` which checks both vault unlock state and module-specific lock settings in `userSecurityPreferences.vaultLocks`.
 
 ### 7.3 Access Model
 
@@ -1234,46 +1429,58 @@ This section tracks where the current codebase matches the vision spec vs. where
 ### ✅ Fully Implemented
 
 - Global Soul / NSV data model and ownership matrix
-- Spine event bus with cascade rules (16+ rules)
+- Spine event bus with ~170 event types
+- Cascade rules: 10 rule sets with 30+ individual rules across CORE, LEDGER, AGNES, ATLAS (multiple), SOMA, TITAN
+- Scheduler service with three registered schedules (morning brief 09:00, evening check-in 20:30, weekly review Sun 18:00)
 - Per-module personas with unique personalities
 - Action Hub with dependency resolution
 - Vault encryption (PBKDF2 + AES-GCM)
-- Module manifest with security policies
-- Onboarding flows (Nexus, Agnes, Titan, Atlas, Scout, Forge)
+- Module manifest with security policies and per-module access control via `isModuleAccessible()`
+- 13 routes: /, /vault-gate, /nexus, /hub, /agnes, /titan, /ledger, /soma, /atlas, /scout, /forge, /profile, /notifications
+- 10-layer provider stack: Theme → DataLayer → Router → Auth → AI → Notification → Vault → GlobalSoul → ErrorBoundary → AIRuntimeGate
+- Onboarding flows (Nexus, Agnes, Titan, Atlas, Scout, Forge, Soma, Ledger)
 - Extension field system (SchemaRegistry, LLM validation, templates)
 - Three conversation scopes (general, scoped, field-CRUD)
 - Memory system (episodic + semantic)
-- Diagnosis pattern (Titan, Ledger, Scout)
-- Agent personality provision (custom names, genders, tones)
+- Diagnosis pattern (Titan, Ledger, Scout, Soma)
+- Agent personality provision (custom names, genders, tones via CoreUserProfile.agentPersonalityProvision)
+- Soul Write Protocol (SOUL_WRITE_REQUESTED, SOUL_WRITE_APPROVED, SOUL_WRITE_REJECTED)
+- Contextual Inference Engine (CONTEXT_HINT_DETECTED, CONTEXT_HINT_CONFIRMED, CONTEXT_HINT_DISMISSED)
+- Reminder lifecycle (REMINDER_PROPOSED, REMINDER_CONFIRMED, REMINDER_DISMISSED)
+- Atlas intelligent loop (morning briefs, evening check-ins, weekly review)
+- Atlas failure notification cascade (COMMITMENT_MISSED → ROUTINE_UPDATED, HABIT_STREAK_BROKEN → SOMATIC_SUPPORT_REQUESTED)
+- Agnes somatic support integration (SOMATIC_SUPPORT_REQUESTED, SOMATIC_SESSION_COMPLETE)
+- Atlas journal entries with reflection streak milestones
+- Atlas predictive alerts with FLATTEN_ENERGY_WAVE cascade
 
 ### ⚠️ Partially Implemented
 
-- **Atlas cross-module review**: Infrastructure exists (Spine events, NSV reads), but the full prediction engine (predicting burnout from Agnes+Titan data) and automatic failure notifications to Agnes/Titan need deepening
+- **Atlas cross-module review**: Infrastructure exists (Spine events, NSV reads), but the full prediction engine (predicting burnout from Agnes+Titan data) could be deepened
 - **Ledger cross-verification**: Basic financial tracking works, but deep correlation of spending with emotional state and generation of cross-domain insights is an area for expansion
 - **Soul compaction**: NSV updates flow correctly, but the full compaction pipeline (filtering low-signal data, periodic optimization) could be more sophisticated
 - **Nexus scheduling**: Cross-module action scheduling (e.g., "schedule a therapy check-in after missed workouts") is architecturally possible but not fully wired
 
 ### 🔲 Not Yet Implemented
 
-- **Atlas → Agnes/Titan failure notifications**: When a user breaks a streak or misses a deadline, Atlas should notify Agnes (emotional impact) and Titan (if physically relevant). The Spine infrastructure supports this but the specific cascade rules and agent handling aren't wired.
 - **Ledger tax tools**: Full tax calculation, deduction tracking, and filing assistance are vision items
 - **Resonance ROI computation**: The metric is defined in the NSV but the full computation pipeline (correlating spending with emotional/physical outcomes) needs implementation
-- **Predictive analytics**: Atlas generating predictions from historical Agnes/Titan data patterns
+- **Advanced predictive analytics**: Atlas generating complex predictions from historical Agnes/Titan data patterns beyond current risk scoring
 
 ---
 
 ## Appendix: Module Quick Reference
 
-| Module | Domain | Agent Name | Theme | Core | Soul Priority | Soul Access |
-|--------|--------|------------|-------|------|--------------|-------------|
-| Nexus | System | Nexus | Violet | ✅ | — | Read ALL |
-| Agnes | Emotional | Agnes | Indigo | ✅ | 1 (Highest) | Write emotional.* |
-| Titan | Physical | Titan | Orange | ✅ | 2 | Write biological.* |
-| Atlas | Planning | Atlas | Sky | ❌ | 3 | Write cognitive.*, planning.* |
-| Ledger | Financial | Ledger | Cyan | ✅ | 4 | Write resource.* |
-| Scout | Research | Scout | Lime | ❌ | 5 (Isolated) | Write cognitive.(research) |
-| Forge | Execution | Forge | Rose | ❌ | 5 (Isolated) | Read-only |
-| Documents | Document Intel | — | Slate | ❌ | — | None |
-| Bridge | Alerts | — | Slate | ❌ | — | None |
-| Hub | Dashboard | — | — | ❌ | — | Read-only |
-| Profile | Identity | — | — | ❌ | — | Identity mgmt |
+| Module | Domain | Agent Name | Theme | Core | Soul Priority | Soul Access | Route |
+|--------|--------|------------|-------|------|--------------|-------------|-------|
+| Nexus | System | Nexus | Violet | ✅ | — | Read ALL | /nexus |
+| Agnes | Emotional | Agnes | Indigo | ✅ | 1 (Highest) | Write emotional.* | /agnes |
+| Titan | Physical | Titan | Orange | ✅ | 2 | Write biological.* | /titan |
+| Soma | Biomedical | Soma | Emerald | ❌ | 2 | Write biological.* | /soma |
+| Atlas | Planning | Atlas | Sky | ❌ | 3 | Write cognitive.*, planning.* | /atlas |
+| Ledger | Financial | Ledger | Cyan | ✅ | 4 | Write resource.* | /ledger |
+| Scout | Research | Scout | Lime | ❌ | 5 (Isolated) | Write cognitive.(research) | /scout |
+| Forge | Execution | Forge | Rose | ❌ | 5 (Isolated) | Read-only | /forge |
+| Hub | Dashboard | — | — | ❌ | — | Read-only | /hub |
+| Profile | Identity | — | — | ❌ | — | Identity mgmt | /profile |
+| Notifications | Alerts | — | — | ❌ | — | None | /notifications |
+| Landing | — | — | — | ❌ | — | None | / |

@@ -26,7 +26,7 @@ export function useKeyboardAware(): KeyboardAwareState {
       const kh = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       setKeyboardHeight(kh);
       setIsKeyboardOpen(kh > 80);
-      document.documentElement.style.setProperty('--keyboard-clearance', `${kh + 80}px`);
+      document.documentElement.style.setProperty('--keyboard-clearance', `${kh + 16}px`);
     };
 
     vv.addEventListener('resize', update);

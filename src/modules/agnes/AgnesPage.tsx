@@ -83,6 +83,7 @@ function AgnesContent({
   const navigate = useNavigate();
   const isAccessible = isModuleAccessible('agnes');
   const [currentState, setCurrentState] = useState<AgnesState>('selecting');
+  const setHideGlobalFAB = useUIStore((s) => s.setHideGlobalFAB);
 
   const [sessionType, setSessionType] = useState<'impromptu' | 'new' | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -186,6 +187,13 @@ function AgnesContent({
   useEffect(() => {
     setSessionActive?.(currentState === 'session');
   }, [currentState, setSessionActive]);
+
+  // Hide Nexus FAB on mobile during active session
+  useEffect(() => {
+    const isInSession = currentState === 'session' || currentState === 'somatic';
+    setHideGlobalFAB(isInSession);
+    return () => setHideGlobalFAB(false);
+  }, [currentState, setHideGlobalFAB]);
 
   // s18-002: once hydration settles, auto-advance to session if messages already exist
   // This prevents the picker rendering on reload and the user accidentally wiping their session
@@ -738,19 +746,23 @@ export default function AgnesPage() {
       renderDashboard={({ profile, encryptionKey }) => (
         <AgnesDashboard profile={profile} encryptionKey={encryptionKey} />
       )}
-      renderMobileFooter={() => (
-        <div className="flex items-center justify-center p-3">
-          <NeuralButton
-            variant="ghost"
-            themeColor="indigo"
-            onClick={() => window.dispatchEvent(new Event('agnes:open-settings'))}
-            className="w-full flex items-center justify-center gap-3 h-auto px-6 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black uppercase tracking-widest text-[10px] hover:bg-indigo-500/20 hover:border-indigo-500/30 active:scale-95 transition-all"
-          >
-            <Settings size={14} />
-            Agnes Settings
-          </NeuralButton>
-        </div>
-      )}
+      renderMobileFooter={({ sessionActive }) => {
+        // Hide settings button on mobile during active session
+        if (sessionActive) return null;
+        return (
+          <div className="flex items-center justify-center p-3">
+            <NeuralButton
+              variant="ghost"
+              themeColor="indigo"
+              onClick={() => window.dispatchEvent(new Event('agnes:open-settings'))}
+              className="w-full flex items-center justify-center gap-3 h-auto px-6 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black uppercase tracking-widest text-[10px] hover:bg-indigo-500/20 hover:border-indigo-500/30 active:scale-95 transition-all"
+            >
+              <Settings size={14} />
+              Agnes Settings
+            </NeuralButton>
+          </div>
+        );
+      }}
     />
   );
 }

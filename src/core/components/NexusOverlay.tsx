@@ -162,7 +162,7 @@ export function NexusOverlay() {
         render a Nexus trigger here on mobile when the overlay is closed.
         Positioned Bottom-Left to avoid conflict with Chat (Bottom-Right) and QuickAdd (Bottom-Center).
       */}
-      {!open && isMobile && !isChatOverlayOpen && (
+      {!open && isMobile && !isChatOverlayOpen && !hideGlobalFAB && (
         <motion.button
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}

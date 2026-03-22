@@ -2,12 +2,11 @@
 name: atlas
 description: >
   Invoke this skill when working on the Atlas module of the Nexus AGNES SPA — the cognitive
-  architecture and life planning engine responsible for routines, tasks, goals, habits, and the
-  unified timeline. Use it for any task involving Atlas's cross-module review engine, NSV signal
-  ownership, drift score computation, habit tracking, temporal verification, or cascade rule
-  integration with Titan, Agnes, and the Spine. Also covers Sprint 8/9/10 Atlas implementation
-  work: MorningCheckIn, PriorityInbox, WeekGrid, WeeklyReviewModal, PredictiveService,
-  historical aggregates, and the proactive daily loop.
+  architecture and life planning engine responsible for routines, tasks, goals, habits, energy
+  tracking, journal entries, and the unified timeline. Use it for any task involving Atlas's
+  cross-module review engine, NSV signal ownership, drift score computation, habit tracking,
+  temporal verification, check-in flows, journal system, or cascade rule integration with
+  Titan, Agnes, and the Spine.
 ---
 
 # Atlas Module Skill
@@ -19,10 +18,10 @@ description: >
 | **Module ID** | `atlas` |
 | **Route** | `/atlas` |
 | **Theme Color** | `sky` (sky-400 accent, emerald for Focus view) |
-| **NSV Domain** | `cognitive` (owner: energyBudget, focusScore, activeLoad, deadlinePressure) |
+| **NSV Domain** | `cognitive.*` + `planning.*` (see NSV section below) |
 | **Firestore Collection** | `atlas_profiles` |
 | **Vault Security** | Optional lock (user can toggle) |
-| **Sprint Status** | Sprint 8 bug-fixes + AI-first features in progress (March 2026) |
+| **File Count** | 68 files total |
 
 ---
 
@@ -83,76 +82,186 @@ The five sections in the `<thought>` block are **fixed** — they map directly t
 
 ## NSV Signal Ownership
 
-### Signals Atlas Writes (owns)
+### Signals Atlas Writes
 
-These are computed and written by Atlas via `GlobalProjectionService.updateCrossFunctionalState(uid, { planning: {...} })`.
+These are computed and written by Atlas via `GlobalProjectionService.updateCrossFunctionalState()`.
 
 | Signal | Range | Meaning |
 |---|---|---|
-| `planning.activeLoad` | 0–10 | Current cognitive task load across all active commitments |
-| `planning.planningLoad` | 0–10 | Count of open loops and unresolved planning items |
+| `cognitive.energyBudget` | 0–10 | Available cognitive energy for the day |
+| `cognitive.focusScore` | 0–10 | Current focus/concentration level |
+| `cognitive.activeLoad` | 0–10 | Current cognitive task load across all active commitments |
+| `cognitive.planningLoad` | 0–10 | Count of open loops and unresolved planning items |
+| `cognitive.taskCompletionRate` | 0–1.0 | Rolling task completion rate |
+| `planning.streakHealth` | 0–10 | Overall health of active habit streaks |
 | `planning.deadlinePressure` | 0–10 | Urgency pressure from approaching deadlines |
-| `planning.executionVelocity` | 0–10 | Speed of task completion relative to plan |
-| `cognitive.interestDiversity` | 0–10 | *(Partial — shared ownership with Scout)* |
 
-> **Rule**: Atlas is a **reader** of all other modules' NSV signals. It is **never** a writer to signals outside the `planning.*` namespace.
+> **Note**: `activeLoad` is computed in `services/actions/shared.ts` based on active task count, energy costs, and deadline proximity.
 
-### Cross-Module Signals Atlas Reads (never writes)
+### Signals Atlas Reads
 
 | Signal | Source Module | Atlas Behaviour When Triggered |
 |---|---|---|
-| `emotional.emotionalResilience < 4` | Agnes | Reduce cognitive load. Add schedule buffers. |
-| `emotional.stressLoad > 7` | Agnes | Do not add to schedule. Suggest deferral. |
-| `biological.cnsFatigue > 7` | Titan / Soma | Block all high-intensity cognitive tasks. Admin work only. |
-| `biological.recoveryScore < 5` | Titan | Physical recovery takes priority. Protect all rest slots. |
-| `resource.financialFriction > 8` | Ledger | Emergency posture. Elevate income-critical tasks to top priority. |
-| `cognitive.energyBudget < 4` | Titan | Flat schedule only. No new commitments accepted. |
+| `biological.cnsFatigue` | Titan / Soma | Gate high-intensity cognitive tasks |
+| `biological.sleepQuality` | Soma | Adjust morning capacity estimates |
+| `biological.recoveryScore` | Titan | Physical recovery takes priority. Protect all rest slots. |
+| `emotional.emotionalResilience` | Agnes | Reduce cognitive load when < 4. Add schedule buffers. |
+| `emotional.stressLoad` | Agnes | Do not add to schedule when > 7. Suggest deferral. |
+| `emotional.moodTrend` | Agnes | Adjust tone of prompts and suggestions |
+| `cognitive.*` | Self | Energy budget enforcement |
+| `planning.*` | Self | Deadline and load tracking |
+| `resource.financialFriction` | Ledger | Emergency posture when > 8. Elevate income-critical tasks. |
 
 ---
 
-## Cascade Rules (`src/lib/spine/cascade-rules.ts`)
+## Cascade Rules & Spine Events
 
-Atlas is the primary emitter of planning-domain cascade events.
+Atlas emits and receives Spine events for cross-module coordination.
 
-### Triggers → Events
+### Outbound Spine Events (15)
 
-| Condition | Spine Event | Consequence |
+| Event | Trigger |
+|---|---|
+| `TASK_COMPLETED` | Task marked complete |
+| `TASK_CREATED` | New task added |
+| `TASK_BLOCKED` | Task blocked by dependency or condition |
+| `TASK_UNBLOCKED` | Blocking condition resolved |
+| `HABIT_LOGGED` | Habit completion recorded |
+| `HABIT_STREAK_BROKEN` | Streak reset due to missed day |
+| `HABIT_MILESTONE` | Streak milestone reached (7, 30, 90 days) |
+| `GOAL_MILESTONE` | Goal milestone completed |
+| `GOAL_COMPLETED` | All goal milestones achieved |
+| `ENERGY_BUDGET_UPDATED` | Daily energy budget recalculated |
+| `ENERGY_OVERLOAD` | Energy usage exceeds budget |
+| `RECOVERY_WINDOW_CREATED` | Mandatory recovery block injected |
+| `FIELD_CREATED` | Extension field added |
+| `FIELD_DELETED` | Extension field removed |
+| `FIELD_VALUE_UPDATED` | Extension field value changed |
+
+### Inbound Spine Events (8)
+
+| Event | Source | Atlas Response |
 |---|---|---|
-| `activeLoad > 7` for 2+ consecutive slots | `OVERLOAD_WARNING` | Inject mandatory recovery window |
-| `activeLoad > 9` | `OVERLOAD_CRITICAL` | Inject mandatory rest block |
-| `planningLoad > 8` | `PLAN_COMPRESSION_NEEDED` | Atlas compresses open loops → notify Nexus Orchestrator |
-| `deadlinePressure >= 8` | `DEADLINE_CRUNCH` | Notify user AND escalate to Nexus |
-| `executionVelocity < 3` for 3+ days | `EXECUTION_STALL` | Suggest workload review |
+| `BURNOUT_WARNING` | Titan/Soma | Reduce load, inject recovery |
+| `BLOCK_HIGH_INTENSITY` | Titan | Disable high-energy task scheduling |
+| `FLATTEN_ENERGY_WAVE` | Soma | Spread energy usage across day |
+| `SLEEP_QUALITY_UPDATED` | Soma | Adjust morning capacity |
+| `RECOVERY_UPDATED` | Titan | Update recovery window protection |
+| `EMOTIONAL_STATE_CHANGED` | Agnes | Adjust scheduling aggressiveness |
+| `STRESS_SPIKE` | Agnes | Defer non-critical tasks |
+| `FINANCIAL_FRICTION_CHANGED` | Ledger | Reprioritize income-critical tasks |
 
-### All Spine Events Atlas Can Emit
+---
 
-```
-TASK_COMPLETED
-ROUTINE_UPDATED
-DEADLINE_APPROACHING
-DRIFT_DETECTED
-OVERLOAD_WARNING
-OVERLOAD_CRITICAL
-PLAN_COMPRESSION_NEEDED
-DEADLINE_CRUNCH
-EXECUTION_STALL
+## Type System
+
+### Core Types (from `lib/types`, re-exported)
+
+- `AtlasProfile` — Main profile container
+- `AtlasTask` — Task with deadline, priority, energy cost
+- `AtlasGoal` — Goal with milestones
+- `AtlasHabit` — Habit with type, frequency, streak
+- `AtlasMilestone` — Goal milestone
+- `AtlasRoutine` — Routine with blocks
+- `AtlasTaskNode` — Task in dependency graph (legacy)
+- `AtlasProject` — Project container
+- `AtlasPreferences` — User preferences
+- `ScheduledTask` — Task with scheduled slot
+- `DailyIntention` — Daily focus/intention
+- `HabitRecord` — Single habit completion record
+- `EnergyWavePoint` — Energy level at timestamp
+- `RecoveryWindow` — Protected recovery block
+- `TemporalReview` — Review period summary
+- `HabitWeekSummary` — Weekly habit aggregates
+- `GoalWeekProgress` — Weekly goal progress
+
+### Local Types
+
+```typescript
+// Recurrence patterns
+type RecurrenceRule = 'daily' | 'weekdays' | 'weekly' | 'monthly'
+
+// Energy level (simplified)
+type EnergyLevel = 'low' | 'medium' | 'high'
+
+// Priority level (simplified)
+type PriorityLevel = 'low' | 'medium' | 'high'
+
+// Prompt context modes (see Prompt System below)
+type AtlasContextMode = 
+  | { kind: 'general' }
+  | { kind: 'task-focus'; task: AtlasTask }
+  | { kind: 'habit-review'; habits: AtlasHabit[] }
+  | { kind: 'goal-planning'; goal: AtlasGoal }
+  | { kind: 'field-crud'; currentExtensions: FieldDefinition[] }
+
+// Journal prompt tones
+type JournalTone = 'grounding' | 'self-compassion' | 'perspective' | 'ambition' | 'reflective'
 ```
 
 ---
 
-## Data Model (`src/modules/atlas/types.ts`)
+## Prompt System (`prompts/atlas-prompt-builder.ts`)
 
-### `AtlasProfile`
+Atlas uses 5 distinct prompt modes that provide different context to the LLM:
+
+| Mode | Kind | Context Provided | Use Case |
+|---|---|---|---|
+| **General** | `general` | Full profile, NSV state, timeline, all entities | Default chat, planning discussions |
+| **Task Focus** | `task-focus` | Single task details, dependencies, deadline context | Task-specific questions, breakdown requests |
+| **Habit Review** | `habit-review` | Array of habits with streaks, recent records | Habit coaching, streak recovery |
+| **Goal Planning** | `goal-planning` | Single goal, milestones, linked tasks/habits | Goal strategy, milestone planning |
+| **Field CRUD** | `field-crud` | Schema only (FieldDefinition[]), no user data | Adding/editing extension fields |
+
+The prompt builder assembles system prompts based on mode, injecting relevant context while respecting privacy boundaries (field-crud mode never sees user data).
+
+---
+
+## Journal System
+
+### Components (`components/journal/`)
+
+| Component | Purpose |
+|---|---|
+| `JournalTab.tsx` | Main journal interface, entry list |
+| `JournalEntryEditor.tsx` | Rich text editor for entries |
+| `JournalEntryPreview.tsx` | Read-only entry preview |
+| `JournalEntryCard.tsx` | Entry card in list view |
+| `JournalHistoryList.tsx` | Paginated entry history |
+| `JournalVaultGate.tsx` | Vault lock authentication gate |
+
+### Journal Tones (`utils/journal-prompts.ts`)
+
+5 tone templates for AI-assisted journaling:
+
+| Tone | Description |
+|---|---|
+| `grounding` | Present-focused, calming, body-aware |
+| `self-compassion` | Gentle, non-judgmental, self-kindness |
+| `perspective` | Big-picture, temporal distance, wisdom |
+| `ambition` | Future-focused, goal-oriented, motivating |
+| `reflective` | Pattern-recognition, learning, insight |
+
+### Services
+
+- `journal-service.ts` — CRUD operations for journal entries
+- `services/actions/journal-actions.ts` — ActionHub integration
+
+---
+
+## Data Model
+
+### Key Types (from `lib/types`)
 
 ```typescript
 interface AtlasProfile {
   onboardingComplete: boolean;
   planningHorizon: 'daily' | 'weekly' | 'monthly' | 'quarterly';
-  activeRoutine?: Routine;
-  routineHistory: Routine[];
-  tasks: Task[];
-  goals: Goal[];
-  habits: Habit[];
+  activeRoutine?: AtlasRoutine;
+  routineHistory: AtlasRoutine[];
+  tasks: AtlasTask[];
+  goals: AtlasGoal[];
+  habits: AtlasHabit[];
   timelineBlocks: TimelineBlock[];
   reviewHistory: TemporalReview[];
   driftScoreHistory: number[];
@@ -161,10 +270,10 @@ interface AtlasProfile {
 }
 ```
 
-### `Routine` & `RoutineBlock`
+### `AtlasRoutine` & `RoutineBlock`
 
 ```typescript
-interface Routine {
+interface AtlasRoutine {
   id: string;
   name: string;
   isActive: boolean;
@@ -184,14 +293,14 @@ interface RoutineBlock {
 
 > **Critical**: Blocks with `category: 'recovery'` are **non-negotiable boundaries**. They cannot be overwritten or moved without **explicit user consent**. This is enforced at the service layer, not just the UI.
 
-### `Task`
+### `AtlasTask`
 
 ```typescript
-interface Task {
+interface AtlasTask {
   id: string;
   title: string;
   deadline?: string;             // ISO8601
-  priority: 1 | 2 | 3 | 4 | 5; // 1 = highest
+  priority: 1 | 2 | 3 | 4 | 5;   // 1 = highest
   energyCost: number;            // 1–10 (estimated)
   status: 'queued' | 'active' | 'paused' | 'completed' | 'deferred';
   dependencies: string[];        // task IDs that must complete first
@@ -203,28 +312,28 @@ interface Task {
 
 Task lifecycle: `queued` → `active` (on schedule) → `completed` | `paused` | `deferred`
 
-### `Goal` & `Milestone`
+### `AtlasGoal` & `AtlasMilestone`
 
 ```typescript
-interface Goal {
+interface AtlasGoal {
   id: string;
   title: string;
   deadline?: string;
-  milestones: Milestone[];
+  milestones: AtlasMilestone[];
   linkedHabits: string[];  // habit IDs
   linkedTasks: string[];   // task IDs
 }
 
-interface Milestone {
+interface AtlasMilestone {
   title: string;
   dueDate?: string;        // ISO8601
 }
 ```
 
-### `Habit`
+### `AtlasHabit`
 
 ```typescript
-interface Habit {
+interface AtlasHabit {
   id: string;
   title: string;
   frequency: 'daily' | 'weekly' | 'custom';
@@ -252,9 +361,37 @@ The `learning` type is unique — it accumulates a knowledge log, not just a num
 
 ---
 
+## Services Layer
+
+### Profile & Data Services
+
+| Service | File | Purpose |
+|---|---|---|
+| `AtlasProfileService` | `atlas-profile-service.ts` | Firestore CRUD for AtlasProfile |
+| `AtlasReviewService` | `atlas-review-service.ts` | Drift score computation, weekly review |
+| `AtlasPredictiveService` | `atlas-predictive-service.ts` | State machine (Normal/Compressed/Overloaded/Recovery) |
+| `JournalService` | `journal-service.ts` | Journal entry CRUD |
+| `AtlasDocumentPolicy` | `atlas-document-policy.ts` | Document access control |
+
+### Action Submodules (`services/actions/`)
+
+| Module | Purpose |
+|---|---|
+| `index.ts` | Action registration, ActionHub setup |
+| `shared.ts` | Shared utilities, `activeLoad` calculation |
+| `task-actions.ts` | Task CRUD, completion, blocking |
+| `goal-actions.ts` | Goal CRUD, milestone tracking |
+| `habit-actions.ts` | Habit CRUD, streak management |
+| `energy-actions.ts` | Energy logging, budget updates |
+| `routine-actions.ts` | Routine CRUD, block management |
+| `journal-actions.ts` | Journal entry creation, editing |
+| `checkin-actions.ts` | Morning/evening check-in flows |
+
+---
+
 ## Action Tags (Complete List)
 
-Action tags are the structured payloads Atlas emits after its LLM response to drive state mutations. They are processed by `src/modules/atlas/services/actions.ts`.
+Action tags are the structured payloads Atlas emits after its LLM response to drive state mutations. They are processed by `services/actions/`.
 
 ### Routine & Timeline Management
 
@@ -534,51 +671,115 @@ The `NexusHandoffService` manages the round-trip. Atlas waits for the delegated 
 
 ---
 
-## File Structure (Actual — post Sprint 8)
+## File Structure (68 files)
 
 ```
 src/modules/atlas/
-├── AtlasPage.tsx                       — route entry; AtlasContent holds useModuleAI + ActionHub
+├── AtlasPage.tsx                    # Main entry point, route handler
+├── personas.ts                      # ATLAS_PERSONA definition
+├── atlas-tokens.ts                  # Design tokens for Atlas UI
+├── field-templates.ts               # 10 extension field templates
 │
-├── components/
-│   ├── EnhancedAtlasDashboard.tsx      — MAIN dashboard: 5 tabs × 3 views; central wiring hub
-│   │                                     tabs: dashboard | backlog | routines | fields | review
-│   │                                     views (inside dashboard tab): today | week | focus
-│   ├── TodaysPlanCard.tsx              — today's tasks (reads profile.tasks) + live habit streaks
-│   ├── QuickAddForm.tsx                — modal for task/goal/habit/routine creation
-│   │                                     habit form includes frequency selector + minimumViableVersion
-│   ├── FocusView.tsx                   — pomodoro timer + zen mode; onOpenChat wired via custom event
-│   ├── WeekGrid.tsx                    — 7-day energy load grid; mounts in week view
-│   ├── WeeklyReviewModal.tsx           — guided review modal; triggered from review tab
-│   ├── MorningCheckIn.tsx              — dismissible AI daily brief card (NEW — Sprint 8)
-│   │                                     export: MorningCheckIn + shouldShowMorningCheckIn()
-│   ├── PriorityInbox.tsx               — top-3 task selector by priority/deadline/energy (NEW — Sprint 8)
-│   ├── FieldTemplates.tsx              — 10 Atlas-specific extension field templates
-│   ├── AtlasOnboardingCheck.tsx        — post-onboarding first-run experience guard
-│   └── [other supporting components]
+├── actions/
+│   └── atlas-field-actions.ts       # Field CRUD + Spine event emission
+│
+├── components/                      # 32 main components
+│   ├── EnhancedAtlasDashboard.tsx   # Main dashboard: tabs + views hub
+│   ├── ViewSwitcher.tsx             # Tab/view navigation
+│   ├── AtlasAIPanel.tsx             # AI chat interface
+│   ├── AtlasAnalytics.tsx           # Analytics visualizations
+│   ├── AtlasNotificationSettingsPanel.tsx  # Notification preferences
+│   ├── PostOnboardingWelcome.tsx    # First-run welcome flow
+│   ├── QuickAddForm.tsx             # Task/goal/habit/routine creation modal
+│   ├── QuickCaptureBar.tsx          # Quick entry input bar
+│   │
+│   │  # Task Management
+│   ├── TaskManager.tsx              # Task list management
+│   ├── TaskCard.tsx                 # Individual task display
+│   ├── TaskTimeline.tsx             # Timeline view of tasks
+│   ├── DayTaskPanel.tsx             # Daily task panel
+│   ├── PriorityInbox.tsx            # Top-3 priority task selector
+│   │
+│   │  # Goal Management
+│   ├── GoalTracker.tsx              # Goal list and tracking
+│   ├── GoalProgress.tsx             # Goal progress visualization
+│   ├── GoalVelocityChart.tsx        # Goal completion velocity chart
+│   │
+│   │  # Habit Management
+│   ├── TodaysPlanCard.tsx           # Today's plan with habit streaks
+│   ├── HabitBuilder.tsx             # Habit creation wizard
+│   ├── HabitTracker.tsx             # Habit tracking interface
+│   ├── HabitHeatmap.tsx             # GitHub-style activity heatmap
+│   ├── HabitMomentumChart.tsx       # Habit momentum visualization
+│   │
+│   │  # Routine Management
+│   ├── RoutineEditor.tsx            # Routine block editor
+│   ├── MonthPlanner.tsx             # Monthly planning view
+│   ├── WeekGrid.tsx                 # 7-day energy load grid
+│   │
+│   │  # Check-in System
+│   ├── MorningCheckIn.tsx           # Morning daily brief
+│   ├── EveningCheckIn.tsx           # Evening reflection
+│   ├── ManualEnergyLog.tsx          # Manual energy entry
+│   ├── EnergyWaveChart.tsx          # Energy over time visualization
+│   ├── EntryConfirmChip.tsx         # Entry confirmation indicator
+│   ├── WeeklyReviewModal.tsx        # Guided weekly review
+│   │
+│   │  # Fields & Focus
+│   ├── FieldsTab.tsx                # Extension fields management
+│   ├── FocusView.tsx                # Pomodoro timer + zen mode
+│   │
+│   ├── journal/                     # 6 journal components
+│   │   ├── JournalTab.tsx           # Journal main tab
+│   │   ├── JournalEntryEditor.tsx   # Rich text editor
+│   │   ├── JournalEntryPreview.tsx  # Entry preview
+│   │   ├── JournalEntryCard.tsx     # Entry card display
+│   │   ├── JournalHistoryList.tsx   # Entry history list
+│   │   └── JournalVaultGate.tsx     # Vault lock gate
+│   │
+│   └── shared/                      # 5 shared utilities
+│       ├── ItemActionButtons.tsx    # Edit/delete action buttons
+│       ├── PortalledModal.tsx       # Portal-based modal
+│       ├── StatsGrid.tsx            # Stats display grid
+│       ├── useDeleteConfirmation.tsx  # Delete confirmation hook
+│       └── useFilteredSortedList.ts   # List filtering/sorting hook
+│
+├── context/
+│   └── AtlasActionsContext.tsx      # Action context provider
+│
+├── hooks/
+│   └── use-atlas-entry-parser.ts    # NLP pattern parser for quick entry
 │
 ├── onboarding/
-│   └── AtlasOnboarding.tsx             — 3-step first-run: planning horizon + routine + habits
+│   └── AtlasOnboarding.tsx          # 3-step onboarding flow
+│
+├── prompts/
+│   └── atlas-prompt-builder.ts      # 5 prompt modes (see below)
 │
 ├── services/
-│   ├── atlas-profile-service.ts        — Firestore CRUD; exports AtlasProfile + all sub-types
-│   ├── atlas-predictive-service.ts     — AtlasPredictiveService: state machine (Normal/Compressed/
-│   │                                     Overloaded/Recovery) + getStateForDisplay() → AtlasStateDisplay
-│   ├── atlas-review-service.ts         — drift score computation + weekly review helpers
-│   └── actions.ts                      — ActionHub registrations (registerAtlasActions)
+│   ├── atlas-profile-service.ts     # Firestore CRUD for profiles
+│   ├── atlas-review-service.ts      # Drift score + review helpers
+│   ├── atlas-document-policy.ts     # Document access policy
+│   ├── atlas-predictive-service.ts  # State machine (Normal/Compressed/Overloaded/Recovery)
+│   ├── journal-service.ts           # Journal entry CRUD
+│   │
+│   └── actions/                     # Action submodules
+│       ├── index.ts                 # Action registration
+│       ├── shared.ts                # activeLoad calculation
+│       ├── task-actions.ts          # Task CRUD actions
+│       ├── goal-actions.ts          # Goal CRUD actions
+│       ├── habit-actions.ts         # Habit CRUD + streak actions
+│       ├── energy-actions.ts        # Energy logging actions
+│       ├── routine-actions.ts       # Routine CRUD actions
+│       ├── journal-actions.ts       # Journal entry actions
+│       └── checkin-actions.ts       # Check-in flow actions
 │
-├── prompts/                            — system prompt template partials
-├── personas.ts                         — ATLAS_PERSONA + mandatory thought block template
-└── field-templates.ts                  — 10 cognitive extension field definitions
+├── utils/
+│   └── journal-prompts.ts           # 5 tone templates for journal prompts
+│
+└── __tests__/
+    └── atlas-data-integrity.test.ts # Data integrity tests
 ```
-
-### Key Architecture Notes
-
-- **`AtlasContent`** (inside `AtlasPage.tsx`) holds `ai = useModuleAI(...)` and all ActionHub handlers. It passes `onSendMessage={ai.handleSendMessage}` down to `EnhancedAtlasDashboard`.
-- **`EnhancedAtlasDashboard`** is the hub for all dashboard state (`activeTab`, `activeView`, review modal open, morning dismissed). It imports and renders `MorningCheckIn`, `PriorityInbox`, `WeekGrid`, `WeeklyReviewModal`.
-- **`handleAddField`** in `AtlasPage.tsx` calls `ai.handleSendMessage(...)` directly — the "Add Field" button triggers the AI chat.
-- **`profile.tasks`** is the canonical task array (`AtlasTask[]`). Never use `profile.taskGraph` (legacy `AtlasTaskNode[]`, wrong shape).
-- **`profile.habits`** is `AtlasHabit[]`. `TodaysPlanCard` reads it for live streak display using `atRiskThresholdMs(frequency)` per habit type.
 
 ---
 
@@ -694,13 +895,14 @@ delegate_to_module({
 | Rule | Detail |
 |---|---|
 | `<thought>` block is MANDATORY | Every Atlas LLM response must start with it. Never remove. Never skip. |
-| Atlas never writes foreign NSV | Atlas only writes to `planning.*` namespace via `GlobalProjectionService` |
+| Atlas writes `cognitive.*` + `planning.*` | Use `GlobalProjectionService` for NSV writes |
 | Recovery windows are sacred | `category: 'recovery'` blocks require explicit user consent to modify |
 | Drift Score uses real timestamps | Compare `task.scheduledSlot` vs `task.completedAt` — never estimate |
 | Cross-verification requires delegation | Use `NexusHandoffService` for Titan/Agnes data — do not read their collections directly |
 | Extension fields are LLM-validated | FieldsTab custom fields are domain-validated by LLM, not schema-validated |
 | Energy costs are estimates | `energyCost` on Task is the estimate; `actualEnergyCost` is the truth — both matter |
 | Flat schedule mode is hard | If `cognitive.energyBudget < 4`, no new commitments are accepted — no exceptions |
+| Use correct type names | `AtlasTask`, `AtlasGoal`, `AtlasHabit`, `AtlasRoutine` — not legacy names |
 
 ---
 
@@ -715,6 +917,11 @@ await GlobalProjectionService.updateCrossFunctionalState(uid, {
     energyBudget: computedBudget,
     focusScore: focusScore,
     activeLoad: computedLoad,
+    planningLoad: openLoopCount,
+    taskCompletionRate: completionRate,
+  },
+  planning: {
+    streakHealth: streakScore,
     deadlinePressure: pressureScore,
   }
 });
@@ -722,38 +929,28 @@ await GlobalProjectionService.updateCrossFunctionalState(uid, {
 
 ---
 
-## Sprint History & Implementation Status
+## Component Categories Summary
 
-### Sprint 8 — Bug Fixes + AI-First Foundation (March 2026)
+### Task Components (5)
+`TaskManager`, `TaskCard`, `TaskTimeline`, `DayTaskPanel`, `PriorityInbox`
 
-**Bugs fixed:**
-| Bug | File | Fix |
-|---|---|---|
-| `profile.taskGraph` (wrong) → `profile.tasks` | `TodaysPlanCard.tsx` | Reads correct `AtlasTask[]` array |
-| Static streak placeholder | `TodaysPlanCard.tsx` | Live habit streaks from `profile.habits` with `atRiskThresholdMs()` |
-| `handleAddField = console.log` | `AtlasPage.tsx` | Wired to `ai.handleSendMessage(...)` |
-| Habit no frequency selector | `QuickAddForm.tsx` | Frequency fieldset (daily/weekdays/weekends/weekly/custom) + minimumViableVersion |
-| FocusView `onOpenChat = noop` | `EnhancedAtlasDashboard.tsx` | Wired via `window.dispatchEvent(new CustomEvent('atlas:focus-chat'))` |
-| WeeklyReviewModal never mounted | `EnhancedAtlasDashboard.tsx` | Mounted with trigger button in review tab |
-| WeekGrid never rendered in week view | `EnhancedAtlasDashboard.tsx` | Mounted in week view |
+### Goal Components (3)
+`GoalTracker`, `GoalProgress`, `GoalVelocityChart`
 
-**New components built (Sprint 8):**
-- `MorningCheckIn.tsx` — dismissible daily brief card; `shouldShowMorningCheckIn(userId)` gates per-day via localStorage
-- `PriorityInbox.tsx` — top-3 task selector using `O(n log n)` ranking by priority/deadline/energy fit
+### Habit Components (4)
+`HabitBuilder`, `HabitTracker`, `HabitHeatmap`, `HabitMomentumChart`, `TodaysPlanCard` (partial)
 
-### Sprint 9 — Intelligent Loop (planned)
-- Proactive morning brief (AI-initiated, not user-triggered)
-- Evening check-in component
-- `AtlasPredictiveService` state machine evaluation (currently typed but never runs)
-- Recurrence engine for recurring tasks
-- Weekly review auto-trigger (Sunday evening Spine event)
+### Routine Components (3)
+`RoutineEditor`, `MonthPlanner`, `WeekGrid`
 
-### Sprint 10 — Power User & Memory (planned)
-- Time-block calendar view (hour-grid)
-- Habit heatmap (GitHub-style annual view)
-- Historical aggregate sub-collection (`atlas_profiles/{uid}/daily_snapshots`)
-- Goal velocity chart (completion rate over time)
-- `executionVelocity` NSV auto-compute from completedAt timestamps
+### Check-in Components (5)
+`MorningCheckIn`, `EveningCheckIn`, `ManualEnergyLog`, `EnergyWaveChart`, `EntryConfirmChip`, `WeeklyReviewModal`
+
+### Journal Components (6)
+`JournalTab`, `JournalEntryEditor`, `JournalEntryPreview`, `JournalEntryCard`, `JournalHistoryList`, `JournalVaultGate`
+
+### Shared Components (5)
+`ItemActionButtons`, `PortalledModal`, `StatsGrid`, `useDeleteConfirmation`, `useFilteredSortedList`
 
 ---
 
@@ -765,4 +962,6 @@ await GlobalProjectionService.updateCrossFunctionalState(uid, {
 4. **Recovery inviolability** — recovery blocks are a first-class constraint, not a suggestion
 5. **Drift Score** — a continuous measure of plan-vs-reality fidelity that feeds behavioral insights
 6. **Five habit types** — `sober` and `learning` require distinct rendering and data semantics
-7. **Cascade emitter** — Atlas fires the most planning-critical Spine events (`DEADLINE_CRUNCH`, `OVERLOAD_CRITICAL`, `EXECUTION_STALL`)
+7. **Journal system** — structured journaling with 5 tone templates and vault security
+8. **15 outbound + 8 inbound Spine events** — comprehensive cross-module coordination
+9. **5 prompt modes** — context-appropriate LLM interactions for different use cases

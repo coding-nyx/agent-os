@@ -39,18 +39,52 @@ Titan is the **physical gatekeeper** of the system. It blocks training when read
 
 ## 3. TITAN_PERSONA (`src/modules/titan/personas.ts`)
 
-The AI agent persona is defined in `personas.ts`. Key traits:
+The AI agent persona is a 185-line comprehensive coaching identity defined in `personas.ts`.
 
+### Core Identity
+
+- **Role**: Physical Authority — readiness gatekeeper and physical optimization engine
 - **Tone**: Grounded, precise, performance-focused. Not a bro-coach.
-- **Archetype**: Veteran strength-and-conditioning specialist with deep psyche-body link awareness.
-- **Coaching domains**:
-  - Strength & Power
-  - Conditioning (aerobic / anaerobic)
-  - Recovery science
-  - Sleep architecture
-  - Hormonal context
-  - Injury prevention & prehab
-  - Periodization & mesocycle design
+- **Archetype**: Veteran strength-and-conditioning specialist with deep psyche-body link awareness
+
+### Coaching Domains
+
+- **Strength & Power**: Progressive overload design, 1RM estimation, rep-range periodization
+- **Conditioning**: Aerobic base development, lactate threshold, cardiac output training
+- **Recovery**: CNS fatigue assessment, HRV trend analysis, sleep quality impact
+- **Sleep Architecture**: Sleep debt tracking, REM/deep sleep targets, readiness scoring
+- **Hormonal Context**: Cortisol/stress load impact, menstrual cycle periodization
+- **Injury Prevention**: Fatigue accumulation warnings, movement pattern imbalances
+- **Periodization**: Mesocycle design, deload week recognition, peak-taper sequencing
+
+### Cross-Module Awareness
+
+Titan reads signals from other modules to modify prescriptions:
+
+| Module | Signal | Threshold | Titan Response |
+|--------|--------|-----------|----------------|
+| Agnes | `stressLoad` | > 7 | Scale back intensity 20%, prioritize parasympathetic work |
+| Agnes | `emotionalResilience` | < 4 | Prescribe mobility, zone-2 cardio, breathwork |
+| Soma | `cnsFatigueScore` | > 7 | Enforce rest day only — no loaded strength, no HIIT |
+| Atlas | `focusScore` | < 4 | Substitute technique-heavy movements with simpler variants |
+| Ledger | `financialFriction` | > 7 | Note as recovery-compressing stressor |
+
+### Readiness Scoring System (0–10)
+
+| Score | Tier | Protocol |
+|-------|------|----------|
+| 7–10 | 🟢 GREEN | Train as planned. Full intensity permitted. |
+| 4–6 | 🟡 AMBER | Modify: reduce volume 20–30%, lower intensity ceiling, extend warm-up. |
+| 0–3 | 🔴 RED | Active recovery or rest only. No loaded strength. No HIIT. No exceptions without explicit user confirmation. |
+
+### Persona Variants (`TITAN_VARIANTS`)
+
+| Variant | Focus |
+|---------|-------|
+| `performance` | Load-based, maximal adaptation stimulus. Readiness confirmed green. |
+| `recovery` | Parasympathetic activation, CNS downregulation, sleep optimization. |
+| `medical` | Lab interpretation, biomarker review, flag outliers for medical review. |
+| `onboarding` | Baseline profile establishment, training history, injury history. |
 
 > **Rule**: Titan never dismisses psychological or emotional state as irrelevant to physical performance. Agnes signals always factor into training recommendations.
 
@@ -60,28 +94,139 @@ The AI agent persona is defined in `personas.ts`. Key traits:
 
 ```
 src/modules/titan/
-├── TitanPage.tsx                    — Top-level route component (/titan)
-├── components/
-│   ├── TitanDashboard.tsx           — Readiness gauge, recovery metrics, training history overview
-│   ├── TitanWorkspace.tsx           — Tabbed workspace container
-│   ├── WorkoutLogger.tsx            — Log workouts: exercises, sets, reps, perceived effort
-│   ├── ReadinessPanel.tsx           — Daily readiness check-in UI
-│   ├── SleepTracker.tsx             — Sleep quality & duration logging
-│   ├── PRTracker.tsx                — Personal records tracking (per lift / movement)
-│   ├── ProgramBuilder.tsx           — Mesocycle / workout program creation
-│   └── FieldsTab.tsx                — Custom extension fields (biometrics, supplements, etc.)
-├── onboarding/
-│   └── TitanOnboarding.tsx          — First-run onboarding flow (populates TitanProfile)
+├── TitanPage.tsx                    # Entry point route component (/titan)
+├── TitanContent.tsx                 # Main UI container with tabs
+├── types.ts                         # Types: MuscleGroup, Exercise, WorkoutSet, PersonalRecord, WorkoutLog
+├── personas.ts                      # TITAN_PERSONA (185 lines) + 4 variants
+├── utils.ts                         # Utility functions
+│
+├── components/                      # 28 React components
+│   ├── PRBoard.tsx                  # Top 6 PRs with sparklines
+│   ├── TitanReadiness.tsx           # Readiness dashboard (TitanDashboard)
+│   ├── WorkoutSessionLogger.tsx     # Full session logging with exercises
+│   ├── QuickLogDrawer.tsx           # Fast single-set logging drawer
+│   ├── QuickLogBar.tsx              # Quick log trigger bar
+│   ├── AnalyticsTab.tsx             # Training analytics
+│   ├── ProgressTab.tsx              # Progress visualization
+│   ├── BodyWeightTracker.tsx        # Weight logging with trend chart
+│   ├── CardioLogger.tsx             # Cardio session logging
+│   ├── SleepTracker.tsx             # Sleep quality & duration logging
+│   ├── TrainingCalendar.tsx         # 7-day training calendar view
+│   ├── CycleManager.tsx             # Periodization cycle management
+│   ├── RoutineBuilder.tsx           # Manual routine builder
+│   ├── RoutineProgress.tsx          # Volume analytics per routine
+│   ├── TitanRoutinePanel.tsx        # Routine management panel
+│   ├── CustomFieldManager.tsx       # Custom extension fields (biometrics, supplements)
+│   ├── RecoveryDashboard.tsx        # Recovery metrics overview
+│   ├── RecoveryManager.tsx          # Recovery protocol management
+│   ├── RecoveryBanner.tsx           # Recovery state banner
+│   ├── RecoveryCheckinPanel.tsx     # Daily recovery check-in
+│   ├── RecoveryPlanModal.tsx        # Recovery plan details modal
+│   ├── RestPeriodCalculator.tsx     # Rest period estimation
+│   ├── ClearanceWidget.tsx          # Clearance status widget
+│   ├── ClearanceBanner.tsx          # Clearance state banner
+│   ├── TitanDiagnosisPanel.tsx      # Medical analysis panel
+│   ├── SomaSnapshotWidget.tsx       # Soma health snapshot
+│   ├── TitanNotificationSettingsPanel.tsx # Notification preferences
+│   ├── LogConfirmCard.tsx           # Log confirmation card
+│   └── shared/
+│       └── useDataLogger.ts         # Shared data logging hook
+│
+├── tabs/                            # 4 main UI tabs
+│   ├── TrainTab.tsx                 # Calendar, workout logging, clearance, readiness
+│   ├── PlanTab.tsx                  # Routines, volume analytics, custom fields
+│   ├── BodyTab.tsx                  # PRs, weight, cardio, sleep
+│   └── CyclesTab.tsx                # Periodization cycles
+│
 ├── services/
-│   ├── titan-profile-service.ts     — Firestore CRUD for titan_profiles collection
-│   └── actions.ts                   — Action tag handlers (compute_readiness, log_workout, etc.)
-├── personas.ts                      — TITAN_PERSONA definition
-└── types.ts                         — All TypeScript interfaces (TitanProfile, WorkoutSession, etc.)
+│   ├── titan-profile-service.ts     # Firestore CRUD for titan_profiles
+│   ├── titan-exercise-service.ts    # Exercise library service
+│   └── actions/                     # 7 action handler modules
+│       ├── index.ts                 # Registers all handlers with ActionHub
+│       ├── core-actions.ts          # update_titan_profile, update_routine, sync_vitals, self_clearance_check
+│       ├── workout-actions.ts       # log_workout_session, log_workout_set
+│       ├── sleep-actions.ts         # log_sleep
+│       ├── body-actions.ts          # log_body_weight, log_cardio_session
+│       ├── biomarker-actions.ts     # commit_biomarker, parse_lab_report, issue_clearance, analyze_medical_image, parse_health_report, parse_workout_log, parse_biometric_data
+│       ├── cycle-actions.ts         # create_cycle, advance_cycle_phase, complete_cycle
+│       ├── field-actions.ts         # suggest_field, create_field, delete_field
+│       ├── shared.ts                # Shared utilities for action handlers
+│       └── shared-meta.ts           # titanAllowedActions array (26 actions)
+│
+├── prompts/
+│   ├── ai-titan-personas.ts         # AI persona definitions
+│   ├── titan-onboarding-prompt.ts   # Onboarding conversation prompt
+│   └── titan-session-prompt.ts      # 960-line comprehensive system prompt
+│
+├── data/
+│   ├── exercise-library.ts          # 40+ exercises with metadata
+│   ├── exercise-library.json        # JSON version of exercise library
+│   └── recovery-templates.ts        # Recovery protocol templates
+│
+├── diagnosis/                       # Medical document analysis pipeline
+│   ├── titan-diagnosis-spec.ts      # DiagnosisSpecialization config
+│   ├── titan-diagnosis-prompt.ts    # System prompt for medical analysis
+│   ├── titan-diagnosis-extractor.ts # Data extraction from documents
+│   └── titan-diagnosis-merge.ts     # Merge extracted data to profile
+│
+├── onboarding/
+│   ├── TitanOnboarding.tsx          # First-run onboarding flow
+│   └── intake-accumulator.ts        # Accumulates onboarding data
+│
+└── utils/
+    ├── e1rm.ts                      # Epley formula: weight * (1 + reps / 30)
+    ├── quick-log-parser.ts          # Parse quick log input
+    ├── nsv-workout-updater.ts       # Update NSV after workouts
+    └── nsv-sleep-updater.ts         # Update NSV after sleep logs
 ```
 
 ---
 
 ## 5. Data Model
+
+### Core Types (`src/modules/titan/types.ts`)
+
+```typescript
+type MuscleGroup =
+  | 'chest' | 'back' | 'shoulders' | 'biceps' | 'triceps'
+  | 'forearms' | 'core' | 'glutes' | 'quads' | 'hamstrings'
+  | 'calves' | 'traps' | 'lats' | 'full_body' | 'cardio';
+
+type ExerciseCategory = 'compound' | 'isolation' | 'cardio' | 'mobility';
+
+type Exercise = {
+  id: string;
+  name: string;
+  muscleGroups: MuscleGroup[];
+  category: ExerciseCategory;
+  equipment: string[];           // e.g. ['barbell'], ['bodyweight'], ['dumbbell','cable']
+  aliases?: string[];            // alternate names for search
+};
+
+type PersonalRecord = {
+  exerciseId: string;
+  weight: number;                // kg
+  reps: number;
+  e1RM: number;                  // Epley formula: weight * (1 + reps / 30)
+  date: string;                  // ISO date string
+};
+
+type WorkoutSet = {
+  exerciseId: string;
+  weight: number;
+  reps: number;
+  rir?: number;                  // reps in reserve (optional)
+  notes?: string;
+};
+
+type WorkoutLog = {
+  id: string;
+  date: string;                  // ISO date string
+  sets: WorkoutSet[];
+  durationMinutes?: number;
+  notes?: string;
+};
+```
 
 ### `TitanProfile` (root Firestore document in `titan_profiles/{uid}`)
 
@@ -102,11 +247,20 @@ interface TitanProfile {
   workoutFrequency: number;         // days per week
   availableEquipment: string[];
   injuryHistory: string[];
-  currentProgram?: WorkoutProgram;
-  workoutLog: WorkoutSession[];
-  readinessHistory: ReadinessEntry[];
+  routines: Routine[];              // weekly training routines
+  workoutSessions: WorkoutSession[];// completed sessions
+  workoutLogs: WorkoutLog[];        // simplified logs for sparklines
   sleepLog: SleepEntry[];
-  prTracking: PersonalRecord[];
+  bodyWeightLog: BodyWeightEntry[];
+  cardioLog: CardioSession[];
+  personalRecords: Record<string, PersonalRecord>;
+  cycles: CycleEntry[];             // periodization cycles
+  customFields: CustomField[];
+  labSummaries: LabSummary[];
+  medications: string[];
+  allergies: string[];
+  medicalImageAnalyses: MedicalImageAnalysis[];
+  nutrition: Record<string, unknown>;
   createdAt: string;                // ISO 8601
   updatedAt: string;                // ISO 8601
 }
@@ -117,93 +271,173 @@ interface TitanProfile {
 ```typescript
 interface WorkoutSession {
   id: string;
+  routineId: string;
+  routineName: string;
   date: string;                     // ISO 8601
+  startedAt: string;
+  completedAt: string;
   exercises: ExerciseLog[];
-  duration: number;                 // minutes
-  perceivedEffort: number;          // RPE 1-10
+  totalVolume?: number;             // kg * reps sum
+  rpe?: number;                     // RPE 1-10
   notes?: string;
-  readinessAtStart?: number;        // readiness score when session began
+  status: 'completed' | 'partial' | 'abandoned';
 }
 
 interface ExerciseLog {
-  name: string;
-  sets: SetLog[];
-  notes?: string;
+  exerciseName: string;
+  plannedSets: number;
+  plannedReps: string;              // e.g. "8-10"
+  sets: ExerciseSet[];
 }
 
-interface SetLog {
-  reps: number;
+interface ExerciseSet {
+  setNumber: number;
   weight?: number;
-  unit?: 'kg' | 'lbs';
-  rpe?: number;
-  isWarmup?: boolean;
-}
-
-interface ReadinessEntry {
-  date: string;                     // ISO 8601
-  score: number;                    // 0-10
-  tier: 'GREEN' | 'AMBER' | 'RED';
-  inputs: {
-    restingHeartRate: number;
-    sleepQuality: number;           // 0-10
-    energyLevel: number;            // 0-10
-    stressPhysical: number;         // 0-10
-  };
-  cnsFatigue: number;               // 0-10
-  recommendation: string;
+  repsCompleted: number;
+  completed: boolean;
+  notes?: string;
 }
 
 interface SleepEntry {
-  date: string;                     // ISO 8601
-  duration: number;                 // hours
-  quality: number;                  // 0-10 composite
-  deepSleep?: number;               // hours or %
-  remSleep?: number;                // hours or %
+  id: string;
+  date: string;                     // ISO date
+  bedtime?: string;
+  wakeTime?: string;
+  durationHours: number;
+  quality: number;                  // 0-10
+  deepSleepPct?: number;
+  remSleepPct?: number;
+  awakenings?: number;
   notes?: string;
+  tags?: string[];
+  recordedAt: string;
+}
+
+interface BodyWeightEntry {
+  id: string;
+  date: string;
+  weight: number;                   // kg
+  bodyFatPct?: number;
+  measurements?: Record<string, number>;
+  notes?: string;
+  recordedAt: string;
+}
+
+interface CardioSession {
+  id: string;
+  date: string;
+  type: 'run' | 'bike' | 'swim' | 'row' | 'hike' | 'elliptical' | 'jump_rope' | 'other';
+  durationMinutes: number;
+  distanceKm?: number;
+  avgHeartRate?: number;
+  calories?: number;
+  notes?: string;
+  rpe?: number;
+  status: 'completed' | 'partial';
+  recordedAt: string;
 }
 
 interface PersonalRecord {
-  exercise: string;
-  weight: number;
-  reps: number;
-  unit: 'kg' | 'lbs';
-  date: string;                     // ISO 8601
-  notes?: string;
+  exerciseName: string;
+  maxWeight: number;
+  repsAtMax: number;
+  e1RM: number;                     // Epley formula
+  achievedDate: string;
+  sessionId: string;
 }
 
-interface WorkoutProgram {
+interface CycleEntry {
   id: string;
   name: string;
-  weeks: ProgramWeek[];
-  currentWeek: number;
-  phase: 'accumulation' | 'intensification' | 'realization' | 'deload';
+  type: 'workout' | 'recovery' | 'custom';
+  description?: string;
   startDate: string;
+  endDate?: string;
+  phases: CyclePhase[];
+  currentPhaseIndex: number;
+  currentPhaseStartDate: string;
+  status: 'active' | 'completed' | 'paused';
+  notes?: string;
+  cycleLength?: number;
+  lastPeriodDate?: string;
+  linkedRoutineIds?: string[];
+  deloadWeekNumber?: number;
+  progressionScheme?: 'linear' | 'wave' | 'block' | 'undulating';
+  createdAt: string;
+  updatedAt: string;
 }
 
-interface ProgramWeek {
-  weekNumber: number;
-  sessions: PlannedSession[];
-}
-
-interface PlannedSession {
-  day: number;                      // 1-7
-  focus: string;                    // e.g. "Lower - Squat Focus"
-  exercises: PlannedExercise[];
-}
-
-interface PlannedExercise {
+interface CyclePhase {
+  id: string;
   name: string;
-  sets: number;
-  reps: string;                     // e.g. "5" or "8-10"
-  intensityNote?: string;           // e.g. "RPE 8"
+  durationDays: number;
+  notes?: string;
+  dosage?: string;
+  trainingModifier?: 'increase' | 'maintain' | 'reduce' | 'rest';
+}
+
+interface CustomField {
+  id: string;
+  name: string;
+  type: 'number' | 'text' | 'boolean' | 'select';
+  unit?: string;
+  description?: string;
+  range?: [number, number];
+  options?: string[];
+  createdAt: number;
+}
+
+interface Routine {
+  id: string;
+  weekday: number;                  // 0-6 (Sun-Sat)
+  name: string;
+  exercises: RoutineExercise[];
 }
 ```
 
 ---
 
-## 6. NSV (Nexus State Vector) Ownership
+## 6. UI Tabs
 
-Titan **writes** the following NSV fields. These are the only fields Titan may update. Never write to fields owned by other modules.
+Titan's UI is organized into 4 tabs within `TitanContent.tsx`:
+
+### Train Tab (`tabs/TrainTab.tsx`)
+
+Primary training view with:
+- **TrainingCalendar** — 7-day calendar showing scheduled routines and completed sessions
+- **TitanDashboard (TitanReadiness)** — Readiness gauge and recovery metrics
+- **WorkoutSessionLogger** — Full session logging with exercise tracking
+- **ClearanceWidget** — Current clearance status for high-intensity work
+- **Advisory banner** — Surfaces warnings after high-RPE sessions
+
+### Plan Tab (`tabs/PlanTab.tsx`)
+
+Training planning with:
+- **TitanRoutinePanel** — Routine management, import, analyze, generate
+- **RoutineProgress** — Volume analytics per routine
+- **CustomFieldManager** — Custom tracking fields (biometrics, supplements, macros)
+
+### Body Tab (`tabs/BodyTab.tsx`)
+
+Body metrics tracking with:
+- **PRBoard** — Top 6 personal records with sparkline trend charts
+- **ProgressTab** — Progress visualization over time
+- **BodyWeightTracker** — Weight logging with trend chart (supports kg/lbs)
+- **CardioLogger** — Cardio session logging (run, bike, swim, row, hike, etc.)
+- **SleepTracker** — Sleep quality, duration, and architecture logging
+
+### Cycles Tab (`tabs/CyclesTab.tsx`)
+
+Periodization management with:
+- **CycleManager** — Create, track, and complete training cycles
+- Supports progression schemes: linear, wave, block, undulating
+- Phase tracking with training modifiers (increase, maintain, reduce, rest)
+
+---
+
+## 7. NSV (Nexus State Vector) Ownership
+
+Titan **writes** the following NSV fields. These are the only fields Titan may update.
 
 ```typescript
 // Written via GlobalProjectionService.updateCrossFunctionalState(uid, payload)
@@ -214,9 +448,13 @@ Titan **writes** the following NSV fields. These are the only fields Titan may u
                               //         0 = fully recovered, 10 = breakdown risk
     sleepQuality: number,     // 0-10 | Composite sleep score
     recoveryScore: number,    // 0-10 | Overall physical recovery
+    hormonalContext: string,  // Descriptive hormonal state
+    weight: number,           // kg | Latest body weight
+    bodyFatPct: number,       // % | Body fat percentage
+    aerobicLoad: number,      // 0-10 | Cardio session load index
   },
   cognitive: {
-    energyBudget: number,     // 0-10 | Physical energy available for cognitive + physical tasks
+    energyBudget: number,     // 0-10 | Physical energy available
     focusScore: number,       // 0-10 | Physical-fatigue contribution to focus
   }
 }
@@ -224,130 +462,154 @@ Titan **writes** the following NSV fields. These are the only fields Titan may u
 
 > **Important**: `cognitive.focusScore` and `cognitive.energyBudget` are **co-owned** — Titan writes the physical-fatigue contribution only. Atlas may write cognitive-load contributions. Do not clobber; always read-modify-write or use delta semantics.
 
----
+### NSV Reads (Inbound Signals)
 
-## 7. Training Readiness Scoring System
-
-This is Titan's most critical feature. Readiness governs what training is permitted each day.
-
-### Tiers
-
-| Score | Tier      | Protocol                                                                 |
-|-------|-----------|--------------------------------------------------------------------------|
-| 7–10  | 🟢 GREEN  | Train as planned. Full intensity permitted.                              |
-| 4–6   | 🟡 AMBER  | Modify: reduce volume 20–30%, lower intensity ceiling, extend warm-up.   |
-| 0–3   | 🔴 RED    | Active recovery or rest only. No loaded strength. No HIIT. No exceptions without explicit user confirmation. |
-
-### Computation Inputs
-
-| Input              | Type    | Source                     |
-|--------------------|---------|----------------------------|
-| `restingHeartRate` | number  | User check-in / wearable   |
-| `sleepQuality`     | 0–10    | SleepTracker log           |
-| `energyLevel`      | 0–10    | User self-report           |
-| `stressPhysical`   | 0–10    | User self-report + Agnes   |
-
-### Action Tag
-
-```xml
-<action type="compute_readiness">
-  {
-    "restingHeartRate": 58,
-    "sleepQuality": 7,
-    "energyLevel": 6,
-    "stressPhysical": 3
-  }
-</action>
-```
-
-### Algorithmic Rules
-
-1. **Always** factor in the last **3 days** of readiness history — a single night's data is insufficient.
-2. CNS fatigue is **cumulative**. Log every session and compute a rolling 7-day trend.
-3. **Never** override a RED readiness state without explicit user confirmation dialog.
-4. If CNS fatigue rolling 7-day average exceeds 7, emit `flag_overtraining` regardless of today's readiness score.
+| Module | Signal | Use |
+|--------|--------|-----|
+| Agnes | `emotional.*`, `stressLoad` | Cortisol burden, emotional resilience |
+| Soma | `biological.cnsFatigueScore` | CNS state from Soma |
+| Atlas | `cognitive.focusScore` | Cognitive energy state |
 
 ---
 
-## 8. Action Tags
+## 8. Action Tags (26 total in `titanAllowedActions`)
 
-Titan's LLM agent emits structured action tags. The handler in `services/actions.ts` parses and executes them.
+Actions are organized into 7 handler modules under `services/actions/`.
 
-| Action Tag                    | Payload Fields                                                               | Effect                                                               |
-|-------------------------------|------------------------------------------------------------------------------|----------------------------------------------------------------------|
-| `update_titan_profile`        | Any `TitanProfile` top-level field                                           | Patches Firestore document                                            |
-| `compute_readiness`           | `restingHeartRate`, `sleepQuality`, `energyLevel`, `stressPhysical`         | Computes score, stores in `readinessHistory[]`, updates NSV          |
-| `log_workout_session`         | `exercises[]`, `duration`, `perceivedEffort`, `notes?`                      | Appends to `workoutLog[]`, emits `WORKOUT_LOGGED` Spine event        |
-| `update_sleep_entry`          | `date`, `duration`, `quality`, `deepSleep?`, `remSleep?`                    | Appends/updates `sleepLog[]`, updates NSV `sleepQuality`             |
-| `update_pr`                   | `exercise`, `weight`, `reps`, `date`                                         | Upserts entry in `prTracking[]`                                      |
-| `create_workout_program`      | `name`, `weeks[]`, `sessions[]`                                              | Creates and sets `currentProgram`                                     |
-| `update_workout_program`      | Partial `WorkoutProgram` fields                                               | Modifies active program weeks/sessions                               |
-| `suggest_deload`              | Optional `reason`                                                            | Emits `DELOAD_SUGGESTED` Spine event, marks next week as deload      |
-| `sync_vitals`                 | `biological: { cnsFatigue, sleepQuality, recoveryScore }`                   | Writes directly to NSV biological domain                             |
-| `flag_overtraining`           | Optional `severity`, `trend`                                                 | Emits `OVERTRAINING_FLAG` Spine event, escalates to user             |
-| `grant_soma_clearance`        | `granted: boolean`, `reason`, `restrictions?: string[]`                     | Responds to Soma's clearance request via NexusHandoffService         |
-| `complete_titan_onboarding`   | *(none)*                                                                     | Sets `onboardingComplete: true`                                      |
+### Core Actions (`core-actions.ts`)
 
-### Example — Log Workout
+| Action | Payload | Effect |
+|--------|---------|--------|
+| `update_titan_profile` | `Partial<TitanProfile>` | Patches Firestore document |
+| `update_routine` | `{ routines: Routine[] }` | Merges routines by weekday |
+| `sync_vitals` | `{ biological: { recoveryScore?, cnsFatigue?, sleepQuality?, hormonalContext? } }` | Writes directly to NSV biological domain |
+| `self_clearance_check` | `{ activity: string, recoveryScore?: number }` | Evaluates clearance, emits BLOCK_HIGH_INTENSITY if denied |
 
-```xml
-<action type="log_workout_session">
-  {
-    "exercises": [
-      {
-        "name": "Back Squat",
-        "sets": [
-          { "reps": 5, "weight": 120, "unit": "kg", "rpe": 8 },
-          { "reps": 5, "weight": 120, "unit": "kg", "rpe": 8.5 },
-          { "reps": 4, "weight": 120, "unit": "kg", "rpe": 9 }
-        ]
-      },
-      {
-        "name": "Romanian Deadlift",
-        "sets": [
-          { "reps": 8, "weight": 100, "unit": "kg", "rpe": 7 }
-        ]
-      }
-    ],
-    "duration": 65,
-    "perceivedEffort": 8,
-    "notes": "Knees slightly tracking in on 3rd squat set. Monitor."
-  }
-</action>
-```
+### Workout Actions (`workout-actions.ts`)
+
+| Action | Payload | Effect |
+|--------|---------|--------|
+| `log_workout_session` | `{ routineId, routineName, date, exercises: [...], rpe, notes, status }` | Appends to workoutSessions[], computes PRs, emits WORKOUT_COMPLETED |
+| `log_workout_set` | `{ exercise, sets, reps, weight }` | Quick log single exercise, updates PRs |
+
+### Sleep Actions (`sleep-actions.ts`)
+
+| Action | Payload | Effect |
+|--------|---------|--------|
+| `log_sleep` | `{ date, bedtime, wakeTime, durationHours, quality: 0-10, deepSleepPct, remSleepPct, awakenings, tags, notes }` | Appends to sleepLog[], updates NSV sleepQuality |
+
+### Body Actions (`body-actions.ts`)
+
+| Action | Payload | Effect |
+|--------|---------|--------|
+| `log_body_weight` | `{ weight, unit: 'kg'\|'lbs', bodyFatPct, date, notes }` | Appends to bodyWeightLog[], updates NSV weight, emits TITAN_BODY_WEIGHT_LOGGED |
+| `log_cardio_session` | `{ type, durationMinutes, distanceKm, avgHeartRate, calories, rpe, notes }` | Appends to cardioLog[], emits WORKOUT_COMPLETED, updates NSV aerobicLoad |
+
+### Biomarker Actions (`biomarker-actions.ts`)
+
+| Action | Payload | Effect |
+|--------|---------|--------|
+| `commit_biomarker` | `{ name, value, unit, source, recordedAt }` | Commits via SomaTitanDelegationService, emits SOMA_BIOMARKER_COMMITTED |
+| `parse_lab_report` | `{ id, panel, findings, flags }` | Appends to labSummaries[] |
+| `issue_clearance` | `{ activity, status: 'granted'\|'denied'\|'conditional', reason, validUntil }` | Issues clearance via delegation, emits CLEARANCE_GRANTED/DENIED |
+| `analyze_medical_image` | `{ biomarkers, labSummaries, medications, allergies, clinicalFlags, reportType }` | Extracts data from medical images, commits biomarkers, emits MEDICAL_ALERT for severe flags |
+| `parse_health_report` | `{ ... }` | Parses health report documents |
+| `parse_workout_log` | `{ ... }` | Parses workout log imports |
+| `parse_biometric_data` | `{ ... }` | Parses biometric data imports |
+
+### Cycle Actions (`cycle-actions.ts`)
+
+| Action | Payload | Effect |
+|--------|---------|--------|
+| `create_cycle` | `{ name, type, description, startDate, phases: [...], progressionScheme }` | Creates new cycle, emits CYCLE_STARTED |
+| `advance_cycle_phase` | `{ cycleId }` | Advances to next phase, emits CYCLE_COMPLETED if all phases done |
+| `complete_cycle` | `{ cycleId, summary }` | Marks cycle as completed |
+
+### Field Actions (`field-actions.ts`)
+
+| Action | Payload | Effect |
+|--------|---------|--------|
+| `suggest_field` | `{ name, type, unit, reason }` | Message-only, proposes field for user confirmation |
+| `create_field` | `{ name, type, unit, description, range?, options? }` | Creates custom field (max 20) |
+| `delete_field` | `{ id \| fieldId \| name }` | Deletes custom field (idempotent) |
+
+### Utility Actions
+
+| Action | Payload | Effect |
+|--------|---------|--------|
+| `propose_reminder` | `{ title, note, dueAt, recurrence, priority, source }` | Proposes reminder for user confirmation |
+| `query_reminders` | `{ moduleId: 'titan' }` | Queries existing reminders |
 
 ---
 
 ## 9. Spine Events Emitted by Titan
 
-| Event Name           | When Emitted                                                      | Subscribers            |
-|----------------------|-------------------------------------------------------------------|------------------------|
-| `WORKOUT_LOGGED`     | After successful `log_workout_session`                           | Agnes, Soma, Ledger    |
-| `READINESS_COMPUTED` | After successful `compute_readiness`                             | Agnes, Soma, Atlas     |
-| `OVERTRAINING_FLAG`  | When 7-day CNS fatigue rolling avg > 7                           | Agnes, Soma, user UI   |
-| `DELOAD_SUGGESTED`   | When accumulation threshold hit or fatigue accumulates           | Agnes, user UI         |
-
+| Event Name | When Emitted | Priority | Data |
+|------------|--------------|----------|------|
+| `WORKOUT_COMPLETED` | After successful workout/cardio log | info | sessionId, routineName, date, totalVolume, rpe, status |
+| `TITAN_RECOVERY_NEEDED` | When cnsFatigue projected ≥ 7.5 after session | alert/critical | projectedCnsFatigue, sessionRpe, reason |
+| `TITAN_TRAINING_STREAK` | On milestone streak (7, 14, 21, 30 days) | info | streakDays, date |
+| `TITAN_BODY_WEIGHT_LOGGED` | After body weight entry | info/alert | weight, bodyFatPct, weeklyDeltaKg, aggressiveCut |
+| `CYCLE_STARTED` | After create_cycle | info | cycleId, name, type |
+| `CYCLE_COMPLETED` | When all phases done or manual complete | info | cycleId, name, type |
+| `BLOCK_HIGH_INTENSITY` | When clearance denied | alert | activity, recoveryScore, reasons |
+| `SOMA_READINESS_UPDATED` | After clearance check | info | passedClearance, readinessScore |
+| `SOMA_CLEARANCE_CHANGED` | After issue_clearance | info/alert | status, activityType, clearanceId |
+| `SOMA_BIOMARKER_COMMITTED` | After biomarker commit | info | source, biomarkerId, name |
+| `CLEARANCE_GRANTED` | Legacy event after grant | info | activity, status, reason |
+| `CLEARANCE_DENIED` | Legacy event after denial | alert | activity, status, reason |
+| `MEDICAL_ALERT` | When severe clinical flags found | alert | alertCount, flags, reportType |
 ---
 
-## 10. Cross-Module Intelligence (Inbound Reads)
+## 10. Diagnosis Pipeline (`diagnosis/`)
 
-Titan reads the following NSV signals from other modules to modify training prescriptions. Titan **reads only** — it never writes these fields.
+Titan includes a medical document analysis pipeline for processing lab reports, health records, and medical images.
 
-| Module   | Signal                     | Threshold | Titan Response                                                       |
-|----------|----------------------------|-----------|----------------------------------------------------------------------|
-| Agnes    | `stressLoad`               | > 7       | Scale back training intensity automatically (cortisol burden model)  |
-| Agnes    | `emotionalResilience`      | < 4       | Prioritize parasympathetic work (yoga, walking, breathwork)          |
-| Soma     | `cnsFatigueScore`          | > 7       | Enforce rest day only — no exceptions                                |
-| Atlas    | `focusScore`               | < 4       | Substitute technique-heavy movements with simpler variants            |
-| Ledger   | `financialFriction`        | > 7       | Note as recovery-compressing stressor; reduce intensity targets       |
+### Specification (`titan-diagnosis-spec.ts`)
 
-### Cascade Rule — Agnes Stress Override
+```typescript
+const titanDiagnosisSpec: DiagnosisSpecialization = {
+  moduleId: 'titan',
+  label: 'Medical Analysis',
+  description: 'Analyze lab reports, health records, and medical documents.',
+  
+  supportedFileTypes: [
+    'application/pdf',
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'text/csv',
+    'text/plain',
+    'text/markdown',
+  ],
+  
+  allowedActions: [
+    'parse_lab_report',
+    'parse_health_report',
+    'analyze_medical_image',
+    'commit_biomarker',
+    'issue_clearance',
+  ],
+  
+  themeColor: 'orange',
+}
+```
 
-When `agnes.stressLoad > 7`, Titan must:
-1. Reduce planned volume by 25–40%
-2. Cap RPE ceiling at 7
-3. Extend warm-up by 50%
-4. Communicate the override to the user with cortisol context
+### Pipeline Components
+
+| File | Purpose |
+|------|---------|
+| `titan-diagnosis-spec.ts` | DiagnosisSpecialization config with file types and actions |
+| `titan-diagnosis-prompt.ts` | System prompt for medical analysis context |
+| `titan-diagnosis-extractor.ts` | Extracts biomarkers, medications, flags from documents |
+| `titan-diagnosis-merge.ts` | Merges extracted data into TitanProfile |
+
+### Empty State UI
+
+When no document is uploaded, the diagnosis panel shows:
+- **Title**: "Describe symptoms or upload a document"
+- **Examples**: "I have persistent headaches and fatigue", "Analyze my blood panel", "Compare to previous labs"
+- **Supported types**: PDF (lab reports), Image (PNG/JPG/WebP scans), CSV (tabular lab data), Text (plain/markdown)
 
 ---
 
@@ -357,10 +619,10 @@ This is the most complex inter-module relationship in Nexus.
 
 ### Roles
 
-| Module | Role                                                                |
-|--------|---------------------------------------------------------------------|
-| **Soma** | Neurological/physiological monitoring. Reads biological state signals, tracks CNS load at a physiological level. |
-| **Titan** | Physical training decisions. Consumes Soma's biological data to govern what training is safe and productive. |
+| Module | Role |
+|--------|------|
+| **Soma** | Neurological/physiological monitoring. Reads biological state, tracks CNS at physiological level. |
+| **Titan** | Physical training decisions. Consumes Soma's data to govern safe/productive training. |
 
 ### Data Flow
 
@@ -371,58 +633,38 @@ Titan reads cnsFatigueScore → factors into readiness computation
      ↓
 Titan computes readiness → writes biological.recoveryScore to NSV
      ↓
-Soma reads recoveryScore → informs its physiological recommendations
+Soma reads recoveryScore → informs physiological recommendations
 ```
 
 ### Soma Clearance Gate
 
-When Soma requests high-intensity clearance for a user session:
+When Soma requests high-intensity clearance (`self_clearance_check`):
 
 **Titan's evaluation algorithm:**
 
 ```
-Step 1: Check current readiness score (today)
+Step 1: Check current readiness score from NSV
 Step 2: Check CNS fatigue trend (last 3 days)
-Step 3: Check sleep quality (last night + rolling 7-day average)
+Step 3: Check Soma health snapshot via SomaDataService
 
 GRANT full clearance if:
-  readiness >= 7 AND cnsFatigue <= 5
-
-GRANT conditional clearance (with restrictions) if:
-  readiness >= 5 AND cnsFatigue <= 7
+  recoveryScore >= 4 AND no contraindications
 
 DENY clearance if:
-  readiness < 5 OR cnsFatigue > 7
+  recoveryScore < 4 OR contraindications present
 ```
 
-**Clearance grant action:**
-
-```xml
-<action type="grant_soma_clearance">
-  {
-    "granted": true,
-    "reason": "Readiness score 8.1, CNS fatigue 4.2 (3-day trend stable). Sleep avg 7.4h.",
-    "restrictions": []
-  }
-</action>
-```
-
-**Clearance denial action:**
-
-```xml
-<action type="grant_soma_clearance">
-  {
-    "granted": false,
-    "reason": "CNS fatigue 7.8 over 3-day trend. High-intensity work risks overreaching.",
-    "restrictions": ["no_loaded_strength", "no_hiit", "active_recovery_only"]
-  }
-</action>
-```
+**On denial**, Titan:
+1. Pushes warning message to chat
+2. Emits `BLOCK_HIGH_INTENSITY` Spine event
+3. Publishes `SOMA_READINESS_UPDATED` with `passedClearance: false`
 
 ### NSV Boundary — Never Cross-Write
 
 ```
 Titan owns:  biological.cnsFatigue, biological.sleepQuality, biological.recoveryScore
+             biological.weight, biological.bodyFatPct, biological.aerobicLoad
+             biological.hormonalContext
              cognitive.energyBudget, cognitive.focusScore
 
 Soma owns:   biological.cnsFatigueScore (Soma's own field — different from Titan's cnsFatigue)
@@ -435,165 +677,194 @@ Rule: Titan NEVER writes Soma's fields. Soma NEVER writes Titan's fields.
 
 ## 12. Periodization Engine
 
-Titan understands mesocycle design and automatically tracks which training phase the user is in.
+Titan understands mesocycle design and tracks training phases via the Cycles feature.
 
-### Phases
+### Cycle Types
 
-| Phase           | Description                                          | Volume    | Intensity | Duration    |
-|-----------------|------------------------------------------------------|-----------|-----------|-------------|
-| Accumulation    | Progressive volume increase, moderate intensity      | ↑ High    | Moderate  | 3–4 weeks   |
-| Intensification | Volume reduces, intensity increases                  | ↓ Medium  | ↑ High    | 2–3 weeks   |
-| Realization     | Peak performance phase, minimum volume               | ↓ Low     | ↑ Maximum | 1–2 weeks   |
-| Deload          | Mandatory recovery week                              | ↓↓ Low   | ↓ Low     | 1 week      |
+| Type | Description |
+|------|-------------|
+| `workout` | Training periodization (accumulation, intensification, deload) |
+| `recovery` | Recovery-focused cycles |
+| `custom` | User-defined cycles |
+
+### Progression Schemes
+
+| Scheme | Description |
+|--------|-------------|
+| `linear` | Progressive increase each phase |
+| `wave` | Undulating intensity pattern |
+| `block` | Block periodization with distinct phases |
+| `undulating` | Daily/weekly intensity variation |
+
+### Phase Training Modifiers
+
+| Modifier | Description |
+|----------|-------------|
+| `increase` | Increase volume/intensity |
+| `maintain` | Maintain current load |
+| `reduce` | Reduce load (e.g., taper) |
+| `rest` | Complete rest/recovery |
 
 ### Deload Triggers
 
-A deload must be suggested when **any** of the following are true:
-
+A deload should be suggested when:
 - 4–6 weeks have elapsed since last deload
-- 7-day rolling CNS fatigue average exceeds 7.0
-- Readiness score has been AMBER or RED for 4+ consecutive days
-- User reports persistent joint soreness or sleep degradation trend
+- CNS fatigue rolling average exceeds 7.0
+- Readiness has been AMBER or RED for 4+ consecutive days
+- User reports persistent joint soreness or sleep degradation
 
 ---
 
 ## 13. Daily Interaction Patterns
 
-### Morning Check-In Flow
+### Pre-Workout Clearance Flow
 
 ```
-1. User reports: sleep hours, sleep quality (1-10), energy level (1-10), any soreness
-2. Titan fetches: last 3 days readiness history + CNS fatigue trend
-3. Titan reads: Agnes stressLoad, Soma cnsFatigueScore
-4. Titan computes: today's readiness score and tier
-5. Titan prescribes: today's training (or rest/recovery) with specific modifications
-6. Action emitted: compute_readiness → updates readinessHistory[] + NSV
+1. User signals intent to train (or automated check)
+2. Titan evaluates via self_clearance_check:
+   - Reads NSV biological.recoveryScore
+   - Checks Soma health snapshot for contraindications
+3. If recoveryScore >= 4 AND no contraindications:
+   - Push "✅ Clearance check passed" message
+   - Publish SOMA_READINESS_UPDATED with passedClearance: true
+4. If denied:
+   - Push "⚠️ Clearance check failed" warning
+   - Emit BLOCK_HIGH_INTENSITY
+   - Publish SOMA_READINESS_UPDATED with passedClearance: false
 ```
 
-### Pre-Workout Validation Flow
+### Workout Logging Flow
 
 ```
-1. User signals intent to train
-2. Titan checks: current day's readiness tier
-3. If GREEN → confirm planned session, proceed
-4. If AMBER → present modified session (reduced volume, lower intensity cap)
-5. If RED → block session, offer active recovery alternatives only
-6. If override attempted at RED → require explicit "I understand the risk" confirmation
+1. User completes workout via WorkoutSessionLogger or QuickLogDrawer
+2. Action: log_workout_session or log_workout_set
+3. Handler:
+   - Validates and normalizes exercise data
+   - Computes totalVolume (weight × reps sum)
+   - Updates personalRecords if new PR achieved
+   - Appends to workoutSessions[] and workoutLogs[]
+   - Emits WORKOUT_COMPLETED Spine event
+4. If RPE >= 8:
+   - Projects cnsFatigue impact
+   - If projected >= 7.5, emits TITAN_RECOVERY_NEEDED
+5. Updates NSV:
+   - Decrements recoveryScore based on RPE
+   - Updates cnsFatigue with decay calculation
 ```
 
-### Post-Workout Flow
+### Sleep Logging Flow
 
 ```
-1. User (or auto-prompt) logs workout via WorkoutLogger
-2. Action: log_workout_session → appended to workoutLog[]
-3. Titan estimates session CNS cost based on volume, intensity, perceivedEffort
-4. NSV update: increments cnsFatigue, adjusts recoveryScore for next day
-5. Titan provides recovery prescription: nutrition timing, sleep target, next session timing
-6. Spine event: WORKOUT_LOGGED emitted
-```
-
-### Weekly Review Flow
-
-```
-1. Titan aggregates: training load, CNS fatigue trend, sleep 7-day avg, readiness history
-2. Evaluates: deload need, phase progression, PR opportunities
-3. Recommends: next week's mesocycle phase, volume targets, intensity ranges
-4. If overtraining detected: emits flag_overtraining, notifies Agnes
+1. User logs sleep via SleepTracker
+2. Action: log_sleep
+3. Handler:
+   - Validates duration (0-24h), quality (0-10)
+   - Appends to sleepLog[]
+4. Computes NSV sleepQuality:
+   - hoursScore: Peak at 8.25h, falls linearly outside 7.5–9h window
+   - qualityScore: User's self-reported quality
+   - sleepQuality = average(hoursScore, qualityScore)
+5. Writes sleepQuality to NSV
 ```
 
 ---
 
-## 14. Extension Fields (FieldsTab)
+## 14. Extension Fields (CustomFieldManager)
 
-Custom user-defined fields managed via `FieldsTab.tsx`. These store domain-specific metrics not covered by the core profile.
+Custom user-defined fields for domain-specific metrics not covered by the core profile.
 
-| Field ID                  | Type         | Unit           | Notes                                  |
-|---------------------------|--------------|----------------|----------------------------------------|
-| `one-rep-max-squat`       | number       | kg or lbs      | Back squat 1RM                        |
-| `one-rep-max-bench`       | number       | kg or lbs      | Bench press 1RM                       |
-| `one-rep-max-deadlift`    | number       | kg or lbs      | Conventional deadlift 1RM             |
-| `weekly-mileage`          | number       | miles or km    | Running volume tracker                |
-| `hrv-score`               | number       | ms             | Heart rate variability (morning)      |
-| `resting-heart-rate`      | number       | bpm            | Morning resting HR                    |
-| `body-fat-percentage`     | number       | %              | Body composition metric               |
-| `creatine-cycle`          | select       | —              | Options: loading / maintenance / off  |
-| `supplement-stack`        | multi-select | —              | Active supplements                    |
-| `grip-strength-pr`        | number       | kg or lbs      | Grip dynamometer PR                   |
-| `vo2-max`                 | number       | ml/kg/min      | Aerobic capacity metric               |
+### Field Types
 
-Extension field values are validated by the LLM at input time against domain-appropriate ranges.
+| Type | Description |
+|------|-------------|
+| `number` | Numeric value with optional unit and range |
+| `text` | Free-form text |
+| `boolean` | True/false toggle |
+| `select` | Single choice from options list |
+
+### Limits
+
+- Maximum 20 custom fields per profile
+- Duplicate names (case-insensitive) rejected
+- Select options capped at 10
+
+### Example Fields
+
+| Field ID | Type | Unit | Notes |
+|----------|------|------|-------|
+| `one-rep-max-squat` | number | kg/lbs | Back squat 1RM |
+| `hrv-score` | number | ms | Heart rate variability |
+| `resting-heart-rate` | number | bpm | Morning resting HR |
+| `body-fat-percentage` | number | % | Body composition |
+| `creatine-cycle` | select | — | loading / maintenance / off |
+| `supplement-stack` | text | — | Active supplements |
+| `vo2-max` | number | ml/kg/min | Aerobic capacity |
 
 ---
 
 ## 15. Common Development Tasks
 
-### Task 1: Log a Workout
+### Task 1: Log a Workout Session
 
 ```
-User input → WorkoutLogger.tsx (UI collection)
+User input → WorkoutSessionLogger.tsx (UI collection)
      → LLM emits: <action type="log_workout_session">{ ... }</action>
-     → actions.ts handler:
-         1. Validates payload shape
-         2. Calls titan-profile-service.ts → appendWorkoutSession(uid, session)
-         3. Firestore: push to workoutLog[] array field
-         4. Computes session CNS cost
-         5. Updates NSV: biological.cnsFatigue (+=delta), biological.recoveryScore (-=delta)
-         6. Emits Spine event: WORKOUT_LOGGED
+     → workout-actions.ts handler:
+         1. Validates exercise/set structure
+         2. Computes totalVolume from completed sets
+         3. Checks for new PRs (Epley formula e1RM)
+         4. Appends session to workoutSessions[]
+         5. Creates TitanWorkoutLog for sparklines
+         6. Emits WORKOUT_COMPLETED Spine event
+         7. If RPE >= 8, checks for TITAN_RECOVERY_NEEDED
+         8. Updates NSV recoveryScore and cnsFatigue
 ```
 
-### Task 2: Compute Readiness
+### Task 2: Create a Training Cycle
 
 ```
-Morning check-in → ReadinessPanel.tsx (UI collects inputs)
-     → LLM emits: <action type="compute_readiness">{ restingHeartRate, sleepQuality, energyLevel, stressPhysical }</action>
-     → actions.ts handler:
-         1. Fetches last 3 days from readinessHistory[]
-         2. Fetches last 7 days CNS fatigue rolling avg
-         3. Reads Agnes stressLoad from NSV
-         4. Computes composite score (algorithm in actions.ts)
-         5. Assigns tier: GREEN / AMBER / RED
-         6. Appends to readinessHistory[]
-         7. Updates NSV: biological.recoveryScore, cognitive.energyBudget
-         8. Emits Spine event: READINESS_COMPUTED
+User requests cycle → CycleManager.tsx (UI)
+     → LLM emits: <action type="create_cycle">{ name, type, phases, progressionScheme }</action>
+     → cycle-actions.ts handler:
+         1. Validates phases array (min 1 phase)
+         2. Normalizes phase data (durationDays, trainingModifier)
+         3. Creates CycleEntry with status: 'active'
+         4. Appends to cycles[] (max 50)
+         5. Emits CYCLE_STARTED Spine event
 ```
 
-### Task 3: Grant Soma Clearance
+### Task 3: Process Medical Document
 
 ```
-Soma emits cross-module handoff request for high-intensity clearance
-     → NexusHandoffService routes to Titan
-     → Titan agent evaluates:
-         1. readinessHistory[-1].score (today's score)
-         2. cnsFatigue trend (last 3 entries)
-         3. sleepLog[-1].quality + 7-day rolling avg
-     → LLM emits: <action type="grant_soma_clearance">{ granted, reason, restrictions? }</action>
-     → NexusHandoffService delivers response back to Soma
+User uploads document → TitanDiagnosisPanel.tsx
+     → Diagnosis pipeline:
+         1. titan-diagnosis-spec.ts validates file type
+         2. titan-diagnosis-prompt.ts builds context
+         3. LLM analyzes document
+         4. LLM emits: <action type="analyze_medical_image">{ biomarkers, labSummaries, ... }</action>
+     → biomarker-actions.ts handler:
+         1. Extracts biomarkers, commits via SomaTitanDelegationService
+         2. Appends labSummaries[], medications[], allergies[]
+         3. Creates MedicalImageAnalysis record
+         4. If severe flags found, emits MEDICAL_ALERT
 ```
 
-### Task 4: Add a Program Week
+### Task 4: Add Custom Field
 
 ```
-User requests week addition via ProgramBuilder.tsx
-     → LLM emits: <action type="update_workout_program">{ weeks: [...existingWeeks, newWeek] }</action>
-     → actions.ts handler:
-         1. Validates week schema (sessions, exercises, sets/reps strings)
-         2. Calls titan-profile-service.ts → updateProgram(uid, { weeks: [...] })
-         3. Firestore: updates currentProgram.weeks[]
-```
-
-### Task 5: Detect and Flag Overtraining
-
-```
-Triggered on each compute_readiness call (and daily background check)
-     → actions.ts reads: cnsFatigue for last 7 days from readinessHistory[]
-     → Computes: rolling average
-     → If rolling avg > 7.0 for 3+ consecutive days:
-         → LLM emits: <action type="flag_overtraining">{ severity: "high", trend: [...] }</action>
-         → actions.ts handler:
-             1. Stores flag in TitanProfile
-             2. Emits Spine event: OVERTRAINING_FLAG
-             3. Notifies Agnes (via Spine) for stress-compounding context
-             4. Prompts user with deload recommendation
+User requests field → CustomFieldManager.tsx or chat
+     → LLM emits: <action type="suggest_field">{ name, type, unit, reason }</action>
+     → field-actions.ts handler (suggest_field):
+         - Pushes proposal message to chat
+         - No state mutation
+     → User confirms
+     → LLM emits: <action type="create_field">{ name, type, unit, description }</action>
+     → field-actions.ts handler (create_field):
+         1. Validates name required, type enum
+         2. Checks max 20 fields limit
+         3. Checks for duplicate name
+         4. Creates CustomField with UUID
+         5. Appends to customFields[]
 ```
 
 ---
@@ -603,18 +874,29 @@ Triggered on each compute_readiness call (and daily background check)
 All Titan NSV updates must use `GlobalProjectionService`:
 
 ```typescript
-// In actions.ts or titan-profile-service.ts
-import { GlobalProjectionService } from '@/services/global-projection-service';
+// In action handlers
+import { GlobalProjectionService } from './shared';
 
-await GlobalProjectionService.updateCrossFunctionalState(uid, {
+// After workout session
+await GlobalProjectionService.updateCrossFunctionalState(userId, {
   biological: {
     cnsFatigue: computedCnsFatigue,       // 0-10
-    sleepQuality: compositeSleeScore,     // 0-10
-    recoveryScore: computedRecovery,      // 0-10
+    recoveryScore: computedRecovery,       // 0-10
   },
-  cognitive: {
-    energyBudget: physicalEnergyBudget,   // 0-10
-    focusScore: fatigueDrivenFocusImpact, // 0-10 (physical component only)
+});
+
+// After sleep log
+await GlobalProjectionService.updateCrossFunctionalState(userId, {
+  biological: {
+    sleepQuality: compositeScore,          // 0-10
+  },
+});
+
+// After body weight log
+await GlobalProjectionService.updateCrossFunctionalState(userId, {
+  biological: {
+    weight: entryWeight,                   // kg
+    bodyFatPct: bodyFatPercentage,         // %
   },
 });
 ```
@@ -623,17 +905,18 @@ await GlobalProjectionService.updateCrossFunctionalState(uid, {
 
 ---
 
-## 17. Onboarding Flow (`TitanOnboarding.tsx`)
+## 17. Onboarding Flow (`onboarding/TitanOnboarding.tsx`)
 
-The onboarding flow collects the minimum viable data to make Titan functional:
+The onboarding flow collects minimum viable data via conversational intake:
 
-1. **Step 1 — Fitness level**: beginner / intermediate / advanced / elite
-2. **Step 2 — Primary goal**: strength / hypertrophy / conditioning / fat_loss / athletic_performance / general_fitness
-3. **Step 3 — Training frequency**: days per week (1–7)
-4. **Step 4 — Available equipment**: multi-select (barbell, dumbbells, cables, bodyweight, bands, etc.)
-5. **Step 5 — Injury history**: free-text, guided prompt (past injuries, current limitations)
-6. **Step 6 — Biometrics**: current weight, target weight, unit preference (kg/lbs)
-7. **Completion**: `complete_titan_onboarding` action emitted → `onboardingComplete: true` in Firestore
+1. **Training history** — Experience level, training age
+2. **Current activity** — Workout frequency, types
+3. **Injuries** — Past injuries, current limitations
+4. **Goals** — Primary fitness goal
+5. **Recovery habits** — Sleep patterns, recovery practices
+6. **Biometrics** — Current weight, target weight, unit preference
+
+Uses `intake-accumulator.ts` to accumulate data across conversation turns before committing to profile.
 
 ---
 
@@ -641,13 +924,17 @@ The onboarding flow collects the minimum viable data to make Titan functional:
 
 | Rule | Detail |
 |------|--------|
-| **Readiness is always 3-day-aware** | Never compute readiness from a single data point. Always include prior 2 days' history. |
-| **CNS fatigue is cumulative** | Every workout session must increment cnsFatigue. Never reset on a single good night's sleep alone. |
-| **RED tier is inviolable** | No session proceeds at RED readiness without an explicit user override confirmation. Log the override. |
-| **Soma owns its own fields** | Titan reads `Soma.cnsFatigueScore` but never writes it. Use `biological.cnsFatigue` (Titan's field) only. |
-| **Agnes always factors in** | Titan must always read Agnes signals before finalizing a training prescription. Cortisol context is non-optional. |
-| **Deload is mandatory** | The system must enforce deload suggestions — they cannot be silently skipped. User can decline but receives explicit warning. |
-| **Action tags are authoritative** | All profile mutations happen through action tags processed by `actions.ts`. Never write directly to Firestore from UI components. |
+| **Readiness gates training** | No high-intensity work proceeds when recoveryScore < 4 |
+| **CNS fatigue decays exponentially** | Half-life of 48 hours since last session |
+| **RED tier is inviolable** | No session proceeds at RED readiness without explicit override |
+| **Soma owns its own fields** | Titan reads `Soma.cnsFatigueScore` but never writes it |
+| **Agnes always factors in** | Cross-module stress signals modify training prescriptions |
+| **PRs auto-computed** | Every completed set checks for new e1RM records |
+| **Action tags are authoritative** | All profile mutations happen through action handlers |
+| **Max 365 workout sessions** | Older sessions trimmed on new log |
+| **Max 100 workout logs** | For sparkline display |
+| **Max 50 cycles** | Older cycles trimmed |
+| **Max 20 custom fields** | Enforced at create time |
 
 ---
 
@@ -657,14 +944,48 @@ For cross-module development, here is the full biological domain allocation:
 
 ```
 biological.cnsFatigue         → TITAN (writes)
-biological.sleepQuality        → TITAN (writes)
-biological.recoveryScore       → TITAN (writes)
-biological.cnsFatigueScore     → SOMA  (writes) — different field, same domain
-biological.neuralReadiness     → SOMA  (writes)
-biological.sympatheticLoad     → SOMA  (writes)
+biological.sleepQuality       → TITAN (writes)
+biological.recoveryScore      → TITAN (writes)
+biological.weight             → TITAN (writes)
+biological.bodyFatPct         → TITAN (writes)
+biological.aerobicLoad        → TITAN (writes)
+biological.hormonalContext    → TITAN (writes)
+biological.cnsFatigueScore    → SOMA  (writes) — different field, same domain
+biological.neuralReadiness    → SOMA  (writes)
+biological.sympatheticLoad    → SOMA  (writes)
 
-cognitive.energyBudget         → TITAN (physical contribution) + ATLAS (cognitive contribution)
-cognitive.focusScore           → TITAN (physical contribution) + ATLAS (cognitive contribution)
+cognitive.energyBudget        → TITAN (physical contribution) + ATLAS (cognitive contribution)
+cognitive.focusScore          → TITAN (physical contribution) + ATLAS (cognitive contribution)
 ```
 
 When both Titan and Atlas write to `cognitive.*` fields, use additive/weighted merge — do not overwrite the other module's contribution.
+
+---
+
+## 20. Exercise Library (`data/exercise-library.ts`)
+
+40+ exercises with metadata:
+
+```typescript
+interface ExerciseDefinition {
+  id: string;
+  name: string;
+  muscleGroups: MuscleGroup[];
+  category: 'compound' | 'isolation' | 'cardio' | 'mobility';
+  equipment: string[];
+  aliases?: string[];
+}
+```
+
+Also available as JSON at `data/exercise-library.json` for static imports.
+
+---
+
+## 21. Recovery Templates (`data/recovery-templates.ts`)
+
+Predefined recovery protocol templates for common scenarios:
+- Post-heavy-session recovery
+- Deload week protocols
+- Sleep optimization
+- CNS recovery
+- Active recovery sessions

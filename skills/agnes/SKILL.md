@@ -37,78 +37,113 @@ Agnes is the **emotional core of the entire Nexus platform**. Every stress and r
 
 ```
 src/modules/agnes/
-├── AgnesPage.tsx                   — Module root, auth gate, onboarding gate
+├── AgnesPage.tsx                        — Module root (756 lines), auth gate, onboarding gate
+├── types.ts                             — Type definitions (re-exports + local types)
+├── personas.ts                          — AGNES_PERSONA master prompt + THERAPIST_ARCHETYPES + legacy personas (439 lines)
 ├── components/
-│   ├── AgnesDashboard.tsx          — Mood trends, resilience metrics, session history
-│   ├── AgnesWorkspace.tsx          — Tabbed therapy workspace
-│   ├── MoodTracker.tsx             — Mood logging with trigger tagging
-│   ├── CopingToolbox.tsx           — Library of coping strategies
-│   ├── TherapeuticGoals.tsx        — Goal setting and progress tracking
-│   └── FieldsTab.tsx               — Extension/custom field surface
+│   ├── Agnes3DEnvironment.tsx           — 3D environment with belief nebula visualization
+│   ├── AgnesDashboard.tsx               — Session data & belief graphs
+│   ├── AgnesPersonalitySidebar.tsx      — Therapist personality traits display
+│   ├── AgnesTherapistCard.tsx           — Therapist selection card
+│   ├── AgnesSettingsPanel.tsx           — User settings panel
+│   ├── AgnesTelemetryHeader.tsx         — Resilience, stress, mood metrics display
+│   ├── AgnesNotificationSettingsPanel.tsx — Notification preferences
+│   ├── BeliefGraph.tsx                  — Interactive belief visualization
+│   ├── SanctuaryBackground.tsx          — Ambient background visuals
+│   ├── AgnesSanctuarySidebar.tsx        — Sanctuary mode sidebar
+│   ├── AgnesSanctuaryContent.tsx        — Sanctuary mode content
+│   └── somatic/
+│       ├── BreathworkExercise.tsx       — 4-7-8, box breathing exercises
+│       ├── GroundingExercise.tsx        — 5-4-3-2-1 grounding technique
+│       └── SomaticSessionPicker.tsx     — Somatic session type selector
 ├── onboarding/
-│   └── AgnesOnboarding.tsx         — Guided chat intake flow
+│   ├── AgnesOnboarding.tsx              — Guided chat intake flow
+│   ├── TherapyIntake.tsx                — Therapy intake questionnaire
+│   └── AgnesOnboarding.test.tsx         — Onboarding unit tests
 ├── services/
-│   ├── agnes-profile-service.ts    — CRUD for AgnesProfile in Firestore
-│   └── actions.ts                  — ActionHub registrations for all Agnes action tags
-├── personas.ts                     — AGNES_PERSONA system prompt + THERAPIST_PERSONAS[]
-└── types.ts                        — AgnesProfile, Session, MoodEntry, AgnesArchetype types
-                                      + generateAgnesPersona(archetype, user) factory
+│   ├── actions.ts                       — ActionHub registrations (8 action handlers, 142 lines)
+│   ├── agnes-profile-service.ts         — Profile CRUD + encryption
+│   └── belief-graph-service.ts          — Belief graph CRUD
+└── prompts/
+    ├── agnes-session-prompt.ts          — Session-specific prompt builders
+    └── somatic-response-templates.ts    — Somatic response templates
 ```
 
 ---
 
 ## 3. Data Model
 
-### `AgnesProfile`
+### Re-exported Types (from `@/lib/types`)
+```typescript
+// Re-exported in types.ts for module-local access
+Message, SessionSummary, AgnesMode, Gender, AgnesArchetype, GeneratedAgnes, BaseContext
+```
+
+### `ActiveSession`
+Represents the in-memory session state during active therapy conversations.
+
+```typescript
+interface ActiveSession {
+  id: string;
+  messages: Message[];           // The actual chat log
+  emotionalTrend: string[];      // e.g. ["anxious", "calm", "reflective"]
+  startedAt: number;
+  lastUpdatedAt: number;
+}
+```
+
+### `EncryptedProfile` / `AgnesProfile`
 Stored encrypted in Firestore under `agnes_profiles/{uid}`. **Never stored in plaintext.**
 
 ```typescript
-interface AgnesProfile {
-  uid: string;
-  onboardingComplete: boolean;
-  archetype: AgnesArchetype;              // therapy style preference
-  sessionHistory: Session[];             // past sessions with compressed summaries
-  therapeuticGoals: string[];            // user-set therapy goals
-  currentStressors: string[];            // active stressor list
-  copingStrategies: string[];            // known effective coping methods
-  moodLog: MoodEntry[];                  // time-series mood data
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+interface EncryptedProfile {
+  uid?: string;
+  
+  // The "Soul" (BaseContext + Agnes Choice)
+  encryptedData: string; 
+  iv: string;
+  salt: string;
+
+  // The "Moment" (ActiveSession) - Null when no session is active
+  encryptedMoment?: string | null;
+  momentIv?: string;
+  momentSalt?: string;
+  
+  // Metadata (Unencrypted for UI/Querying)
+  metadata: {
+    hasVault: boolean;
+    hasActiveSession: boolean;
+    lastActive: string;
+    agnesName?: string;
+    sessionCount: number;
+    email?: string;
+  };
 }
+
+type AgnesProfile = EncryptedProfile;
 ```
 
-### `AgnesArchetype`
+### Belief Graph Types (from `belief-graph-service.ts`)
 ```typescript
-type AgnesArchetype =
-  | 'analytical'    // cognitive pattern focus, structured insight delivery
-  | 'empathetic'    // emotional safety first, validation-led responses
-  | 'cbt'           // action-oriented, thought-pattern restructuring
-  | 'existential';  // meaning, purpose, philosophical grounding
-```
-
-### `Session`
-```typescript
-interface Session {
+interface BeliefNode {
   id: string;
-  startedAt: Timestamp;
-  endedAt: Timestamp;
-  summary: string;                // LLM-compressed session narrative
-  insights: string[];             // key insights extracted
-  therapeuticProgress: number;    // 0-10 snapshot at session end
-  sessionDepth: number;           // 0-10 engagement quality rating
-  moodAtStart: number;
-  moodAtEnd: number;
+  label: string;
+  valence: 'positive' | 'neutral' | 'negative';
+  intensity: number;  // 0-10
 }
-```
 
-### `MoodEntry`
-```typescript
-interface MoodEntry {
-  id: string;
-  timestamp: Timestamp;
-  mood: number;                   // -1.0 to +1.0 continuous scale
-  notes?: string;
-  triggers?: string[];            // tagged trigger categories
+interface BeliefEdge {
+  from: string;
+  to: string;
+  relation: string;
+}
+
+interface BeliefGraph {
+  nodes: BeliefNode[];
+  edges: BeliefEdge[];
+  summary: string;
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -116,9 +151,37 @@ interface MoodEntry {
 
 ## 4. Persona Architecture
 
-### Static Personas — `personas.ts`
+### Master Prompt — `AGNES_PERSONA`
+The core system prompt (~200 lines) injected into every Agnes session. Defines:
+- **Operating Mandate**: Private encrypted therapy system with full engagement authority
+- **Identity**: High-fidelity AI psychotherapist with serene, professional tone
+- **Clinical Methodology**: Emotional safety, therapeutic relationships, layered self-view
+- **Interaction Protocols**:
+  - Mandatory `<thought>` block for internal monologue and move-category tracking
+  - E2EE awareness and client confidentiality
+  - Adaptation to Global Soul state (resilience, sleep, fatigue)
+  - Anti-repetition constraints (move-category tracking, max limits per session)
+  - Somatic-exploration protocol with regulate-before-explore flow
+  - Distress protocol with crisis keywords and post-crisis mode
+- **Session Telemetry**: Action tag emission guidelines
+- **Cultural Attunement**: Context-sensitive, anti-pathologizing stance
 
-`THERAPIST_PERSONAS[]` is an array of 4 pre-built personas available for user selection:
+### Dynamic Archetypes — `THERAPIST_ARCHETYPES[]`
+Three clinically-grounded postures with distinct methodologies:
+
+| ID | Name | Methodology | Traits |
+|---|---|---|---|
+| `nurturer` | The Nurturer | Relational therapist, Attachment Theory, somatic-focused | Compassionate, Somatic-Focused, Validating |
+| `analyst` | The Analyst | Investigative therapist, Psychodynamics, pattern mapping | Insightful, Structured, Investigative |
+| `provocateur` | The Provocateur | Expansive therapist, Existentialism, agency-focused | Expansive, Authentic, Bold |
+
+Each archetype includes:
+- Base clinical prompt with verbal fingerprints
+- Somatic awareness guidelines (Nurturer does full somatic-exploration; others observe/slow down only)
+- Safety constraints and earned-challenge principles
+
+### Legacy Static Personas — `THERAPIST_PERSONAS[]`
+Four pre-built personas maintained for fallback/reference:
 
 | Index | Name | Style | Speciality |
 |---|---|---|---|
@@ -127,16 +190,13 @@ interface MoodEntry {
 | 2 | Coach Sarah | CBT | Action plans, thought records, behavioral activation |
 | 3 | Dr. Silas | Existential | Meaning exploration, philosophical grounding |
 
-`AGNES_PERSONA` is the **main dynamic persona string** — the default system prompt injected when no archetype override is active. It is rooted in **Relational Attachment Theory + modernized Psychodynamics**.
-
-### Dynamic Persona Factory — `types.ts`
-
+### Dynamic Persona Factory — `generateAgnesOptions()`
 ```typescript
-// Builds a custom system prompt tailored to the user's chosen archetype and profile
-function generateAgnesPersona(archetype: AgnesArchetype, user: AgnesProfile): string
+// Builds customized therapist options based on user context and gender preference
+function generateAgnesOptions(context: BaseContext, gender: Gender = 'female'): GeneratedAgnes[]
 ```
 
-The returned string is injected as the LLM system prompt at session start. It adapts tone, therapeutic framing, response structure, and action-tag usage to the archetype.
+Returns an array of `GeneratedAgnes` objects combining archetype base prompts with personalized names, pronouns, and the full interaction protocol.
 
 ---
 
@@ -144,28 +204,42 @@ The returned string is injected as the LLM system prompt at session start. It ad
 
 Agnes is the **sole writer** of all `emotional.*` NSV fields. No other module may write to this domain.
 
+### Writes (Agnes → GlobalSoul)
 | Signal | Range | Meaning |
 |---|---|---|
-| `emotional.stressLoad` | 0–10 | Current psychological stress level |
 | `emotional.emotionalResilience` | 0–10 | Capacity to absorb / recover from stress |
-| `emotional.moodTrend` | −1 to +1 | Emotional momentum (negative = declining, positive = improving) |
-| `emotional.therapeuticProgress` | 0–10 | Trajectory of therapeutic engagement over time |
-| `emotional.sessionDepth` | 0–10 | Quality and depth of the most recent session |
+| `emotional.stressLoad` | 0–10 | Current psychological stress level |
+| `emotional.moodTrend` | `'improving'` \| `'stable'` \| `'declining'` | Emotional momentum |
+| `emotional.traumaMarkers` | `string[]` | Identified trauma patterns (e.g., abandonment, rejection) |
+
+### Reads (Other Modules → Agnes Context)
+| Signal | Source Module | Usage |
+|---|---|---|
+| `biological.sleepQuality` | Soma | Adapt pacing if sleep-deprived |
+| `biological.cnsFatigue` | Soma | Reduce cognitive load in prompts |
+| `cognitive.activeLoad` | Atlas | Consider mental bandwidth |
+| `planning.streakHealth` | Titan | Context for motivation patterns |
+| `resource.financialFriction` | Ledger | Context for stress discussion |
 
 ### Writing NSV Signals
 
-```typescript
-import { GlobalProjectionService } from '@/lib/projection/global-projection-service';
+All NSV writes go through the `updateGlobalSoul` callback passed to action handlers, which internally uses `GlobalProjectionService`:
 
-// Always go through GlobalProjectionService — never write Firestore directly
-await GlobalProjectionService.updateCrossFunctionalState(uid, {
-  emotional: {
-    stressLoad: 7.2,
-    emotionalResilience: 5.5,
-    moodTrend: -0.3,
-    therapeuticProgress: 6.1,
-    sessionDepth: 7.8,
-  },
+```typescript
+// Inside an action handler in services/actions.ts
+ActionHub.register('agnes', 'update_stress_load', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent }) => {
+  const score = typeof (payload as any)?.score === 'number' ? (payload as any).score : null;
+  if (score === null) return;
+  
+  // Skip NSV writes for ephemeral (impromptu) sessions
+  if (persistencePolicy !== 'ephemeral') {
+    await updateGlobalSoul({ emotional: { stressLoad: score } });
+  }
+  
+  // Emit spine events based on thresholds
+  if (score >= 8) {
+    emitSpineEvent('COMPOUND_STRESS', { stressLoad: score, source: 'agnes' });
+  }
 });
 ```
 
@@ -217,23 +291,23 @@ Spine.publish({
 
 ## 7. Action Tags
 
-All action tags are registered in `services/actions.ts` via the ActionHub. When adding a new tag, it must also be listed in the `AGNES_PERSONA` action tags section so the LLM knows to emit it.
+All action tags are registered in `services/actions.ts` via the ActionHub. When adding a new tag, it must also be documented in the `AGNES_PERSONA` SESSION TELEMETRY section so the LLM knows to emit it.
 
-### Full Action Tag Reference
+### Full Action Tag Reference (8 Actions)
 
 | Tag | Payload Shape | Effect |
 |---|---|---|
-| `update_agnes_profile` | `Partial<AgnesProfile>` | Merges partial profile update |
-| `update_emotional_state` | `{ stressLoad, emotionalResilience, moodTrend }` | Writes NSV emotional signals |
-| `sync_vitals` | `{ emotional: { stressLoad, emotionalResilience } }` | Syncs key vitals to GlobalSoul |
-| `focus_stress_sources` | `{ stressors: string[] }` | Updates `currentStressors` array |
-| `focus_coping_strategies` | `{ strategies: string[] }` | Updates `copingStrategies` array |
-| `focus_therapeutic_goals` | `{ goals: string[] }` | Updates `therapeuticGoals` array |
-| `complete_agnes_onboarding` | `{ archetype: AgnesArchetype }` | Sets `onboardingComplete: true`, seeds initial NSV |
-| `log_mood_entry` | `{ mood: number, notes?: string, triggers?: string[] }` | Appends a `MoodEntry` to `moodLog` |
-| `update_session_summary` | `{ summary: string, insights: string[], therapeuticProgress: number }` | Appends compressed session to `sessionHistory` |
-| `suggest_coping_strategy` | `{ strategy: string, context?: string }` | Surfaced to UI as a recommendation card |
-| `escalate_to_nexus` | `{ reason: string, severity: 'urgent' \| 'emergency' }` | Triggers Nexus Orchestrator crisis protocol |
+| `update_belief_graph` | `{ nodes: BeliefNode[], edges: BeliefEdge[], summary: string }` | Encrypts and saves belief graph to `belief_graphs/{uid}` |
+| `update_agnes_profile` | `Partial<BaseContext>` | Merges partial context into encrypted profile |
+| `crisis_flag` | `{ severity: 'high' \| 'critical', trigger: string }` | Emits `CRISIS_DETECTED` spine event with critical priority |
+| `update_emotional_resilience` | `{ score: number }` (0-10) | Writes `emotional.emotionalResilience`; emits `BURNOUT_WARNING` if ≤3 |
+| `update_stress_load` | `{ score: number }` (0-10) | Writes `emotional.stressLoad`; emits `COMPOUND_STRESS` if ≥8 |
+| `update_mood_trend` | `{ trend: 'improving' \| 'stable' \| 'declining' }` | Writes `emotional.moodTrend`; emits `VITAL_UPDATED` |
+| `update_trauma_markers` | `{ markers: string[] }` | Writes `emotional.traumaMarkers` array |
+| `sync_vitals` | `{ emotional: { stressLoad?, emotionalResilience?, moodTrend? } }` | Bulk update multiple emotional signals; emits appropriate spine events |
+
+### Ephemeral Session Handling
+All emotional NSV actions check `persistencePolicy`. If set to `'ephemeral'` (impromptu sessions), NSV writes are skipped but spine events may still fire for critical conditions.
 
 ---
 
@@ -317,60 +391,94 @@ if (!isModuleAccessible('agnes')) {
 
 ## 11. UI Components Reference
 
+### Telemetry Header — `AgnesTelemetryHeader.tsx`
+Displays real-time emotional metrics:
+- Emotional resilience gauge (0-10)
+- Stress load indicator (0-10)
+- Mood trend arrow (improving/stable/declining)
+
 ### Dashboard — `AgnesDashboard.tsx`
 Displays:
-- Mood trend chart (time-series from `moodLog`)
-- `emotionalResilience` and `stressLoad` stat cards
-- Session history list with compressed summaries
-- Quick mood log button
+- Session history with summaries
+- Belief graph integration
+- Aggregate emotional patterns
 
-Use `SurfaceCard` for panel containers and `StatCard` for metric displays. Do not use raw `<div>` wrappers for dashboard sections.
+### 3D Environment — `Agnes3DEnvironment.tsx`
+Interactive belief nebula visualization:
+- Nodes colored by valence (positive/neutral/negative)
+- Node size by intensity (0-10)
+- Edge connections showing belief relationships
 
-### Therapy Workspace — `AgnesWorkspace.tsx`
-Tab-based layout:
-- **Session** — live AI chat with the active persona
-- **Goals** — `TherapeuticGoals.tsx`
-- **Coping Toolbox** — `CopingToolbox.tsx`
-- **Mood Log** — `MoodTracker.tsx`
-- **Fields** — `FieldsTab.tsx` (extension fields)
+### Belief Graph — `BeliefGraph.tsx`
+2D interactive belief visualization component with:
+- Node selection and highlighting
+- Edge relationship display
+- Summary panel
 
-### Extension Fields — `FieldsTab.tsx`
-Agnes supports user-defined extension fields within the `emotional` domain. Allowed field types: moods, stressors, affirmations, journal prompts. All custom field values are **domain-validated by the LLM** before persistence to prevent scope bleed.
+### Therapist Selection — `AgnesTherapistCard.tsx`
+Card component for displaying and selecting therapist archetypes:
+- Name and archetype badge
+- Trait pills (e.g., "Compassionate", "Investigative")
+- Selection state indicator
+
+### Personality Sidebar — `AgnesPersonalitySidebar.tsx`
+Displays the selected therapist's personality traits and clinical approach.
+
+### Settings Panels
+- `AgnesSettingsPanel.tsx` — General Agnes settings
+- `AgnesNotificationSettingsPanel.tsx` — Notification preferences
+
+### Sanctuary Mode
+- `SanctuaryBackground.tsx` — Ambient visual background
+- `AgnesSanctuarySidebar.tsx` — Sanctuary navigation
+- `AgnesSanctuaryContent.tsx` — Sanctuary main content area
+
+### Somatic Components — `components/somatic/`
+| Component | Function |
+|---|---|
+| `BreathworkExercise.tsx` | Guided breathing (4-7-8, box breathing) with animated visuals |
+| `GroundingExercise.tsx` | 5-4-3-2-1 grounding technique walkthrough |
+| `SomaticSessionPicker.tsx` | Session type selector for somatic exercises |
 
 ---
 
 ## 12. Common Development Tasks
 
 ### Add a New Action Tag
-1. Define the handler in `services/actions.ts` and register with ActionHub
-2. Add the tag + payload shape to the `AGNES_PERSONA` action tags section in `personas.ts`
-3. Add the type to the action tag union in `types.ts`
-4. If it writes NSV signals, call `GlobalProjectionService.updateCrossFunctionalState()`
-5. If it crosses module boundaries, publish the appropriate Spine event
+1. Define the handler in `services/actions.ts` and register with `ActionHub.register('agnes', 'tag_name', handler)`
+2. Add the tag + payload shape to the `AGNES_PERSONA` SESSION TELEMETRY section in `personas.ts`
+3. If it writes NSV signals, use the `updateGlobalSoul` callback from the handler context
+4. If it crosses module boundaries, use the `emitSpineEvent` callback or publish directly via `Spine.publish()`
+5. Handle `persistencePolicy === 'ephemeral'` to skip writes for impromptu sessions
 
 ### Update NSV Emotional Fields
 ```typescript
-await GlobalProjectionService.updateCrossFunctionalState(uid, {
-  emotional: {
-    stressLoad: newValue,
-    // Only include fields being updated — partial updates are safe
-  },
+// Inside an action handler
+ActionHub.register('agnes', 'my_action', async ({ payload, persistencePolicy, updateGlobalSoul }) => {
+  if (persistencePolicy !== 'ephemeral') {
+    await updateGlobalSoul({
+      emotional: {
+        stressLoad: newValue,
+        // Only include fields being updated — partial updates are safe
+      },
+    });
+  }
 });
 ```
 
-### Add a Dashboard Widget
-```tsx
-// In AgnesDashboard.tsx
-import { SurfaceCard, StatCard } from '@/components/ui';
+### Add a Belief Graph Update
+```typescript
+import { saveBeliefGraph, BeliefGraph } from './belief-graph-service';
 
-<SurfaceCard title="New Metric">
-  <StatCard
-    label="My Metric"
-    value={value}
-    trend={trend}
-    domain="emotional"
-  />
-</SurfaceCard>
+const graph: BeliefGraph = {
+  nodes: [{ id: 'belief_1', label: 'Core belief', valence: 'negative', intensity: 7 }],
+  edges: [],
+  summary: 'Initial belief identified',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+};
+
+await saveBeliefGraph(graph, { userId, encryptionKey });
 ```
 
 ### Register a New Cross-Module Cascade Rule
@@ -389,15 +497,20 @@ Spine.onCondition({
 });
 ```
 
-### Add a Therapy Modality (New Static Persona)
+### Add a Therapist Archetype
 ```typescript
-// In personas.ts — append to THERAPIST_PERSONAS[]
+// In personas.ts — append to THERAPIST_ARCHETYPES[]
 {
   id: 'somatic',
-  name: 'Dr. Maya',
-  style: 'Somatic',
-  description: 'Body-centered trauma processing, nervous system regulation',
-  systemPrompt: `You are Dr. Maya, a somatic therapist...`,
+  name: 'The Somatic Healer',
+  basePrompt: `You are a body-centered therapist rooted in Somatic Experiencing...
+    
+    CLINICAL VERBAL FINGERPRINT:
+    - Use phrases like: "What does your body want to do right now?"...
+    
+    SOMATIC AWARENESS:
+    ...`,
+  traits: ['Body-Centered', 'Trauma-Informed', 'Grounding']
 }
 ```
 
@@ -421,23 +534,28 @@ Spine.onCondition({
 
 | Pitfall | Correct Approach |
 |---|---|
-| Writing NSV directly to Firestore | Always use `GlobalProjectionService.updateCrossFunctionalState()` |
-| Storing raw session transcript | Compress to `summary` + `insights[]` before any persistence |
+| Writing NSV directly to Firestore | Always use `updateGlobalSoul` callback in action handlers |
+| Storing raw session transcript | Compress to `summary` + belief graph before any persistence |
 | Skipping the vault gate | Always check `isModuleAccessible('agnes')` at the module root — never skip for "loading" states |
 | Publishing Spine events with wrong domain | Agnes events must use `domain: 'E'` — wrong domain breaks cascade routing |
-| Calling `generateAgnesPersona` without a profile | Guard against null archetype — default to `'empathetic'` if unset |
-| Adding action tags only in `actions.ts` | New tags must also appear in `AGNES_PERSONA` string or the LLM won't emit them |
-| Using `StatCard` outside a `SurfaceCard` | Agnes dashboard convention requires `SurfaceCard` as the outer container |
+| Ignoring `persistencePolicy` | Check for `'ephemeral'` and skip NSV writes for impromptu sessions |
+| Adding action tags only in `actions.ts` | New tags must also appear in `AGNES_PERSONA` SESSION TELEMETRY section or the LLM won't emit them |
 | Allowing the LLM to output diagnostic labels | Prompt must explicitly forbid DSM-coded language as personal assertions |
+| Skipping move-category tracking | Every `<thought>` block must include `Move_Log` and `Next_Move` per persona protocol |
+| Doing somatic exploration during crisis | Post-crisis mode requires validation-only — no somatic inquiry until next session |
+| Challenging before trust established | Provocateur archetype must wait 2-3 sessions before existential challenges |
 
 ---
 
 ## 15. Environment & Dependencies
 
 - **Auth**: All Agnes routes require an authenticated Nexus user (`useAuth()`)
-- **Firestore**: `agnes_profiles` collection — encrypted documents, compound index on `uid + updatedAt`
+- **Firestore Collections**:
+  - `agnes_profiles` — encrypted user profiles
+  - `belief_graphs` — encrypted belief graph documents
+- **Encryption**: `@/lib/encryption` — `encryptWithKey()`, `decryptWithKey()`
 - **LLM**: Session chat uses the Nexus LLM gateway — not a direct OpenAI/Anthropic call
-- **Spine**: `src/lib/spine` — event bus for cross-module cascade
-- **GlobalProjectionService**: `src/lib/projection/global-projection-service.ts`
-- **Vault**: `src/lib/vault` — `isModuleAccessible(moduleId)` access control
-- **Fast-track hook**: `useFastTrackValidation('agnes')` — from `src/hooks/use-fast-track-validation`
+- **Spine**: `@/lib/spine/spine-event-bus` — event bus for cross-module cascade
+- **ActionHub**: `@/lib/actions/action-hub` — centralized action tag registration
+- **Data Layer**: `@/lib/data-layer/provider` — `getNexusDataLayer()` for Firestore abstraction
+- **Vault**: `@/lib/vault` — `isModuleAccessible(moduleId)` access control

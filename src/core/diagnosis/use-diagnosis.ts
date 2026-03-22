@@ -119,12 +119,6 @@ export function useDiagnosis({
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState<string | null>(null);
   
-  // ---- onAfterExtraction lifecycle state -----------------------------------
-  const [lastParsedRawText, setLastParsedRawText] = useState<string | null>(null);
-  const [lastParsedDocType, setLastParsedDocType] = useState<string | null>(null);
-  const afterExtractionCalledRef = useRef(false);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-
   // ---- Document history (Firestore subscription) ---------------------------
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
 
@@ -157,72 +151,6 @@ export function useDiagnosis({
       setPhase('active');
     }
   }, [ai.messages, phase]);
-
-  // ---- onAfterExtraction: generate summary after initial extraction --------
-  // This effect triggers after the AI finishes processing and extracted items exist
-  useEffect(() => {
-    // Only run if:
-    // 1. We're in active phase
-    // 2. AI is not processing
-    // 3. We have extracted items
-    // 4. We haven't already called onAfterExtraction for this document
-    // 5. The spec has an onAfterExtraction hook
-    // 6. We have the raw text from parsing
-    if (
-      phase !== 'active' ||
-      ai.isProcessing ||
-      ai.streamingText ||
-      extractedData.items.length === 0 ||
-      afterExtractionCalledRef.current ||
-      !spec.onAfterExtraction ||
-      !lastParsedRawText ||
-      isGeneratingSummary
-    ) {
-      return;
-    }
-
-    // Mark that we're calling onAfterExtraction
-    afterExtractionCalledRef.current = true;
-    setIsGeneratingSummary(true);
-
-    // Create a sendMessage function for the hook
-    const sendMessage = async (prompt: string): Promise<string> => {
-      // Use a direct AI call without adding to chat history
-      // We'll use the handleSendMessage but capture the response
-      return new Promise((resolve) => {
-        // For now, we'll skip summary generation in the hook and rely on the 
-        // diagnosis-session-service for full integration. The hook is ready
-        // but we need a way to call the LLM without adding to chat.
-        console.log('[useDiagnosis] onAfterExtraction called, but sendMessage not fully wired yet');
-        resolve('');
-      });
-    };
-
-    // Call the onAfterExtraction hook
-    spec.onAfterExtraction({
-      extractedData,
-      rawText: lastParsedRawText,
-      documentType: lastParsedDocType || 'unknown',
-      sendMessage,
-    }).then((enrichedData) => {
-      if (enrichedData && enrichedData.metadata?.somaSummary) {
-        setExtractedData(enrichedData);
-      }
-    }).catch((err) => {
-      console.error('[useDiagnosis] onAfterExtraction failed:', err);
-    }).finally(() => {
-      setIsGeneratingSummary(false);
-    });
-  }, [
-    phase,
-    ai.isProcessing,
-    ai.streamingText,
-    extractedData,
-    spec,
-    lastParsedRawText,
-    lastParsedDocType,
-    isGeneratingSummary,
-  ]);
 
   // ---- Live summary: extract first sentence from new assistant messages ----
   useEffect(() => {
@@ -377,11 +305,6 @@ export function useDiagnosis({
       setParseError(null);
       setParseProgress(null);
       setDocumentPreviewUrl(null);
-      
-      // Reset onAfterExtraction state for new document
-      afterExtractionCalledRef.current = false;
-      setLastParsedRawText(null);
-      setLastParsedDocType(null);
 
       try {
         // Generate preview URL for images before parsing
@@ -396,10 +319,6 @@ export function useDiagnosis({
 
         const result = await parseDocument(file, setParseProgress);
         setParsedDocInfo(result.metadata);
-        
-        // Store raw text for onAfterExtraction hook
-        setLastParsedRawText(result.text);
-        setLastParsedDocType(result.metadata.fileType);
 
         // Persist encrypted document
         if (user?.uid && encryptionKey) {
@@ -497,11 +416,6 @@ export function useDiagnosis({
       URL.revokeObjectURL(documentPreviewUrl);
     }
     setDocumentPreviewUrl(null);
-    // Reset onAfterExtraction state
-    afterExtractionCalledRef.current = false;
-    setLastParsedRawText(null);
-    setLastParsedDocType(null);
-    setIsGeneratingSummary(false);
   }
 
   async function clearAndRestart() {
@@ -531,7 +445,7 @@ export function useDiagnosis({
     startDiagnosis,
     endDiagnosis,
     newDiagnosis,
-    resetDiagnosis: newDiagnosis,
+    resetDiagnosis: clearSession,
     summaryLines,
     uploadDocument,
     setContextPolicy,

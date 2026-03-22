@@ -213,7 +213,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
         )}
 
         {cardioLog?.length > 0 && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <MetricCard
               label="Sessions (7d)"
               value={weeklyStats.sessions}
@@ -319,7 +319,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <NeuralInput
               label="Distance (km)"
               type="number"

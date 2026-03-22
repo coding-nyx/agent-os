@@ -66,14 +66,14 @@ You are in a FIELD-CRUD scope. Do not discuss personal wellness data unless it r
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.98 }}
-        className="fixed inset-y-8 right-8 w-[450px] z-[60] flex flex-col"
+        className="fixed inset-y-0 right-0 sm:inset-y-8 sm:right-8 w-full sm:w-[450px] sm:max-w-[calc(100vw-2rem)] z-[60] flex flex-col"
       >
         <div className={cn(
           "flex-1 flex flex-col overflow-hidden rounded-[2.5rem] border backdrop-blur-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)]",
           "bg-black/80 border-white/10"
         )}>
           {/* Neural Header */}
-          <div className="p-8 border-b border-white/5 flex items-center justify-between relative overflow-hidden">
+          <div className="p-4 sm:p-8 border-b border-white/5 flex items-center justify-between relative overflow-hidden">
             <div className="relative z-10 flex items-center gap-4">
               <div className={cn(
                 "w-12 h-12 rounded-2xl flex items-center justify-center border transition-all",
@@ -105,7 +105,7 @@ You are in a FIELD-CRUD scope. Do not discuss personal wellness data unless it r
           </div>
 
           {/* Assistant Identity Strip */}
-          <div className="px-8 py-3 bg-white/[0.03] border-b border-white/5 flex items-center gap-3">
+          <div className="px-4 sm:px-8 py-3 bg-white/[0.03] border-b border-white/5 flex items-center gap-3">
             <div className="flex gap-1">
               {[1, 2, 3].map(i => (
                 <motion.div 

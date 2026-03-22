@@ -37,7 +37,7 @@ interface UnifiedModulePageProps<TProfile extends { onboardingComplete?: boolean
   hideNavigation?: boolean;
   renderLeftRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null; persistProfile: (profile: TProfile) => Promise<void> }) => React.ReactNode;
   renderRightRail?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
-  renderMobileFooter?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null }) => React.ReactNode;
+  renderMobileFooter?: (props: { profile: TProfile | null; encryptionKey: CryptoKey | null; sessionActive: boolean }) => React.ReactNode;
   onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void;
 }
 
@@ -70,9 +70,11 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
     ...profileOptions
   });
 
+  // Track whether module has an active session (e.g., Agnes therapy session)
+  const [sessionActive, setSessionActive] = useState(false);
    
-  const stableSetSessionActive = useCallback((_active: boolean) => {
-    // Focus mode removed — session active state managed locally by each module
+  const stableSetSessionActive = useCallback((active: boolean) => {
+    setSessionActive(active);
   }, []);
 
   const manifest = MODULE_MANIFEST[moduleId];
@@ -314,7 +316,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
           hideNavigation={hideNavigation}
           renderLeftRail={renderLeftRail ? () => renderLeftRail({ profile, encryptionKey, persistProfile }) : undefined}
           renderRightRail={renderRightRail ? () => renderRightRail({ profile, encryptionKey }) : undefined}
-          renderMobileFooter={renderMobileFooter ? () => renderMobileFooter({ profile, encryptionKey }) : undefined}
+          renderMobileFooter={renderMobileFooter ? () => renderMobileFooter({ profile, encryptionKey, sessionActive }) : undefined}
       >
         {workspaceContent}
       </ModuleLayout>

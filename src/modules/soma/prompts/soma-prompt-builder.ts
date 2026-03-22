@@ -212,6 +212,11 @@ INSTRUCTIONS:
 1. If the text contains lab results, use 'parse_lab_report' or 'commit_biomarker'.
 2. If the text contains a visual description of an image (e.g. [VISUAL DESCRIPTION] for X-ray, MRI), use 'medical_image_analysis'.
 3. If the text describes medical conditions or medications, use 'update_conditions'.
+4. After ALL extraction actions, emit exactly ONE 'diagnosis_summary' action as the final action:
+   {"reportType":"lab_report|xray|mri|ct|ultrasound|prescription|medical_report|other","summary":"2-4 sentence plain-language clinical summary of key findings","comparisons":[{"item":"field name","value":"value","referenceRange":"optional","status":"below|within|above|unknown","note":"optional"}],"whatItMeans":["3-5 clinical significance bullets"],"recommendedActions":["3-5 actionable follow-up steps"],"suggestedMedications":["medications to discuss with provider, may be empty array"],"confidenceLevel":"high|moderate|low","confidenceRationale":"1-2 sentences explaining confidence"}
+   - comparisons: only items with extracted values, max 10 items
+   - Do NOT diagnose diseases; use "above/below typical range" language
+   - Keep medication mentions as "discuss with prescriber"
 
 Do NOT just output JSON text. You MUST use the provided tools/functions to save the data.
 `;

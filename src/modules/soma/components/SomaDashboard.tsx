@@ -22,8 +22,6 @@ import {
   Wind,
   Plus,
   X,
-  MessageSquare,
-  List,
   FileText,
 } from 'lucide-react';
 import { GlobalProjection } from '@/lib/types';

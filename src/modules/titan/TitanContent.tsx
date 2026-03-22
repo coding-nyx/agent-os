@@ -1169,15 +1169,12 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
           <div className="px-4 sm:px-6 md:px-8 pb-3 sm:pb-4 md:pb-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-4 relative">
             <div className="relative overflow-x-auto no-scrollbar mask-edges-horizontal">
-              {/* Desktop Tabs */}
-              <div className="hidden lg:block">
-                <NeuralTabGroup
-                  tabs={tabs}
-                  activeTab={activeTab}
-                  onTabChange={setActiveTab}
-                  themeColor="module"
-                />
-              </div>
+              <NeuralTabGroup
+                tabs={tabs}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                themeColor="module"
+              />
             </div>
 
             {/* Module controls */}

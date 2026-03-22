@@ -348,7 +348,7 @@ export function TransactionManager({
               { value: 'income', label: 'Income' },
               { value: 'expense', label: 'Expense' },
             ]}
-            triggerClassName="w-[150px]"
+            triggerClassName="w-full sm:w-[150px]"
             ariaLabel="Filter type"
           />
           <NeuralSelectMenu
@@ -358,10 +358,10 @@ export function TransactionManager({
               { value: 'all', label: 'All Categories' },
               ...categories.map((cat) => ({ value: cat, label: cat })),
             ]}
-            triggerClassName="w-[180px]"
+            triggerClassName="w-full sm:w-[180px]"
             ariaLabel="Filter category"
           />
-          <div className="flex gap-2 ml-auto">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:ml-auto">
             <NeuralButton onClick={handleImportClick} variant="secondary" size="sm" disabled={disabled}>
               <Upload className="w-4 h-4 mr-2" />
               Import
@@ -391,39 +391,92 @@ export function TransactionManager({
             />
           </div>
         ) : (
-          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-16rem)]">
-            <table className="w-full" role="table">
-              <thead>
-                <tr className="border-b border-white/10 sticky top-0 z-10 backdrop-blur-xl bg-black/60">
-                  <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('date')}>
-                    <div className="flex items-center gap-1">Date <ArrowUpDown className="w-3 h-3" /></div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('description')}>
-                    <div className="flex items-center gap-1">Description <ArrowUpDown className="w-3 h-3" /></div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('category')}>
-                    <div className="flex items-center gap-1">Category <ArrowUpDown className="w-3 h-3" /></div>
-                  </th>
-                  <th className="px-4 py-3 text-right text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('amount')}>
-                    <div className="flex items-center justify-end gap-1">Amount <ArrowUpDown className="w-3 h-3" /></div>
-                  </th>
-                  <th className="px-4 py-3 text-right text-[9px] uppercase tracking-[0.2em] text-white/40 font-black">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.map((transaction) => (
-                  <TransactionRow
-                    key={transaction.id}
-                    transaction={transaction}
-                    currency={currency}
-                    disabled={disabled}
-                    onEdit={openEdit}
-                    onDelete={onDeleteTransaction}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {/* Mobile card view */}
+            <div className="block md:hidden space-y-3 p-4">
+              {filteredTransactions.map((transaction) => (
+                <div key={transaction.id} className="flex flex-col gap-2 p-3 rounded-lg border border-white/5 bg-white/[0.01]">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-white truncate">{transaction.description}</div>
+                      <div className="text-xs text-white/60 mt-1">{new Date(transaction.date).toLocaleDateString()}</div>
+                      {transaction.recurring && (
+                        <div className="text-[10px] text-[var(--module-color-400)] mt-1">
+                          ↻ {transaction.recurringFrequency}
+                        </div>
+                      )}
+                    </div>
+                    <div className={cn(
+                      "text-right whitespace-nowrap font-bold tabular-nums text-sm",
+                      transaction.type === 'income' ? 'text-emerald-400' : 'text-red-400'
+                    )}>
+                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, currency)}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-block px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
+                      {transaction.category}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <NeuralButton
+                        variant="ghost"
+                        onClick={() => openEdit(transaction)}
+                        disabled={disabled}
+                        className="p-1.5 h-auto min-h-[40px] text-white/60 hover:text-white"
+                        aria-label="Edit transaction"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </NeuralButton>
+                      <NeuralButton
+                        variant="ghost"
+                        onClick={() => onDeleteTransaction(transaction.id)}
+                        disabled={disabled}
+                        className="p-1.5 h-auto min-h-[40px] text-white/60 hover:text-red-400"
+                        aria-label="Delete transaction"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </NeuralButton>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[calc(100vh-16rem)]">
+              <table className="w-full" role="table">
+                <thead>
+                  <tr className="border-b border-white/10 sticky top-0 z-10 backdrop-blur-xl bg-black/60">
+                    <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('date')}>
+                      <div className="flex items-center gap-1">Date <ArrowUpDown className="w-3 h-3" /></div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('description')}>
+                      <div className="flex items-center gap-1">Description <ArrowUpDown className="w-3 h-3" /></div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('category')}>
+                      <div className="flex items-center gap-1">Category <ArrowUpDown className="w-3 h-3" /></div>
+                    </th>
+                    <th className="px-4 py-3 text-right text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('amount')}>
+                      <div className="flex items-center justify-end gap-1">Amount <ArrowUpDown className="w-3 h-3" /></div>
+                    </th>
+                    <th className="px-4 py-3 text-right text-[9px] uppercase tracking-[0.2em] text-white/40 font-black">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTransactions.map((transaction) => (
+                    <TransactionRow
+                      key={transaction.id}
+                      transaction={transaction}
+                      currency={currency}
+                      disabled={disabled}
+                      onEdit={openEdit}
+                      onDelete={onDeleteTransaction}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </SurfaceCard>
 
