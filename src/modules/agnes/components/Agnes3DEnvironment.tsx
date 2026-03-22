@@ -6,10 +6,10 @@ import * as THREE from 'three';
 import { EveModel } from '../../hub/components/three/models';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 
-function BeliefNebula() {
+const BeliefNebula = React.memo(function BeliefNebula() {
   const points = useMemo(() => {
-    // Reduced from 1000 to 400 for performance
-    const count = 400;
+    // Reduced further for performance
+    const count = 150;
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       arr[i * 3] = (Math.random() - 0.5) * 30;
@@ -42,14 +42,14 @@ function BeliefNebula() {
       />
     </points>
   );
-}
+});
 
 interface Agnes3DEnvironmentProps {
   activeSession: boolean;
   isProcessing?: boolean;
 }
 
-export function Agnes3DEnvironment({ activeSession, isProcessing }: Agnes3DEnvironmentProps) {
+export const Agnes3DEnvironment = React.memo(function Agnes3DEnvironment({ activeSession, isProcessing }: Agnes3DEnvironmentProps) {
   const { globalSoul } = useGlobalSoul();
   const [webglError, setWebglError] = useState(false);
 
@@ -107,4 +107,4 @@ export function Agnes3DEnvironment({ activeSession, isProcessing }: Agnes3DEnvir
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#020205]/20 to-[#020205]" />
     </div>
   );
-}
+});

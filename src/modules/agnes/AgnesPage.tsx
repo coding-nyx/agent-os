@@ -188,12 +188,11 @@ function AgnesContent({
     setSessionActive?.(currentState === 'session');
   }, [currentState, setSessionActive]);
 
-  // Hide Nexus FAB on mobile during active session
+  // Hide Nexus FAB universally in Agnes as it's not required
   useEffect(() => {
-    const isInSession = currentState === 'session' || currentState === 'somatic';
-    setHideGlobalFAB(isInSession);
+    setHideGlobalFAB(true);
     return () => setHideGlobalFAB(false);
-  }, [currentState, setHideGlobalFAB]);
+  }, [setHideGlobalFAB]);
 
   // s18-002: once hydration settles, auto-advance to session if messages already exist
   // This prevents the picker rendering on reload and the user accidentally wiping their session
@@ -455,7 +454,7 @@ function AgnesContent({
     <div className="flex-1 flex flex-col min-h-0 relative">
       <SanctuaryBackground />
       
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 pointer-events-none">
         <Agnes3DEnvironment activeSession={currentState === 'session'} isProcessing={isProcessing} />
       </div>
 

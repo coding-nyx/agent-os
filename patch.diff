@@ -1,0 +1,17 @@
+--- src/modules/agnes/AgnesPage.tsx
++++ src/modules/agnes/AgnesPage.tsx
+@@ -420,10 +420,9 @@
+     return () => window.removeEventListener('agnes:open-security-protocol', handleSecurityOpen);
+   }, [currentState, setSessionActive]);
+
+-  // Hide Nexus FAB on mobile during active session
++  // Hide Nexus FAB universally in Agnes as it's not required
+   useEffect(() => {
+-    const isInSession = currentState === 'session' || currentState === 'somatic';
+-    setHideGlobalFAB(isInSession);
++    setHideGlobalFAB(true);
+     return () => setHideGlobalFAB(false);
+-  }, [currentState, setHideGlobalFAB]);
++  }, [setHideGlobalFAB]);
+
+   // s18-002: once hydration settles, auto-advance to session if messages already exist
