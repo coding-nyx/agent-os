@@ -102,12 +102,12 @@ export const TaskCard = React.memo(function TaskCard({
       onClick={() => onEntitySelect?.(task)}
       className={cn(
         'group relative rounded-xl border overflow-hidden transition-all cursor-pointer min-h-[44px]',
-        'bg-white/[0.03] backdrop-blur-sm',
+        'bg-gradient-to-r from-white/[0.02] to-transparent hover:from-white/[0.04]',
         isEntitySelected && 'ring-2 ring-[var(--module-accent-ring)] shadow-[var(--module-accent-glow)]',
         isBlocked && 'opacity-60 border-white/5',
-        isDone && 'border-emerald-500/15 bg-emerald-500/[0.03]',
-        isDeferred && 'border-amber-500/10 bg-amber-500/[0.02]',
-        !isBlocked && !isDone && !isDeferred && !isEntitySelected && 'border-white/10 hover:border-white/15'
+        isDone && 'border-white/[0.04] bg-white/[0.01]',
+        isDeferred && 'border-white/[0.04] bg-white/[0.01]',
+        !isBlocked && !isDone && !isDeferred && !isEntitySelected && 'border-white/[0.04] hover:border-white/[0.08]'
       )}
     >
       {/* Left priority bar */}
@@ -148,14 +148,14 @@ export const TaskCard = React.memo(function TaskCard({
               'mt-0.5 flex-shrink-0 w-5 h-5 min-w-0 !p-0 rounded-md border-2 flex items-center justify-center transition-all min-h-[44px]',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
               isDone
-                ? 'bg-emerald-500 border-emerald-500'
+                ? 'bg-white/10 border-white/20'
                 : isBlocked
                   ? 'border-white/10 cursor-not-allowed'
-                  : 'border-white/20 hover:border-emerald-400/50'
+                  : 'border-white/20 hover:border-white/40'
             )}
           >
             {isDone && (
-              <Check className="w-3 h-3 text-white" aria-hidden="true" />
+              <Check className="w-3 h-3 text-white/70" aria-hidden="true" />
             )}
             {isBlocked && (
               <Lock className="w-3 h-3 text-white/30" aria-hidden="true" />
@@ -163,53 +163,55 @@ export const TaskCard = React.memo(function TaskCard({
           </NeuralButton>
 
           {/* Title, badges, description preview */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex-1 min-w-0 pt-0.5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
               <span
                 className={cn(
-                  'text-sm font-semibold leading-snug',
-                  isDone ? 'text-white/40 line-through' : 'text-white/90'
+                  'text-sm font-semibold leading-tight break-words',
+                  isDone ? 'text-white/30 line-through' : 'text-white/80'
                 )}
               >
                 {task.title}
               </span>
 
-              {/* Energy cost pill */}
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 text-[10px] font-bold tabular-nums">
-                <Zap className="w-2.5 h-2.5" aria-hidden="true" />
-                {task.energyCost}
-              </span>
-
-              {/* Recurrence indicator */}
-              {task.recurrenceRule && (
-                <span
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] text-[10px] font-bold"
-                  title={`Recurring: ${task.recurrenceRule}`}
-                  aria-label={`Recurring task, ${task.recurrenceRule}`}
-                >
-                  <RotateCcw className="w-2.5 h-2.5" aria-hidden="true" />
+              <div className="flex items-center gap-2 flex-wrap mt-0.5 sm:mt-0">
+                {/* Energy cost pill */}
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/5 text-white/50 text-[10px] font-semibold tabular-nums">
+                  <Zap className="w-2.5 h-2.5" aria-hidden="true" />
+                  {task.energyCost}
                 </span>
-              )}
 
-              {/* Deadline badge */}
-              {task.deadline && !isDone && (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold',
-                    deadlineOverdue
-                      ? 'bg-rose-500/15 text-rose-400'
-                      : deadlineUrgent
+                {/* Recurrence indicator */}
+                {task.recurrenceRule && (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/5 text-white/50 text-[10px] font-semibold"
+                    title={`Recurring: ${task.recurrenceRule}`}
+                    aria-label={`Recurring task, ${task.recurrenceRule}`}
+                  >
+                    <RotateCcw className="w-2.5 h-2.5" aria-hidden="true" />
+                  </span>
+                )}
+
+                {/* Deadline badge */}
+                {task.deadline && !isDone && (
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold',
+                      deadlineOverdue
                         ? 'bg-rose-500/10 text-rose-300'
-                        : 'bg-white/5 text-white/40'
-                  )}
-                >
-                  <Clock className="w-2.5 h-2.5" aria-hidden="true" />
-                  {new Date(task.deadline).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </span>
-              )}
+                        : deadlineUrgent
+                          ? 'bg-amber-500/10 text-amber-300'
+                          : 'bg-white/5 text-white/50'
+                    )}
+                  >
+                    <Clock className="w-2.5 h-2.5" aria-hidden="true" />
+                    {new Date(task.deadline).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Description preview (collapsed) */}
@@ -301,7 +303,7 @@ export const TaskCard = React.memo(function TaskCard({
                             className={cn(
                               'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium',
                               depTask?.status === 'done'
-                                ? 'bg-emerald-500/10 text-emerald-400'
+                                ? 'bg-white/[0.08] text-white/60'
                                 : 'bg-white/5 text-white/40'
                             )}
                           >

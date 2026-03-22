@@ -23,19 +23,19 @@ const STATUS_BADGES: Record<
 > = {
   active: {
     label: 'Active',
-    className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    className: 'bg-white/[0.04] text-white/70 border-white/10',
   },
   paused: {
     label: 'Paused',
-    className: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    className: 'bg-white/[0.02] text-white/50 border-white/5',
   },
   completed: {
     label: 'Completed',
-    className: 'bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border-[var(--module-accent-border)]',
+    className: 'bg-white/[0.04] text-white/50 border-white/10',
   },
   abandoned: {
     label: 'Abandoned',
-    className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+    className: 'bg-transparent text-white/30 border-white/5',
   },
 };
 
@@ -100,7 +100,7 @@ export function GoalProgress({
                 ? { duration: 0 }
                 : { duration: 0.3, delay: index * 0.05 }
             }
-            className="rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm overflow-hidden"
+            className="rounded-xl border border-white/[0.04] bg-gradient-to-r from-white/[0.02] to-transparent hover:from-white/[0.04] hover:border-white/[0.08] transition-all overflow-hidden"
           >
             {/* ── Goal header (click to expand) ── */}
             <NeuralButton
@@ -117,13 +117,13 @@ export function GoalProgress({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0 space-y-2">
                   {/* Title + status badge */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-bold text-white/90 truncate">
+                  <div className="flex items-start flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <h3 className="text-sm font-bold text-white/80 break-words leading-tight">
                       {goal.title}
                     </h3>
                     <span
                       className={cn(
-                        'inline-flex items-center px-2 py-0.5 rounded-md border text-[9px] font-bold uppercase tracking-wider',
+                        'inline-flex items-center px-2 py-0.5 rounded-md border text-[9px] font-bold uppercase tracking-wider shrink-0 mt-0.5 sm:mt-0',
                         statusConfig.className
                       )}
                     >
@@ -161,7 +161,7 @@ export function GoalProgress({
                           {completedMilestones}/{totalMilestones} milestones
                         </span>
                       )}
-                      <span className="text-[10px] font-bold text-emerald-400 tabular-nums ml-auto">
+                      <span className="text-[10px] font-bold text-white/70 tabular-nums ml-auto">
                         {goal.progressPercent}%
                       </span>
                     </div>
@@ -174,7 +174,7 @@ export function GoalProgress({
                       aria-label={`Goal progress: ${goal.progressPercent}%`}
                     >
                       <motion.div
-                        className="h-full rounded-full bg-emerald-400"
+                        className="h-full rounded-full bg-white/40"
                         initial={{ width: 0 }}
                         animate={{ width: `${goal.progressPercent}%` }}
                         transition={
@@ -271,15 +271,15 @@ export function GoalProgress({
                                   : `Mark ${milestone.title} as complete`
                               }
                               className={cn(
-                                'flex-shrink-0 w-5 h-5 min-w-0 p-0 rounded-md border-2 flex items-center justify-center transition-all',
+                                'flex-shrink-0 w-5 h-5 min-w-0 p-0 rounded-md border-2 flex items-center justify-center transition-all mt-0.5',
                                 milestone.completed
-                                  ? 'bg-emerald-500 border-emerald-500 hover:bg-emerald-600'
-                                  : 'border-white/15 hover:border-emerald-400/50'
+                                  ? 'bg-white/10 border-white/20'
+                                  : 'border-white/15 hover:border-white/40'
                               )}
                             >
                               {milestone.completed && (
                                 <Check
-                                  className="w-3 h-3 text-white"
+                                  className="w-3 h-3 text-white/70"
                                   aria-hidden="true"
                                 />
                               )}
@@ -288,7 +288,7 @@ export function GoalProgress({
                             {/* Milestone title */}
                             <span
                               className={cn(
-                                'text-xs flex-1',
+                                'text-xs flex-1 pt-0.5 leading-snug break-words',
                                 milestone.completed
                                   ? 'text-white/30 line-through'
                                   : 'text-white/70'
