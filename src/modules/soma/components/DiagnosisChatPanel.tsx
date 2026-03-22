@@ -1,19 +1,14 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Send } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React, { useMemo } from 'react';
 import type { SomaDiagnosisSummary } from '../types';
-import { NeuralButton } from '@/core/components/NeuralButton';
-import { NeuralInput } from '@/core/components/NeuralInput';
+import { ChatInterface } from '@/core/components/ChatInterface';
+import type { UseDiagnosisReturn } from '@/core/diagnosis/use-diagnosis';
+import { cn } from '@/lib/utils';
 
 interface DiagnosisChatPanelProps {
-  summary: SomaDiagnosisSummary;
+  summary?: SomaDiagnosisSummary | null;
   sessionId: string;
   /** AI extraction engine from useDiagnosis hook. */
-  ai: {
-    handleSendMessage: (content: string) => Promise<void>;
-    messages: { role: string; content: any }[];
-    isProcessing: boolean;
-  };
+  ai: UseDiagnosisReturn;
 }
 
 const CONFIDENCE_CONFIG: Record<
@@ -29,7 +24,7 @@ function formatSummary(summary: SomaDiagnosisSummary): string {
   const lines: string[] = [];
 
   // Lead with confidence level so the user immediately knows the reliability.
-  const conf = CONFIDENCE_CONFIG[summary.confidenceLevel ?? 'moderate'];
+  const conf = summary ? CONFIDENCE_CONFIG[summary.confidenceLevel ?? 'moderate'] : CONFIDENCE_CONFIG['moderate'];
   lines.push(`[ ${conf.label} ]`);
   if (summary.confidenceRationale) {
     lines.push(summary.confidenceRationale);
@@ -69,18 +64,12 @@ function formatSummary(summary: SomaDiagnosisSummary): string {
 }
 
 export function DiagnosisChatPanel({ summary, sessionId: _sessionId, ai }: DiagnosisChatPanelProps) {
-  const [input, setInput] = useState('');
+  const seededMessage = useMemo(() => {
+    if (!summary) return 'I have analyzed the document. You can ask me questions about it.';
+    return formatSummary(summary);
+  }, [summary]);
 
-  const seededMessage = useMemo(() => formatSummary(summary), [summary]);
-
-  const handleSend = useCallback(async () => {
-    const text = input.trim();
-    if (!text || ai.isProcessing) return;
-    setInput('');
-    await ai.handleSendMessage(text);
-  }, [input, ai]);
-
-  const conf = CONFIDENCE_CONFIG[summary.confidenceLevel ?? 'moderate'];
+  const conf = summary ? CONFIDENCE_CONFIG[summary.confidenceLevel ?? 'moderate'] : CONFIDENCE_CONFIG['moderate'];
 
   // Filter out system messages and the analysis prompt from display history.
   // The first message is often the document analysis prompt.
@@ -89,18 +78,27 @@ export function DiagnosisChatPanel({ summary, sessionId: _sessionId, ai }: Diagn
       .filter(m => m.role !== 'system')
       .slice(1); // Skip the initial "Extract data from this document..." prompt
 
-    return [
+    // Base messages (seeded message + history)
+    const messages = [
       { role: 'assistant', content: seededMessage },
       ...history.map(m => ({
         role: m.role,
         content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
       }))
-    ];
-  }, [seededMessage, ai.messages]);
+    ] as any[];
+
+    // If streaming, append the transient chunk if it's not already in history
+    if (ai.streamingText && ai.streamingText.trim()) {
+        messages.push({ role: 'assistant', content: ai.streamingText });
+    }
+    
+    return messages;
+
+  }, [seededMessage, ai.messages, ai.streamingText]);
 
   return (
-    <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl min-h-[60vh] max-h-[80dvh] md:min-h-0 md:max-h-none">
-      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3">
+    <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl min-h-[60vh] max-h-[80dvh] md:min-h-0 md:max-h-none overflow-hidden h-full">
+      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3 shrink-0 bg-white/[0.02]">
         <div>
           <p className="text-xs uppercase tracking-widest text-[var(--module-color-300)] font-semibold">Clinical Analysis</p>
           <p className="text-[11px] text-white/40 mt-1">Ask Soma about this report.</p>
@@ -110,41 +108,20 @@ export function DiagnosisChatPanel({ summary, sessionId: _sessionId, ai }: Diagn
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3 space-y-3">
-        {displayMessages.map((m, i) => (
-          <div
-            key={`${m.role}-${i}`}
-            className={cn(
-              'rounded-xl px-3 py-2 text-sm whitespace-pre-wrap',
-              m.role === 'assistant'
-                ? 'bg-white/[0.04] text-white/80 border border-white/5'
-                : 'bg-[var(--module-accent-muted)] text-[var(--module-color-300)] border border-[var(--module-accent-border)]'
-            )}
-          >
-            {m.content}
-          </div>
-        ))}
-      </div>
-
-      <div className="px-3 py-3 border-t border-white/10 bg-[#0a0a0f]/95">
-        <div className="flex items-center gap-2">
-          <NeuralInput
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-            placeholder="Ask about this report..."
-            className="flex-1 bg-transparent"
-          />
-          <NeuralButton
-            onClick={handleSend}
-            disabled={ai.isProcessing || input.trim().length === 0}
+      <div className="flex-1 min-h-0 relative">
+        <ChatInterface 
+            messages={displayMessages}
+            onSendMessage={ai.handleSendMessage}
+            isLoading={ai.isProcessing}
+            isProcessing={ai.isProcessing}
             themeColor="module"
-            className="w-10 h-10 min-h-0 px-0 rounded-lg"
-            aria-label="Send"
-          >
-            <Send className="w-4 h-4" />
-          </NeuralButton>
-        </div>
+            agentName="Soma"
+            placeholder="Ask about findings, medical terms, or next steps..."
+            error={ai.error}
+            quota={ai.quota}
+            moduleId="soma"
+            showInternalSignals={false} 
+        />
       </div>
     </div>
   );

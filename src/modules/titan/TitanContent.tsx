@@ -1169,12 +1169,15 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
           <div className="px-4 sm:px-6 md:px-8 pb-3 sm:pb-4 md:pb-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-4 relative">
             <div className="relative overflow-x-auto no-scrollbar mask-edges-horizontal">
-              <NeuralTabGroup
-                tabs={tabs}
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                themeColor="module"
-              />
+              {/* Desktop Tabs */}
+              <div className="hidden lg:block">
+                <NeuralTabGroup
+                  tabs={tabs}
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                  themeColor="module"
+                />
+              </div>
             </div>
 
             {/* Module controls */}
@@ -1216,7 +1219,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             aria-labelledby={`tab-${activeTab}`}
             className={cn(
               "flex-1 overflow-y-auto overflow-x-visible no-scrollbar pt-4 sm:pt-5 md:pt-6",
-              activeTab === 'train' && "md:pb-[calc(5rem+env(safe-area-inset-bottom,0px))]"
+              activeTab === 'train' && "pb-[calc(5rem+env(safe-area-inset-bottom,0px))]"
             )}
             style={activeTab === 'train' && quickLogBarHeight > 0
               ? { paddingBottom: Math.max(quickLogBarHeight, 16) }

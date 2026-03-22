@@ -11,7 +11,7 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralTabGroup } from '@/core/components/NeuralTabGroup';
 import { NeuralButton } from '@/core/components/NeuralButton';
-import { Camera, FileUp, FolderOpen, Plus, Settings } from 'lucide-react';
+import { Camera, FileUp, FolderOpen, Plus, Settings, LayoutDashboard, Receipt, PiggyBank, Target, Scale } from 'lucide-react';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { SpineEvent } from '@/lib/types';
 import { LEDGER_TOAST_EVENTS } from '@/modules/ledger/actions/ledger-field-actions';

@@ -79,7 +79,8 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
         history: [],
       });
       return response.publicText;
-    } catch {
+    } catch (error) {
+      console.error('[SomaPage] Document analysis failed:', error);
       return '';
     }
   }, [sendMessage]);

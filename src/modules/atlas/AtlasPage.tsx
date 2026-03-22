@@ -70,6 +70,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
   const { display: predictiveDisplay } = useAtlasPredictiveState(
     globalSoul?.crossFunctionalState ?? null
   );
+
   const [activeTab, setActiveTab] = useState<any>('dashboard');
   const [activeView, setActiveView] = useState<any>('today');
   const location = useLocation();
@@ -636,17 +637,12 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       authMode="atlas"
       placeholder="Share task pressure or schedule constraints..."
       primaryAction={
-        activeTab === 'dashboard' && activeView !== 'focus' ? (
-          <QuickAddForm
-            projects={profile?.projects ?? []}
-            onCreateTask={handleCreateTask}
-            onCreateHabit={handleCreateHabit}
-            onCreateGoal={handleCreateGoal}
-            isOpen={isQuickAddOpen}
-            onOpenChange={setIsQuickAddOpen}
-            isFluid
-          />
-        ) : undefined
+        <QuickAddForm
+          projects={profile?.projects ?? []}
+          onCreateTask={handleCreateTask}
+          onCreateHabit={handleCreateHabit}
+          onCreateGoal={handleCreateGoal}
+        />
       }
     >
       <>

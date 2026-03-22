@@ -148,6 +148,14 @@ export function useDiagnosis({
     }
   }, [ai.messages, phase]);
 
+  // Handle stream state changes to detect when analysis finishes
+  useEffect(() => {
+    if (phase === 'active' && !ai.isProcessing && !ai.streamingText && ai.messages.length > 0) {
+      // Analysis complete
+      // Check if we need to transition phase or just stay active
+    }
+  }, [phase, ai.isProcessing, ai.streamingText, ai.messages.length]);
+
   // ---- Live summary: extract first sentence from new assistant messages ----
   useEffect(() => {
     const msgs = ai.messages;
@@ -289,10 +297,12 @@ export function useDiagnosis({
         // Auto-start if idle
         if (phase === 'idle') setPhase('active');
 
+        // Parsing is done, hand off to AI
+        setIsParsing(false);
+        
         await handleSendMessage(prompt);
       } catch (err) {
         setParseError(err instanceof Error ? err.message : 'Failed to parse document');
-      } finally {
         setIsParsing(false);
       }
     },

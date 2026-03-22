@@ -42,7 +42,14 @@ For any field you cannot extract with confidence, use null. Never hallucinate va
 For any field you cannot extract with confidence, use null. Never hallucinate values. Return ONLY the JSON object.`
 };
 
-const DOCUMENT_OCR_PROMPT = `Extract all readable text from this document image. Return only the plain text, no markdown, no JSON, no commentary. Preserve line breaks where possible.`;
+const DOCUMENT_OCR_PROMPT = `
+Extract all readable text from this document image. Return only the plain text, no markdown, no JSON, no commentary. Preserve line breaks where possible.
+
+CRITICAL: If this image appears to be a medical image (X-ray, MRI, CT scan, ultrasound) or a chart/graph without much text:
+1. Provide a detailed visual description of what is shown (anatomy, anomalies, fractures, trends).
+2. Label this section "[VISUAL DESCRIPTION]".
+3. Then list any text found under "[DETECTED TEXT]".
+`;
 
 function stripActionTagsAndMarkdown(text: string): string {
   // Remove action tags
@@ -109,6 +116,7 @@ export async function analyzeImageWithVision(
       rawJson: JSON.parse(cleaned)
     };
   } catch (error) {
+    console.error('[VisionAnalysis] analyzeImageWithVision failed:', error);
     return {
       success: false,
       rawJson: {},
@@ -127,6 +135,9 @@ export async function extractTextWithVision(
   const resolvedModel = resolveVisionModel(modelId);
 
   try {
+    console.log('[VisionAnalysis] extractTextWithVision called with model:', resolvedModel);
+    console.log('[VisionAnalysis] Prompt:', DOCUMENT_OCR_PROMPT.trim());
+    
     const text = await analyzeImageWithVisionAgent({
       imageDataUrl,
       prompt: DOCUMENT_OCR_PROMPT,
@@ -135,12 +146,17 @@ export async function extractTextWithVision(
       temperature: 0.2,
       format: 'text',
     });
+    
+    console.log('[VisionAnalysis] Raw agent response length:', text.length);
+    console.log('[VisionAnalysis] Raw agent response preview:', text.slice(0, 200));
+
     const cleaned = stripActionTagsAndMarkdown(text);
     if (!cleaned || cleaned.trim().length === 0) {
       throw new Error('Vision OCR returned an empty response.');
     }
     return cleaned;
   } catch (error) {
+    console.error('[VisionAnalysis] extractTextWithVision failed:', error);
     throw error instanceof Error ? error : new Error(String(error));
   }
 }

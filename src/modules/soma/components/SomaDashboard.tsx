@@ -550,29 +550,27 @@ export const SomaDashboard = React.memo(function SomaDashboard({
                 items={diagnosis.extractedData.items}
                 onSelectionChange={setSelectedFieldIds}
                 onClose={diagnosis.endDiagnosis}
+                isProcessing={diagnosis.isProcessing}
               />
             ) : (
-              diagnosisSummary ? (
-                <DiagnosisChatPanel summary={diagnosisSummary} sessionId="diagnosis" ai={diagnosis} />
-              ) : <div className="py-12 text-center text-white/20">Analysis initialising...</div>
+              <DiagnosisChatPanel summary={diagnosisSummary ?? null} sessionId="diagnosis" ai={diagnosis} />
             )}
           </div>
 
-          <div className="hidden lg:flex gap-4 items-start">
-            <div className="flex-1 min-w-0">
+          <div className="hidden lg:flex gap-4 items-start h-[calc(100vh-200px)]">
+            <div className="flex-1 min-w-0 h-full overflow-hidden">
               <DiagnosisResultsScreen
                 sessionId="diagnosis"
                 detectedPanels={[]}
                 items={diagnosis.extractedData.items}
                 onSelectionChange={setSelectedFieldIds}
                 onClose={diagnosis.endDiagnosis}
+                isProcessing={diagnosis.isProcessing}
               />
             </div>
-            {diagnosisSummary && (
-              <div className="w-[400px] xl:w-[460px] flex-shrink-0">
-                <DiagnosisChatPanel summary={diagnosisSummary} sessionId="diagnosis" ai={diagnosis} />
-              </div>
-            )}
+            <div className="w-[400px] xl:w-[460px] flex-shrink-0 h-full">
+              <DiagnosisChatPanel summary={diagnosisSummary ?? null} sessionId="diagnosis" ai={diagnosis} />
+            </div>
           </div>
         </div>
       );

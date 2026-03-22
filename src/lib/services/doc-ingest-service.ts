@@ -2,6 +2,7 @@ import Papa from 'papaparse';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import workerSrc from 'pdfjs-dist/build/pdf.worker?url';
 import { extractTextWithVision } from './vision-analysis-service';
+import { recognizeImageWithWorker } from './tesseract-worker';
 
 GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -109,6 +110,26 @@ function countWords(text: string): number {
   return text.split(/\s+/).filter((w) => w.length > 0).length;
 }
 
+function blobToDataURL(blob: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === 'string') {
+        // console.log('[DocIngest] blobToDataURL success, length:', result.length);
+        resolve(result);
+      } else {
+        reject(new Error('FileReader returned non-string result'));
+      }
+    };
+    reader.onerror = () => {
+      console.error('[DocIngest] FileReader error:', reader.error);
+      reject(reader.error || new Error('FileReader error'));
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function renderPdfPageToDataUrl(pdf: any, pageNum: number): Promise<string> {
   const page = await pdf.getPage(pageNum);
   const viewport = page.getViewport({ scale: 1.5 });
@@ -122,23 +143,38 @@ async function renderPdfPageToDataUrl(pdf: any, pageNum: number): Promise<string
 }
 
 async function ocrImageLocal(dataUrl: string): Promise<string> {
-  const { createWorker } = await import('tesseract.js');
-  const worker = await createWorker('eng');
-  try {
-    const result = await worker.recognize(dataUrl);
-    return (result.data.text || '').trim();
-  } finally {
-    await worker.terminate();
-  }
+  return recognizeImageWithWorker(dataUrl);
 }
 
 async function ocrImageHybrid(dataUrl: string): Promise<string> {
+  // If we suspect a medical image, skip Tesseract and go straight to Vision
+  // Tesseract is terrible at medical images and might return gibberish that satisfies the length check
+  // For now, we'll try to detect if it's a photo/scan based on context, but since we don't have that context here easily,
+  // we will ALWAYS try vision if local OCR returns a very short string, but maybe we should prioritize vision for everything in this context?
+  // Let's keep the hybrid approach but logging will help us see if Tesseract is "stealing" the job.
+
   try {
+    console.log('[DocIngest] Attempting local OCR (Tesseract)...');
     const localText = await ocrImageLocal(dataUrl);
-    if (localText && localText.length > 40) return localText;
+    console.log('[DocIngest] Local OCR result length:', localText.length);
+    console.log('[DocIngest] Local OCR preview:', localText.slice(0, 100));
+    
+    // INCREASE THRESHOLD: Medical images often have some text (patient name, date) but we want the VISION DESCRIPTION.
+    // If Tesseract returns just "Patient Name: John Doe", that's > 40 chars but useless for diagnosis.
+    // Let's bump the threshold or rethink this. 
+    // Actually, for the SOMA context, we almost ALWAYS want the vision description for X-rays.
+    // But this function is generic doc-ingest.
+    
+    if (localText && localText.length > 100) {
+       console.log('[DocIngest] Local OCR result > 100 chars, returning result.');
+       return localText;
+    }
+    console.log('[DocIngest] Local OCR result insufficient (<= 100 chars), falling back to vision.');
   } catch (error) {
     console.warn('[DocIngest] Local OCR failed, falling back to vision:', error);
   }
+  
+  console.log('[DocIngest] Calling extractTextWithVision...');
   return extractTextWithVision(dataUrl);
 }
 
@@ -212,12 +248,31 @@ export async function parseDocument(
       break;
     }
     case 'image': {
+      // Ensure we have a valid image mime type so data URL is correct
+      let mimeType = file.type;
+      if (!mimeType || !mimeType.startsWith('image/')) {
+         const ext = getExtension(file.name);
+         if (ext === '.png') mimeType = 'image/png';
+         else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+         else if (ext === '.webp') mimeType = 'image/webp';
+         else mimeType = 'image/png'; // Fallback
+      }
+
       notes.push('Parsed as image. Running hybrid OCR.');
-      const dataUrl = URL.createObjectURL(new Blob([buffer], { type: file.type }));
-      text = await ocrImageHybrid(dataUrl);
+      try {
+        const dataUrl = await blobToDataURL(new Blob([buffer], { type: mimeType }));
+        console.log('[DocIngest] Image data URL created, length:', dataUrl.length, 'MIME:', mimeType);
+        
+        console.log('[DocIngest] Calling ocrImageHybrid...');
+        text = await ocrImageHybrid(dataUrl);
+        console.log('[DocIngest] ocrImageHybrid returned text length:', text.length);
+      } catch (err) {
+        console.error('[DocIngest] Image processing failed:', err);
+        throw err;
+      }
       pageCount = 1;
       pageTexts = [{ pageIndex: 0, text }];
-      URL.revokeObjectURL(dataUrl);
+      // No revoke needed for data URL strings
       break;
     }
     case 'csv': {

@@ -296,7 +296,7 @@ export function EnhancedAtlasDashboard({
         </div>
       </header>
 
-      {/* ── Tab Navigation ── */}
+      {/* ── Tab Navigation (Desktop) ── */}
       <div className="border-b border-white/5 relative z-50">
         <NeuralTabGroup
           tabs={tabs}
@@ -833,7 +833,7 @@ export function EnhancedAtlasDashboard({
         </div>
       </PortalledModal>
 
-      {/* S9-006: Re-add QuickAddForm as a FAB (accessible from any tab) */}
+      {/* S9-006: Re-add QuickAddForm as a Desktop FAB (accessible from any tab) */}
       <QuickAddForm
         projects={profile?.projects ?? []}
         onCreateTask={actions.onCreateTask}

@@ -200,6 +200,16 @@ export function UnifiedOnboardingShell({
     }
   }, [fields, sections, spec.fastTrackRequiredIds, values, onExpressComplete]);
 
+  const handleSkip = useCallback(async () => {
+    if (!spec.optional) return;
+    setIsSubmitting(true);
+    try {
+      await onExpressComplete({});
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [spec.optional, onExpressComplete]);
+
   const isKeyboardOpen = keyboard.isKeyboardOpen;
   const headerCollapsed = isKeyboardOpen && mode !== 'select';
 
@@ -237,6 +247,16 @@ export function UnifiedOnboardingShell({
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
+              {spec.optional && (
+                <button
+                  type="button"
+                  onClick={handleSkip}
+                  disabled={isSubmitting}
+                  className="px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-50"
+                >
+                  Skip
+                </button>
+              )}
               {mode === 'express' && (
                 <ProgressRing percent={progress} themeColor={spec.themeColor} />
               )}

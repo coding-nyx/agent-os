@@ -374,8 +374,10 @@ export function resetSomaActionsRegistered(): void {
  * for field CRUD operations and readiness computation.
  */
 export function registerSomaFieldActions(): void {
-  if (somaActionsRegistered) return;
+  // if (somaActionsRegistered) return; // Force re-registration for debugging
   somaActionsRegistered = true;
+
+  console.log('[SomaFieldActions] Registering actions for soma...');
 
   // Soma actions live under the 'soma' module ID (sovereign data layer).
   // Titan declares a dependency on 'soma' so these are resolvable from Titan context.
@@ -702,20 +704,29 @@ export function registerSomaFieldActions(): void {
         recordedAt: new Date().toISOString(),
       };
       await saveSomaProfile(
-        { ...profile, labSummaries: [...profile.labSummaries, record], updatedAt: new Date().toISOString() },
+        { ...profile, labSummaries: [record, ...profile.labSummaries].slice(0, 50), updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
       Spine.emit({
         type: SomaSpineEvents.LAB_REPORT_PARSED,
         source: 'soma',
         domain: 'B',
-        data: { moduleId: 'soma', panel, flagCount: record.flags.length, timestamp: Date.now() },
+        data: { moduleId: 'soma', panel, findings: record.findings.length, timestamp: Date.now() },
         cascadeDepth: 0,
-        priority: record.flags.length > 0 ? 'alert' : 'info',
+        priority: 'info',
       });
-      pushAssistantMessage?.(
-        `Lab report saved: ${panel}. ${record.findings.length} finding(s), ${record.flags.length} flag(s).`
-      );
+      pushAssistantMessage?.(`Lab report parsed: ${panel} (${record.findings.length} findings).`);
+    },
+
+    // ── Medical Image Analysis (ActionHub Pass-Through) ──────────────────
+    medical_image_analysis: async ({ userId, pushAssistantMessage }) => {
+      // This action is primarily handled by somaDiagnosisSpec.extractData for the UI session state.
+      // We register it here so ActionHub allows the execution.
+      // In the future, we could persist to the profile here directly, but currently
+      // the diagnosis flow handles merging manually via user review.
+      
+      // Just emit a confirmation for the chat log
+      pushAssistantMessage?.('Medical image analysis completed.');
     },
 
     // ── Update Conditions / Medications / Allergies ─────────────────────

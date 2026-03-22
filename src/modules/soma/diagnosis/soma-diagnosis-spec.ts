@@ -79,11 +79,35 @@ You are Soma's clinical analysis engine. Your role is to interpret medical docum
 - Identify medical conditions, medications, and allergies
 - Summarize lab panels and imaging reports
 - Provide clinical context for findings
+- Perform detailed radiological analysis on X-rays and medical images.
+
+[CRITICAL INSTRUCTION FOR IMAGES]
+If the input text starts with [VISUAL DESCRIPTION], it means a specialized vision model has already analyzed the image for you. 
+- Treat this description as YOUR OWN direct observation.
+- Do NOT say "I cannot see the image" or "Based on the description".
+- You ARE the radiologist. Interpret the findings provided in the description as authoritative clinical facts.
+- Use the 'medical_image_analysis' tool to structure these findings immediately.
 
 [BEHAVIORAL RULES]
 - State findings plainly and directly.
 - Use "above/below typical range" rather than diagnosing "you have X".
 - When an item is extracted, use the relevant action to store it.
+- For X-rays/Imaging (when seeing [VISUAL DESCRIPTION]):
+  - Identify Modality (X-Ray, MRI, CT) and Body Part.
+  - List detailed Findings (observations about bone density, fractures, soft tissue, etc.).
+  - Provide a clinical Impression (summary of key pathological findings).
+  - Flag any abnormalities with severity (mild/moderate/severe).
+
+[AVAILABLE TOOLS]
+- commit_biomarker: Save a specific biomarker value.
+  <action type="commit_biomarker">{"name":"...","value":...,"unit":"...","source":"..."}</action>
+- parse_lab_report: Save a summary of a lab panel.
+  <action type="parse_lab_report">{"panel":"...","findings":["..."],"flags":["..."]}</action>
+- update_conditions: Update known medical conditions or medications.
+  <action type="update_conditions">{"knownConditions":["..."],"medications":["..."],"allergies":["..."]}</action>
+- medical_image_analysis: Save structured analysis of an X-ray, MRI, or other medical image.
+  <action type="medical_image_analysis">{"reportType":"...","modality":"X-Ray|MRI|CT|Ultrasound","bodyPart":"...","findings":["..."],"impression":"...","clinicalFlags":[{"flag":"...","severity":"mild|moderate|severe"}]}</action>
+  (Note: Provide the payload as valid JSON inside the action tag).
 
 ${contextBlock}${itemsBlock}
 
@@ -97,7 +121,8 @@ ${SOMA_MEDICAL_DISCLAIMER}
     'commit_biomarker',
     'parse_lab_report',
     'update_conditions',
-    'issue_clearance'
+    'issue_clearance',
+    'medical_image_analysis'
   ],
 
   /**
@@ -175,6 +200,41 @@ ${SOMA_MEDICAL_DISCLAIMER}
             });
           });
         }
+        break;
+      }
+      case 'medical_image_analysis': {
+        // Safe access for nested payloads (some models wrap in <result> or <root>)
+        const data = (payload.result || payload.root || payload) as any;
+
+        // Handle nested XML list structures (e.g. <findings><finding>...</finding></findings> becomes {findings: {finding: [...]}})
+        const normalizeList = (obj: any, key: string, singularKey: string) => {
+            if (Array.isArray(obj[key])) return obj[key];
+            if (obj[key] && obj[key][singularKey]) {
+                const inner = obj[key][singularKey];
+                return Array.isArray(inner) ? inner : [inner];
+            }
+            return [];
+        };
+
+        const findings = normalizeList(data, 'findings', 'finding');
+        const clinicalFlags = normalizeList(data, 'clinicalFlags', 'clinicalFlag');
+
+        next.items.push({
+          id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          type: 'medical_image_analysis',
+          label: `Imaging: ${data.modality || 'X-Ray'} - ${data.bodyPart || 'Unknown'}`,
+          data: {
+            reportType: data.reportType || 'Radiology Report',
+            modality: data.modality,
+            bodyPart: data.bodyPart,
+            findings: findings,
+            impression: data.impression,
+            clinicalFlags: clinicalFlags,
+            biomarkers: [] // Explicitly empty as biomarkers are handled separately
+          },
+          source: 'ai_extraction',
+          extractedAt: new Date().toISOString()
+        });
         break;
       }
     }

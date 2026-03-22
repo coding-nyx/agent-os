@@ -258,15 +258,117 @@ export class Orchestrator {
     const actionRegex = /<action\s+type="([^"]+)">([\s\S]*?)<\/action>/gi;
     let match;
     while ((match = actionRegex.exec(normalized)) !== null) {
+      const type = match[1];
+      const rawPayload = match[2];
       try {
+        // Try standard JSON parsing first
         actions.push({
-          type: match[1],
-          payload: JSON.parse(nexusCleaner(match[2])),
+          type,
+          payload: JSON.parse(nexusCleaner(rawPayload)),
           raw: match[0]
         });
       } catch (e) {
+        // JSON parsing failed. Check if it's XML-structured payload (e.g. medical_image_analysis)
+        // Simple XML-to-JSON heuristic for non-nested or simple nested structures
+        if (rawPayload.trim().startsWith('<')) {
+          try {
+            const parseXml = (xml: string): any => {
+                const result: Record<string, any> = {};
+                // Match tags: <key>value</key> or <key attr="...">value</key>
+                const tagRegex = /<([a-zA-Z0-9_]+)(?:\s+[^>]*)?>([\s\S]*?)<\/\1>/g;
+                let match;
+                let hasMatch = false;
+                
+                while ((match = tagRegex.exec(xml)) !== null) {
+                    hasMatch = true;
+                    const key = match[1];
+                    const content = match[2].trim();
+                    
+                    let parsedContent;
+                    // Check if content is nested XML (starts with < and contains </)
+                    if (content.startsWith('<') && content.includes('</')) {
+                        // Check if it's a list (repeated tags)
+                        const childTagRegex = /<([a-zA-Z0-9_]+)(?:\s+[^>]*)?>[\s\S]*?<\/\1>/g;
+                        const firstChild = childTagRegex.exec(content);
+                        if (firstChild) {
+                            // Reset regex state
+                            childTagRegex.lastIndex = 0;
+                             // Parse the content string again to find all children
+                             const childRegex = /<([a-zA-Z0-9_]+)(?:\s+[^>]*)?>([\s\S]*?)<\/\1>/g;
+                             const items: any[] = [];
+                             let cMatch;
+                             let allKeysSame = true;
+                             let firstKey: string | null = null;
+                             
+                             while ((cMatch = childRegex.exec(content)) !== null) {
+                                 const cKey = cMatch[1];
+                                 if (firstKey === null) firstKey = cKey;
+                                 if (cKey !== firstKey) allKeysSame = false;
+                                 
+                                 const cVal = cMatch[2].trim();
+                                 if (cVal.startsWith('<') && cVal.includes('</')) {
+                                     const pVal = parseXml(cMatch[0]);
+                                     items.push(pVal[cKey] !== undefined ? pVal[cKey] : pVal);
+                                 } else {
+                                     items.push(cVal);
+                                 }
+                             }
+                             
+                             if (items.length > 0) {
+                                 // If all keys are the same (e.g. <finding>...</finding><finding>...), return array
+                                 // Otherwise return object (which parseXml would have done anyway, but we flattened it here)
+                                 // Actually, if keys are mixed, parseXml handles it as object properties.
+                                 // But if keys are same, parseXml would overwrite them.
+                                 // So we MUST return array if keys are same.
+                                 parsedContent = allKeysSame ? items : parseXml(content);
+                             } else {
+                                 parsedContent = parseXml(content);
+                             }
+                        } else {
+                            parsedContent = parseXml(content);
+                        }
+                    } else {
+                        parsedContent = content;
+                    }
+                    
+                    // If key already exists, convert to array (handle duplicate keys at this level too)
+                    if (result[key]) {
+                        if (Array.isArray(result[key])) {
+                            result[key].push(parsedContent);
+                        } else {
+                            result[key] = [result[key], parsedContent];
+                        }
+                    } else {
+                        result[key] = parsedContent;
+                    }
+                }
+                
+                return hasMatch ? result : xml; // fallback to string if no tags
+            };
+
+            const xmlPayload = parseXml(rawPayload);
+            
+            // If the payload is wrapped in a single <result> or <root> tag, unwrap it
+            // Only if it's an object, not a string
+            let finalPayload = xmlPayload;
+            if (typeof xmlPayload === 'object' && xmlPayload !== null) {
+                const keys = Object.keys(xmlPayload);
+                if (keys.length === 1 && (keys[0] === 'result' || keys[0] === 'root')) {
+                    finalPayload = xmlPayload[keys[0]];
+                }
+            }
+
+            if (Object.keys(finalPayload).length > 0) {
+              actions.push({ type, payload: finalPayload, raw: match[0] });
+              continue; // Successfully parsed as XML
+            }
+          } catch (xmlErr) {
+            console.warn(`[Orchestrator] XML payload parsing failed for "${type}"`, xmlErr);
+          }
+        }
+        
         console.warn(
-          `[Orchestrator] Failed to parse action payload — type: "${match[1]}", raw: ${match[2].slice(0, 200)}`,
+          `[Orchestrator] Failed to parse action payload — type: "${type}", raw: ${rawPayload.slice(0, 200)}`,
           e
         );
       }

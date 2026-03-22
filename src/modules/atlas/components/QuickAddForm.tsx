@@ -229,7 +229,7 @@ export function QuickAddForm({
               : 'fixed w-14 h-14 bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-8 md:translate-x-0 md:bottom-8'
           )}
         >
-          <Plus className={isFluid ? "w-5 h-5" : "w-6 h-6"} aria-hidden="true" />
+          <Plus className={isFluid ? "w-5 h-5" : "w-8 h-8"} strokeWidth={3} aria-hidden="true" />
         </NeuralButton>
       )}
 

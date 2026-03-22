@@ -156,51 +156,21 @@ export function NexusOverlay() {
 
   return (
     <>
-      {/* FAB */}
-      {!isChatOverlayOpen && !hideGlobalFAB && (
+      {/* 
+        Mobile Trigger Restoration:
+        Since GlobalFAB might be hidden or obscured on some mobile views, we explicitly 
+        render a Nexus trigger here on mobile when the overlay is closed.
+        Positioned Bottom-Left to avoid conflict with Chat (Bottom-Right) and QuickAdd (Bottom-Center).
+      */}
+      {!open && isMobile && !isChatOverlayOpen && (
         <motion.button
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.2 }}
-          whileTap={{ scale: 0.93 }}
-          onHoverStart={() => !isMobile && setIsHovered(true)}
-          onHoverEnd={() => !isMobile && setIsHovered(false)}
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
           onClick={() => setOpen(true)}
-          style={
-            isMobile
-              ? { width: 52, height: 52 }
-              : { width: isHovered ? EXPANDED_W : COLLAPSED_W, height: COLLAPSED_W, minWidth: COLLAPSED_W }
-          }
-          className={[
-            'fixed z-[var(--z-fab)] flex items-center justify-center overflow-hidden',
-            'rounded-2xl border backdrop-blur-xl transition-colors',
-            'bg-white/[0.05] border-white/[0.09] shadow-lg shadow-black/25',
-            'hover:bg-white/[0.08] hover:border-white/[0.14]',
-            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-500/40',
-            // Mobile: bottom-right; Desktop: bottom-left
-            'bottom-5 right-5 lg:bottom-6 lg:left-6 lg:right-auto',
-            // Width transition only on desktop
-            'lg:transition-all lg:duration-300',
-          ].join(' ')}
+          className="fixed left-4 bottom-4 z-[var(--z-fab)] w-12 h-12 rounded-full bg-[#09090b]/80 backdrop-blur-xl border border-white/10 shadow-lg flex items-center justify-center lg:hidden"
           aria-label="Open Nexus"
         >
-          <Sparkles className="w-[18px] h-[18px] text-violet-400/80 shrink-0" />
-          {/* Hover label — desktop only */}
-          {isHovered && !isMobile && (
-            <motion.span
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: 'auto' }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.12 }}
-              className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45 whitespace-nowrap"
-            >
-              Nexus
-            </motion.span>
-          )}
-          {/* Busy dot */}
-          {isNexusBusy && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-          )}
+          <Sparkles className="w-5 h-5 text-indigo-400" />
         </motion.button>
       )}
 

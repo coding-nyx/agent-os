@@ -146,6 +146,7 @@ export const SOMA_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
     'Soma is the medical and health tracking agent. It monitors vitals, lab results, symptoms, and medication adherence. Knowing existing conditions, allergies, and medications lets Soma contextualise every reading and surface relevant alerts.',
   fastTrackEnabled: false,
   fastTrackRequiredIds: [],
+  optional: true,
   dataPoints: [
     { id: 'conditions', label: 'Chronic conditions or diagnoses', type: FieldType.TEXTAREA, required: false, hint: 'e.g. hypertension, type 2 diabetes, asthma' },
     { id: 'allergies', label: 'Known allergies', type: FieldType.TEXT, required: false },

@@ -125,6 +125,12 @@ export async function mergeSomaDiagnosisData(
                 }))
                 .slice(0, 10)
             : [],
+          modality: typeof item.data.modality === 'string' ? item.data.modality : undefined,
+          bodyPart: typeof item.data.bodyPart === 'string' ? item.data.bodyPart : undefined,
+          findings: Array.isArray(item.data.findings)
+            ? item.data.findings.filter((f: unknown) => typeof f === 'string')
+            : undefined,
+          impression: typeof item.data.impression === 'string' ? item.data.impression : undefined,
         };
         next = {
           ...next,

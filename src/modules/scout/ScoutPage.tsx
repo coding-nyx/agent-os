@@ -983,7 +983,6 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           activeView={selectedView}
           onViewChange={handleViewChange}
           onNewSession={handleStartSession}
-          hasActiveSession={!!activeSession}
         />
       </div>
     </SingleAgentLayout>

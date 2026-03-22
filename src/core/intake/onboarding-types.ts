@@ -43,4 +43,6 @@ export interface ModuleOnboardingSpec {
   fastTrackEnabled: boolean;
   /** Canonical IDs that must be non-empty for Express submission */
   fastTrackRequiredIds: string[];
+  /** Whether the user can skip onboarding entirely (e.g. for optional modules) */
+  optional?: boolean;
 }

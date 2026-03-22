@@ -553,6 +553,10 @@ export interface MedicalImageAnalysis {
   sourceLabel: string;
   biomarkerCount: number;
   clinicalFlags: Array<{ flag: string; severity: string }>;
+  modality?: string;
+  bodyPart?: string;
+  findings?: string[];
+  impression?: string;
 }
 
 // --- Domain Specific: Titan (Consolidated) ---

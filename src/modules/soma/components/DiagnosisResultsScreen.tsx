@@ -12,6 +12,7 @@ import { CheckSquare, Square, FlaskConical, X, AlertCircle } from 'lucide-react'
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import type { ExtractedDataItem } from '@/core/diagnosis/types';
+import { MedicalImageAnalysisResult } from './MedicalImageAnalysisResult';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -91,6 +92,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   allergy:       'Allergies',
   condition:     'Conditions',
   clearance:     'Clearances',
+  medical_image_analysis: 'Medical Imaging',
   other:         'Other',
 };
 
@@ -296,7 +298,17 @@ export function DiagnosisResultsScreen({
 
       {/* ── Scrollable field list ── */}
       <div className="flex-1 overflow-y-auto overscroll-contain px-2 py-2 space-y-4">
-        {isEmpty ? (
+        {isProcessing && isEmpty ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center animate-pulse">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <span className="w-6 h-6 border-2 border-t-transparent border-white/40 rounded-full animate-spin" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white/60">Analyzing Document...</p>
+              <p className="text-xs text-white/30 mt-1">Extracting structured data and clinical insights.</p>
+            </div>
+          </div>
+        ) : isEmpty ? (
           <div className="flex flex-col items-center justify-center gap-3 py-16 px-4 text-center">
             <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
               <AlertCircle className="w-7 h-7 text-white/20" />
@@ -322,14 +334,31 @@ export function DiagnosisResultsScreen({
 
                 {/* Field rows */}
                 <div className="space-y-0.5">
-                  {itemsInGroup.map((field) => (
-                    <FieldRow
-                      key={field.id}
-                      field={field}
-                      selected={selectedIds.has(field.id)}
-                      onToggle={handleToggle}
-                    />
-                  ))}
+                  {itemsInGroup.map((field) => {
+                     // Check if this is a medical image analysis item
+                     // We need to find the original item to pass full data
+                     const originalItem = items.find(i => i.id === field.id);
+                     if (originalItem && originalItem.type === 'medical_image_analysis') {
+                       return (
+                         <div key={field.id} className="mb-2">
+                           <MedicalImageAnalysisResult 
+                             item={originalItem} 
+                             selected={selectedIds.has(field.id)}
+                             onToggle={handleToggle}
+                           />
+                         </div>
+                       );
+                     }
+                     
+                     return (
+                      <FieldRow
+                        key={field.id}
+                        field={field}
+                        selected={selectedIds.has(field.id)}
+                        onToggle={handleToggle}
+                      />
+                    );
+                  })}
                 </div>
               </section>
             ))}
