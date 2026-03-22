@@ -3,21 +3,47 @@ import { prepareDocumentChatPrompt } from './document-chat-handoff-service';
 import { buildDocumentUploadVisibleMessage, parseDocumentUploadMessage } from './document-upload-message';
 
 describe('prepareDocumentChatPrompt', () => {
-  it('builds a combined prompt for multiple uploaded documents', async () => {
-    const sendMessage = vi
-      .fn<(_: string) => Promise<string>>()
-      .mockResolvedValueOnce(JSON.stringify({
-        category: 'prescription',
-        summary: 'This prescription outlines two medications for short-term treatment.',
-        keyPoints: ['Amoxicillin twice daily', 'Take after food'],
-        followUpTopics: ['Duration of treatment'],
-      }))
-      .mockResolvedValueOnce(JSON.stringify({
-        category: 'hospital_bill',
-        summary: 'This bill lists the visit charges and an outstanding balance.',
-        keyPoints: ['Outstanding balance remains', 'Imaging fee listed separately'],
-        followUpTopics: ['Insurance coverage'],
-      }));
+  it('builds a combined prompt for multiple uploaded documents with classifier metadata', async () => {
+    const sendMessage = vi.fn<(_: string) => Promise<string>>().mockImplementation(async (prompt: string) => {
+      if (prompt.includes('Pass 1 (classification)') && prompt.includes('prescription.txt')) {
+        return JSON.stringify({
+          docType: 'prescription',
+          targetModule: 'soma',
+          confidence: 0.92,
+          reasons: ['Contains dosage and Rx terms'],
+        });
+      }
+      if (prompt.includes('Pass 1 (classification)') && prompt.includes('hospital-bill.txt')) {
+        return JSON.stringify({
+          docType: 'hospital_bill',
+          targetModule: 'ledger',
+          confidence: 0.88,
+          reasons: ['Contains bill totals and charges'],
+        });
+      }
+      if (prompt.includes('Pass 2 (specialized analysis)') && prompt.includes('prescription.txt')) {
+        return JSON.stringify({
+          category: 'prescription',
+          summary: 'This prescription outlines two medications for short-term treatment.',
+          keyPoints: ['Amoxicillin twice daily', 'Take after food'],
+          followUpTopics: ['Duration of treatment'],
+        });
+      }
+      if (prompt.includes('Pass 2 (specialized analysis)') && prompt.includes('hospital-bill.txt')) {
+        return JSON.stringify({
+          category: 'hospital_bill',
+          summary: 'This bill lists visit charges and an outstanding balance.',
+          keyPoints: ['Outstanding balance remains', 'Imaging fee listed separately'],
+          followUpTopics: ['Insurance coverage'],
+        });
+      }
+      return JSON.stringify({
+        category: 'other',
+        summary: 'Fallback summary',
+        keyPoints: [],
+        followUpTopics: [],
+      });
+    });
 
     const files = [
       new File(['Prescription for amoxicillin. Take after food.'], 'prescription.txt', { type: 'text/plain' }),
@@ -31,35 +57,50 @@ describe('prepareDocumentChatPrompt', () => {
     });
 
     expect(result.insights).toHaveLength(2);
-    expect(result.insights[0]?.category).toBe('prescription');
-    expect(result.insights[1]?.category).toBe('hospital_bill');
-    expect(result.prompt).toContain('I uploaded 2 related documents for one combined analysis in soma.');
-    expect(result.prompt).toContain('Document 1: prescription.txt');
-    expect(result.prompt).toContain('Document 2: hospital-bill.txt');
+    expect(result.insights[0]?.docType).toBe('prescription');
+    expect(result.insights[0]?.targetModule).toBe('soma');
+    expect(result.insights[1]?.docType).toBe('hospital_bill');
+    expect(result.insights[1]?.targetModule).toBe('ledger');
+    expect(result.prompt).toContain('Classified type: prescription');
+    expect(result.prompt).toContain('Routing hint: Best owner appears to be ledger');
     expect(result.prompt).toContain('Synthesize across the full set.');
   });
 
-  it('falls back to raw summaries when the triage response is not valid JSON', async () => {
-    const sendMessage = vi
-      .fn<(_: string) => Promise<string>>()
-      .mockResolvedValue('Chest X-ray shows no acute fracture.');
+  it('requests user type confirmation when classification confidence is low', async () => {
+    const sendMessage = vi.fn<(_: string) => Promise<string>>().mockResolvedValue(
+      JSON.stringify({
+        docType: 'unknown',
+        targetModule: 'nexus',
+        confidence: 0.2,
+        reasons: ['Insufficient signal'],
+      }),
+    );
 
     const result = await prepareDocumentChatPrompt({
-      moduleId: 'soma',
-      files: [new File(['Chest x-ray report with no acute fracture.'], 'chest-xray.txt', { type: 'text/plain' })],
+      moduleId: 'nexus',
+      files: [new File(['ambiguous content'], 'ambiguous.txt', { type: 'text/plain' })],
       sendMessage,
     });
 
     expect(result.insights).toHaveLength(1);
-    expect(result.insights[0]?.category).toBe('imaging');
-    expect(result.insights[0]?.summary).toBe('Chest X-ray shows no acute fracture.');
-    expect(result.warnings.some((warning) => warning.includes('not valid JSON'))).toBe(true);
+    expect(result.insights[0]?.requiresUserTypeSelection).toBe(true);
+    expect(result.insights[0]?.summary).toContain('Please confirm the document type');
+    expect(result.prompt).toContain('Type confirmation needed');
   });
 
   it('uses visual analysis when OCR text is just a refusal message', async () => {
-    const sendMessage = vi
-      .fn<(_: string) => Promise<string>>()
-      .mockResolvedValue('I am sorry, but I cannot extract text from that image.');
+    const sendMessage = vi.fn<(_: string) => Promise<string>>().mockImplementation(async (prompt: string) => {
+      if (prompt.includes('Pass 1 (classification)')) {
+        return JSON.stringify({
+          docType: 'medical_image',
+          targetModule: 'nexus',
+          confidence: 0.91,
+          reasons: ['Image upload with minimal OCR'],
+        });
+      }
+      return 'I am sorry, but I cannot extract text from that image.';
+    });
+
     const analyzeImage = vi
       .fn<(_: string, __: string) => Promise<string>>()
       .mockResolvedValue(JSON.stringify({

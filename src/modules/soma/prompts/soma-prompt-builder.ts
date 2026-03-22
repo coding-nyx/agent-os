@@ -29,6 +29,19 @@ export interface SomaPromptContext {
   medications?: string[];
 }
 
+export interface DiagnosisSummaryPromptInput {
+  rawText: string;
+  documentType: string;
+  detectedPanels: string[];
+  extractedFields: Array<{
+    fieldName: string;
+    value: string | number;
+    unit?: string;
+    referenceRange?: string;
+    category?: string;
+  }>;
+}
+
 // ============================================================================
 // Medical Disclaimer
 // ============================================================================
@@ -135,6 +148,32 @@ export function buildSomaAgentSystemPrompt(context: {
     .replace('{{MEDICATIONS}}', context.medications?.join(', ') || 'None reported');
 }
 
+/**
+ * Serialize Soma extension fields into a compact human-readable block.
+ * Shared by Soma/Titan prompt builders.
+ */
+export function serializeSomaExtensionFields(
+  fields: SomaPromptContext['extensionFields']
+): string {
+  if (!Array.isArray(fields) || fields.length === 0) {
+    return 'No custom biomarker fields configured.';
+  }
+
+  return fields
+    .map((f) => {
+      const value =
+        f.value === null || f.value === undefined || f.value === ''
+          ? 'not set'
+          : typeof f.value === 'string'
+            ? `"${f.value}"`
+            : String(f.value);
+      const unit = f.unit ? ` ${f.unit}` : '';
+      const range = f.range ? ` (range: ${f.range})` : '';
+      return `${f.name}: ${value}${unit}${range}`;
+    })
+    .join('\n');
+}
+
 // ============================================================================
 // Diagnosis Document Analysis Prompt
 // ============================================================================
@@ -176,4 +215,66 @@ INSTRUCTIONS:
 
 Do NOT just output JSON text. You MUST use the provided tools/functions to save the data.
 `;
+}
+
+/**
+ * Build the second-pass diagnosis summary prompt.
+ * Expects strict JSON output matching SomaDiagnosisSummary-like structure.
+ */
+export function buildDiagnosisSummaryPrompt(input: DiagnosisSummaryPromptInput): string {
+  const panelLines = input.detectedPanels.length > 0
+    ? input.detectedPanels.map((p) => `- ${p}`).join('\n')
+    : '- none';
+
+  const extractedLines = input.extractedFields.length > 0
+    ? input.extractedFields
+        .slice(0, 120)
+        .map((f) => {
+          const unit = f.unit ? ` ${f.unit}` : '';
+          const range = f.referenceRange ? ` (ref: ${f.referenceRange})` : '';
+          const category = f.category ? ` [${f.category}]` : '';
+          return `- ${f.fieldName}: ${f.value}${unit}${range}${category}`;
+        })
+        .join('\n')
+    : '- none';
+
+  const rawPreview = input.rawText.length > 20000
+    ? `${input.rawText.slice(0, 20000)}\n[...TRUNCATED...]`
+    : input.rawText;
+
+  return `You are Soma's clinical summarizer.
+
+Generate a concise medical summary from extracted findings.
+Return ONLY valid JSON with this shape:
+{
+  "reportType": "lab_report|medical_report|xray|mri|ct|ultrasound|prescription|other",
+  "summary": "2-6 sentence plain-language clinical summary",
+  "comparisons": [
+    { "item": "field name", "value": "value", "referenceRange": "optional", "status": "high|low|normal|unknown", "note": "optional" }
+  ],
+  "whatItMeans": ["clinical interpretation point"],
+  "recommendedActions": ["actionable non-diagnostic follow-up"],
+  "suggestedMedications": ["optional medication discussion item"],
+  "confidenceLevel": "high|moderate|low",
+  "confidenceRationale": "one short rationale"
+}
+
+Rules:
+- Do not diagnose diseases.
+- Be explicit about uncertainty.
+- Keep medication mentions as "discuss with prescriber".
+- Do not include markdown fences.
+
+Document type: ${input.documentType}
+
+Detected panels:
+${panelLines}
+
+Extracted fields:
+${extractedLines}
+
+Raw text preview:
+---BEGIN DOCUMENT---
+${rawPreview}
+---END DOCUMENT---`;
 }

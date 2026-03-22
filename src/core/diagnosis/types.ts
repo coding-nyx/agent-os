@@ -105,6 +105,25 @@ export interface DiagnosisSpecialization {
     current: ExtractedDataBag,
   ) => ExtractedDataBag;
 
+  // -- Lifecycle --------------------------------------------------------------
+
+  /**
+   * Optional lifecycle hook called after document extraction completes.
+   * Can be used to generate summaries, run additional analysis, or enrich metadata.
+   * 
+   * @param opts.extractedData - The current extracted data bag
+   * @param opts.rawText - The full extracted document text
+   * @param opts.documentType - The detected document type (pdf, image, etc.)
+   * @param opts.sendMessage - Function to send prompts to the LLM
+   * @returns Updated ExtractedDataBag with enriched metadata (e.g., summary)
+   */
+  onAfterExtraction?: (opts: {
+    extractedData: ExtractedDataBag;
+    rawText: string;
+    documentType: string;
+    sendMessage: (prompt: string) => Promise<string>;
+  }) => Promise<ExtractedDataBag>;
+
   // -- Merge ------------------------------------------------------------------
 
   /**

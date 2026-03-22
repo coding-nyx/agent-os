@@ -7,6 +7,15 @@ import {
 } from './document-pipeline';
 
 export type DocumentChatModuleId = 'soma' | 'ledger' | 'scout' | 'nexus';
+export type DocumentRouteModuleId = 'soma' | 'ledger' | 'scout' | 'nexus';
+
+export interface DocumentClassificationResult {
+  docType: string;
+  targetModule: DocumentRouteModuleId;
+  confidence: number;
+  reasons: string[];
+  unresolved: boolean;
+}
 
 export interface DocumentChatInsight {
   fileName: string;
@@ -15,6 +24,10 @@ export interface DocumentChatInsight {
   pageCount: number;
   wordCount: number;
   category: string;
+  docType: string;
+  targetModule?: DocumentRouteModuleId;
+  targetConfidence?: number;
+  requiresUserTypeSelection?: boolean;
   summary: string;
   keyPoints: string[];
   followUpTopics: string[];
@@ -39,9 +52,12 @@ interface DocumentChatAnalysis {
   summary: string;
   keyPoints: string[];
   followUpTopics: string[];
+  classification: DocumentClassificationResult;
+  requiresUserTypeSelection: boolean;
 }
 
 const MAX_PREVIEW_CHARS = 900;
+const LOW_CONFIDENCE_THRESHOLD = 0.55;
 const OCR_REFUSAL_PATTERNS = [
   "i'm sorry",
   'i cannot extract text',
@@ -66,6 +82,17 @@ const MODULE_CONVERSATION_GUIDANCE: Record<DocumentChatModuleId, string> = {
   nexus: 'Discuss the uploaded document set in plain language. Explain what the files appear to be about, how they relate, and which module or line of inquiry is most relevant. Do not emit action tags.',
 };
 
+const SOMA_TYPE_INSTRUCTIONS: Record<string, string> = {
+  lab_report: 'Extract biomarkers, values, units, ranges, and notable out-of-range findings.',
+  medical_report: 'Summarize diagnosis context, clinical observations, and next clinical follow-up questions.',
+  xray: 'Interpret radiology findings from x-ray context and call out clinically relevant impressions.',
+  mri: 'Interpret MRI findings with emphasis on anatomical regions and reported abnormalities.',
+  ct: 'Interpret CT findings with key observations and urgent flags if present in the report.',
+  ultrasound: 'Interpret ultrasound findings and highlight any measurements or notable abnormalities.',
+  prescription: 'Prioritize medication extraction and dosage instructions. If text appears handwritten or noisy, focus on deciphering prescriber handwriting safely and flag uncertain tokens explicitly.',
+  other_medical: 'Provide a careful medical-document summary and identify missing context to verify with a clinician.',
+};
+
 function stripCodeFences(input: string): string {
   return input
     .trim()
@@ -84,6 +111,11 @@ function normalizeList(value: unknown, maxItems: number): string[] {
     .slice(0, maxItems);
 }
 
+function clampConfidence(value: unknown, fallback = 0.5): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
+  return Math.max(0, Math.min(1, value));
+}
+
 function inferCategoryFallback(parsed: DocumentParsed): string {
   const haystack = `${parsed.fileName}\n${parsed.detectedTitle ?? ''}\n${parsed.rawText.slice(0, 1200)}`.toLowerCase();
 
@@ -100,6 +132,54 @@ function inferCategoryFallback(parsed: DocumentParsed): string {
   return 'other';
 }
 
+function inferDocTypeFallback(parsed: DocumentParsed, moduleId: DocumentChatModuleId): string {
+  const haystack = `${parsed.fileName}\n${parsed.detectedTitle ?? ''}\n${parsed.rawText.slice(0, 2000)}`.toLowerCase();
+
+  if (moduleId === 'soma') {
+    if (/\bx[\s-]?ray\b/.test(haystack)) return 'xray';
+    if (/\bmri\b/.test(haystack)) return 'mri';
+    if (/\bct\b|\bcat scan\b/.test(haystack)) return 'ct';
+    if (/\bultrasound\b|\bsonography\b/.test(haystack)) return 'ultrasound';
+    if (/\bprescription\b|\brx\b|\bdosage\b|\btablet\b|\bcapsule\b/.test(haystack)) return 'prescription';
+    if (/\blab\b|\bcbc\b|\bhemoglobin\b|\bcholesterol\b|\bglucose\b|\bcreatinine\b|\btsh\b/.test(haystack)) return 'lab_report';
+    if (/\bclinical\b|\bdischarge\b|\bimpression\b|\bdiagnosis\b|\bphysician\b/.test(haystack)) return 'medical_report';
+    return 'other_medical';
+  }
+
+  if (moduleId === 'ledger') {
+    if (/\breceipt\b/.test(haystack)) return 'receipt';
+    if (/\binvoice\b/.test(haystack)) return 'invoice';
+    if (/\bstatement\b|\bbalance\b|\bpayment due\b/.test(haystack)) return 'statement';
+    return 'financial_document';
+  }
+
+  if (moduleId === 'scout') {
+    if (/\bstudy\b|\bpaper\b|\babstract\b|\bmethod\b|\breferences\b/.test(haystack)) return 'research_paper';
+    if (/\breport\b|\bmemo\b|\bbrief\b/.test(haystack)) return 'report';
+    return 'research_document';
+  }
+
+  if (/\breceipt\b|\binvoice\b|\bpayment due\b|\bstatement\b/.test(haystack)) return 'financial_document';
+  if (/\blab\b|\bprescription\b|\bx[\s-]?ray\b|\bmri\b|\bmedical\b/.test(haystack)) return 'medical_document';
+  if (/\bstudy\b|\bpaper\b|\babstract\b/.test(haystack)) return 'research_document';
+  return 'generic_document';
+}
+
+function inferTargetModule(docType: string, sourceModuleId: DocumentChatModuleId): DocumentRouteModuleId {
+  if (sourceModuleId !== 'nexus') return sourceModuleId;
+
+  if (['xray', 'mri', 'ct', 'ultrasound', 'lab_report', 'medical_report', 'prescription', 'other_medical', 'medical_document'].includes(docType)) {
+    return 'soma';
+  }
+  if (['receipt', 'invoice', 'statement', 'financial_document', 'hospital_bill'].includes(docType)) {
+    return 'ledger';
+  }
+  if (['research_paper', 'research_document', 'report'].includes(docType)) {
+    return 'scout';
+  }
+  return 'nexus';
+}
+
 function isLikelyOcrFailureText(text: string): boolean {
   const normalized = text.trim().toLowerCase();
   if (!normalized) return true;
@@ -113,7 +193,7 @@ function getParsedTextForDisplay(parsed: DocumentParsed): string {
   return parsed.rawText;
 }
 
-function parseAnalysisResponse(response: string, parsed: DocumentParsed): { analysis: DocumentChatAnalysis; warnings: string[] } {
+function parseAnalysisResponse(response: string, parsed: DocumentParsed): { analysis: Omit<DocumentChatAnalysis, 'classification' | 'requiresUserTypeSelection'>; warnings: string[] } {
   const warnings: string[] = [];
   const cleaned = stripCodeFences(response);
 
@@ -160,23 +240,134 @@ function parseAnalysisResponse(response: string, parsed: DocumentParsed): { anal
   }
 }
 
-function buildAnalysisPrompt(moduleId: DocumentChatModuleId, parsed: DocumentParsed): string {
+function buildClassificationPrompt(moduleId: DocumentChatModuleId, parsed: DocumentParsed, userContext?: string): string {
   const header = [
     `File: "${parsed.fileName}"`,
     `Type: ${parsed.fileType.toUpperCase()}`,
     parsed.detectedTitle ? `Detected title: "${parsed.detectedTitle}"` : null,
     `Words: ${parsed.wordCount.toLocaleString()}`,
     parsed.pageCount > 0 ? `Pages: ${parsed.pageCount}` : null,
+    userContext ? `User requested focus: ${userContext}` : null,
   ]
     .filter(Boolean)
     .join(' | ');
 
   return [
     MODULE_ANALYST_PROMPTS[moduleId],
+    'Pass 1 (classification): classify this document first.',
+    'Return ONLY valid JSON with this exact shape:',
+    '{',
+    '  "docType": "snake_case type",',
+    '  "targetModule": "soma|ledger|scout|nexus",',
+    '  "confidence": 0.0,',
+    '  "reasons": ["short reason", "short reason"]',
+    '}',
+    'Use confidence 0.0 to 1.0. Keep reasons concise. Do not include markdown fences.',
+    '',
+    header,
+    '---BEGIN DOCUMENT---',
+    parsed.rawText,
+    '---END DOCUMENT---',
+  ].join('\n');
+}
+
+function parseClassificationResponse(response: string, parsed: DocumentParsed, moduleId: DocumentChatModuleId): { classification: DocumentClassificationResult; warnings: string[] } {
+  const warnings: string[] = [];
+  const cleaned = stripCodeFences(response);
+
+  if (!cleaned) {
+    warnings.push('Classifier returned empty response; using heuristic classification.');
+    const docType = inferDocTypeFallback(parsed, moduleId);
+    const targetModule = inferTargetModule(docType, moduleId);
+    return {
+      classification: {
+        docType,
+        targetModule,
+        confidence: 0.45,
+        reasons: ['Empty classifier response'],
+        unresolved: true,
+      },
+      warnings,
+    };
+  }
+
+  try {
+    const data = JSON.parse(cleaned) as Record<string, unknown>;
+    const docTypeRaw = typeof data.docType === 'string' ? data.docType.trim() : '';
+    const fallbackDocType = inferDocTypeFallback(parsed, moduleId);
+    const docType = docTypeRaw.length > 0 ? docTypeRaw : fallbackDocType;
+
+    const targetRaw = typeof data.targetModule === 'string' ? data.targetModule.trim() : '';
+    const targetModule: DocumentRouteModuleId =
+      targetRaw === 'soma' || targetRaw === 'ledger' || targetRaw === 'scout' || targetRaw === 'nexus'
+        ? targetRaw
+        : inferTargetModule(docType, moduleId);
+
+    const confidence = clampConfidence(data.confidence, docTypeRaw.length > 0 ? 0.7 : 0.55);
+    const reasons = normalizeList(data.reasons, 4);
+
+    return {
+      classification: {
+        docType,
+        targetModule,
+        confidence,
+        reasons,
+        unresolved: docType === 'unknown' || confidence < LOW_CONFIDENCE_THRESHOLD,
+      },
+      warnings,
+    };
+  } catch {
+    warnings.push('Classifier response was not valid JSON; using heuristic classification.');
+    const docType = inferDocTypeFallback(parsed, moduleId);
+    const targetModule = inferTargetModule(docType, moduleId);
+    return {
+      classification: {
+        docType,
+        targetModule,
+        confidence: 0.5,
+        reasons: ['Classifier parse failed'],
+        unresolved: true,
+      },
+      warnings,
+    };
+  }
+}
+
+function buildSpecializedAnalysisPrompt(moduleId: DocumentChatModuleId, classification: DocumentClassificationResult, parsed: DocumentParsed): string {
+  const base = MODULE_ANALYST_PROMPTS[moduleId];
+
+  const strategyLine = (() => {
+    if (moduleId === 'soma') {
+      return SOMA_TYPE_INSTRUCTIONS[classification.docType] ?? SOMA_TYPE_INSTRUCTIONS.other_medical;
+    }
+    if (moduleId === 'ledger') {
+      return 'Extract financially actionable insights, totals, dates, counterparties, anomalies, and risk flags.';
+    }
+    if (moduleId === 'scout') {
+      return 'Extract research claims, evidence quality notes, citations or source anchors, and open questions.';
+    }
+    return 'Keep this generic, but identify probable module ownership and useful tags for downstream delegation.';
+  })();
+
+  const header = [
+    `File: "${parsed.fileName}"`,
+    `Type: ${parsed.fileType.toUpperCase()}`,
+    parsed.detectedTitle ? `Detected title: "${parsed.detectedTitle}"` : null,
+    `Classified docType: ${classification.docType}`,
+    `Classified targetModule: ${classification.targetModule}`,
+    `Classifier confidence: ${classification.confidence.toFixed(2)}`,
+  ]
+    .filter(Boolean)
+    .join(' | ');
+
+  return [
+    base,
+    'Pass 2 (specialized analysis): follow the strategy for the classified type.',
+    `Strategy: ${strategyLine}`,
     'Return ONLY valid JSON with this shape:',
     '{',
-    '  "category": "short snake_case category such as imaging, prescription, medical_report, hospital_bill, receipt, invoice, statement, research_paper, report, other",',
-    '  "summary": "2-5 sentence plain-language summary of what this file contains and why it matters",',
+    '  "category": "short snake_case category",',
+    '  "summary": "2-5 sentence plain-language summary",',
     '  "keyPoints": ["3 to 6 concise bullet-style findings"],',
     '  "followUpTopics": ["up to 5 useful follow-up questions or angles for discussion"]',
     '}',
@@ -189,15 +380,19 @@ function buildAnalysisPrompt(moduleId: DocumentChatModuleId, parsed: DocumentPar
   ].join('\n');
 }
 
-function buildVisualAnalysisPrompt(moduleId: DocumentChatModuleId, fileName: string, userContext?: string): string {
+function buildVisualAnalysisPrompt(moduleId: DocumentChatModuleId, fileName: string, docType: string, userContext?: string): string {
   return [
     MODULE_ANALYST_PROMPTS[moduleId],
     'This upload is an image with little or no reliable OCR text.',
-    'Describe what is visually present and classify the image using only what is actually visible.',
+    'Perform specialized visual analysis based on the classified document type.',
+    `Classified docType: ${docType}`,
+    moduleId === 'soma' && docType === 'prescription'
+      ? 'If this is a handwritten prescription, prioritize best-effort deciphering of medicine names and dosage, and mark uncertainty in key points.'
+      : null,
     'Return ONLY valid JSON with this shape:',
     '{',
-    '  "category": "short snake_case category such as photo, illustration, screenshot, comic_character, medical_image, chart, receipt, invoice, statement, other",',
-    '  "summary": "2-5 sentence plain-language description of the image and why it matters",',
+    '  "category": "short snake_case category",',
+    '  "summary": "2-5 sentence plain-language description and why it matters",',
     '  "keyPoints": ["3 to 6 concise visible findings"],',
     '  "followUpTopics": ["up to 5 useful follow-up questions or angles for discussion"]',
     '}',
@@ -222,11 +417,22 @@ function buildBatchPrompt(moduleId: DocumentChatModuleId, insights: DocumentChat
       ? insight.followUpTopics.map((topic) => `- ${topic}`).join('\n')
       : '- No follow-up topics extracted.';
 
+    const routingLine = insight.targetModule && insight.targetModule !== moduleId
+      ? `Routing hint: Best owner appears to be ${insight.targetModule} (confidence ${((insight.targetConfidence ?? 0) * 100).toFixed(0)}%).`
+      : null;
+
+    const unresolvedLine = insight.requiresUserTypeSelection
+      ? 'Type confirmation needed: Ask the user to confirm the document type before final recommendations.'
+      : null;
+
     return [
       `Document ${index + 1}: ${insight.fileName}`,
       `Category: ${insight.category}`,
+      `Classified type: ${insight.docType}`,
       `Type: ${insight.fileType.toUpperCase()} | Words: ${insight.wordCount.toLocaleString()} | Pages: ${insight.pageCount}`,
       insight.detectedTitle ? `Detected title: ${insight.detectedTitle}` : null,
+      routingLine,
+      unresolvedLine,
       `Summary: ${insight.summary}`,
       'Key points:',
       keyPoints,
@@ -240,14 +446,14 @@ function buildBatchPrompt(moduleId: DocumentChatModuleId, insights: DocumentChat
 
   const synthesisInstruction = insights.length > 1
     ? 'Synthesize across the full set. Preserve per-document provenance, connect related details, and explicitly mention corroboration, contradictions, timeline gaps, or missing context.'
-    : 'Focus on this single document, but still identify missing context or important follow-up questions.'
-  ;
+    : 'Focus on this single document, but still identify missing context or important follow-up questions.';
 
   return [
     intro,
     userContext ? `User requested focus: ${userContext}` : null,
     MODULE_CONVERSATION_GUIDANCE[moduleId],
     synthesisInstruction,
+    'If a document is uncertain, ask the user to confirm type before giving final guidance.',
     'Continue as a normal assistant response to the user. Do not emit action tags.',
     '',
     ...documentBlocks,
@@ -282,8 +488,37 @@ export async function prepareDocumentChatPrompt(params: {
     ocrFailureMode: 'warn',
     analyze: async ({ parsed, file }, llmSend) => {
       const usableParsedText = getParsedTextForDisplay(parsed);
-      const requiresVisualAnalysis = parsed.fileType === 'image' && usableParsedText.length < 24;
+      const classifierResponse = await llmSend(buildClassificationPrompt(moduleId, {
+        ...parsed,
+        rawText: usableParsedText,
+      }, userContext));
 
+      const { classification, warnings: classificationWarnings } = parseClassificationResponse(classifierResponse, {
+        ...parsed,
+        rawText: usableParsedText,
+      }, moduleId);
+      warnings.push(...classificationWarnings.map((warning) => `${parsed.fileName}: ${warning}`));
+
+      const canProceedWithVisualPass = parsed.fileType === 'image' && Boolean(analyzeImage);
+      const requiresUserTypeSelection = classification.unresolved && !canProceedWithVisualPass;
+      if (requiresUserTypeSelection) {
+        const unresolvedSummary = [
+          `I could not confidently classify ${parsed.fileName}.`,
+          'Please confirm the document type (for example: lab report, X-ray, MRI, prescription, invoice, statement, research paper, or general report).',
+          'Once confirmed, I will run a specialized analysis.',
+        ].join(' ');
+
+        return {
+          category: inferCategoryFallback(parsed),
+          summary: unresolvedSummary,
+          keyPoints: [],
+          followUpTopics: ['Confirm document type for specialized analysis'],
+          classification,
+          requiresUserTypeSelection,
+        };
+      }
+
+      const requiresVisualAnalysis = parsed.fileType === 'image' && usableParsedText.length < 24;
       if (requiresVisualAnalysis && analyzeImage) {
         const imageDataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -292,24 +527,34 @@ export async function prepareDocumentChatPrompt(params: {
           reader.readAsDataURL(file);
         });
 
-        const visualResponse = await analyzeImage(imageDataUrl, buildVisualAnalysisPrompt(moduleId, parsed.fileName, userContext));
+        const visualResponse = await analyzeImage(imageDataUrl, buildVisualAnalysisPrompt(moduleId, parsed.fileName, classification.docType, userContext));
         const { analysis, warnings: analysisWarnings } = parseAnalysisResponse(visualResponse, {
           ...parsed,
           rawText: '',
           detectedTitle: null,
         });
         warnings.push(...analysisWarnings.map((warning) => `${parsed.fileName}: ${warning}`));
-        return analysis;
+
+        return {
+          ...analysis,
+          classification,
+          requiresUserTypeSelection,
+        };
       }
 
-      const response = await llmSend(buildAnalysisPrompt(moduleId, {
+      const response = await llmSend(buildSpecializedAnalysisPrompt(moduleId, classification, {
         ...parsed,
         rawText: usableParsedText,
         detectedTitle: usableParsedText.length > 0 ? parsed.detectedTitle : null,
       }));
       const { analysis, warnings: analysisWarnings } = parseAnalysisResponse(response, parsed);
       warnings.push(...analysisWarnings.map((warning) => `${parsed.fileName}: ${warning}`));
-      return analysis;
+
+      return {
+        ...analysis,
+        classification,
+        requiresUserTypeSelection,
+      };
     },
     buildProposal: (analysis, parsed) => ({
       fileName: parsed.fileName,
@@ -318,6 +563,10 @@ export async function prepareDocumentChatPrompt(params: {
       pageCount: parsed.pageCount,
       wordCount: parsed.wordCount,
       category: analysis.category,
+      docType: analysis.classification.docType,
+      targetModule: analysis.classification.targetModule,
+      targetConfidence: analysis.classification.confidence,
+      requiresUserTypeSelection: analysis.requiresUserTypeSelection,
       summary: analysis.summary,
       keyPoints: analysis.keyPoints,
       followUpTopics: analysis.followUpTopics,

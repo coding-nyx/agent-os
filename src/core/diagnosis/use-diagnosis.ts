@@ -20,6 +20,7 @@ import type {
   DiagnosisSpecialization,
 } from './types';
 import { createEmptyBag } from './types';
+import { extractActionPayloads } from '@/core/intake/action-parser';
 
 // ---------------------------------------------------------------------------
 // Options & Return
@@ -103,6 +104,7 @@ export function useDiagnosis({
   const [extractedData, setExtractedData] = useState<ExtractedDataBag>(createEmptyBag);
   const [showMergeReview, setShowMergeReview] = useState(false);
   const pendingNewAfterReview = useRef(false);
+  const extractedDataSignatureRef = useRef(JSON.stringify(createEmptyBag().items));
 
   // ---- Live summary state --------------------------------------------------
   const [summaryLines, setSummaryLines] = useState<string[]>([]);
@@ -114,6 +116,12 @@ export function useDiagnosis({
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsedDocInfo, setParsedDocInfo] = useState<DocumentParseResult['metadata'] | null>(null);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
+  
+  // ---- onAfterExtraction lifecycle state -----------------------------------
+  const [lastParsedRawText, setLastParsedRawText] = useState<string | null>(null);
+  const [lastParsedDocType, setLastParsedDocType] = useState<string | null>(null);
+  const afterExtractionCalledRef = useRef(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   // ---- Document history (Firestore subscription) ---------------------------
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
@@ -148,13 +156,71 @@ export function useDiagnosis({
     }
   }, [ai.messages, phase]);
 
-  // Handle stream state changes to detect when analysis finishes
+  // ---- onAfterExtraction: generate summary after initial extraction --------
+  // This effect triggers after the AI finishes processing and extracted items exist
   useEffect(() => {
-    if (phase === 'active' && !ai.isProcessing && !ai.streamingText && ai.messages.length > 0) {
-      // Analysis complete
-      // Check if we need to transition phase or just stay active
+    // Only run if:
+    // 1. We're in active phase
+    // 2. AI is not processing
+    // 3. We have extracted items
+    // 4. We haven't already called onAfterExtraction for this document
+    // 5. The spec has an onAfterExtraction hook
+    // 6. We have the raw text from parsing
+    if (
+      phase !== 'active' ||
+      ai.isProcessing ||
+      ai.streamingText ||
+      extractedData.items.length === 0 ||
+      afterExtractionCalledRef.current ||
+      !spec.onAfterExtraction ||
+      !lastParsedRawText ||
+      isGeneratingSummary
+    ) {
+      return;
     }
-  }, [phase, ai.isProcessing, ai.streamingText, ai.messages.length]);
+
+    // Mark that we're calling onAfterExtraction
+    afterExtractionCalledRef.current = true;
+    setIsGeneratingSummary(true);
+
+    // Create a sendMessage function for the hook
+    const sendMessage = async (prompt: string): Promise<string> => {
+      // Use a direct AI call without adding to chat history
+      // We'll use the handleSendMessage but capture the response
+      return new Promise((resolve) => {
+        // For now, we'll skip summary generation in the hook and rely on the 
+        // diagnosis-session-service for full integration. The hook is ready
+        // but we need a way to call the LLM without adding to chat.
+        console.log('[useDiagnosis] onAfterExtraction called, but sendMessage not fully wired yet');
+        resolve('');
+      });
+    };
+
+    // Call the onAfterExtraction hook
+    spec.onAfterExtraction({
+      extractedData,
+      rawText: lastParsedRawText,
+      documentType: lastParsedDocType || 'unknown',
+      sendMessage,
+    }).then((enrichedData) => {
+      if (enrichedData && enrichedData.metadata?.somaSummary) {
+        setExtractedData(enrichedData);
+      }
+    }).catch((err) => {
+      console.error('[useDiagnosis] onAfterExtraction failed:', err);
+    }).finally(() => {
+      setIsGeneratingSummary(false);
+    });
+  }, [
+    phase,
+    ai.isProcessing,
+    ai.streamingText,
+    extractedData,
+    spec,
+    lastParsedRawText,
+    lastParsedDocType,
+    isGeneratingSummary,
+  ]);
 
   // ---- Live summary: extract first sentence from new assistant messages ----
   useEffect(() => {
@@ -203,6 +269,33 @@ export function useDiagnosis({
     [spec],
   );
 
+  // ---- Hydration replay: rebuild extracted data from persisted history -----
+  const rebuildExtractedDataFromMessages = useCallback(
+    (messages: ReturnType<typeof useModuleAI>['messages']) => {
+      const assistantMessages = messages.filter(
+        (m) => m.role === 'assistant' && typeof m.content === 'string'
+      ) as Array<{ role: 'assistant'; content: string }>;
+
+      let rebuilt = createEmptyBag();
+
+      for (const msg of assistantMessages) {
+        const content = msg.content;
+
+        for (const actionType of spec.allowedActions) {
+          const payloads = extractActionPayloads<Record<string, unknown>>(content, actionType);
+          if (payloads.length === 0) continue;
+
+          for (const payload of payloads) {
+            rebuilt = spec.extractData(actionType, payload, rebuilt);
+          }
+        }
+      }
+
+      return rebuilt;
+    },
+    [spec],
+  );
+
   // Wrap handleSendMessage to inject our onActionParsed
   const handleSendMessage = useCallback(
     async (content: MessageContent) => {
@@ -218,6 +311,21 @@ export function useDiagnosis({
     },
     [ai, onActionParsed, phase],
   );
+
+  // Rehydrate extracted diagnosis items from persisted diagnosis messages.
+  // This ensures findings (including medical_image_analysis) survive reloads
+  // without writing into the base Soma profile.
+  useEffect(() => {
+    const rebuilt = rebuildExtractedDataFromMessages(ai.messages);
+    const rebuiltSig = JSON.stringify(rebuilt.items);
+    if (rebuiltSig === extractedDataSignatureRef.current) return;
+    extractedDataSignatureRef.current = rebuiltSig;
+    setExtractedData(rebuilt);
+  }, [ai.messages, rebuildExtractedDataFromMessages]);
+
+  useEffect(() => {
+    extractedDataSignatureRef.current = JSON.stringify(extractedData.items);
+  }, [extractedData.items]);
 
   // ---- Lifecycle: Start ----------------------------------------------------
   const startDiagnosis = useCallback(() => {
@@ -266,10 +374,19 @@ export function useDiagnosis({
       setIsParsing(true);
       setParseError(null);
       setParseProgress(null);
+      
+      // Reset onAfterExtraction state for new document
+      afterExtractionCalledRef.current = false;
+      setLastParsedRawText(null);
+      setLastParsedDocType(null);
 
       try {
         const result = await parseDocument(file, setParseProgress);
         setParsedDocInfo(result.metadata);
+        
+        // Store raw text for onAfterExtraction hook
+        setLastParsedRawText(result.text);
+        setLastParsedDocType(result.metadata.fileType);
 
         // Persist encrypted document
         if (user?.uid && encryptionKey) {
@@ -362,6 +479,11 @@ export function useDiagnosis({
     setParseError(null);
     setActiveDocId(null);
     setDocuments([]);
+    // Reset onAfterExtraction state
+    afterExtractionCalledRef.current = false;
+    setLastParsedRawText(null);
+    setLastParsedDocType(null);
+    setIsGeneratingSummary(false);
   }
 
   async function clearAndRestart() {

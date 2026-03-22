@@ -1,8 +1,41 @@
-import { DiagnosisSpecialization } from '@/core/diagnosis/types';
+import { DiagnosisSpecialization, ExtractedDataBag } from '@/core/diagnosis/types';
 import { SomaProfile, SomaDiagnosisSummary } from '@/modules/soma/types';
 import { mergeSomaDiagnosisData } from './soma-diagnosis-merge';
 import { buildDiagnosisAnalysisPrompt, buildDiagnosisSummaryPrompt, SOMA_MEDICAL_DISCLAIMER } from '../prompts/soma-prompt-builder';
 import { sanitizeJsonPayload } from '@/lib/ai-adapters/sanitize';
+
+// ── Content-Based Deduplication ───────────────────────────────────────────────
+
+/**
+ * Generate a stable, content-based ID for an extracted item.
+ * This prevents duplicates when rebuildExtractedDataFromMessages replays history.
+ */
+function generateStableId(type: string, data: Record<string, unknown>): string {
+  // Create a deterministic string from the core payload (excluding timestamps)
+  const coreData = { ...data };
+  delete coreData.extractedAt;
+  delete coreData.source;
+  
+  const keyString = JSON.stringify({ type, ...coreData }, Object.keys({ type, ...coreData }).sort());
+  
+  // Simple hash function (djb2) - not cryptographic, just for deduplication
+  let hash = 5381;
+  for (let i = 0; i < keyString.length; i++) {
+    hash = ((hash << 5) + hash) + keyString.charCodeAt(i);
+    hash |= 0; // Convert to 32-bit integer
+  }
+  
+  // Convert to positive hex string with type prefix
+  const hashHex = (hash >>> 0).toString(16);
+  return `${type.slice(0, 3)}-${hashHex}`;
+}
+
+/**
+ * Check if an item with the same stable ID already exists in the bag.
+ */
+function itemExists(bag: ExtractedDataBag, stableId: string): boolean {
+  return bag.items.some(item => item.id === stableId);
+}
 
 function parseDiagnosisSummary(raw: string): SomaDiagnosisSummary | null {
   if (!raw || typeof raw !== 'string') return null;
@@ -29,6 +62,23 @@ function parseDiagnosisSummary(raw: string): SomaDiagnosisSummary | null {
   } catch {
     return null;
   }
+}
+
+function inferDiagnosisDocType(rawText: string, fileType: string): string {
+  const haystack = rawText.toLowerCase();
+  if (fileType === 'image') {
+    if (/\bx[\s-]?ray\b/.test(haystack)) return 'xray';
+    if (/\bmri\b/.test(haystack)) return 'mri';
+    if (/\bct\b|\bcat scan\b/.test(haystack)) return 'ct';
+    if (/\bultrasound\b|\bsonography\b/.test(haystack)) return 'ultrasound';
+  }
+  if (/\bprescription\b|\brx\b|\bdosage\b|\btablet\b|\bcapsule\b/.test(haystack)) return 'prescription';
+  if (/\blab\b|\bcbc\b|\bhemoglobin\b|\bcholesterol\b|\bglucose\b|\bcreatinine\b|\btsh\b/.test(haystack)) return 'lab_report';
+  if (/\bx[\s-]?ray\b/.test(haystack)) return 'xray';
+  if (/\bmri\b/.test(haystack)) return 'mri';
+  if (/\bct\b|\bcat scan\b/.test(haystack)) return 'ct';
+  if (/\bultrasound\b|\bsonography\b/.test(haystack)) return 'ultrasound';
+  return 'medical_report';
 }
 
 /**
@@ -66,21 +116,30 @@ Recent Biomarkers: ${sProfile.biomarkers.slice(0, 10).map(b => `${b.name}: ${b.v
 `;
     }
 
+    // Check what has already been extracted to prevent re-extraction loops
+    const hasImageAnalysis = extractedData.items.some(i => i.type === 'medical_image_analysis');
+    const hasBiomarkers = extractedData.items.some(i => i.type === 'biomarker');
+    const hasLabSummary = extractedData.items.some(i => i.type === 'lab_summary');
+    const extractionComplete = hasImageAnalysis || hasBiomarkers || hasLabSummary;
+
     const itemsBlock = extractedData.items.length > 0
-      ? `\n[EXTRACTED DATA SO FAR]\n${extractedData.items.map(i => `- ${i.label} (${i.type})`).join('\n')}`
+      ? `\n[EXTRACTED DATA - ALREADY SAVED]\n${extractedData.items.map(i => `- ${i.label} (${i.type})`).join('\n')}`
       : '';
 
-    return `
-[IDENTITY]
-You are Soma's clinical analysis engine. Your role is to interpret medical documents with the directness and confidence of a senior clinician.
+    // When extraction is complete, switch to conversational mode
+    const extractionStatusBlock = extractionComplete
+      ? `
+[EXTRACTION STATUS: COMPLETE]
+Data extraction from the document has been completed. The items listed above are already saved.
+DO NOT emit any more action tags for data that has already been extracted.
+You are now in CONVERSATIONAL MODE - answer the user's questions about the findings without re-extracting.
+If the user uploads a NEW document, you may extract data from that new document only.
+`
+      : '';
 
-[CAPABILITIES]
-- Extract structured biomarkers (name, value, unit, reference range)
-- Identify medical conditions, medications, and allergies
-- Summarize lab panels and imaging reports
-- Provide clinical context for findings
-- Perform detailed radiological analysis on X-rays and medical images.
-
+    // Only include extraction instructions if extraction hasn't happened yet
+    const extractionInstructions = !extractionComplete
+      ? `
 [CRITICAL INSTRUCTION FOR IMAGES]
 If the input text starts with [VISUAL DESCRIPTION], it means a specialized vision model has already analyzed the image for you. 
 - Treat this description as YOUR OWN direct observation.
@@ -108,9 +167,25 @@ If the input text starts with [VISUAL DESCRIPTION], it means a specialized visio
 - medical_image_analysis: Save structured analysis of an X-ray, MRI, or other medical image.
   <action type="medical_image_analysis">{"reportType":"...","modality":"X-Ray|MRI|CT|Ultrasound","bodyPart":"...","findings":["..."],"impression":"...","clinicalFlags":[{"flag":"...","severity":"mild|moderate|severe"}]}</action>
   (Note: Provide the payload as valid JSON inside the action tag).
+`
+      : `
+[CONVERSATIONAL MODE]
+Extraction is complete. Answer questions about the findings conversationally.
+Do NOT emit action tags unless the user explicitly uploads a new document.
+`;
 
-${contextBlock}${itemsBlock}
+    return `
+[IDENTITY]
+You are Soma's clinical analysis engine. Your role is to interpret medical documents with the directness and confidence of a senior clinician.
 
+[CAPABILITIES]
+- Extract structured biomarkers (name, value, unit, reference range)
+- Identify medical conditions, medications, and allergies
+- Summarize lab panels and imaging reports
+- Provide clinical context for findings
+- Perform detailed radiological analysis on X-rays and medical images.
+${extractionInstructions}
+${contextBlock}${itemsBlock}${extractionStatusBlock}
 ${SOMA_MEDICAL_DISCLAIMER}
 `.trim();
   },
@@ -127,37 +202,49 @@ ${SOMA_MEDICAL_DISCLAIMER}
 
   /**
    * Called after AI actions to accumulate data for the merge review.
+   * Uses content-based stable IDs to prevent duplicates on history replay.
    */
   extractData: (actionType, payload, current) => {
     const next = { ...current, items: [...current.items] };
 
     switch (actionType) {
       case 'commit_biomarker': {
+        const itemData = {
+          name: payload.name,
+          value: payload.value,
+          unit: payload.unit,
+          source: 'diagnosis'
+        };
+        const stableId = generateStableId('biomarker', itemData);
+        
+        // Skip if already exists (deduplication)
+        if (itemExists(current, stableId)) break;
+        
         next.items.push({
-          id: `bm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          id: stableId,
           type: 'biomarker',
           label: `Biomarker: ${payload.name}`,
-          data: {
-            name: payload.name,
-            value: payload.value,
-            unit: payload.unit,
-            source: 'diagnosis'
-          },
+          data: itemData,
           source: 'ai_extraction',
           extractedAt: new Date().toISOString()
         });
         break;
       }
       case 'parse_lab_report': {
+        const itemData = {
+          panel: payload.panel,
+          findings: payload.findings,
+          flags: payload.flags
+        };
+        const stableId = generateStableId('lab_summary', itemData);
+        
+        if (itemExists(current, stableId)) break;
+        
         next.items.push({
-          id: `lab-${Date.now()}`,
+          id: stableId,
           type: 'lab_summary',
           label: `Lab Panel: ${payload.panel}`,
-          data: {
-            panel: payload.panel,
-            findings: payload.findings,
-            flags: payload.flags
-          },
+          data: itemData,
           source: 'ai_extraction',
           extractedAt: new Date().toISOString()
         });
@@ -166,11 +253,16 @@ ${SOMA_MEDICAL_DISCLAIMER}
       case 'update_conditions': {
         if (Array.isArray(payload.knownConditions)) {
           payload.knownConditions.forEach((c: string) => {
+            const itemData = { condition: c };
+            const stableId = generateStableId('condition', itemData);
+            
+            if (itemExists(current, stableId) || next.items.some(i => i.id === stableId)) return;
+            
             next.items.push({
-              id: `cond-${Date.now()}-${Math.random()}`,
+              id: stableId,
               type: 'condition',
               label: `Condition: ${c}`,
-              data: { condition: c },
+              data: itemData,
               source: 'ai_extraction',
               extractedAt: new Date().toISOString()
             });
@@ -178,11 +270,16 @@ ${SOMA_MEDICAL_DISCLAIMER}
         }
         if (Array.isArray(payload.medications)) {
           payload.medications.forEach((m: string) => {
+            const itemData = { medication: m };
+            const stableId = generateStableId('medication', itemData);
+            
+            if (itemExists(current, stableId) || next.items.some(i => i.id === stableId)) return;
+            
             next.items.push({
-              id: `med-${Date.now()}-${Math.random()}`,
+              id: stableId,
               type: 'medication',
               label: `Medication: ${m}`,
-              data: { medication: m },
+              data: itemData,
               source: 'ai_extraction',
               extractedAt: new Date().toISOString()
             });
@@ -190,11 +287,16 @@ ${SOMA_MEDICAL_DISCLAIMER}
         }
         if (Array.isArray(payload.allergies)) {
           payload.allergies.forEach((a: string) => {
+            const itemData = { allergy: a };
+            const stableId = generateStableId('allergy', itemData);
+            
+            if (itemExists(current, stableId) || next.items.some(i => i.id === stableId)) return;
+            
             next.items.push({
-              id: `allergy-${Date.now()}-${Math.random()}`,
+              id: stableId,
               type: 'allergy',
               label: `Allergy: ${a}`,
-              data: { allergy: a },
+              data: itemData,
               source: 'ai_extraction',
               extractedAt: new Date().toISOString()
             });
@@ -219,19 +321,28 @@ ${SOMA_MEDICAL_DISCLAIMER}
         const findings = normalizeList(data, 'findings', 'finding');
         const clinicalFlags = normalizeList(data, 'clinicalFlags', 'clinicalFlag');
 
+        const itemData = {
+          reportType: data.reportType || 'Radiology Report',
+          modality: data.modality,
+          bodyPart: data.bodyPart,
+          findings: findings,
+          impression: data.impression,
+          clinicalFlags: clinicalFlags,
+          biomarkers: [] // Explicitly empty as biomarkers are handled separately
+        };
+        const stableId = generateStableId('medical_image_analysis', itemData);
+        
+        // Skip if already exists (deduplication) - critical for preventing loops
+        if (itemExists(current, stableId)) {
+          console.log('[SomaDiagnosisSpec] Skipping duplicate medical_image_analysis:', stableId);
+          break;
+        }
+        
         next.items.push({
-          id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          id: stableId,
           type: 'medical_image_analysis',
           label: `Imaging: ${data.modality || 'X-Ray'} - ${data.bodyPart || 'Unknown'}`,
-          data: {
-            reportType: data.reportType || 'Radiology Report',
-            modality: data.modality,
-            bodyPart: data.bodyPart,
-            findings: findings,
-            impression: data.impression,
-            clinicalFlags: clinicalFlags,
-            biomarkers: [] // Explicitly empty as biomarkers are handled separately
-          },
+          data: itemData,
           source: 'ai_extraction',
           extractedAt: new Date().toISOString()
         });
@@ -244,36 +355,59 @@ ${SOMA_MEDICAL_DISCLAIMER}
 
   // -- Lifecycle --------------------------------------------------------------
 
-  /* 
-  // TODO: DiagnosisSpecialization does not support onAfterExtraction. 
-  // This logic needs to be moved or the interface updated.
-  onAfterExtraction: async ({ sendMessage, extractedData, result }) => {
+  /**
+   * Generate a clinical summary after extraction completes.
+   * This is called by useDiagnosis after the initial document analysis.
+   */
+  onAfterExtraction: async ({ sendMessage, extractedData, rawText, documentType }) => {
+    // Skip summary generation if no meaningful data was extracted
+    if (extractedData.items.length === 0) {
+      return extractedData;
+    }
+
+    // Build fields for the summary prompt
+    const extractedFields = extractedData.items
+      .filter((i) => i.type === 'biomarker' || i.type === 'lab_summary')
+      .map((i) => ({
+        fieldName: typeof i.data.name === 'string' ? i.data.name : i.label,
+        value: i.data.value as string | number,
+        unit: typeof i.data.unit === 'string' ? i.data.unit : undefined,
+        referenceRange: typeof i.data.referenceRange === 'string' ? i.data.referenceRange : undefined,
+        category: typeof i.data.category === 'string' ? i.data.category : i.type
+      }));
+
+    // Include imaging findings in the summary
+    const imagingItems = extractedData.items.filter(i => i.type === 'medical_image_analysis');
+    const detectedPanels = imagingItems.length > 0 
+      ? imagingItems.map(i => `${i.data.modality || 'Imaging'}: ${i.data.bodyPart || 'Unknown'}`)
+      : [];
+
     const summaryPrompt = buildDiagnosisSummaryPrompt({
-      rawText: result.text,
-      documentType: result.metadata.fileType === 'application/pdf' ? 'pdf' : 'text',
-      detectedPanels: [], 
-      extractedFields: extractedData.items
-        .filter((i: any) => i.type === 'biomarker')
-        .map((i: any) => ({
-          fieldName: i.data.name,
-          value: i.data.value,
-          unit: i.data.unit,
-          category: i.data.category
-        }))
+      rawText: rawText.slice(0, 20000), // Truncate for prompt limits
+      documentType,
+      detectedPanels,
+      extractedFields
     });
 
-    const response = await sendMessage(summaryPrompt);
-    const summary = parseDiagnosisSummary(response);
-    
-    return {
-      ...extractedData,
-      metadata: {
-        ...extractedData.metadata,
-        somaSummary: summary
+    try {
+      const response = await sendMessage(summaryPrompt);
+      const summary = parseDiagnosisSummary(response);
+      
+      if (summary) {
+        return {
+          ...extractedData,
+          metadata: {
+            ...extractedData.metadata,
+            somaSummary: summary
+          }
+        };
       }
-    };
+    } catch (err) {
+      console.error('[SomaDiagnosisSpec] Failed to generate summary:', err);
+    }
+
+    return extractedData;
   },
-  */
 
   // -- Merge ------------------------------------------------------------------
 
@@ -285,7 +419,28 @@ ${SOMA_MEDICAL_DISCLAIMER}
   // -- Optional Overrides -----------------------------------------------------
 
   buildFileAnalysisPrompt: (result) => {
-    return buildDiagnosisAnalysisPrompt(result.text);
+    const inferredType = inferDiagnosisDocType(result.text, result.metadata.fileType);
+    const contextHint = `Detected medical document type: ${inferredType}`;
+    const isImagingType = ['xray', 'mri', 'ct', 'ultrasound'].includes(inferredType);
+    const hasVisualDescription = result.text.includes('[VISUAL DESCRIPTION]');
+
+    if (isImagingType || hasVisualDescription) {
+      return [
+        'You are Soma clinical imaging extraction engine.',
+        `Detected medical document type: ${inferredType}.`,
+        'The input may include a [VISUAL DESCRIPTION] block generated by vision OCR.',
+        'Treat that visual description as authoritative imaging evidence.',
+        'Return ONLY one action tag and no prose.',
+        '<action type="medical_image_analysis">{"reportType":"...","modality":"X-Ray|MRI|CT|Ultrasound","bodyPart":"...","findings":["..."],"impression":"...","clinicalFlags":[{"flag":"...","severity":"mild|moderate|severe"}]}</action>',
+        'If data is uncertain, still emit the action tag and mark uncertain phrases in findings.',
+        '',
+        '---BEGIN DOCUMENT---',
+        result.text,
+        '---END DOCUMENT---',
+      ].join('\n');
+    }
+
+    return buildDiagnosisAnalysisPrompt(result.text, contextHint);
   },
 
   themeColor: 'emerald',

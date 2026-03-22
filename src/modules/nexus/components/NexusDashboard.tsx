@@ -207,6 +207,22 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
         onStageChange: (stage) => setDocStage(stage),
       });
 
+      const routeCandidate = result.insights
+        .filter((insight) =>
+          !insight.requiresUserTypeSelection &&
+          insight.targetModule &&
+          insight.targetModule !== 'nexus' &&
+          (insight.targetConfidence ?? 0) >= 0.75
+        )
+        .sort((a, b) => (b.targetConfidence ?? 0) - (a.targetConfidence ?? 0))[0];
+
+      if (routeCandidate?.targetModule) {
+        setRoutingSuggestion({
+          target: routeCandidate.targetModule,
+          reason: `Document classified as ${routeCandidate.docType} (${Math.round((routeCandidate.targetConfidence ?? 0) * 100)}% confidence).`,
+        });
+      }
+
       setDocStage((prev) => prev ?? { id: 'done', label: 'Document analyzed.' });
       await ai.handleSendMessage(result.prompt, undefined, { visibleContent: request.visibleContent });
     } catch (e: unknown) {

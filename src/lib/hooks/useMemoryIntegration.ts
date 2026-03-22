@@ -26,10 +26,12 @@ export function useMemoryIntegration({ moduleId, userId, isGuest, encryptionKey 
   // Stabilize encryptionKey: only re-subscribe when the key identity actually changes
   const encryptionKeyRef = useRef(encryptionKey);
   const [encryptionKeyVersion, setEncryptionKeyVersion] = useState(0);
-  if (encryptionKeyRef.current !== encryptionKey) {
-    encryptionKeyRef.current = encryptionKey;
-    setEncryptionKeyVersion(v => v + 1);
-  }
+  useEffect(() => {
+    if (encryptionKeyRef.current !== encryptionKey) {
+      encryptionKeyRef.current = encryptionKey;
+      setEncryptionKeyVersion(v => v + 1);
+    }
+  }, [encryptionKey]);
 
   // Subscribe to episodic envelopes and semantic facts
   useEffect(() => {
