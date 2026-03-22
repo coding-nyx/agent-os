@@ -4,6 +4,7 @@ import { QuickLogDrawer } from './components/QuickLogDrawer';
 import type { QuickLogPayload } from './components/QuickLogDrawer';
 import { QuickLogBar } from './components/QuickLogBar';
 import { LogConfirmCard } from './components/LogConfirmCard';
+import { TitanProposalCard, TitanProposalSkeleton, extractProposalFromMessage, type TitanProposal } from './components/TitanProposalCard';
 import { RecoveryPlanModal } from './components/RecoveryPlanModal';
 import type { RecoveryPlanDraft, RecoveryConsultResult } from './components/RecoveryPlanModal';
 import { RecoveryBanner } from './components/RecoveryBanner';
@@ -57,7 +58,8 @@ import type { NexusHandoff } from '@/lib/services/nexus-handoff-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import type { ModuleId } from '@/lib/module-manifest';
 import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
-import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
+import { ActionHub } from '@/lib/actions/action-hub';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { TITAN_PERSONA } from './personas';
 import { useUIStore } from '@/lib/stores/ui-store';
@@ -202,6 +204,9 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   const [pendingLogEntries, setPendingLogEntries] = useState<ParsedEntry[]>([]);
   const [quickLogCommitError, setQuickLogCommitError] = useState<string | null>(null);
 
+  // ── AI Proposal handling ──────────────────────────────────────────────────
+  const [activeProposal, setActiveProposal] = useState<TitanProposal | null>(null);
+
   const existingExercises = useMemo(() => {
     const names = new Set<string>();
     for (const session of profile?.workoutSessions ?? []) {
@@ -249,6 +254,88 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   });
 
   const [isChatCollapsed, setIsChatCollapsed] = useState(true);
+
+  // ── Watch for AI proposals in messages ────────────────────────────────────
+  useEffect(() => {
+    if (!ai.messages.length) return;
+    // Check only the last assistant message
+    const lastMsg = ai.messages[ai.messages.length - 1];
+    if (lastMsg.role !== 'assistant') return;
+    
+    const content = typeof lastMsg.content === 'string' 
+      ? lastMsg.content 
+      : Array.isArray(lastMsg.content) 
+        ? lastMsg.content.filter(p => p.type === 'text').map(p => (p as { text: string }).text).join('')
+        : '';
+    
+    const proposal = extractProposalFromMessage(content);
+    if (proposal) {
+      setActiveProposal(proposal);
+    }
+  }, [ai.messages]);
+
+  // ── Handle proposal actions via ActionHub ─────────────────────────────────
+  const handleProposalAction = useCallback(async (handler: string, data?: Record<string, unknown>) => {
+    if (!user?.uid || !encryptionKey) {
+      throw new Error('Not authenticated');
+    }
+
+    // Map proposal handlers to ActionHub action types
+    const actionMap: Record<string, string> = {
+      log_sleep: 'log_sleep',
+      saveSleepLog: 'log_sleep',
+      log_workout_session: 'log_workout_session',
+      commitWorkoutSession: 'log_workout_session',
+      update_routine: 'update_routine',
+      createRoutine: 'update_routine',
+    };
+
+    const actionType = actionMap[handler] ?? handler;
+
+    // Normalize payload per action type to bridge any schema mismatch between
+    // the proposal's generatedData and what the handler expects.
+    let resolvedPayload: Record<string, unknown> = data ?? {};
+    if (actionType === 'update_routine') {
+      // update_routine handler requires { routines: Routine[] }.
+      // If generatedData is a single routine object (has weekday but no routines array),
+      // wrap it so the handler doesn't silently return early.
+      if (!Array.isArray(resolvedPayload.routines)) {
+        resolvedPayload = { routines: [resolvedPayload] };
+      }
+    }
+    
+    try {
+      const success = await ActionHub.execute('titan', actionType, {
+        moduleId: 'titan',
+        payload: resolvedPayload,
+        userId: user.uid,
+        isGuest: isGuest,
+        encryptionKey,
+        getLatestNSV: () => globalSoul?.crossFunctionalState ?? {},
+        pushAssistantMessage: (msg: string) => {
+          console.log('[Titan Proposal]', msg);
+        },
+        emitSpineEvent: (type, payload) => {
+          Spine.emit({ type, source: 'titan', domain: 'B', data: payload, cascadeDepth: 0, priority: 'info' });
+        },
+        updateGlobalSoul: async () => {
+          // NSV updates handled by the action handlers themselves via queueNSVUpdate
+        },
+        delegateToModule: () => {
+          // Delegation handled by action handlers
+        },
+      });
+      
+      if (!success) {
+        throw new Error(`Action "${actionType}" could not be found. Please try again.`);
+      }
+      // Success — dismiss the proposal card
+      setActiveProposal(null);
+    } catch (error) {
+      // Re-throw so the ProposalCard can display the error inline
+      throw error;
+    }
+  }, [user?.uid, isGuest, encryptionKey, globalSoul?.crossFunctionalState]);
 
   const openChatAndSend = useCallback((prompt: string) => {
     setIsChatCollapsed(false);
@@ -874,9 +961,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     // Update NSV biological state — lower recovery score reflects impaired state
     const recoveryScoreOnStart =
       plan.type === 'rehab' ? 2 : plan.type === 'rest' ? 4 : plan.type === 'active' ? 5 : 6;
-    GlobalProjectionService.updateCrossFunctionalState(user.uid, {
-      biological: { recoveryScore: recoveryScoreOnStart, cnsFatigue: 8 },
-    }).catch((e) => console.error('[Titan] recovery start NSV update failed:', e));
+    queueNSVUpdate(user.uid, { biological: { recoveryScore: recoveryScoreOnStart, cnsFatigue: 8 } }, 'recovery_start');
 
     setIsRecoveryModalOpen(false);
     setActiveTab('recovery');
@@ -913,12 +998,12 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
         (10 - nextEntry.fatigue) * 0.4 +
         nextEntry.sleepQuality * 0.3
       )));
-      GlobalProjectionService.updateCrossFunctionalState(user.uid, {
+      queueNSVUpdate(user.uid, {
         biological: {
           recoveryScore: checkinRecoveryScore,
           sleepQuality: nextEntry.sleepQuality,
         },
-      }).catch((e) => console.error('[Titan] checkin NSV update failed:', e));
+      }, 'recovery_checkin');
 
       // Early recovery signal — notify other modules if score is high
       if (checkinRecoveryScore >= 8) {
@@ -963,9 +1048,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     });
 
     // Restore biological NSV to baseline recovered state
-    GlobalProjectionService.updateCrossFunctionalState(user.uid, {
-      biological: { recoveryScore: 7, cnsFatigue: 2 },
-    }).catch((e) => console.error('[Titan] resume NSV update failed:', e));
+    queueNSVUpdate(user.uid, { biological: { recoveryScore: 7, cnsFatigue: 2 } }, 'resume_training');
 
     setIsResumeModalOpen(false);
     setActiveTab('train');
@@ -1133,17 +1216,89 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     }
   };
 
+  // ── Strip proposal JSON from chat display ─────────────────────────────────
+  // The AI embeds the TitanProposal JSON at the end of its message for extraction,
+  // but we don't want raw JSON visible in the chat bubble. Strip it for display;
+  // the detection useEffect above still reads from the original ai.messages.
+  const displayAi = useMemo(() => {
+    const stripProposalJson = (text: string): string => {
+      const markerIdx = text.indexOf('"__isTitanProposal"');
+      if (markerIdx === -1) return text;
+      const openBrace = text.lastIndexOf('{', markerIdx);
+      return openBrace === -1 ? text : text.substring(0, openBrace).trim();
+    };
+
+    const cleanContent = (content: unknown): import('@/lib/types').MessageContent => {
+      if (typeof content === 'string') return stripProposalJson(content);
+      if (Array.isArray(content)) {
+        return content.map((part) => {
+          if (part && typeof part === 'object' && (part as { type?: string }).type === 'text') {
+            return { ...part, text: stripProposalJson((part as { text: string }).text) };
+          }
+          return part;
+        }) as import('@/lib/types').MessageContentPart[];
+      }
+      return typeof content === 'string' ? content : '';
+    };
+
+    return {
+      ...ai,
+      messages: ai.messages.map((msg) =>
+        msg.role === 'assistant' ? { ...msg, content: cleanContent(msg.content) } : msg
+      ),
+      streamingText: stripProposalJson(ai.streamingText ?? ''),
+    };
+  }, [ai]);
+
+  // ── Inline proposal card — rendered below the last assistant message ─────
+  const lastAssistantIndex = useMemo(() => {
+    for (let i = displayAi.messages.length - 1; i >= 0; i--) {
+      if (displayAi.messages[i].role === 'assistant') return i;
+    }
+    return -1;
+  }, [displayAi.messages]);
+
+  // Detect when the AI is actively streaming a proposal JSON block.
+  // Uses original ai.streamingText (not displayAi which is already stripped).
+  const isGeneratingProposal = useMemo(
+    () => ai.isProcessing && ai.streamingText.includes('"__isTitanProposal"'),
+    [ai.isProcessing, ai.streamingText]
+  );
+
+  const renderProposalMessageActions = useCallback(
+    (msg: import('@/lib/types').Message, index: number) => {
+      // Skeleton below the transient streaming bubble (NexusChat appends it at
+      // index > lastAssistantIndex while streaming, so this targets exactly that slot).
+      if (isGeneratingProposal && !activeProposal && msg.role === 'assistant' && index > lastAssistantIndex) {
+        return <TitanProposalSkeleton />;
+      }
+      // Real card below the last committed assistant message.
+      if (activeProposal && index === lastAssistantIndex) {
+        return (
+          <TitanProposalCard
+            proposal={activeProposal}
+            onAction={handleProposalAction}
+            onDismiss={() => setActiveProposal(null)}
+          />
+        );
+      }
+      return null;
+    },
+    [isGeneratingProposal, activeProposal, lastAssistantIndex, handleProposalAction]
+  );
+
   return (
     <>
       <SingleAgentLayout
         moduleId="titan"
         agentName={agentAlias}
         themeColor="module"
-        ai={ai}
+        ai={displayAi}
         authMode="titan"
         placeholder="Input training data or queries..."
         isChatCollapsed={isChatCollapsed}
         onToggleChat={setIsChatCollapsed}
+        renderMessageActions={renderProposalMessageActions}
       >
         <div className="titan-theme flex flex-col h-full overflow-hidden">
           <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-3 sm:pb-4 md:pb-5">

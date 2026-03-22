@@ -2,7 +2,7 @@ import type { BiomarkerRecord, ClearanceRecord } from '@/lib/types';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { SomaDataService } from '@/modules/soma/services/soma-data-service';
 
-type DelegationSource = 'titan_action' | 'titan_diagnosis';
+type DelegationSource = 'titan_action' | 'titan_diagnosis' | 'titan_lab_parse';
 
 function parseNumericOrText(value: unknown): number | string {
   if (typeof value === 'number' && Number.isFinite(value)) return value;

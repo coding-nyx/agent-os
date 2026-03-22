@@ -2,25 +2,25 @@
  * JournalEntryEditor — Full-featured daily journal editor.
  *
  * Sections (top to bottom):
- *  1. Morning Intent    — textarea, pre-populated from check-in
- *  2. AI Prompt         — card with lightbulb, regenerate ghost button
- *  3. Free Write        — open textarea
- *  4. Evening Reflection — textarea, pre-populated from check-in
- *  5. Mood              — 5-pill row (emoji labels)
- *  6. Energy            — 5-pill row (1–5)
- *  7. Gratitude         — up to 3 text inputs with "+ Add" button
- *  8. Blockers          — textarea, pre-populated from check-in
- *  9. Save              — NeuralButton
+ *  1. Morning Intent     — rich text editor, pre-populated from check-in
+ *  2. AI Prompt          — card with lightbulb, regenerate ghost button
+ *  3. Free Write         — rich text editor (open writing)
+ *  4. Evening Reflection — rich text editor, pre-populated from check-in
+ *  5. Mood & Energy      — compact merged MoodEnergyPicker widget
+ *  6. Gratitude          — up to 3 text inputs with "+ Add" button
+ *  7. Blockers           — rich text editor, pre-populated from check-in
+ *  8. Save               — sticky NeuralButton bar
  */
 
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Lightbulb, RefreshCw, Plus, X } from 'lucide-react';
+import { Lightbulb, RefreshCw, Plus, X, Sunrise, BookOpen, Moon, Heart, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
-import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { Skeleton } from '@/core/components/Skeleton';
+import { RichTextEditor } from './RichTextEditor';
+import { MoodEnergyPicker } from './MoodEnergyPicker';
 import type { JournalEntry } from '@/lib/types';
 import type { AtlasHabit, AtlasGoal } from '../../services/atlas-profile-service';
 
@@ -45,18 +45,8 @@ export interface JournalSaveFeedback {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const MOOD_OPTIONS: { value: number; emoji: string; label: string }[] = [
-  { value: 1, emoji: '😔', label: 'Rough' },
-  { value: 2, emoji: '😕', label: 'Low' },
-  { value: 3, emoji: '😐', label: 'Okay' },
-  { value: 4, emoji: '🙂', label: 'Good' },
-  { value: 5, emoji: '😊', label: 'Great' },
-];
-
-const TEXTAREA_CLASS =
-  'w-full bg-black/30 border border-white/10 rounded-lg text-white/90 placeholder:text-white/30 focus:border-violet-500/50 focus:outline-none focus:ring-0 resize-none px-3 py-2.5 text-sm leading-relaxed transition-colors';
-
-const LABEL_CLASS = 'text-[11px] font-semibold text-white/50 uppercase tracking-widest mb-1.5 font-display';
+const LABEL_CLASS = 'flex items-center gap-1.5 text-[11px] font-semibold text-white/50 uppercase tracking-widest mb-2 font-display';
+const SECTION_DIVIDER = 'border-t border-white/5 pt-5';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -118,23 +108,29 @@ export function JournalEntryEditor({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
-      className="space-y-6 pb-8"
+      className="space-y-5 pb-24"
     >
       {/* ── 1. Morning Intent ─────────────────────────────────────── */}
       <section>
-        <p className={LABEL_CLASS}>Morning Intent</p>
-        <NeuralTextarea
-          rows={3}
-          placeholder="What's your intention for today?"
+        <p className={LABEL_CLASS}>
+          <Sunrise className="w-3.5 h-3.5 text-amber-400/60" aria-hidden />
+          Morning Intent
+        </p>
+        <RichTextEditor
           value={draft.morningIntent}
-          onChange={(e) => patch('morningIntent', e.target.value)}
+          onChange={(html) => patch('morningIntent', html)}
+          placeholder="What's your intention for today?"
+          minHeight="72px"
         />
       </section>
 
       {/* ── 2. AI Prompt ──────────────────────────────────────────── */}
       {(isLoadingPrompt || aiPrompt) && (
-        <section>
-          <p className={LABEL_CLASS}>Today's Prompt</p>
+        <section className={SECTION_DIVIDER}>
+          <p className={LABEL_CLASS}>
+            <Lightbulb className="w-3.5 h-3.5 text-violet-400/60" aria-hidden />
+            Today's Prompt
+          </p>
           {isLoadingPrompt ? (
             <div className="space-y-2 p-4 rounded-lg border border-white/10 bg-black/20">
               <Skeleton className="h-3 w-3/4 rounded" />
@@ -164,71 +160,50 @@ export function JournalEntryEditor({
       )}
 
       {/* ── 3. Free Write ─────────────────────────────────────────── */}
-      <section>
-        <p className={LABEL_CLASS}>Free Write</p>
-        <NeuralTextarea
-          rows={5}
-          placeholder="How are you feeling?"
+      <section className={SECTION_DIVIDER}>
+        <p className={LABEL_CLASS}>
+          <BookOpen className="w-3.5 h-3.5 text-indigo-400/60" aria-hidden />
+          Free Write
+        </p>
+        <RichTextEditor
           value={draft.freeform}
-          onChange={(e) => patch('freeform', e.target.value)}
+          onChange={(html) => patch('freeform', html)}
+          placeholder="How are you feeling? Write freely…"
+          minHeight="120px"
         />
       </section>
 
       {/* ── 4. Evening Reflection ─────────────────────────────────── */}
-      <section>
-        <p className={LABEL_CLASS}>Evening Reflection</p>
-        <NeuralTextarea
-          rows={4}
-          placeholder="What happened today?"
+      <section className={SECTION_DIVIDER}>
+        <p className={LABEL_CLASS}>
+          <Moon className="w-3.5 h-3.5 text-blue-400/60" aria-hidden />
+          Evening Reflection
+        </p>
+        <RichTextEditor
           value={draft.eveningReflection}
-          onChange={(e) => patch('eveningReflection', e.target.value)}
+          onChange={(html) => patch('eveningReflection', html)}
+          placeholder="What happened today?"
+          minHeight="96px"
         />
       </section>
 
-      {/* ── 5. Mood ───────────────────────────────────────────────── */}
-      <section>
-        <p className={LABEL_CLASS}>Mood</p>
-        <div className="flex gap-2">
-          {MOOD_OPTIONS.map(({ value, emoji, label }) => (
-            <NeuralButton
-              key={value}
-              type="button"
-              onClick={() => patch('mood', value)}
-              title={label}
-              variant={draft.mood === value ? 'primary' : 'secondary'}
-              themeColor="emerald"
-              className="flex-1 flex-col !h-14 !gap-1"
-            >
-              <span className="text-base leading-none">{emoji}</span>
-              <span className="text-[10px] leading-none font-medium">{label}</span>
-            </NeuralButton>
-          ))}
-        </div>
+      {/* ── 5. Mood & Energy (merged) ─────────────────────────────── */}
+      <section className={SECTION_DIVIDER}>
+        <p className={LABEL_CLASS}>Vibe Check</p>
+        <MoodEnergyPicker
+          mood={draft.mood}
+          energyLevel={draft.energyLevel}
+          onMoodChange={(v) => patch('mood', v)}
+          onEnergyChange={(v) => patch('energyLevel', v)}
+        />
       </section>
 
-      {/* ── 6. Energy ─────────────────────────────────────────────── */}
-      <section>
-        <p className={LABEL_CLASS}>Energy Level</p>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4, 5].map((val) => (
-            <NeuralButton
-              key={val}
-              type="button"
-              onClick={() => patch('energyLevel', val)}
-              title={`Energy ${val}`}
-              variant={draft.energyLevel === val ? 'primary' : 'secondary'}
-              themeColor="emerald"
-              className="flex-1 !h-11 font-bold"
-            >
-              {val}
-            </NeuralButton>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 7. Gratitude ──────────────────────────────────────────── */}
-      <section>
-        <p className={LABEL_CLASS}>Gratitude</p>
+      {/* ── 6. Gratitude ──────────────────────────────────────────── */}
+      <section className={SECTION_DIVIDER}>
+        <p className={LABEL_CLASS}>
+          <Heart className="w-3.5 h-3.5 text-rose-400/60" aria-hidden />
+          Gratitude
+        </p>
         <div className="space-y-2">
           {draft.gratitude.map((item, idx) => (
             <div key={idx} className="flex items-center gap-2">
@@ -267,19 +242,22 @@ export function JournalEntryEditor({
         </div>
       </section>
 
-      {/* ── 8. Blockers ───────────────────────────────────────────── */}
-      <section>
-        <p className={LABEL_CLASS}>Blockers</p>
-        <NeuralTextarea
-          rows={3}
-          placeholder="Any obstacles or friction today?"
+      {/* ── 7. Blockers ───────────────────────────────────────────── */}
+      <section className={SECTION_DIVIDER}>
+        <p className={LABEL_CLASS}>
+          <AlertCircle className="w-3.5 h-3.5 text-amber-400/60" aria-hidden />
+          Blockers
+        </p>
+        <RichTextEditor
           value={draft.blockers}
-          onChange={(e) => patch('blockers', e.target.value)}
+          onChange={(html) => patch('blockers', html)}
+          placeholder="Any obstacles or friction today?"
+          minHeight="72px"
         />
       </section>
 
-      {/* ── 9. Save ───────────────────────────────────────────────── */}
-      <div className="pt-2">
+      {/* ── 8. Save (sticky) ──────────────────────────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 z-10 px-4 pb-4 pt-3 bg-black/60 backdrop-blur-md border-t border-white/8">
         <NeuralButton
           themeColor="emerald"
           size="md"
@@ -296,7 +274,7 @@ export function JournalEntryEditor({
             role="status"
             aria-live="polite"
             className={cn(
-              'mt-2 text-[11px] font-semibold tracking-wide',
+              'mt-2 text-[11px] font-semibold tracking-wide text-center',
               saveFeedback.tone === 'success' && 'text-emerald-300/80',
               saveFeedback.tone === 'warning' && 'text-amber-300/80',
               saveFeedback.tone === 'error' && 'text-rose-300/80',

@@ -8,6 +8,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '@/core/components/GlassCard';
+import { cn } from '@/lib/utils';
 import type { JournalEntry } from '@/lib/types';
 
 interface JournalEntryCardProps {
@@ -35,7 +36,8 @@ function formatDate(dateStr: string): string {
 }
 
 function getPreview(entry: JournalEntry): string {
-  const text = entry.freeform || entry.eveningReflection || entry.morningIntent || '';
+  const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim();
+  const text = stripHtml(entry.freeform) || stripHtml(entry.eveningReflection) || stripHtml(entry.morningIntent) || '';
   return text.length > 80 ? text.slice(0, 80).trimEnd() + '…' : text || 'No content yet.';
 }
 
@@ -59,10 +61,23 @@ export function JournalEntryCard({ entry, onClick }: JournalEntryCardProps) {
           <span className="text-xs font-bold text-white/60 font-display tracking-wide">
             {dateLabel}
           </span>
-          {/* Mood */}
-          <span className="text-base leading-none" title={`Mood: ${entry.mood}/5`}>
-            {emoji}
-          </span>
+          {/* Mood + Energy */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-base leading-none" title={`Mood: ${entry.mood}/5`}>
+              {emoji}
+            </span>
+            <div className="flex gap-0.5" title={`Energy: ${entry.energyLevel}/5`} aria-label={`Energy level ${entry.energyLevel}`}>
+              {[1, 2, 3, 4, 5].map((v) => (
+                <span
+                  key={v}
+                  className={cn(
+                    'block w-1.5 h-3 rounded-sm',
+                    v <= entry.energyLevel ? 'bg-emerald-400/60' : 'bg-white/10',
+                  )}
+                />
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Preview text */}

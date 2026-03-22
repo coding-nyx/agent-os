@@ -1,9 +1,9 @@
 import {
   loadProfile,
   persistProfile,
-  GlobalProjectionService,
   Spine,
 } from './shared';
+import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
 import type { ActionHandler, TitanProfile, BodyWeightEntry, CardioSession, CardioSessionType } from './shared';
 
 export const bodyHandlers: Record<string, ActionHandler> = {
@@ -61,9 +61,7 @@ export const bodyHandlers: Record<string, ActionHandler> = {
     if (userId) {
       const nsvBioPatch: Record<string, number | null> = { weight: entry.weight };
       if (entry.bodyFatPct != null) nsvBioPatch.bodyFatPct = entry.bodyFatPct;
-      GlobalProjectionService.updateCrossFunctionalState(userId, {
-        biological: nsvBioPatch as Parameters<typeof GlobalProjectionService.updateCrossFunctionalState>[1]['biological'],
-      }).catch(e => console.error('log_body_weight NSV sync failed:', e));
+      queueNSVUpdate(userId, { biological: nsvBioPatch }, 'log_body_weight');
     }
 
     // Compute week-over-week trend for Spine signal
@@ -176,9 +174,7 @@ export const bodyHandlers: Record<string, ActionHandler> = {
       const rpe = session.rpe ?? 6;
       const minuteFactor = Math.min(1, durationMinutes / 60);
       const rawAerobicLoad = Math.round(rpe * minuteFactor * 10) / 10;
-      GlobalProjectionService.updateCrossFunctionalState(userId, {
-        biological: { aerobicLoad: Math.min(10, rawAerobicLoad) } as Parameters<typeof GlobalProjectionService.updateCrossFunctionalState>[1]['biological'],
-      }).catch(e => console.error('log_cardio_session aerobicLoad NSV sync failed:', e));
+      queueNSVUpdate(userId, { biological: { aerobicLoad: Math.min(10, rawAerobicLoad) } }, 'log_cardio_session');
     }
 
     const distStr = session.distanceKm ? ` · ${session.distanceKm} km` : '';

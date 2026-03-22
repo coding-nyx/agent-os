@@ -5,7 +5,7 @@ import { EmptyState } from '@/core/components/EmptyState';
 import { getTodayWeekday } from '../utils';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralModal } from '@/core/components/NeuralModal';
-import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
 import { RoutineBuilder } from './RoutineBuilder';
 import { RestPeriodCalculator } from './RestPeriodCalculator';
 import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus, Pencil, MoreVertical, Play } from 'lucide-react';
@@ -146,15 +146,13 @@ export function TitanRoutinePanel({
               <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40">Weekly Plan</span>
               <span className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[9px] font-bold text-white/30 tabular-nums tracking-[0.1em]">{sorted.length} DAYS</span>
             </div>
-            <NeuralButton
+            <NeuralIconButton
               size="sm"
-              iconOnly
               onClick={handleOpenCreate}
               title="Add Day"
               aria-label="Add Day"
-            >
-              <Plus className="w-4 h-4" />
-            </NeuralButton>
+              icon={<Plus className="w-4 h-4" />}
+            />
           </div>
 
           <div className="flex-1 flex flex-col p-3 gap-1.5">
@@ -246,15 +244,13 @@ export function TitanRoutinePanel({
                 <span className="text-[10px] text-white/25 tabular-nums shrink-0">{routine.exercises.length} ex</span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                   {onStartSession && (
-                    <NeuralButton
+                    <NeuralIconButton
                       size="sm"
                       onClick={(e) => { e.stopPropagation(); onStartSession(routine); }}
-                      iconOnly
                       title="Log Session"
                       className="w-7 h-7 min-h-0 p-0"
-                    >
-                      <Play className="w-3 h-3" />
-                    </NeuralButton>
+                      icon={<Play className="w-3 h-3" />}
+                    />
                   )}
                   <NeuralButton
                     variant="ghost"

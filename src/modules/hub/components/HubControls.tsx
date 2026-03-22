@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { LayoutList, Share2, Box, Activity, Shield, Sparkles, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
 import { NeuralIntegrity } from '@/core/components/NeuralIntegrity';
 import { TrendArrow, type TrendDirection } from '@/core/components/TrendArrow';
 import type { ReactiveGaugeProps } from '../constants';
@@ -44,38 +44,37 @@ export function HubViewSwitcher({ viewMode, setViewMode, hide3D }: HubViewSwitch
       aria-label="Hub view modes"
       className="flex items-center gap-1 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 p-1.5 shadow-2xl pointer-events-auto"
     >
-      {views.map(({ mode, icon: ModeIcon, label, key }) => (
-        <NeuralButton
-          variant="ghost"
-          key={mode}
-          iconOnly
-          role="tab"
-          id={`tab-${mode.toLowerCase()}`}
-          aria-selected={viewMode === mode}
-          aria-controls={`panel-${mode.toLowerCase()}`}
-          tabIndex={viewMode === mode ? 0 : -1}
-          onClick={() => setViewMode(mode)}
-          onKeyDown={(e) => {
-            const idx = views.findIndex(v => v.mode === mode);
-            if (e.key === 'ArrowRight') setViewMode(views[(idx + 1) % views.length].mode);
-            if (e.key === 'ArrowLeft') setViewMode(views[(idx - 1 + views.length) % views.length].mode);
-          }}
-          className={cn(
-            "relative flex flex-col items-center justify-center w-10 h-10 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-white/30 hover:bg-transparent",
-            viewMode === mode
-              ? "border border-white/40 text-white shadow-sm"
-              : "border border-transparent text-white/40 hover:text-white"
-          )}
-          aria-label={`Switch to ${label} View (${key})`}
-        >
-          <ModeIcon
+      {views.map(({ mode, icon: ModeIcon, label, key }) => {
+        const iconClassName = cn(
+          'w-5 h-5 text-current opacity-100 stroke-[1.8]',
+          mode === viewMode ? 'text-white' : 'text-white/60'
+        );
+        return (
+          <NeuralIconButton
+            variant="ghost"
+            key={mode}
+            role="tab"
+            id={`tab-${mode.toLowerCase()}`}
+            aria-selected={viewMode === mode}
+            aria-controls={`panel-${mode.toLowerCase()}`}
+            tabIndex={viewMode === mode ? 0 : -1}
+            onClick={() => setViewMode(mode)}
+            onKeyDown={(e) => {
+              const idx = views.findIndex(v => v.mode === mode);
+              if (e.key === 'ArrowRight') setViewMode(views[(idx + 1) % views.length].mode);
+              if (e.key === 'ArrowLeft') setViewMode(views[(idx - 1 + views.length) % views.length].mode);
+            }}
             className={cn(
-              "w-5 h-5 text-current opacity-100 stroke-[1.8]",
-              viewMode === mode ? "text-white" : "text-white/60"
+              "relative flex flex-col items-center justify-center w-10 h-10 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-white/30 hover:bg-transparent",
+              mode === viewMode
+                ? "border border-white/40 text-white shadow-sm"
+                : "border border-transparent text-white/40 hover:text-white"
             )}
+            aria-label={`Switch to ${label} View (${key})`}
+            icon={<ModeIcon className={iconClassName} />}
           />
-        </NeuralButton>
-      ))}
+        );
+      })}
     </div>
   );
 }

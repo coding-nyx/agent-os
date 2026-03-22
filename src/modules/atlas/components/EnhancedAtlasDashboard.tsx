@@ -61,10 +61,8 @@ import { TodaysPlanCard } from './TodaysPlanCard';
 import { FocusView } from './FocusView';
 import { MonthPlanner } from './MonthPlanner';
 import { DayTaskPanel } from './DayTaskPanel';
-import { QuickAddForm } from './QuickAddForm';
 import { QuickCaptureBar } from './QuickCaptureBar';
 import { JournalTab } from './journal/JournalTab';
-import { ManualEnergyLog } from './ManualEnergyLog';
 import { AtlasAnalytics } from './AtlasAnalytics';
 import { WeeklyReviewCard } from './WeeklyReviewModal';
 import { PortalledModal } from './shared/PortalledModal';
@@ -297,7 +295,7 @@ export function EnhancedAtlasDashboard({
       </header>
 
       {/* ── Tab Navigation (Desktop) ── */}
-      <div className="border-b border-white/5 relative z-50">
+      <div className="border-b border-white/5 relative z-10 px-[var(--atlas-space-page-x)]">
         <NeuralTabGroup
           tabs={tabs}
           activeTab={activeTab}
@@ -567,15 +565,6 @@ export function EnhancedAtlasDashboard({
                   className="bg-transparent border-white/10"
                 />
               )}
-              {/* Manual energy log — always visible on today view for non-AI users */}
-              <ManualEnergyLog
-                onLogEnergy={actions.onLogEnergy}
-                lastLoggedAt={
-                  energyWave.length > 0
-                    ? (energyWave[energyWave.length - 1] as { timestamp?: string }).timestamp
-                    : undefined
-                }
-              />
             </section>
 
             {/* Unified Timeline / Task timeline */}
@@ -833,13 +822,6 @@ export function EnhancedAtlasDashboard({
         </div>
       </PortalledModal>
 
-      {/* S9-006: Re-add QuickAddForm as a Desktop FAB (accessible from any tab) */}
-      <QuickAddForm
-        projects={profile?.projects ?? []}
-        onCreateTask={actions.onCreateTask}
-        onCreateHabit={actions.onCreateHabit}
-        onCreateGoal={actions.onCreateGoal}
-      />
     </div>
   );
 }

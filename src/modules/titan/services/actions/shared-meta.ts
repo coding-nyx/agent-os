@@ -17,11 +17,17 @@ export const titanAllowedActions = [
   'create_cycle',
   'advance_cycle_phase',
   'complete_cycle',
+  'check_cycle_phases',
   'log_workout_session',
   'log_workout_set',
   'suggest_field',
   'create_field',
   'delete_field',
+  'log_field_value',
   'log_body_weight',
   'log_cardio_session',
+  // Recovery actions (previously UI-only)
+  'start_recovery_plan',
+  'end_recovery_plan',
+  'log_recovery_checkin',
 ] as const;

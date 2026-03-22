@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
-import { Skeleton } from '@/core/components/Skeleton';
 import { GuestModePanel } from '@/core/components/GuestModePanel';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { RemindersCard } from '@/core/components/RemindersCard';
@@ -122,19 +121,58 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   }, [!!renderDashboard]);
 
   if (isLoading) {
+    const ModuleIcon = manifest.icon;
     return (
       <ModuleLayout title={title} themeColor={themeColor} moduleId={moduleId}>
-        <div className="flex-1 flex items-center justify-center p-8">
-          <SurfaceCard variant="strong" className="w-full max-w-md p-8 space-y-6 text-center">
-            <div className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/40">
-              Initializing {manifest.alias} Neural Link
+        <div className="flex-1 flex items-center justify-center">
+          <motion.div
+            className="flex flex-col items-center gap-8"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {/* Module icon with ambient glow */}
+            <div className="relative flex items-center justify-center w-20 h-20">
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{ background: `${manifest.colorHex}18` }}
+                animate={{ scale: [1, 1.18, 1], opacity: [0.6, 0.15, 0.6] }}
+                transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                style={{
+                  background: `${manifest.colorHex}12`,
+                  border: `1px solid ${manifest.colorHex}35`,
+                }}
+              >
+                <ModuleIcon className="w-6 h-6" style={{ color: manifest.colorHex }} />
+              </div>
             </div>
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-3/4 mx-auto rounded-md" />
-              <Skeleton className="h-4 w-2/3 mx-auto rounded-md" />
+
+            {/* Module name + sweep line */}
+            <div className="flex flex-col items-center gap-3">
+              <p
+                className="text-[10px] font-semibold tracking-[0.32em] uppercase"
+                style={{ color: 'rgba(255,255,255,0.22)' }}
+              >
+                {manifest.alias}
+              </p>
+              <div
+                className="relative w-28 overflow-hidden rounded-full"
+                style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }}
+              >
+                <motion.div
+                  className="absolute inset-y-0 w-full"
+                  style={{
+                    background: `linear-gradient(90deg, transparent 0%, ${manifest.colorHex}00 10%, ${manifest.colorHex}99 50%, ${manifest.colorHex}00 90%, transparent 100%)`,
+                  }}
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              </div>
             </div>
-            <Skeleton className="h-2 w-full rounded-full" />
-          </SurfaceCard>
+          </motion.div>
         </div>
       </ModuleLayout>
     );

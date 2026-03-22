@@ -9,7 +9,7 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
 import type { TitanWorkoutLog, WorkoutSession } from '@/lib/types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -190,28 +190,24 @@ function DayDetail({ date, dayLabel, data, onQuickLog, onRemind }: DayDetailProp
       {/* Right: actions */}
       <div className="flex flex-col items-center gap-1.5 shrink-0">
         {!hasActivity && onQuickLog && (
-          <NeuralButton
+          <NeuralIconButton
             variant="ghost"
             size="sm"
-            iconOnly
             onClick={() => onQuickLog(isoDate)}
             aria-label={`Log workout for ${dayLabel}`}
             className="w-8 h-8 text-white/30 hover:text-white/70"
-          >
-            <Plus className="w-4 h-4" />
-          </NeuralButton>
+            icon={<Plus className="w-4 h-4" />}
+          />
         )}
         {onRemind && (
-          <NeuralButton
+          <NeuralIconButton
             variant="ghost"
             size="sm"
-            iconOnly
             onClick={() => onRemind(isoDate)}
             aria-label={`Remind me — ${dayLabel}`}
             className="w-8 h-8 text-white/20 hover:text-white/60"
-          >
-            <Bell className="w-3.5 h-3.5" />
-          </NeuralButton>
+            icon={<Bell className="w-3.5 h-3.5" />}
+          />
         )}
       </div>
     </div>
@@ -316,16 +312,14 @@ export function TrainingCalendar({
 
       {/* ── Week navigation ── */}
       <div className="flex items-center justify-between gap-2">
-        <NeuralButton
+        <NeuralIconButton
           variant="ghost"
           size="sm"
-          iconOnly
           onClick={handlePrev}
           aria-label="Previous week"
           className="w-8 h-8 shrink-0 text-white/40 hover:text-white/80"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </NeuralButton>
+          icon={<ChevronLeft className="w-4 h-4" />}
+        />
 
         <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
           <span className="text-[11px] font-semibold text-white/50 truncate">{weekLabel}</span>
@@ -341,16 +335,14 @@ export function TrainingCalendar({
           )}
         </div>
 
-        <NeuralButton
+        <NeuralIconButton
           variant="ghost"
           size="sm"
-          iconOnly
           onClick={handleNext}
           aria-label="Next week"
           className="w-8 h-8 shrink-0 text-white/40 hover:text-white/80"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </NeuralButton>
+          icon={<ChevronRight className="w-4 h-4" />}
+        />
       </div>
 
       {/* ── Day strip — always fits in viewport, no overflow ── */}

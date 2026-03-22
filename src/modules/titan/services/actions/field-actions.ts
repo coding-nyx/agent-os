@@ -2,7 +2,7 @@ import {
   loadProfile,
   persistProfile,
 } from './shared';
-import type { ActionHandler, TitanProfile, CustomField } from './shared';
+import type { ActionHandler, TitanProfile, CustomField, CustomFieldValue } from './shared';
 
 export const fieldHandlers: Record<string, ActionHandler> = {
 
@@ -149,6 +149,117 @@ export const fieldHandlers: Record<string, ActionHandler> = {
     await persistProfile(updated, userId ?? null, encryptionKey ?? null);
 
     pushAssistantMessage?.(`🗑️ Custom field **"${target.name}"** deleted.`);
+  },
+
+  /**
+   * log_field_value — record a value for an existing custom field.
+   * Accepts payload.fieldId or payload.fieldName (case-insensitive) + payload.value.
+   * Optional: payload.date (YYYY-MM-DD), payload.note.
+   * Cap: 500 values per field to prevent unbounded growth.
+   */
+  log_field_value: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+    const byId = typeof payload?.fieldId === 'string' ? payload.fieldId : undefined;
+    const byName = typeof payload?.fieldName === 'string' ? payload.fieldName : undefined;
+
+    if (!byId && !byName) {
+      pushAssistantMessage?.('❌ Could not log value: provide either fieldId or fieldName.');
+      return;
+    }
+
+    if (payload?.value === undefined || payload?.value === null) {
+      pushAssistantMessage?.('❌ Could not log value: a value is required.');
+      return;
+    }
+
+    const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!profile) {
+      pushAssistantMessage?.('❌ Could not load profile. Please try again.');
+      return;
+    }
+
+    const fields: CustomField[] = profile.customFields ?? [];
+    const field = fields.find((f) =>
+      (byId && f.id === byId) ||
+      (byName && f.name.toLowerCase() === byName.toLowerCase()),
+    );
+
+    if (!field) {
+      pushAssistantMessage?.(
+        `❌ No custom field found matching "${byId ?? byName}". Create it first with create_field.`,
+      );
+      return;
+    }
+
+    // Validate value type
+    let normalizedValue: string | number | boolean;
+    switch (field.type) {
+      case 'number': {
+        const num = Number(payload.value);
+        if (!Number.isFinite(num)) {
+          pushAssistantMessage?.(`❌ "${field.name}" requires a numeric value.`);
+          return;
+        }
+        // Range check if defined
+        if (field.range) {
+          const [min, max] = field.range;
+          if (num < min || num > max) {
+            pushAssistantMessage?.(`❌ Value ${num} is outside the valid range (${min}–${max}).`);
+            return;
+          }
+        }
+        normalizedValue = num;
+        break;
+      }
+      case 'boolean':
+        normalizedValue = Boolean(payload.value);
+        break;
+      case 'select': {
+        const strVal = String(payload.value);
+        if (field.options && !field.options.includes(strVal)) {
+          pushAssistantMessage?.(
+            `❌ "${strVal}" is not a valid option. Choose from: ${field.options.join(', ')}.`,
+          );
+          return;
+        }
+        normalizedValue = strVal;
+        break;
+      }
+      case 'text':
+      default:
+        normalizedValue = String(payload.value);
+    }
+
+    // Build the value entry
+    const now = new Date();
+    const entry: CustomFieldValue = {
+      recordedAt: now.toISOString(),
+      value: normalizedValue,
+      date:
+        typeof payload.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.date)
+          ? payload.date
+          : now.toISOString().slice(0, 10),
+      ...(typeof payload.note === 'string' && payload.note.trim() && { note: payload.note.trim() }),
+    };
+
+    // Get existing values and prepend new one (cap at 500)
+    const existingValues = profile.customFieldValues ?? {};
+    const fieldValues = existingValues[field.id] ?? [];
+    const updatedValues = [entry, ...fieldValues].slice(0, 500);
+
+    const updated: TitanProfile = {
+      ...profile,
+      customFieldValues: {
+        ...existingValues,
+        [field.id]: updatedValues,
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    await persistProfile(updated, userId ?? null, encryptionKey ?? null);
+
+    const unitLabel = field.unit ? ` ${field.unit}` : '';
+    pushAssistantMessage?.(
+      `✅ Logged **${normalizedValue}${unitLabel}** for "${field.name}" on ${entry.date}.`,
+    );
   },
 
 };

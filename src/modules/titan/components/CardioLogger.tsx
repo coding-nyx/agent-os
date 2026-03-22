@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import type { CardioSession, CardioSessionType } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
@@ -182,15 +182,13 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
                 Analyze
               </NeuralButton>
             )}
-            <NeuralButton
+            <NeuralIconButton
               size="sm"
-              iconOnly
               onClick={() => openModal()}
               title="Log Session"
               aria-label="Log Session"
-            >
-              <Activity className="w-3.5 h-3.5" />
-            </NeuralButton>
+              icon={<Activity className="w-3.5 h-3.5" />}
+            />
           </div>
         </div>
 
@@ -200,14 +198,12 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
             title="No cardio sessions yet"
             description="Track your runs, rides, swims and more. Titan uses cardio data to balance your aerobic and anaerobic training load."
             action={
-              <NeuralButton
-                iconOnly
+              <NeuralIconButton
                 onClick={() => openModal()}
                 title="Log Session"
                 aria-label="Log Session"
-              >
-                <Activity className="w-4 h-4" />
-              </NeuralButton>
+                icon={<Activity className="w-4 h-4" />}
+              />
             }
           />
         )}

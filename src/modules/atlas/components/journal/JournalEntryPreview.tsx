@@ -135,14 +135,10 @@ export function JournalEntryPreview({
     >
       {/* ── 1. Header row ─────────────────────────────────────────────────── */}
       <header className="flex items-start justify-between gap-3">
-        {/* Left: date + mood label */}
+        {/* Left: date only */}
         <div className="min-w-0">
           <p className="text-sm font-bold text-white/80 leading-snug">
             {dateLabel}
-          </p>
-          <p className="text-xs text-white/40 mt-0.5" aria-label={`Mood: ${mood.label}`}>
-            <span aria-hidden="true">{mood.emoji}</span>
-            {' '}{mood.label}
           </p>
         </div>
 
@@ -184,30 +180,34 @@ export function JournalEntryPreview({
         </div>
       </header>
 
-      {/* ── 2. Mood + Energy stat pills ──────────────────────────────────── */}
+      {/* ── 2. Mood + Energy — single combined widget ─────────────────────── */}
       <div
-        className="flex flex-wrap gap-2"
+        className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full
+                   bg-white/5 border border-white/10 text-xs"
         role="group"
-        aria-label="Mood and energy stats"
+        aria-label="Mood and energy"
       >
-        {/* Mood pill */}
-        <span
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                     bg-violet-500/10 border border-violet-500/20
-                     text-xs font-medium text-violet-200/80"
-        >
+        {/* Mood */}
+        <span className="flex items-center gap-1.5 text-white/70">
           <span aria-hidden="true">{mood.emoji}</span>
-          <span>Mood: {mood.label} ({entry.mood}/5)</span>
+          <span>{mood.label}</span>
         </span>
 
-        {/* Energy pill */}
-        <span
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                     bg-indigo-500/10 border border-indigo-500/20
-                     text-xs font-medium text-indigo-200/80"
-        >
+        {/* Divider */}
+        <span className="w-px h-3 bg-white/15" aria-hidden="true" />
+
+        {/* Energy segments */}
+        <span className="flex items-center gap-1.5 text-white/50">
           <span aria-hidden="true">⚡</span>
-          <span>Energy: {entry.energyLevel}/5</span>
+          <span className="sr-only">Energy {entry.energyLevel} of 5</span>
+          <span className="flex gap-0.5 items-center" aria-hidden="true">
+            {[1, 2, 3, 4, 5].map((v) => (
+              <span
+                key={v}
+                className={`block w-1.5 h-2.5 rounded-sm ${v <= entry.energyLevel ? 'bg-emerald-400/60' : 'bg-white/12'}`}
+              />
+            ))}
+          </span>
         </span>
       </div>
 
@@ -217,9 +217,10 @@ export function JournalEntryPreview({
           icon={<Sunrise className="w-3.5 h-3.5" />}
           label="Morning intention"
         >
-          <p className="text-sm text-white/80 italic leading-relaxed">
-            {entry.morningIntent}
-          </p>
+          <div
+            className="rich-preview text-sm text-white/80 italic leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: entry.morningIntent }}
+          />
         </PreviewSection>
       )}
 
@@ -241,13 +242,10 @@ export function JournalEntryPreview({
           icon={<BookOpen className="w-3.5 h-3.5" />}
           label="Reflections"
         >
-          {/*
-           * whitespace-pre-line preserves deliberate paragraph breaks
-           * while still wrapping long lines normally.
-           */}
-          <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">
-            {entry.freeform}
-          </p>
+          <div
+            className="rich-preview text-sm text-white/80 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: entry.freeform }}
+          />
         </PreviewSection>
       )}
 
@@ -257,9 +255,10 @@ export function JournalEntryPreview({
           icon={<Moon className="w-3.5 h-3.5" />}
           label="How it went"
         >
-          <p className="text-sm text-white/80 leading-relaxed">
-            {entry.eveningReflection}
-          </p>
+          <div
+            className="rich-preview text-sm text-white/80 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: entry.eveningReflection }}
+          />
         </PreviewSection>
       )}
 
@@ -292,9 +291,10 @@ export function JournalEntryPreview({
           label="What got in the way"
         >
           {/* Amber tint signals friction without being alarming */}
-          <p className="text-sm text-amber-300/80 leading-relaxed">
-            {entry.blockers}
-          </p>
+          <div
+            className="rich-preview text-sm text-amber-300/80 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: entry.blockers }}
+          />
         </PreviewSection>
       )}
 

@@ -31,8 +31,8 @@ describe('NeuralTabGroup', () => {
     );
 
     const tablist = screen.getByRole('tablist');
-    expect(tablist.className).toContain('w-full');
-    expect(tablist.className).toContain('min-w-0');
+    expect(tablist.className).toContain('w-fit');
+    expect(tablist.className).toContain('max-w-full');
     expect(tablist.className).toContain('overflow-x-auto');
   });
 
@@ -60,9 +60,9 @@ describe('NeuralTabGroup', () => {
       />
     );
 
-    const badge = container.querySelector('span.min-h-5');
+    const badge = container.querySelector('span.min-h-4');
     expect(badge).toBeInTheDocument();
-    expect(badge?.className).toContain('text-[11px]');
+    expect(badge?.className).toContain('text-[10px]');
   });
 
   it('supports arrow-key roving selection', () => {

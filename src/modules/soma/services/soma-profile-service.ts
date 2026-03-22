@@ -377,6 +377,7 @@ export async function saveSomaProfile(
     });
   } catch (error) {
     console.error('[SomaProfileService] Failed to save soma profile:', error);
+    throw error; // Re-throw so callers know the save failed
   }
 }
 

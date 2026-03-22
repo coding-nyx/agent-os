@@ -183,7 +183,7 @@ const NeuralTabButton = React.forwardRef<HTMLDivElement, NeuralTabButtonProps>((
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={cn(
-        'relative flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-[12px] md:text-[13px] font-semibold tracking-[0.02em] whitespace-nowrap transition-[color,background-color,opacity,transform] duration-300 group/tab cursor-pointer outline-none',
+        'relative flex min-h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] md:text-[12px] font-semibold tracking-[0.02em] whitespace-nowrap transition-[color,background-color,opacity,transform] duration-300 group/tab cursor-pointer outline-none',
         isActive ? theme.activeText : 'text-white/30 hover:text-white/60 hover:bg-white/[0.02]',
         isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'
       )}
@@ -191,15 +191,15 @@ const NeuralTabButton = React.forwardRef<HTMLDivElement, NeuralTabButtonProps>((
         textShadow: isActive ? `0 0 15px ${theme.underline}30` : 'none'
       } as React.CSSProperties}
     >
-      <div className="relative z-10 flex items-center gap-2">
-        <div className="flex items-center gap-2 pr-1">
-          {Icon && <Icon className={cn("h-4 w-4 md:h-[1.125rem] md:w-[1.125rem]", isActive ? theme.activeText : "text-white/40")} aria-hidden />}
-          <span>{label}</span>
+      <div className="relative z-10 flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 pr-0.5">
+          {Icon && <Icon className={cn("h-3.5 w-3.5", isActive ? theme.activeText : "text-white/40")} aria-hidden />}
+          <span className={cn(Icon ? "hidden sm:inline" : undefined)}>{label}</span>
         </div>
 
         {badge !== undefined && (
           <span className={cn(
-            "ml-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full border px-1.5 text-[11px] font-semibold tabular-nums",
+            "ml-0.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full border px-1 text-[10px] font-semibold tabular-nums",
             badgeVariant && badgeVariant !== 'default' 
               ? VARIANT_BADGE_COLORS[badgeVariant] 
               : cn(theme.badgeBg, theme.badgeBorder, theme.badgeText)
@@ -215,10 +215,10 @@ const NeuralTabButton = React.forwardRef<HTMLDivElement, NeuralTabButtonProps>((
         <motion.div
           layoutId={`${layoutIdPrefix}-pill`}
           className={cn(
-            "absolute inset-0 rounded-xl", 
+            "absolute inset-0 rounded-md", 
             theme.pillBg, 
             theme.pillBorder,
-            "shadow-[inset_0_0_12px_rgba(255,255,255,0.05)]"
+            "shadow-[inset_0_0_8px_rgba(255,255,255,0.04)]"
           )}
           transition={
             reducedMotion
@@ -292,7 +292,7 @@ export function NeuralTabGroup<T extends string = string>({
       role="tablist"
       aria-orientation="horizontal"
       className={cn(
-        "flex w-full min-w-0 max-w-full items-center gap-1.5 overflow-x-auto overscroll-x-contain rounded-2xl p-1.5 no-scrollbar transition-[background-color,border-color,box-shadow] duration-300",
+        "flex w-fit max-w-full items-center gap-0.5 overflow-x-auto overscroll-x-contain rounded-lg p-0.5 no-scrollbar transition-[background-color,border-color,box-shadow] duration-300",
         variant === 'pill' && "bg-black/20 backdrop-blur-md border border-white/[0.05] shadow-inner",
         className
       )}

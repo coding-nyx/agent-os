@@ -379,9 +379,28 @@
   }
 
   .skeleton {
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.05) 100%);
-    background-size: 200% 100%;
-    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 20%,
+      rgba(255, 255, 255, 0.055) 38%,
+      rgba(255, 255, 255, 0.095) 50%,
+      rgba(255, 255, 255, 0.055) 62%,
+      transparent 80%,
+      transparent 100%
+    );
+    animation: skeleton-wave 1.8s ease-in-out infinite;
+    transform: translateX(-100%);
   }
 
   .panel-card {
@@ -564,13 +583,9 @@
   }
 }
 
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+@keyframes skeleton-wave {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
 }
 
 .hub-edge-flow {
@@ -737,4 +752,131 @@ textarea {
   font-size: 15px;
   line-height: 1.75;
   letter-spacing: 0.01em;
+}
+
+/* ── TipTap Rich Text Editor ─────────────────────────────────────────── */
+
+/* Editor container */
+.rich-editor .tiptap {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.875rem;
+  line-height: 1.75;
+  outline: none;
+  min-height: inherit;
+}
+
+.rich-editor .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Focus mode editor */
+.focus-mode-editor .tiptap {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 1rem;
+  line-height: 1.8;
+  outline: none;
+  min-height: 60vh;
+}
+
+.focus-mode-editor .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Rich text inline elements */
+.rich-editor .tiptap strong,
+.focus-mode-editor .tiptap strong,
+.rich-preview strong {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.rich-editor .tiptap em,
+.focus-mode-editor .tiptap em,
+.rich-preview em {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.rich-editor .tiptap s,
+.focus-mode-editor .tiptap s,
+.rich-preview s {
+  text-decoration: line-through;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Headings */
+.rich-editor .tiptap h2,
+.focus-mode-editor .tiptap h2,
+.rich-preview h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 0.75em;
+  margin-bottom: 0.25em;
+  letter-spacing: -0.01em;
+}
+
+.rich-editor .tiptap h3,
+.focus-mode-editor .tiptap h3,
+.rich-preview h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 0.5em;
+  margin-bottom: 0.2em;
+}
+
+/* Paragraphs */
+.rich-editor .tiptap p,
+.focus-mode-editor .tiptap p {
+  margin-bottom: 0.5em;
+}
+
+.rich-editor .tiptap p:last-child,
+.focus-mode-editor .tiptap p:last-child {
+  margin-bottom: 0;
+}
+
+/* Lists */
+.rich-editor .tiptap ul,
+.focus-mode-editor .tiptap ul,
+.rich-preview ul {
+  list-style-type: disc;
+  padding-left: 1.25em;
+  margin-bottom: 0.5em;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.rich-editor .tiptap ol,
+.focus-mode-editor .tiptap ol,
+.rich-preview ol {
+  list-style-type: decimal;
+  padding-left: 1.25em;
+  margin-bottom: 0.5em;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.rich-editor .tiptap li,
+.focus-mode-editor .tiptap li,
+.rich-preview li {
+  margin-bottom: 0.15em;
+}
+
+/* Blockquote */
+.rich-editor .tiptap blockquote,
+.focus-mode-editor .tiptap blockquote,
+.rich-preview blockquote {
+  border-left: 2px solid rgba(139, 92, 246, 0.4);
+  padding-left: 0.875em;
+  margin: 0.5em 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
 }

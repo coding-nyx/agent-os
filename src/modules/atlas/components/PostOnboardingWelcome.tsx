@@ -22,7 +22,6 @@ interface PostOnboardingWelcomeProps {
   profile: AtlasProfile;
   userId?: string | null;
   onDismiss: () => void;
-  onLogEnergy: () => void;
   onAddHabit: () => void;
   onCreateGoal: () => void;
 }
@@ -87,7 +86,6 @@ export function PostOnboardingWelcome({
   profile,
   userId,
   onDismiss,
-  onLogEnergy,
   onAddHabit,
   onCreateGoal,
 }: PostOnboardingWelcomeProps) {
@@ -170,15 +168,7 @@ export function PostOnboardingWelcome({
       <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-2">
         Start Here
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <ActionPrompt
-          icon={Zap}
-          title="Log your energy"
-          description="Set your current energy level to calibrate today's schedule."
-          onClick={() => { handleDismiss(); onLogEnergy(); }}
-          accentClass="text-[var(--module-color-400)]"
-          borderClass="border-[var(--module-accent-border)] hover:border-[var(--module-accent-border)]"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <ActionPrompt
           icon={Flame}
           title="Add a habit"

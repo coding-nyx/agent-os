@@ -5,7 +5,7 @@
 import React, { useState, useCallback } from 'react';
 import { Plus, MessageSquare, Database, AlertCircle, Utensils, Zap, Settings } from 'lucide-react';
 import { DynamicFormBuilder } from '@/core/components/forms/DynamicFormBuilder';
-import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import type { FieldDefinition } from '@/lib/field-system/types';
@@ -315,16 +315,14 @@ export function CustomFieldManager({
               </p>
             </div>
           </div>
-          <NeuralButton
+          <NeuralIconButton
             size="sm"
             variant="ghost"
-            iconOnly
             onClick={handleSetupMacros}
             disabled={macrosCreating}
             title={macrosCreating ? 'Creating…' : 'Set Up Macros'}
-          >
-            <Zap className="w-3.5 h-3.5" />
-          </NeuralButton>
+            icon={<Zap className="w-3.5 h-3.5" />}
+          />
         </div>
       )}
 
@@ -344,15 +342,17 @@ export function CustomFieldManager({
             </div>
           </div>
 
-          <NeuralButton
+          <NeuralIconButton
             size="sm"
             variant="ghost"
-            iconOnly
             onClick={() => setIsModalOpen(true)}
             title={hasCustomData ? 'Edit Fields' : 'Add Fields'}
-          >
-            {hasCustomData ? <Settings className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-          </NeuralButton>
+            icon={
+              hasCustomData
+                ? <Settings className="w-3.5 h-3.5" />
+                : <Plus className="w-3.5 h-3.5" />
+            }
+          />
         </div>
 
         {hasCustomData ? (

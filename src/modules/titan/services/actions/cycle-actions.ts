@@ -140,4 +140,93 @@ export const cycleHandlers: Record<string, ActionHandler> = {
     await persistProfile({ ...profile, cycles: updatedCycles, updatedAt: now }, userId ?? null, encryptionKey ?? null);
   },
 
+  /**
+   * check_cycle_phases — auto-advance cycles whose current phase duration has elapsed.
+   * Should be called at session start or periodically by the scheduler.
+   * Emits CYCLE_COMPLETED when all phases are done.
+   */
+  check_cycle_phases: async ({ userId, encryptionKey, pushAssistantMessage }) => {
+    const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!profile?.cycles?.length) return;
+
+    const now = new Date();
+    const todayIso = now.toISOString().slice(0, 10);
+    const todayMs = now.getTime();
+
+    let anyChanged = false;
+    const advancedCycles: string[] = [];
+    const completedCycles: string[] = [];
+
+    const updatedCycles = profile.cycles.map((cycle) => {
+      if (cycle.status !== 'active') return cycle;
+
+      const currentPhase = cycle.phases[cycle.currentPhaseIndex];
+      if (!currentPhase) return cycle;
+
+      const phaseStartMs = new Date(cycle.currentPhaseStartDate).getTime();
+      const phaseDurationMs = currentPhase.durationDays * 24 * 60 * 60 * 1000;
+      const phaseEndMs = phaseStartMs + phaseDurationMs;
+
+      // Phase hasn't ended yet
+      if (todayMs < phaseEndMs) return cycle;
+
+      // Phase has ended — advance or complete
+      anyChanged = true;
+      const nextPhaseIndex = cycle.currentPhaseIndex + 1;
+
+      if (nextPhaseIndex >= cycle.phases.length) {
+        // All phases done — mark complete
+        completedCycles.push(cycle.name);
+        return {
+          ...cycle,
+          status: 'completed' as const,
+          updatedAt: now.toISOString(),
+        };
+      }
+
+      // Advance to next phase
+      advancedCycles.push(`${cycle.name} → ${cycle.phases[nextPhaseIndex].name}`);
+      return {
+        ...cycle,
+        currentPhaseIndex: nextPhaseIndex,
+        currentPhaseStartDate: todayIso,
+        updatedAt: now.toISOString(),
+      };
+    });
+
+    if (!anyChanged) return;
+
+    await persistProfile(
+      { ...profile, cycles: updatedCycles, updatedAt: now.toISOString() },
+      userId ?? null,
+      encryptionKey ?? null
+    );
+
+    // Emit events for completed cycles
+    for (const cycle of updatedCycles) {
+      if (cycle.status === 'completed' && completedCycles.includes(cycle.name)) {
+        Spine.emit({
+          type: 'CYCLE_COMPLETED',
+          source: 'titan',
+          domain: 'B',
+          data: { cycleId: cycle.id, name: cycle.name, type: cycle.type },
+          cascadeDepth: 0,
+          priority: 'info',
+        });
+      }
+    }
+
+    // Notify user of changes
+    if (advancedCycles.length > 0 || completedCycles.length > 0) {
+      const parts: string[] = [];
+      if (advancedCycles.length) {
+        parts.push(`📅 **Cycle phase advanced:** ${advancedCycles.join(', ')}`);
+      }
+      if (completedCycles.length) {
+        parts.push(`✅ **Cycle completed:** ${completedCycles.join(', ')}`);
+      }
+      pushAssistantMessage?.(parts.join('\n'));
+    }
+  },
+
 };

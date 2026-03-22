@@ -228,6 +228,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
     switch (frequency) {
       case 'weekends': return 44 * 60 * 60 * 1000;
       case 'weekly':   return 144 * 60 * 60 * 1000;
+      case 'monthly':  return 720 * 60 * 60 * 1000; // 30 days
       case 'daily':
       case 'weekdays':
       case 'custom':
@@ -240,6 +241,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
     weekdays: '⚡',
     weekends: '🌿',
     weekly:   '📅',
+    monthly:  '🗓️',
     custom:   '⭐',
   };
 

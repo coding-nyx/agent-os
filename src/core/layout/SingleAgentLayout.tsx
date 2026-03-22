@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, MessageSquare, X } from 'lucide-react';
+import { MessageSquare, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { NexusChat } from '@/core/components/NexusChat';
 import { NeuralThemeColor } from '@/core/components/NeuralTabGroup';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
+import { FloatingChatPanel } from '@/core/layout/FloatingChatPanel';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import type { AuthMode } from '@/core/components/UnifiedAuthModal';
@@ -46,6 +47,8 @@ interface SingleAgentLayoutProps {
   onUploadDocument?: (file: File) => void;
   onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
   hideChatTrigger?: boolean;
+  /** Optional per-message extra content rendered below the message bubble (e.g. inline proposal cards). */
+  renderMessageActions?: (message: Message, index: number) => React.ReactNode;
   // External control for layout intelligence
   isChatCollapsed?: boolean;
   onToggleChat?: (collapsed: boolean) => void;
@@ -59,7 +62,6 @@ export function SingleAgentLayout({
   ai,
   placeholder = "Communicate with agent...",
   authMode,
-  chatWidth = 'clamp(320px, 32vw, 520px)',
   mobileBreakpoint = 768,
   dockChatBreakpoint = mobileBreakpoint,
   contentClassName,
@@ -67,6 +69,7 @@ export function SingleAgentLayout({
   onUploadDocument,
   onUploadDocuments,
   hideChatTrigger = false,
+  renderMessageActions,
   isChatCollapsed: externalIsChatCollapsed,
   onToggleChat
 }: SingleAgentLayoutProps) {
@@ -96,7 +99,7 @@ export function SingleAgentLayout({
   // Sync layout mode for dynamic positioning
   useEffect(() => {
     if (isOverlayChatOpen) setActiveLayout('overlay');
-    else if (canDockChat && !isChatCollapsed) setActiveLayout('split');
+    else if (canDockChat && !isChatCollapsed) setActiveLayout('overlay');
     else setActiveLayout('full');
     return () => setActiveLayout('full');
   }, [canDockChat, isChatCollapsed, isOverlayChatOpen, setActiveLayout]);
@@ -178,7 +181,7 @@ export function SingleAgentLayout({
   return (
     <div
       className="relative flex h-full w-full min-w-0 max-w-full overflow-hidden"
-      style={{ '--spine-sidebar-width': (canDockChat && !isChatCollapsed) ? chatWidth : '0px' } as React.CSSProperties}
+      style={{ '--spine-sidebar-width': '0px' } as React.CSSProperties}
     >
       {/* Mobile module switcher */}
       {!canDockChat && (
@@ -229,35 +232,44 @@ export function SingleAgentLayout({
 
       {/* ── Open Chat Floating Button (Desktop) ── */}
       {canDockChat && isChatCollapsed && !hideChatTrigger && (
-        <motion.button
-          initial={{ opacity: 0, scale: 0.9, x: 20 }}
-          animate={{ opacity: 1, scale: 1, x: 0 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => toggleChat(false)}
-          className={cn(
-            'z-[calc(var(--z-fab)+2)] fixed border backdrop-blur-xl shadow-2xl transition-all duration-300 rounded-2xl font-semibold tracking-[0.04em]',
-            currentTheme.btnBg,
-            currentTheme.btnBorder,
-            currentTheme.btnText
-          )}
+        <div
+          className="fixed z-[calc(var(--z-fab)+2)] flex flex-col items-end gap-3 transition-all duration-300"
           style={{ right: floatingInlineEnd, bottom: floatingBottom }}
         >
-          <div className="hidden lg:flex items-center gap-3 px-5 py-3 text-[12px]">
-            <MessageSquare className="w-4 h-4" />
-            <span>Chat {agentName}</span>
-            <div className={cn("h-1.5 w-1.5 rounded-full animate-pulse", 
-              currentTheme.indicatorBg
-            )} />
-          </div>
-          <div className="flex lg:hidden items-center justify-center w-10 h-10">
-            <MessageSquare className="w-4 h-4" />
-          </div>
-        </motion.button>
+          {primaryAction && (
+            <div className="shrink-0 flex items-center justify-center">
+              {primaryAction}
+            </div>
+          )}
+          <motion.button
+            initial={{ opacity: 0, scale: 0.9, x: 20 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => toggleChat(false)}
+            className={cn(
+              'border backdrop-blur-xl shadow-2xl transition-all duration-300 rounded-2xl font-semibold tracking-[0.04em]',
+              currentTheme.btnBg,
+              currentTheme.btnBorder,
+              currentTheme.btnText
+            )}
+          >
+            <div className="hidden lg:flex items-center gap-3 px-5 py-3 text-[12px]">
+              <MessageSquare className="w-4 h-4" />
+              <span>Chat {agentName}</span>
+              <div className={cn("h-1.5 w-1.5 rounded-full animate-pulse", 
+                currentTheme.indicatorBg
+              )} />
+            </div>
+            <div className="flex lg:hidden items-center justify-center w-10 h-10">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+          </motion.button>
+        </div>
       )}
 
       {/* ── Main Dashboard Content ── */}
-      <div className="relative flex h-full flex-1 min-w-0 max-w-full flex-col overflow-hidden bg-black/5">
+      <div className="flex h-full flex-1 min-w-0 flex-col overflow-hidden bg-black/5">
         <div 
           className={cn(
             "flex min-h-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden no-scrollbar scroll-smooth",
@@ -268,69 +280,46 @@ export function SingleAgentLayout({
             {children}
           </div>
         </div>
-
-        {/* ── Desktop: Right Overlay Command Deck ── */}
-        {canDockChat && (
-          <motion.div
-            initial={false}
-            animate={{
-              x: isChatCollapsed ? '100%' : '0%',
-              opacity: 1, // Always visible for slide animation
-              pointerEvents: isChatCollapsed ? 'none' : 'auto'
-            }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className={cn(
-              "absolute top-0 bottom-0 right-0 z-[20] flex flex-col border-l bg-black/40 backdrop-blur-xl shadow-[-8px_0_30px_rgba(0,0,0,0.5)]",
-              currentTheme.sidebarBorder
-            )}
-            style={{ width: chatWidth }}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-black/20 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", currentTheme.indicatorBg)} />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-white/50">{agentName} Terminal</span>
-              </div>
-              <button 
-                onClick={() => toggleChat(true)}
-                className="p-1 hover:bg-white/5 rounded-md transition-colors"
-                title="Collapse Chat"
-              >
-                 <ChevronRight className="w-4 h-4 text-white/40" />
-              </button>
-            </div>
-            
-            <div className="flex-1 min-h-0 flex flex-col relative">
-              {/* Routing suggestion — positioned at top to avoid blocking input */}
-              <div className="absolute top-2 left-0 right-0 z-30 px-4 pointer-events-none">
-                <div className="pointer-events-auto w-full">
-                  <RoutingSuggestion
-                    target={ai.routingSuggestion?.target || 'agnes'}
-                    reason={ai.routingSuggestion?.reason}
-                    onConfirm={handleRouteConfirm}
-                    onDismiss={handleRouteDismiss}
-                    visible={ai.routingSuggestion !== undefined && ai.routingSuggestion !== null}
-                  />
-                </div>
-              </div>
-
-              <div className="flex-1 min-w-0 w-full h-full flex flex-col">
-                <NexusChat
-                  moduleId={moduleId}
-                  ai={ai}
-                  agentName={agentName}
-                  themeColor={themeColor as any}
-                  placeholder={placeholder}
-                  authMode={authMode}
-                  showInternalSignals={false}
-                  onClearHistory={ai.clearSession}
-                  onUploadDocument={onUploadDocument}
-                  onUploadDocuments={onUploadDocuments}
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
       </div>
+
+      {/* ── Desktop: Floating Chat Panel ── */}
+      {canDockChat && (
+        <FloatingChatPanel
+          moduleId={moduleId}
+          agentName={agentName}
+          isOpen={!isChatCollapsed}
+          onClose={() => toggleChat(true)}
+          onClearHistory={ai.clearSession}
+          themeClasses={currentTheme}
+        >
+          <div className="absolute top-2 left-0 right-0 z-30 px-4 pointer-events-none">
+            <div className="pointer-events-auto w-full">
+              <RoutingSuggestion
+                target={ai.routingSuggestion?.target || 'agnes'}
+                reason={ai.routingSuggestion?.reason}
+                onConfirm={handleRouteConfirm}
+                onDismiss={handleRouteDismiss}
+                visible={ai.routingSuggestion !== undefined && ai.routingSuggestion !== null}
+              />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0 w-full h-full flex flex-col">
+            <NexusChat
+              moduleId={moduleId}
+              ai={ai}
+              agentName={agentName}
+              themeColor={themeColor as any}
+              placeholder={placeholder}
+              authMode={authMode}
+              showInternalSignals={false}
+              hideClearHistory={true}
+              onUploadDocument={onUploadDocument}
+              onUploadDocuments={onUploadDocuments}
+              renderMessageActions={renderMessageActions}
+            />
+          </div>
+        </FloatingChatPanel>
+      )}
 
       {/* ── Agent Overlay (Mobile/Tablet) — Bottom Sheet ── */}
       {!canDockChat && createPortal(
@@ -395,6 +384,7 @@ export function SingleAgentLayout({
                        onClearHistory={ai.clearSession}
                        onUploadDocument={onUploadDocument}
                        onUploadDocuments={onUploadDocuments}
+                       renderMessageActions={renderMessageActions}
                      />
                     {/* Routing suggestion — inline below chat input */}
                     <RoutingSuggestion

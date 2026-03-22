@@ -1,7 +1,7 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import type { TitanProfile, Routine, BiomarkerRecord, MedicalImageAnalysis, SleepEntry, CycleEntry, CyclePhase, CycleType, WorkoutSession, ExerciseLog, ExerciseSet, PersonalRecord, CustomField, BodyWeightEntry, CardioSession, CardioSessionType, TitanWorkoutSet, TitanWorkoutLog } from '@/lib/types';
+import type { TitanProfile, Routine, BiomarkerRecord, MedicalImageAnalysis, SleepEntry, CycleEntry, CyclePhase, CycleType, WorkoutSession, ExerciseLog, ExerciseSet, PersonalRecord, CustomField, CustomFieldValue, BodyWeightEntry, CardioSession, CardioSessionType, TitanWorkoutSet, TitanWorkoutLog } from '@/lib/types';
 import { mergeTitanProfile, normalizeRoutines } from '../../utils';
 import { normalizeTitanProfilePatch } from '../../onboarding/intake-accumulator';
 import { loadTitanProfile, saveTitanProfile } from '../titan-profile-service';
@@ -58,6 +58,7 @@ export type {
   ExerciseSet,
   PersonalRecord,
   CustomField,
+  CustomFieldValue,
   BodyWeightEntry,
   CardioSession,
   CardioSessionType,

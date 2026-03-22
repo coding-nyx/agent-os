@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import type { BodyWeightEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
@@ -317,15 +317,13 @@ export function BodyWeightTracker({
                 Analyze
               </NeuralButton>
             )}
-            <NeuralButton
+            <NeuralIconButton
               size="sm"
-              iconOnly
               onClick={() => openModal()}
               title="Log Weight"
               aria-label="Log Weight"
-            >
-              <Scale className="w-3.5 h-3.5" />
-            </NeuralButton>
+              icon={<Scale className="w-3.5 h-3.5" />}
+            />
           </div>
         </div>
 
@@ -336,14 +334,12 @@ export function BodyWeightTracker({
             title="No weight data yet"
             description="Track your body weight to monitor composition changes and set a baseline for your transformation."
             action={
-              <NeuralButton
-                iconOnly
+              <NeuralIconButton
                 onClick={() => openModal()}
                 title="Log Weight"
                 aria-label="Log Weight"
-              >
-                <Scale className="w-4 h-4" />
-              </NeuralButton>
+                icon={<Scale className="w-4 h-4" />}
+              />
             }
           />
         )}

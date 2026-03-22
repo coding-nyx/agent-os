@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { Message, GuestQuota, MessageContent } from '@/lib/types';
 import { NeuralLinkAlert } from './NeuralLinkAlert';
 import { stripInternalTags } from '@/lib/ai-adapters/sanitize';
-import { NeuralButton } from './NeuralButton';
+import { NeuralButton, NeuralIconButton } from './NeuralButton';
 import { NeuralTextarea } from './NeuralTextarea';
 import { EmptyState } from '@/core/components/EmptyState';
 import { getActionLabel } from '@/lib/actions/action-labels';
@@ -604,7 +604,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                 )}
                 </div>
                 {actions && (
-                  <div className={cn("mt-3", isAI ? "ml-12" : "mr-12")}>
+                  <div className={cn("mt-3 self-stretch overflow-hidden", isAI ? "pl-[52px]" : "pr-[52px]")}>
                     {actions}
                   </div>
                 )}
@@ -834,18 +834,18 @@ export const ChatInterface = React.memo(function ChatInterface({
                 (error || quota?.isHardLocked) && "opacity-20 grayscale pointer-events-none"
             )}>
               {(canShowUpload || renderCustomActions) && (
-                  <NeuralButton 
-                  type="button"
-                  variant="ghost"
-                  iconOnly
-                  onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-                  className={cn(
-                    "rounded-panel flex items-center justify-center transition-all bg-white/8 border border-white/10 hover:bg-white/12 group/plus",
-                    isDrawerOpen && "bg-white/10 border-white/20 rotate-45"
-                  )}
-                >
+              <NeuralIconButton
+                type="button"
+                variant="ghost"
+                onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+                className={cn(
+                  "rounded-panel flex items-center justify-center transition-all bg-white/8 border border-white/10 hover:bg-white/12 group/plus",
+                  isDrawerOpen && "bg-white/10 border-white/20 rotate-45"
+                )}
+                icon={
                   <Plus className="w-5 h-5 text-white/70 group-hover/plus:text-white transition-colors drop-shadow-[0_0_6px_rgba(255,255,255,0.25)]" />
-                </NeuralButton>
+                }
+              />
               )}
 
               <NeuralTextarea 

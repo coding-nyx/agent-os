@@ -83,7 +83,10 @@ export function calculateDeadlinePressure(tasks: AtlasTask[]): number {
   return Math.min(10, upcoming.length * 3 + overduePenalty);
 }
 
-export function unblockDependents(tasks: AtlasTask[], completedId: string): void {
+export function unblockDependents(tasks: AtlasTask[], completedId: string, _visited = new Set<string>()): void {
+  if (_visited.has(completedId)) return; // cycle guard
+  _visited.add(completedId);
+
   for (const task of tasks) {
     if (task.status !== 'blocked') continue;
     if (!task.dependencies.includes(completedId)) continue;
@@ -93,6 +96,8 @@ export function unblockDependents(tasks: AtlasTask[], completedId: string): void
     });
     if (allDepsDone) {
       task.status = 'queued';
+      // Recursively unblock tasks that depend on this newly-queued task
+      unblockDependents(tasks, task.id, _visited);
     }
   }
 }

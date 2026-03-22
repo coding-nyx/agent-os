@@ -1,8 +1,8 @@
 import {
   loadProfile,
   persistProfile,
-  GlobalProjectionService,
 } from './shared';
+import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
 import type { ActionHandler, TitanProfile, SleepEntry } from './shared';
 
 export const sleepHandlers: Record<string, ActionHandler> = {
@@ -51,9 +51,7 @@ export const sleepHandlers: Record<string, ActionHandler> = {
       const qualityScore = entry.quality;
       const sleepQuality = Math.round(((hoursScore + qualityScore) / 2) * 10) / 10;
 
-      GlobalProjectionService.updateCrossFunctionalState(userId, {
-        biological: { sleepQuality },
-      }).catch((e) => console.error('sleepQuality NSV update failed:', e));
+      queueNSVUpdate(userId, { biological: { sleepQuality } }, 'log_sleep');
     }
   },
 

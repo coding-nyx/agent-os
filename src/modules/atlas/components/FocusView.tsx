@@ -321,7 +321,7 @@ export function FocusView({
         aria-label="Open chat with Atlas"
         themeColor="emerald"
         className={cn(
-          'fixed bottom-6 right-6 z-[var(--z-fab)] !w-12 !h-12 !rounded-full',
+          'fixed bottom-6 left-6 z-[var(--z-fab)] !w-12 !h-12 !rounded-full',
           'shadow-lg shadow-emerald-500/10'
         )}
       >

@@ -431,6 +431,8 @@ ALLOWED ACTIONS:
 - <action type="move_task">{"id":"${task.id}","newSlot":"ISO8601","reason":"..."}</action>
 - <action type="set_deadline">{"targetId":"${task.id}","targetType":"task","deadline":"ISO8601"}</action>
 - <action type="create_task">{...sub-task linked to this task}</action>
+- <action type="propose_reminder">{"title":"Reminder: ${task.title}","note":"...","dueAt":"ISO8601","recurrence":{"kind":"once","dueAt":"ISO8601"},"priority":"info","source":{"entityType":"task","entityId":"${task.id}","label":"${task.title}"}}</action>
+- <action type="query_reminders">{"moduleId":"atlas"}</action>
 
 RULES:
 ${ATLAS_RULES.join('\n')}
@@ -469,6 +471,8 @@ ALLOWED ACTIONS:
 - <action type="pause_habit">{"id":"habit_id","reason":"...","resumeDate":"ISO8601"}</action>
 - <action type="create_habit">{"title":"...","frequency":"daily","targetStreak":21,"energyCost":2,"minimumViableVersion":"..."}</action>
 - <action type="update_habit">{"id":"habit_id",...changes}</action>
+- <action type="propose_reminder">{"title":"Habit check-in: ...","note":"...","dueAt":"ISO8601","recurrence":{"kind":"weekly_by_days","daysOfWeek":[1,2,3,4,5],"timeOfDay":"08:00"},"priority":"info","source":{"entityType":"habit","entityId":"habit_id","label":"..."}}</action>
+- <action type="query_reminders">{"moduleId":"atlas"}</action>
 
 RULES:
 ${ATLAS_RULES.join('\n')}
@@ -514,6 +518,8 @@ ALLOWED ACTIONS:
 - <action type="create_task">{...task linked to goal via "goalId":"${goal.id}"}</action>
 - <action type="update_goal">{"id":"${goal.id}", ...changes}</action>
 - <action type="create_goal">{...new goal}</action>
+- <action type="propose_reminder">{"title":"Goal check-in: ${goal.title}","note":"...","dueAt":"ISO8601","recurrence":{"kind":"every_n_days","intervalDays":7},"priority":"info","source":{"entityType":"goal","entityId":"${goal.id}","label":"${goal.title}"}}</action>
+- <action type="query_reminders">{"moduleId":"atlas"}</action>
 
 RULES:
 ${ATLAS_RULES.join('\n')}

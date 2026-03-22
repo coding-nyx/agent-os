@@ -9,6 +9,9 @@ import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import { SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { ATLAS_PERSONA } from './personas';
+import { buildAtlasPrompt, type AtlasDataContext } from './prompts/atlas-prompt-builder';
+import { formatNSVForAtlasPlanner } from '@/lib/services/nsv-service';
+import type { NeuralStateVector } from '@/lib/types';
 import { AtlasActionsProvider } from './context/AtlasActionsContext';
 import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
 import { AtlasNotificationSettingsPanel } from './components/AtlasNotificationSettingsPanel';
@@ -42,7 +45,7 @@ import {
   mergeCheckInData,
 } from './services/journal-service';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
-import { registerAtlasFieldActions } from './actions/atlas-field-actions';
+import { AtlasReviewService } from './services/atlas-review-service';
 
 function buildRecoveryWindow(reason: string): RecoveryWindow {
   const now = Date.now();
@@ -199,37 +202,24 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     }
   }, [profile]);
 
-  // AI Logic for Atlas
-  const ai = useModuleAI({
-    moduleId: 'atlas',
-    systemPrompt: ATLAS_PERSONA,
-    encryptionKey,
-    persistencePolicy: 'atlas-planning'
-  });
-
+  // AT4: Run AtlasReviewService audit once per calendar day when profile loads.
+  // Emits HABIT_STREAK_BROKEN and GOAL_MISSING_PROGRESS Spine events so other
+  // modules (Agnes, Titan) can react to commitment failures.
   useEffect(() => {
-    if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
-      ai.setMessages([
-        {
-          role: 'assistant',
-          content: `Cognitive link active. I am ${agentAlias}. Share task pressure, schedule constraints, or focus instability and I will reshape your wave.`
-        }
-      ]);
-    }
-  }, [profile?.onboardingComplete, ai.messages.length, ai.isProcessing, ai.streamingText, agentAlias, ai.setMessages]);
+    if (!profile) return;
+    const today = new Date().toISOString().split('T')[0];
+    const auditKey = `atlas_review_audited_${today}_${user?.uid ?? 'guest'}`;
+    try {
+      if (sessionStorage.getItem(auditKey) === '1') return;
+      sessionStorage.setItem(auditKey, '1');
+    } catch { /* non-browser / SSR */ }
+    AtlasReviewService.performAudit(profile).catch((err) => {
+      console.warn('[Atlas] Review audit failed:', err);
+    });
+  }, [profile, user?.uid]);
 
-  // Consume any pending Nexus handoff (e.g. "plan your week" delegated from Nexus).
-  // Runs once after AI is ready and profile is loaded.
-  useEffect(() => {
-    if (!profile?.onboardingComplete || ai.isProcessing) return;
-    const handoff = NexusHandoffService.consume('atlas');
-    if (handoff?.content) {
-      ai.handleSendMessage(handoff.content);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.onboardingComplete]);
-
-  // Extension field management via SchemaRegistry
+  // Extension field management via SchemaRegistry — declared early so
+  // it can be referenced in the dynamic systemPrompt computation below.
   const {
     extensions,
     addExtension,
@@ -242,6 +232,38 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     updateFieldValue,
     removeFieldValue,
   } = useExtensionFieldValues('atlas');
+
+  // Build dynamic system prompt from live profile + NSV so the AI knows
+  // the user's actual tasks, goals, habits, and energy state on every call.
+  const systemPrompt = useMemo((): string => {
+    if (!profile) return ATLAS_PERSONA;
+
+    const nsv = globalSoul?.crossFunctionalState as NeuralStateVector | undefined;
+    const nsvBlock = nsv ? formatNSVForAtlasPlanner(nsv) : undefined;
+
+    const extBlock = extensions.length > 0
+      ? `CUSTOM TRACKING FIELDS:\n${extensions.map(f => `- "${f.name}" (${f.type})`).join('\n')}`
+      : undefined;
+
+    const dataContext: AtlasDataContext = {
+      tasks: profile.tasks?.slice(0, 30),
+      goals: profile.goals?.slice(0, 25),
+      habits: profile.habits?.filter(h => h.status === 'active').slice(0, 10),
+      routine: profile.routine ?? null,
+      today: new Date().toISOString().split('T')[0],
+    };
+
+    return buildAtlasPrompt({ kind: 'general' }, nsvBlock, extBlock, dataContext);
+  }, [profile, globalSoul?.crossFunctionalState, extensions]);
+
+  // AI Logic for Atlas
+  const ai = useModuleAI({
+    moduleId: 'atlas',
+    systemPrompt,
+    encryptionKey,
+    persistencePolicy: 'atlas-planning'
+  });
+
 
   const handleSaveFieldValue = useCallback(async (fieldId: string, value: any) => {
     await updateFieldValue(fieldId, value);
@@ -518,8 +540,8 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     );
   }, [user?.uid]);
 
-  // S-journal-01: Evening check-in dismiss — persist atlas profile check-in
-  // AND fire-and-forget a journal entry pre-population.
+  // S-journal-01: Evening check-in dismiss — persist atlas profile check-in,
+  // update NSV via ActionHub complete_check_in, and pre-populate today's journal.
   const handleEveningCheckinDismiss = useCallback(
     (data?: EveningCheckInSubmitData) => {
       setShowEveningCheckin(false);
@@ -542,6 +564,14 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
           updatedAt: new Date().toISOString(),
         };
         persistUpdate(next);
+
+        // Dispatch complete_check_in so NSV (energyBudget) is updated via ActionHub
+        // and a ATLAS_STATE_CHANGED Spine event is emitted.
+        executeAtlasAction('complete_check_in', {
+          type: 'evening',
+          energyRating: data.energyLevel,
+          reflection: data.blockers || undefined,
+        }, 'evening_check_in_completed');
       }
 
       // Auto-populate today's journal entry (fire-and-forget).
@@ -564,7 +594,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
         })();
       }
     },
-    [profile, encryptionKey, user?.uid, persistUpdate],
+    [profile, encryptionKey, user?.uid, persistUpdate, executeAtlasAction],
   );
 
   useSpineEvent('BURNOUT_WARNING', (event) => {
@@ -607,27 +637,6 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     persistUpdate(next);
   });
 
-  const handleManualEnergyLog = useCallback((level: number, timeOfDay: string) => {
-    if (!profile) return;
-    // Map 1-5 widget scale → 2-10 EnergyWavePoint.energy scale
-    const scaledEnergy = Math.min(10, Math.max(1, level * 2));
-    const newEntry: EnergyWavePoint = {
-      id: `manual_${timeOfDay}_${Date.now()}`,
-      slot: timeOfDay,
-      energy: scaledEnergy,
-      focus: 5,
-      load: 5,
-    };
-    // Deduplicate by slot (timeOfDay), keep rest of today's entries
-    const filtered = (profile.energyWave ?? []).filter((e) => e.slot !== timeOfDay);
-    const next: AtlasProfile = {
-      ...profile,
-      energyWave: [...filtered, newEntry],
-      updatedAt: new Date().toISOString(),
-    };
-    persistUpdate(next);
-  }, [profile, persistUpdate]);
-
   return (
     <SingleAgentLayout
       moduleId="atlas"
@@ -638,6 +647,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       placeholder="Share task pressure or schedule constraints..."
       primaryAction={
         <QuickAddForm
+          isFluid
           projects={profile?.projects ?? []}
           onCreateTask={handleCreateTask}
           onCreateHabit={handleCreateHabit}
@@ -661,11 +671,6 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
             onDismiss={() => {
               markWelcomeSeen(user?.uid);
               setShowWelcomeCard(false);
-            }}
-            onLogEnergy={() => {
-              markWelcomeSeen(user?.uid);
-              setShowWelcomeCard(false);
-              setActiveTab('dashboard');
             }}
             onAddHabit={() => {
               markWelcomeSeen(user?.uid);
@@ -703,7 +708,6 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
           onSaveWeeklyReview: handleSaveWeeklyReview,
           onTabChange: setActiveTab,
           onViewChange: setActiveView,
-          onLogEnergy: handleManualEnergyLog,
           onReviewOpened: handleReviewOpened,
           onMorningBriefDismiss: handleMorningBriefDismiss,
           onEveningCheckinDismiss: handleEveningCheckinDismiss,
@@ -731,10 +735,6 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
 
 export default function AtlasPage() {
   const { user, isGuest, profile: coreProfile, refreshProfile } = useAuth();
-
-  useEffect(() => {
-    registerAtlasFieldActions();
-  }, []);
 
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('atlas');

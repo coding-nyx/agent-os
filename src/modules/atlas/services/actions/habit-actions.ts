@@ -15,7 +15,7 @@ export const habitActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     if (profile.habits.length >= 30) return;
 
     const now = new Date().toISOString();
-    const validFrequencies: AtlasHabit['frequency'][] = ['daily', 'weekdays', 'weekends', 'weekly', 'custom'];
+    const validFrequencies: AtlasHabit['frequency'][] = ['daily', 'weekdays', 'weekends', 'weekly', 'monthly', 'custom'];
     const frequency = validFrequencies.includes(payload?.frequency as AtlasHabit['frequency'])
       ? (payload!.frequency as AtlasHabit['frequency'])
       : 'daily';

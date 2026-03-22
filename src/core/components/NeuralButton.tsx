@@ -184,8 +184,37 @@ const NeuralButtonImpl = React.forwardRef<any, NeuralButtonProps>(function Neura
     </Component>
   );
 });
-const NeuralButton = NeuralButtonImpl
+const NeuralButton = NeuralButtonImpl;
 NeuralButton.displayName = 'NeuralButton';
 
-export { NeuralButton };
+interface NeuralIconButtonProps extends Omit<NeuralButtonProps, 'children'> {
+  icon: React.ReactElement;
+  iconProps?: Omit<React.SVGProps<SVGElement>, 'children'> & { className?: string };
+}
+
+const NeuralIconButton = React.forwardRef<any, NeuralIconButtonProps>(function NeuralIconButton(
+  { icon, iconProps, ...rest }: NeuralIconButtonProps,
+  ref
+) {
+  const iconBaseProps = icon.props as React.SVGProps<SVGElement>;
+  const { className: iconClassName, ...restIconProps } = iconProps ?? {};
+  const mergedIconProps = {
+    ...iconBaseProps,
+    ...restIconProps,
+    color: restIconProps.color ?? iconBaseProps.color ?? 'currentColor',
+    strokeWidth: restIconProps.strokeWidth ?? iconBaseProps.strokeWidth ?? 2,
+    size: restIconProps.size ?? iconBaseProps.size ?? 18,
+    className: cn(iconBaseProps.className, iconClassName),
+  };
+  const renderedIcon = React.cloneElement(icon, mergedIconProps);
+
+  return (
+    <NeuralButton ref={ref} iconOnly allowOverflow {...rest}>
+      {renderedIcon}
+    </NeuralButton>
+  );
+});
+NeuralIconButton.displayName = 'NeuralIconButton';
+
+export { NeuralButton, NeuralIconButton };
 export default NeuralButton;

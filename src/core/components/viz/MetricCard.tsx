@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/core/components/Skeleton';
 import { TrendArrow, TrendDirection } from '@/core/components/TrendArrow';
 
 export interface MetricCardProps {
@@ -65,15 +66,10 @@ export function MetricCard({
 
   if (isLoading) {
     return (
-      <div
-        className={cn(
-          'surface-card p-6 space-y-4',
-          className
-        )}
-      >
-        <div className="h-4 w-24 bg-white/5 rounded animate-pulse" />
-        <div className="h-12 w-32 bg-white/10 rounded animate-pulse" />
-        <div className="h-4 w-16 bg-white/5 rounded animate-pulse" />
+      <div className={cn('surface-card p-6 space-y-4', className)}>
+        <Skeleton className="h-4 w-24 rounded" />
+        <Skeleton className="h-12 w-32 rounded-md" />
+        <Skeleton className="h-4 w-16 rounded" />
       </div>
     );
   }

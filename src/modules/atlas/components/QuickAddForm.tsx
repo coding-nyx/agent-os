@@ -223,13 +223,13 @@ export function QuickAddForm({
           aria-label="Add new item"
           themeColor="emerald"
           className={cn(
-            'z-[var(--z-fab)] !rounded-full shadow-lg shadow-emerald-500/25',
+            'z-[var(--z-fab)] !rounded-full !p-0 shadow-lg shadow-emerald-500/25',
             isFluid 
               ? 'w-12 h-12' 
               : 'fixed w-14 h-14 bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-8 md:translate-x-0 md:bottom-8'
           )}
         >
-          <Plus className={isFluid ? "w-5 h-5" : "w-8 h-8"} strokeWidth={3} aria-hidden="true" />
+          <Plus className={isFluid ? "w-5 h-5" : "!w-8 !h-8"} strokeWidth={3} aria-hidden="true" />
         </NeuralButton>
       )}
 

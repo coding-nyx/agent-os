@@ -26,8 +26,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Plus, X, Zap } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAtlasEntryParser, ParsedEntry } from '../hooks/use-atlas-entry-parser';
 import { EntryConfirmChip } from './EntryConfirmChip';
@@ -58,18 +57,8 @@ const RECURRENCE_TO_FREQUENCY: Record<string, AtlasHabit['frequency']> = {
   daily:    'daily',
   weekdays: 'weekdays',
   weekly:   'weekly',
-  monthly:  'weekly'  // 'monthly' has no direct AtlasHabit.frequency — default to weekly
+  monthly:  'monthly',
 };
-
-// ─── Energy levels ────────────────────────────────────────────────────────────
-
-const ENERGY_LEVELS: { value: number; label: string; color: string; bg: string }[] = [
-  { value: 1, label: 'Depleted',  color: 'text-red-400',    bg: 'bg-red-500/15 border-red-500/30' },
-  { value: 2, label: 'Low',       color: 'text-orange-400', bg: 'bg-orange-500/15 border-orange-500/30' },
-  { value: 3, label: 'Moderate',  color: 'text-amber-400',  bg: 'bg-amber-500/15 border-amber-500/30' },
-  { value: 4, label: 'Good',      color: 'text-lime-400',   bg: 'bg-lime-500/15 border-lime-500/30' },
-  { value: 5, label: 'Peak',      color: 'text-emerald-400',bg: 'bg-emerald-500/15 border-emerald-500/30' },
-];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,20 +66,17 @@ export interface QuickCaptureBarProps {
   onAddTask:    (task: Partial<AtlasTask>)    => void;
   onAddHabit:   (habit: Partial<AtlasHabit>) => void;
   onAddGoal?:   (goal: Partial<AtlasGoal>) => void;
-  onLogEnergy?: (level: number, timeOfDay: string) => void;
   disabled?:    boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function QuickCaptureBar({ onAddTask, onAddHabit, onAddGoal, onLogEnergy, disabled = false }: QuickCaptureBarProps) {
+export function QuickCaptureBar({ onAddTask, onAddHabit, onAddGoal, disabled = false }: QuickCaptureBarProps) {
   const { parse } = useAtlasEntryParser();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [inputValue,   setInputValue]   = useState('');
   const [parsed,       setParsed]       = useState<ParsedEntry | null>(null);
-  const [loggedEnergy, setLoggedEnergy] = useState<number | null>(null);
-  const [energyLogged, setEnergyLogged] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -197,21 +183,6 @@ export function QuickCaptureBar({ onAddTask, onAddHabit, onAddGoal, onLogEnergy,
     setInputValue('');
   }, []);
 
-  const handleEnergyLog = useCallback((level: number) => {
-    const hour = new Date().getHours();
-    const timeOfDay =
-      hour < 12 ? 'morning' :
-      hour < 17 ? 'afternoon' :
-      'evening';
-
-    setLoggedEnergy(level);
-    setEnergyLogged(true);
-    onLogEnergy?.(level, timeOfDay);
-
-    // Auto-reset success indicator after 2 s
-    setTimeout(() => setEnergyLogged(false), 2000);
-  }, [onLogEnergy]);
-
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
@@ -280,61 +251,6 @@ export function QuickCaptureBar({ onAddTask, onAddHabit, onAddGoal, onLogEnergy,
         onDismiss={handleDismiss}
       />
 
-      {/* ── Inline energy log row ─────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {onLogEnergy && (isFocused || inputValue.length > 0 || parsed) && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-xl overflow-hidden',
-              'bg-white/[0.02] border border-white/[0.06]',
-              disabled && 'opacity-50 pointer-events-none',
-            )}
-            role="group"
-            aria-label="Log current energy level"
-          >
-            <Zap
-              className={cn(
-                'w-3.5 h-3.5 shrink-0 transition-colors',
-                loggedEnergy !== null ? ENERGY_LEVELS[loggedEnergy - 1]?.color : 'text-white/25',
-              )}
-              aria-hidden="true"
-            />
-            <span className="text-[10px] text-white/30 font-medium shrink-0 w-[62px]">
-              {energyLogged
-                ? <span className="text-emerald-400 font-bold">Logged ✓</span>
-                : 'Energy now:'}
-            </span>
-            <div className="flex items-center gap-1.5 flex-1 justify-between">
-              {ENERGY_LEVELS.map(({ value, label }) => (
-                <NeuralButton
-                  key={value}
-                  size="sm"
-                  variant={loggedEnergy === value ? 'primary' : 'secondary'}
-                  themeColor={
-                    value === 1 ? 'rose' :
-                    value === 2 ? 'orange' :
-                    value === 3 ? 'amber' :
-                    value === 4 ? 'lime' :
-                    'emerald'
-                  }
-                  onClick={() => handleEnergyLog(value)}
-                  aria-label={`Energy level ${value}: ${label}`}
-                  aria-pressed={loggedEnergy === value}
-                  className="flex-1 h-7 text-[10px] font-bold p-0"
-                >
-                  {value}
-                </NeuralButton>
-              ))}
-            </div>
-            <span className="text-[10px] text-white/20 shrink-0 w-[42px] text-right">
-              {loggedEnergy !== null ? ENERGY_LEVELS[loggedEnergy - 1]?.label : ''}
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

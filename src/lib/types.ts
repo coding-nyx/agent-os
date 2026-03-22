@@ -799,6 +799,20 @@ export interface CustomField {
   createdAt: number;
 }
 
+/**
+ * A single recorded value for a custom field.
+ */
+export interface CustomFieldValue {
+  /** ISO timestamp when the value was recorded. */
+  recordedAt: string;
+  /** The recorded value — type depends on the field's type. */
+  value: string | number | boolean;
+  /** Optional date the value is for (e.g., "2024-01-15"). Defaults to recordedAt date. */
+  date?: string;
+  /** Optional note attached to this value. */
+  note?: string;
+}
+
 export interface TitanProfile {
   onboardingComplete: boolean;
   privacyLevel: TitanPrivacyLevel;
@@ -811,10 +825,21 @@ export interface TitanProfile {
   // TODO: Deprecated — Moving to Soma module in Sprint 8 (read-only mirror for now).
   sleepLog?: SleepEntry[];
   cycles?: CycleEntry[];
+  /**
+   * Quick workout session log with basic exercise/set data.
+   * Used by QuickLogBar and log_workout_session action.
+   * Cap: 365 entries (1 year of daily sessions).
+   */
   workoutSessions?: WorkoutSession[];
   /** Personal records keyed by exercise name (lowercase). Auto-updated on session log. */
   personalRecords?: Record<string, PersonalRecord>;
-  /** Structured workout logs keyed to canonical exercise library IDs. */
+  /**
+   * Structured workout logs keyed to canonical exercise library IDs.
+   * Provides more detailed per-set tracking than workoutSessions.
+   * @deprecated Sunset Q4 2026 — Consolidating into workoutSessions with enhanced schema.
+   * MIGRATION: workoutLogs will be merged into workoutSessions. Components should
+   * prefer workoutSessions for new features. Use workoutLogs only for legacy data reads.
+   */
   workoutLogs?: TitanWorkoutLog[];
   /** User's personal exercise library (defaults to the canonical set, extensible). */
   exerciseLibrary?: TitanExerciseEntry[];
@@ -822,6 +847,8 @@ export interface TitanProfile {
   directWriteMode?: boolean;
   /** User-defined custom tracking fields created via AI `create_field` action. Max 20. */
   customFields?: CustomField[];
+  /** Values recorded for custom fields — keyed by field ID, contains array of timestamped values. */
+  customFieldValues?: Record<string, CustomFieldValue[]>;
   /** Body weight / composition log — newest first, capped at 1 000 entries. */
   bodyWeightLog?: BodyWeightEntry[];
   /** Cardiovascular session log — newest first, capped at 500 entries. */
@@ -834,23 +861,27 @@ export interface TitanProfile {
   updatedAt: string;
   traits?: string[];
   // --- Absorbed from SomaProfile ---
-  /** @deprecated Moving to SomaProfile — dual-write phase */
+  // MIGRATION: These fields are being migrated to SomaProfile. 
+  // - Phase 1 (current): Dual-write to both profiles for compatibility
+  // - Phase 2 (Q2 2026): Read from SomaProfile, write only to Soma
+  // - Phase 3 (Q3 2026): Remove these fields, read-only from Soma
+  /** @deprecated Sunset Q3 2026 — Use SomaProfile.medicalOnboardingComplete */
   medicalOnboardingComplete?: boolean;
-  /** @deprecated Moving to SomaProfile — dual-write phase */
+  /** @deprecated Sunset Q3 2026 — Use SomaProfile.knownConditions */
   knownConditions: string[];
-  /** @deprecated Moving to SomaProfile — dual-write phase */
+  /** @deprecated Sunset Q3 2026 — Use SomaProfile.medications */
   medications: string[];
-  /** @deprecated Moving to SomaProfile — dual-write phase */
+  /** @deprecated Sunset Q3 2026 — Use SomaProfile.allergies */
   allergies: string[];
-  /** @deprecated Moving to SomaProfile — dual-write phase */
+  /** @deprecated Sunset Q3 2026 — Use SomaProfile.biomarkers */
   biomarkers: BiomarkerRecord[];
-  /** @deprecated Moving to SomaProfile — dual-write phase */
+  /** @deprecated Sunset Q3 2026 — Use SomaProfile.labSummaries */
   labSummaries: LabSummaryRecord[];
-  /** @deprecated Moving to SomaProfile — dual-write phase */
+  /** @deprecated Sunset Q3 2026 — Use SomaProfile.clearances */
   clearances: ClearanceRecord[];
-  /** @deprecated Moving to SomaProfile — dual-write phase */
+  /** @deprecated Sunset Q3 2026 — Use SomaProfile.medicalImageAnalyses */
   medicalImageAnalyses: MedicalImageAnalysis[];
-  /** @deprecated Moving to SomaProfile — dual-write phase */
+  /** @deprecated Sunset Q3 2026 — Use SomaProfile.medicalSummary */
   medicalSummary?: string;
   // Transient/Legacy compat for prompts
   name?: string;
@@ -1181,7 +1212,7 @@ export interface AtlasHabit {
   id: string;
   title: string;
   type?: 'boolean' | 'counter' | 'timer' | 'sober' | 'learning';
-  frequency: 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'custom';
+  frequency: 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'monthly' | 'custom';
   customDays?: number[];
   targetStreak: number;
   currentStreak: number;

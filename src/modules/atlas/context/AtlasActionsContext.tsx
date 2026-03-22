@@ -27,7 +27,6 @@ export interface AtlasActionsContextValue {
   // UI & Specific handlers
   onTabChange: (tab: any) => void;
   onViewChange: (view: any) => void;
-  onLogEnergy: (level: number, timeOfDay: 'morning' | 'midday' | 'afternoon' | 'evening' | 'night') => void;
   onReviewOpened: () => void;
   onMorningBriefDismiss: () => void;
   onEveningCheckinDismiss: (data?: any) => void;

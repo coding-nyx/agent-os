@@ -4,6 +4,7 @@ import {
   GlobalProjectionService,
   Spine,
 } from './shared';
+import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
 import type { ActionHandler, TitanProfile, WorkoutSession, ExerciseLog, ExerciseSet, PersonalRecord, TitanWorkoutSet, TitanWorkoutLog } from './shared';
 
 export const workoutHandlers: Record<string, ActionHandler> = {
@@ -181,15 +182,20 @@ export const workoutHandlers: Record<string, ActionHandler> = {
     }
 
     // Update NSV recovery — high RPE sessions reduce recovery score
+    // Note: This uses await because recovery changes can affect clearance decisions
     if (userId && session.rpe != null) {
       const recoveryImpact = session.rpe >= 8 ? -1.5 : session.rpe >= 6 ? -0.5 : 0;
       if (recoveryImpact !== 0) {
         const nsv = getLatestNSV?.() ?? {};
         const bio = (nsv.biological ?? {}) as Record<string, unknown>;
         const currentRecovery = typeof bio.recoveryScore === 'number' ? bio.recoveryScore : 7;
-        await GlobalProjectionService.updateCrossFunctionalState(userId, {
-          biological: { recoveryScore: Math.max(0, Math.min(10, currentRecovery + recoveryImpact)) },
-        }).catch((e) => console.error('log_workout_session NSV sync failed:', e));
+        try {
+          await GlobalProjectionService.updateCrossFunctionalState(userId, {
+            biological: { recoveryScore: Math.max(0, Math.min(10, currentRecovery + recoveryImpact)) },
+          });
+        } catch (e) {
+          console.error('[Titan] recoveryScore NSV sync failed (will not affect clearance):', e);
+        }
       }
     }
 
@@ -218,11 +224,7 @@ export const workoutHandlers: Record<string, ActionHandler> = {
       const decayedExisting = existingFatigue * Math.pow(0.5, hoursElapsed / 48);
       const newFatigue = Math.max(decayedExisting, rawFatigue);
 
-      GlobalProjectionService.updateCrossFunctionalState(userId, {
-        biological: {
-          cnsFatigue: Math.round(newFatigue * 10) / 10,
-        },
-      }).catch(e => console.error('cnsFatigue NSV update failed:', e));
+      queueNSVUpdate(userId, { biological: { cnsFatigue: Math.round(newFatigue * 10) / 10 } }, 'log_workout_session');
     }
   },
 

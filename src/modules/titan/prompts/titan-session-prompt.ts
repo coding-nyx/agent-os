@@ -42,7 +42,11 @@ export type TitanContextMode =
 export const TITAN_ALLOWED_ACTIONS: Record<TitanContextMode['kind'], readonly string[]> = {
   general: [
     'update_titan_profile',
-    'update_routine',
+    // update_routine is intentionally excluded from general mode.
+    // In general conversation, new routine creation MUST use the inline proposal
+    // format so the user can confirm before committing. The proposal card calls
+    // ActionHub.execute('titan','update_routine',...) directly after confirmation.
+    // Direct update_routine action tags are only allowed in 'routine-edit' mode.
     'commit_biomarker',
     'parse_lab_report',
     'issue_clearance',
@@ -59,9 +63,16 @@ export const TITAN_ALLOWED_ACTIONS: Record<TitanContextMode['kind'], readonly st
     'advance_cycle_phase',
     'complete_cycle',
     'log_workout_session',
+    'log_workout_set',
+    'log_body_weight',
+    'log_cardio_session',
+    'start_recovery_plan',
+    'end_recovery_plan',
+    'log_recovery_checkin',
     'suggest_field',
     'create_field',
     'delete_field',
+    'log_field_value',
   ],
 
   'routine-edit': [
@@ -74,6 +85,7 @@ export const TITAN_ALLOWED_ACTIONS: Record<TitanContextMode['kind'], readonly st
     'suggest_field',
     'create_field',
     'delete_field',
+    'log_field_value',
   ],
 
   'biomarker-review': [
@@ -324,7 +336,7 @@ ${recoveryBlock}${clearanceNote}${activeCycleBlock}
 
 [AVAILABLE ACTIONS]
 - Update profile: <action type="update_titan_profile">{...partialProfile}</action>
-- Update routine: <action type="update_routine">{"routines":[...]}</action>
+- Routine creation/update: use the proposal format (see [INLINE PROPOSALS]) — update_routine action tags are blocked in this mode
 - Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","deepSleepPct":20,"remSleepPct":25,"awakenings":1,"tags":["stress"],"notes":"..."}</action>
 - Propose reminder: <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"session|workout","entityId":"...","label":"..."}}</action>
 - Query reminders: <action type="query_reminders">{"moduleId":"titan"}</action>
@@ -333,9 +345,50 @@ ${recoveryBlock}${clearanceNote}${activeCycleBlock}
 - Complete cycle: <action type="complete_cycle">{"cycleId":"..."}</action>
 - Log workout session: <action type="log_workout_session">{"routineId":"...","routineName":"...","date":"YYYY-MM-DD","startedAt":"...","completedAt":"...","rpe":7,"notes":"...","status":"completed","exercises":[{"exerciseName":"Squat","plannedSets":4,"plannedReps":"8","sets":[{"setNumber":1,"weight":100,"repsCompleted":8,"completed":true}]}]}</action>
 - Recovery clearance check: <action type="self_clearance_check">{"activity":"...","recoveryScore":...}</action>
+- Start recovery plan: <action type="start_recovery_plan">{"type":"rest|active|rehab|deload","reasons":["injury"|"stress"|"overtraining"|"illness"|"travel"|"deload"|"other"],"durationDays":7,"severity":"low|medium|high","bodyRegion":"knee|shoulder|back|hip|ankle|wrist|neck|other","notes":"..."}</action>
+- End recovery plan: <action type="end_recovery_plan">{"reason":"completed|cancelled|early_return","notes":"..."}</action>
+- Log recovery check-in: <action type="log_recovery_checkin">{"pain":5,"fatigue":5,"sleepQuality":7,"mood":6,"notes":"..."}</action>
 - Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
 - Keep <thought> strictly internal. Do NOT place user-facing text inside it.
 - Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.
+
+[INLINE PROPOSALS]
+When the user asks to create a new routine, log sleep, or log a workout, you MUST respond with the inline proposal format — never use update_routine, log_sleep, or log_workout_session action tags directly for user-initiated requests. The proposal format lets the user confirm before data is committed. Direct action tags for these intents are blocked in this mode anyway.
+
+Supported proposal intents:
+1. **log_sleep**: User mentions sleeping, bedtime, wake time, sleep quality
+2. **log_workout**: User describes a completed workout (exercises, sets, reps, weights, or "I worked out")
+3. **request_routine**: User asks for a new routine, workout plan, or training schedule
+
+When you have sufficient data to fulfill the intent, write a brief 1-sentence confirmation to the user, then on the very next line output the proposal JSON (raw, no code fences). This satisfies both the user-facing message requirement and the inline proposal format.
+
+Proposal JSON schema (all fields required):
+- "__isTitanProposal": true  (literal boolean)
+- "type": one of "sleep_log_proposal", "workout_log_proposal", "routine_proposal"
+- "intent": one of "log_sleep", "log_workout", "request_routine"
+- "generatedData": object — for routines use {"routines":[{weekday,timeframe,status,rationale,exercises}]}; for sleep use {date,durationHours,quality,bedtime?,wakeTime?,notes?}; for workout use the log_workout_session schema
+- "message": short user-friendly summary of what will be logged/created
+- "actions": array of action objects
+
+Action handlers by type:
+- sleep_log_proposal → handler "log_sleep"
+- workout_log_proposal → handler "log_workout_session"
+- routine_proposal → handler "update_routine"
+Always add: {"label":"Cancel","handler":"dismissProposal","variant":"ghost"}
+
+Example for sleep:
+User: "Slept 7.5 hours last night, quality was decent, went to bed around 11"
+Response:
+Here's your sleep log — confirm to save it.
+{"__isTitanProposal":true,"type":"sleep_log_proposal","intent":"log_sleep","generatedData":{"date":"2024-01-15","durationHours":7.5,"quality":7,"bedtime":"23:00"},"message":"7.5h sleep · quality 7/10","actions":[{"label":"Log Sleep","handler":"log_sleep"},{"label":"Cancel","handler":"dismissProposal","variant":"ghost"}]}
+
+Example for routine:
+User: "Create me a push/pull/legs routine"
+Response:
+Here's a Push/Pull/Legs split — confirm to save it to your profile.
+{"__isTitanProposal":true,"type":"routine_proposal","intent":"request_routine","generatedData":{"routines":[{"weekday":"monday","timeframe":"daily","status":"active","rationale":"Push day","exercises":[{"name":"Bench Press","sets":4,"reps":"8","notes":""}]},{"weekday":"wednesday","timeframe":"daily","status":"active","rationale":"Pull day","exercises":[{"name":"Pull-ups","sets":4,"reps":"8","notes":""}]},{"weekday":"friday","timeframe":"daily","status":"active","rationale":"Legs day","exercises":[{"name":"Squat","sets":4,"reps":"8","notes":""}]}]},"message":"Push/Pull/Legs · 3 days/week","actions":[{"label":"Save Routine","handler":"update_routine"},{"label":"Cancel","handler":"dismissProposal","variant":"ghost"}]}
+
+IMPORTANT: Only emit proposals when you have enough data. If essential fields are missing, ask clarifying questions first. Never emit a proposal with placeholder or incomplete generatedData.
 
 [ROUTINE INSTRUCTIONS]
 - If the user wants a new weekly routine, propose a 7-day plan as daily entries for each weekday.

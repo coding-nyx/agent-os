@@ -4,7 +4,7 @@ import type { SleepEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/core/components/EmptyState';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
-import { NeuralButton } from '@/core/components/NeuralButton';
+import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralTextarea } from '@/core/components/NeuralTextarea';
@@ -124,15 +124,13 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
                 Trends
               </NeuralButton>
             )}
-            <NeuralButton
+            <NeuralIconButton
               size="sm"
-              iconOnly
               onClick={() => openModal()}
               title="Log Sleep"
               aria-label="Log Sleep"
-            >
-              <Moon className="w-3.5 h-3.5" />
-            </NeuralButton>
+              icon={<Moon className="w-3.5 h-3.5" />}
+            />
           </div>
         </div>
 
@@ -142,14 +140,12 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
             description="Track your sleep to unlock AI-powered recovery analysis. Titan uses sleep quality to calibrate your training intensity."
             icon={Moon}
             action={
-              <NeuralButton
-                iconOnly
+              <NeuralIconButton
                 onClick={() => openModal()}
                 title="Log Sleep"
                 aria-label="Log Sleep"
-              >
-                <Moon className="w-4 h-4" />
-              </NeuralButton>
+                icon={<Moon className="w-4 h-4" />}
+              />
             }
           />
         )}

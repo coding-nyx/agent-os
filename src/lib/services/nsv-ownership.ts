@@ -151,9 +151,61 @@ export const NSV_READ_PERMISSIONS: Record<ModuleId, NSVMetricPath[]> = {
   bridge: []   // Bridge is a connectivity layer — no LLM
 };
 
+/**
+ * Returns the primary owner of a metric (first module in OWNERSHIP that claims it).
+ */
 export function getMetricOwner(metric: NSVMetricPath): ModuleId {
   const entry = Object.entries(NSV_OWNERSHIP).find(([, metrics]) => metrics.includes(metric));
   return (entry?.[0] as ModuleId) || 'nexus';
+}
+
+/**
+ * Returns all modules that claim ownership of a metric.
+ */
+export function getMetricOwners(metric: NSVMetricPath): ModuleId[] {
+  return (Object.entries(NSV_OWNERSHIP) as [ModuleId, NSVMetricPath[]][])
+    .filter(([, metrics]) => metrics.includes(metric))
+    .map(([moduleId]) => moduleId);
+}
+
+/**
+ * Checks if a module is the exclusive owner of a metric (no other modules claim it).
+ */
+export function isExclusiveOwner(moduleId: ModuleId, metric: NSVMetricPath): boolean {
+  const owners = getMetricOwners(metric);
+  return owners.length === 1 && owners[0] === moduleId;
+}
+
+/**
+ * Checks if a module owns a metric (either exclusively or as co-owner).
+ */
+export function ownsMetric(moduleId: ModuleId, metric: NSVMetricPath): boolean {
+  const owned = NSV_OWNERSHIP[moduleId] ?? [];
+  return owned.includes(metric);
+}
+
+/**
+ * Returns co-owned metrics from a patch that the module doesn't exclusively own.
+ * These should go through the SOUL_WRITE_REQUESTED validation path.
+ */
+export function getCoOwnedMetricsInPatch(
+  moduleId: ModuleId,
+  patch: Record<string, Record<string, unknown>>
+): NSVMetricPath[] {
+  const coOwned: NSVMetricPath[] = [];
+  
+  for (const [domain, fields] of Object.entries(patch)) {
+    if (!fields || typeof fields !== 'object') continue;
+    for (const field of Object.keys(fields)) {
+      const metric = `${domain}.${field}` as NSVMetricPath;
+      // Check if it's a valid metric and module owns it but not exclusively
+      if (ownsMetric(moduleId, metric) && !isExclusiveOwner(moduleId, metric)) {
+        coOwned.push(metric);
+      }
+    }
+  }
+  
+  return coOwned;
 }
 
 export const NSV_DERIVED_METRICS: NSVMetricPath[] = [

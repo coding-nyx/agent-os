@@ -16,7 +16,6 @@ import {
   Target,
   Clock,
 } from 'lucide-react';
-import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasTask, AtlasGoal, AtlasHabit, AtlasProfile } from '../services/atlas-profile-service';
@@ -235,29 +234,30 @@ export function AtlasAIPanel({
   return (
     <SurfaceCard className="overflow-hidden">
       {/* ── Collapsible Header ── */}
-      <NeuralButton
-        variant="emerald"
+      <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors rounded-t-[inherit]"
+        aria-expanded={isExpanded}
       >
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-purple-400" />
-          <h3 className="text-sm font-bold text-white/90 uppercase tracking-wider font-display">
+          <Sparkles className="w-4 h-4 text-violet-400/70" />
+          <h3 className="text-[11px] font-semibold text-white/50 uppercase tracking-widest font-display">
             AI Insights
           </h3>
           {suggestions.length > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold">
+            <span className="px-1.5 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/20 text-violet-300/80 text-[10px] font-bold">
               {suggestions.length}
             </span>
           )}
         </div>
         <ChevronDown
           className={cn(
-            'w-4 h-4 text-white/40 transition-transform',
+            'w-4 h-4 text-white/30 transition-transform',
             isExpanded && 'rotate-180'
           )}
         />
-      </NeuralButton>
+      </button>
 
       {/* ── Expandable Content ── */}
       <AnimatePresence initial={false}>

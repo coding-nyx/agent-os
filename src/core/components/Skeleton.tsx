@@ -6,5 +6,5 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ className }: SkeletonProps) {
-  return <div className={cn('skeleton rounded-full', className)} />;
+  return <div className={cn('skeleton', className)} />;
 }

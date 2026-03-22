@@ -138,7 +138,13 @@ export async function mergeTitanDiagnosisData(
   // This eliminates sequential I/O wait time for biomarker and clearance commits,
   // reducing total merge duration from O(N * latency) to O(latency).
   if (delegationPromises.length > 0) {
-    await Promise.all(delegationPromises);
+    try {
+      await Promise.all(delegationPromises);
+    } catch (delegationError) {
+      console.error('[TitanDiagnosisMerge] One or more delegations failed:', delegationError);
+      // Don't save TitanProfile if delegations failed — prevents data divergence
+      throw new Error(`Diagnosis merge aborted: delegation failed (${(delegationError as Error).message})`);
+    }
   }
 
   next.updatedAt = new Date().toISOString();

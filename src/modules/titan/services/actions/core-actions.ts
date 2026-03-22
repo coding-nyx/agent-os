@@ -9,6 +9,8 @@ import {
   ClearanceService,
   SomaDataService,
 } from './shared';
+import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
+import { ownsMetric, isExclusiveOwner, type NSVMetricPath } from '@/lib/services/nsv-ownership';
 import type { ActionHandler, TitanProfile, Routine } from './shared';
 
 export const coreHandlers: Record<string, ActionHandler> = {
@@ -51,37 +53,62 @@ export const coreHandlers: Record<string, ActionHandler> = {
     await persistProfile(nextProfile, userId ?? null, encryptionKey ?? null);
   },
 
-  sync_vitals: async ({ userId, payload }) => {
+  sync_vitals: async ({ userId, payload, pushAssistantMessage }) => {
     if (!userId) return;
     const biological = payload?.biological as Record<string, unknown> | undefined;
     if (!biological || typeof biological !== 'object') return;
 
     const patch: Record<string, unknown> = {};
+    const validationRequired: string[] = [];
 
-    // All 4 biological NSV fields now owned by Titan
-    if (typeof biological.recoveryScore === 'number' &&
-        Number.isFinite(biological.recoveryScore) &&
-        biological.recoveryScore >= 0 && biological.recoveryScore <= 10) {
-      patch.recoveryScore = biological.recoveryScore;
-    }
-    if (typeof biological.hormonalContext === 'string' && biological.hormonalContext.trim()) {
-      patch.hormonalContext = biological.hormonalContext.trim();
-    }
-    if (typeof biological.cnsFatigue === 'number' &&
-        Number.isFinite(biological.cnsFatigue) &&
-        biological.cnsFatigue >= 0 && biological.cnsFatigue <= 10) {
-      patch.cnsFatigue = biological.cnsFatigue;
-    }
-    if (typeof biological.sleepQuality === 'number' &&
-        Number.isFinite(biological.sleepQuality) &&
-        biological.sleepQuality >= 0 && biological.sleepQuality <= 10) {
-      patch.sleepQuality = biological.sleepQuality;
+    // Validate each field against ownership rules
+    const validateAndAdd = (fieldName: string, value: unknown, validator: (v: unknown) => boolean) => {
+      if (!validator(value)) return;
+      
+      const metric = `biological.${fieldName}` as NSVMetricPath;
+      
+      // Titan must own this metric
+      if (!ownsMetric('titan', metric)) {
+        console.warn(`[Titan] sync_vitals: "${fieldName}" not owned by Titan — skipping`);
+        return;
+      }
+      
+      // If co-owned (not exclusive), log a warning but allow (Titan is primary owner for bio)
+      if (!isExclusiveOwner('titan', metric)) {
+        validationRequired.push(fieldName);
+      }
+      
+      patch[fieldName] = value;
+    };
+
+    validateAndAdd('recoveryScore', biological.recoveryScore, (v) =>
+      typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 10
+    );
+    validateAndAdd('hormonalContext', biological.hormonalContext, (v) =>
+      typeof v === 'string' && (v as string).trim().length > 0
+    );
+    validateAndAdd('cnsFatigue', biological.cnsFatigue, (v) =>
+      typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 10
+    );
+    validateAndAdd('sleepQuality', biological.sleepQuality, (v) =>
+      typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 10
+    );
+
+    if (Object.keys(patch).length === 0) return;
+
+    // Warn if co-owned fields are being written
+    if (validationRequired.length > 0) {
+      console.log(
+        `[Titan] sync_vitals: Writing co-owned fields (${validationRequired.join(', ')}). ` +
+        `Titan is primary owner for biological domain.`
+      );
     }
 
-    if (Object.keys(patch).length > 0) {
-      await GlobalProjectionService.updateCrossFunctionalState(userId, { biological: patch }).catch((e) => {
-        console.error('Titan sync_vitals failed:', e);
-      });
+    // Queue the update (Titan is primary owner for all biological fields)
+    queueNSVUpdate(userId, { biological: patch }, 'sync_vitals');
+    
+    if (pushAssistantMessage && Object.keys(patch).length > 0) {
+      pushAssistantMessage(`✅ Synced ${Object.keys(patch).length} vital(s) to NSV.`);
     }
   },
 
@@ -89,10 +116,32 @@ export const coreHandlers: Record<string, ActionHandler> = {
     const activity = typeof payload?.activity === 'string' ? payload.activity : 'high_intensity';
     const RECOVERY_THRESHOLD = 4;
 
-    // Read recovery score from NSV
-    const nsv = getLatestNSV?.() ?? {};
-    const bio = (nsv.biological ?? {}) as Record<string, unknown>;
-    const recoveryScore = typeof bio.recoveryScore === 'number' ? bio.recoveryScore : null;
+    // SAFETY-CRITICAL: Force fresh NSV read for clearance decisions.
+    // Session-cached NSV (getLatestNSV) can be minutes stale, which could
+    // allow training when the user is actually fatigued.
+    let recoveryScore: number | null = null;
+    let cnsFatigue: number | null = null;
+    
+    if (userId) {
+      try {
+        const freshProjection = await GlobalProjectionService.getProjection(userId);
+        const freshBio = freshProjection?.crossFunctionalState?.biological;
+        if (freshBio) {
+          recoveryScore = typeof freshBio.recoveryScore === 'number' ? freshBio.recoveryScore : null;
+          cnsFatigue = typeof freshBio.cnsFatigue === 'number' ? freshBio.cnsFatigue : null;
+        }
+      } catch (e) {
+        console.warn('[Titan] Fresh NSV read failed, falling back to session cache:', e);
+      }
+    }
+    
+    // Fallback to session cache only if fresh read failed
+    if (recoveryScore === null) {
+      const nsv = getLatestNSV?.() ?? {};
+      const bio = (nsv.biological ?? {}) as Record<string, unknown>;
+      recoveryScore = typeof bio.recoveryScore === 'number' ? bio.recoveryScore : null;
+      cnsFatigue = typeof bio.cnsFatigue === 'number' ? bio.cnsFatigue : null;
+    }
 
     // Titan consumes Soma state (read-only) for medical clearance decisions.
     const healthSnapshot =
@@ -106,11 +155,17 @@ export const coreHandlers: Record<string, ActionHandler> = {
         ? ClearanceService.evaluate(profile, activity)
         : null;
     const hasContraindication = clearance != null && clearance.status !== 'granted';
+    
+    // Additional CNS fatigue check for high-intensity activities
+    const hasCnsFatigueBlock = activity === 'high_intensity' && cnsFatigue !== null && cnsFatigue >= 8;
 
-    if (hasContraindication || (recoveryScore !== null && recoveryScore < RECOVERY_THRESHOLD)) {
+    if (hasContraindication || (recoveryScore !== null && recoveryScore < RECOVERY_THRESHOLD) || hasCnsFatigueBlock) {
       const reasons: string[] = [];
       if (recoveryScore !== null && recoveryScore < RECOVERY_THRESHOLD) {
         reasons.push(`recovery score ${recoveryScore}/10 is below threshold (${RECOVERY_THRESHOLD})`);
+      }
+      if (hasCnsFatigueBlock) {
+        reasons.push(`CNS fatigue ${cnsFatigue}/10 is too high for high-intensity training`);
       }
       if (hasContraindication && clearance) {
         reasons.push(clearance.reason);
@@ -123,7 +178,7 @@ export const coreHandlers: Record<string, ActionHandler> = {
         type: 'BLOCK_HIGH_INTENSITY',
         source: 'titan',
         domain: 'B',
-        data: { activity, recoveryScore, reasons },
+        data: { activity, recoveryScore, cnsFatigue, reasons },
         cascadeDepth: 0,
         priority: 'alert',
       });
