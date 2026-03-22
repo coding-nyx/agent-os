@@ -304,37 +304,32 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       }
     }
     
-    try {
-      const success = await ActionHub.execute('titan', actionType, {
-        moduleId: 'titan',
-        payload: resolvedPayload,
-        userId: user.uid,
-        isGuest: isGuest,
-        encryptionKey,
-        getLatestNSV: () => globalSoul?.crossFunctionalState ?? {},
-        pushAssistantMessage: (msg: string) => {
-          console.log('[Titan Proposal]', msg);
-        },
-        emitSpineEvent: (type, payload) => {
-          Spine.emit({ type, source: 'titan', domain: 'B', data: payload, cascadeDepth: 0, priority: 'info' });
-        },
-        updateGlobalSoul: async () => {
-          // NSV updates handled by the action handlers themselves via queueNSVUpdate
-        },
-        delegateToModule: () => {
-          // Delegation handled by action handlers
-        },
-      });
-      
-      if (!success) {
-        throw new Error(`Action "${actionType}" could not be found. Please try again.`);
-      }
-      // Success — dismiss the proposal card
-      setActiveProposal(null);
-    } catch (error) {
-      // Re-throw so the ProposalCard can display the error inline
-      throw error;
+    const success = await ActionHub.execute('titan', actionType, {
+      moduleId: 'titan',
+      payload: resolvedPayload,
+      userId: user.uid,
+      isGuest: isGuest,
+      encryptionKey,
+      getLatestNSV: () => globalSoul?.crossFunctionalState ?? {},
+      pushAssistantMessage: (msg: string) => {
+        console.log('[Titan Proposal]', msg);
+      },
+      emitSpineEvent: (type, payload) => {
+        Spine.emit({ type, source: 'titan', domain: 'B', data: payload, cascadeDepth: 0, priority: 'info' });
+      },
+      updateGlobalSoul: async () => {
+        // NSV updates handled by the action handlers themselves via queueNSVUpdate
+      },
+      delegateToModule: () => {
+        // Delegation handled by action handlers
+      },
+    });
+
+    if (!success) {
+      throw new Error(`Action "${actionType}" could not be found. Please try again.`);
     }
+    // Success — dismiss the proposal card
+    setActiveProposal(null);
   }, [user?.uid, isGuest, encryptionKey, globalSoul?.crossFunctionalState]);
 
   const openChatAndSend = useCallback((prompt: string) => {
@@ -1298,6 +1293,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
         placeholder="Input training data or queries..."
         isChatCollapsed={isChatCollapsed}
         onToggleChat={setIsChatCollapsed}
+        hideChatTrigger={activeTab === 'train'}
         renderMessageActions={renderProposalMessageActions}
       >
         <div className="titan-theme flex flex-col h-full overflow-hidden">
