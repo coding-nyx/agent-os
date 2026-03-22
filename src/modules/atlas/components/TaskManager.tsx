@@ -42,6 +42,7 @@ interface TaskManagerProps {
   onUpdateTask: (taskId: string, updates: Partial<AtlasTask>) => void;
   onDeleteTask: (taskId: string) => void;
   onCompleteTask: (taskId: string) => void;
+  onScheduleTask?: (task: AtlasTask) => void;
   focusTaskId?: string;
 }
 
@@ -56,6 +57,7 @@ export function TaskManager({
   onUpdateTask,
   onDeleteTask,
   onCompleteTask,
+  onScheduleTask,
   focusTaskId,
 }: TaskManagerProps) {
   const reducedMotion = useReducedMotion();
@@ -377,6 +379,7 @@ export function TaskManager({
                 onToggleExpand={() => handleToggleExpand(task.id)}
                 allTasks={tasks}
                 onRemind={(t) => setRemindTask(t)}
+                onSchedule={onScheduleTask}
               />
               {/* Quick action buttons on hover */}
               <ItemActionButtons

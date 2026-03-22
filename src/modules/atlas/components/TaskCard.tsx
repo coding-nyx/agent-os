@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Lock, Clock, Zap, ChevronDown, Link2, RotateCcw } from 'lucide-react';
+import { Check, Lock, Clock, Zap, ChevronDown, Link2, RotateCcw, CalendarPlus } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
@@ -17,6 +17,7 @@ interface TaskCardProps {
   onToggleExpand: () => void;
   allTasks?: AtlasTask[];
   onRemind?: (task: AtlasTask) => void;
+  onSchedule?: (task: AtlasTask) => void;
   /** Whether this card is currently selected for scoped chat */
   isEntitySelected?: boolean;
   /** Called when the user taps to select/deselect this card */
@@ -55,6 +56,7 @@ export const TaskCard = React.memo(function TaskCard({
   onToggleExpand,
   allTasks = [],
   onRemind,
+  onSchedule,
   isEntitySelected = false,
   onEntitySelect,
 }: TaskCardProps) {
@@ -324,8 +326,8 @@ export const TaskCard = React.memo(function TaskCard({
                   {task.goalId && <span>Goal: {task.goalId}</span>}
                 </div>
 
-                {onRemind && (
-                  <div className="pt-2">
+                <div className="pt-2 flex items-center gap-2">
+                  {onRemind && (
                     <NeuralButton
                       variant="ghost"
                       size="sm"
@@ -337,8 +339,22 @@ export const TaskCard = React.memo(function TaskCard({
                     >
                       Remind me
                     </NeuralButton>
-                  </div>
-                )}
+                  )}
+                  {onSchedule && !isDone && (
+                    <NeuralButton
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSchedule(task);
+                      }}
+                      className="text-[10px] uppercase tracking-[0.14em] text-[var(--module-color-400)] hover:text-[var(--module-color-300)] h-auto px-3 py-2 flex items-center gap-1.5"
+                    >
+                      <CalendarPlus className="w-3 h-3" />
+                      Schedule
+                    </NeuralButton>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}

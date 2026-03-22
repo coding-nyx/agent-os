@@ -482,6 +482,17 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     executeAtlasAction('update_routine', updates, 'routine_updated');
   }, [executeAtlasAction]);
 
+  const handleScheduleTask = useCallback((task: AtlasTask) => {
+    executeAtlasAction('schedule_block', {
+      taskId: task.id,
+      title: task.title,
+      energyCost: task.energyCost,
+      category: 'other',
+      duration: 60,
+      scheduledAt: new Date().toISOString()
+    }, 'task_scheduled');
+  }, [executeAtlasAction]);
+
   const handleUpdateIntention = useCallback((updates: Record<string, unknown>) => {
     executeAtlasAction('set_daily_intention', updates, 'intention_updated');
   }, [executeAtlasAction]);
@@ -710,6 +721,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
           onDeleteTask: handleDeleteTask,
           onDeleteHabit: handleDeleteHabit,
           onDeleteGoal: handleDeleteGoal,
+          onScheduleTask: handleScheduleTask,
           onUpdateRoutine: handleUpdateRoutine,
           onUpdateIntention: handleUpdateIntention,
           onSaveFieldValue: handleSaveFieldValue,

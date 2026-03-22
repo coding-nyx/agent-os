@@ -131,11 +131,29 @@ export function TaskTimeline({
   // For expanded view, compute position relative to visible hours
   const currentTimePercent = useMemo(() => {
     if (!isWithinRange) return -1;
-    const visibleStart = visibleHours[0] ?? TIMELINE_START_HOUR;
-    const visibleEnd = (visibleHours[visibleHours.length - 1] ?? TIMELINE_END_HOUR - 1) + 1;
-    const visibleRange = visibleEnd - visibleStart;
-    if (visibleRange <= 0) return -1;
-    return ((currentHour - visibleStart) / visibleRange) * 100;
+    if (visibleHours.length === 0) return -1;
+
+    // Check if it's before the first visible hour
+    if (currentHour < visibleHours[0]) return 0;
+
+    // Check if it's after the last visible hour + 1
+    if (currentHour >= visibleHours[visibleHours.length - 1] + 1) return 100;
+
+    const index = visibleHours.findIndex(h => Math.floor(currentHour) === h);
+
+    if (index !== -1) {
+      // Current hour is visible
+      const exactIndex = index + (currentHour - Math.floor(currentHour));
+      return (exactIndex / visibleHours.length) * 100;
+    } else {
+      // Current hour is hidden between visible hours
+      // Find the next visible hour
+      let nextIndex = visibleHours.findIndex(h => h > currentHour);
+      if (nextIndex === -1) nextIndex = visibleHours.length;
+
+      // It's in the gap between nextIndex - 1 and nextIndex
+      return (nextIndex / visibleHours.length) * 100;
+    }
   }, [currentHour, isWithinRange, visibleHours]);
 
   // For collapsed summary bar

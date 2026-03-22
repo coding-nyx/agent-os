@@ -659,6 +659,7 @@ export function EnhancedAtlasDashboard({
                     onUpdateTask={actions.onUpdateTask}
                     onDeleteTask={actions.onDeleteTask}
                     onCompleteTask={actions.onCompleteTask}
+                    onScheduleTask={actions.onScheduleTask}
                     focusTaskId={focusTaskId}
                   />
               </section>

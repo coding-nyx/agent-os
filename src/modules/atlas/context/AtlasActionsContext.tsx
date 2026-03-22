@@ -16,6 +16,7 @@ export interface AtlasActionsContextValue {
   onDeleteTask: (taskId: string) => void;
   onDeleteHabit: (habitId: string) => void;
   onDeleteGoal: (goalId: string) => void;
+  onScheduleTask?: (task: AtlasTask) => void;
   onUpdateRoutine: (updates: Partial<AtlasRoutine>) => void;
   onUpdateIntention: (updates: Partial<DailyIntention>) => void;
   onSaveFieldValue: (fieldId: string, value: any) => void;
