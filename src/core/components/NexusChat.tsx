@@ -48,6 +48,7 @@ interface NexusChatProps {
     onUploadDocument?: (file: File) => void;
     onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
     processingLabel?: string;
+    enableSpeechToText?: boolean;
 }
 
 export function NexusChat({ 
@@ -67,6 +68,7 @@ export function NexusChat({
     onUploadDocument,
     onUploadDocuments,
     processingLabel,
+    enableSpeechToText = false,
 }: NexusChatProps) {
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
@@ -198,6 +200,7 @@ export function NexusChat({
                 onUploadDocuments={onUploadDocuments}
                 headerActions={headerActions}
                 processingLabel={processingLabel}
+                enableSpeechToText={enableSpeechToText}
                 pendingRequest={pendingRequest}
                 onRecoverPendingRequest={() => {
                   if (pendingRequest) {

@@ -2,25 +2,27 @@
  * JournalEntryEditor — Full-featured daily journal editor.
  *
  * Sections (top to bottom):
- *  1. Morning Intent     — rich text editor, pre-populated from check-in
- *  2. AI Prompt          — card with lightbulb, regenerate ghost button
- *  3. Free Write         — rich text editor (open writing)
- *  4. Evening Reflection — rich text editor, pre-populated from check-in
- *  5. Mood & Energy      — compact merged MoodEnergyPicker widget
- *  6. Gratitude          — up to 3 text inputs with "+ Add" button
- *  7. Blockers           — rich text editor, pre-populated from check-in
- *  8. Save               — sticky NeuralButton bar
+ *  1. Morning Intent     — collapsible, collapsed by default unless pre-filled
+ *  2. Free Write         — always expanded (primary writing area)
+ *  3. AI Prompt          — card with lightbulb, regenerate ghost button
+ *  4. Evening Reflection — collapsible, collapsed by default unless pre-filled
+ *  5. Sketch             — drawing canvas (pencil/stylus support)
+ *  6. Mood & Energy      — compact merged MoodEnergyPicker widget
+ *  7. Gratitude          — up to 3 text inputs with "+ Add" button
+ *  8. Blockers           — rich text editor, pre-populated from check-in
+ *  9. Save               — sticky NeuralButton bar
  */
 
 import React, { useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Lightbulb, RefreshCw, Plus, X, Sunrise, BookOpen, Moon, Heart, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Lightbulb, RefreshCw, Plus, X, Sunrise, Moon, Heart, AlertCircle, ChevronDown, PenLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { Skeleton } from '@/core/components/Skeleton';
 import { RichTextEditor } from './RichTextEditor';
 import { MoodEnergyPicker } from './MoodEnergyPicker';
+import { DrawingCanvas } from './DrawingCanvas';
 import type { JournalEntry } from '@/lib/types';
 import type { AtlasHabit, AtlasGoal } from '../../services/atlas-profile-service';
 
@@ -45,8 +47,15 @@ export interface JournalSaveFeedback {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const LABEL_CLASS = 'flex items-center gap-1.5 text-[11px] font-semibold text-white/50 uppercase tracking-widest mb-2 font-display';
+const LABEL_CLASS = 'flex items-center gap-1.5 text-[11px] font-semibold text-white/50 uppercase tracking-widest font-display';
 const SECTION_DIVIDER = 'border-t border-white/5 pt-5';
+
+// Strip HTML tags and return plain text preview (max N chars)
+function htmlPreview(html: string, max = 60): string {
+  const plain = html.replace(/<[^>]*>/g, '').trim();
+  if (!plain) return '';
+  return plain.length > max ? plain.slice(0, max).trimEnd() + '…' : plain;
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -103,6 +112,17 @@ export function JournalEntryEditor({
     onSave(draft);
   }, [onSave, draft]);
 
+  // Collapsed state — morning/evening collapsed by default unless pre-filled
+  const [morningOpen, setMorningOpen] = useState(() => {
+    const plain = entry.morningIntent.replace(/<[^>]*>/g, '').trim();
+    return plain.length > 0;
+  });
+  const [eveningOpen, setEveningOpen] = useState(() => {
+    const plain = entry.eveningReflection.replace(/<[^>]*>/g, '').trim();
+    return plain.length > 0;
+  });
+  const [sketchOpen, setSketchOpen] = useState(() => !!entry.sketch);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -110,24 +130,118 @@ export function JournalEntryEditor({
       transition={{ duration: 0.25 }}
       className="space-y-5 pb-24"
     >
-      {/* ── 1. Morning Intent ─────────────────────────────────────── */}
-      <section>
-        <p className={LABEL_CLASS}>
-          <Sunrise className="w-3.5 h-3.5 text-amber-400/60" aria-hidden />
-          Morning Intent
-        </p>
-        <RichTextEditor
-          value={draft.morningIntent}
-          onChange={(html) => patch('morningIntent', html)}
-          placeholder="What's your intention for today?"
-          minHeight="72px"
-        />
+      {/* ══ Unified writing card ═══════════════════════════════════ */}
+      <section className="rounded-xl border border-white/10 bg-black/30 overflow-hidden">
+
+        {/* ── Header: Morning Intent (collapsible) ─────────────────── */}
+        <button
+          type="button"
+          onClick={() => setMorningOpen((o) => !o)}
+          aria-expanded={morningOpen}
+          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.03] transition-colors"
+        >
+          <Sunrise className="w-3.5 h-3.5 text-amber-400/60 shrink-0" aria-hidden />
+          <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest font-display shrink-0">
+            Morning Intent
+          </span>
+          {!morningOpen && (
+            <span className="text-[11px] text-white/25 truncate text-left flex-1 min-w-0">
+              {htmlPreview(draft.morningIntent) || 'Tap to add…'}
+            </span>
+          )}
+          <ChevronDown
+            className={cn(
+              'w-3.5 h-3.5 text-white/25 shrink-0 transition-transform duration-200 ml-auto',
+              morningOpen && 'rotate-180',
+            )}
+            aria-hidden
+          />
+        </button>
+
+        <AnimatePresence initial={false}>
+          {morningOpen && (
+            <motion.div
+              key="morning"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden border-t border-white/8"
+            >
+              <RichTextEditor
+                value={draft.morningIntent}
+                onChange={(html) => patch('morningIntent', html)}
+                placeholder="What's your intention for today?"
+                minHeight="72px"
+                className="rounded-none border-0 bg-transparent"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Body: Free Write (always visible, no label) ──────────── */}
+        <div className="border-t border-white/8">
+          <RichTextEditor
+            value={draft.freeform}
+            onChange={(html) => patch('freeform', html)}
+            placeholder="How are you feeling? Write freely…"
+            minHeight="160px"
+            className="rounded-none border-0 bg-transparent"
+          />
+        </div>
+
+        {/* ── Footer: Evening Reflection (collapsible) ─────────────── */}
+        <AnimatePresence initial={false}>
+          {eveningOpen && (
+            <motion.div
+              key="evening"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden border-t border-white/8"
+            >
+              <RichTextEditor
+                value={draft.eveningReflection}
+                onChange={(html) => patch('eveningReflection', html)}
+                placeholder="How did the day go?"
+                minHeight="96px"
+                className="rounded-none border-0 bg-transparent"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <button
+          type="button"
+          onClick={() => setEveningOpen((o) => !o)}
+          aria-expanded={eveningOpen}
+          className="w-full flex items-center gap-3 px-3 py-2.5 border-t border-white/8 hover:bg-white/[0.03] transition-colors"
+        >
+          <Moon className="w-3.5 h-3.5 text-blue-400/60 shrink-0" aria-hidden />
+          <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest font-display shrink-0">
+            Evening Reflection
+          </span>
+          {!eveningOpen && (
+            <span className="text-[11px] text-white/25 truncate text-left flex-1 min-w-0">
+              {htmlPreview(draft.eveningReflection) || 'Tap to add…'}
+            </span>
+          )}
+          <ChevronDown
+            className={cn(
+              'w-3.5 h-3.5 text-white/25 shrink-0 transition-transform duration-200 ml-auto',
+              eveningOpen && 'rotate-180',
+            )}
+            aria-hidden
+          />
+        </button>
+
       </section>
 
-      {/* ── 2. AI Prompt ──────────────────────────────────────────── */}
+      {/* ── AI Prompt ──────────────────────────────────────────────── */}
       {(isLoadingPrompt || aiPrompt) && (
-        <section className={SECTION_DIVIDER}>
-          <p className={LABEL_CLASS}>
+        <section>
+          <p className={cn(LABEL_CLASS, 'mb-2')}>
             <Lightbulb className="w-3.5 h-3.5 text-violet-400/60" aria-hidden />
             Today's Prompt
           </p>
@@ -159,37 +273,56 @@ export function JournalEntryEditor({
         </section>
       )}
 
-      {/* ── 3. Free Write ─────────────────────────────────────────── */}
+      {/* ── 5. Sketch (pencil/stylus canvas, collapsible) ─────────── */}
       <section className={SECTION_DIVIDER}>
-        <p className={LABEL_CLASS}>
-          <BookOpen className="w-3.5 h-3.5 text-indigo-400/60" aria-hidden />
-          Free Write
-        </p>
-        <RichTextEditor
-          value={draft.freeform}
-          onChange={(html) => patch('freeform', html)}
-          placeholder="How are you feeling? Write freely…"
-          minHeight="120px"
-        />
+        <button
+          type="button"
+          onClick={() => setSketchOpen((o) => !o)}
+          aria-expanded={sketchOpen}
+          className="w-full flex items-center justify-between gap-2 mb-2 group"
+        >
+          <span className={LABEL_CLASS}>
+            <PenLine className="w-3.5 h-3.5 text-violet-400/60" aria-hidden />
+            Sketch
+          </span>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {!sketchOpen && (
+              <span className="text-[11px] text-white/30 truncate text-left">
+                {draft.sketch ? 'Drawing saved' : 'Tap to draw…'}
+              </span>
+            )}
+            <ChevronDown
+              className={cn(
+                'w-3.5 h-3.5 text-white/30 shrink-0 transition-transform duration-200 ml-auto',
+                sketchOpen && 'rotate-180',
+              )}
+              aria-hidden
+            />
+          </div>
+        </button>
+        <AnimatePresence initial={false}>
+          {sketchOpen && (
+            <motion.div
+              key="sketch"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <DrawingCanvas
+                value={draft.sketch ?? null}
+                onChange={(png) => patch('sketch', png)}
+                height={260}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
-      {/* ── 4. Evening Reflection ─────────────────────────────────── */}
+      {/* ── 6. Mood & Energy (merged) ─────────────────────────────── */}
       <section className={SECTION_DIVIDER}>
-        <p className={LABEL_CLASS}>
-          <Moon className="w-3.5 h-3.5 text-blue-400/60" aria-hidden />
-          Evening Reflection
-        </p>
-        <RichTextEditor
-          value={draft.eveningReflection}
-          onChange={(html) => patch('eveningReflection', html)}
-          placeholder="What happened today?"
-          minHeight="96px"
-        />
-      </section>
-
-      {/* ── 5. Mood & Energy (merged) ─────────────────────────────── */}
-      <section className={SECTION_DIVIDER}>
-        <p className={LABEL_CLASS}>Vibe Check</p>
+        <p className={cn(LABEL_CLASS, 'mb-2')}>Vibe Check</p>
         <MoodEnergyPicker
           mood={draft.mood}
           energyLevel={draft.energyLevel}
@@ -198,9 +331,9 @@ export function JournalEntryEditor({
         />
       </section>
 
-      {/* ── 6. Gratitude ──────────────────────────────────────────── */}
+      {/* ── 7. Gratitude ──────────────────────────────────────────── */}
       <section className={SECTION_DIVIDER}>
-        <p className={LABEL_CLASS}>
+        <p className={cn(LABEL_CLASS, 'mb-2')}>
           <Heart className="w-3.5 h-3.5 text-rose-400/60" aria-hidden />
           Gratitude
         </p>
@@ -242,9 +375,9 @@ export function JournalEntryEditor({
         </div>
       </section>
 
-      {/* ── 7. Blockers ───────────────────────────────────────────── */}
+      {/* ── 8. Blockers ───────────────────────────────────────────── */}
       <section className={SECTION_DIVIDER}>
-        <p className={LABEL_CLASS}>
+        <p className={cn(LABEL_CLASS, 'mb-2')}>
           <AlertCircle className="w-3.5 h-3.5 text-amber-400/60" aria-hidden />
           Blockers
         </p>
@@ -256,7 +389,7 @@ export function JournalEntryEditor({
         />
       </section>
 
-      {/* ── 8. Save (sticky) ──────────────────────────────────────── */}
+      {/* ── 9. Save (sticky) ──────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 z-10 px-4 pb-4 pt-3 bg-black/60 backdrop-blur-md border-t border-white/8">
         <NeuralButton
           themeColor="emerald"

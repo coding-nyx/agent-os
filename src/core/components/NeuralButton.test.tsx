@@ -21,7 +21,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { NeuralButton, NeuralButtonThemeColor } from './NeuralButton';
+import { NeuralButton, NeuralButtonThemeColor, NeuralIconButton } from './NeuralButton';
+import { Sparkles } from 'lucide-react';
 
 // Framer Motion: we only care about DOM output, not animation frames
 vi.mock('framer-motion', async () => {
@@ -219,6 +220,26 @@ describe('NeuralButton — disabled state', () => {
     render(<NeuralButton disabled onClick={onClick}>Action</NeuralButton>);
     await userEvent.click(getButton());
     expect(onClick).not.toHaveBeenCalled();
+  });
+});
+
+describe('NeuralIconButton', () => {
+  it('accepts iconProps.size without leaking TypeScript-only assumptions into runtime', () => {
+    const { container } = render(
+      <NeuralIconButton
+        aria-label="Open sparkle"
+        icon={<Sparkles />}
+        iconProps={{ size: 24, strokeWidth: 1.5 }}
+      />
+    );
+
+    const button = screen.getByRole('button', { name: 'Open sparkle' });
+    const icon = container.querySelector('svg');
+
+    expect(button).toBeInTheDocument();
+    expect(icon).toHaveAttribute('width', '24');
+    expect(icon).toHaveAttribute('height', '24');
+    expect(icon).toHaveAttribute('stroke-width', '1.5');
   });
 });
 

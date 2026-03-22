@@ -1359,6 +1359,7 @@ export interface JournalEntry {
   goalsReflection: JournalGoalReflection[];
   aiPromptUsed: string | null; // The AI prompt that was shown, if any
   tags: string[];
+  sketch: string | null;       // Base64 PNG from the drawing canvas, if any
 }
 
 // Soma

@@ -14,6 +14,7 @@ import { formatNSVForAtlasPlanner } from '@/lib/services/nsv-service';
 import type { NeuralStateVector } from '@/lib/types';
 import { AtlasActionsProvider } from './context/AtlasActionsContext';
 import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
+import { AtlasActionRail } from './components/AtlasActionRail';
 import { AtlasNotificationSettingsPanel } from './components/AtlasNotificationSettingsPanel';
 import { QuickAddForm } from './components/QuickAddForm';
 import type { EveningCheckInSubmitData } from './components/EveningCheckIn';
@@ -46,6 +47,7 @@ import {
 } from './services/journal-service';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { AtlasReviewService } from './services/atlas-review-service';
+import { useUIStore } from '@/lib/stores/ui-store';
 
 function buildRecoveryWindow(reason: string): RecoveryWindow {
   const now = Date.now();
@@ -70,6 +72,7 @@ interface AtlasContentProps {
 function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: AtlasContentProps) {
   const { globalSoul, updateCrossFunctionalState } = useGlobalSoul();
   const agentAlias = globalSoul?.displayNames?.atlas || 'Atlas';
+  const setHideGlobalFAB = useUIStore((s) => s.setHideGlobalFAB);
   const { display: predictiveDisplay } = useAtlasPredictiveState(
     globalSoul?.crossFunctionalState ?? null
   );
@@ -85,6 +88,11 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
   // S9-007: Morning / Evening intelligence cadence — driven by Spine events.
   const [showMorningBrief, setShowMorningBrief] = useState(false);
   const [showEveningCheckin, setShowEveningCheckin] = useState(false);
+
+  useEffect(() => {
+    setHideGlobalFAB(true);
+    return () => setHideGlobalFAB(false);
+  }, [setHideGlobalFAB]);
 
   // On mount: check if a review is overdue without waiting for a Spine event.
   useEffect(() => {
@@ -646,12 +654,16 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       authMode="atlas"
       placeholder="Share task pressure or schedule constraints..."
       primaryAction={
-        <QuickAddForm
-          isFluid
-          projects={profile?.projects ?? []}
-          onCreateTask={handleCreateTask}
-          onCreateHabit={handleCreateHabit}
-          onCreateGoal={handleCreateGoal}
+        <AtlasActionRail
+          quickAddAction={
+            <QuickAddForm
+              isFluid
+              projects={profile?.projects ?? []}
+              onCreateTask={handleCreateTask}
+              onCreateHabit={handleCreateHabit}
+              onCreateGoal={handleCreateGoal}
+            />
+          }
         />
       }
     >

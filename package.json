@@ -44,6 +44,7 @@
     "lucide-react": "^0.562.0",
     "papaparse": "^5.5.3",
     "pdfjs-dist": "^5.5.207",
+    "perfect-freehand": "^1.2.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.69.0",

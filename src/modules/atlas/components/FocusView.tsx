@@ -318,11 +318,11 @@ export function FocusView({
       {/* ── Floating chat button ── */}
       <NeuralButton
         onClick={onOpenChat}
-        aria-label="Open chat with Atlas"
-        themeColor="emerald"
+        aria-label="Open Nexus"
+        themeColor="indigo"
         className={cn(
           'fixed bottom-6 left-6 z-[var(--z-fab)] !w-12 !h-12 !rounded-full',
-          'shadow-lg shadow-emerald-500/10'
+          'shadow-lg shadow-indigo-500/10'
         )}
       >
         <MessageCircle className="w-5 h-5" aria-hidden="true" />

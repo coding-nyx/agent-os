@@ -4,6 +4,7 @@ import {
   Send, Bot, User, Loader2, Sparkles, Shield,
   Activity as ActivityIcon, Terminal, ChevronDown, Lock, Zap,
   ArrowRight, Plus, FileText, BarChart3, Image as ImageIcon, X,
+  Mic, MicOff,
   Search, Calculator, BrainCircuit, Trash2, RefreshCw, AlertTriangle, MoreVertical
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -21,6 +22,7 @@ import { DocumentMessageCard, parseDocumentMessage, parseDocumentUploadMessage }
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
 import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
 import { buildDocumentUploadVisibleMessage, summarizeDocumentUploadMessage } from '@/lib/services/document-upload-message';
+import { useSpeechToText } from '@/lib/hooks/use-speech-to-text';
 
 // Helper to convert MessageContent to string for display
 function messageContentToString(content: MessageContent): string {
@@ -63,6 +65,7 @@ interface ChatInterfaceProps {
   onUploadDocument?: (file: File) => void;
   onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
   processingLabel?: string;
+  enableSpeechToText?: boolean;
 }
 
 const THEMES = {
@@ -319,6 +322,7 @@ export const ChatInterface = React.memo(function ChatInterface({
   onUploadDocument,
   onUploadDocuments,
   processingLabel,
+  enableSpeechToText = false,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -330,8 +334,42 @@ export const ChatInterface = React.memo(function ChatInterface({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isNearBottomRef = useRef(true);
   const { debugMode } = useDebugMode();
+  const speechToText = useSpeechToText({
+    enabled: enableSpeechToText,
+    value: input,
+    onValueChange: setInput,
+  });
+  const {
+    clearError: clearSpeechError,
+    error: speechError,
+    interimTranscript,
+    isListening: isSpeechListening,
+    isSupported: isSpeechSupported,
+    stopListening: stopSpeechToText,
+    toggleListening: toggleSpeechToText,
+  } = speechToText;
   
   const effectiveIsProcessing = isProcessing !== undefined ? isProcessing : isLoading;
+  const isComposerDisabled = effectiveIsProcessing || !!error || Boolean(quota?.isHardLocked);
+  const isSpeechButtonDisabled =
+    isComposerDisabled || (enableSpeechToText && !isSpeechSupported && !isSpeechListening);
+  const speechStatusMessage = !enableSpeechToText
+    ? null
+    : speechError
+      ? speechError
+      : !isSpeechSupported
+        ? 'Speech-to-text is unavailable in this browser.'
+        : isSpeechListening
+          ? interimTranscript
+            ? `Listening… ${interimTranscript}`
+            : 'Listening… tap the mic again when you are done.'
+          : null;
+
+  useEffect(() => {
+    if (isComposerDisabled && isSpeechListening) {
+      stopSpeechToText();
+    }
+  }, [isComposerDisabled, isSpeechListening, stopSpeechToText]);
 
   // Auto-resize textarea to fit content
   useLayoutEffect(() => {
@@ -856,11 +894,37 @@ export const ChatInterface = React.memo(function ChatInterface({
                 placeholder={error ? "Link severed..." : (quota?.isHardLocked ? "Trial Locked" : (draftUploads.length > 0 ? 'Optional: what should I analyze about these attachments?' : placeholder))} 
                 aria-label="Type your message"
                 className="flex-1 bg-transparent border-none outline-none px-3 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base text-white placeholder:text-white/10 resize-none min-h-[44px] max-h-40 leading-relaxed focus:ring-0 focus:border-none" 
-                disabled={effectiveIsProcessing || !!error || quota?.isHardLocked}
+                disabled={isComposerDisabled || isSpeechListening}
                 rows={1}
               />
+
+              {enableSpeechToText && (
+                <NeuralButton
+                  type="button"
+                  variant="ghost"
+                  aria-label={isSpeechListening ? 'Stop speech to text' : 'Start speech to text'}
+                  aria-pressed={isSpeechListening}
+                  title={
+                    isSpeechSupported
+                      ? (isSpeechListening ? 'Stop speech to text' : 'Start speech to text')
+                      : 'Speech-to-text is unavailable in this browser.'
+                  }
+                  disabled={isSpeechButtonDisabled}
+                  onClick={() => {
+                    clearSpeechError();
+                    toggleSpeechToText();
+                  }}
+                  className={cn(
+                    'w-11 h-11 rounded-2xl shrink-0 p-0 border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white/55 mr-5',
+                    isSpeechListening && 'border-rose-400/25 bg-rose-500/10 text-rose-300 animate-pulse',
+                    !isSpeechSupported && 'text-white/20 hover:bg-white/[0.04]',
+                  )}
+                >
+                  {isSpeechListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </NeuralButton>
+              )}
               
-              <NeuralButton type="submit" aria-label="Send message" disabled={effectiveIsProcessing || (draftUploads.length === 0 && !input.trim()) || !!error || quota?.isHardLocked} className={cn("w-11 h-11 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl p-0", theme.btn)}>
+              <NeuralButton type="submit" aria-label="Send message" disabled={effectiveIsProcessing || isSpeechListening || (draftUploads.length === 0 && !input.trim()) || !!error || quota?.isHardLocked} className={cn("w-11 h-11 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 shadow-xl p-0", theme.btn)}>
                 {isSyncing ? (
                   <Loader2 className="w-5 h-5 text-white animate-spin" />
                 ) : (
@@ -868,6 +932,19 @@ export const ChatInterface = React.memo(function ChatInterface({
                 )}
               </NeuralButton>
             </div>
+
+            {speechStatusMessage && (
+              <div className="mt-2 px-2 sm:px-4" aria-live="polite">
+                <span
+                  className={cn(
+                    'text-[10px] font-semibold uppercase tracking-[0.12em]',
+                    speechError || !isSpeechSupported ? 'text-amber-300/80' : 'text-cyan-300/75',
+                  )}
+                >
+                  {speechStatusMessage}
+                </span>
+              </div>
+            )}
 
             {isGuestTrial && (
               <div className="mt-1 px-2 sm:px-4">

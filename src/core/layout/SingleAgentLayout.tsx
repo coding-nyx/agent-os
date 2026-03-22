@@ -177,6 +177,10 @@ export function SingleAgentLayout({
   const hideGlobalFAB = useUIStore(s => s.hideGlobalFAB);
   const floatingBottom = `calc(${Math.max(24, moduleBottomBarHeight + 24)}px + env(safe-area-inset-bottom, 0px))`;
   const floatingInlineEnd = 'calc(var(--space-4) + env(safe-area-inset-right, 0px))';
+  const shouldReserveMobileBottomInset =
+    !canDockChat &&
+    isChatCollapsed &&
+    (!hideChatTrigger || !!primaryAction || !hideGlobalFAB);
 
   return (
     <div
@@ -273,7 +277,7 @@ export function SingleAgentLayout({
         <div 
           className={cn(
             "flex min-h-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden no-scrollbar scroll-smooth",
-            !canDockChat && isChatCollapsed && !hideGlobalFAB && "pb-24"
+            shouldReserveMobileBottomInset && "pb-24"
           )}
         >
           <div className={cn("flex w-full min-w-0 flex-1 flex-col", contentClassName)}>

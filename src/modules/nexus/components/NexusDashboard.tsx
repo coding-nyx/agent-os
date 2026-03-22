@@ -329,6 +329,7 @@ export function NexusDashboard({ ai, agentName }: NexusDashboardProps) {
           hideClearHistory
           onActionParsed={handleActionParsed}
           onUploadDocuments={handleUploadDocuments}
+          enableSpeechToText
         />
 
         {/* Routing suggestion */}

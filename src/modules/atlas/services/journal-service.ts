@@ -288,6 +288,7 @@ export function createEmptyJournalEntry(date: string): JournalEntry {
     goalsReflection: [],
     aiPromptUsed: null,
     tags: [],
+    sketch: null,
   };
 }
 

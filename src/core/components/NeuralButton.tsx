@@ -189,14 +189,17 @@ NeuralButton.displayName = 'NeuralButton';
 
 interface NeuralIconButtonProps extends Omit<NeuralButtonProps, 'children'> {
   icon: React.ReactElement;
-  iconProps?: Omit<React.SVGProps<SVGElement>, 'children'> & { className?: string };
+  iconProps?: Omit<React.SVGProps<SVGElement>, 'children'> & {
+    className?: string;
+    size?: number | string;
+  };
 }
 
 const NeuralIconButton = React.forwardRef<any, NeuralIconButtonProps>(function NeuralIconButton(
   { icon, iconProps, ...rest }: NeuralIconButtonProps,
   ref
 ) {
-  const iconBaseProps = icon.props as React.SVGProps<SVGElement>;
+  const iconBaseProps = icon.props as React.SVGProps<SVGElement> & { size?: number | string };
   const { className: iconClassName, ...restIconProps } = iconProps ?? {};
   const mergedIconProps = {
     ...iconBaseProps,

@@ -27,8 +27,10 @@ import {
   Quote,
   Maximize2,
   Minimize2,
+  PenLine,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { HandwritingPanel } from './HandwritingPanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -77,10 +79,14 @@ function Toolbar({
   editor,
   onFocusMode,
   isFocusMode,
+  onHandwriting,
+  isHandwriting,
 }: {
   editor: Editor;
   onFocusMode?: () => void;
   isFocusMode?: boolean;
+  onHandwriting?: () => void;
+  isHandwriting?: boolean;
 }) {
   return (
     <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-white/8 flex-wrap">
@@ -152,17 +158,26 @@ function Toolbar({
         <Quote className="w-3.5 h-3.5" />
       </ToolbarButton>
 
+      <div className="flex-1" />
+
+      {onHandwriting && (
+        <ToolbarButton
+          onClick={onHandwriting}
+          active={isHandwriting}
+          title={isHandwriting ? 'Close handwriting' : 'Write to text'}
+        >
+          <PenLine className="w-3.5 h-3.5" />
+        </ToolbarButton>
+      )}
+
       {onFocusMode && (
-        <>
-          <div className="flex-1" />
-          <ToolbarButton onClick={onFocusMode} title={isFocusMode ? 'Exit focus mode' : 'Focus mode'}>
-            {isFocusMode ? (
-              <Minimize2 className="w-3.5 h-3.5" />
-            ) : (
-              <Maximize2 className="w-3.5 h-3.5" />
-            )}
-          </ToolbarButton>
-        </>
+        <ToolbarButton onClick={onFocusMode} title={isFocusMode ? 'Exit focus mode' : 'Focus mode'}>
+          {isFocusMode ? (
+            <Minimize2 className="w-3.5 h-3.5" />
+          ) : (
+            <Maximize2 className="w-3.5 h-3.5" />
+          )}
+        </ToolbarButton>
       )}
     </div>
   );
@@ -265,6 +280,7 @@ export function RichTextEditor({
   className,
 }: RichTextEditorProps) {
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isHandwriting, setIsHandwriting] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -297,6 +313,15 @@ export function RichTextEditor({
     [onChange, editor],
   );
 
+  const handleRecognized = useCallback(
+    (text: string) => {
+      if (!editor) return;
+      editor.chain().focus().insertContent(text + ' ').run();
+      setIsHandwriting(false);
+    },
+    [editor],
+  );
+
   return (
     <>
       <div
@@ -307,8 +332,31 @@ export function RichTextEditor({
         )}
       >
         {editor && (
-          <Toolbar editor={editor} onFocusMode={() => setIsFocusMode(true)} />
+          <Toolbar
+            editor={editor}
+            onFocusMode={() => setIsFocusMode(true)}
+            onHandwriting={() => setIsHandwriting((o) => !o)}
+            isHandwriting={isHandwriting}
+          />
         )}
+
+        <AnimatePresence initial={false}>
+          {isHandwriting && (
+            <motion.div
+              key="hw-panel"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden border-b border-white/8"
+            >
+              <HandwritingPanel
+                onRecognize={handleRecognized}
+                className="px-3 py-2"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <EditorContent
           editor={editor}

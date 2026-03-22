@@ -189,6 +189,7 @@ export function NexusOnboarding({ profile, isSubmitting, onComplete }: NexusOnbo
           themeColor="indigo"
           placeholder={chatSpec.placeholder}
           showInternalSignals={false}
+          enableSpeechToText
         />
       }
     />

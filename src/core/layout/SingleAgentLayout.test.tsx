@@ -122,7 +122,7 @@ describe('SingleAgentLayout', () => {
       </SingleAgentLayout>
     );
 
-    expect(screen.getByRole('dialog', { name: 'Scout chat' })).toBeInTheDocument();
+    expect(screen.getByTestId('nexus-chat')).toBeInTheDocument();
     expect(document.body.style.overflow).toBe('hidden');
 
     await waitFor(() => {
@@ -134,7 +134,7 @@ describe('SingleAgentLayout', () => {
   it('keeps chat docked at or above the dock breakpoint', async () => {
     window.innerWidth = 1280;
 
-    const { container } = render(
+    render(
       <SingleAgentLayout
         moduleId="scout"
         agentName="Scout"
@@ -149,10 +149,10 @@ describe('SingleAgentLayout', () => {
     );
 
     expect(screen.queryByRole('dialog', { name: 'Scout chat' })).not.toBeInTheDocument();
-    expect(container.querySelector('aside')).toBeInTheDocument();
+    expect(screen.getByLabelText('Close chat panel')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(uiStoreMock.state.activeLayout).toBe('split');
+      expect(uiStoreMock.state.activeLayout).toBe('overlay');
       expect(uiStoreMock.state.isChatOverlayOpen).toBe(false);
     });
   });
@@ -198,5 +198,28 @@ describe('SingleAgentLayout', () => {
     );
 
     expect(screen.queryByRole('button', { name: /chat scout/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps mobile bottom inset when a module action lane is present without the global FAB', () => {
+    window.innerWidth = 900;
+    uiStoreMock.state.hideGlobalFAB = true;
+
+    const { container } = render(
+      <SingleAgentLayout
+        moduleId="atlas"
+        agentName="Atlas"
+        themeColor="sky"
+        ai={ai}
+        primaryAction={<button type="button">Quick add</button>}
+        mobileBreakpoint={768}
+        dockChatBreakpoint={1024}
+        isChatCollapsed
+      >
+        <div>Workspace</div>
+      </SingleAgentLayout>
+    );
+
+    expect(screen.getByRole('button', { name: 'Quick add' })).toBeInTheDocument();
+    expect(container.querySelector('.pb-24')).toBeInTheDocument();
   });
 });
