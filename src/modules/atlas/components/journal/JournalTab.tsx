@@ -44,6 +44,8 @@ export interface JournalTabProps {
   isLocked: boolean;
   onSendMessage: (msg: string) => void;
   focusEntryId?: string;
+  activeView: JournalView;
+  onViewChange: (view: JournalView) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -85,14 +87,6 @@ function computeStreak(entries: JournalEntry[]): number {
   return streak;
 }
 
-// ── Sub-view pill nav ─────────────────────────────────────────────────────────
-
-const VIEWS: { id: JournalView; label: string }[] = [
-  { id: 'today', label: 'Today' },
-  { id: 'freeform', label: 'Free Write' },
-  { id: 'history', label: 'History' },
-];
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function JournalTab({
@@ -102,8 +96,9 @@ export function JournalTab({
   isLocked,
   onSendMessage,
   focusEntryId,
+  activeView,
+  onViewChange,
 }: JournalTabProps) {
-  const [activeView, setActiveView] = useState<JournalView>('today');
   const [todayEntry, setTodayEntry] = useState<JournalEntry | null>(null);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
@@ -167,10 +162,10 @@ export function JournalTab({
     if (!focusEntryId) return;
     const target = entries.find((e) => e.id === focusEntryId);
     if (target) {
-      setActiveView('history');
+      onViewChange('history');
       setSelectedEntry(target);
     }
-  }, [entries, focusEntryId]);
+  }, [entries, focusEntryId, onViewChange]);
 
   // ── AI prompt: request on freeform view switch ──────────────────────────────
   useEffect(() => {
@@ -265,7 +260,7 @@ export function JournalTab({
           setTodayEntry(createEmptyJournalEntry(todayDateString()));
         }
         setSelectedEntry(null);
-        setActiveView('history');
+        onViewChange('history');
         const quotes = [
           'Small honesty, big momentum.',
           'What you name becomes what you can work with.',
@@ -286,7 +281,7 @@ export function JournalTab({
         setIsSaving(false);
       }
     },
-    [userId, encryptionKey, entries, selectedEntry, activeView],
+    [userId, encryptionKey, entries, selectedEntry, activeView, onViewChange],
   );
 
   const handleConfirmOverwrite = useCallback(async () => {
@@ -336,38 +331,6 @@ export function JournalTab({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* ── Section header ─────────────────────────────────────────── */}
-      <div className="px-4 md:px-6 pt-4 pb-3 border-b border-white/5">
-        <div className="flex items-center gap-2 mb-3">
-          <BookOpen className="w-4 h-4 text-violet-400" aria-hidden />
-          <h3 className="text-sm font-bold text-violet-300 font-display uppercase tracking-widest">
-            Journal
-          </h3>
-        </div>
-
-        {/* Sub-view pill nav */}
-        <div className="overflow-x-auto no-scrollbar -mx-1">
-        <div className="flex gap-1 bg-black/20 rounded-xl p-1 w-fit min-w-full sm:min-w-0 mx-1 border border-white/5">
-          {VIEWS.map(({ id, label }) => (
-            <NeuralButton
-              key={id}
-              type="button"
-              onClick={() => {
-                setSelectedEntry(null);
-                setActiveView(id);
-              }}
-              variant={activeView === id ? 'primary' : 'ghost'}
-              themeColor="emerald"
-              size="sm"
-              className="flex-1 !h-8 px-4"
-            >
-              {label}
-            </NeuralButton>
-          ))}
-        </div>
-        </div>
-      </div>
-
       {/* ── Scrollable content area ─────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto no-scrollbar px-4 md:px-6 pt-5">
         <AnimatePresence mode="wait">

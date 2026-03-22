@@ -94,7 +94,17 @@ interface EnhancedAtlasDashboardProps {
   focusId?: string;
 }
 
-function ViewDropdown({ activeView, onViewChange }: { activeView: string; onViewChange: (v: any) => void }) {
+function ViewDropdown({
+  activeView,
+  onViewChange,
+  options = ['today', 'week', 'month'],
+  labels = { today: 'today', week: 'week', month: 'month' }
+}: {
+  activeView: string;
+  onViewChange: (v: any) => void;
+  options?: string[];
+  labels?: Record<string, string>;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -137,7 +147,7 @@ function ViewDropdown({ activeView, onViewChange }: { activeView: string; onView
           className="fixed w-32 bg-zinc-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] py-1 z-[1000] overflow-hidden"
           style={{ top: coords.top, left: coords.left }}
         >
-          {(['today', 'week', 'month'] as const).map((v) => (
+          {options.map((v) => (
             <button
               key={v}
               onClick={(e) => {
@@ -150,7 +160,7 @@ function ViewDropdown({ activeView, onViewChange }: { activeView: string; onView
                 activeView === v ? "text-[var(--module-color-400)] bg-white/5" : "text-white/40 hover:text-white/70 hover:bg-white/5"
               )}
             >
-              {v}
+              {labels[v] || v}
             </button>
           ))}
         </div>,
@@ -189,6 +199,7 @@ export function EnhancedAtlasDashboard({
   const [isFieldsModalOpen, setIsFieldsModalOpen] = useState(false);
   const [focusTaskId, setFocusTaskId] = useState<string | undefined>(undefined);
   const [focusJournalId, setFocusJournalId] = useState<string | undefined>(undefined);
+  const [journalView, setJournalView] = useState<'today' | 'freeform' | 'history'>('today');
 
   useEffect(() => {
     if (!focusId) return;
@@ -215,7 +226,19 @@ export function EnhancedAtlasDashboard({
     },
     { id: 'backlog', label: 'Backlog', icon: Inbox, badge: queuedCount || undefined },
     { id: 'rhythms', label: 'Rhythms', icon: Clock },
-    { id: 'journal', label: 'Journal', icon: BookOpen },
+    {
+      id: 'journal',
+      label: 'Journal',
+      icon: BookOpen,
+      renderRight: (isActive) => isActive ? (
+        <ViewDropdown
+          activeView={journalView}
+          onViewChange={setJournalView}
+          options={['today', 'freeform', 'history']}
+          labels={{ today: 'Today', freeform: 'Free Write', history: 'History' }}
+        />
+      ) : null
+    },
     {
       id: 'insights',
       label: 'Insights',
@@ -696,6 +719,8 @@ export function EnhancedAtlasDashboard({
             isLocked={isLocked}
             onSendMessage={actions.onSendMessage}
             focusEntryId={focusJournalId}
+            activeView={journalView}
+            onViewChange={setJournalView}
           />
         )}
 
