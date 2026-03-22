@@ -1296,8 +1296,8 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
         hideChatTrigger={activeTab === 'train'}
         renderMessageActions={renderProposalMessageActions}
       >
-        <div className="titan-theme flex flex-col h-full overflow-hidden">
-          <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-3 sm:pb-4 md:pb-5">
+        <div className="titan-theme flex flex-col h-full min-h-0 relative">
+          <div className="shrink-0 px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-3 sm:pb-4 md:pb-5">
             <div className="flex items-start justify-between gap-3">
               <SectionHeader
                 label={isRecoveryActive ? 'Recovery Mode' : 'Performance Domain'}
@@ -1309,16 +1309,18 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
           </div>
 
           {isRecoveryActive && recoveryPlan && (
-            <RecoveryBanner
-              plan={recoveryPlan}
-              daysRemaining={daysRemaining}
-              onOpenCheckin={() => setActiveTab('recovery')}
-              onViewPlan={() => setActiveTab('recovery')}
-              onResume={() => setIsResumeModalOpen(true)}
-            />
+            <div className="shrink-0">
+              <RecoveryBanner
+                plan={recoveryPlan}
+                daysRemaining={daysRemaining}
+                onOpenCheckin={() => setActiveTab('recovery')}
+                onViewPlan={() => setActiveTab('recovery')}
+                onResume={() => setIsResumeModalOpen(true)}
+              />
+            </div>
           )}
 
-          <div className="px-4 sm:px-6 md:px-8 pb-3 sm:pb-4 md:pb-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-4 relative">
+          <div className="shrink-0 px-4 sm:px-6 md:px-8 pb-3 sm:pb-4 md:pb-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-4 relative">
             <div className="relative overflow-x-auto no-scrollbar mask-edges-horizontal">
               <NeuralTabGroup
                 tabs={tabs}
@@ -1366,14 +1368,14 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             id={`tab-panel-${activeTab}`}
             aria-labelledby={`tab-${activeTab}`}
             className={cn(
-              "flex-1 overflow-y-auto overflow-x-visible no-scrollbar pt-4 sm:pt-5 md:pt-6",
+              "flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-visible no-scrollbar pt-4 sm:pt-5 md:pt-6",
               activeTab === 'train' && "pb-[calc(5rem+env(safe-area-inset-bottom,0px))]"
             )}
             style={activeTab === 'train' && quickLogBarHeight > 0
               ? { paddingBottom: Math.max(quickLogBarHeight, 16) }
               : undefined}
           >
-            <div className="w-full overflow-x-hidden">
+            <div className="flex-1 w-full overflow-x-hidden flex flex-col min-h-0">
               {renderTabContent()}
             </div>
             {/* Quick-log bar footer — sticky within the Titan tab panel */}

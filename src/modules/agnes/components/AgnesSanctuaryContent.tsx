@@ -28,10 +28,10 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
   hasActiveSession
 }) => {
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative z-[var(--z-content)] px-4 sm:px-6 py-8 sm:py-12 overflow-y-auto no-scrollbar items-center">
+    <div className="flex-1 flex flex-col min-h-0 h-full relative z-[var(--z-content)] px-4 sm:px-6 py-8 sm:py-12 overflow-y-auto no-scrollbar items-center">
       
       {/* 1. Hero Section - Positioned to complement but not overlap the 3D model */}
-      <main className="flex-1 flex flex-col items-center justify-start max-w-5xl w-full space-y-12 sm:space-y-20 mt-4 sm:mt-8">
+      <main className="flex-1 flex flex-col min-h-0 shrink-0 items-center justify-start max-w-5xl w-full space-y-12 sm:space-y-20 mt-4 sm:mt-8">
         
         <div className="text-center space-y-8 relative z-[var(--z-content)]">
           <div className="space-y-6">
@@ -106,7 +106,7 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
       </main>
 
       {/* 2. Minimalist Footer — encrypted status */}
-      <footer className="mt-auto w-full max-w-4xl flex items-center justify-between pt-12 pb-8 border-t border-white/5 px-4">
+      <footer className="mt-auto shrink-0 w-full max-w-4xl flex items-center justify-between pt-12 pb-8 border-t border-white/5 px-4">
         <div className="flex items-center gap-3 opacity-30">
            <Shield size={14} className="text-indigo-400" />
            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">End-to-End Encrypted</span>

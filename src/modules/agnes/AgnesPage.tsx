@@ -451,7 +451,7 @@ function AgnesContent({
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative">
+    <div className="flex-1 flex flex-col min-h-0 h-full relative">
       <SanctuaryBackground />
       
       <div className="absolute inset-0 pointer-events-none">
@@ -459,7 +459,7 @@ function AgnesContent({
       </div>
 
       <div className={cn(
-        "flex-1 flex flex-col min-h-0 relative z-[var(--z-content)] w-full min-w-0"
+        "flex-1 flex flex-col min-h-0 h-full relative z-[var(--z-content)] w-full min-w-0"
       )}>
         <AnimatePresence mode="wait">
           {currentState === 'selecting' ? (
@@ -468,7 +468,7 @@ function AgnesContent({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col min-h-0"
+              className="flex-1 flex flex-col min-h-0 h-full"
             >
               {isHydrating ? (
                 <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/30">
@@ -495,9 +495,9 @@ function AgnesContent({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
-              className="flex-1 flex flex-col min-h-0 relative z-[var(--z-content)] overflow-hidden"
+              className="flex-1 flex flex-col min-h-0 h-full relative z-[var(--z-content)] overflow-hidden"
             >
-              <div className="flex-1 flex flex-col items-center justify-center p-4">
+              <div className="flex-1 flex flex-col min-h-0 h-full items-center justify-center p-4">
                 {selectedSomaticExercise === 'breathwork' ? (
                   <BreathworkExercise 
                     onComplete={handleSomaticComplete}
@@ -522,9 +522,9 @@ function AgnesContent({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex-1 flex flex-col min-h-0 relative z-[var(--z-content)]"
+              className="flex-1 flex flex-col min-h-0 h-full relative z-[var(--z-content)]"
             >
-              <div className="flex-1 flex flex-col min-h-0 relative">
+              <div className="flex-1 flex flex-col min-h-0 h-full relative">
                 <AnimatePresence mode="wait">
                   {isHydrating ? (
                     <motion.div
@@ -544,7 +544,7 @@ function AgnesContent({
                       key="chat"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="flex-1 flex flex-col min-h-0"
+                      className="flex-1 flex flex-col min-h-0 h-full"
                     >
                       {/* Session Telemetry & Control Bar - Persistent above chat to prevent clipping */}
                       <div className="shrink-0 flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/5 bg-black/40 backdrop-blur-2xl z-[var(--z-content)]">
