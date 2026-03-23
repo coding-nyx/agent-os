@@ -60,7 +60,6 @@ import { scoutDocumentPolicy, type ScoutDocumentProposal } from './services/scou
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NewSessionDialog } from './components/NewSessionDialog';
-import { MobileBottomNav } from './components/MobileBottomNav';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { prepareDocumentChatPrompt } from '@/lib/services/document-chat-handoff-service';
 import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
@@ -744,7 +743,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               </div>
             )}
 
-            <div className="mt-4 hidden lg:block">
+            <div className="mt-4 min-w-0 flex-1">
               <NeuralTabGroup
                 tabs={tabs}
                 activeTab={selectedView}
@@ -977,12 +976,6 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           isOpen={isNewSessionDialogOpen}
           onClose={() => setIsNewSessionDialogOpen(false)}
           onSubmit={handleNewSessionSubmit}
-        />
-
-        <MobileBottomNav
-          activeView={selectedView}
-          onViewChange={handleViewChange}
-          onNewSession={handleStartSession}
         />
       </div>
     </SingleAgentLayout>
