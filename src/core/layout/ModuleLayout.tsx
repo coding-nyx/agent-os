@@ -360,14 +360,16 @@ export function ModuleLayout({
             <div className="flex items-center gap-2 md:gap-3 shrink-0">
               <TelemetryTicker debugMode={debugMode} />
 
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new Event('open-nexus'))}
-                aria-label="Open Nexus"
-                className="relative w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 shrink-0"
-              >
-                  <Sparkles className="w-4 h-4 text-white/50" />
-              </button>
+              {moduleId !== 'nexus' && (
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new Event('open-nexus'))}
+                  aria-label="Open Nexus"
+                  className="relative w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 shrink-0"
+                >
+                    <Sparkles className="w-4 h-4 text-white/50" />
+                </button>
+              )}
 
               {/* Module switcher — mobile + md+ */}
               <div className="block md:hidden">

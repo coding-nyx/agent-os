@@ -340,7 +340,6 @@ export function EnhancedAtlasDashboard({
               energyLevel={energyBudget}
               onComplete={actions.onCompleteTask}
               onDefer={(id) => actions.onUpdateTask(id, { status: 'deferred' })}
-              onOpenChat={() => window.dispatchEvent(new Event('open-nexus'))}
             />
           </div>
         )}

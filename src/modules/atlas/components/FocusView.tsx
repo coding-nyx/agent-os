@@ -16,7 +16,6 @@ interface FocusViewProps {
   energyLevel: number; // 0-10
   onComplete: (id: string) => void;
   onDefer: (id: string) => void;
-  onOpenChat: () => void;
 }
 
 const DEFAULT_FOCUS_MINUTES = 25;
@@ -28,7 +27,6 @@ export function FocusView({
   energyLevel,
   onComplete,
   onDefer,
-  onOpenChat,
 }: FocusViewProps) {
   const reducedMotion = useReducedMotion();
 
@@ -314,19 +312,6 @@ export function FocusView({
           </NeuralButton>
         </div>
       </motion.div>
-
-      {/* ── Floating chat button ── */}
-      <NeuralButton
-        onClick={onOpenChat}
-        aria-label="Open Nexus"
-        themeColor="indigo"
-        className={cn(
-          'fixed bottom-6 left-6 z-[var(--z-fab)] !w-12 !h-12 !rounded-full',
-          'shadow-lg shadow-indigo-500/10'
-        )}
-      >
-        <MessageCircle className="w-5 h-5" aria-hidden="true" />
-      </NeuralButton>
     </div>
   );
 }
