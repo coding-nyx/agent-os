@@ -122,19 +122,28 @@ export function registerScoutActions() {
       const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : undefined;
 
       const addedSources: SourceEntry[] = [];
+      const addPromises = new Map<string, Promise<any>>();
+
       for (const s of sources) {
         if (typeof s?.url === 'string') {
-          const added = await addSource({
-            url: s.url,
-            title: s.title || 'Untitled Source',
-            snippet: s.snippet,
-            imageUrl: s.imageUrl,
-            favicon: s.favicon,
-            discoveredVia: 'search',
-            nodeId: s.nodeId
-          }, { userId: userId ?? null, encryptionKey });
-          if (added) addedSources.push(added as any);
+          const normUrl = normalizeUrl(s.url);
+          if (!addPromises.has(normUrl)) {
+            addPromises.set(normUrl, addSource({
+              url: s.url,
+              title: s.title || 'Untitled Source',
+              snippet: s.snippet,
+              imageUrl: s.imageUrl,
+              favicon: s.favicon,
+              discoveredVia: 'search',
+              nodeId: s.nodeId
+            }, { userId: userId ?? null, encryptionKey }));
+          }
         }
+      }
+
+      const results = await Promise.all(addPromises.values());
+      for (const added of results) {
+        if (added) addedSources.push(added as any);
       }
 
       pushAssistantMessage?.(`📥 Added ${sources.length} sources to your research library.`);
