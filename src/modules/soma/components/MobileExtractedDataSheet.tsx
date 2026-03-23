@@ -186,7 +186,11 @@ export function MobileExtractedDataSheet({
               drag="y"
               dragConstraints={{ top: 0 }}
               dragElastic={0.2}
-              onDragEnd={handleDragEnd}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 100 || info.velocity.y > 500) {
+                  setIsOpen(false);
+                }
+              }}
               className={cn(
                 'fixed inset-x-0 bottom-0 z-[var(--z-modal)]',
                 'max-h-[70vh] min-h-[200px]',
@@ -195,29 +199,31 @@ export function MobileExtractedDataSheet({
                 'pb-[env(safe-area-inset-bottom,0px)]'
               )}
             >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
-                <div className="w-10 h-1 rounded-full bg-white/20" />
-              </div>
-
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 pb-3 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                  <FlaskConical className="w-5 h-5 text-[var(--module-color-400)]" />
-                  <h2 className="text-lg font-bold text-white tracking-tight">
-                    Extracted Data
-                  </h2>
-                  <span className="text-sm text-white/40">
-                    {totalCount} item{totalCount !== 1 ? 's' : ''}
-                  </span>
+              <div className="border-b border-white/10">
+                {/* Drag handle */}
+                <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
+                  <div className="w-10 h-1 rounded-full bg-white/20" />
                 </div>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-                  aria-label="Close"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 pb-3">
+                  <div className="flex items-center gap-3">
+                    <FlaskConical className="w-5 h-5 text-[var(--module-color-400)]" />
+                    <h2 className="text-lg font-bold text-white tracking-tight">
+                      Extracted Data
+                    </h2>
+                    <span className="text-sm text-white/40">
+                      {totalCount} item{totalCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="w-10 h-10 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Content - scrollable */}

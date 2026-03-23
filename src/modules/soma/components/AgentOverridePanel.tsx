@@ -145,6 +145,13 @@ export function AgentOverridePanel({
             animate="visible"
             exit="exit"
             transition={{ type: 'spring', stiffness: 340, damping: 36 }}
+            drag="y"
+            dragConstraints={{ top: 0 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) {
+                onDismiss();
+              }
+            }}
             className={cn(
               'fixed bottom-0 left-0 right-0 z-50',
               'bg-black/80 backdrop-blur-xl border-t border-white/10',
@@ -152,30 +159,32 @@ export function AgentOverridePanel({
               'max-h-[85dvh] overflow-y-auto',
             )}
           >
-            {/* Drag handle */}
-            <div className="flex justify-center mb-3" aria-hidden="true">
-              <span className="w-10 h-1 rounded-full bg-white/20" />
-            </div>
-
-            {/* Header row */}
-            <div className="flex items-start justify-between gap-3 mb-5">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-0.5">
-                  Agent Review
-                </p>
-                <h2 className="text-base font-semibold text-white">
-                  {fieldLabel}
-                </h2>
+            <div className="mb-5">
+              {/* Drag handle */}
+              <div className="flex justify-center mb-3 cursor-grab active:cursor-grabbing" aria-hidden="true">
+                <span className="w-10 h-1 rounded-full bg-white/20" />
               </div>
-              <NeuralButton
-                type="button"
-                variant="ghost"
-                onClick={onDismiss}
-                className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
-                aria-label="Close panel"
-              >
-                <X className="w-4 h-4" />
-              </NeuralButton>
+
+              {/* Header row */}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-white/40 mb-0.5">
+                    Agent Review
+                  </p>
+                  <h2 className="text-base font-semibold text-white">
+                    {fieldLabel}
+                  </h2>
+                </div>
+                <NeuralButton
+                  type="button"
+                  variant="ghost"
+                  onClick={onDismiss}
+                  className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
+                  aria-label="Close panel"
+                >
+                  <X className="w-4 h-4" />
+                </NeuralButton>
+              </div>
             </div>
 
             {/* Agent note */}

@@ -194,6 +194,13 @@ export function NexusOverlay() {
               animate="animate"
               exit="exit"
               transition={{ type: 'spring', stiffness: 340, damping: 34 }}
+              drag={isMobile ? "y" : false}
+              dragConstraints={{ top: 0 }}
+              onDragEnd={(_, info) => {
+                if (isMobile && (info.offset.y > 100 || info.velocity.y > 500)) {
+                  close();
+                }
+              }}
               className={[
                 'fixed z-[var(--z-modal)] flex flex-col',
                 'bg-[#09090e]/96 backdrop-blur-[52px]',
@@ -208,49 +215,51 @@ export function NexusOverlay() {
                 'lg:shadow-[-24px_0_60px_rgba(0,0,0,0.45)]',
               ].join(' ')}
             >
-              {/* Mobile drag handle */}
-              <div className="flex justify-center pt-3 pb-1 shrink-0 lg:hidden" aria-hidden="true">
-                <div className="w-9 h-1 rounded-full bg-white/[0.12]" />
-              </div>
-
-              {/* Header */}
-              <div className="px-4 pt-3 pb-3 lg:px-5 lg:pt-4 lg:pb-4 flex items-center justify-between border-b border-white/[0.05] shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-violet-500/[0.12] border border-violet-500/[0.18] flex items-center justify-center shrink-0 relative">
-                    <Sparkles className="w-4 h-4 text-violet-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-[13px] font-bold uppercase tracking-[0.18em] text-white/90 leading-none">
-                        Nexus
-                      </h2>
-                      <div
-                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                          isNexusBusy ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500 animate-pulse'
-                        }`}
-                      />
-                    </div>
-                    <p className="text-[10px] text-white/30 mt-0.5 tracking-wide truncate">
-                      {isNexusBusy ? busyLabel : 'Global access active'}
-                    </p>
-                  </div>
+              <div className="shrink-0 border-b border-white/[0.05]">
+                {/* Mobile drag handle */}
+                <div className="flex justify-center pt-3 pb-1 shrink-0 lg:hidden cursor-grab active:cursor-grabbing" aria-hidden="true">
+                  <div className="w-9 h-1 rounded-full bg-white/[0.12]" />
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={() => ai.clearSession()}
-                    className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-red-500/10 hover:border-red-500/20 flex items-center justify-center transition-colors group"
-                    aria-label="Clear conversation"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-white/25 group-hover:text-red-400 transition-colors" />
-                  </button>
-                  <button
-                    onClick={close}
-                    className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.07] flex items-center justify-center transition-colors group"
-                    aria-label="Close Nexus"
-                  >
-                    <X className="w-3.5 h-3.5 text-white/25 group-hover:text-white/80 transition-colors" />
-                  </button>
+                {/* Header */}
+                <div className="px-4 pt-2 pb-3 lg:px-5 lg:pt-4 lg:pb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-violet-500/[0.12] border border-violet-500/[0.18] flex items-center justify-center shrink-0 relative">
+                      <Sparkles className="w-4 h-4 text-violet-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-[13px] font-bold uppercase tracking-[0.18em] text-white/90 leading-none">
+                          Nexus
+                        </h2>
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                            isNexusBusy ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500 animate-pulse'
+                          }`}
+                        />
+                      </div>
+                      <p className="text-[10px] text-white/30 mt-0.5 tracking-wide truncate">
+                        {isNexusBusy ? busyLabel : 'Global access active'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => ai.clearSession()}
+                      className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-red-500/10 hover:border-red-500/20 flex items-center justify-center transition-colors group"
+                      aria-label="Clear conversation"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-white/25 group-hover:text-red-400 transition-colors" />
+                    </button>
+                    <button
+                      onClick={close}
+                      className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.07] flex items-center justify-center transition-colors group"
+                      aria-label="Close Nexus"
+                    >
+                      <X className="w-3.5 h-3.5 text-white/25 group-hover:text-white/80 transition-colors" />
+                    </button>
+                  </div>
                 </div>
               </div>
 

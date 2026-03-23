@@ -343,20 +343,25 @@ export function SingleAgentLayout({
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 onClick={(e) => e.stopPropagation()}
+                drag="y"
+                dragConstraints={{ top: 0 }}
+                onDragEnd={(_, info) => {
+                  if (info.offset.y > 100 || info.velocity.y > 500) {
+                    toggleChat(true);
+                  }
+                }}
                 className={cn(
                   "relative flex flex-col h-[85dvh] w-full bg-[#09090b] rounded-t-3xl overflow-hidden shadow-2xl border-t",
                   currentTheme.sidebarBorder
                 )}
               >
-                {/* Drag Handle */}
-                <div className="w-full flex justify-center pt-3 pb-1 shrink-0" onPointerDown={() => toggleChat(true)}>
-                  <div className="w-12 h-1.5 rounded-full bg-white/20" />
-                </div>
+                <div className={cn("shrink-0 border-b", currentTheme.sidebarBorder)}>
+                  {/* Drag Handle */}
+                  <div className="w-full flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing">
+                    <div className="w-12 h-1.5 rounded-full bg-white/20" />
+                  </div>
 
-                <div className={cn("shell-overlay-panel relative flex min-h-0 flex-1 flex-col")}>
-                  <div
-                    className={cn("relative flex items-center justify-between border-b px-4 py-2", currentTheme.sidebarBorder)}
-                  >
+                  <div className="relative flex items-center justify-between px-4 py-2">
                     <div className="flex items-center gap-3">
                       <div className={cn("h-2 w-2 rounded-full animate-pulse", 
                         currentTheme.indicatorBg
@@ -374,6 +379,9 @@ export function SingleAgentLayout({
                       <X size={18} className="text-white/50" />
                     </button>
                   </div>
+                </div>
+
+                <div className={cn("shell-overlay-panel relative flex min-h-0 flex-1 flex-col")}>
                   <div
                     className="flex min-h-0 flex-1 flex-col pb-safe"
                   >

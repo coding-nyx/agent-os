@@ -68,6 +68,13 @@ export function NeuralModal({
                   animate={{ opacity: 1, y: 0 }}
                   exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
                   transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 35 }}
+                  drag="y"
+                  dragConstraints={{ top: 0 }}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.y > 100 || info.velocity.y > 500) {
+                      onClose();
+                    }
+                  }}
                   className={cn(
                     // Mobile: bottom-sheet anchored to bottom
                     "fixed inset-x-0 bottom-0 z-[calc(var(--z-modal)+1)] pointer-events-none",
@@ -86,11 +93,6 @@ export function NeuralModal({
                       widths[maxWidth]
                     )}
                   >
-                    {/* Mobile drag handle */}
-                    <div className="flex justify-center pt-3 pb-1 shrink-0 sm:hidden" aria-hidden>
-                      <div className="w-10 h-1 rounded-full bg-white/20" />
-                    </div>
-
                     <Dialog.Close asChild>
                       <button
                         aria-label="Close dialog"
@@ -100,22 +102,29 @@ export function NeuralModal({
                       </button>
                     </Dialog.Close>
 
-                    <div className={cn("shrink-0 px-5 pt-2 pb-5 sm:p-8 border-b border-white/5", theme.bg)}>
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        {Icon && (
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-panel flex items-center justify-center border border-white/10 bg-black/40 shadow-xl">
-                            <Icon className={cn("w-5 h-5 sm:w-6 sm:h-6", theme.color)} />
-                          </div>
-                        )}
-                        <div className="min-w-0 pr-8">
-                          <Dialog.Title className="text-base sm:text-xl font-bold tracking-wide text-white uppercase leading-tight font-display truncate">
-                            {title}
-                          </Dialog.Title>
-                          {subtitle && (
-                            <p className="text-white/35 text-[10px] sm:text-[11px] uppercase font-semibold tracking-[0.15em] mt-0.5 sm:mt-1 truncate">
-                              {subtitle}
-                            </p>
+                    <div className={cn("shrink-0 border-b border-white/5", theme.bg)}>
+                      {/* Mobile drag handle */}
+                      <div className="flex justify-center pt-3 pb-1 shrink-0 sm:hidden cursor-grab active:cursor-grabbing" aria-hidden>
+                        <div className="w-10 h-1 rounded-full bg-white/20" />
+                      </div>
+
+                      <div className="px-5 pt-2 pb-5 sm:p-8">
+                        <div className="flex items-center gap-3 sm:gap-4">
+                          {Icon && (
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-panel flex items-center justify-center border border-white/10 bg-black/40 shadow-xl">
+                              <Icon className={cn("w-5 h-5 sm:w-6 sm:h-6", theme.color)} />
+                            </div>
                           )}
+                          <div className="min-w-0 pr-8">
+                            <Dialog.Title className="text-base sm:text-xl font-bold tracking-wide text-white uppercase leading-tight font-display truncate">
+                              {title}
+                            </Dialog.Title>
+                            {subtitle && (
+                              <p className="text-white/35 text-[10px] sm:text-[11px] uppercase font-semibold tracking-[0.15em] mt-0.5 sm:mt-1 truncate">
+                                {subtitle}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
