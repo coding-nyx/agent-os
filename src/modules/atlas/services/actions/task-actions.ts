@@ -146,6 +146,55 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
   },
 
+  uncomplete_task: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {
+    const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!raw) return;
+    const profile = raw;
+
+    const taskId = typeof payload?.id === 'string' ? payload.id : null;
+    if (!taskId) return;
+
+    const task = profile.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const now = new Date().toISOString();
+    task.status = 'queued'; // Or active, based on dependencies, but queued is a safe default
+
+    // Check dependencies to see if it should be active or blocked
+    if (task.dependencies && task.dependencies.length > 0) {
+      const allDepsDone = task.dependencies.every(depId => {
+        const dep = profile.tasks.find(t => t.id === depId);
+        return dep?.status === 'done';
+      });
+      task.status = allDepsDone ? 'active' : 'blocked';
+    } else {
+      task.status = 'active';
+    }
+
+    task.completedAt = undefined;
+    task.actualEnergyCost = undefined;
+    task.updatedAt = now;
+
+    const doneTasks = profile.tasks.filter(t => t.status === 'done').length;
+    const nonDeferred = profile.tasks.filter(t => t.status !== 'deferred').length;
+    const taskCompletionRate = nonDeferred > 0
+      ? parseBoundedScore(Math.round((doneTasks / nonDeferred) * 10))
+      : 5;
+
+    await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    await updateGlobalSoul({
+      cognitive: {
+        activeLoad: calculateActiveLoad(profile.tasks),
+        taskCompletionRate
+      }
+    });
+
+    emitSpineEvent('ATLAS_TASK_UNCOMPLETED' as any, {
+      taskId: task.id,
+      title: task.title
+    });
+  },
+
   complete_task: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;

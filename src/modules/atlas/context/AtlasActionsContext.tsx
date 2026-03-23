@@ -14,6 +14,7 @@ export interface AtlasActionsContextValue {
   onUpdateHabit: (habitId: string, updates: Partial<AtlasHabit>) => void;
   onUpdateGoal: (goalId: string, updates: Partial<AtlasGoal>) => void;
   onDeleteTask: (taskId: string) => void;
+  onUncompleteTask: (taskId: string) => void;
   onDeleteHabit: (habitId: string) => void;
   onDeleteGoal: (goalId: string) => void;
   onScheduleTask?: (task: AtlasTask) => void;

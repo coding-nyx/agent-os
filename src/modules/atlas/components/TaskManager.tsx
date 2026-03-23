@@ -42,6 +42,7 @@ interface TaskManagerProps {
   onUpdateTask: (taskId: string, updates: Partial<AtlasTask>) => void;
   onDeleteTask: (taskId: string) => void;
   onCompleteTask: (taskId: string) => void;
+  onUncompleteTask?: (taskId: string) => void;
   onScheduleTask?: (task: AtlasTask) => void;
   focusTaskId?: string;
 }
@@ -57,6 +58,7 @@ export function TaskManager({
   onUpdateTask,
   onDeleteTask,
   onCompleteTask,
+  onUncompleteTask,
   onScheduleTask,
   focusTaskId,
 }: TaskManagerProps) {
@@ -375,6 +377,7 @@ export function TaskManager({
               <TaskCard
                 task={task}
                 onComplete={onCompleteTask}
+                onUncomplete={onUncompleteTask}
                 isExpanded={expandedTaskId === task.id}
                 onToggleExpand={() => handleToggleExpand(task.id)}
                 allTasks={tasks}

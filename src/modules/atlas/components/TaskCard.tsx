@@ -13,6 +13,7 @@ import type { AtlasTask } from '../services/atlas-profile-service';
 interface TaskCardProps {
   task: AtlasTask;
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
   allTasks?: AtlasTask[];
@@ -52,6 +53,7 @@ function isDeadlineOverdue(deadline: string): boolean {
 export const TaskCard = React.memo(function TaskCard({
   task,
   onComplete,
+  onUncomplete,
   isExpanded,
   onToggleExpand,
   allTasks = [],
@@ -78,8 +80,12 @@ export const TaskCard = React.memo(function TaskCard({
 
   const handleComplete = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
-    if (!isBlocked && !isDone) {
-      onComplete(task.id);
+    if (!isBlocked) {
+      if (isDone) {
+        onUncomplete?.(task.id);
+      } else {
+        onComplete(task.id);
+      }
     }
   };
 
@@ -139,7 +145,7 @@ export const TaskCard = React.memo(function TaskCard({
             disabled={isBlocked}
             aria-label={
               isDone
-                ? `${task.title} completed`
+                ? `Mark ${task.title} as undone`
                 : `Mark ${task.title} as complete`
             }
             variant="ghost"
@@ -148,14 +154,14 @@ export const TaskCard = React.memo(function TaskCard({
               'mt-0.5 flex-shrink-0 w-5 h-5 min-w-0 !p-0 rounded-md border-2 flex items-center justify-center transition-all min-h-[44px]',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
               isDone
-                ? 'bg-white/10 border-white/20'
+                ? 'bg-emerald-500 border-emerald-500 hover:bg-emerald-600 hover:border-emerald-600 cursor-pointer'
                 : isBlocked
                   ? 'border-white/10 cursor-not-allowed'
-                  : 'border-white/20 hover:border-white/40'
+                  : 'border-white/20 hover:border-emerald-400/50 cursor-pointer'
             )}
           >
             {isDone && (
-              <Check className="w-3 h-3 text-white/70" aria-hidden="true" />
+              <Check className="w-3.5 h-3.5 text-white" aria-hidden="true" />
             )}
             {isBlocked && (
               <Lock className="w-3 h-3 text-white/30" aria-hidden="true" />
@@ -163,7 +169,7 @@ export const TaskCard = React.memo(function TaskCard({
           </NeuralButton>
 
           {/* Title, badges, description preview */}
-          <div className="flex-1 min-w-0 pt-0.5">
+          <div className="flex-1 min-w-0 pt-0.5 text-left">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
               <span
                 className={cn(

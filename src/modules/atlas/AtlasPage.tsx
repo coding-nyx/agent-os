@@ -366,6 +366,13 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     });
   }, [buildActionContext]);
 
+
+  const handleUncompleteTask = useCallback((taskId: string) => {
+    executeAtlasAction('uncomplete_task', {
+      id: taskId
+    }, 'task_uncompleted');
+  }, [executeAtlasAction]);
+
   const handleCompleteTask = useCallback((taskId: string) => {
     executeAtlasAction('complete_task', {
       id: taskId,
@@ -709,6 +716,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
         )}
         <AtlasActionsProvider actions={{
           onCompleteTask: handleCompleteTask,
+          onUncompleteTask: handleUncompleteTask,
           onCompleteHabit: handleCompleteHabit,
           onUpdateGoalProgress: handleUpdateGoalProgress,
           onPauseHabit: handlePauseHabit,
