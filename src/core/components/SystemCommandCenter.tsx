@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, LogOut, Shield, ChevronDown, Activity, Lock, Unlock, Clock, Trash2, AlertTriangle, Zap, Check, Sparkles } from 'lucide-react';
+import { User, Settings, LogOut, Shield, ChevronDown, Activity, Lock, Unlock, Clock, Trash2, AlertTriangle, Zap, Check, Sparkles, Circle, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
@@ -9,9 +9,11 @@ import { SoulTerminationService } from '@/lib/services/soul-termination-service'
 import { GlassCard } from './GlassCard';
 import { NeuralButton } from './NeuralButton';
 import { VaultPopoverPanel } from './VaultPopoverPanel';
+import { useNotifications } from '@/lib/notifications/NotificationContext';
 
 export function SystemCommandCenter() {
   const { user, isGuest, profile, logout, refreshProfile } = useAuth();
+  const { unreadCount } = useNotifications();
   const { refreshGlobalSoul } = useGlobalSoul();
   const { isUnlocked, lockVault, persistenceMode, setPersistenceMode } = useVault();
   const navigate = useNavigate();
@@ -72,10 +74,24 @@ export function SystemCommandCenter() {
         variant="ghost"
       >
         <div className="relative">
-          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-            <User className="w-4 h-4 text-white/60" />
-          </div>
+          <Circle className="w-6 h-6 text-white/60" />
           <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#020205] ${isUnlocked ? 'bg-emerald-500' : isGuest ? 'bg-amber-500' : 'bg-red-500'}`} />
+          <AnimatePresence>
+            {unreadCount > 0 && (
+              <motion.span
+                  key="badge"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+                  className="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-indigo-500 border-2 border-[#010103] flex items-center justify-center"
+              >
+                  <span className="text-[9px] font-black text-white leading-none">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
         
         <div className="hidden md:flex flex-col items-start pr-2 text-left">
@@ -86,7 +102,6 @@ export function SystemCommandCenter() {
             {identityLabel}
           </span>
         </div>
-        <ChevronDown className={`w-3 h-3 text-white/40 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </NeuralButton>
 
       <AnimatePresence>
@@ -157,6 +172,23 @@ export function SystemCommandCenter() {
 
                       {/* Actions */}
                       <div className="space-y-1">
+                        <NeuralButton
+                          variant="ghost"
+                          onClick={() => {
+                            setIsOpen(false);
+                            navigate('/notifications');
+                          }}
+                          aria-label="Notifications"
+                          className="w-full flex items-center justify-start gap-3 p-3 rounded-xl hover:bg-white/10 text-white/80 hover:text-white transition-all group focus:outline-none focus:ring-2 focus:ring-white/30 h-auto"
+                        >
+                          <div className="relative">
+                            <Bell className="w-5 h-5 opacity-60 group-hover:opacity-100" />
+                            {unreadCount > 0 && (
+                              <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-indigo-500 border-2 border-[#010103]" />
+                            )}
+                          </div>
+                          <span className="text-xs font-bold uppercase tracking-widest italic">Notifications</span>
+                        </NeuralButton>
                         <NeuralButton 
                             variant="ghost"
                             onClick={() => setShowSettings(true)}

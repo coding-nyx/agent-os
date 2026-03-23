@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, Terminal, Bell } from 'lucide-react';
+import { ArrowLeft, Shield, Terminal, Sparkles } from 'lucide-react';
 import { ModuleSwitcherPopover } from '@/core/components/ModuleSwitcherPopover';
 import { SyncTransition } from '@/core/components/SyncTransition';
 import { SystemCommandCenter } from '@/core/components/SystemCommandCenter';
@@ -231,40 +231,6 @@ function TelemetryTicker({ debugMode }: TelemetryTickerProps) {
     );
 }
 
-import { useNotifications } from '@/lib/notifications/NotificationContext';
-
-function NotificationBell() {
-    const navigate = useNavigate();
-    const { unreadCount } = useNotifications();
-
-    return (
-        <button
-            type="button"
-            onClick={() => navigate('/notifications')}
-            aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
-            className="relative w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 shrink-0"
-        >
-            <Bell className="w-4 h-4 text-white/50" />
-            <AnimatePresence>
-                {unreadCount > 0 && (
-                    <motion.span
-                        key="badge"
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-                        className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-indigo-500 border-2 border-[#010103] flex items-center justify-center"
-                    >
-                        <span className="text-[9px] font-black text-white leading-none">
-                            {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                    </motion.span>
-                )}
-            </AnimatePresence>
-        </button>
-    );
-}
-
 export function ModuleLayout({ 
   children, 
   title, 
@@ -394,8 +360,14 @@ export function ModuleLayout({
             <div className="flex items-center gap-2 md:gap-3 shrink-0">
               <TelemetryTicker debugMode={debugMode} />
 
-              {/* Notification bell — always visible */}
-              <NotificationBell />
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event('open-nexus'))}
+                aria-label="Open Nexus"
+                className="relative w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 shrink-0"
+              >
+                  <Sparkles className="w-4 h-4 text-white/50" />
+              </button>
 
               {/* Module switcher — mobile + md+ */}
               <div className="block md:hidden">

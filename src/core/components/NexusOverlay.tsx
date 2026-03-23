@@ -156,24 +156,6 @@ export function NexusOverlay() {
 
   return (
     <>
-      {/* 
-        Mobile Trigger Restoration:
-        Since GlobalFAB might be hidden or obscured on some mobile views, we explicitly 
-        render a Nexus trigger here on mobile when the overlay is closed.
-        Positioned Bottom-Left to avoid conflict with Chat (Bottom-Right) and QuickAdd (Bottom-Center).
-      */}
-      {!open && isMobile && !isChatOverlayOpen && !hideGlobalFAB && (
-        <motion.button
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          onClick={() => setOpen(true)}
-          className="fixed left-4 bottom-4 z-[var(--z-fab)] w-12 h-12 rounded-full bg-[#09090b]/80 backdrop-blur-xl border border-white/10 shadow-lg flex items-center justify-center lg:hidden"
-          aria-label="Open Nexus"
-        >
-          <Sparkles className="w-5 h-5 text-indigo-400" />
-        </motion.button>
-      )}
-
       <AnimatePresence>
         {open && (
           <>

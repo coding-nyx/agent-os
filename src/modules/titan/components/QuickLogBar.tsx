@@ -176,10 +176,6 @@ export function QuickLogBar({
     [handleSubmit],
   );
 
-  const handleNexusClick = () => {
-    window.dispatchEvent(new Event('open-nexus'));
-  };
-
   const handleAcceptHistory = useCallback(() => {
     if (!historySuggestion) return;
     onChange(historySuggestion.text);
@@ -234,21 +230,6 @@ export function QuickLogBar({
           )}
         >
           <div className="flex items-center gap-2 sm:gap-3 w-full py-2.5 px-4 sm:py-3 sm:px-6 md:px-8 min-w-0">
-            {/* Nexus Anchor — hidden on very narrow to prioritize input */}
-            <button
-              onClick={handleNexusClick}
-              title="Consult Nexus"
-              aria-label="Consult Nexus"
-              className={cn(
-                'shrink-0 min-w-[48px] min-h-[48px] w-12 h-12 rounded-2xl inline-flex items-center justify-center',
-                'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400',
-                'hover:bg-indigo-500/20 hover:border-indigo-500/40 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40',
-                'max-[380px]:hidden',
-              )}
-            >
-              <IconSparkles className="w-5 h-5 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]" />
-            </button>
-
             {/* Intelligence Input — visible boundary, min-w-0 so flex doesn't overflow */}
             <NeuralInput
               ref={inputRef}
