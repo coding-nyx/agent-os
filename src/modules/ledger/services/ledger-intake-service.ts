@@ -1,5 +1,6 @@
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
+import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
 
 const GUEST_LEDGER_KEY = 'nexus_ledger_profile_guest';
 const VAULT_SALT_MARKER = 'vault_salt_used';
@@ -379,6 +380,18 @@ export async function saveLedgerProfile(profile: LedgerIntakeProfile, { userId, 
       });
     } catch (error) {
       console.error('[LedgerIntakeService] Failed to save ledger profile:', error);
+    }
+    try {
+      await syncAliveEntities(
+        dataLayer,
+        bootstrapAliveEntities({
+          ledgerFinancialGoals: normalizedProfile.financialGoals,
+          ledgerTransactions: normalizedProfile.transactions,
+        }),
+        { uid: userId, pruneMissingWithinIncomingPrefixes: true },
+      );
+    } catch (error) {
+      console.error('[LedgerIntakeService] Failed to sync alive entities:', error);
     }
     return;
   }

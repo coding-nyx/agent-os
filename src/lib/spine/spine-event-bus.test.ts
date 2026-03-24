@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { SpineEventPayload } from '@/lib/types';
+import { InMemoryDataProvider } from '@/lib/data-layer';
 
 // We need to mock firebase to avoid import errors in test environment
 vi.mock('@/lib/firebase', () => ({
@@ -28,6 +29,8 @@ describe('SpineEventBus', () => {
   });
 
   afterEach(() => {
+    Spine.setUser(null);
+    Spine.setDataLayer(new InMemoryDataProvider());
     vi.useRealTimers();
   });
 
@@ -171,6 +174,56 @@ describe('SpineEventBus', () => {
 
     expect(handler).toHaveBeenCalledOnce();
     unsub();
+  });
+
+  it('persists spec-adapted events alongside spine event logs', async () => {
+    const dataLayer = new InMemoryDataProvider();
+    Spine.setDataLayer(dataLayer);
+    Spine.setUser('user-1');
+
+    Spine.emit({
+      type: 'FINANCIAL_STRESS',
+      source: 'ledger',
+      domain: 'R',
+      priority: 'alert',
+      data: {
+        intent: 'reduce friction',
+        confidence: 0.92,
+        patient_scope: 'GUEST',
+        mutations: {
+          friction: -0.3,
+          vitality: 0.1,
+          ignored: 'skip-me',
+        },
+      },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const spineEvents = await dataLayer.listDocuments('spine_events/user-1/events');
+    const specEvents = await dataLayer.listDocuments('spine_events/user-1/spec_events');
+
+    expect(spineEvents).toHaveLength(1);
+    expect(specEvents).toHaveLength(1);
+    expect(specEvents[0]).toMatchObject({
+      header: {
+        source: 'LEDGER',
+        priority: 2,
+      },
+      payload: {
+        intent: 'reduce friction',
+        mutations: {
+          friction: -0.3,
+          vitality: 0.1,
+        },
+      },
+      logic_gates: {
+        confidence: 0.92,
+        patient_scope: 'GUEST',
+      },
+    });
+    expect(specEvents[0].payload.mutations).not.toHaveProperty('ignored');
   });
 
   describe('cascade rules', () => {

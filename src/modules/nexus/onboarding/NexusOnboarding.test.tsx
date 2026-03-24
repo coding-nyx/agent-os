@@ -47,12 +47,18 @@ describe('NexusOnboarding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useAI as any).mockReturnValue({
-      streamMessage: mockStreamMessage
+      streamMessage: mockStreamMessage,
+      generateJSON: vi.fn(),
+      isInitialized: false,
     });
     (useAuth as any).mockReturnValue({
       user: { uid: 'test-user' }
     });
   });
+
+  async function openGuidedMode() {
+    await userEvent.click(screen.getByRole('button', { name: /guided/i }));
+  }
 
   it('captures identity via realistic user typing', async () => {
     const user = userEvent.setup();
@@ -72,6 +78,8 @@ describe('NexusOnboarding', () => {
       />
     );
 
+    await openGuidedMode();
+
     const input = screen.getByTestId('chat-input');
     await user.type(input, 'My name is Alice and my pronouns are she/her{enter}');
 
@@ -84,7 +92,7 @@ describe('NexusOnboarding', () => {
     });
   });
 
-  it('renders initial state and greeting', () => {
+  it('renders the Nexus shell and guided greeting', async () => {
     render(
       <NexusOnboarding 
         profile={null} 
@@ -93,7 +101,11 @@ describe('NexusOnboarding', () => {
       />
     );
 
-    expect(screen.getByText(/Nexus Onboarding/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Nexus$/i)).toBeInTheDocument();
+    expect(screen.getByText(/Choose onboarding style/i)).toBeInTheDocument();
+
+    await openGuidedMode();
+
     expect(screen.getByText(/assistant: Welcome to Nexus guided onboarding/i)).toBeInTheDocument();
   });
 
@@ -115,6 +127,8 @@ describe('NexusOnboarding', () => {
         onComplete={mockOnComplete} 
       />
     );
+
+    await openGuidedMode();
 
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: "My name is Alice and my pronouns are she/her" } });
@@ -143,6 +157,8 @@ describe('NexusOnboarding', () => {
         onComplete={mockOnComplete} 
       />
     );
+
+    await openGuidedMode();
 
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: "I am ready" } });

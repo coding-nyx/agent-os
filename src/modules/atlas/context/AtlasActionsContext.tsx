@@ -1,6 +1,7 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import type { AtlasTask, AtlasGoal, AtlasHabit, AtlasRoutine, DailyIntention } from '../services/atlas-profile-service';
 import type { FieldDefinition } from '@/lib/field-system/types';
+import type { AtlasReviewBlueprint } from '@/lib/types';
 
 export interface AtlasActionsContextValue {
   onCompleteTask: (taskId: string) => void;
@@ -25,7 +26,7 @@ export interface AtlasActionsContextValue {
   onAddField: (field?: FieldDefinition) => void;
   onDeleteField: (fieldId: string) => void;
   onSendMessage: (message: string) => void;
-  onSaveWeeklyReview: () => void;
+  onSaveWeeklyReview: (blueprint?: AtlasReviewBlueprint) => void;
   // UI & Specific handlers
   onTabChange: (tab: any) => void;
   onViewChange: (view: any) => void;

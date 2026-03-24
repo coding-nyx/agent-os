@@ -66,12 +66,19 @@ export interface QuickCaptureBarProps {
   onAddTask:    (task: Partial<AtlasTask>)    => void;
   onAddHabit:   (habit: Partial<AtlasHabit>) => void;
   onAddGoal?:   (goal: Partial<AtlasGoal>) => void;
+  preferenceMode?: 'conversational' | 'structured';
   disabled?:    boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function QuickCaptureBar({ onAddTask, onAddHabit, onAddGoal, disabled = false }: QuickCaptureBarProps) {
+export function QuickCaptureBar({
+  onAddTask,
+  onAddHabit,
+  onAddGoal,
+  preferenceMode = 'conversational',
+  disabled = false,
+}: QuickCaptureBarProps) {
   const { parse } = useAtlasEntryParser();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -246,10 +253,17 @@ export function QuickCaptureBar({ onAddTask, onAddHabit, onAddGoal, disabled = f
       {/* ── Confirm chip ──────────────────────────────────────────────────────── */}
       <EntryConfirmChip
         parsed={parsed}
+        preferenceMode={preferenceMode}
         onConfirm={handleConfirm}
         onEdit={handleEdit}
         onDismiss={handleDismiss}
       />
+
+      <p className="px-1 text-[10px] leading-relaxed text-white/30">
+        {preferenceMode === 'structured'
+          ? 'Structured mode: use labels like type:, due:, priority:, energy:, or repeat: for deterministic Atlas capture.'
+          : 'Conversational mode: Atlas can infer tasks and habits from freeform text, then lets you confirm the structure.'}
+      </p>
 
     </div>
   );

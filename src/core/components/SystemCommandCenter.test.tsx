@@ -52,6 +52,10 @@ vi.mock('@/lib/global-soul-context', () => ({
   useGlobalSoul: () => mockSoul,
 }));
 
+vi.mock('@/lib/notifications/NotificationContext', () => ({
+  useNotifications: () => ({ unreadCount: 0 }),
+}));
+
 vi.mock('./VaultPopoverPanel', () => ({
   VaultPopoverPanel: () => <div data-testid="vault-popover-panel" />,
 }));

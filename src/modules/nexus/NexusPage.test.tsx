@@ -26,8 +26,10 @@ vi.mock('framer-motion', () => ({
 
 // ─── React Router ─────────────────────────────────────────────────────────────
 const mockNavigate = vi.fn();
+const mockUseLocation = vi.fn(() => ({ pathname: '/nexus' }));
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+  useLocation: () => mockUseLocation(),
 }));
 
 // ─── Context hooks ─────────────────────────────────────────────────────────────
@@ -80,7 +82,9 @@ vi.mock('@/modules/nexus/onboarding/NexusOnboarding', () => ({
 }));
 
 vi.mock('@/modules/nexus/components/NexusDashboard', () => ({
-  NexusDashboard: () => <div data-testid="nexus-dashboard" />,
+  NexusDashboard: ({ surfaceMode }: { surfaceMode?: string }) => (
+    <div data-testid="nexus-dashboard" data-surface-mode={surfaceMode ?? 'chat'} />
+  ),
 }));
 
 vi.mock('@/core/components/VaultSetupNudge', () => ({
@@ -121,6 +125,7 @@ const AUTHED_USER = { uid: 'user-123', email: 'alice@test.com' };
 describe('NexusPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseLocation.mockReturnValue({ pathname: '/nexus' });
     (useModuleAI as any).mockReturnValue(makeModuleAI());
   });
 
@@ -213,5 +218,23 @@ describe('NexusPage', () => {
 
     // Nudge must now be visible
     expect(screen.getByTestId('vault-setup-nudge')).toBeInTheDocument();
+  });
+
+  it('passes operations surface mode when the route is /nexus/ops', () => {
+    mockUseLocation.mockReturnValue({ pathname: '/nexus/ops' });
+
+    (useAuth as any).mockReturnValue({
+      isGuest: false,
+      user: AUTHED_USER,
+      profile: { onboardingComplete: true, preferredName: 'Alice' },
+      loading: false,
+      refreshProfile: vi.fn(),
+      initializeNewUser: vi.fn(),
+    });
+    (useVault as any).mockReturnValue(makeVault());
+
+    render(<NexusPage />);
+
+    expect(screen.getByTestId('nexus-dashboard')).toHaveAttribute('data-surface-mode', 'operations');
   });
 });

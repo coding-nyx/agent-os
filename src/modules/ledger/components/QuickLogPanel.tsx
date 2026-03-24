@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Plus, Minus, RotateCcw, Zap, ChevronDown, Check, Loader2 } from 'lucide-react';
+import { Plus, Minus, RotateCcw, Zap, ChevronDown, Check, Pencil } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { cn } from '@/lib/utils';
@@ -25,8 +25,10 @@ interface QuickLogPanelProps {
 const QUICK_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Health', 'Bills', 'Income', 'Other'];
 const INCOME_KEYWORDS = ['salary', 'income', 'freelance', 'dividend', 'refund', 'bonus', 'paycheck', 'revenue'];
 const AMOUNT_REGEX = /\$?([\d,]+(?:\.\d{1,2})?)/;
+const SWIPE_TRIGGER = 96;
+const SWIPE_LIMIT = 140;
 
-function parseNaturalInput(text: string): { description: string; amount: number; type: 'income' | 'expense'; category: string } | null {
+export function parseNaturalInput(text: string): { description: string; amount: number; type: 'income' | 'expense'; category: string } | null {
   const lower = text.toLowerCase().trim();
   if (!lower) return null;
 
@@ -64,6 +66,10 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
   const [isShaking, setIsShaking] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const swipeStartX = useRef<number | null>(null);
+  const swipeIntentRef = useRef<'log' | 'edit' | null>(null);
+  const [swipeOffsetX, setSwipeOffsetX] = useState(0);
+  const [swipeIntent, setSwipeIntent] = useState<'log' | 'edit' | null>(null);
 
   const TX_PLACEHOLDERS = [
     'coffee shop $4.50',
@@ -80,11 +86,30 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
 
   const allCategories = Array.from(new Set([...QUICK_CATEGORIES, ...categories]));
 
+  const resetSwipe = useCallback(() => {
+    swipeStartX.current = null;
+    swipeIntentRef.current = null;
+    setSwipeOffsetX(0);
+    setSwipeIntent(null);
+  }, []);
+
+  const seedManualFromParsed = useCallback((result: NonNullable<typeof parsed>) => {
+    setManualDesc(result.description);
+    setManualAmount(result.amount.toFixed(2));
+    setManualType(result.type);
+    setManualCategory(result.category);
+    setManualMode(true);
+    setShowCategories(false);
+    setSubmitted(false);
+    resetSwipe();
+  }, [resetSwipe]);
+
   const handleNaturalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setNaturalInput(val);
     setParsed(parseNaturalInput(val));
     setSubmitted(false);
+    resetSwipe();
   };
 
   const handleNaturalSubmit = useCallback(() => {
@@ -104,9 +129,10 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
     setNaturalInput('');
     setParsed(null);
     setSubmitted(true);
+    resetSwipe();
     setTimeout(() => setSubmitted(false), 1500);
     inputRef.current?.focus();
-  }, [parsed, isRecurring, onAddTransaction]);
+  }, [parsed, isRecurring, onAddTransaction, resetSwipe]);
 
   const handleManualSubmit = useCallback(() => {
     const amount = parseFloat(manualAmount);
@@ -127,6 +153,50 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 1500);
   }, [manualAmount, manualDesc, manualType, manualCategory, isRecurring, onAddTransaction]);
+
+  const updateSwipe = useCallback((clientX: number) => {
+    if (swipeStartX.current === null || !parsed) return;
+    const nextOffset = Math.max(-SWIPE_LIMIT, Math.min(SWIPE_LIMIT, clientX - swipeStartX.current));
+    setSwipeOffsetX(nextOffset);
+    let nextIntent: 'log' | 'edit' | null = null;
+    if (nextOffset >= SWIPE_TRIGGER) {
+      nextIntent = 'log';
+    } else if (nextOffset <= -SWIPE_TRIGGER) {
+      nextIntent = 'edit';
+    }
+    swipeIntentRef.current = nextIntent;
+    setSwipeIntent(nextIntent);
+  }, [parsed]);
+
+  const completeSwipe = useCallback(() => {
+    if (!parsed) {
+      resetSwipe();
+      return;
+    }
+
+    const nextIntent = swipeIntentRef.current;
+    resetSwipe();
+
+    if (nextIntent === 'log') {
+      handleNaturalSubmit();
+    } else if (nextIntent === 'edit') {
+      seedManualFromParsed(parsed);
+    }
+  }, [parsed, resetSwipe, seedManualFromParsed, handleNaturalSubmit]);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!parsed) return;
+    swipeStartX.current = event.clientX;
+  }, [parsed]);
+
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    updateSwipe(event.clientX);
+  }, [updateSwipe]);
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    updateSwipe(event.clientX);
+    completeSwipe();
+  }, [completeSwipe, updateSwipe]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -163,7 +233,9 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                 value={naturalInput}
                 onChange={handleNaturalChange}
                 onKeyDown={handleKeyDown}
-                placeholder='Type naturally: "coffee $4.50" or "salary $3000 income"'
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                placeholder={`Type naturally: "${TX_PLACEHOLDERS[placeholderIdx]}"`}
                 className={cn(
                   'w-full bg-black/30 border rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30',
                   'focus:outline-none focus:ring-1 transition-all',
@@ -178,27 +250,73 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
             </div>
 
             {parsed && (
-              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-black/20 border border-white/[0.06]">
-                <div className="flex items-center gap-3 text-xs">
-                  <span className={cn(
-                    'font-bold tabular-nums',
-                    parsed.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
-                  )}>
-                    {parsed.type === 'income' ? '+' : '−'}{currency} {parsed.amount.toFixed(2)}
-                  </span>
-                  <span className="text-white/60 truncate max-w-[120px]">{parsed.description}</span>
-                  <span className="px-1.5 py-0.5 rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] text-[10px] font-bold uppercase tracking-wide">
-                    {parsed.category}
-                  </span>
+              <div className="space-y-2">
+                <div className="relative overflow-hidden rounded-xl" aria-label="Quick log swipe guidance">
+                  <div className="absolute inset-0 flex items-center justify-between px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35 pointer-events-none">
+                    <span>Swipe left to edit</span>
+                    <span>Swipe right to log</span>
+                  </div>
+                  <div
+                    role="group"
+                    aria-label="Quick log preview"
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={resetSwipe}
+                    onPointerLeave={() => {
+                      if (swipeStartX.current !== null) {
+                        completeSwipe();
+                      }
+                    }}
+                    className={cn(
+                      'relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-3 py-2.5 rounded-xl border transition-transform duration-150 ease-out cursor-grab active:cursor-grabbing',
+                      swipeIntent === 'log'
+                        ? 'bg-emerald-500/10 border-emerald-500/30'
+                        : swipeIntent === 'edit'
+                          ? 'bg-sky-500/10 border-sky-500/30'
+                          : 'bg-black/20 border-white/[0.06]',
+                    )}
+                    style={{
+                      transform: `translateX(${swipeOffsetX}px)`,
+                      touchAction: 'pan-y',
+                    }}
+                  >
+                    <div className="flex items-center gap-3 text-xs min-w-0">
+                      <span className={cn(
+                        'font-bold tabular-nums shrink-0',
+                        parsed.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
+                      )}>
+                        {parsed.type === 'income' ? '+' : '−'}{currency} {parsed.amount.toFixed(2)}
+                      </span>
+                      <span className="text-white/60 truncate max-w-[120px]">{parsed.description}</span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] text-[10px] font-bold uppercase tracking-wide shrink-0">
+                        {parsed.category}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <NeuralButton
+                        variant="ghost"
+                        onClick={() => seedManualFromParsed(parsed)}
+                        size="sm"
+                        className="px-3 py-1.5 min-h-[44px] text-white/60 hover:text-white"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Edit
+                      </NeuralButton>
+                      <NeuralButton
+                        onClick={handleNaturalSubmit}
+                        themeColor="module"
+                        size="sm"
+                        className="px-3 py-1.5 shrink-0 min-h-[44px]"
+                      >
+                        Log
+                      </NeuralButton>
+                    </div>
+                  </div>
                 </div>
-                <NeuralButton
-                  onClick={handleNaturalSubmit}
-                  themeColor="module"
-                  size="sm"
-                  className="px-3 py-1.5 shrink-0 min-h-[44px]"
-                >
-                  Log
-                </NeuralButton>
+                <p className="text-[11px] text-white/45 px-1" aria-live="polite">
+                  Swipe for mobile speed, or use the Edit and Log buttons for an accessible fallback.
+                </p>
               </div>
             )}
           </div>

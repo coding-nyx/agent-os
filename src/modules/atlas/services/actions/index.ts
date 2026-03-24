@@ -15,6 +15,11 @@ export function registerAtlasActions() {
   if (registered) return;
   registered = true;
 
+  ActionHub.registerProvider('atlas', {
+    capabilities: ['daily-planning', 'schedule-mutation', 'recovery-planning', 'reminder-management'],
+    latencyTier: 'balanced',
+  });
+
   ActionHub.registerMultiple('atlas', {
     ...energyActions,
     ...routineActions,

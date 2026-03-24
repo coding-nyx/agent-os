@@ -53,6 +53,8 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   // 2. Extract action content — \s+ tolerates extra whitespace between tag name and attribute
   const actionMatches = [...normalized.matchAll(/<action\s+type="([^"]+)">([\s\S]*?)<\/action>/gi)];
   const actionText = actionMatches.map(m => `[ACTION: ${m[1]}] ${m[2].trim()}`).join('\n');
+  const bracketActionMatches = [...normalized.matchAll(/\[action\s+type=["']?([a-z_]+)["']?\]\s*(\{[\s\S]*?\})/gi)];
+  const bracketActionText = bracketActionMatches.map(m => `[ACTION: ${m[1]}] ${m[2].trim()}`).join('\n');
 
   // 3. Extract tool call content (Special tags mentioned by user)
   const toolCallMatches = [...normalized.matchAll(/<tool_call_begin>([\s\S]*?)<tool_call_end>/gi)];
@@ -78,7 +80,7 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   const currentActionType = actionOpenMatch ? actionOpenMatch[1] : null;
 
   // Combine all internal context
-  const internalParts = [thoughtText, actionText, toolCallText, rawToolCallText].filter(Boolean);
+  const internalParts = [thoughtText, actionText, bracketActionText, toolCallText, rawToolCallText].filter(Boolean);
   const internalText = internalParts.length > 0 ? internalParts.join('\n\n') : null;
 
   // Aggressively clean public text of all internal tags.
@@ -87,6 +89,7 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   let publicText = normalized
     .replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/g, ' ')
     .replace(/<action[\s\S]*?<\/action>/g, ' ')
+    .replace(/\[action\s+type=["']?[a-z_]+["']?\]\s*\{[\s\S]*?\}/gi, ' ')
     .replace(/<tool_calls_begin>[\s\S]*?<tool_calls_end>/g, ' ')
     .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/g, ' ')
     .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, ' ');

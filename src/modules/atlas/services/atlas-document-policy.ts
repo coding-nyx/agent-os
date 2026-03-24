@@ -11,6 +11,7 @@
  */
 
 import type { DocumentPipelinePolicy } from '@/lib/services/document-pipeline';
+import { AtlasBlueprintService } from './atlas-blueprint-service';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,8 @@ export interface AtlasDocumentProposal {
   goals: ExtractedGoal[];
   summary: string;
   confidence: number;
+  ingestionMode: 'structured' | 'unstructured';
+  reviewGuidance: string;
   rawTextPreview: string;
 }
 
@@ -200,10 +203,18 @@ export const atlasDocumentPolicy: DocumentPipelinePolicy<AtlasDocumentAnalysis, 
     return parseAnalysisResponse(responseText ?? '');
   },
 
-  buildProposal: (analysis, parsed) => ({
-    ...analysis,
-    rawTextPreview: (parsed.rawText ?? '').slice(0, 300),
-  }),
+  buildProposal: (analysis, parsed) => {
+    const ingestionMode = AtlasBlueprintService.inferDocumentIngestionMode(analysis.confidence);
+    return {
+      ...analysis,
+      ingestionMode,
+      reviewGuidance:
+        ingestionMode === 'structured'
+          ? 'Source looks structured. Atlas can import most entities directly after review.'
+          : 'Source looks unstructured. Review titles, dates, and energy costs carefully before import.',
+      rawTextPreview: (parsed.rawText ?? '').slice(0, 300),
+    };
+  },
 
   summarizeProposal: (proposal) => {
     const parts: string[] = [];
@@ -211,7 +222,7 @@ export const atlasDocumentPolicy: DocumentPipelinePolicy<AtlasDocumentAnalysis, 
     if (proposal.habits.length > 0) parts.push(`${proposal.habits.length} habit(s)`);
     if (proposal.goals.length > 0) parts.push(`${proposal.goals.length} goal(s)`);
     return parts.length > 0
-      ? `Detected ${parts.join(', ')} ready for Atlas import.`
+      ? `Detected ${parts.join(', ')} from a ${proposal.ingestionMode} planning source.`
       : 'No structured planning data found in this document.';
   },
 };

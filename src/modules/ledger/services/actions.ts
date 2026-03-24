@@ -72,6 +72,11 @@ export function registerLedgerActions() {
   if (registered) return;
   registered = true;
 
+  ActionHub.registerProvider('ledger', {
+    capabilities: ['financial-planning'],
+    latencyTier: 'balanced',
+  });
+
   ActionHub.registerMultiple('ledger', {
     create_financial_plan: async ({ userId, encryptionKey, payload, markProfileDirty, emitSpineEvent }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);

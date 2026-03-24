@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { ScoutSessionList } from './ScoutSessionList';
-import { SignalBubbleCanvas } from './SignalBubbleCanvas';
 import { KnowledgeGraph } from './graph/KnowledgeGraph';
 import type { ScoutKnowledgeNode, SourceEntry } from '../types';
 
@@ -28,6 +27,63 @@ interface ScoutDashboardProps {
 
 function formatSessionCountLabel(count: number) {
   return `${count} session${count === 1 ? '' : 's'}`;
+}
+
+function normalizeKnowledgeNodes(
+  rawNodes: unknown[],
+  fallbackUpdatedAt?: string
+): ScoutKnowledgeNode[] {
+  return rawNodes.map((rawNode, index) => {
+    const node = (rawNode ?? {}) as Partial<ScoutKnowledgeNode> & {
+      title?: string;
+      topic?: string;
+      summary?: string;
+    };
+
+    const derivedClaimCandidates = [
+      node.claim,
+      node.title,
+      node.topic,
+      node.summary,
+    ];
+
+    const claim =
+      derivedClaimCandidates.find(
+        (value): value is string => typeof value === 'string' && value.trim().length > 0
+      ) || `Knowledge node ${index + 1}`;
+
+    return {
+      id:
+        typeof node.id === 'string' && node.id.trim().length > 0
+          ? node.id
+          : `legacy-node-${index + 1}`,
+      claim,
+      confidence: typeof node.confidence === 'number' ? node.confidence : 0,
+      evidence: Array.isArray(node.evidence)
+        ? node.evidence.filter((value): value is string => typeof value === 'string')
+        : [],
+      status:
+        node.status === 'verified' || node.status === 'pending' || node.status === 'contested'
+          ? node.status
+          : 'pending',
+      updatedAt:
+        typeof node.updatedAt === 'string' && node.updatedAt.length > 0
+          ? node.updatedAt
+          : fallbackUpdatedAt || new Date(0).toISOString(),
+      highlights: Array.isArray(node.highlights)
+        ? node.highlights.filter((value): value is string => typeof value === 'string')
+        : undefined,
+      embedding: Array.isArray(node.embedding)
+        ? node.embedding.filter((value): value is number => typeof value === 'number')
+        : undefined,
+      source: typeof node.source === 'string' ? node.source : undefined,
+      sources: Array.isArray(node.sources)
+        ? node.sources.filter((value): value is string => typeof value === 'string')
+        : undefined,
+      parentSessionId:
+        typeof node.parentSessionId === 'string' ? node.parentSessionId : undefined,
+    };
+  });
 }
 
 function InlineStat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
@@ -67,7 +123,9 @@ export function ScoutDashboard({
     );
   }
 
-  const nodes = knowledgeNodes.length > 0 ? knowledgeNodes : (profile?.knowledgeNodes || []);
+  const rawNodes =
+    knowledgeNodes.length > 0 ? knowledgeNodes : Array.isArray(profile?.knowledgeNodes) ? profile.knowledgeNodes : [];
+  const nodes = normalizeKnowledgeNodes(rawNodes, profile?.updatedAt);
   const interests = profile?.interests || [];
   const newsBriefs = profile?.newsBriefs || [];
   const verified = nodes.filter((node) => node.status === 'verified').length;

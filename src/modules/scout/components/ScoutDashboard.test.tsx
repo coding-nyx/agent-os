@@ -4,8 +4,10 @@ import { ScoutDashboard } from './ScoutDashboard';
 import type { ResearchSession } from '../types';
 import type { ScoutProfile } from '../services/scout-knowledge-service';
 
-vi.mock('./SignalBubbleCanvas', () => ({
-  SignalBubbleCanvas: () => <div data-testid="signal-bubble-canvas">Signal bubble canvas</div>,
+vi.mock('./graph/KnowledgeGraph', () => ({
+  KnowledgeGraph: ({ nodes }: { nodes: Array<{ claim: string }> }) => (
+    <div data-testid="knowledge-graph">{nodes.map((node) => node.claim).join(' | ')}</div>
+  ),
 }));
 
 const sessions: ResearchSession[] = [
@@ -58,7 +60,7 @@ const profile: ScoutProfile = {
 };
 
 describe('ScoutDashboard', () => {
-  it('renders scout metrics, sessions, signal map, and epistemic risk context', () => {
+  it('renders current scout dashboard sections and normalizes legacy profile nodes for the graph', () => {
     render(
       <ScoutDashboard
         soul={null}
@@ -70,11 +72,12 @@ describe('ScoutDashboard', () => {
       />
     );
 
-    expect(screen.getByText(/Scout.*Knowledge Node/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scout · Knowledge Cartographer/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 active inquiry in progress/i)).toBeInTheDocument();
     expect(screen.getByText('Research sessions')).toBeInTheDocument();
     expect(screen.getByText('2 sessions')).toBeInTheDocument();
     expect(screen.getByText('Trend briefings')).toBeInTheDocument();
-    expect(screen.getByTestId('signal-bubble-canvas')).toBeInTheDocument();
+    expect(screen.getByTestId('knowledge-graph')).toHaveTextContent('Knowledge node 1 | Knowledge node 2');
     expect(screen.getByRole('alert')).toHaveTextContent(/average confidence across your knowledge grid is 50%/i);
   });
 

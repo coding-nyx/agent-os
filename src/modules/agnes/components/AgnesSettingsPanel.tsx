@@ -2,6 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SlidersHorizontal, Activity } from 'lucide-react';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
 import type { TherapyIntakeProfile } from '@/lib/types';
+import { AgnesEngagementModeControl } from './AgnesEngagementModeControl';
+import {
+  AgnesPersistentEngagementMode,
+  DEFAULT_AGNES_ENGAGEMENT_MODE,
+  resolvePersistentAgnesMode,
+} from '../engagement-modes';
 
 interface AgnesSettingsPanelProps {
   profile: TherapyIntakeProfile | null;
@@ -13,6 +19,13 @@ export function AgnesSettingsPanel({ profile, onSave }: AgnesSettingsPanelProps)
   const [somaticEnabled, setSomaticEnabled] = useState<boolean>(
     profile?.baseContext?.somaticEnabled !== false
   );
+  const [preferredMode, setPreferredMode] = useState<AgnesPersistentEngagementMode>(
+    resolvePersistentAgnesMode(
+      profile?.baseContext && 'preferredEngagementMode' in profile.baseContext
+        ? (profile.baseContext as { preferredEngagementMode?: unknown }).preferredEngagementMode
+        : DEFAULT_AGNES_ENGAGEMENT_MODE,
+    )
+  );
 
   // Guard: ignore the Firestore echo that comes back after we save
   const pendingSave = useRef(false);
@@ -20,7 +33,12 @@ export function AgnesSettingsPanel({ profile, onSave }: AgnesSettingsPanelProps)
   useEffect(() => {
     if (pendingSave.current) return; // skip the echo from our own save
     setSomaticEnabled(profile?.baseContext?.somaticEnabled !== false);
-  }, [profile?.baseContext?.somaticEnabled]);
+    setPreferredMode(resolvePersistentAgnesMode(
+      profile?.baseContext && 'preferredEngagementMode' in profile.baseContext
+        ? (profile.baseContext as { preferredEngagementMode?: unknown }).preferredEngagementMode
+        : DEFAULT_AGNES_ENGAGEMENT_MODE,
+    ));
+  }, [profile?.baseContext]);
 
   const handleSomaticToggle = useCallback(async () => {
     if (!profile) return;
@@ -38,6 +56,21 @@ export function AgnesSettingsPanel({ profile, onSave }: AgnesSettingsPanelProps)
       setTimeout(() => { pendingSave.current = false; }, 500);
     }
   }, [profile, somaticEnabled, onSave]);
+
+  const handlePreferredModeChange = useCallback(async (mode: AgnesPersistentEngagementMode) => {
+    if (!profile) return;
+    setPreferredMode(mode);
+    pendingSave.current = true;
+    try {
+      await onSave({
+        ...profile,
+        baseContext: { ...profile.baseContext, preferredEngagementMode: mode } as TherapyIntakeProfile['baseContext'],
+        updatedAt: new Date().toISOString(),
+      });
+    } finally {
+      setTimeout(() => { pendingSave.current = false; }, 500);
+    }
+  }, [profile, onSave]);
 
   if (!profile) return null;
 
@@ -68,6 +101,23 @@ export function AgnesSettingsPanel({ profile, onSave }: AgnesSettingsPanelProps)
           onChange={handleSomaticToggle}
           color="indigo"
           label="Somatic Awareness"
+        />
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-white/80 leading-none mb-1">
+            Default Session Mode
+          </p>
+          <p className="text-[11px] text-white/35 leading-relaxed">
+            Persistent Agnes sessions open in this mode unless you choose Impromptu support.
+          </p>
+        </div>
+        <AgnesEngagementModeControl
+          value={preferredMode}
+          onChange={(mode) => handlePreferredModeChange(mode as AgnesPersistentEngagementMode)}
+          modes={['casual', 'deep', 'somatic']}
+          label="Default Agnes mode"
         />
       </div>
     </div>

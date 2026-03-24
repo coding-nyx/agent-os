@@ -150,13 +150,26 @@ export class Orchestrator {
   }
 
   /**
-   * Returns the best free tool-calling model for correction re-prompts.
-   * The active model is explicitly excluded — if it supported structured output
-   * correctly, no correction would be needed in the first place.
-   * Falls back to the ACTION_CAPABLE_FREE_MODELS whitelist if the registry is empty.
+   * Returns the best tool-calling model for correction re-prompts.
+   * If freeModelsOnly is false, it attempts to find a high-quality model from the registry.
+   * Falls back to the ACTION_CAPABLE_FREE_MODELS whitelist if the registry is empty
+   * or if restricted to free models.
    */
   private getActionCapableModel(): string {
     const failedModel = this.state.activeModelId;
+
+    // If not restricted to free models, prefer high-quality tool-calling models
+    if (!this.config.freeModelsOnly) {
+      const premiumCandidates = ModelRegistry.getAllModels()
+        .filter((m) => !m.isFree && m.supportsToolCalling)
+        .sort((a, b) => b.context_length - a.context_length)
+        .map((m) => m.id);
+
+      const otherPremium = premiumCandidates.filter((id) => id !== failedModel);
+      if (otherPremium.length > 0) return otherPremium[0];
+      if (premiumCandidates.length > 0) return premiumCandidates[0];
+    }
+
     const preferredCandidates = ACTION_CAPABLE_FREE_MODELS
       .filter((id) => id !== failedModel);
 
@@ -396,6 +409,23 @@ export class Orchestrator {
       }
     }
 
+    // Bracketed fallback: handle malformed forms like
+    //   [action type="delegate_to_module"]{ ... }
+    if (actions.length === 0) {
+      const bracketActionRegex = /\[action\s+type=["']?([a-z_]+)["']?\]\s*(\{[\s\S]*?\})/gi;
+      while ((match = bracketActionRegex.exec(normalized)) !== null) {
+        const actionType = match[1];
+        try {
+          const payload = JSON.parse(nexusCleaner(match[2]));
+          actions.push({ type: actionType, payload, raw: match[0] });
+          console.debug(`[Orchestrator] Recovered bracketed action tag — type: "${actionType}"`);
+        } catch {
+          actions.push({ type: actionType, payload: {}, raw: match[0] });
+          console.debug(`[Orchestrator] Recovered bracketed action tag without payload — type: "${actionType}"`);
+        }
+      }
+    }
+
     // JSON-in-action fallback: handle <action>{ "type": "...", "payload": {...} }</action>
     // Some models emit the type inside the JSON payload instead of the attribute.
     if (actions.length === 0) {
@@ -407,7 +437,7 @@ export class Orchestrator {
           if (!actionType) continue;
           const payload = typeof parsed?.payload === 'object' && parsed.payload !== null ? parsed.payload : {};
           actions.push({ type: actionType, payload, raw: match[0] });
-          console.warn(`[Orchestrator] Recovered JSON action tag without type attribute — type: "${actionType}"`);
+          console.debug(`[Orchestrator] Recovered JSON action tag without type attribute — type: "${actionType}"`);
         } catch {
           // Ignore malformed JSON blocks
         }
@@ -576,6 +606,8 @@ export class Orchestrator {
       model,
       messages,
       stream: !!onChunk,
+      temperature: 0.7,
+      max_tokens: 4096,
     });
 
     const response = await this.executeWithRetry(() => fetch(url, {
@@ -641,7 +673,13 @@ export class Orchestrator {
   }
 
   private resolveModelForProvider(provider: OrchestratorState['provider'], modelId: string): string {
-    if (this.config.freeModelsOnly) return GUEST_MODEL;
+    if (this.config.freeModelsOnly) {
+      // Allow overriding the default guest model if the requested model is explicitly free
+      if (modelId && (modelId.includes(':free') || modelId.startsWith('google/gemini-2.0-flash'))) {
+        return this.normalizeModelForProvider(provider, modelId);
+      }
+      return GUEST_MODEL;
+    }
     if (modelId && modelId.trim().length > 0) {
       return this.normalizeModelForProvider(provider, modelId);
     }
@@ -673,7 +711,8 @@ export class Orchestrator {
     const body = JSON.stringify({
       contents,
       generationConfig: {
-        temperature: 0.2,
+        temperature: 0.7,
+        maxOutputTokens: 4096,
       },
     });
     const response = await this.executeWithRetry(() => fetch(url, {
@@ -716,6 +755,8 @@ export class Orchestrator {
       model: normalized,
       messages,
       stream: false,
+      temperature: 0.7,
+      max_tokens: 4096,
     });
     const response = await this.executeWithRetry(() => fetch(url, {
       method: 'POST',

@@ -25,12 +25,12 @@ export interface BeliefGraph {
   updatedAt: string;
 }
 
-type LoadContext = {
+export type BeliefGraphLoadContext = {
   userId?: string | null;
   encryptionKey?: CryptoKey | null;
 };
 
-function normalizeGraph(raw: unknown): BeliefGraph {
+export function normalizeBeliefGraph(raw: unknown): BeliefGraph {
   const now = new Date().toISOString();
   const base: BeliefGraph = {
     nodes: [],
@@ -66,7 +66,7 @@ function normalizeGraph(raw: unknown): BeliefGraph {
   };
 }
 
-export async function loadBeliefGraph({ userId, encryptionKey }: LoadContext): Promise<BeliefGraph | null> {
+export async function loadBeliefGraph({ userId, encryptionKey }: BeliefGraphLoadContext): Promise<BeliefGraph | null> {
   if (!userId || !encryptionKey) return null;
 
   const record = await getNexusDataLayer().getDocument<{ encryptedData: string; iv: string }>(
@@ -80,7 +80,7 @@ export async function loadBeliefGraph({ userId, encryptionKey }: LoadContext): P
 
   try {
     const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-    return normalizeGraph(JSON.parse(decrypted));
+    return normalizeBeliefGraph(JSON.parse(decrypted));
   } catch (error) {
     console.error('Failed to decrypt belief graph:', error);
     return null;
@@ -88,7 +88,7 @@ export async function loadBeliefGraph({ userId, encryptionKey }: LoadContext): P
 }
 
 export function subscribeBeliefGraph(
-  { userId, encryptionKey }: LoadContext,
+  { userId, encryptionKey }: BeliefGraphLoadContext,
   onUpdate: (graph: BeliefGraph | null) => void
 ): () => void {
   if (userId && encryptionKey) {
@@ -107,7 +107,7 @@ export function subscribeBeliefGraph(
         }
         try {
           const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-          onUpdate(normalizeGraph(JSON.parse(decrypted)));
+          onUpdate(normalizeBeliefGraph(JSON.parse(decrypted)));
         } catch (error) {
           console.error('Failed to decrypt belief graph:', error);
           onUpdate(null);
@@ -121,10 +121,13 @@ export function subscribeBeliefGraph(
   return () => {};
 }
 
-export async function saveBeliefGraph(graph: BeliefGraph, { userId, encryptionKey }: LoadContext): Promise<void> {
+export async function saveBeliefGraph(
+  graph: BeliefGraph,
+  { userId, encryptionKey }: BeliefGraphLoadContext,
+): Promise<void> {
   if (!userId || !encryptionKey) return;
 
-  const normalized = normalizeGraph(graph);
+  const normalized = normalizeBeliefGraph(graph);
   const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
 
   try {

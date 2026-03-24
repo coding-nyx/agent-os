@@ -1,4 +1,4 @@
-import { CoreUserProfile, AgentPersonalityProvision, UserSecurityPreferences } from '../types';
+import { CoreUserProfile, AgentPersonalityProvision, OrchestrationPreferences, UserSecurityPreferences } from '../types';
 import { buildDefaultVaultLocks, MODULE_MANIFEST } from '@/lib/module-manifest';
 import { getNexusDataLayer } from '../data-layer/provider';
 import { NexusDataLayer } from '../data-layer';
@@ -48,6 +48,35 @@ const normalizeSecurityPreferences = (prefs?: UserSecurityPreferences): UserSecu
   return result;
 };
 
+const DEFAULT_ORCHESTRATION_PREFERENCES: Required<OrchestrationPreferences> = {
+  autopilotLevel: 2,
+  historyMode: 'standard',
+};
+
+const normalizeOrchestrationPreferences = (
+  prefs?: OrchestrationPreferences,
+): Required<OrchestrationPreferences> => {
+  const autopilotLevel =
+    typeof prefs?.autopilotLevel === 'number' &&
+    Number.isInteger(prefs.autopilotLevel) &&
+    prefs.autopilotLevel >= 0 &&
+    prefs.autopilotLevel <= 5
+      ? prefs.autopilotLevel
+      : DEFAULT_ORCHESTRATION_PREFERENCES.autopilotLevel;
+
+  const historyMode =
+    prefs?.historyMode === 'silent' || prefs?.historyMode === 'standard'
+      ? prefs.historyMode
+      : autopilotLevel >= 5
+        ? 'silent'
+        : 'standard';
+
+  return {
+    autopilotLevel,
+    historyMode,
+  };
+};
+
 export const CoreProfileService = {
   async getProfile(uid: string, dataLayer: NexusDataLayer = getNexusDataLayer()): Promise<CoreUserProfile | null> {
     if (!uid) return null;
@@ -58,6 +87,7 @@ export const CoreProfileService = {
     return {
       ...normalized,
       securityPreferences: normalizeSecurityPreferences(normalized.securityPreferences),
+      orchestrationPreferences: normalizeOrchestrationPreferences(normalized.orchestrationPreferences),
     };
   },
 
@@ -77,6 +107,7 @@ export const CoreProfileService = {
       onUpdate({
         ...normalized,
         securityPreferences: normalizeSecurityPreferences(normalized.securityPreferences),
+        orchestrationPreferences: normalizeOrchestrationPreferences(normalized.orchestrationPreferences),
       });
     });
   },
@@ -105,6 +136,7 @@ export const CoreProfileService = {
         vaultLocks: buildDefaultVaultLocks(),
         vaultSessionTtlMinutes: 0
       },
+      orchestrationPreferences: DEFAULT_ORCHESTRATION_PREFERENCES,
       schemaVersion: 2,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -202,6 +234,43 @@ export const CoreProfileService = {
       await dataLayer.setDocument(COLLECTION, uid, nextProfile);
     } catch (error) {
       console.error('[CoreProfileService] Failed to update security preferences:', error);
+    }
+  },
+
+  async updateOrchestrationPreferences(
+    uid: string,
+    prefs: Partial<OrchestrationPreferences>,
+    dataLayer: NexusDataLayer = getNexusDataLayer(),
+  ): Promise<void> {
+    if (!uid) return;
+    const existing = await dataLayer.getDocument<CoreUserProfile>(COLLECTION, uid);
+    if (!existing) return;
+
+    const current = normalizeOrchestrationPreferences(existing.orchestrationPreferences);
+    const autopilotLevel =
+      typeof prefs.autopilotLevel === 'number' &&
+      Number.isInteger(prefs.autopilotLevel) &&
+      prefs.autopilotLevel >= 0 &&
+      prefs.autopilotLevel <= 5
+        ? prefs.autopilotLevel
+        : current.autopilotLevel;
+
+    const nextProfile: CoreUserProfile = {
+      ...existing,
+      orchestrationPreferences: normalizeOrchestrationPreferences({
+        autopilotLevel,
+        historyMode:
+          prefs.historyMode ??
+          (prefs.autopilotLevel === undefined ? current.historyMode : undefined),
+      }),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      await dataLayer.setDocument(COLLECTION, uid, nextProfile);
+    } catch (error) {
+      console.error('[CoreProfileService] Failed to update orchestration preferences:', error);
+      throw error;
     }
   }
 };

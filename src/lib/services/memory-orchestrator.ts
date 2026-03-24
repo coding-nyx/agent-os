@@ -1,9 +1,83 @@
 import { EpisodicMemoryService } from './episodic-memory-service';
 import { SemanticMemoryService } from './semantic-memory-service';
-import { ModuleMemoryEnvelope, SemanticFact, Message } from '../types';
+import { ModuleMemoryEnvelope, SemanticFact, Message, UnifiedMemoryResult } from '../types';
 import { RagService } from './rag/rag-service';
 
 export class MemoryOrchestrator {
+  static summarizeUnifiedResults(results: UnifiedMemoryResult[]): {
+    recalledSessionsSummary: string;
+    recalledFactsSummary: string;
+  } {
+    const recalledSessionsSummary = results
+      .filter((result) => result.type === 'episodic')
+      .map((result) => `- [${new Date(result.timestamp).toLocaleDateString()}][${result.moduleId}] ${result.text}`)
+      .join('\n');
+
+    const recalledFactsSummary = results
+      .filter((result) => result.type !== 'episodic')
+      .map((result) => {
+        const prefix = result.type === 'rag' ? '[RAG] ' : '';
+        const scoreText = typeof result.confidence === 'number' ? ` (confidence ${result.confidence.toFixed(2)})` : '';
+        return `- ${prefix}${result.text}${scoreText}`;
+      })
+      .join('\n');
+
+    return { recalledSessionsSummary, recalledFactsSummary };
+  }
+
+  static async retrieveUnifiedContext(
+    userId: string,
+    moduleId: string,
+    memoryQuery: string,
+    cachedEnvelopes: ModuleMemoryEnvelope[],
+    episodicReady: boolean,
+    semanticReady: boolean,
+    cachedFacts: SemanticFact[],
+    options: { requiresVault: boolean; encryptionKey?: CryptoKey | null }
+  ): Promise<{
+    results: UnifiedMemoryResult[];
+    recalledSessionsSummary: string;
+    recalledFactsSummary: string;
+    status: 'ok' | 'vault_blocked';
+  }> {
+    const relevantModuleIds = Array.from(new Set([moduleId, 'nexus']));
+
+    const episodicPromise =
+      cachedEnvelopes.length > 0 && episodicReady
+        ? EpisodicMemoryService.retrieveRelevantUnifiedFromEnvelopes(memoryQuery, cachedEnvelopes, {
+            moduleIds: relevantModuleIds,
+            topK: 5,
+            recencyWeight: 0.3,
+          })
+        : EpisodicMemoryService.retrieveRelevantUnified(userId, memoryQuery, {
+            moduleIds: relevantModuleIds,
+            topK: 5,
+            recencyWeight: 0.3,
+          });
+
+    const semanticPromise = semanticReady
+      ? Promise.resolve(SemanticMemoryService.getFactsUnifiedFromFacts(cachedFacts, relevantModuleIds))
+      : SemanticMemoryService.getFactsUnified(userId, relevantModuleIds);
+
+    const [sessions, facts] = await Promise.all([episodicPromise, semanticPromise]);
+    const ragResult = await RagService.retrieve({
+      moduleId,
+      query: memoryQuery,
+      encryptionKey: options.encryptionKey,
+      requiresVault: options.requiresVault,
+    });
+
+    const results = [...sessions, ...facts.slice(0, 5), ...ragResult.facts].sort((left, right) => right.score - left.score);
+    const summaries = this.summarizeUnifiedResults(results);
+
+    return {
+      results,
+      recalledSessionsSummary: summaries.recalledSessionsSummary,
+      recalledFactsSummary: summaries.recalledFactsSummary,
+      status: ragResult.status,
+    };
+  }
+
   static async retrieveContext(
     userId: string,
     moduleId: string,
@@ -14,51 +88,21 @@ export class MemoryOrchestrator {
     cachedFacts: SemanticFact[],
     options: { requiresVault: boolean; encryptionKey?: CryptoKey | null }
   ): Promise<{ recalledSessionsSummary: string; recalledFactsSummary: string; status: 'ok' | 'vault_blocked' }> {
-    const relevantModuleIds = Array.from(new Set([moduleId, 'nexus']));
-
-    const episodicPromise =
-      cachedEnvelopes.length > 0 && episodicReady
-        ? EpisodicMemoryService.retrieveRelevantFromEnvelopes(memoryQuery, cachedEnvelopes, {
-            moduleIds: relevantModuleIds,
-            topK: 5,
-            recencyWeight: 0.3
-          })
-        : EpisodicMemoryService.retrieveRelevant(userId, memoryQuery, {
-            moduleIds: relevantModuleIds,
-            topK: 5,
-            recencyWeight: 0.3
-          });
-
-    const semanticPromise = semanticReady
-      ? Promise.resolve(
-          cachedFacts
-            .filter((fact) => relevantModuleIds.includes(fact.moduleId))
-            .sort((a, b) => b.confidence - a.confidence)
-            .slice(0, 10)
-        )
-      : SemanticMemoryService.getFacts(userId, relevantModuleIds);
-
-    const [sessions, facts] = await Promise.all([episodicPromise, semanticPromise]);
-
-    const ragResult = await RagService.retrieve({
+    const result = await this.retrieveUnifiedContext(
+      userId,
       moduleId,
-      query: memoryQuery,
-      encryptionKey: options.encryptionKey,
-      requiresVault: options.requiresVault
-    });
-
-    const recalledSessionsSummary = sessions
-      .map((session) => `- [${new Date(session.sessionDate).toLocaleDateString()}][${session.moduleId}] ${session.summary}`)
-      .join('\n');
-
-    const ragFacts = ragResult.facts.map((fact) => `- [RAG] ${fact}`);
-    const recalledFactsSummary = facts
-      .slice(0, 5)
-      .map((fact) => `- ${fact.fact} (confidence ${fact.confidence.toFixed(2)})`)
-      .concat(ragFacts)
-      .join('\n');
-
-    return { recalledSessionsSummary, recalledFactsSummary, status: ragResult.status };
+      memoryQuery,
+      cachedEnvelopes,
+      episodicReady,
+      semanticReady,
+      cachedFacts,
+      options,
+    );
+    return {
+      recalledSessionsSummary: result.recalledSessionsSummary,
+      recalledFactsSummary: result.recalledFactsSummary,
+      status: result.status,
+    };
   }
 
   static parseInsightLines(raw: string): { summary: string; insights: string[] } {

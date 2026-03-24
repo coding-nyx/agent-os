@@ -1,3 +1,5 @@
+import type { UnifiedMemoryResult } from '@/lib/types';
+
 export type RagRuntime = 'web' | 'native';
 
 export interface RagRetrieveOptions {
@@ -10,7 +12,7 @@ export interface RagRetrieveOptions {
 }
 
 export interface RagRetrieveResult {
-  facts: string[];
+  facts: UnifiedMemoryResult[];
   status: 'ok' | 'vault_blocked';
 }
 

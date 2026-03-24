@@ -76,6 +76,93 @@ export function computeDashboardMetrics(
   };
 }
 
+export type RunwayStatus = 'needs_data' | 'stable' | 'healthy' | 'watch' | 'critical' | 'depleted';
+
+export interface RunwayProjection {
+  source: 'profile' | 'transactions' | 'profile+transactions';
+  modeledLiquidity: number;
+  ledgerBalance: number;
+  reserveSavings: number;
+  monthlyIncome: number;
+  monthlyExpenseBaseline: number;
+  monthlyBurn: number;
+  monthlyBuffer: number;
+  monthsRemaining: number | null;
+  daysRemaining: number | null;
+  status: RunwayStatus;
+}
+
+export function computeRunwayProjection(
+  profile: LedgerIntakeProfile | null | undefined,
+): RunwayProjection | null {
+  if (!profile) return null;
+
+  const transactions = profile.transactions ?? [];
+  const totalDebt = (profile.debtItems ?? []).reduce((sum, debt) => round2(sum + debt.balance), 0);
+  const metrics = computeDashboardMetrics(transactions, totalDebt);
+
+  const plannedExpenseBaseline = round2(
+    (profile.fixedExpenses ?? []).reduce((sum, item) => sum + item.amount, 0) +
+      (profile.variableExpenses ?? []).reduce((sum, item) => sum + item.amount, 0) +
+      (profile.debtItems ?? []).reduce((sum, item) => sum + item.minPayment, 0),
+  );
+
+  const reserveSavings = round2(
+    (profile.savingsGoals ?? []).reduce((sum, goal) => sum + goal.currentAmount, 0),
+  );
+  const ledgerBalance = round2(Math.max(metrics.totalBalance, 0));
+  const modeledLiquidity = round2(ledgerBalance + reserveSavings);
+
+  const monthlyIncome = round2(
+    profile.monthlyIncome > 0 ? profile.monthlyIncome : metrics.currentMonthIncome,
+  );
+  const monthlyExpenseBaseline = round2(
+    plannedExpenseBaseline > 0
+      ? plannedExpenseBaseline
+      : Math.max(metrics.averageMonthlyExpenses, metrics.currentMonthExpenses),
+  );
+  const monthlyBuffer = round2(monthlyIncome - monthlyExpenseBaseline);
+  const monthlyBurn = round2(Math.max(monthlyExpenseBaseline - monthlyIncome, 0));
+  const monthsRemaining =
+    monthlyBurn > 0 ? round2(modeledLiquidity / monthlyBurn) : null;
+  const daysRemaining =
+    monthsRemaining !== null ? Math.max(0, Math.round(monthsRemaining * 30.4)) : null;
+
+  let source: RunwayProjection['source'] = 'transactions';
+  if (profile.monthlyIncome > 0 || plannedExpenseBaseline > 0) {
+    source = transactions.length > 0 ? 'profile+transactions' : 'profile';
+  }
+
+  let status: RunwayStatus = 'needs_data';
+  if (monthlyIncome <= 0 && monthlyExpenseBaseline <= 0 && modeledLiquidity <= 0) {
+    status = 'needs_data';
+  } else if (monthlyBurn <= 0) {
+    status = 'stable';
+  } else if (modeledLiquidity <= 0) {
+    status = 'depleted';
+  } else if ((monthsRemaining ?? 0) < 3) {
+    status = 'critical';
+  } else if ((monthsRemaining ?? 0) < 6) {
+    status = 'watch';
+  } else {
+    status = 'healthy';
+  }
+
+  return {
+    source,
+    modeledLiquidity,
+    ledgerBalance,
+    reserveSavings,
+    monthlyIncome,
+    monthlyExpenseBaseline,
+    monthlyBurn,
+    monthlyBuffer,
+    monthsRemaining,
+    daysRemaining,
+    status,
+  };
+}
+
 export interface DebtPayoffMonth {
   month: number;
   totalBalance: number;

@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { LedgerOnboarding } from './LedgerOnboarding';
 import { useAI } from '@/llm-engine/ai-context';
 import { useAuth } from '@/lib/auth-context';
@@ -45,23 +46,33 @@ describe('LedgerOnboarding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useAI as any).mockReturnValue({
-      streamMessage: mockStreamMessage
+      streamMessage: mockStreamMessage,
+      generateJSON: vi.fn(),
+      isInitialized: false,
     });
     (useAuth as any).mockReturnValue({
       user: { uid: 'test-user' }
     });
   });
 
-  it('renders with initial greeting', () => {
+  async function openGuidedMode() {
+    await userEvent.click(screen.getByRole('button', { name: /guided/i }));
+  }
+
+  it('renders the Ledger shell and guided greeting', async () => {
     render(
       <LedgerOnboarding onComplete={mockOnComplete} />
     );
 
-    expect(screen.getByText(/Ledger Finance Intake/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Ledger$/i)).toBeInTheDocument();
+    expect(screen.getByText(/Choose onboarding style/i)).toBeInTheDocument();
+
+    await openGuidedMode();
+
     expect(screen.getByText(/assistant: Ledger intake initialized/i)).toBeInTheDocument();
   });
 
-  it('handles handoff context in initial prompt', () => {
+  it('handles handoff context in the guided initial prompt', async () => {
     const initialBaseContext = {
       name: 'Alice',
       occupation: 'Engineer'
@@ -73,6 +84,8 @@ describe('LedgerOnboarding', () => {
         onComplete={mockOnComplete} 
       />
     );
+
+    await openGuidedMode();
 
     expect(screen.getByText(/assistant: Nexus handoff received. I have your name as Alice, occupation as Engineer/i)).toBeInTheDocument();
   });
@@ -91,6 +104,8 @@ describe('LedgerOnboarding', () => {
     render(
       <LedgerOnboarding onComplete={mockOnComplete} />
     );
+
+    await openGuidedMode();
 
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: "I make 5000 a month" } });
@@ -120,6 +135,8 @@ describe('LedgerOnboarding', () => {
     render(
       <LedgerOnboarding onComplete={mockOnComplete} />
     );
+
+    await openGuidedMode();
 
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: "I am all set" } });

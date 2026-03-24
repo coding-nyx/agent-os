@@ -66,6 +66,12 @@ describe('stripInternalTags', () => {
     expect(result.internalText).toContain('[ACTION: update_nsv]');
   });
 
+  it('strips bracketed action tags', () => {
+    const result = stripInternalTags('Hello [action type="delegate_to_module"]{ "moduleId": "agnes" } world');
+    expect(result.publicText).toBe('Hello world');
+    expect(result.internalText).toContain('[ACTION: delegate_to_module]');
+  });
+
   it('strips <tool_call_begin>…<tool_call_end> tags', () => {
     const result = stripInternalTags('<tool_call_begin>search<tool_sep>query text<tool_call_end>Public');
     expect(result.publicText).toBe('Public');

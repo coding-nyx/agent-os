@@ -3,6 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { ChatInterface } from './ChatInterface';
+import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
 
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -104,6 +105,7 @@ describe('ChatInterface speech-to-text', () => {
   });
 
   afterEach(() => {
+    AutonomyFeatureFlags.resetTestOverrides();
     delete (window as Window & { webkitSpeechRecognition?: typeof MockSpeechRecognition }).webkitSpeechRecognition;
   });
 
@@ -159,5 +161,53 @@ describe('ChatInterface speech-to-text', () => {
 
     expect(await screen.findByText(/microphone access is blocked/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start speech to text/i })).not.toBeDisabled();
+  });
+
+  it('renders assistant identity badges from dedicated chat identity metadata', () => {
+    render(
+      <ChatInterface
+        messages={[{ role: 'assistant', content: 'Welcome aboard.' }]}
+        onSendMessage={vi.fn()}
+        isLoading={false}
+        themeColor="cyan"
+        agentName="Nexus"
+        moduleId="nexus"
+        assistantIdentity={{
+          actorId: 'nexus-intake',
+          actorLabel: 'Nexus Intake',
+          actorShortLabel: 'NI',
+        }}
+      />,
+    );
+
+    const icon = screen.getByLabelText(/nexus intake icon/i);
+    expect(icon).toBeInTheDocument();
+    expect(icon.querySelector('svg')).not.toBeNull();
+    expect(icon).not.toHaveTextContent('NI');
+    expect(screen.getByText('Nexus Intake')).toBeInTheDocument();
+  });
+
+  it('falls back to module identity when chat actor identity is disabled', () => {
+    AutonomyFeatureFlags.setTestOverrides({ chatActorIdentity: false });
+
+    render(
+      <ChatInterface
+        messages={[{ role: 'assistant', content: 'Welcome aboard.' }]}
+        onSendMessage={vi.fn()}
+        isLoading={false}
+        themeColor="cyan"
+        agentName="Nexus"
+        moduleId="nexus"
+        assistantIdentity={{
+          actorId: 'nexus-intake',
+          actorLabel: 'Nexus Intake',
+          actorShortLabel: 'NI',
+        }}
+      />,
+    );
+
+    expect(screen.queryByText('Nexus Intake')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Nexus').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/nexus icon/i)).toBeInTheDocument();
   });
 });

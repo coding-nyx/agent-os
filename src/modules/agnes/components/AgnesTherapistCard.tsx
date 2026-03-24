@@ -74,14 +74,6 @@ export function AgnesTherapistCard({ baseContext, className, agentAlias = 'Agnes
           </div>
         </div>
       </div>
-
-      <div className="mt-auto">
-        <div className="p-4 rounded-2xl bg-rose-500/[0.02] border border-rose-500/10 text-center">
-            <p className="text-[9px] font-medium text-rose-200/40 leading-relaxed italic">
-                "Specializing in deep emotional recalibration and trauma processing."
-            </p>
-        </div>
-      </div>
     </div>
   );
 

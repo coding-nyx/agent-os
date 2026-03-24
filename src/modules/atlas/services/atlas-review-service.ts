@@ -1,5 +1,7 @@
 import { AtlasProfile, AtlasHabit, AtlasGoal } from './atlas-profile-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
+import type { GlobalProjection, AtlasReviewBlueprint } from '@/lib/types';
+import { AtlasBlueprintService } from './atlas-blueprint-service';
 
 /**
  * Atlas Review Service
@@ -66,5 +68,9 @@ export const AtlasReviewService = {
         });
       }
     });
-  }
+  },
+
+  buildActionableReview(profile: AtlasProfile | null, soul: GlobalProjection | null): AtlasReviewBlueprint {
+    return AtlasBlueprintService.computeReviewBlueprint({ profile, soul });
+  },
 };

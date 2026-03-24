@@ -8,25 +8,54 @@ import {
   Circle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AgnesEngagementModeControl } from './AgnesEngagementModeControl';
+import { AgnesBeliefWorkflowPanel } from './AgnesBeliefWorkflowPanel';
+import {
+  AGNES_ENGAGEMENT_MODE_DEFINITIONS,
+  AgnesPersistentEngagementMode,
+} from '../engagement-modes';
+import type { MasterThreadShellSnapshot } from '@/lib/services/master-thread-service';
+import type { BeliefGraph } from '../services/belief-graph-service';
+import type { BeliefGraphWorkflow } from '../services/belief-graph-workflow-service';
 
 interface AgnesSanctuaryContentProps {
   onStartSession: (type: 'new' | 'impromptu' | 'continue') => void;
+  onConfirmBeliefProposal: (proposalId: string, editedGraph: BeliefGraph) => Promise<void>;
+  onDismissBeliefProposal: (proposalId: string) => Promise<void>;
+  onAcceptInvitation: () => Promise<void>;
+  onDismissInvitation: () => Promise<void>;
+  selectedPersistentMode: AgnesPersistentEngagementMode;
+  onPersistentModeChange: (mode: AgnesPersistentEngagementMode) => void;
   agentAlias: string;
   userName: string;
   somaticEnabled: boolean;
-  onSomaticToggle: () => void;
   isAccessible: boolean;
   hasActiveSession: boolean;
+  beliefGraph: BeliefGraph | null;
+  beliefWorkflow: BeliefGraphWorkflow | null;
+  beliefInvitationSnapshot?: MasterThreadShellSnapshot | null;
+  beliefWorkflowBusy?: boolean;
 }
 
 export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
   onStartSession,
+  onConfirmBeliefProposal,
+  onDismissBeliefProposal,
+  onAcceptInvitation,
+  onDismissInvitation,
+  selectedPersistentMode,
+  onPersistentModeChange,
   agentAlias,
   somaticEnabled,
-  onSomaticToggle,
   isAccessible,
-  hasActiveSession
+  hasActiveSession,
+  beliefGraph,
+  beliefWorkflow,
+  beliefInvitationSnapshot,
+  beliefWorkflowBusy = false,
 }) => {
+  const selectedModeDefinition = AGNES_ENGAGEMENT_MODE_DEFINITIONS[selectedPersistentMode];
+
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full relative z-[var(--z-content)] px-4 sm:px-6 py-8 sm:py-12 overflow-y-auto no-scrollbar items-center">
       
@@ -35,22 +64,33 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
         
         <div className="text-center space-y-8 relative z-[var(--z-content)]">
           <div className="space-y-6">
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 backdrop-blur-md"
-            >
-              <Shield className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-300 italic">Secure Neural Link Active</span>
-            </motion.div>
-            
             <div className="space-y-4">
               <h1 className="text-5xl sm:text-8xl font-black italic tracking-tighter text-white uppercase leading-none drop-shadow-2xl">
                 Mind <span className="text-indigo-400">Restore</span>
               </h1>
-              <p className="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.4em] uppercase max-w-xl mx-auto leading-relaxed px-4">
-                A clinical-grade sanctuary for deep emotional recalibration and trauma-informed processing.
-              </p>
+              <div className="max-w-3xl mx-auto pt-2 space-y-4">
+                <div className="text-[10px] font-black uppercase tracking-[0.35em] text-white/35">
+                  Choose Your Persistent Mode
+                </div>
+                <AgnesEngagementModeControl
+                  compact
+                  value={selectedPersistentMode}
+                  onChange={(mode) => onPersistentModeChange(mode as AgnesPersistentEngagementMode)}
+                  modes={['casual', 'deep', 'somatic']}
+                  label="Choose Agnes persistent mode"
+                />
+                <div className="flex flex-wrap items-center justify-center gap-3 text-[10px] uppercase tracking-[0.24em] text-white/30">
+                  <span>Default: {selectedModeDefinition.label}</span>
+                  <span className={cn(
+                    'px-3 py-1 rounded-full border',
+                    somaticEnabled
+                      ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200/60'
+                      : 'border-amber-400/20 bg-amber-500/10 text-amber-100/60',
+                  )}>
+                    Somatic Inquiry {somaticEnabled ? 'On' : 'Adapted'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -91,32 +131,30 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
               {isAccessible ? <Sparkles size={24} /> : <Lock size={24} />}
             </div>
             <div className="space-y-3">
-              <h3 className="text-xl sm:text-2xl font-black tracking-tight uppercase italic text-white group-hover:text-indigo-400 transition-colors">
-                {hasActiveSession ? "Resume Sync" : "New Session"}
-              </h3>
-              <p className="text-[11px] text-white/40 font-medium leading-relaxed max-w-[240px]">
-                Full vault-integrated synchronization with deep baseline analysis.
-              </p>
-            </div>
-            <div className="text-[9px] font-black uppercase tracking-widest text-indigo-500/40 group-hover:text-indigo-400 transition-colors">
-              {hasActiveSession ? "Re-establish Tunnel" : "Initialize Handshake"}
-            </div>
-          </motion.button>
-        </div>
-      </main>
+                <h3 className="text-xl sm:text-2xl font-black tracking-tight uppercase italic text-white group-hover:text-indigo-400 transition-colors">
+                 {hasActiveSession ? `Resume ${selectedModeDefinition.shortLabel}` : `Start ${selectedModeDefinition.shortLabel}`}
+               </h3>
+               <p className="text-[11px] text-white/40 font-medium leading-relaxed max-w-[240px]">
+                 {selectedModeDefinition.tagline}
+               </p>
+             </div>
+             <div className="text-[9px] font-black uppercase tracking-widest text-indigo-500/40 group-hover:text-indigo-400 transition-colors">
+               {hasActiveSession ? `Rejoin ${selectedModeDefinition.label}` : `Open ${selectedModeDefinition.label}`}
+             </div>
+           </motion.button>
+          </div>
 
-      {/* 2. Minimalist Footer — encrypted status */}
-      <footer className="mt-auto shrink-0 w-full max-w-4xl flex items-center justify-between pt-12 pb-8 border-t border-white/5 px-4">
-        <div className="flex items-center gap-3 opacity-30">
-           <Shield size={14} className="text-indigo-400" />
-           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">End-to-End Encrypted</span>
-        </div>
-
-        <div className="hidden sm:flex items-center gap-3 opacity-20">
-           <Circle size={8} className="fill-current" />
-           <span className="text-[9px] font-black uppercase tracking-[0.3em]">Sanctuary Active</span>
-        </div>
-      </footer>
+          <AgnesBeliefWorkflowPanel
+            graph={beliefGraph}
+            workflow={beliefWorkflow}
+            invitationSnapshot={beliefInvitationSnapshot}
+            busy={beliefWorkflowBusy}
+            onConfirmProposal={onConfirmBeliefProposal}
+            onDismissProposal={onDismissBeliefProposal}
+            onAcceptInvitation={onAcceptInvitation}
+            onDismissInvitation={onDismissInvitation}
+          />
+       </main>
     </div>
   );
 };

@@ -22,7 +22,9 @@ import { useIntelligencePipeline } from './lib/services/intelligence-pipeline';
 import { BridgeService } from './lib/services/bridge-service';
 import { ReminderScheduler } from './lib/notifications/reminder-scheduler-service';
 import { SchedulerService } from './lib/spine/scheduler-service';
+import { OrchestrationRetryWorkerService } from './lib/services/orchestration-retry-worker-service';
 import { Spine } from './lib/spine/spine-event-bus';
+import { useOrchestrationProfileSync } from './lib/hooks/use-orchestration-profile-sync';
 import { 
   CORE_CASCADE_RULES, 
   ATLAS_CASCADE_RULES, 
@@ -161,6 +163,7 @@ function BridgeMount() {
         BridgeService.stop();
         ReminderScheduler.stop();
         SchedulerService.stop();
+        OrchestrationRetryWorkerService.stop();
         mountedUserId.current = null;
       }
       return;
@@ -182,12 +185,14 @@ function BridgeMount() {
     
     ReminderScheduler.start(user.uid);
     SchedulerService.start();
+    OrchestrationRetryWorkerService.start(user.uid);
 
     return () => {
       // Immediate stop when BridgeMount is actually removed from the tree (e.g. lock down)
       BridgeService.stop();
       ReminderScheduler.stop();
       SchedulerService.stop();
+      OrchestrationRetryWorkerService.stop();
       mountedUserId.current = null;
     };
   }, [user?.uid, isGuest]);
@@ -197,6 +202,7 @@ function BridgeMount() {
 
 function AppContent() {
   const { profile, isGuest, isAuthenticated } = useAuth();
+  useOrchestrationProfileSync();
   
   // A session is "onboarded" if it's a guest session (which bypasses Nexus onboarding)
   // or if the authenticated user has completed their core profile.
@@ -232,7 +238,7 @@ function AppContent() {
         {/* Vault unlock gate — outside ProtectedRoute so it's always reachable */}
         <Route path="/vault-gate" element={<AppVaultGate />} />
         
-        <Route path="/nexus" element={
+        <Route path="/nexus/*" element={
           <ProtectedRoute requireOnboarding={false}>
             <NexusPage />
           </ProtectedRoute>

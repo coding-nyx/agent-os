@@ -1,3 +1,4 @@
+// @refresh reset
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Lock, ArrowRight } from 'lucide-react';
@@ -13,6 +14,8 @@ interface CommandPaletteProps {
   onAskModule?: (moduleId: string, question: string) => void;
   onOpenAuth?: (moduleId: ModuleId) => void;
   onExpandBrief?: () => void;
+  onOpenOperations?: () => void;
+  onClearSession?: () => void;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -53,7 +56,15 @@ function CommandRow({ command, isSelected, onSelect }: {
   );
 }
 
-export function CommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule, onOpenAuth, onExpandBrief }: CommandPaletteProps) {
+export function CommandPalette({
+  onSynthesisRefresh,
+  onMemorySearch,
+  onAskModule,
+  onOpenAuth,
+  onExpandBrief,
+  onOpenOperations,
+  onClearSession,
+}: CommandPaletteProps) {
   const {
     isOpen,
     close,
@@ -63,7 +74,15 @@ export function CommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule
     selectedIndex,
     setSelectedIndex,
     executeSelected,
-  } = useCommandPalette({ onSynthesisRefresh, onMemorySearch, onAskModule, onOpenAuth, onExpandBrief });
+  } = useCommandPalette({
+    onSynthesisRefresh,
+    onMemorySearch,
+    onAskModule,
+    onOpenAuth,
+    onExpandBrief,
+    onOpenOperations,
+    onClearSession,
+  });
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);

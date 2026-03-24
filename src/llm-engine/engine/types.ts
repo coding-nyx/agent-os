@@ -53,10 +53,15 @@ export interface EngineConfig {
   freeModelsOnly?: boolean;
 }
 
+import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
+
 export interface ParsedAction {
   type: string;
   payload: Record<string, unknown>;
   raw?: string;
+  commandContext?: {
+    parsedCommand?: ParsedCommandEnvelope;
+  };
 }
 
 export interface StructuredResponse {

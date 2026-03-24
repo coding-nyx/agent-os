@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Send, Bot, User, Loader2, Sparkles, Shield,
+  Send, Loader2, Sparkles, Shield,
   Activity as ActivityIcon, Terminal, ChevronDown, Lock, Zap,
   ArrowRight, Plus, FileText, BarChart3, Image as ImageIcon, X,
   Mic, MicOff,
@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { cn } from '@/lib/utils';
 import { Message, GuestQuota, MessageContent } from '@/lib/types';
+import type { ModuleId } from '@/lib/module-manifest';
 import { NeuralLinkAlert } from './NeuralLinkAlert';
 import { stripInternalTags } from '@/lib/ai-adapters/sanitize';
 import { NeuralButton, NeuralIconButton } from './NeuralButton';
@@ -23,6 +24,10 @@ import { useDebugMode } from '@/lib/hooks/use-debug-mode';
 import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
 import { buildDocumentUploadVisibleMessage, summarizeDocumentUploadMessage } from '@/lib/services/document-upload-message';
 import { useSpeechToText } from '@/lib/hooks/use-speech-to-text';
+import type { ActorIdentityRef } from '@/lib/agent-identity';
+import { resolveConversationalActorIdentity } from '@/lib/agent-identity';
+import { AgentIcon } from './AgentIcon';
+import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
 
 // Helper to convert MessageContent to string for display
 function messageContentToString(content: MessageContent): string {
@@ -66,6 +71,7 @@ interface ChatInterfaceProps {
   onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
   processingLabel?: string;
   enableSpeechToText?: boolean;
+  assistantIdentity?: ActorIdentityRef;
 }
 
 const THEMES = {
@@ -161,7 +167,7 @@ const THEMES = {
 
 type ThemeConfig = typeof THEMES[keyof typeof THEMES];
 
-const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isLast, isLoading, isAgnes, debugMode, debugMeta, isStreaming, showInternalSignals }: { content: string, theme: ThemeConfig, agentName: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean, debugMode?: boolean, debugMeta?: import('@/lib/types').MessageDebugMeta, isStreaming?: boolean, showInternalSignals?: boolean }) {
+const AIMessage = React.memo(function AIMessage({ content, theme, actorLabel, isLast, isLoading, isAgnes, debugMode, debugMeta, isStreaming, showInternalSignals }: { content: string, theme: ThemeConfig, actorLabel: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean, debugMode?: boolean, debugMeta?: import('@/lib/types').MessageDebugMeta, isStreaming?: boolean, showInternalSignals?: boolean }) {
     // Run the stripping logic even during streaming so internal tags like <thought>
     // are filtered out in real-time. The stripInternalTags function handles 
     // unclosed/partial tags at the end of the stream.
@@ -281,7 +287,7 @@ const AIMessage = React.memo(function AIMessage({ content, theme, agentName, isL
                     </div>
                     {!isStreaming && (
                       <div className="mt-3 flex items-center justify-between opacity-30 border-t border-white/5 pt-3">
-                          <span className="text-[9px] font-semibold uppercase tracking-[0.12em]">{agentName}</span>
+                          <span className="text-[9px] font-semibold uppercase tracking-[0.12em]">{actorLabel}</span>
                           <span className="text-[9px] font-mono uppercase tracking-wider">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     )}
@@ -323,6 +329,7 @@ export const ChatInterface = React.memo(function ChatInterface({
   onUploadDocuments,
   processingLabel,
   enableSpeechToText = false,
+  assistantIdentity,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -334,6 +341,14 @@ export const ChatInterface = React.memo(function ChatInterface({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isNearBottomRef = useRef(true);
   const { debugMode } = useDebugMode();
+  const chatActorIdentityEnabled = AutonomyFeatureFlags.isEnabled('chatActorIdentity');
+  const resolvedAssistantIdentity = resolveConversationalActorIdentity({
+    moduleId: moduleId && moduleId !== 'user' && moduleId !== 'system' ? moduleId as ModuleId : undefined,
+    actorId: chatActorIdentityEnabled ? assistantIdentity?.actorId : undefined,
+    actorLabel: chatActorIdentityEnabled ? assistantIdentity?.actorLabel : undefined,
+    actorShortLabel: chatActorIdentityEnabled ? assistantIdentity?.actorShortLabel : undefined,
+    fallbackLabel: agentName,
+  });
   const speechToText = useSpeechToText({
     enabled: enableSpeechToText,
     value: input,
@@ -552,28 +567,41 @@ export const ChatInterface = React.memo(function ChatInterface({
             if (msg.role === 'system') return null;
             const isAI = msg.role === 'assistant';
             const isLast = i === messages.length - 1;
+            const actorIdentity = isAI
+              ? resolveConversationalActorIdentity({
+                  moduleId: moduleId && moduleId !== 'user' && moduleId !== 'system' ? moduleId as ModuleId : undefined,
+                  actorId: chatActorIdentityEnabled ? (msg.actor?.actorId ?? assistantIdentity?.actorId) : undefined,
+                  actorLabel: chatActorIdentityEnabled ? (msg.actor?.actorLabel ?? assistantIdentity?.actorLabel) : undefined,
+                  actorShortLabel: chatActorIdentityEnabled ? (msg.actor?.actorShortLabel ?? assistantIdentity?.actorShortLabel) : undefined,
+                  fallbackLabel: agentName,
+                })
+              : resolveConversationalActorIdentity({ source: 'user' });
             
             const actions = renderMessageActions ? renderMessageActions(msg, i) : null;
             return (
               <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
                 <div className={cn("flex gap-4 w-full", isAI ? "justify-start" : "justify-end")}>
                 {isAI && (
-                  <div className={cn(
-                    "shrink-0 mt-1 flex items-center justify-center transition-colors",
-                    isAgnes
-                      ? "w-10 h-10 rounded-2xl border border-indigo-400/20 bg-gradient-to-br from-indigo-900/60 to-violet-900/60 shadow-lg shadow-indigo-500/20"
-                      : "w-9 h-9 rounded-xl border border-white/10 bg-black/60 shadow-xl",
-                    theme.accent
-                  )}>
-                    <Bot className="w-5 h-5" />
-                  </div>
+                  <AgentIcon
+                    moduleId={moduleId && moduleId !== 'user' && moduleId !== 'system' ? moduleId as ModuleId : undefined}
+                    actorId={actorIdentity.id}
+                    actorLabel={actorIdentity.label}
+                    actorShortLabel={actorIdentity.shortLabel}
+                    withBackground
+                    className={cn(
+                      "shrink-0 mt-1 transition-colors",
+                      isAgnes
+                        ? "w-10 h-10 rounded-2xl border border-indigo-400/20 shadow-lg shadow-indigo-500/20"
+                        : "w-9 h-9 rounded-xl border border-white/10 shadow-xl",
+                    )}
+                  />
                 )}
                 {isAI ? (
                     <div className="w-full flex flex-col items-start">
                         <AIMessage
                           content={messageContentToString(msg.content)}
                           theme={theme}
-                          agentName={agentName}
+                          actorLabel={actorIdentity.label}
                           isLast={isLast}
                           isLoading={effectiveIsProcessing}
                           isAgnes={isAgnes}
@@ -631,14 +659,18 @@ export const ChatInterface = React.memo(function ChatInterface({
                     })()
                 )}
                 {!isAI && (
-                  <div className={cn(
-                    "shrink-0 mt-1 flex items-center justify-center",
-                    isAgnes
-                      ? "w-10 h-10 rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] shadow-lg"
-                      : "w-9 h-9 rounded-xl border border-white/10 bg-black/60 shadow-xl"
-                  )}>
-                    <User className={cn(isAgnes ? "w-5 h-5 text-white/60" : "w-5 h-5 text-white/40")} />
-                  </div>
+                  <AgentIcon
+                    source="user"
+                    actorLabel={actorIdentity.label}
+                    actorShortLabel={actorIdentity.shortLabel}
+                    withBackground
+                    className={cn(
+                      "shrink-0 mt-1",
+                      isAgnes
+                        ? "w-10 h-10 rounded-2xl border border-white/10 shadow-lg"
+                        : "w-9 h-9 rounded-xl border border-white/10 shadow-xl"
+                    )}
+                  />
                 )}
                 </div>
                 {actions && (
@@ -660,7 +692,7 @@ export const ChatInterface = React.memo(function ChatInterface({
               <span className="text-[10px] uppercase font-semibold tracking-[0.12em] text-white/50">
                 {aiState?.isActing 
                   ? `${getActionLabel(aiState.currentActionType || 'action')}...` 
-                  : (aiState?.isThinking ? 'Processing Neural Signals...' : `${agentName} is thinking`)}
+                  : (aiState?.isThinking ? 'Processing Neural Signals...' : `${resolvedAssistantIdentity.label} is thinking`)}
               </span>
               <span className="flex gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce [animation-delay:0ms]" />

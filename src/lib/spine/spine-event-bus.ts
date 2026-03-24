@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { SpineDomain, SpineEvent, SpineEventPayload, SpineEventPriority, SpineEventType } from '@/lib/types';
 import type { NexusDataLayer } from '@/lib/data-layer';
+import { adaptSpineEventToSpec, serializeSpecSpineEvent } from '@/lib/contracts/orchestration';
 import { NexusLogger } from '@/lib/nexus-logger';
 
 export interface CascadeRule {
@@ -15,6 +16,8 @@ export interface EventFilterOptions {
 }
 
 const PRIORITY_LEVELS = { info: 0, alert: 1, critical: 2 };
+const SPINE_EVENTS_SUBCOLLECTION = 'events';
+const SPINE_SPEC_EVENTS_SUBCOLLECTION = 'spec_events';
 
 type Listener = (event: SpineEvent) => void;
 interface ListenerRegistration {
@@ -149,7 +152,16 @@ class SpineEventBus {
     // Prefer NexusDataLayer when injected — supports InMemoryDataLayer in tests
     // and keeps Spine decoupled from the Firebase SDK.
     if (this.dataLayer) {
-      await this.dataLayer.createDocument(`spine_events/${this.uid}/events`, event);
+      await this.dataLayer.createDocument(`spine_events/${this.uid}/${SPINE_EVENTS_SUBCOLLECTION}`, event);
+
+      try {
+        await this.dataLayer.createDocument(
+          `spine_events/${this.uid}/${SPINE_SPEC_EVENTS_SUBCOLLECTION}`,
+          serializeSpecSpineEvent(adaptSpineEventToSpec(event)),
+        );
+      } catch (error) {
+        console.error('[SpineEventBus] Failed to persist spec-adapted event:', error);
+      }
       return;
     }
 

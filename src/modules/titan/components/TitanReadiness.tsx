@@ -13,14 +13,34 @@ interface TitanDashboardProps {
   soul: GlobalProjection | null;
   isLocked?: boolean;
   onCalibrate?: (metricKey: string) => void;
+  presentationMode?: 'performance' | 'recovery';
+  presentationReason?: string | null;
+  activeDebtCount?: number;
 }
 
-function ReadinessHeader() {
+function ReadinessHeader({
+  presentationMode,
+  activeDebtCount = 0,
+}: {
+  presentationMode: 'performance' | 'recovery';
+  activeDebtCount?: number;
+}) {
+  const isRecoveryMode = presentationMode === 'recovery';
   return (
     <div className="space-y-1 sm:space-y-1.5">
-      <div className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em] font-display text-[var(--module-color-400)]">Performance Coach</div>
-      <h2 className="text-lg sm:text-xl md:text-2xl font-bold uppercase tracking-tight text-white font-display">Today&apos;s Readiness</h2>
-      <p className="text-[11px] sm:text-xs text-white/40 max-w-xl leading-relaxed">CNS-aware training surfaced from biometrics, recovery load, and recent sessions.</p>
+      <div className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em] font-display text-[var(--module-color-400)]">
+        {isRecoveryMode ? 'Recovery Control' : 'Performance Coach'}
+      </div>
+      <h2 className="text-lg sm:text-xl md:text-2xl font-bold uppercase tracking-tight text-white font-display">
+        {isRecoveryMode ? 'Recovery & Clearance' : 'Today&apos;s Readiness'}
+      </h2>
+      <p className="text-[11px] sm:text-xs text-white/40 max-w-xl leading-relaxed">
+        {isRecoveryMode
+          ? activeDebtCount > 0
+            ? 'Soma override debt is active. Titan is framing the day around debt repayment, reduced load, and recovery compliance.'
+            : 'Titan is prioritizing recovery constraints, clearance state, and physiological protection before performance.'
+          : 'CNS-aware training surfaced from biometrics, recovery load, and recent sessions.'}
+      </p>
     </div>
   );
 }
@@ -151,7 +171,14 @@ function useTitanMetrics(soul: GlobalProjection | null) {
   ], [soul, hasSoul, lastUpdated]);
 }
 
-export function TitanDashboard({ soul, isLocked = false, onCalibrate }: TitanDashboardProps) {
+export function TitanDashboard({
+  soul,
+  isLocked = false,
+  onCalibrate,
+  presentationMode = 'performance',
+  presentationReason = null,
+  activeDebtCount = 0,
+}: TitanDashboardProps) {
   const { profile } = useAuth();
   const isFemale = profile?.assignedSexAtBirth === 'female';
   const hasSoul = Boolean(soul);
@@ -168,7 +195,16 @@ export function TitanDashboard({ soul, isLocked = false, onCalibrate }: TitanDas
 
   return (
     <div className="p-4 sm:p-5 md:p-6 bg-black/40 border-b border-white/5 backdrop-blur-xl space-y-4 sm:space-y-5">
-      <ReadinessHeader />
+      <ReadinessHeader presentationMode={presentationMode} activeDebtCount={activeDebtCount} />
+
+      {presentationReason && (
+        <div
+          className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-[11px] leading-relaxed text-amber-100/90 sm:text-xs"
+          role="status"
+        >
+          {presentationReason}
+        </div>
+      )}
 
       <VitalsGrid metrics={metrics} isLocked={isLocked} onCalibrate={onCalibrate} />
 

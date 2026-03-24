@@ -34,6 +34,7 @@ import { type ModuleId } from '@/lib/module-manifest';
 import { ModuleIcon, moduleTextColor } from '@/core/components/ModuleIcon';
 import { getFirebase } from '@/lib/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { ReminderOutcomeService } from '@/lib/notifications/reminder-outcome-service';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -307,11 +308,18 @@ export default function NotificationsPage() {
 
   const deleteItem = useCallback(async (id: string) => {
     if (!user) return;
+    const record = items.find((item) => item.id === id);
+    if (record) {
+      await ReminderOutcomeService.recordOutcome(dataLayer, user.uid, record, 'skipped');
+    }
     await dataLayer.deleteDocument(`users/${user.uid}/notification_inbox`, id);
-  }, [dataLayer, user]);
+  }, [dataLayer, items, user]);
 
   const clearAll = useCallback(async () => {
     if (!user) return;
+    await Promise.all(
+      items.map((item) => ReminderOutcomeService.recordOutcome(dataLayer, user.uid, item, 'skipped')),
+    );
     await Promise.all(
       items.map((i) =>
         dataLayer.deleteDocument(`users/${user.uid}/notification_inbox`, i.id),

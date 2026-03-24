@@ -5,6 +5,21 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+const { mockSaveBeliefGraph, mockProposeBeliefGraphCandidate } = vi.hoisted(() => ({
+  mockSaveBeliefGraph: vi.fn(),
+  mockProposeBeliefGraphCandidate: vi.fn().mockResolvedValue({
+    id: 'belief-proposal-1',
+  }),
+}));
+
+vi.mock('@/modules/agnes/services/belief-graph-service', async () => ({
+  saveBeliefGraph: mockSaveBeliefGraph,
+}));
+
+vi.mock('@/modules/agnes/services/belief-graph-workflow-service', async () => ({
+  proposeBeliefGraphCandidate: mockProposeBeliefGraphCandidate,
+}));
+
 import {
   parseHealthReport,
   parseWorkoutLog,
@@ -22,6 +37,9 @@ describe('AI Data Parsing Actions', () => {
   beforeEach(() => {
     mockSendMessage = vi.fn();
     mockPushAssistantMessage = vi.fn();
+    mockSaveBeliefGraph.mockClear();
+    mockProposeBeliefGraphCandidate.mockClear();
+    mockProposeBeliefGraphCandidate.mockResolvedValue({ id: 'belief-proposal-1' });
 
     mockContext = {
       userId: 'test-user-123',
@@ -243,6 +261,7 @@ describe('AI Data Parsing Actions', () => {
 
       mockSendMessage.mockResolvedValue(mockLLMResponse);
       mockContext.moduleId = 'agnes';
+      mockContext.encryptionKey = {} as CryptoKey;
       mockContext.payload = {
         text: "I feel like I'm never good enough, but I know I deserve love...",
       };
@@ -250,11 +269,16 @@ describe('AI Data Parsing Actions', () => {
       await parseJournalEntry(mockContext);
 
       expect(mockSendMessage).toHaveBeenCalled();
+      expect(mockProposeBeliefGraphCandidate).toHaveBeenCalledTimes(1);
+      expect(mockSaveBeliefGraph).not.toHaveBeenCalled();
       expect(mockPushAssistantMessage).toHaveBeenCalledWith(
         expect.stringContaining('2 core beliefs')
       );
       expect(mockPushAssistantMessage).toHaveBeenCalledWith(
         expect.stringContaining('1 belief relationships')
+      );
+      expect(mockPushAssistantMessage).toHaveBeenCalledWith(
+        expect.stringContaining('Pending review in Agnes')
       );
     });
 

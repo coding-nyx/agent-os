@@ -27,6 +27,11 @@ export function registerOrchestratorActions() {
   if (registered) return;
   registered = true;
 
+  ActionHub.registerProvider('nexus', {
+    capabilities: ['general-orchestration', 'reminder-management'],
+    latencyTier: 'fast',
+  });
+
   /**
    * navigate_to_module
    * Lightweight routing: navigate to a module's page without creating a

@@ -25,6 +25,11 @@ export function registerScoutActions() {
   if (registered) return;
   registered = true;
 
+  ActionHub.registerProvider('scout', {
+    capabilities: ['research'],
+    latencyTier: 'heavy',
+  });
+
   ActionHub.registerMultiple('scout', {
     /**
      * List recent research sessions.
@@ -187,7 +192,7 @@ export function registerScoutActions() {
           type: 'KNOWLEDGE_SYNTHESIZED' as any,
           source: 'scout',
           domain: 'C',
-          data: { nodeId: node.id, claim, sessionId },
+          data: { userId, nodeId: node.id, claim, sessionId, node },
           cascadeDepth: 0,
           priority: 'info'
         });

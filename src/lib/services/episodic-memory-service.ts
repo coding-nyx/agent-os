@@ -1,5 +1,11 @@
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import { MemorySearchOptions, ModuleMemoryEnvelope, RetrievedMemory, SessionEventSummary } from '@/lib/types';
+import {
+  MemorySearchOptions,
+  ModuleMemoryEnvelope,
+  RetrievedMemory,
+  SessionEventSummary,
+  UnifiedMemoryResult,
+} from '@/lib/types';
 import { cosineSimilarity, EmbeddingService } from './embedding-service';
 
 function scoreEvent(event: SessionEventSummary, queryEmbedding: number[], recencyWeight: number): number {
@@ -24,6 +30,7 @@ function rankEvents(
       if (!event.summary) return;
       const score = scoreEvent(event, queryEmbedding, recencyWeight);
       retrievals.push({
+        sessionId: event.id,
         sessionDate: event.timestamp,
         summary: event.summary,
         keyInsights: event.keyInsights || [],
@@ -34,6 +41,23 @@ function rankEvents(
   });
 
   return retrievals.sort((a, b) => b.score - a.score).slice(0, topK);
+}
+
+function toUnifiedMemoryResult(memory: RetrievedMemory): UnifiedMemoryResult {
+  return {
+    id: `episodic:${memory.moduleId}:${memory.sessionId ?? memory.sessionDate}`,
+    type: 'episodic',
+    moduleId: memory.moduleId,
+    text: memory.summary,
+    score: memory.score,
+    timestamp: memory.sessionDate,
+    citation: {
+      type: 'episodic',
+      moduleId: memory.moduleId,
+      entityId: memory.sessionId,
+      label: memory.summary,
+    },
+  };
 }
 
 export const EpisodicMemoryService = {
@@ -62,6 +86,15 @@ export const EpisodicMemoryService = {
     return rankEvents(envelopes, queryEmbedding, recencyWeight, topK);
   },
 
+  async retrieveRelevantUnified(
+    uid: string,
+    query: string,
+    options: MemorySearchOptions,
+  ): Promise<UnifiedMemoryResult[]> {
+    const results = await this.retrieveRelevant(uid, query, options);
+    return results.map(toUnifiedMemoryResult);
+  },
+
   async retrieveRelevantFromEnvelopes(
     query: string,
     envelopes: ModuleMemoryEnvelope[],
@@ -72,5 +105,14 @@ export const EpisodicMemoryService = {
     const recencyWeight = options.recencyWeight ?? 0.3;
     const queryEmbedding = await EmbeddingService.embed(query);
     return rankEvents(envelopes, queryEmbedding, recencyWeight, topK);
-  }
+  },
+
+  async retrieveRelevantUnifiedFromEnvelopes(
+    query: string,
+    envelopes: ModuleMemoryEnvelope[],
+    options: MemorySearchOptions,
+  ): Promise<UnifiedMemoryResult[]> {
+    const results = await this.retrieveRelevantFromEnvelopes(query, envelopes, options);
+    return results.map(toUnifiedMemoryResult);
+  },
 };

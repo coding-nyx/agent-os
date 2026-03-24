@@ -1,4 +1,6 @@
 
+import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
+
 export interface ToolCall {
   id: string;
   type: 'function';
@@ -34,6 +36,7 @@ export interface ConversationContext {
   memoryContext: string[]; // Generic strings representing processed facts/history
   summary: string;
   history: Message[];
+  parsedCommand?: ParsedCommandEnvelope;
 }
 
 // --- Persona-scoped types (engine-local equivalents of lib types) ---

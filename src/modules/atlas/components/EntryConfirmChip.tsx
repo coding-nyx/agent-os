@@ -27,7 +27,9 @@ import {
   CalendarDays,
   Zap,
   Target,
-  X
+  X,
+  Wand2,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -38,6 +40,7 @@ import { ParsedEntry } from '../hooks/use-atlas-entry-parser';
 export interface EntryConfirmChipProps {
   /** The parsed entry to display. Pass `null` / falsy to hide the chip. */
   parsed: ParsedEntry | null;
+  preferenceMode?: 'conversational' | 'structured';
   onConfirm: () => void;
   /** Dismiss chip and re-focus input so the user can amend the text. */
   onEdit: () => void;
@@ -91,7 +94,13 @@ const RECURRENCE_LABEL: Record<string, string> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function EntryConfirmChip({ parsed, onConfirm, onEdit, onDismiss }: EntryConfirmChipProps) {
+export function EntryConfirmChip({
+  parsed,
+  preferenceMode,
+  onConfirm,
+  onEdit,
+  onDismiss,
+}: EntryConfirmChipProps) {
   return (
     <AnimatePresence>
       {parsed && (
@@ -151,35 +160,51 @@ export function EntryConfirmChip({ parsed, onConfirm, onEdit, onDismiss }: Entry
           </div>
 
           {/* ── Parsed-field badges ─────────────────────────────────────────── */}
-          {(parsed.dueDate || parsed.recurrenceRule || parsed.energyLevel || parsed.priority) && (
-            <div className="flex flex-wrap gap-1.5">
-              {parsed.dueDate && (
-                <Badge
-                  icon={<CalendarDays className="w-3 h-3" aria-hidden />}
-                  label={parsed.dueDate}
-                />
-              )}
-              {parsed.recurrenceRule && (
-                <Badge
-                  icon={<Repeat className="w-3 h-3" aria-hidden />}
-                  label={RECURRENCE_LABEL[parsed.recurrenceRule] ?? parsed.recurrenceRule}
-                />
-              )}
-              {parsed.energyLevel && (
-                <Badge
-                  icon={<Zap className="w-3 h-3" aria-hidden />}
-                  label={ENERGY_LABEL[parsed.energyLevel] ?? parsed.energyLevel}
-                />
-              )}
-              {parsed.priority && (
-                <Badge
-                  icon={<Target className="w-3 h-3" aria-hidden />}
-                  label={PRIORITY_LABEL[parsed.priority] ?? parsed.priority}
-                  className={parsed.priority === 'high' ? 'text-orange-400 border-orange-500/30 bg-orange-500/10' : ''}
-                />
-              )}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-1.5">
+            <Badge
+              icon={
+                parsed.ingestion.mode === 'structured'
+                  ? <SlidersHorizontal className="w-3 h-3" aria-hidden />
+                  : <Wand2 className="w-3 h-3" aria-hidden />
+              }
+              label={parsed.ingestion.mode === 'structured' ? 'Structured entry' : 'Freeform inference'}
+              className={parsed.ingestion.mode === 'structured'
+                ? 'text-sky-300 border-sky-500/30 bg-sky-500/10'
+                : 'text-violet-300 border-violet-500/30 bg-violet-500/10'}
+            />
+            {parsed.dueDate && (
+              <Badge
+                icon={<CalendarDays className="w-3 h-3" aria-hidden />}
+                label={parsed.dueDate}
+              />
+            )}
+            {parsed.recurrenceRule && (
+              <Badge
+                icon={<Repeat className="w-3 h-3" aria-hidden />}
+                label={RECURRENCE_LABEL[parsed.recurrenceRule] ?? parsed.recurrenceRule}
+              />
+            )}
+            {parsed.energyLevel && (
+              <Badge
+                icon={<Zap className="w-3 h-3" aria-hidden />}
+                label={ENERGY_LABEL[parsed.energyLevel] ?? parsed.energyLevel}
+              />
+            )}
+            {parsed.priority && (
+              <Badge
+                icon={<Target className="w-3 h-3" aria-hidden />}
+                label={PRIORITY_LABEL[parsed.priority] ?? parsed.priority}
+                className={parsed.priority === 'high' ? 'text-orange-400 border-orange-500/30 bg-orange-500/10' : ''}
+              />
+            )}
+          </div>
+
+          <p className="text-[10px] leading-relaxed text-white/35">
+            {parsed.ingestion.guidance}
+            {preferenceMode === 'structured' && parsed.ingestion.mode === 'unstructured'
+              ? ' Structured mode is on — use labels like due:, priority:, or energy: to make this deterministic.'
+              : null}
+          </p>
 
           {/* ── Action row ──────────────────────────────────────────────────── */}
           <div className="flex items-center gap-2">

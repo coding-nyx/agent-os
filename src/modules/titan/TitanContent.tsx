@@ -41,7 +41,7 @@ import {
 } from '@/lib/types';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { buildTitanSessionPrompt } from './prompts/titan-session-prompt';
-import { saveTitanProfile } from './services/titan-profile-service';
+import { loadTitanProfile, saveTitanProfile } from './services/titan-profile-service';
 import { subscribeSomaProfile } from '../soma/services/soma-profile-service';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SectionHeader } from '@/core/components/SectionHeader';
@@ -66,6 +66,11 @@ import { useUIStore } from '@/lib/stores/ui-store';
 import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { QuickReminderModal } from '@/core/components/QuickReminderModal';
+import {
+  getTitanTrainingGateState,
+  recordSomaVetoOverride,
+  resolveSystemDebtsForGrantedClearance,
+} from './services/titan-clearance-debt-service';
 
 type TitanTab = 'train' | 'plan' | 'body' | 'cycles' | 'analytics' | 'recovery';
 
@@ -80,6 +85,14 @@ function resolveInitialTab(searchParams: URLSearchParams, recoveryActive: boolea
   }
   return recoveryActive ? 'recovery' : 'train';
 }
+
+type TrainingGateRequest = {
+  onLight: () => void | Promise<void>;
+  onFull: () => void | Promise<void>;
+  mode: 'recovery' | 'clearance';
+  message: string;
+  allowOverride: boolean;
+};
 
 export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null }) {
   const { globalSoul } = useGlobalSoul();
@@ -197,7 +210,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   const [agnesConsult, setAgnesConsult] = useState<RecoveryConsultResult | null>(null);
   const [pendingConsults, setPendingConsults] = useState({ soma: false, agnes: false });
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
-  const [recoveryGate, setRecoveryGate] = useState<{ onLight: () => void; onFull: () => void } | null>(null);
+  const [recoveryGate, setRecoveryGate] = useState<TrainingGateRequest | null>(null);
 
   // ── Fast Quick-Log bar (inline natural-language entry) ─────────────────────
   const [quickLogBarInput, setQuickLogBarInput] = useState('');
@@ -236,6 +249,30 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     return unsub;
   }, [user?.uid, somaEncryptionKey]);
 
+  const trainingGateState = useMemo(() => getTitanTrainingGateState({
+    profile,
+    somaProfile,
+    recoveryScore: globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null,
+    cnsFatigue: globalSoul?.crossFunctionalState?.biological?.cnsFatigue ?? null,
+    isRecoveryActive,
+  }), [
+    profile,
+    somaProfile,
+    globalSoul?.crossFunctionalState?.biological?.recoveryScore,
+    globalSoul?.crossFunctionalState?.biological?.cnsFatigue,
+    isRecoveryActive,
+  ]);
+
+  const loadLatestPersistedProfile = useCallback(async (): Promise<TitanProfile | null> => {
+    if (!user?.uid || !encryptionKey) return profile;
+    try {
+      return await loadTitanProfile({ userId: user.uid, encryptionKey }) ?? profile;
+    } catch (error) {
+      console.error('[Titan] Failed to load latest profile before save:', error);
+      return profile;
+    }
+  }, [user?.uid, encryptionKey, profile]);
+
   const agentAlias = globalSoul?.displayNames?.titan || 'Titan';
   const systemPrompt = useMemo(() => {
     if (!profile) return TITAN_PERSONA;
@@ -254,6 +291,23 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   });
 
   const [isChatCollapsed, setIsChatCollapsed] = useState(true);
+  const resolvedDebtSignatureRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!profile || !user?.uid || !encryptionKey) return;
+    if (trainingGateState.latestClearance?.status !== 'granted') return;
+
+    const resolution = resolveSystemDebtsForGrantedClearance(profile, trainingGateState.latestClearance);
+    if (resolution.resolvedIds.length === 0) return;
+
+    const signature = `${trainingGateState.latestClearance.id}:${resolution.resolvedIds.join(',')}`;
+    if (resolvedDebtSignatureRef.current === signature) return;
+    resolvedDebtSignatureRef.current = signature;
+
+    saveTitanProfile(resolution.profile, { userId: user.uid, encryptionKey }).catch((error) => {
+      console.error('[Titan] Failed to resolve system debt after clearance grant:', error);
+    });
+  }, [profile, user?.uid, encryptionKey, trainingGateState.latestClearance]);
 
   // ── Watch for AI proposals in messages ────────────────────────────────────
   useEffect(() => {
@@ -730,10 +784,13 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
   const handleQuickLogBarCommit = useCallback(async (mode?: 'recovery' | 'full') => {
     if (!profile || !encryptionKey || !user || pendingLogEntries.length === 0) return;
-    if (isRecoveryActive && !mode) {
+    if ((trainingGateState.shouldBlockFullTraining || isRecoveryActive) && !mode) {
       setRecoveryGate({
         onLight: () => handleQuickLogBarCommit('recovery'),
         onFull: () => handleQuickLogBarCommit('full'),
+        mode: trainingGateState.shouldBlockFullTraining ? 'clearance' : 'recovery',
+        message: trainingGateState.enforcementReason ?? "You're in recovery mode. Log this as a light recovery session or continue with full training.",
+        allowOverride: trainingGateState.shouldRequireExplicitOverride,
       });
       return;
     }
@@ -741,6 +798,8 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     isCommittingQuickLogRef.current = true;
     setQuickLogCommitError(null);
     try {
+      const latestProfile = await loadLatestPersistedProfile();
+      if (!latestProfile) return;
       const now = new Date().toISOString();
       const today = now.slice(0, 10);
       const sessionId = `ql-fast-${crypto.randomUUID()}`;
@@ -777,8 +836,8 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
         status: 'completed',
       };
 
-      const updatedSessions = [session, ...(profile.workoutSessions ?? [])].slice(0, 500);
-      const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
+      const updatedSessions = [session, ...(latestProfile.workoutSessions ?? [])].slice(0, 500);
+      const updatedPRs: Record<string, PersonalRecord> = { ...(latestProfile.personalRecords ?? {}) };
 
       for (const exLog of session.exercises) {
         const key = exLog.exerciseName.toLowerCase().trim();
@@ -800,7 +859,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       }
 
       const updated: TitanProfile = {
-        ...profile,
+        ...latestProfile,
         workoutSessions: updatedSessions,
         personalRecords: updatedPRs,
         updatedAt: now,
@@ -815,7 +874,17 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     } finally {
       isCommittingQuickLogRef.current = false;
     }
-  }, [profile, encryptionKey, user, pendingLogEntries, isRecoveryActive]);
+  }, [
+    profile,
+    encryptionKey,
+    user,
+    pendingLogEntries,
+    isRecoveryActive,
+    trainingGateState.shouldBlockFullTraining,
+    trainingGateState.shouldRequireExplicitOverride,
+    trainingGateState.enforcementReason,
+    loadLatestPersistedProfile,
+  ]);
 
   // ── Direct-write handlers ──────────────────────────────────────────────────
   const handleDirectSaveBodyWeight = useCallback(async (entry: BodyWeightEntry) => {
@@ -885,9 +954,11 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
   const commitWorkoutSession = useCallback(async (session: WorkoutSession, recoverySession?: boolean) => {
     if (!profile || !encryptionKey || !user) return;
+    const latestProfile = await loadLatestPersistedProfile();
+    if (!latestProfile) return;
     const sessionWithFlag = { ...session, recoverySession: recoverySession ?? session.recoverySession };
-    const updatedSessions = [sessionWithFlag, ...(profile.workoutSessions ?? [])].slice(0, 500);
-    const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
+    const updatedSessions = [sessionWithFlag, ...(latestProfile.workoutSessions ?? [])].slice(0, 500);
+    const updatedPRs: Record<string, PersonalRecord> = { ...(latestProfile.personalRecords ?? {}) };
     for (const exLog of sessionWithFlag.exercises) {
       const key = exLog.exerciseName.toLowerCase().trim();
       for (const s of exLog.sets) {
@@ -907,13 +978,13 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       }
     }
     const updated: TitanProfile = {
-      ...profile,
+      ...latestProfile,
       workoutSessions: updatedSessions,
       personalRecords: updatedPRs,
       updatedAt: new Date().toISOString(),
     };
     await saveTitanProfile(updated, { userId: user.uid, encryptionKey });
-  }, [profile, encryptionKey, user]);
+  }, [profile, encryptionKey, user, loadLatestPersistedProfile]);
 
   const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1095,12 +1166,90 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   }, [user, isGuest, globalSoul?.crossFunctionalState?.biological?.recoveryScore, profile, somaProfile]);
 
   const guardRecoveryAction = useCallback((onLight: () => void, onFull: () => void) => {
+    if (trainingGateState.shouldBlockFullTraining) {
+      setRecoveryGate({
+        onLight,
+        onFull,
+        mode: 'clearance',
+        message: trainingGateState.enforcementReason ?? 'Soma clearance is restricting full training.',
+        allowOverride: trainingGateState.shouldRequireExplicitOverride,
+      });
+      return;
+    }
     if (!isRecoveryActive) {
       onFull();
       return;
     }
-    setRecoveryGate({ onLight, onFull });
-  }, [isRecoveryActive]);
+    setRecoveryGate({
+      onLight,
+      onFull,
+      mode: 'recovery',
+      message: "You're in recovery mode. Log this as a light recovery session or continue with full training.",
+      allowOverride: false,
+    });
+  }, [
+    isRecoveryActive,
+    trainingGateState.shouldBlockFullTraining,
+    trainingGateState.shouldRequireExplicitOverride,
+    trainingGateState.enforcementReason,
+  ]);
+
+  const handleOverrideSomaVeto = useCallback(async () => {
+    if (!recoveryGate || !profile || !encryptionKey || !user) return;
+
+    const outcome = recordSomaVetoOverride(profile, {
+      activity: trainingGateState.activity,
+      clearance: trainingGateState.latestClearance,
+      note: recoveryGate.message,
+    });
+
+    await saveTitanProfile(outcome.profile, { userId: user.uid, encryptionKey });
+
+    Spine.emit({
+      type: 'SOMA_VETO_OVERRIDDEN',
+      source: 'titan',
+      target: 'soma',
+      domain: 'system',
+      data: {
+        activity: outcome.override.activity,
+        clearanceStatus: outcome.override.clearanceStatus,
+        reason: outcome.override.reason,
+        overrideId: outcome.override.id,
+        debtId: outcome.debt.id,
+        mutations: outcome.debt.vectorImpact,
+      },
+      cascadeDepth: 0,
+      priority: 'alert',
+    });
+
+    Spine.emit({
+      type: 'FLATTEN_ENERGY_WAVE',
+      source: 'titan',
+      target: 'atlas',
+      domain: 'system',
+      data: {
+        reason: 'soma_veto_override',
+        activity: outcome.override.activity,
+        debtId: outcome.debt.id,
+      },
+      cascadeDepth: 0,
+      priority: 'alert',
+    });
+
+    const currentRecovery = globalSoul?.crossFunctionalState?.biological?.recoveryScore;
+    const currentFatigue = globalSoul?.crossFunctionalState?.biological?.cnsFatigue;
+    queueNSVUpdate(user.uid, {
+      biological: {
+        recoveryScore: Math.max(0, Math.min(10, (typeof currentRecovery === 'number' ? currentRecovery : 7) - 1)),
+        cnsFatigue: Math.max(0, Math.min(10, (typeof currentFatigue === 'number' ? currentFatigue : 4) + 1)),
+      },
+    }, 'soma_veto_override');
+
+    setAdvisoryBanner(outcome.alertMessage);
+    const action = recoveryGate.onFull;
+    setRecoveryGate(null);
+    await action?.();
+  }, [recoveryGate, profile, encryptionKey, user, trainingGateState, globalSoul?.crossFunctionalState?.biological?.recoveryScore, globalSoul?.crossFunctionalState?.biological?.cnsFatigue]);
 
   const activeCycleCount = (profile?.cycles ?? []).filter(c => c.status === 'active').length;
   const prCount = Object.keys(profile?.personalRecords ?? {}).length;
@@ -1190,6 +1339,10 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             globalSoul={globalSoul}
             isLocked={isLocked}
             isRecoveryActive={isRecoveryActive}
+            clearanceStatus={trainingGateState.clearanceStatus}
+            clearanceMessage={trainingGateState.enforcementReason}
+            activeDebtCount={trainingGateState.activeDebtCount}
+            readinessPresentationMode={trainingGateState.presentationMode}
             directWriteMode={directWrite}
             advisoryBanner={advisoryBanner}
             onDismissAdvisory={() => setAdvisoryBanner(null)}
@@ -1477,15 +1630,15 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       <NeuralModal
         isOpen={!!recoveryGate}
         onClose={() => setRecoveryGate(null)}
-        title="Recovery Mode Active"
-        subtitle="Choose how to log this session"
+        title={recoveryGate?.mode === 'clearance' ? 'Soma Clearance Enforcement' : 'Recovery Mode Active'}
+        subtitle={recoveryGate?.mode === 'clearance' ? 'Choose a compliant response' : 'Choose how to log this session'}
         icon={ShieldAlert}
         themeColor="module"
         maxWidth="sm"
       >
         <div className="space-y-4">
           <p className="text-sm text-white/70">
-            You're in recovery mode. Log this as a light recovery session or continue with full training.
+            {recoveryGate?.message ?? "You're in recovery mode. Log this as a light recovery session or continue with full training."}
           </p>
           <div className="flex flex-col gap-2">
             <NeuralButton
@@ -1496,18 +1649,28 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                 await action?.();
               }}
             >
-              Log Light Recovery Session
+              {recoveryGate?.mode === 'clearance' ? 'Log Recovery Instead' : 'Log Light Recovery Session'}
             </NeuralButton>
-            <NeuralButton
-              variant="secondary"
-              onClick={async () => {
-                const action = recoveryGate?.onFull;
-                setRecoveryGate(null);
-                await action?.();
-              }}
-            >
-              Proceed with Full Training
-            </NeuralButton>
+            {recoveryGate?.mode === 'clearance' ? (
+              <NeuralButton
+                variant="secondary"
+                onClick={handleOverrideSomaVeto}
+                disabled={!recoveryGate.allowOverride}
+              >
+                Override Soma Veto
+              </NeuralButton>
+            ) : (
+              <NeuralButton
+                variant="secondary"
+                onClick={async () => {
+                  const action = recoveryGate?.onFull;
+                  setRecoveryGate(null);
+                  await action?.();
+                }}
+              >
+                Proceed with Full Training
+              </NeuralButton>
+            )}
             <NeuralButton variant="ghost" onClick={() => setRecoveryGate(null)}>
               Cancel
             </NeuralButton>
@@ -1549,8 +1712,10 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
               const session = payload;
               await commitWorkoutSession({ ...session, recoverySession: isRecovery }, isRecovery);
             } else {
+              const latestProfile = await loadLatestPersistedProfile();
+              if (!latestProfile) return;
               const record = payload;
-              const updatedPRs: Record<string, PersonalRecord> = { ...(profile.personalRecords ?? {}) };
+              const updatedPRs: Record<string, PersonalRecord> = { ...(latestProfile.personalRecords ?? {}) };
               const key = record.exerciseName.toLowerCase().trim();
               const existing = updatedPRs[key];
               if (!existing || record.e1RM > existing.e1RM) {
@@ -1589,9 +1754,9 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                 recoverySession: isRecovery,
                 status: 'completed',
               };
-              const updatedSessions = [session, ...(profile.workoutSessions ?? [])].slice(0, 500);
+              const updatedSessions = [session, ...(latestProfile.workoutSessions ?? [])].slice(0, 500);
               const updated: TitanProfile = {
-                ...profile,
+                ...latestProfile,
                 workoutSessions: updatedSessions,
                 personalRecords: updatedPRs,
                 updatedAt: new Date().toISOString(),
@@ -1600,10 +1765,13 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             }
           };
 
-          if (isRecoveryActive && !quickLogIsRecovery) {
+          if ((trainingGateState.shouldBlockFullTraining || isRecoveryActive) && !quickLogIsRecovery) {
             setRecoveryGate({
               onLight: () => handleCommit(true),
               onFull: () => handleCommit(false),
+              mode: trainingGateState.shouldBlockFullTraining ? 'clearance' : 'recovery',
+              message: trainingGateState.enforcementReason ?? "You're in recovery mode. Log this as a light recovery session or continue with full training.",
+              allowOverride: trainingGateState.shouldRequireExplicitOverride,
             });
             return;
           }

@@ -6,16 +6,45 @@ import { CoreProfileService } from '../services/core-profile-service';
 import { NexusRoutingService } from '../services/nexus-routing-service';
 import { EpisodicMemoryService } from '../services/episodic-memory-service';
 import { SemanticMemoryService } from '../services/semantic-memory-service';
-import { NSV_READ_PERMISSIONS } from '../services/nsv-ownership';
-import { formatNSVForModulePrompt, formatNSVForAtlasPlanner, normalizeNSV } from '../services/nsv-service';
 import { WebCrawlerService } from '../services/web-crawler-service';
 import type { ModuleId } from '../module-manifest';
 import { createReminderSchedule } from '@/lib/notifications/reminder-create';
 import type { NotificationChannelPrefs, NotificationDeepLink, NotificationPriority, Recurrence, ReminderProposal } from '@/lib/notifications/types';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { NotificationScheduleConfig } from '@/lib/notifications/types';
+import { RoutineRegistryService } from '@/lib/routines/routine-registry-service';
+import type { RoutineDefinition, RoutineProposal, RoutineTrigger } from '@/lib/routines/routine-types';
+import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
+import { OrchestrationInteractionGateService } from '@/lib/services/orchestration-interaction-gate-service';
+import { SpecialistConsultationService } from '@/lib/services/specialist-consultation-service';
 
 const REMINDER_PROPOSALS = new Map<string, ReminderProposal>();
+const ROUTINE_PROPOSALS = new Map<string, RoutineProposal>();
+
+function stableHash(input: string): string {
+  let hash = 5381;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = ((hash << 5) + hash) ^ input.charCodeAt(index);
+  }
+  return Math.abs(hash >>> 0).toString(16);
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerialize(entry)).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stableSerialize(entry)}`);
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function buildDeterministicDraftId(prefix: 'reminder' | 'routine', moduleId: ModuleId, payload: Record<string, unknown>): string {
+  return `${prefix}-${moduleId}-${stableHash(stableSerialize(payload))}`;
+}
 
 function safeRecurrence(value: unknown): Recurrence | null {
   if (!value || typeof value !== 'object') return null;
@@ -85,10 +114,17 @@ function normalizeReminderPayload(moduleId: ModuleId, payload: Record<string, un
 
   const tags = safeStringArray(payload.tags) ?? undefined;
 
-  const id =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `reminder_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const id = buildDeterministicDraftId('reminder', moduleId, {
+    title,
+    note: note ?? null,
+    recurrence,
+    timezone,
+    channelPrefs,
+    priority,
+    deepLink,
+    source,
+    tags: tags ?? null,
+  });
 
   return {
     id,
@@ -103,6 +139,82 @@ function normalizeReminderPayload(moduleId: ModuleId, payload: Record<string, un
     source,
     tags,
     createdBy: 'agent',
+  };
+}
+
+function normalizeRoutineTrigger(payload: Record<string, unknown>): RoutineTrigger {
+  const trigger = payload.trigger;
+  if (trigger && typeof trigger === 'object') {
+    const type = safeString((trigger as { type?: unknown }).type);
+    if (type === 'spine_event') {
+      const spineEventType = safeString((trigger as { spineEventType?: unknown }).spineEventType);
+      if (spineEventType) {
+        return { type: 'spine_event', spineEventType: spineEventType as SpineEventType };
+      }
+    }
+    if (type === 'action') {
+      const actionType = safeString((trigger as { actionType?: unknown }).actionType);
+      if (actionType) {
+        return { type: 'action', actionType };
+      }
+    }
+    if (type === 'notification') {
+      return { type: 'notification' };
+    }
+  }
+
+  const actionType = safeString(payload.actionType);
+  if (actionType) {
+    return { type: 'action', actionType };
+  }
+
+  return { type: 'notification' };
+}
+
+function normalizeRoutinePayload(moduleId: ModuleId, payload: Record<string, unknown>): RoutineProposal {
+  const name = safeString(payload.name) ?? safeString(payload.title) ?? 'Routine';
+  const description = safeString(payload.description) ?? safeString(payload.note);
+  const timezone = safeString(payload.timezone) ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const dueAt = safeString(payload.dueAt) ?? safeString(payload.due_at);
+  const recurrence = safeRecurrence(payload.recurrence) ?? (dueAt
+    ? { kind: 'once', dueAt, timezone }
+    : { kind: 'every_n_days', intervalDays: 1, dtStart: new Date().toISOString(), timezone });
+  const category = safeString(payload.category);
+  const tags = safeStringArray(payload.tags) ?? undefined;
+  const now = new Date().toISOString();
+  const routine: RoutineDefinition = {
+    id: buildDeterministicDraftId('routine', moduleId, {
+      name,
+      description: description ?? null,
+      timezone,
+      recurrence,
+      category: category ?? null,
+      tags: tags ?? null,
+      trigger: normalizeRoutineTrigger(payload),
+      enabled: payload.enabled !== false,
+    }),
+    name,
+    ...(description ? { description } : {}),
+    moduleId,
+    recurrence,
+    timezone,
+    ...(category ? { category } : {}),
+    ...(tags ? { tags } : {}),
+    trigger: normalizeRoutineTrigger(payload),
+    enabled: payload.enabled !== false,
+    createdBy: 'agent',
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  return {
+    id: routine.id,
+    routine,
+    createdBy: 'agent',
+    source: {
+      moduleId,
+      ...(safeString(payload.context) ? { context: safeString(payload.context) } : {}),
+    },
   };
 }
 
@@ -124,50 +236,28 @@ function safeStringArray(value: unknown): string[] | null | undefined {
   return filtered;
 }
 
-function truncateForPrompt(
-  value: unknown,
-  opts?: {
-    maxDepth?: number;
-    maxArrayLength?: number;
-    maxStringLength?: number;
-    maxObjectKeys?: number;
-  },
-): unknown {
-  const maxDepth = opts?.maxDepth ?? 4;
-  const maxArrayLength = opts?.maxArrayLength ?? 25;
-  const maxStringLength = opts?.maxStringLength ?? 800;
-  const maxObjectKeys = opts?.maxObjectKeys ?? 30;
+function buildCoreProfilePatch(payload: Record<string, unknown>): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  const preferredName = safeString(payload.preferredName);
+  const pronouns = safeString(payload.pronouns);
+  const genderIdentity = safeString(payload.genderIdentity);
+  const occupation = safeString(payload.occupation);
+  const age = safeNumber(payload.age);
+  const typicalSleepHours = safeNumber(payload.typicalSleepHours);
 
-  const walk = (v: unknown, depth: number): unknown => {
-    if (depth > maxDepth) {
-      if (typeof v === 'string') return v.slice(0, Math.max(0, maxStringLength - 3)) + '...';
-      return '[truncated]';
-    }
+  if (preferredName) patch.preferredName = preferredName;
+  if (pronouns) patch.pronouns = pronouns;
+  if (genderIdentity) patch.genderIdentity = genderIdentity;
+  if (occupation) patch.occupation = occupation;
+  if (typeof age === 'number' && Number.isFinite(age)) patch.age = Math.round(age);
+  if (payload.assignedSexAtBirth === 'female' || payload.assignedSexAtBirth === 'male') {
+    patch.assignedSexAtBirth = payload.assignedSexAtBirth;
+  }
+  if (typeof typicalSleepHours === 'number' && Number.isFinite(typicalSleepHours)) {
+    patch.typicalSleepHours = typicalSleepHours;
+  }
 
-    if (typeof v === 'string') {
-      if (v.length <= maxStringLength) return v;
-      return v.slice(0, Math.max(0, maxStringLength - 3)).trim() + '...';
-    }
-
-    if (typeof v === 'number' || typeof v === 'boolean') return v;
-    if (v === null || v === undefined) return v;
-
-    if (Array.isArray(v)) {
-      return v.slice(0, maxArrayLength).map((item) => walk(item, depth + 1));
-    }
-
-    if (typeof v === 'object') {
-      const obj = v as Record<string, unknown>;
-      const keys = Object.keys(obj).slice(0, maxObjectKeys);
-      const out: Record<string, unknown> = {};
-      for (const k of keys) out[k] = walk(obj[k], depth + 1);
-      return out;
-    }
-
-    return String(v);
-  };
-
-  return walk(value, 0);
+  return patch;
 }
 
 export function registerCoreActions() {
@@ -231,7 +321,7 @@ export function registerCoreActions() {
       });
     },
     
-    query_module: async ({ payload, sendMessage, pushAssistantMessage, getLatestNSV }) => {
+    query_module: async ({ payload, sendMessage, pushAssistantMessage, getLatestNSV, moduleId, orchestration, emitThreadArtifact }) => {
       if (typeof payload?.moduleId !== 'string') return;
 
       const question =
@@ -245,54 +335,44 @@ export function registerCoreActions() {
       if (!question.trim()) return;
 
       const targetModule = payload.moduleId as ModuleId;
-      const manifest = (await import('../module-manifest')).MODULE_MANIFEST;
-      const moduleEntry = manifest[targetModule as keyof typeof manifest];
-      const moduleName = moduleEntry?.alias || targetModule;
-
-      if (!sendMessage) {
-        pushAssistantMessage?.(`[Module query to ${moduleName} unavailable — no LLM connection]`);
-        return;
-      }
-
-      // Build NSV context scoped to the target module's read permissions.
-      // This preserves ownership boundaries: the consulted module sees only its allowed fields.
-      let nsvContext = '';
-      try {
-        const rawNSV = getLatestNSV?.() as Partial<NeuralStateVector> | undefined;
-        if (rawNSV) {
-          const nsv = normalizeNSV(rawNSV);
-          const nsvBlock = targetModule === 'atlas'
-            ? formatNSVForAtlasPlanner(nsv)
-            : formatNSVForModulePrompt(nsv, NSV_READ_PERMISSIONS[targetModule] ?? []);
-          if (nsvBlock) {
-            nsvContext = `\n\n[CURRENT NEURAL STATE — use to inform your answer]\n${nsvBlock}`;
-          }
-        }
-      } catch (nsvErr) {
-        // NSV injection is best-effort — never block the consultation
-        console.warn('[query_module] NSV injection failed, proceeding without state context:', nsvErr);
-      }
 
       try {
-        const consultPrompt =
-          `You are ${moduleName}, a specialist agent in the AGNES neural network. ` +
-          `Your domain is: ${moduleEntry?.description || targetModule}. ` +
-          `Answer the following consultation from Nexus concisely and precisely from your domain expertise. ` +
-          `Do not use action tags. Respond in 2-4 sentences.` +
-          nsvContext;
-
-        const { response } = await sendMessage(question, {
-          systemPrompt: consultPrompt,
-          history: [],
-          memoryContext: [],
-          summary: `Internal consultation from Nexus to ${moduleName}`
+        Spine.emit({
+          type: 'MODULE_DELEGATED',
+          source: 'nexus',
+          target: targetModule,
+          domain: 'system',
+          data: { reason: 'query_module', content: question },
+          cascadeDepth: 0,
+          priority: 'info',
         });
 
-        const attribution = `**${moduleName}** reports: ${response.publicText.trim()}`;
-        pushAssistantMessage?.(attribution);
+        const result = await SpecialistConsultationService.consult({
+          sourceModuleId: moduleId,
+          threadId: orchestration?.activeThreadId ?? null,
+          targetModuleId: targetModule,
+          question,
+          mode: 'state_only',
+          sendMessage,
+          getLatestNSV,
+        });
+        pushAssistantMessage?.(result.assistantMessage);
+        emitThreadArtifact?.(result.artifact);
+        Spine.emit({
+          type: 'MODULE_DELEGATED',
+          source: targetModule,
+          target: 'nexus',
+          domain: 'system',
+          data: {
+            reason: 'query_result',
+            content: result.artifact.responseText ?? result.artifact.summary,
+            status: result.artifact.status,
+          },
+          cascadeDepth: 0,
+          priority: result.artifact.status === 'completed' ? 'info' : 'alert',
+        });
       } catch (err) {
-        console.error(`[query_module] Failed to consult ${moduleName}:`, err);
-        pushAssistantMessage?.(`[Module consultation with ${moduleName} failed — try again or delegate directly]`);
+        console.error(`[query_module] Failed to consult ${targetModule}:`, err);
       }
     },
 
@@ -302,7 +382,10 @@ export function registerCoreActions() {
       pushAssistantMessage,
       getLatestNSV,
       encryptionKey,
-      userId
+      userId,
+      moduleId,
+      orchestration,
+      emitThreadArtifact,
     }) => {
       if (typeof payload?.moduleId !== 'string') return;
 
@@ -317,128 +400,46 @@ export function registerCoreActions() {
       if (!question.trim()) return;
 
       const targetModule = payload.moduleId as ModuleId;
-      const manifest = (await import('../module-manifest')).MODULE_MANIFEST;
-      const moduleEntry = manifest[targetModule as keyof typeof manifest];
-      const moduleName = moduleEntry?.alias || targetModule;
-
-      if (!userId) {
-        pushAssistantMessage?.('[Module data query unavailable — authenticate to access persisted module data]');
-        return;
-      }
-
-      if (!encryptionKey) {
-        pushAssistantMessage?.(`[Module data query requires vault unlock — unlock to access ${moduleName} persisted data.]`);
-        return;
-      }
-
-      if (!sendMessage) {
-        pushAssistantMessage?.(`[Module data query to ${moduleName} unavailable — no LLM connection]`);
-        return;
-      }
-
-      // Build NSV context scoped to the target module's read permissions.
-      let nsvContext = '';
-      try {
-        const rawNSV = getLatestNSV?.() as Partial<NeuralStateVector> | undefined;
-        if (rawNSV) {
-          const nsv = normalizeNSV(rawNSV);
-          const nsvBlock = targetModule === 'atlas'
-            ? formatNSVForAtlasPlanner(nsv)
-            : formatNSVForModulePrompt(nsv, NSV_READ_PERMISSIONS[targetModule] ?? []);
-          if (nsvBlock) {
-            nsvContext = `\n\n[CURRENT NEURAL STATE — use to inform your answer]\n${nsvBlock}`;
-          }
-        }
-      } catch (nsvErr) {
-        console.warn('[query_module_data] NSV injection failed, proceeding without state context:', nsvErr);
-      }
-
-      // Load target module persisted state (decrypting via the vault master key).
-      let moduleData: unknown = null;
-      try {
-        switch (targetModule) {
-          case 'agnes': {
-            const { loadAgnesProfile } = await import('@/modules/agnes/services/agnes-profile-service');
-            moduleData = await loadAgnesProfile({ userId, encryptionKey });
-            break;
-          }
-          case 'titan': {
-            const { loadTitanProfile } = await import('@/modules/titan/services/titan-profile-service');
-            moduleData = await loadTitanProfile({ userId, encryptionKey });
-            break;
-          }
-          case 'ledger': {
-            const { loadLedgerProfile } = await import('@/modules/ledger/services/ledger-intake-service');
-            moduleData = await loadLedgerProfile({ userId, encryptionKey });
-            break;
-          }
-          case 'atlas': {
-            const { loadAtlasProfile } = await import('@/modules/atlas/services/atlas-profile-service');
-            moduleData = await loadAtlasProfile({ userId, encryptionKey });
-            break;
-          }
-          case 'scout': {
-            const scoutSvc = await import('@/modules/scout/services/scout-knowledge-service');
-            const profile = await scoutSvc.loadScoutProfile({ userId, encryptionKey });
-            const nodes = await scoutSvc.loadKnowledgeNodes({ userId, encryptionKey });
-            moduleData = {
-              profile,
-              recentKnowledgeNodes: nodes.slice(0, 8).map((n: any) => ({
-                id: n.id,
-                status: n.status,
-                title: n.title,
-                updatedAt: n.updatedAt,
-                confidence: n.confidence,
-                evidenceCount: Array.isArray(n.evidence) ? n.evidence.length : 0
-              }))
-            };
-            break;
-          }
-          case 'forge': {
-            const { loadForgeProfile } = await import('@/modules/forge/services/forge-session-service');
-            moduleData = await loadForgeProfile({ userId, encryptionKey });
-            break;
-          }
-        }
-      } catch (loadErr) {
-        console.error('[query_module_data] Failed to load module persisted data:', loadErr);
-      }
-
-      const safeModuleData = truncateForPrompt(moduleData, {
-        maxDepth: 4,
-        maxArrayLength: 20,
-        maxStringLength: 900,
-        maxObjectKeys: 35
-      });
-
-      const moduleDataContext = safeModuleData
-        ? `\n\n[MODULE DATA — use to inform your answer]\n${JSON.stringify(safeModuleData, null, 2)}`
-        : '\n\n[MODULE DATA — unavailable for this module]';
 
       try {
-        const consultPrompt =
-          `You are ${moduleName}, a specialist agent in the AGNES neural network. ` +
-          `Your domain is: ${moduleEntry?.description || targetModule}. ` +
-          `You will be given (1) the user's current neural state and ` +
-          `(2) a bounded excerpt of ${moduleName} persisted module data. ` +
-          `Answer the user's question using BOTH sources when relevant. ` +
-          `Do not use action tags. Respond in 2-4 sentences. ` +
-          `If the module data is missing or insufficient, say so explicitly. ` +
-          nsvContext +
-          moduleDataContext;
-
-        const { response } = await sendMessage(question, {
-          systemPrompt: consultPrompt,
-          history: [],
-          memoryContext: [],
-          summary: `Internal consultation (persisted data) from Nexus to ${moduleName}`
+        Spine.emit({
+          type: 'MODULE_DELEGATED',
+          source: 'nexus',
+          target: targetModule,
+          domain: 'system',
+          data: { reason: 'query_module_data', content: question },
+          cascadeDepth: 0,
+          priority: 'info',
         });
 
-        const attribution = `**${moduleName}** (persisted data) reports: ${response.publicText.trim()}`;
-        pushAssistantMessage?.(attribution);
+        const result = await SpecialistConsultationService.consult({
+          sourceModuleId: moduleId,
+          threadId: orchestration?.activeThreadId ?? null,
+          targetModuleId: targetModule,
+          question,
+          mode: 'state_plus_persisted_data',
+          sendMessage,
+          getLatestNSV,
+          userId,
+          encryptionKey,
+        });
+        pushAssistantMessage?.(result.assistantMessage);
+        emitThreadArtifact?.(result.artifact);
+        Spine.emit({
+          type: 'MODULE_DELEGATED',
+          source: targetModule,
+          target: 'nexus',
+          domain: 'system',
+          data: {
+            reason: 'query_result',
+            content: result.artifact.responseText ?? result.artifact.summary,
+            status: result.artifact.status,
+          },
+          cascadeDepth: 0,
+          priority: result.artifact.status === 'completed' ? 'info' : 'alert',
+        });
       } catch (err) {
-        console.error(`[query_module_data] Failed to consult ${moduleName}:`, err);
-        pushAssistantMessage?.(`[Module persisted data consultation with ${moduleName} failed — try again or delegate directly]`);
+        console.error(`[query_module_data] Failed to consult ${targetModule}:`, err);
       }
     }
   });
@@ -446,20 +447,27 @@ export function registerCoreActions() {
   ActionHub.registerMultiple('nexus', {
     update_global_identity: async ({ userId, payload }) => {
       if (!userId || !payload || typeof payload !== 'object') return;
-      const patch: Record<string, unknown> = {};
-      if (typeof payload.preferredName === 'string') patch.preferredName = payload.preferredName.trim();
-      if (typeof payload.pronouns === 'string') patch.pronouns = payload.pronouns.trim();
-      if (typeof payload.genderIdentity === 'string') patch.genderIdentity = payload.genderIdentity.trim();
-      if (typeof payload.occupation === 'string') patch.occupation = payload.occupation.trim();
-      if (typeof payload.age === 'number' && Number.isFinite(payload.age)) patch.age = Math.round(payload.age as number);
-      if (payload.assignedSexAtBirth === 'female' || payload.assignedSexAtBirth === 'male') {
-        patch.assignedSexAtBirth = payload.assignedSexAtBirth;
-      }
-      if (typeof payload.typicalSleepHours === 'number' && Number.isFinite(payload.typicalSleepHours)) {
-        patch.typicalSleepHours = payload.typicalSleepHours;
-      }
+      const patch = buildCoreProfilePatch(payload);
       if (Object.keys(patch).length === 0) return;
       await CoreProfileService.updateProfile(userId, patch);
+    },
+
+    update_orchestrator_intake: async ({ userId, payload, markProfileDirty }) => {
+      if (!userId || !payload || typeof payload !== 'object') return;
+      const patch = buildCoreProfilePatch(payload);
+      if (Object.keys(patch).length === 0) return;
+      await CoreProfileService.updateProfile(userId, patch);
+      markProfileDirty?.();
+    },
+
+    focus_identity: () => {},
+    focus_bio: () => {},
+    focus_review: () => {},
+
+    complete_orchestrator_onboarding: async ({ userId, markProfileDirty }) => {
+      if (!userId) return;
+      await CoreProfileService.updateProfile(userId, { onboardingComplete: true });
+      markProfileDirty?.();
     },
 
     propose_reminder: ({ moduleId, payload, pushAssistantMessage }) => {
@@ -468,6 +476,7 @@ export function registerCoreActions() {
         : (moduleId as ModuleId);
 
       const proposal = normalizeReminderPayload(scopedModule, payload || {});
+      if (REMINDER_PROPOSALS.has(proposal.id)) return;
       REMINDER_PROPOSALS.set(proposal.id, proposal);
 
       Spine.emit({
@@ -480,6 +489,108 @@ export function registerCoreActions() {
       });
 
       pushAssistantMessage?.(`Reminder proposed for ${proposal.title}.`);
+    },
+
+    propose_routine: async ({ moduleId, payload, pushAssistantMessage, userId, isGuest, orchestration }) => {
+      if (!AutonomyFeatureFlags.isEnabled('routineProposals')) {
+        pushAssistantMessage?.('Routine proposals are currently disabled.');
+        return;
+      }
+      const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
+        ? payload.moduleId as ModuleId
+        : (moduleId as ModuleId);
+
+      const proposal = normalizeRoutinePayload(scopedModule, payload || {});
+      if (ROUTINE_PROPOSALS.has(proposal.id)) return;
+      ROUTINE_PROPOSALS.set(proposal.id, proposal);
+
+      const interactionDecision = OrchestrationInteractionGateService.evaluate({
+        autopilotLevel: orchestration?.autopilotLevel ?? 2,
+        candidate: {
+          kind: 'routine',
+          sourceModuleId: moduleId,
+          targetModuleId: scopedModule,
+          threadId: orchestration?.activeThreadId,
+          confidence: orchestration?.proposal.confidence,
+          requiresApproval: orchestration?.approvalRequirement.required,
+          highRisk: orchestration?.highRisk,
+          canAutoDispatch: Boolean(userId && !isGuest),
+          dedupeKey: proposal.id,
+        },
+      });
+
+      if (interactionDecision.mode === 'silent_execute') {
+        if (!userId || isGuest) {
+          pushAssistantMessage?.('Sign in to save routines.');
+          return;
+        }
+
+        await RoutineRegistryService.saveRoutine(userId, proposal.routine);
+        pushAssistantMessage?.(`Routine saved for ${proposal.routine.name}.`);
+        Spine.emit({
+          type: 'ROUTINE_CONFIRMED',
+          source: moduleId,
+          domain: 'system',
+          data: { routineId: proposal.routine.id, proposalId: proposal.id, moduleId: proposal.routine.moduleId },
+          cascadeDepth: 0,
+          priority: 'info',
+        });
+        return;
+      }
+
+      Spine.emit({
+        type: 'ROUTINE_PROPOSED',
+        source: moduleId,
+        domain: 'system',
+        data: { proposal },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+
+      pushAssistantMessage?.(`Routine proposed for ${proposal.routine.name}.`);
+    },
+
+    confirm_routine: async ({ moduleId, payload, userId, isGuest, pushAssistantMessage }) => {
+      if (!userId || isGuest) {
+        pushAssistantMessage?.('Sign in to save routines.');
+        return;
+      }
+
+      const proposalId = typeof payload?.proposalId === 'string' ? payload.proposalId : undefined;
+      let proposal = proposalId ? ROUTINE_PROPOSALS.get(proposalId) : undefined;
+
+      if (!proposal) {
+        const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
+          ? payload.moduleId as ModuleId
+          : (moduleId as ModuleId);
+        proposal = normalizeRoutinePayload(scopedModule, payload || {});
+      }
+
+      await RoutineRegistryService.saveRoutine(userId, proposal.routine);
+
+      if (proposalId) ROUTINE_PROPOSALS.delete(proposalId);
+
+      Spine.emit({
+        type: 'ROUTINE_CONFIRMED',
+        source: moduleId,
+        domain: 'system',
+        data: { routineId: proposal.routine.id, proposalId, moduleId: proposal.routine.moduleId },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    },
+
+    dismiss_routine: ({ moduleId, payload }) => {
+      const proposalId = typeof payload?.proposalId === 'string' ? payload.proposalId : undefined;
+      if (proposalId) ROUTINE_PROPOSALS.delete(proposalId);
+      Spine.emit({
+        type: 'ROUTINE_DISMISSED',
+        source: moduleId,
+        domain: 'system',
+        data: { proposalId },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
     },
 
     confirm_reminder: async ({ moduleId, payload, userId, isGuest, pushAssistantMessage }) => {
@@ -669,19 +780,22 @@ export function registerCoreActions() {
         typeof payload?.recencyWeight === 'number' ? Math.max(0, Math.min(1, payload.recencyWeight)) : 0.3;
 
       const [sessions, facts] = await Promise.all([
-        EpisodicMemoryService.retrieveRelevant(userId, query, {
+        EpisodicMemoryService.retrieveRelevantUnified(userId, query, {
           moduleIds,
           topK,
           recencyWeight
         }),
-        SemanticMemoryService.getFacts(userId, moduleIds)
+        SemanticMemoryService.getFactsUnified(userId, moduleIds)
       ]);
 
       const sessionLines = sessions.map((session) => {
-        const date = new Date(session.sessionDate).toLocaleDateString();
-        return `• [${session.moduleId}] ${date}: ${session.summary}`;
+        const date = new Date(session.timestamp).toLocaleDateString();
+        const source = session.citation.entityId ? ` source ${session.citation.entityId}` : '';
+        return `• [${session.moduleId}] ${date}: ${session.text}${source}`;
       });
-      const factLines = facts.slice(0, 5).map((fact) => `• ${fact.fact} (${fact.confidence.toFixed(2)})`);
+      const factLines = facts
+        .slice(0, 5)
+        .map((fact) => `• [${fact.type}] ${fact.text} (${(fact.confidence ?? fact.score).toFixed(2)})`);
 
       const response = [
         'Memory scan complete.',

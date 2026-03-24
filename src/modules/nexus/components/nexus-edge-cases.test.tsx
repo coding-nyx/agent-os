@@ -70,14 +70,38 @@ vi.mock('react-router-dom', () => ({
 vi.mock('@/lib/auth-context', () => ({ useAuth: vi.fn() }));
 vi.mock('@/lib/vault-context', () => ({ useVault: vi.fn() }));
 vi.mock('@/lib/global-soul-context', () => ({ useGlobalSoul: vi.fn() }));
+const mockDataLayer = {};
+vi.mock('@/lib/data-layer/provider', () => ({ useDataLayer: vi.fn(() => mockDataLayer) }));
 
 // ─── Synthesis hook (used inside SynthesisPanel directly) ─────────────────────
 vi.mock('../hooks/useNexusSynthesis', () => ({ useNexusSynthesis: vi.fn() }));
 
 // ─── Spine event bus ──────────────────────────────────────────────────────────
+const spineListeners = new Map<string, Set<(event: any) => void>>();
+
 vi.mock('@/lib/spine/spine-event-bus', () => ({
   Spine: {
     getRecentEvents: vi.fn().mockReturnValue([]),
+    emit: vi.fn((payload: any) => {
+      const event = {
+        id: payload?.id ?? `spine-${Math.random().toString(36).slice(2)}`,
+        timestamp: payload?.timestamp ?? Date.now(),
+        ...payload,
+      };
+      spineListeners.get(event.type)?.forEach((listener) => listener(event));
+      return event;
+    }),
+    on: vi.fn((type: string, handler: (event: any) => void) => {
+      const listeners = spineListeners.get(type) ?? new Set<(event: any) => void>();
+      listeners.add(handler);
+      spineListeners.set(type, listeners);
+      return () => {
+        listeners.delete(handler);
+        if (listeners.size === 0) {
+          spineListeners.delete(type);
+        }
+      };
+    }),
   },
   useSpineEvent: vi.fn(),
 }));
@@ -156,8 +180,12 @@ vi.mock('./ModuleHealthFAB', async (importOriginal) => {
   };
 });
 
+let latestCommandPaletteProps: any = null;
 vi.mock('./CommandPalette', () => ({
-  CommandPalette: () => null,
+  CommandPalette: (props: any) => {
+    latestCommandPaletteProps = props;
+    return null;
+  },
 }));
 
 vi.mock('@/core/components/RoutingSuggestion', () => ({
@@ -167,6 +195,10 @@ vi.mock('@/core/components/RoutingSuggestion', () => ({
         {target}
       </div>
     ) : null,
+}));
+
+vi.mock('@/core/components/OrchestrationStatusChip', () => ({
+  OrchestrationStatusChip: () => <div data-testid="orchestration-status-chip" />,
 }));
 
 vi.mock('./NexusErrorBoundary', () => ({
@@ -197,9 +229,16 @@ import { useNexusSynthesis } from '../hooks/useNexusSynthesis';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useGlobalSoul } from '@/lib/global-soul-context';
+import { OrchestrationHistoryService } from '@/lib/services/orchestration-history-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
+import { CommandIntelligenceService } from '@/lib/services/command-intelligence-service';
+import { OrchestrationRuntimeService } from '@/lib/services/orchestration-runtime-service';
 import { ModuleMemoryService } from '@/lib/services/module-memory-service';
+import { EpisodicMemoryService } from '@/lib/services/episodic-memory-service';
+import { SemanticMemoryService } from '@/lib/services/semantic-memory-service';
+import { OrchestrationCacheService } from '@/lib/services/orchestration-cache-service';
 import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
+import { useOrchestrationStore } from '@/lib/stores/orchestration-store';
 
 // ─── Shared fixture builders ───────────────────────────────────────────────────
 
@@ -269,7 +308,9 @@ describe('SynthesisPanel', () => {
   });
 
   beforeEach(() => {
+    OrchestrationCacheService.resetForTests();
     vi.clearAllMocks();
+    spineListeners.clear();
   });
 
   // ── T-11 ───────────────────────────────────────────────────────────────────
@@ -379,8 +420,22 @@ describe('SynthesisPanel', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('NexusDashboard', () => {
   beforeEach(() => {
+    OrchestrationCacheService.resetForTests();
     vi.clearAllMocks();
+    spineListeners.clear();
+    latestCommandPaletteProps = null;
+    Object.assign(mockDataLayer, {
+      listDocuments: vi.fn().mockResolvedValue([]),
+    });
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'test-uid' },
+      isGuest: false,
+      profile: null,
+    });
     (useGlobalSoul as any).mockReturnValue(makeGlobalSoulMock());
+    (useNexusSynthesis as any).mockReturnValue({ alerts: [], isAnalyzing: false });
+    vi.spyOn(OrchestrationHistoryService, 'listSilentHistoryForThread').mockResolvedValue([]);
+    useOrchestrationStore.getState().resetShell();
   });
 
   afterEach(() => {
@@ -388,7 +443,7 @@ describe('NexusDashboard', () => {
   });
 
   // ── T-15 ───────────────────────────────────────────────────────────────────
-  it('T-15 — routing suggestion appears at conversationDepth >= 1', async () => {
+  it('T-15 — routing suggestion state appears at conversationDepth >= 1', async () => {
     // classifyIntent returns a non-nexus module with high confidence
     (NexusRoutingService.classifyIntent as any).mockReturnValue({
       target: 'atlas',
@@ -405,10 +460,668 @@ describe('NexusDashboard', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('routing-suggestion')).toBeInTheDocument();
+      expect(
+        useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard']?.target,
+      ).toBe('atlas');
+    });
+  });
+
+  it('does not create a routing draft at ghost level when silent delegation is available', async () => {
+    useOrchestrationStore.getState().setAutopilotLevel(5);
+    (NexusRoutingService.classifyIntent as any).mockReturnValue({
+      target: 'atlas',
+      confidence: 0.92,
+      reason: 'planning task detected',
     });
 
-    expect(screen.getByTestId('routing-suggestion')).toHaveAttribute('data-target', 'atlas');
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('nexus-send-btn'));
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/atlas');
+    });
+    expect(
+      useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard'] ?? null,
+    ).toBeNull();
+  });
+
+  it('keeps the main Nexus surface minimal with only welcome, participants, and chat', async () => {
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" />);
+
+    expect(screen.getByText(/Good (morning|afternoon|evening)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Welcome back\. Nexus is online and listening\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Agents present/i)).toBeInTheDocument();
+    expect(screen.getByTestId('nexus-open-ops')).toBeInTheDocument();
+    expect(screen.getByTestId('nexus-clear-chat')).toBeInTheDocument();
+    expect(screen.getByTestId('orchestration-status-chip')).toBeInTheDocument();
+    expect(screen.getByTestId('nexus-chat')).toBeInTheDocument();
+
+    expect(screen.queryByText(/Master Thread/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('routing-suggestion')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('daily-brief')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('alive-entity-input-panel')).not.toBeInTheDocument();
+  });
+
+  it('opens Nexus operations from the visible shell entrypoint', async () => {
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" />);
+
+    fireEvent.click(screen.getByTestId('nexus-open-ops'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/nexus/ops');
+  });
+
+  it('clears Nexus chat from the visible shell entrypoint', async () => {
+    const ai = makeAI(1);
+    render(<NexusDashboard ai={ai} agentName="Nexus" />);
+
+    fireEvent.click(screen.getByTestId('nexus-clear-chat'));
+
+    expect(ai.clearSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows delegated agents in the presence stack after Nexus emits join lifecycle events', async () => {
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" />);
+
+    act(() => {
+      Spine.emit({
+        type: 'MODULE_DELEGATED',
+        source: 'nexus',
+        target: 'atlas',
+        domain: 'system',
+        data: { reason: 'query_module' },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Active agents: Atlas/i)).toBeInTheDocument();
+    });
+  });
+
+  it('keeps consult-style turns in Nexus while still reflecting the named specialist in thread presence', async () => {
+    const ai = {
+      ...makeAI(1),
+      lastParsedCommand: CommandIntelligenceService.parse(
+        'Ask Soma whether tomorrow should be a rest day',
+        { sourceModuleId: 'nexus', now: new Date('2026-03-24T08:00:00.000Z'), timezone: 'UTC' },
+      ),
+    };
+
+    render(<NexusDashboard ai={ai} agentName="Nexus" />);
+
+    expect(useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard'] ?? null).toBeNull();
+    expect(screen.getByLabelText(/Active agents: Soma/i)).toBeInTheDocument();
+  });
+
+  it('projects one fused planning suggestion for multi-intent planning without creating a routing draft', async () => {
+    const ai = {
+      ...makeAI(1),
+      lastParsedCommand: CommandIntelligenceService.parse(
+        'plan my day tomorrow, update tomorrow to rest, schedule cooking at 1100 tomorrow',
+        { sourceModuleId: 'nexus', now: new Date('2026-03-24T08:00:00.000Z'), timezone: 'UTC' },
+      ),
+    };
+
+    render(<NexusDashboard ai={ai} agentName="Nexus" />);
+
+    await waitFor(() => {
+      expect(
+        useOrchestrationStore.getState().threadPlanningSuggestionByThreadId['nexus.dashboard']?.targetModuleId,
+      ).toBe('atlas');
+    });
+
+    expect(
+      useOrchestrationStore.getState().threadPlanningSuggestionByThreadId['nexus.dashboard']?.title,
+    ).toContain('Coordinate 3');
+    expect(useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard'] ?? null).toBeNull();
+  });
+
+  it('creates a routing draft only for explicit ownership-transfer phrasing', async () => {
+    (NexusRoutingService.classifyIntent as any).mockReturnValue({
+      target: 'atlas',
+      confidence: 0.9,
+      reason: 'mention:ownership:atlas',
+    });
+
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('nexus-send-btn'));
+    });
+
+    await waitFor(() => {
+      expect(
+        useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard']?.target,
+      ).toBe('atlas');
+    });
+  });
+
+  it('persists synthesized thread reasoning while preserving routing and proposal behavior', async () => {
+    useOrchestrationStore.getState().setThreadRoutingSuggestion('nexus.dashboard', {
+      target: 'atlas',
+      reason: 'planning task detected',
+      state: 'draft',
+    });
+
+    useOrchestrationStore.getState().setLastTurnRuntime(
+      OrchestrationRuntimeService.buildTurnSummary({
+        moduleId: 'nexus',
+        autopilotLevel: 4,
+        historyMode: 'standard',
+        activeThreadId: 'nexus.dashboard',
+        decisions: [
+          {
+            actionType: 'draft_plan',
+            proposalCard: {
+              id: 'card-plan',
+              proposalId: 'proposal-plan',
+              title: 'Draft plan',
+              summary: 'Atlas coordinated the plan outline for the next execution step.',
+              source: 'atlas',
+              status: 'approved',
+              approvalRequirement: { required: false, reason: 'none' },
+              executionMode: 'autonomous',
+              historyMode: 'standard',
+            },
+            dispatchStatus: 'approved',
+            executionMode: 'autonomous',
+            historyMode: 'standard',
+            runtime: OrchestrationRuntimeService.buildRuntimeSemantics({
+              autopilotLevel: 4,
+              historyMode: 'standard',
+              dispatchStatus: 'approved',
+              highRisk: false,
+            }),
+            execution: {
+              id: 'exec-plan',
+              proposalId: 'proposal-plan',
+              source: 'atlas',
+              autopilotLevel: 4,
+              executionMode: 'autonomous',
+              historyMode: 'standard',
+              patientScope: 'USER',
+              executedAt: '2026-03-24T00:01:00.000Z',
+              status: 'executed',
+            },
+          },
+          {
+            actionType: 'record_budget',
+            proposalCard: {
+              id: 'card-budget',
+              proposalId: 'proposal-budget',
+              title: 'Record budget',
+              summary: 'Ledger reviewed the budget delta and flagged the approval gate.',
+              source: 'ledger',
+              status: 'pending_approval',
+              approvalRequirement: { required: true, reason: 'high_risk' },
+              executionMode: 'manual',
+              historyMode: 'standard',
+            },
+            dispatchStatus: 'awaiting_approval',
+            executionMode: 'manual',
+            historyMode: 'standard',
+            runtime: OrchestrationRuntimeService.buildRuntimeSemantics({
+              autopilotLevel: 4,
+              historyMode: 'standard',
+              dispatchStatus: 'awaiting_approval',
+              highRisk: true,
+            }),
+            execution: {
+              id: 'exec-budget',
+              proposalId: 'proposal-budget',
+              source: 'ledger',
+              autopilotLevel: 4,
+              executionMode: 'manual',
+              historyMode: 'standard',
+              patientScope: 'USER',
+              executedAt: '2026-03-24T00:02:00.000Z',
+              status: 'deferred',
+            },
+          },
+        ],
+      }),
+    );
+
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" surfaceMode="operations" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Nexus synthesized 2 runtime actions');
+    });
+    expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Atlas');
+    expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Ledger');
+
+    await waitFor(() => {
+      expect(useOrchestrationStore.getState().threadMessagesByThreadId['nexus.dashboard']?.length).toBeGreaterThan(0);
+      expect(useOrchestrationStore.getState().threadTurnsByThreadId['nexus.dashboard']?.length).toBeGreaterThan(0);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('master-thread-proposal-list')).toHaveTextContent('Route to Atlas');
+    });
+    expect(screen.getByTestId('master-thread-proposal')).toHaveTextContent('Record budget');
+    expect(screen.getByTestId('master-thread-proposal-list')).toHaveTextContent('Route to Atlas');
+  });
+
+  it('keeps Nexus operations scrollable and utility-focused', async () => {
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" surfaceMode="operations" />);
+
+    expect(screen.getByTestId('nexus-ops-scroll-region')).toBeInTheDocument();
+    expect(screen.getByText(/Thread review, memory utilities, alive inputs, and execution queues\./i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open nexus command palette/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /return to nexus chat/i })).toBeInTheDocument();
+    expect(screen.getByTestId('orchestration-status-chip')).toBeInTheDocument();
+    expect(screen.getByText(/Cross-domain analysis/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Brief and synthesis/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Approvals, thread review, synthesis, and operational state live here\./i)).not.toBeInTheDocument();
+  });
+
+  it('refreshes master-thread activity when live Nexus chat messages change', async () => {
+    const ai = {
+      ...makeAI(0),
+      messages: [
+        {
+          id: 'chat-1',
+          role: 'user' as const,
+          content: 'Plan my day tomorrow.',
+          timestamp: '2026-03-24T00:00:01.000Z',
+        },
+        {
+          id: 'chat-2',
+          role: 'assistant' as const,
+          content: 'I can build that plan.',
+          timestamp: '2026-03-24T00:00:02.000Z',
+          actor: {
+            actorId: 'nexus-intake',
+            actorLabel: 'Nexus Intake',
+            actorShortLabel: 'NI',
+          },
+        },
+      ],
+    };
+
+    const { rerender } = render(<NexusDashboard ai={ai} agentName="Nexus" surfaceMode="operations" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Plan my day tomorrow.');
+      expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('I can build that plan.');
+    });
+
+    await waitFor(() => {
+      expect(
+        useOrchestrationStore
+          .getState()
+          .threadMessagesByThreadId['nexus.dashboard']
+          ?.some((message) => message.body === 'I can build that plan.'),
+      ).toBe(true);
+    });
+
+    rerender(
+      <NexusDashboard
+        ai={{
+          ...ai,
+          messages: [
+            ...ai.messages,
+            {
+              id: 'chat-3',
+              role: 'assistant' as const,
+              content: 'Scheduling cooking at 11:00 tomorrow as well.',
+              timestamp: '2026-03-24T00:00:03.000Z',
+            },
+          ],
+        }}
+        agentName="Nexus"
+        surfaceMode="operations"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('master-thread-activity')).toHaveTextContent(
+        'Scheduling cooking at 11:00 tomorrow as well.',
+      );
+    });
+  });
+
+  it('renders review surfaces from silent history while keeping routing intact', async () => {
+    vi.spyOn(OrchestrationHistoryService, 'listSilentHistoryForThread').mockResolvedValue([
+      {
+        id: 'silent.exec-1',
+        executionId: 'exec-1',
+        proposalId: 'proposal-1',
+        summary: 'Ghost execution recorded.',
+        source: 'ledger',
+        timestamp: '2026-03-24T00:01:00.000Z',
+        patientScope: 'USER',
+        metadata: {
+          activeThreadId: 'nexus.dashboard',
+          hiddenMessages: ['Transaction recorded for coffee.'],
+        },
+      },
+    ]);
+
+    useOrchestrationStore.getState().setLastTurnRuntime(
+      OrchestrationRuntimeService.buildTurnSummary({
+        moduleId: 'nexus',
+        autopilotLevel: 5,
+        historyMode: 'silent',
+        activeThreadId: 'nexus.dashboard',
+        decisions: [
+          {
+            actionType: 'record_transaction',
+            proposalCard: {
+              id: 'card-1',
+              proposalId: 'proposal-1',
+              title: 'Record transaction',
+              summary: 'Record transaction requested by ledger.',
+              source: 'ledger',
+              status: 'approved',
+              approvalRequirement: { required: false, reason: 'none' },
+              executionMode: 'ghost',
+              historyMode: 'silent',
+            },
+            dispatchStatus: 'approved',
+            executionMode: 'ghost',
+            historyMode: 'silent',
+            runtime: OrchestrationRuntimeService.buildRuntimeSemantics({
+              autopilotLevel: 5,
+              historyMode: 'silent',
+              dispatchStatus: 'approved',
+              highRisk: false,
+            }),
+            execution: {
+              id: 'exec-1',
+              proposalId: 'proposal-1',
+              source: 'ledger',
+              autopilotLevel: 5,
+              executionMode: 'ghost',
+              historyMode: 'silent',
+              patientScope: 'USER',
+              executedAt: '2026-03-24T00:01:00.000Z',
+              status: 'executed',
+            },
+          },
+        ],
+      }),
+    );
+
+    useOrchestrationStore.getState().setThreadRoutingSuggestion('nexus.dashboard', {
+      target: 'atlas',
+      reason: 'planning task detected',
+      state: 'draft',
+    });
+
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" surfaceMode="operations" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('master-thread-review-surfaces')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('master-thread-review-surfaces')).toHaveTextContent('Transaction recorded for coffee.');
+    expect(screen.getByTestId('master-thread-review-surfaces')).toHaveTextContent('Ghost trace');
+
+    expect(screen.getByTestId('master-thread-proposal-list')).toHaveTextContent('Route to Atlas');
+  });
+
+  it('renders structured memory search results from command palette searches and injects a result into chat', async () => {
+    vi.spyOn(EpisodicMemoryService, 'retrieveRelevantUnified').mockResolvedValue([
+      {
+        id: 'episodic:atlas:session-1',
+        type: 'episodic',
+        moduleId: 'atlas',
+        text: 'You handled a demanding planning block well after reducing context switching.',
+        score: 0.91,
+        timestamp: '2026-03-20T08:00:00.000Z',
+        citation: {
+          type: 'episodic',
+          moduleId: 'atlas',
+          entityId: 'session-1',
+          label: 'Planning block',
+        },
+      },
+    ]);
+    vi.spyOn(SemanticMemoryService, 'getFactsUnified').mockResolvedValue([
+      {
+        id: 'semantic:fact-1',
+        type: 'semantic',
+        moduleId: 'atlas',
+        text: 'Long planning sessions work better after a short reset window.',
+        score: 0.88,
+        confidence: 0.88,
+        timestamp: '2026-03-20T08:00:00.000Z',
+        citation: {
+          type: 'semantic',
+          moduleId: 'atlas',
+          entityId: 'fact-1',
+          label: 'Long planning sessions work better after a short reset window.',
+        },
+      },
+    ]);
+
+    const ai = makeAI(1);
+    render(<NexusDashboard ai={ai} agentName="Nexus" surfaceMode="operations" />);
+
+    await act(async () => {
+      await latestCommandPaletteProps.onMemorySearch('planning reset window');
+    });
+
+    expect(ai.handleSendMessage).toHaveBeenCalledWith('Search my memory for: planning reset window');
+    expect(screen.getByText(/memory search: "planning reset window"/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/you handled a demanding planning block well after reducing context switching/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/long planning sessions work better after a short reset window/i),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('memory-result-episodic:atlas:session-1'));
+    });
+
+    expect(ai.handleSendMessage).toHaveBeenLastCalledWith(
+      expect.stringContaining('Use this episodic memory as context for the next reply:'),
+    );
+    expect(screen.queryByText(/memory search: "planning reset window"/i)).not.toBeInTheDocument();
+  });
+
+  it('dedupes repeated command-palette memory searches for the same query', async () => {
+    const retrieveRelevantUnified = vi.spyOn(EpisodicMemoryService, 'retrieveRelevantUnified').mockResolvedValue([
+      {
+        id: 'episodic:atlas:session-1',
+        type: 'episodic',
+        moduleId: 'atlas',
+        text: 'You handled a demanding planning block well after reducing context switching.',
+        score: 0.91,
+        timestamp: '2026-03-20T08:00:00.000Z',
+        citation: {
+          type: 'episodic',
+          moduleId: 'atlas',
+          entityId: 'session-1',
+          label: 'Planning block',
+        },
+      },
+    ]);
+    const getFactsUnified = vi.spyOn(SemanticMemoryService, 'getFactsUnified').mockResolvedValue([
+      {
+        id: 'semantic:fact-1',
+        type: 'semantic',
+        moduleId: 'atlas',
+        text: 'Long planning sessions work better after a short reset window.',
+        score: 0.88,
+        confidence: 0.88,
+        timestamp: '2026-03-20T08:00:00.000Z',
+        citation: {
+          type: 'semantic',
+          moduleId: 'atlas',
+          entityId: 'fact-1',
+          label: 'Long planning sessions work better after a short reset window.',
+        },
+      },
+    ]);
+
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" surfaceMode="operations" />);
+
+    await act(async () => {
+      await Promise.all([
+        latestCommandPaletteProps.onMemorySearch('planning reset window'),
+        latestCommandPaletteProps.onMemorySearch('planning reset window'),
+      ]);
+    });
+
+    expect(retrieveRelevantUnified).toHaveBeenCalledTimes(1);
+    expect(getFactsUnified).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders alive entity inputs and injects a selected entity into chat', async () => {
+    Object.assign(mockDataLayer, {
+      listDocuments: vi.fn().mockResolvedValue([
+        {
+          id: 'alive.goal.1',
+          type: 'ACTION',
+          label: 'Morning planning',
+          semantic_tags: ['atlas', 'planning'],
+          attributes: {},
+          soul_impact_preset: {},
+          sourceModule: 'atlas',
+          provenance: 'adapter',
+          createdAt: '2026-03-24T00:00:00.000Z',
+          updatedAt: '2026-03-24T00:00:00.000Z',
+        },
+      ]),
+    });
+
+    const ai = makeAI(1);
+    render(<NexusDashboard ai={ai} agentName="Nexus" surfaceMode="operations" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alive-entity-input-panel')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('alive-entity-input-panel')).toHaveTextContent('Morning planning');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('alive-entity-alive.goal.1'));
+    });
+
+    expect(ai.handleSendMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Use this alive entity as planning context for the next reply:'),
+    );
+  });
+
+  it('surfaces anticipatory planning proposals and injects the planning prompt on approval', async () => {
+    (useGlobalSoul as any).mockReturnValue(makeGlobalSoulMock({
+      emotional: { stressLoad: 3, emotionalResilience: 0.4 },
+      cognitive: { activeLoad: 8, taskCompletionRate: 0.2, planningLoad: 8, focusScore: 0.4 },
+      planning: { deadlinePressure: 8 },
+      biological: { sleepQuality: 4, recoveryScore: 0.4 },
+      resource: {},
+    }));
+    (useNexusSynthesis as any).mockReturnValue({
+      alerts: [
+        makeSynthesisAlert({
+          id: 'PLANNING_COLLAPSE',
+          severity: 'critical',
+          title: 'Planning Collapse',
+          description: 'Deadlines are mounting while completion rate is critically low.',
+        }),
+      ],
+      isAnalyzing: false,
+    });
+    Object.assign(mockDataLayer, {
+      listDocuments: vi.fn().mockResolvedValue([
+        {
+          id: 'alive.goal.1',
+          type: 'ACTION',
+          label: 'Morning planning',
+          semantic_tags: ['atlas', 'planning'],
+          attributes: {},
+          soul_impact_preset: {},
+          sourceModule: 'atlas',
+          provenance: 'adapter',
+          createdAt: '2026-03-24T00:00:00.000Z',
+          updatedAt: '2026-03-24T00:00:00.000Z',
+        },
+      ]),
+    });
+
+    const ai = makeAI(0);
+    render(<NexusDashboard ai={ai} agentName="Nexus" surfaceMode="operations" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Draft a workload triage plan')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /approve/i }));
+
+    expect(ai.handleSendMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Build a realistic triage plan for today'),
+      undefined,
+      expect.objectContaining({
+        visibleContent: expect.stringContaining('Execute the proposed draft a workload triage plan via Atlas'),
+      }),
+    );
+  });
+
+  it('auto-runs fused planning with a machine packet while keeping the visible chat human-readable', async () => {
+    useOrchestrationStore.getState().setAutopilotLevel(5);
+    const ai = {
+      ...makeAI(0),
+      lastParsedCommand: CommandIntelligenceService.parse(
+        'plan my day tomorrow, update tomorrow to rest, schedule cooking at 1100 tomorrow',
+        { sourceModuleId: 'nexus', now: new Date('2026-03-24T08:00:00.000Z'), timezone: 'UTC' },
+      ),
+    };
+
+    render(<NexusDashboard ai={ai} agentName="Nexus" />);
+
+    await waitFor(() => {
+      expect(ai.handleSendMessage).toHaveBeenCalledWith(
+        expect.stringContaining('[NEXUS_ACTION_PLAN]'),
+        undefined,
+        expect.objectContaining({
+          visibleContent: expect.stringContaining('Execute the proposed 3-step Atlas plan'),
+        }),
+      );
+    });
+  });
+
+  it('keeps thread proposal controls synchronized with routing suggestion state', async () => {
+    useOrchestrationStore.getState().setThreadRoutingSuggestion('nexus.dashboard', {
+      target: 'atlas',
+      reason: 'planning task detected',
+      state: 'draft',
+    });
+
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" surfaceMode="operations" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('master-thread-proposal')).toHaveTextContent('Route to Atlas');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^defer$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('master-thread-proposal')).toHaveTextContent('Deferred');
+    });
+    expect(screen.getByTestId('master-thread-proposal')).toHaveTextContent('Deferred');
+
+    fireEvent.click(screen.getByRole('button', { name: /^restore$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('master-thread-proposal')).toHaveTextContent('Route to Atlas');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^reroute$/i }));
+    fireEvent.change(screen.getByLabelText(/target module/i), { target: { value: 'agnes' } });
+    fireEvent.change(screen.getByLabelText(/routing reason/i), { target: { value: 'needs emotional context' } });
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('master-thread-proposal')).toHaveTextContent('Route to Agnes');
+    });
+    expect(screen.getByText(/Route to Agnes/i)).toBeInTheDocument();
   });
 
   // ── T-16 ───────────────────────────────────────────────────────────────────
@@ -448,26 +1161,22 @@ describe('NexusDashboard', () => {
       fireEvent.click(screen.getByTestId('nexus-send-btn'));
     });
 
-    // Suggestion should be visible immediately
-    expect(screen.getByTestId('routing-suggestion')).toBeInTheDocument();
+    expect(useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard']?.state).toBe('draft');
 
     // Advance past the 8-second auto-dismiss timer
     act(() => {
       vi.advanceTimersByTime(8000);
     });
 
-    expect(screen.queryByTestId('routing-suggestion')).not.toBeInTheDocument();
+    expect(useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard']?.state).toBe('deferred');
   });
 
   // ── T-18 ───────────────────────────────────────────────────────────────────
-  it('T-18 — brief auto-collapses after first message (conversationDepth >= 1)', async () => {
-    // Render with one user message → conversationDepth=1 immediately
-    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" />);
+  it('T-18 — operations workspace no longer renders the daily brief surface', async () => {
+    render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" surfaceMode="operations" />);
 
-    // The useEffect that sets briefCollapsed=true fires after mount
     await waitFor(() => {
-      const brief = screen.getByTestId('daily-brief');
-      expect(brief).toHaveAttribute('data-collapsed', 'true');
+      expect(screen.queryByTestId('daily-brief')).not.toBeInTheDocument();
     });
   });
 
@@ -488,7 +1197,7 @@ describe('NexusDashboard', () => {
       await act(async () => {
         fireEvent.click(screen.getByTestId('nexus-send-btn'));
       });
-      expect(screen.getByTestId('routing-suggestion')).toHaveAttribute('data-target', 'atlas');
+      expect(useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard']?.target).toBe('atlas');
 
       // Advance 3 seconds (suggestion A timer has 5s left)
       act(() => {
@@ -499,7 +1208,7 @@ describe('NexusDashboard', () => {
       await act(async () => {
         fireEvent.click(screen.getByTestId('nexus-send-btn'));
       });
-      expect(screen.getByTestId('routing-suggestion')).toHaveAttribute('data-target', 'agnes');
+      expect(useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard']?.target).toBe('agnes');
 
       // Advance to t=8s from origin — this is when A's original timer WOULD have fired.
       // B's timer was reset at t=3s and fires at t=11s, so B should still be visible.
@@ -508,8 +1217,8 @@ describe('NexusDashboard', () => {
       });
 
       // Suggestion B must still be visible (its timer fires at t=11s, not t=8s)
-      expect(screen.getByTestId('routing-suggestion')).toBeInTheDocument();
-      expect(screen.getByTestId('routing-suggestion')).toHaveAttribute('data-target', 'agnes');
+      expect(useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard']?.state).toBe('draft');
+      expect(useOrchestrationStore.getState().threadRoutingSuggestionByThreadId['nexus.dashboard']?.target).toBe('agnes');
     }
   );
 });
@@ -520,6 +1229,7 @@ describe('NexusDashboard', () => {
 describe('useModuleHealth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    spineListeners.clear();
 
     (useAuth as any).mockReturnValue({
       user: { uid: 'test-uid' },

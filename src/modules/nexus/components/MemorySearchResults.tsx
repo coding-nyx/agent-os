@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { UnifiedMemoryResult } from '@/lib/types';
 
 interface MemoryResult {
   moduleId: string;
@@ -17,9 +18,12 @@ interface StableFact {
 
 interface MemorySearchResultsProps {
   query: string;
-  sessions: MemoryResult[];
-  facts: StableFact[];
+  results?: UnifiedMemoryResult[];
+  sessions?: MemoryResult[];
+  facts?: StableFact[];
   isSearching?: boolean;
+  onResultClick?: (result: UnifiedMemoryResult) => void;
+  onDismiss?: () => void;
 }
 
 const MODULE_COLORS: Record<string, string> = {
@@ -32,7 +36,15 @@ const MODULE_COLORS: Record<string, string> = {
   scout: 'text-lime-400',
 };
 
-export function MemorySearchResults({ query, sessions, facts, isSearching }: MemorySearchResultsProps) {
+export function MemorySearchResults({
+  query,
+  results,
+  sessions = [],
+  facts = [],
+  isSearching,
+  onResultClick,
+  onDismiss,
+}: MemorySearchResultsProps) {
   if (isSearching) {
     return (
       <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
@@ -44,7 +56,37 @@ export function MemorySearchResults({ query, sessions, facts, isSearching }: Mem
     );
   }
 
-  if (sessions.length === 0 && facts.length === 0) return null;
+  const normalizedResults = results ?? [
+    ...sessions.map<UnifiedMemoryResult>((session, index) => ({
+      id: `episodic:${session.moduleId}:${index}:${session.date}`,
+      type: 'episodic',
+      moduleId: session.moduleId,
+      text: session.summary,
+      score: session.score,
+      timestamp: session.date,
+      citation: {
+        type: 'episodic',
+        moduleId: session.moduleId,
+        label: session.summary,
+      },
+    })),
+    ...facts.map<UnifiedMemoryResult>((fact, index) => ({
+      id: `semantic:${index}:${fact.fact}`,
+      type: 'semantic',
+      moduleId: 'nexus',
+      text: fact.fact,
+      score: fact.confidence,
+      confidence: fact.confidence,
+      timestamp: new Date(0).toISOString(),
+      citation: {
+        type: 'semantic',
+        moduleId: 'nexus',
+        label: fact.fact,
+      },
+    })),
+  ];
+
+  if (normalizedResults.length === 0) return null;
 
   return (
     <motion.div
@@ -55,46 +97,51 @@ export function MemorySearchResults({ query, sessions, facts, isSearching }: Mem
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
         <Search className="w-3.5 h-3.5 text-white/40" />
-        <span className="text-xs font-bold text-white/60">Memory Search: &quot;{query}&quot;</span>
+        <span className="flex-1 text-xs font-bold text-white/60">Memory Search: &quot;{query}&quot;</span>
+        {onDismiss ? (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="rounded-full border border-white/10 p-1 text-white/35 transition hover:border-white/20 hover:text-white/60"
+            aria-label="Dismiss memory results"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        ) : null}
       </div>
 
-      {/* Session results */}
-      {sessions.length > 0 && (
-        <div className="p-3 space-y-2">
-          {sessions.map((session, i) => (
-            <div key={i} className="flex items-start gap-3 px-2 py-2 rounded-lg hover:bg-white/[0.03] transition-colors">
-              <span className="text-[10px] text-white/30 font-mono shrink-0 mt-0.5">
-                {new Date(session.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-              </span>
-              <div className="flex-1 min-w-0">
-                <span className={cn('text-[10px] font-bold uppercase', MODULE_COLORS[session.moduleId] || 'text-white/40')}>
-                  [{session.moduleId}]
+      <div className="p-3 space-y-2">
+        {normalizedResults.map((result) => (
+          <button
+            type="button"
+            key={result.id}
+            onClick={() => onResultClick?.(result)}
+            className="flex items-start gap-3 px-2 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+            data-testid={`memory-result-${result.id}`}
+          >
+            <span className="text-[10px] text-white/30 font-mono shrink-0 mt-0.5">
+              {new Date(result.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={cn('text-[10px] font-bold uppercase', MODULE_COLORS[result.moduleId] || 'text-white/40')}>
+                  [{result.moduleId}]
                 </span>
-                <p className="text-xs text-white/60 leading-relaxed mt-0.5 line-clamp-2">{session.summary}</p>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                  {result.type}
+                </span>
+                <span className="text-[10px] text-white/25">
+                  {result.citation.entityId ? `Source ${result.citation.entityId}` : result.citation.label}
+                </span>
               </div>
-              <span className="text-[10px] text-white/20 font-mono shrink-0">{session.score.toFixed(2)}</span>
+              <p className="text-xs text-white/60 leading-relaxed mt-0.5 line-clamp-2">{result.text}</p>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Stable facts */}
-      {facts.length > 0 && (
-        <div className="px-4 py-3 border-t border-white/5">
-          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/30 block mb-2">
-            Stable Facts
-          </span>
-          <div className="space-y-1">
-            {facts.map((fact, i) => (
-              <div key={i} className="flex items-baseline gap-2">
-                <span className="text-white/20">•</span>
-                <span className="text-xs text-white/50">{fact.fact}</span>
-                <span className="text-[10px] text-white/20 font-mono">({fact.confidence.toFixed(2)})</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+            <span className="text-[10px] text-white/20 font-mono shrink-0">
+              {typeof result.confidence === 'number' ? result.confidence.toFixed(2) : result.score.toFixed(2)}
+            </span>
+          </button>
+        ))}
+      </div>
     </motion.div>
   );
 }

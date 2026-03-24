@@ -36,6 +36,11 @@ export interface UserSecurityPreferences {
   dataSharingOverrides?: Record<string, Record<string, boolean>>;
 }
 
+export interface OrchestrationPreferences {
+  autopilotLevel?: number;
+  historyMode?: 'standard' | 'silent';
+}
+
 export interface CoreUserProfile {
   uid: string;
   email: string;
@@ -49,6 +54,7 @@ export interface CoreUserProfile {
   onboardingComplete: boolean;
   agentPersonalityProvision: AgentPersonalityProvision;
   securityPreferences: UserSecurityPreferences;
+  orchestrationPreferences?: OrchestrationPreferences;
   schemaVersion: number;
   createdAt: string;
   updatedAt: string;
@@ -160,6 +166,7 @@ export interface GlobalProjection {
 }
 
 export interface RetrievedMemory {
+  sessionId?: string;
   sessionDate: string;
   summary: string;
   keyInsights: string[];
@@ -173,12 +180,40 @@ export interface SemanticFact {
   fact: string;
   confidence: number;
   updatedAt: string;
+  provenance?: {
+    source: string;
+    sourceEntityId?: string;
+    sourceEntityType?: string;
+    sourceIds?: string[];
+    sessionId?: string;
+  };
+  attributes?: Record<string, unknown>;
 }
 
 export interface MemorySearchOptions {
   moduleIds: string[];
   topK?: number;
   recencyWeight?: number;
+}
+
+export type UnifiedMemoryResultType = 'episodic' | 'semantic' | 'rag';
+
+export interface UnifiedMemoryCitation {
+  type: UnifiedMemoryResultType;
+  moduleId: string;
+  entityId?: string;
+  label: string;
+}
+
+export interface UnifiedMemoryResult {
+  id: string;
+  type: UnifiedMemoryResultType;
+  moduleId: string;
+  text: string;
+  score: number;
+  confidence?: number;
+  timestamp: string;
+  citation: UnifiedMemoryCitation;
 }
 
 export type SpineEventType =
@@ -296,6 +331,10 @@ export type SpineEventType =
   | 'REMINDER_PROPOSED'
   | 'REMINDER_CONFIRMED'
   | 'REMINDER_DISMISSED'
+  // Routine proposal lifecycle (Phase 4 registry foundation)
+  | 'ROUTINE_PROPOSED'
+  | 'ROUTINE_CONFIRMED'
+  | 'ROUTINE_DISMISSED'
   // Titan Cycle Events
   | 'CYCLE_STARTED'
   | 'CYCLE_COMPLETED'
@@ -308,10 +347,14 @@ export type SpineEventType =
   | 'TITAN_RECOVERY_NEEDED'
   /** Emitted when consecutive training days reach a milestone (7, 14, 21, 30). */
   | 'TITAN_TRAINING_STREAK'
+  /** Emitted when Titan proceeds despite a restrictive or pending Soma clearance. */
+  | 'SOMA_VETO_OVERRIDDEN'
   // AI Validation Events
   | 'ai_validation_suggestion'
   | 'ai_contextual_validation'
   | 'ai_error_explanation'
+  // AI Module Lifecycle Events
+  | 'AI_LINK_FAILURE'
   // Soul Write Protocol Events (S10-002)
   | 'SOUL_WRITE_REQUESTED'
   | 'SOUL_WRITE_APPROVED'
@@ -449,6 +492,7 @@ export interface Message {
   timestamp?: string;
   tool_calls?: ToolCall[];
   tool_call_id?: string;
+  actor?: ActorIdentityRef;
   /** Optional debug metadata — populated only when debug instrumentation is active. */
   debugMeta?: MessageDebugMeta;
 }
@@ -857,6 +901,10 @@ export interface TitanProfile {
   recoveryPlan?: TitanRecoveryPlan;
   /** Daily recovery check-ins (newest first). */
   recoveryCheckins?: TitanRecoveryCheckin[];
+  /** Explicit user overrides when Titan proceeds despite a Soma veto. */
+  clearanceOverrides?: TitanClearanceOverrideRecord[];
+  /** System-debt ledger tracking downstream consequences of override decisions. */
+  systemDebts?: TitanSystemDebtRecord[];
   createdAt: string;
   updatedAt: string;
   traits?: string[];
@@ -932,6 +980,32 @@ export interface TitanRecoveryCheckin {
   mood: number;
   notes?: string;
   skipped?: boolean;
+}
+
+export interface TitanClearanceOverrideRecord {
+  id: string;
+  activity: string;
+  clearanceStatus: ClearanceRecord['status'] | 'pending';
+  reason: string;
+  createdAt: string;
+  sourceClearanceId?: string;
+  systemDebtId: string;
+  note?: string;
+}
+
+export interface TitanSystemDebtRecord {
+  id: string;
+  kind: 'soma_veto_override';
+  activity: string;
+  status: 'active' | 'resolved';
+  createdAt: string;
+  resolvedAt?: string;
+  reason: string;
+  clearanceStatus: ClearanceRecord['status'] | 'pending';
+  sourceClearanceId?: string;
+  overrideId: string;
+  consequenceSummary: string;
+  vectorImpact?: Partial<Record<'vitality' | 'output' | 'friction', number>>;
 }
 
 export type Weekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
@@ -1261,6 +1335,59 @@ export interface GoalWeekProgress {
   milestonesTotal: number;
 }
 
+export type AtlasCapacityState = 'expand' | 'hold' | 'compress' | 'recover';
+
+export type AtlasIngestionMode = 'structured' | 'unstructured';
+
+export interface AtlasIngestionMetadata {
+  mode: AtlasIngestionMode;
+  confidence: number;
+  cues: string[];
+  guidance: string;
+}
+
+export interface AtlasCapacityBlueprint {
+  baselineCapacity: number;
+  safeCapacity: number;
+  plannedDemand: number;
+  loadRatio: number;
+  headroom: number;
+  recommendedCapacityPct: number;
+  state: AtlasCapacityState;
+  vectors: {
+    vitality: number;
+    friction: number;
+    resilience: number;
+    specAlignment: number;
+  };
+  pressurePoints: string[];
+}
+
+export interface AtlasReviewAction {
+  id: string;
+  title: string;
+  detail: string;
+  emphasis: 'protect' | 'focus' | 'build';
+}
+
+export interface AtlasProjectionSurface {
+  state: AtlasCapacityState;
+  summary: string;
+  confidence: 'high' | 'medium' | 'low';
+  projectedCapacity: number;
+  projectedDemand: number;
+  projectedHeadroom: number;
+  nextPeriodFocus: string;
+  recommendedActions: AtlasReviewAction[];
+}
+
+export interface AtlasReviewBlueprint {
+  generatedAt: string;
+  period: 'weekly';
+  capacity: AtlasCapacityBlueprint;
+  projection: AtlasProjectionSurface;
+}
+
 export interface TemporalReview {
   id: string;
   scope: 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -1279,6 +1406,7 @@ export interface TemporalReview {
   insights: string[];
   driftScore?: number;
   nextPeriodFocus: string;
+  blueprint?: AtlasReviewBlueprint;
   notes?: string;
   createdAt: string;
 }
@@ -1516,3 +1644,4 @@ export interface HintVerificationResult {
   /** ActionHub action type to dispatch when the user confirms the update. */
   confirmActionType: string;
 }
+import type { ActorIdentityRef } from '@/lib/agent-identity';

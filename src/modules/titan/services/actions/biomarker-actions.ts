@@ -176,47 +176,6 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
       source: 'titan_action',
     });
     if (!clearance) return;
-
-    // Keep deprecated events for compatibility until all listeners consume SOMA_*.
-    Spine.emit({
-      type: clearance.status === 'granted' ? 'CLEARANCE_GRANTED' : 'CLEARANCE_DENIED',
-      source: 'titan',
-      target: 'titan',
-      domain: 'B',
-      data: {
-        activity: clearance.activity,
-        status: clearance.status,
-        reason: clearance.reason
-      },
-      cascadeDepth: 0,
-      priority: clearance.status === 'granted' ? 'info' : 'alert'
-    });
-
-    if (clearance.status === 'denied') {
-      Spine.emit({
-        type: 'BLOCK_HIGH_INTENSITY',
-        source: 'titan',
-        domain: 'B',
-        data: {
-          activity: clearance.activity,
-          reason: clearance.reason
-        },
-        cascadeDepth: 0,
-        priority: 'alert'
-      });
-    }
-
-    Spine.publish({
-      type: 'SOMA_CLEARANCE_CHANGED',
-      source: 'titan',
-      domain: 'B',
-      priority: clearance.status === 'denied' ? 'alert' : 'info',
-      data: {
-        status: clearance.status,
-        activityType: clearance.activity,
-        clearanceId: clearance.id,
-      },
-    });
   },
 
   analyze_medical_image: async ({ userId, encryptionKey, payload }) => {

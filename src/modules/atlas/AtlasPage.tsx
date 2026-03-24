@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
-import { SpineEventType } from '@/lib/types';
+import type { AtlasReviewBlueprint, SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { ATLAS_PERSONA } from './personas';
 import { buildAtlasPrompt, type AtlasDataContext } from './prompts/atlas-prompt-builder';
@@ -505,7 +505,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
   }, [executeAtlasAction]);
 
   /** Persist a weekly review snapshot to profile.reviews so the Review tab shows it. */
-  const handleSaveWeeklyReview = useCallback(() => {
+  const handleSaveWeeklyReview = useCallback((incomingBlueprint?: AtlasReviewBlueprint) => {
     if (!profile) return;
     const d = new Date();
     const weekStart = new Date(d);
@@ -525,6 +525,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     const totalCompleted = thisWeekScheduled.filter((s) => s.status === 'done').length;
     const completionRate = totalScheduled > 0 ? totalCompleted / totalScheduled : 0;
     const cognitive = globalSoul?.crossFunctionalState?.cognitive ?? {};
+    const blueprint = incomingBlueprint ?? AtlasReviewService.buildActionableReview(profile, globalSoul);
     const habitSummary = (profile.habits ?? []).map((h) => ({
       habitId: h.id,
       habitTitle: h.title ?? '',
@@ -550,11 +551,23 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       goalProgress,
       energyBudgetAvg: typeof cognitive.energyBudget === 'number' ? cognitive.energyBudget : 5,
       focusScoreAvg: typeof cognitive.focusScore === 'number' ? cognitive.focusScore : 5,
-      resilienceTrend: 'stable',
-      insights: [],
+      resilienceTrend:
+        blueprint.capacity.vectors.resilience >= 6.5
+          ? 'improving'
+          : blueprint.capacity.vectors.resilience <= 4.5
+            ? 'declining'
+            : 'stable',
+      insights: [
+        blueprint.projection.summary,
+        ...blueprint.capacity.pressurePoints,
+        ...blueprint.projection.recommendedActions.map((action) => action.title),
+      ].slice(0, 5),
+      driftScore: Number((blueprint.capacity.loadRatio * 10).toFixed(1)),
+      nextPeriodFocus: blueprint.projection.nextPeriodFocus,
+      blueprint,
     }, 'weekly_review_saved');
     handleReviewOpened();
-  }, [profile, globalSoul?.crossFunctionalState?.cognitive, executeAtlasAction, handleReviewOpened]);
+  }, [profile, globalSoul, globalSoul?.crossFunctionalState?.cognitive, executeAtlasAction, handleReviewOpened]);
 
   // S-journal-01: Morning brief dismiss — record today's date so JournalTab
   // can pre-populate the morningIntent placeholder.

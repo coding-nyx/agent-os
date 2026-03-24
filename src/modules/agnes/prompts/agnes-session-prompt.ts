@@ -1,5 +1,11 @@
 import type { GenderPersonality } from '@/lib/types';
 import { BaseContext } from '../types';
+import {
+  AGNES_ENGAGEMENT_MODE_DEFINITIONS,
+  AgnesPromptContinuity,
+  DEFAULT_AGNES_ENGAGEMENT_MODE,
+  resolveAgnesEngagementMode,
+} from '../engagement-modes';
 
 function listOrUnknown(value?: string | string[]): string {
   if (!value) return 'Unknown';
@@ -9,7 +15,11 @@ function listOrUnknown(value?: string | string[]): string {
   return value;
 }
 
-export function buildAgnesSessionPrompt(basePrompt: string, context?: Partial<BaseContext> | null, globalAgentGender?: GenderPersonality): string {
+function buildClientContextSection(
+  basePrompt: string,
+  context?: Partial<BaseContext> | null,
+  globalAgentGender?: GenderPersonality,
+): string {
   if (!context || Object.keys(context).length === 0) {
     return basePrompt;
   }
@@ -93,4 +103,61 @@ RULES:
 - Be conservative: only emit when you have clinical confidence, not speculation.
 - Belief graph nodes should use clear, concise labels for the belief.
 - Neural Profile updates should only include fields that have changed. Keep list items short (1-3 words).`.trim();
+}
+
+export interface AgnesSessionPromptOptions {
+  engagementMode?: unknown;
+  continuity?: AgnesPromptContinuity;
+}
+
+export function buildAgnesSessionPrompt(
+  basePrompt: string,
+  context?: Partial<BaseContext> | null,
+  globalAgentGender?: GenderPersonality,
+  options?: AgnesSessionPromptOptions,
+): string {
+  const mode = resolveAgnesEngagementMode(
+    options?.engagementMode ?? (context as { preferredEngagementMode?: unknown } | null | undefined)?.preferredEngagementMode,
+    DEFAULT_AGNES_ENGAGEMENT_MODE,
+  );
+  const modeDefinition = AGNES_ENGAGEMENT_MODE_DEFINITIONS[mode];
+  const continuity = options?.continuity;
+
+  if ((!context || Object.keys(context).length === 0) && !options?.engagementMode && !continuity) {
+    return basePrompt;
+  }
+
+  const contextBlock = buildClientContextSection(basePrompt, context, globalAgentGender);
+  const clientSection = contextBlock.startsWith(basePrompt)
+    ? contextBlock.slice(basePrompt.length).trim()
+    : contextBlock.trim();
+  const continuityBlock = continuity && continuity.messageCount > 0
+    ? `
+SESSION CONTINUITY:
+- This conversation is already underway (${continuity.messageCount} messages so far).
+- Continue seamlessly from the existing thread. Do NOT restart the relationship, do NOT re-introduce yourself, and do NOT comment on the mode switch unless the user asks.
+${continuity.previousMode ? `- The previous mode was ${AGNES_ENGAGEMENT_MODE_DEFINITIONS[continuity.previousMode].label}. Adapt your pacing and style without breaking continuity.` : ''}
+- Recent turns:
+${continuity.recentTurns.map((turn) => `  • ${turn}`).join('\n')}
+`.trim()
+    : '';
+  const somaticModeOverride = mode === 'somatic' && context?.somaticEnabled === false
+    ? `
+SOMATIC MODE ADAPTATION:
+- The user selected Somatic Mode, but explicit body inquiry is disabled by preference.
+- Preserve somatic pacing through grounding, regulation, and slower tracking language without asking body-sensation questions.
+`.trim()
+    : '';
+
+  return [
+    basePrompt,
+    `
+ENGAGEMENT MODE:
+Active mode: ${modeDefinition.label}
+${modeDefinition.promptBlock}
+${somaticModeOverride ? `\n${somaticModeOverride}` : ''}
+`.trim(),
+    continuityBlock,
+    clientSection,
+  ].filter(Boolean).join('\n\n');
 }

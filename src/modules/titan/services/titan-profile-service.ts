@@ -1,3 +1,5 @@
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
 import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
 import { LoadContext } from '@/lib/types/encrypted-document';
 import { TitanProfile, CustomField, TitanRecoveryPlan, TitanRecoveryCheckin } from '@/lib/types';
@@ -38,6 +40,8 @@ export function createEmptyTitanProfile(): TitanProfile {
     personalRecords: {},
     bodyWeightLog: [],
     cardioLog: [],
+    clearanceOverrides: [],
+    systemDebts: [],
   };
 }
 
@@ -84,6 +88,12 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
     recoveryCheckins: Array.isArray(data.recoveryCheckins)
       ? (data.recoveryCheckins as TitanRecoveryCheckin[]).slice(0, 180)
       : undefined,
+    clearanceOverrides: Array.isArray(data.clearanceOverrides)
+      ? (data.clearanceOverrides as NonNullable<TitanProfile['clearanceOverrides']>).slice(0, 100)
+      : base.clearanceOverrides,
+    systemDebts: Array.isArray(data.systemDebts)
+      ? (data.systemDebts as NonNullable<TitanProfile['systemDebts']>).slice(0, 100)
+      : base.systemDebts,
     // Body logs — must survive the normalizer or logs are always empty
     bodyWeightLog: Array.isArray(data.bodyWeightLog)
       ? (data.bodyWeightLog as NonNullable<TitanProfile['bodyWeightLog']>).slice(0, 1000)
@@ -116,8 +126,25 @@ const _service = createEncryptedProfileService<TitanProfile>({
 export const loadTitanProfile: (ctx: LoadContext) => Promise<TitanProfile | null> =
   _service.load.bind(_service);
 
-export const saveTitanProfile: (profile: TitanProfile, ctx: LoadContext) => Promise<void> =
-  _service.save.bind(_service);
+export async function saveTitanProfile(profile: TitanProfile, ctx: LoadContext): Promise<void> {
+  const normalized = normalizeTitanProfile(profile);
+  await _service.save(normalized, ctx);
+
+  if (!ctx.userId) return;
+
+  try {
+    await syncAliveEntities(
+      getNexusDataLayer(),
+      bootstrapAliveEntities({
+        titanWorkoutSessions: normalized.workoutSessions,
+        titanSleepEntries: normalized.sleepLog,
+      }),
+      { uid: ctx.userId },
+    );
+  } catch (error) {
+    console.error('[TitanProfileService] Failed to sync alive entities:', error);
+  }
+}
 
 export const subscribeTitanProfile: (
   ctx: LoadContext,

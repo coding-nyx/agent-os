@@ -96,14 +96,28 @@ describe('buildSomaAgentSystemPrompt', () => {
   it('injects clearance status when provided', () => {
     const prompt = buildSomaAgentSystemPrompt({
       ...minimalContext,
-      clearanceStatus: 'cleared',
+      clearanceStatus: 'granted',
     });
-    expect(prompt).toContain('cleared');
+    expect(prompt).toContain('granted');
   });
 
   it('returns a non-empty string', () => {
     const prompt = buildSomaAgentSystemPrompt(minimalContext);
     expect(prompt.length).toBeGreaterThan(100);
+  });
+
+  it('enforces bounded clinician-style behavior and recovery coordination language', () => {
+    const prompt = buildSomaAgentSystemPrompt(minimalContext);
+    expect(prompt).toContain('bounded to the provided data');
+    expect(prompt).toContain('Do NOT diagnose diseases');
+    expect(prompt).toContain('granted / conditional / denied');
+    expect(prompt).toContain('Titan recovery');
+  });
+
+  it('documents clearance action statuses using granted conditional denied semantics', () => {
+    const prompt = buildSomaAgentSystemPrompt(minimalContext);
+    expect(prompt).toContain('"status":"granted|conditional|denied"');
+    expect(prompt).not.toContain('"status":"cleared|restricted"');
   });
 });
 

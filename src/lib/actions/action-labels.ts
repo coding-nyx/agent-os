@@ -25,7 +25,8 @@ const ACTION_LABELS: Record<string, string> = {
 
   // --- Agnes Actions ---
   update_agnes_profile: 'Updating therapy intake profile',
-  update_belief_graph: 'Evolving cognitive belief model',
+  update_belief_graph: 'Drafting belief graph suggestion',
+  suggest_agnes_session_invitation: 'Inviting an Agnes support session',
   
   // --- Atlas Actions ---
   update_energy_wave: 'Recalculating energy wave projections',

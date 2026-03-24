@@ -30,6 +30,11 @@ export function registerForgeActions() {
   if (registered) return;
   registered = true;
 
+  ActionHub.registerProvider('forge', {
+    capabilities: ['technical-work'],
+    latencyTier: 'heavy',
+  });
+
   ActionHub.registerMultiple('forge', {
     execute_code: async ({ userId, payload, encryptionKey }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);

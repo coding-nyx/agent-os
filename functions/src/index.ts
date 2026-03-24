@@ -89,6 +89,13 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
         title: 'Nexus Reminder',
         body: payloadData?.note ? String(payloadData.note) : 'A scheduled reminder is due.'
       };
+    case 'AI_LINK_FAILURE':
+      return {
+        title: 'Neural Link Interrupted',
+        body: payloadData?.errorMessage 
+          ? `The AI link encountered an error: ${payloadData.errorMessage}`
+          : 'The neural tunnel encountered an interference packet and could not complete your request.'
+      };
     default:
       // Generic fallback
       return {

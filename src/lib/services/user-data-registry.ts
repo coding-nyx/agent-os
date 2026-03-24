@@ -20,7 +20,8 @@ const DIRECT_USER_COLLECTIONS = [
   'forge_sessions',
   'semantic_memory',
   'spine_events',
-  'belief_graphs'
+  'belief_graphs',
+  'belief_graph_workflows',
 ] as const;
 
 export function getUserDataDeletionTargets(uid: string): UserDataDeletionTarget[] {

@@ -27,8 +27,8 @@ interface SingleAgentLayoutProps {
     streamingText: string;
     error: string | null;
     quota: GuestQuota | null;
-    routingSuggestion?: { target: ModuleId; reason?: string } | null;
-    setRoutingSuggestion?: (suggestion: { target: ModuleId; reason?: string } | null) => void;
+    routingSuggestion?: { target: ModuleId; reason?: string; confidence?: number } | null;
+    setRoutingSuggestion?: (suggestion: { target: ModuleId; reason?: string; confidence?: number } | null) => void;
     handleSendMessage: (
       content: MessageContent,
       onActionParsed?: (type: string, payload: Record<string, unknown>) => void,

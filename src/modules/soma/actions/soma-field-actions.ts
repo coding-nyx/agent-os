@@ -274,6 +274,66 @@ export function emitClearanceChanged(
   });
 }
 
+export function isRestrictiveClearanceStatus(status: ClearanceRecord['status']): boolean {
+  return status === 'denied' || status === 'conditional';
+}
+
+export function getClearanceChangeAction(
+  status: ClearanceRecord['status'],
+): 'issued' | 'revoked' {
+  return isRestrictiveClearanceStatus(status) ? 'revoked' : 'issued';
+}
+
+export function emitClearanceCoordinationEvents(clearance: ClearanceRecord): void {
+  Spine.emit({
+    type: clearance.status === 'granted' ? 'CLEARANCE_GRANTED' : 'CLEARANCE_DENIED',
+    source: 'soma',
+    target: 'titan',
+    domain: 'B',
+    data: {
+      activity: clearance.activity,
+      status: clearance.status,
+      reason: clearance.reason,
+      clearanceId: clearance.id,
+    },
+    cascadeDepth: 0,
+    priority: clearance.status === 'granted' ? 'info' : 'alert',
+  });
+
+  if (isRestrictiveClearanceStatus(clearance.status)) {
+    Spine.emit({
+      type: 'BLOCK_HIGH_INTENSITY',
+      source: 'soma',
+      target: 'titan',
+      domain: 'B',
+      data: {
+        activity: clearance.activity,
+        status: clearance.status,
+        reason: clearance.reason,
+        clearanceId: clearance.id,
+      },
+      cascadeDepth: 0,
+      priority: 'alert',
+    });
+    return;
+  }
+
+  Spine.emit({
+    type: 'RECOVERY_AVAILABLE',
+    source: 'soma',
+    target: 'titan',
+    domain: 'B',
+    data: {
+      trigger: 'clearance_granted',
+      activity: clearance.activity,
+      clearanceId: clearance.id,
+      reason: clearance.reason,
+    },
+    cascadeDepth: 0,
+    priority: 'info',
+  });
+}
+
 /**
  * Emit a SOMA_FIELD_CREATED event when a custom field is added.
  */
@@ -378,6 +438,11 @@ export function registerSomaFieldActions(): void {
   somaActionsRegistered = true;
 
   console.log('[SomaFieldActions] Registering actions for soma...');
+
+  ActionHub.registerProvider('soma', {
+    capabilities: ['recovery-planning'],
+    latencyTier: 'balanced',
+  });
 
   // Soma actions live under the 'soma' module ID (sovereign data layer).
   // Titan declares a dependency on 'soma' so these are resolvable from Titan context.
@@ -674,7 +739,8 @@ export function registerSomaFieldActions(): void {
         { ...profile, clearances: [...profile.clearances, record], updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
-      emitClearanceChanged(record.id, 'issued', activity);
+      emitClearanceChanged(record.id, getClearanceChangeAction(record.status), activity);
+      emitClearanceCoordinationEvents(record);
       pushAssistantMessage?.(
         `Clearance issued for "${activity}": ${status}.${record.reason ? ` Reason: ${record.reason}` : ''}`
       );

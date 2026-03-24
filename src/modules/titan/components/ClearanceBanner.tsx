@@ -4,15 +4,29 @@ import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ClearanceBannerProps {
-  status?: 'granted' | 'pending' | 'denied' | null;
+  status?: 'granted' | 'pending' | 'conditional' | 'denied' | null;
   className?: string;
+  activeDebtCount?: number;
+  enforcementMessage?: string | null;
 }
 
-export function ClearanceBanner({ status, className }: ClearanceBannerProps) {
+export function ClearanceBanner({
+  status,
+  className,
+  activeDebtCount = 0,
+  enforcementMessage = null,
+}: ClearanceBannerProps) {
   const navigate = useNavigate();
-  if (!status || status === 'granted') return null;
+  if ((!status || status === 'granted') && activeDebtCount === 0 && !enforcementMessage) return null;
 
-  const isDenied = status === 'denied';
+  const isDenied = status === 'denied' || activeDebtCount > 0;
+  const message = activeDebtCount > 0
+    ? enforcementMessage ?? 'Soma veto override recorded — Titan remains in debt repayment until clearance is restored.'
+    : isDenied
+      ? 'Medical clearance denied — review in Soma before training'
+      : status === 'conditional'
+        ? 'Conditional clearance — reduce intensity and review guidance in Soma'
+        : 'Clearance pending — submit review in Soma';
 
   return (
     <button
@@ -25,12 +39,12 @@ export function ClearanceBanner({ status, className }: ClearanceBannerProps) {
         className
       )}
     >
-      <div className="flex items-center gap-2 min-w-0">
-        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-        <span className="text-[11px] sm:text-xs font-bold leading-snug">
-          {isDenied ? 'Medical clearance denied — review in Soma before training' : 'Clearance pending — submit review in Soma'}
-        </span>
-      </div>
+        <div className="flex items-center gap-2 min-w-0">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-[11px] sm:text-xs font-bold leading-snug">
+            {message}
+          </span>
+        </div>
       <ChevronRight className="w-3.5 h-3.5 shrink-0" />
     </button>
   );

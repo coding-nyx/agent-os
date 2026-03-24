@@ -1,13 +1,22 @@
+// @refresh reset
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Brain, Activity, ClipboardList, Zap,
   Search, Code, LayoutGrid, User, Compass,
-  MessageSquare, BarChart3, RefreshCw, Microscope, HeartPulse
+  MessageSquare, BarChart3, RefreshCw, Microscope, HeartPulse,
+  PanelTopClose, PanelTopOpen, Command as CommandIcon, Ghost, Layers3
 } from 'lucide-react';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import { useVault } from '@/lib/vault-context';
 import { getAllDiagnosisSpecs } from '@/core/diagnosis/diagnosis-registry';
+import {
+  AUTOPILOT_LEVELS,
+  getAutopilotLevelLabel,
+  useOrchestrationAutopilotControl,
+} from '@/lib/hooks/use-orchestration-autopilot-control';
+
+export const NEXUS_COMMAND_PALETTE_OPEN_EVENT = 'nexus-command-palette:open';
 
 export interface Command {
   id: string;
@@ -21,7 +30,7 @@ export interface Command {
 
 export interface UseCommandPaletteReturn {
   isOpen: boolean;
-  open: () => void;
+  open: (prefill?: string) => void;
   close: () => void;
   toggle: () => void;
   commands: Command[];
@@ -43,26 +52,142 @@ const MODULE_ICONS: Record<string, typeof Brain> = {
   forge: Code,
 };
 
+export const MEMORY_PREFIX = 'Search my memory: ';
+const CONSULT_PREFIX_BY_MODULE: Record<ModuleId, string> = {
+  agnes: 'Ask Agnes: ',
+  titan: 'Ask Titan: ',
+  soma: 'Ask Soma: ',
+  ledger: 'Ask Ledger: ',
+  atlas: 'Ask Atlas: ',
+  scout: 'Ask Scout: ',
+  forge: 'Ask Forge: ',
+  bridge: 'Ask Bridge: ',
+  nexus: 'Ask Nexus: ',
+};
+
+export interface NexusShellQuickAction {
+  id: 'open_palette' | 'search_memory' | 'daily_brief' | 'run_synthesis' | 'toggle_thread_panel';
+  label: string;
+  shortLabel: string;
+  icon: typeof Brain;
+  execute: () => void;
+  ariaLabel?: string;
+  isActive?: boolean;
+  isDisabled?: boolean;
+}
+
+interface CommandPaletteOpenDetail {
+  prefill?: string;
+}
+
+export function openNexusCommandPalette(prefill?: string) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<CommandPaletteOpenDetail>(NEXUS_COMMAND_PALETTE_OPEN_EVENT, {
+    detail: prefill ? { prefill } : undefined,
+  }));
+}
+
+export function createNexusShellQuickActions(options: {
+  onOpenPalette?: () => void;
+  onOpenMemorySearch?: () => void;
+  onExpandBrief?: () => void;
+  onSynthesisRefresh?: () => void;
+  onToggleThreadPanel?: () => void;
+  isThreadPanelVisible?: boolean;
+  dailyBriefLabel?: string;
+}): NexusShellQuickAction[] {
+  const actions: NexusShellQuickAction[] = [];
+
+  if (options.onOpenPalette) {
+    actions.push({
+      id: 'open_palette',
+      label: 'Command palette',
+      shortLabel: 'Palette',
+      icon: CommandIcon,
+      execute: options.onOpenPalette,
+      ariaLabel: 'Open command palette',
+    });
+  }
+
+  if (options.onOpenMemorySearch) {
+    actions.push({
+      id: 'search_memory',
+      label: 'Memory search',
+      shortLabel: 'Memory',
+      icon: Search,
+      execute: options.onOpenMemorySearch,
+      ariaLabel: 'Open memory search',
+    });
+  }
+
+  if (options.onExpandBrief) {
+    actions.push({
+      id: 'daily_brief',
+      label: options.dailyBriefLabel ?? 'Daily brief',
+      shortLabel: options.dailyBriefLabel ?? 'Brief',
+      icon: RefreshCw,
+      execute: options.onExpandBrief,
+      ariaLabel: options.dailyBriefLabel ?? 'Show daily brief',
+    });
+  }
+
+  if (options.onSynthesisRefresh) {
+    actions.push({
+      id: 'run_synthesis',
+      label: 'Run synthesis',
+      shortLabel: 'Synthesis',
+      icon: BarChart3,
+      execute: options.onSynthesisRefresh,
+      ariaLabel: 'Run cross-domain analysis',
+    });
+  }
+
+  if (options.onToggleThreadPanel) {
+    const isVisible = options.isThreadPanelVisible ?? true;
+    actions.push({
+      id: 'toggle_thread_panel',
+      label: isVisible ? 'Hide shell thread' : 'Show shell thread',
+      shortLabel: isVisible ? 'Hide thread' : 'Show thread',
+      icon: isVisible ? PanelTopClose : PanelTopOpen,
+      execute: options.onToggleThreadPanel,
+      ariaLabel: isVisible ? 'Hide shell thread monitor' : 'Show shell thread monitor',
+      isActive: isVisible,
+    });
+  }
+
+  return actions;
+}
+
 export function useCommandPalette(options?: {
   onSynthesisRefresh?: () => void;
   onMemorySearch?: (query: string) => void;
   onAskModule?: (moduleId: string, question: string) => void;
   onOpenAuth?: (moduleId: ModuleId) => void;
   onExpandBrief?: () => void;
+  onOpenOperations?: () => void;
+  onClearSession?: () => void;
 }): UseCommandPaletteReturn {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const navigate = useNavigate();
   const vault = useVault();
+  const {
+    autopilotLevel,
+    persistAutopilotLevel,
+  } = useOrchestrationAutopilotControl();
 
-  const open = useCallback(() => { setIsOpen(true); setSearch(''); setSelectedIndex(0); }, []);
+  const open = useCallback((prefill = '') => {
+    setIsOpen(true);
+    setSearch(prefill);
+    setSelectedIndex(0);
+  }, []);
   const close = useCallback(() => { setIsOpen(false); setSearch(''); }, []);
   const toggle = useCallback(() => { setIsOpen(prev => !prev); setSearch(''); setSelectedIndex(0); }, []);
 
   // Keyboard shortcut handler
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+    const keyHandler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         toggle();
@@ -72,9 +197,18 @@ export function useCommandPalette(options?: {
         close();
       }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isOpen, toggle, close]);
+    const openHandler = (event: Event) => {
+      const detail = event instanceof CustomEvent ? (event.detail as CommandPaletteOpenDetail | undefined) : undefined;
+      open(detail?.prefill ?? '');
+    };
+
+    window.addEventListener('keydown', keyHandler);
+    window.addEventListener(NEXUS_COMMAND_PALETTE_OPEN_EVENT, openHandler);
+    return () => {
+      window.removeEventListener('keydown', keyHandler);
+      window.removeEventListener(NEXUS_COMMAND_PALETTE_OPEN_EVENT, openHandler);
+    };
+  }, [isOpen, toggle, close, open]);
 
   const commands = useMemo<Command[]>(() => {
     const navCommands: Command[] = [
@@ -94,6 +228,19 @@ export function useCommandPalette(options?: {
         execute: () => { navigate('/profile'); close(); },
       },
     ];
+
+    if (options?.onOpenOperations) {
+      navCommands.push({
+        id: 'nav:nexus-ops',
+        category: 'navigate',
+        label: 'Open Nexus Operations',
+        icon: PanelTopOpen,
+        execute: () => {
+          options.onOpenOperations?.();
+          close();
+        },
+      });
+    }
 
     // Build module nav commands
     const moduleNav: ModuleId[] = ['agnes', 'titan', 'soma', 'ledger', 'atlas', 'scout', 'forge'];
@@ -153,6 +300,34 @@ export function useCommandPalette(options?: {
       },
     ];
 
+    if (options?.onClearSession) {
+      systemCommands.push({
+        id: 'sys:clear_link',
+        category: 'system',
+        label: 'Clear Nexus Link',
+        icon: RefreshCw,
+        execute: () => {
+          options.onClearSession?.();
+          close();
+        },
+      });
+    }
+
+    for (const level of AUTOPILOT_LEVELS) {
+      const levelLabel = getAutopilotLevelLabel(level);
+      const currentSuffix = level === autopilotLevel ? ' (Current)' : '';
+      systemCommands.push({
+        id: `sys:automation:${level}`,
+        category: 'system',
+        label: `Set automation to ${levelLabel}${currentSuffix}`,
+        icon: level === 5 ? Ghost : Layers3,
+        execute: () => {
+          void persistAutopilotLevel(level);
+          close();
+        },
+      });
+    }
+
     // Diagnosis commands — one per registered specialization
     const diagnosisSpecs = getAllDiagnosisSpecs();
     for (const spec of diagnosisSpecs) {
@@ -184,14 +359,13 @@ export function useCommandPalette(options?: {
         label,
         icon: MessageSquare,
         execute: () => {
-          options?.onAskModule?.(id, '');
-          close();
+          setSearch(CONSULT_PREFIX_BY_MODULE[id]);
         },
       });
     });
 
     return [...navCommands, ...systemCommands, ...aiCommands];
-  }, [navigate, close, vault, options]);
+  }, [autopilotLevel, close, navigate, options, persistAutopilotLevel, vault]);
 
   const filteredCommands = useMemo(() => {
     if (!search.trim()) return commands;
@@ -208,13 +382,23 @@ export function useCommandPalette(options?: {
   }, [filteredCommands.length]);
 
   const executeSelected = useCallback(() => {
-    // Two-step memory search: if the query starts with the prefix, extract the
-    // search term and fire onMemorySearch instead of running a normal command.
-    const MEMORY_PREFIX = 'Search my memory: ';
     if (search.startsWith(MEMORY_PREFIX)) {
       const searchTerm = search.slice(MEMORY_PREFIX.length).trim();
       if (searchTerm) {
         options?.onMemorySearch?.(searchTerm);
+      }
+      close();
+      return;
+    }
+
+    const consultEntry = (Object.entries(CONSULT_PREFIX_BY_MODULE) as Array<[ModuleId, string]>).find(
+      ([, prefix]) => search.startsWith(prefix),
+    );
+    if (consultEntry) {
+      const [moduleId, prefix] = consultEntry;
+      const question = search.slice(prefix.length).trim();
+      if (question) {
+        options?.onAskModule?.(moduleId, question);
       }
       close();
       return;

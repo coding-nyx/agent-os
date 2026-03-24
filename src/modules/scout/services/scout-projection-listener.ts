@@ -6,7 +6,10 @@
  */
 
 import { Spine } from '@/lib/spine/spine-event-bus';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import type { ScoutDigest, ScoutKnowledgeNode } from '../types';
+import { ScoutExternalSignalService } from './scout-external-signal-service';
 
 let unsubscribes: Array<() => void> = [];
 
@@ -37,10 +40,26 @@ export function registerScoutProjectionListeners() {
 
   // Handle new findings synthesized - trigger a re-sync
   const sub2 = Spine.subscribe('KNOWLEDGE_SYNTHESIZED', async (event) => {
-     // NOTE: KNOWLEDGE_SYNTHESIZED event could also carry metrics
-     // to avoid re-decryption here. For now, we rely on profile updates
-     // which are usually triggered after node additions in workflows.
+    const data = event.data as { userId?: string; node?: ScoutKnowledgeNode };
+    if (!data?.userId || !data.node) return;
+
+    try {
+      await ScoutExternalSignalService.syncKnowledgeNode(getNexusDataLayer(), data.userId, data.node);
+    } catch (err) {
+      console.error('[ScoutProjectionListener] Failed to sync knowledge node into memory surfaces:', err);
+    }
   });
 
-  unsubscribes.push(sub1, sub2);
+  const sub3 = Spine.subscribe('DIGEST_GENERATED', async (event) => {
+    const data = event.data as { userId?: string; digest?: Pick<ScoutDigest, 'id' | 'generatedAt' | 'generationType' | 'summary' | 'topClaims' | 'trendingInterests' | 'synthesizedContent'> };
+    if (!data?.userId || !data.digest) return;
+
+    try {
+      await ScoutExternalSignalService.syncDigest(getNexusDataLayer(), data.userId, data.digest);
+    } catch (err) {
+      console.error('[ScoutProjectionListener] Failed to sync digest into memory surfaces:', err);
+    }
+  });
+
+  unsubscribes.push(sub1, sub2, sub3);
 }

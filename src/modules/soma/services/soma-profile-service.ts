@@ -5,6 +5,7 @@
 
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
+import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
 import type { SomaProfile, VitalReading } from '@/lib/types';
 
 const COLLECTION = 'soma_profiles';
@@ -378,6 +379,19 @@ export async function saveSomaProfile(
   } catch (error) {
     console.error('[SomaProfileService] Failed to save soma profile:', error);
     throw error; // Re-throw so callers know the save failed
+  }
+
+  try {
+    await syncAliveEntities(
+      dataLayer,
+      bootstrapAliveEntities({
+        vitalReadings: normalized.vitalReadings,
+        physicalAssessments: normalized.physicalAssessments,
+      }),
+      { uid: userId },
+    );
+  } catch (error) {
+    console.error('[SomaProfileService] Failed to sync alive entities:', error);
   }
 }
 

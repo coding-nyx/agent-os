@@ -4,6 +4,7 @@ import { useDataLayer } from '@/lib/data-layer/provider';
 import { useNavigate } from 'react-router-dom';
 import type { NotificationAction, NotificationPriority } from '@/lib/notifications/types';
 import { ActionRegistry } from './action-registry';
+import { ReminderOutcomeService } from './reminder-outcome-service';
 
 export interface InboxRecord {
   id: string;
@@ -76,9 +77,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // 2. Handle Actions
   const performAction = useCallback(async (action: NotificationAction, notificationId?: string) => {
+    const record = notificationId ? inbox.find(r => r.id === notificationId) : undefined;
     if (notificationId) {
       // Mark as read when an action is performed
-      const record = inbox.find(r => r.id === notificationId);
       if (record && !record.read) {
         const inboxPath = `users/${user?.uid}/notification_inbox`;
         await dataLayer.updateDocument(inboxPath, notificationId, { read: true, updatedAt: new Date().toISOString() });
@@ -94,6 +95,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       },
       userId: user?.uid
     });
+
+    if (record) {
+      await ReminderOutcomeService.recordOutcome(dataLayer, user?.uid, record, 'completed');
+    }
 
     if (action.type === 'DISMISS' && notificationId) {
       setToasts(prev => prev.filter(t => t.id !== notificationId));
@@ -123,8 +128,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const markAsRead = useCallback(async (id: string) => {
     if (!user) return;
     const inboxPath = `users/${user.uid}/notification_inbox`;
+    const record = inbox.find((item) => item.id === id);
     await dataLayer.updateDocument(inboxPath, id, { read: true, updatedAt: new Date().toISOString() });
-  }, [user, dataLayer]);
+    if (record) {
+      await ReminderOutcomeService.recordOutcome(dataLayer, user.uid, record, 'skipped');
+    }
+  }, [dataLayer, inbox, user]);
 
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
@@ -133,6 +142,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     
     await Promise.all(unread.map(r => 
       dataLayer.updateDocument(inboxPath, r.id, { read: true, updatedAt: new Date().toISOString() })
+    ));
+    await Promise.all(unread.map((record) =>
+      ReminderOutcomeService.recordOutcome(dataLayer, user.uid, record, 'skipped'),
     ));
   }, [user, inbox, dataLayer]);
 

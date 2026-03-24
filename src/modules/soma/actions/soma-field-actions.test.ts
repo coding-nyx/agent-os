@@ -1,9 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   computeReadinessScore,
+  emitClearanceCoordinationEvents,
+  getClearanceChangeAction,
+  isRestrictiveClearanceStatus,
   type ComputeReadinessPayload,
   type ReadinessResult,
 } from './soma-field-actions';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 // ============================================================================
 // computeReadinessScore — pure function, no mocks needed
@@ -211,5 +215,83 @@ describe('computeReadinessScore', () => {
   it('never returns a score below 0', () => {
     const result = computeReadinessScore({ overrides: { vitals: -50, sleep: -50, energy: -50, stress: -50 } });
     expect(result.score).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('clearance coordination surfaces', () => {
+  const emitSpy = vi.spyOn(Spine, 'emit');
+
+  beforeEach(() => {
+    emitSpy.mockClear();
+    emitSpy.mockImplementation((
+      (payload: Parameters<typeof Spine.emit>[0]) => payload
+    ) as typeof Spine.emit);
+  });
+
+  afterEach(() => {
+    emitSpy.mockClear();
+  });
+
+  it('treats conditional and denied clearances as restrictive firewall states', () => {
+    expect(isRestrictiveClearanceStatus('conditional')).toBe(true);
+    expect(isRestrictiveClearanceStatus('denied')).toBe(true);
+    expect(isRestrictiveClearanceStatus('granted')).toBe(false);
+    expect(getClearanceChangeAction('conditional')).toBe('revoked');
+    expect(getClearanceChangeAction('denied')).toBe('revoked');
+    expect(getClearanceChangeAction('granted')).toBe('issued');
+  });
+
+  it('emits Titan-facing block signals for restrictive clearances', () => {
+    emitClearanceCoordinationEvents({
+      id: 'cl-denied',
+      activity: 'high_intensity',
+      status: 'conditional',
+      reason: 'Recent recovery concern',
+      issuedAt: '2024-01-01T00:00:00.000Z',
+    });
+
+    expect(emitSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'CLEARANCE_DENIED',
+      source: 'soma',
+      target: 'titan',
+      data: expect.objectContaining({
+        activity: 'high_intensity',
+        status: 'conditional',
+      }),
+    }));
+    expect(emitSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'BLOCK_HIGH_INTENSITY',
+      source: 'soma',
+      target: 'titan',
+      data: expect.objectContaining({
+        clearanceId: 'cl-denied',
+      }),
+    }));
+    expect(emitSpy).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'RECOVERY_AVAILABLE' }));
+  });
+
+  it('emits recovery-available coordination when clearance is granted', () => {
+    emitClearanceCoordinationEvents({
+      id: 'cl-granted',
+      activity: 'tempo_run',
+      status: 'granted',
+      reason: 'No contraindications detected',
+      issuedAt: '2024-01-01T00:00:00.000Z',
+    });
+
+    expect(emitSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'CLEARANCE_GRANTED',
+      source: 'soma',
+      target: 'titan',
+    }));
+    expect(emitSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'RECOVERY_AVAILABLE',
+      source: 'soma',
+      target: 'titan',
+      data: expect.objectContaining({
+        trigger: 'clearance_granted',
+        clearanceId: 'cl-granted',
+      }),
+    }));
   });
 });

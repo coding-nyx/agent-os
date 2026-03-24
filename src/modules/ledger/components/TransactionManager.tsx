@@ -109,6 +109,7 @@ interface TransactionManagerProps {
 type SortField = 'date' | 'amount' | 'description' | 'category';
 type SortOrder = 'asc' | 'desc';
 
+// @schema-guard: allow-hardcoded Transaction CRUD uses a local form schema with runtime category options.
 const TRANSACTION_SCHEMA: FieldSchema = {
   version: '1.0.0',
   coreFields: [

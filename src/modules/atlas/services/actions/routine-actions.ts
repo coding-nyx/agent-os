@@ -7,7 +7,8 @@ import {
   TemporalReview,
   HabitWeekSummary,
   GoalWeekProgress,
-  AtlasTask
+  AtlasTask,
+  AtlasReviewBlueprint,
 } from '../atlas-profile-service';
 import {
   loadProfile,
@@ -153,6 +154,7 @@ export const routineActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
       insights: Array.isArray(payload?.insights) ? payload.insights : [],
       driftScore: typeof payload?.driftScore === 'number' ? payload.driftScore : undefined,
       nextPeriodFocus: typeof payload?.nextPeriodFocus === 'string' ? payload.nextPeriodFocus : '',
+      blueprint: payload?.blueprint as AtlasReviewBlueprint | undefined,
       notes: typeof payload?.notes === 'string' ? payload.notes : undefined,
       createdAt: now
     };

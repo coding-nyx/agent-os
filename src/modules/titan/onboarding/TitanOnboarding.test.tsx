@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { TitanOnboarding } from './TitanOnboarding';
 import { useAI } from '@/llm-engine/ai-context';
 import { useAuth } from '@/lib/auth-context';
@@ -45,17 +46,28 @@ describe('TitanOnboarding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useAI as any).mockReturnValue({
-      streamMessage: mockStreamMessage
+      streamMessage: mockStreamMessage,
+      generateJSON: vi.fn(),
+      isInitialized: false,
     });
     (useAuth as any).mockReturnValue({
       user: { uid: 'test-user' }
     });
   });
 
-  it('renders privacy selection buttons and they are interactive', async () => {
+  async function openGuidedMode() {
+    await userEvent.click(screen.getByRole('button', { name: /guided/i }));
+  }
+
+  it('renders guided privacy selection after the user chooses guided onboarding', async () => {
     render(
       <TitanOnboarding onComplete={mockOnComplete} />
     );
+
+    expect(screen.getByText(/^Titan$/i)).toBeInTheDocument();
+    expect(screen.getByText(/Choose onboarding style/i)).toBeInTheDocument();
+
+    await openGuidedMode();
 
     // Verify visual elements
     expect(screen.getByText(/Select Data Sharing Level/i)).toBeInTheDocument();
@@ -79,20 +91,21 @@ describe('TitanOnboarding', () => {
       });
   });
 
-  it('sets correct theme color and icons based on component spec', () => {
+  it('renders the Titan shell header from the unified onboarding flow', () => {
     render(
       <TitanOnboarding onComplete={mockOnComplete} />
     );
 
-    // In our test environment, we check for components within GuidedIntakeFrame
-    // The frame title should be Titan Guided Intake
-    expect(screen.getByText(/Titan Guided Intake/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Titan$/i)).toBeInTheDocument();
+    expect(screen.getByText(/Capture fitness baseline so Titan can generate personalised programming/i)).toBeInTheDocument();
   });
 
   it('transitions to chat after privacy selection', async () => {
     render(
       <TitanOnboarding onComplete={mockOnComplete} />
     );
+
+    await openGuidedMode();
 
     fireEvent.click(screen.getByText(/Basic Data/i));
 
@@ -117,9 +130,11 @@ describe('TitanOnboarding', () => {
       <TitanOnboarding onComplete={mockOnComplete} />
     );
 
+    await openGuidedMode();
+
     fireEvent.click(screen.getByText(/Basic Data/i));
 
-    const input = screen.getByTestId('chat-input');
+    const input = await screen.findByTestId('chat-input');
     fireEvent.change(input, { target: { value: "I work out 5 times per week" } });
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
@@ -152,9 +167,11 @@ describe('TitanOnboarding', () => {
       <TitanOnboarding onComplete={mockOnComplete} />
     );
 
+    await openGuidedMode();
+
     fireEvent.click(screen.getByText(/Basic Data/i));
 
-    const input = screen.getByTestId('chat-input');
+    const input = await screen.findByTestId('chat-input');
     fireEvent.change(input, { target: { value: "I eat well, work out 5 times a week, and want to recomp. Let's finish." } });
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
@@ -163,7 +180,7 @@ describe('TitanOnboarding', () => {
     });
   });
 
-  it('skips privacy selection if initialProfile already has privacyLevel', () => {
+  it('skips privacy selection in guided mode if initialProfile already has privacyLevel', async () => {
     const initialProfile = {
       privacyLevel: 'complete',
       onboardingComplete: false,
@@ -184,7 +201,9 @@ describe('TitanOnboarding', () => {
       />
     );
 
+    await openGuidedMode();
+
     expect(screen.queryByText(/Select Data Sharing Level/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/assistant: Onboarding initialized/i)).toBeInTheDocument();
+    expect(await screen.findByText(/assistant: Onboarding initialized/i)).toBeInTheDocument();
   });
 });

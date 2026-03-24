@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import type { Message, MessageContent } from '../types';
 import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
 import type { StructuredResponse } from '@/lib/ai-adapters/engine-types';
+import type { ParsedCommandEnvelope } from '@/lib/ai-adapters/engine-types';
 import { NexusHandoffService } from '../services/nexus-handoff-service';
 import { NexusRoutingService } from '../services/nexus-routing-service';
 import { Spine } from '../spine/spine-event-bus';
@@ -65,7 +66,8 @@ export function useHandoffProcessor({
    */
   const classifyAndRoute = useCallback(async (
     content: string,
-    recentMessages: Message[]
+    recentMessages: Message[],
+    parsedCommand?: ParsedCommandEnvelope | null,
   ): Promise<RoutingResult> => {
     // Specialized modules handle their own routing; skip the LLM classifier entirely
     if (moduleId === 'nexus' || moduleId === 'scout') return { shouldDelegate: false };
@@ -76,7 +78,7 @@ export function useHandoffProcessor({
     }
 
     // 1. FAST PATH: Keyword-based classification
-    const fastDecision = NexusRoutingService.classifyIntent(content);
+    const fastDecision = NexusRoutingService.classifyIntent(content, parsedCommand);
     if (fastDecision.target !== 'nexus' && fastDecision.target !== moduleId && fastDecision.confidence >= 0.7) {
       return {
         shouldDelegate: true,

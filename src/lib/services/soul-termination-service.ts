@@ -1,7 +1,11 @@
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { BatchOperation } from '@/lib/data-layer/index';
-import { getUserDataDeletionTargets } from './user-data-registry';
+import { useOrchestrationStore } from '@/lib/stores/orchestration-store';
+import { ALIVE_ENTITY_COLLECTION } from './alive-entity-service';
 import { CoreProfileService } from './core-profile-service';
+import { ORCHESTRATION_EXECUTION_SUBCOLLECTION, ORCHESTRATION_PROPOSAL_SUBCOLLECTION, ORCHESTRATION_THREAD_SUBCOLLECTION } from './orchestration-persistence-service';
+import { SILENT_HISTORY_SUBCOLLECTION } from './orchestration-history-service';
+import { getUserDataDeletionTargets } from './user-data-registry';
 
 const LOCAL_STORAGE_PREFIXES = ['nexus_', 'agnes_'];
 const LOCAL_STORAGE_SUBSTRINGS = ['integrity'];
@@ -10,8 +14,19 @@ const SESSION_STORAGE_KEYS = ['nexus_guest_active', 'nexus_vault_session', 'nexu
 /** Known subcollections keyed by parent collection name. */
 const KNOWN_SUBCOLLECTIONS: Record<string, string[]> = {
   semantic_memory: ['facts'],
-  spine_events: ['events'],
-  users: ['modules', 'notification_inbox', 'notification_schedules', 'notification_occurrences', 'insights'],
+  spine_events: ['events', 'spec_events'],
+  users: [
+    'modules',
+    'notification_inbox',
+    'notification_schedules',
+    'notification_occurrences',
+    'insights',
+    ALIVE_ENTITY_COLLECTION,
+    ORCHESTRATION_PROPOSAL_SUBCOLLECTION,
+    ORCHESTRATION_EXECUTION_SUBCOLLECTION,
+    ORCHESTRATION_THREAD_SUBCOLLECTION,
+    SILENT_HISTORY_SUBCOLLECTION,
+  ],
   atlas_journals: ['entries'],
   soma_diagnoses: ['sessions'],
   scout_knowledge: ['nodes'],
@@ -78,15 +93,18 @@ export const SoulTerminationService = {
   },
 
   clearLocalArtifacts(): void {
+    useOrchestrationStore.getState().resetShell();
+
     if (typeof window === 'undefined') return;
 
     SESSION_STORAGE_KEYS.forEach((key) => sessionStorage.removeItem(key));
 
-    Object.keys(localStorage).forEach((key) => {
-      if (shouldRemoveLocalStorageKey(key)) {
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (key && shouldRemoveLocalStorageKey(key)) {
         localStorage.removeItem(key);
       }
-    });
+    }
   },
 
   async terminateSoul(uid: string): Promise<void> {

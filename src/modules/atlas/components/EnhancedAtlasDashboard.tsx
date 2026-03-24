@@ -358,6 +358,7 @@ export function EnhancedAtlasDashboard({
               onAddTask={actions.onCreateTask}
               onAddHabit={actions.onCreateHabit}
               onAddGoal={actions.onCreateGoal}
+              preferenceMode={profile?.preferenceMode}
               disabled={isLocked}
             />
 
@@ -727,6 +728,7 @@ export function EnhancedAtlasDashboard({
         {activeTab === 'insights' && (
           <div className="space-y-6">
             <WeeklyReviewCard
+              profile={profile}
               soul={soul}
               energyWave={energyWave}
               scheduledTasks={profile?.scheduledTasks ?? []}
@@ -783,6 +785,29 @@ export function EnhancedAtlasDashboard({
                           </p>
                         </div>
                       </div>
+
+                      {review.blueprint && (
+                        <div className="grid gap-3 sm:grid-cols-2 mb-4">
+                          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                            <span className="text-[10px] text-white/40 uppercase tracking-wider">Blueprint Capacity</span>
+                            <p className="mt-2 text-sm font-bold text-white/85">
+                              {review.blueprint.capacity.safeCapacity} safe / {review.blueprint.capacity.plannedDemand} demand
+                            </p>
+                            <p className="mt-1 text-[11px] text-white/35">
+                              {review.blueprint.capacity.recommendedCapacityPct}% capacity · {review.blueprint.capacity.state}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                            <span className="text-[10px] text-white/40 uppercase tracking-wider">Projected Focus</span>
+                            <p className="mt-2 text-sm font-bold text-white/85">
+                              {review.blueprint.projection.nextPeriodFocus}
+                            </p>
+                            <p className="mt-1 text-[11px] text-white/35">
+                              {review.blueprint.projection.summary}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       
                       {review.insights && review.insights.length > 0 && (
                           <div className="mt-4 pt-4 border-t border-white/10">
@@ -793,6 +818,20 @@ export function EnhancedAtlasDashboard({
                                   ))}
                               </ul>
                           </div>
+                      )}
+
+                      {review.blueprint?.projection?.recommendedActions?.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                          <span className="text-[10px] text-white/40 uppercase tracking-wider">Recommended Actions</span>
+                          <ul className="mt-2 space-y-2">
+                            {review.blueprint.projection.recommendedActions.slice(0, 3).map((action: any) => (
+                              <li key={action.id} className="text-xs text-white/55">
+                                <span className="font-semibold text-white/80">{action.title}</span>
+                                <span className="text-white/35"> — {action.detail}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -809,9 +848,8 @@ export function EnhancedAtlasDashboard({
       <WeeklyReviewModal
         isOpen={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}
+        profile={profile}
         soul={soul}
-        energyWave={energyWave}
-        scheduledTasks={profile?.scheduledTasks ?? []}
         predictiveDisplay={predictiveDisplay}
         onCompleteReview={actions.onSaveWeeklyReview}
       />

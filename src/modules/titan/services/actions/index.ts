@@ -17,6 +17,11 @@ export function registerTitanActions() {
   if (registered) return;
   registered = true;
 
+  ActionHub.registerProvider('titan', {
+    capabilities: ['fitness-planning', 'medical-review'],
+    latencyTier: 'balanced',
+  });
+
   ActionHub.registerMultiple('titan', {
     ...coreHandlers,
     ...biomarkerHandlers,

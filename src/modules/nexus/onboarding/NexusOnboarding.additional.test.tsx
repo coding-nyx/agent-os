@@ -1,8 +1,8 @@
 /**
  * NexusOnboarding — additional critical-path tests (supplement, not replacement)
  *
- * T-04 — Fast-track: disabled when both fields empty
- * T-05 — Fast-track: disabled when only one field filled
+ * T-04 — Fast-track: validates required preferred name before submit
+ * T-05 — Fast-track: pronouns alone do not satisfy required identity baseline
  * T-06 — Fast-track: calls onComplete with correct payload
  * T-07 — useCommandPalette: ⌘K opens palette, Escape closes it
  * T-08 — useCommandPalette: locked module execute calls onOpenAuth, not navigate (BUG-C1 regression)
@@ -59,8 +59,9 @@ vi.mock('react-router-dom', () => ({
 vi.mock('@/lib/auth-context', () => ({ useAuth: vi.fn() }));
 vi.mock('@/lib/vault-context', () => ({ useVault: vi.fn() }));
 vi.mock('@/lib/global-soul-context', () => ({ useGlobalSoul: vi.fn() }));
+vi.mock('@/lib/data-layer/provider', () => ({ useDataLayer: vi.fn(() => ({})) }));
 
-// AI context (needed indirectly by useGuidedChatIntake if not mocked)
+// AI context (needed indirectly by useGuidedChatIntake / useOnboardingSchema)
 vi.mock('@/llm-engine/ai-context', () => ({ useAI: vi.fn() }));
 
 // Spine event bus — getRecentEvents must return an array
@@ -108,8 +109,10 @@ import { useNexusSynthesis } from '../hooks/useNexusSynthesis';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useOrchestrationStore } from '@/lib/stores/orchestration-store';
 import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
+import { useAI } from '@/llm-engine/ai-context';
 
 // ─── Shared fixture builders ───────────────────────────────────────────────────
 
@@ -150,62 +153,69 @@ describe('NexusOnboarding — fast-track panel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    });
 
     (useAuth as any).mockReturnValue({
       user: { uid: 'test-user' },
+    });
+    (useAI as any).mockReturnValue({
+      generateJSON: vi.fn(),
+      isInitialized: false,
     });
 
     (useIntakeOrchestrator as any).mockReturnValue(INTAKE_SPEC_STUB);
     (useGuidedChatIntake as any).mockReturnValue({ ...INTAKE_RESULT_STUB });
   });
 
-  function renderOnboarding() {
-    return render(
+  async function renderOnboarding() {
+    render(
       <NexusOnboarding
         profile={null}
         isSubmitting={false}
         onComplete={mockOnComplete}
       />
     );
+    await userEvent.click(screen.getByRole('button', { name: /express/i }));
   }
 
   // ── T-04 ───────────────────────────────────────────────────────────────────
-  it('T-04 — Execute button is disabled when both name and pronouns are empty', () => {
-    renderOnboarding();
+  it('T-04 — preferred name is required before express submit can complete', async () => {
+    const user = userEvent.setup();
+    await renderOnboarding();
 
-    const btn = screen.getByRole('button', { name: /execute/i });
-    expect(btn).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: /complete/i }));
+
+    expect(screen.getByText('Required')).toBeInTheDocument();
+    expect(mockOnComplete).not.toHaveBeenCalled();
   });
 
   // ── T-05 ───────────────────────────────────────────────────────────────────
-  it('T-05 — Execute button stays disabled when only one field is filled', async () => {
+  it('T-05 — pronouns alone do not satisfy the express identity requirement', async () => {
     const user = userEvent.setup();
-    renderOnboarding();
+    await renderOnboarding();
 
-    const nameInput = screen.getByPlaceholderText(/preferred name/i);
-    const pronounsInput = screen.getByPlaceholderText(/pronouns/i);
-    const btn = screen.getByRole('button', { name: /execute/i });
-
-    // Fill name, leave pronouns empty
-    await user.type(nameInput, 'Alice');
-    expect(btn).toBeDisabled();
-
-    // Clear name, fill pronouns
-    await user.clear(nameInput);
+    const pronounsInput = screen.getByLabelText(/pronouns/i);
     await user.type(pronounsInput, 'she/her');
-    expect(btn).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: /complete/i }));
+
+    expect(screen.getByText('Required')).toBeInTheDocument();
+    expect(mockOnComplete).not.toHaveBeenCalled();
   });
 
   // ── T-06 ───────────────────────────────────────────────────────────────────
-  it('T-06 — Execute button calls onComplete with correct payload when both fields filled', async () => {
+  it('T-06 — express submit calls onComplete with correct payload when identity fields are filled', async () => {
     const user = userEvent.setup();
     mockOnComplete.mockResolvedValue(undefined);
-    renderOnboarding();
+    await renderOnboarding();
 
-    await user.type(screen.getByPlaceholderText(/preferred name/i), 'Alice');
-    await user.type(screen.getByPlaceholderText(/pronouns/i), 'she/her');
+    await user.type(screen.getByLabelText(/preferred name/i), 'Alice');
+    await user.type(screen.getByLabelText(/pronouns/i), 'she/her');
 
-    await user.click(screen.getByRole('button', { name: /execute/i }));
+    await user.click(screen.getByRole('button', { name: /complete/i }));
 
     await waitFor(() => {
       expect(mockOnComplete).toHaveBeenCalledWith(
@@ -226,8 +236,14 @@ describe('useCommandPalette', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockReset();
+    (useAuth as any).mockReturnValue({ user: null, isGuest: false });
     // Default vault: all modules accessible
     (useVault as any).mockReturnValue(makeVaultMock({ isModuleAccessible: vi.fn().mockReturnValue(true) }));
+    useOrchestrationStore.setState({
+      autopilotLevel: 2,
+      historyMode: 'standard',
+      activeThreadId: null,
+    });
   });
 
   // ── T-07 ───────────────────────────────────────────────────────────────────
@@ -280,6 +296,47 @@ describe('useCommandPalette', () => {
 
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(onOpenAuth).toHaveBeenCalledWith('agnes');
+  });
+
+  it('T-08b — consult command captures the typed question before execution', () => {
+    const onAskModule = vi.fn();
+    const { result } = renderHook(() =>
+      useCommandPalette({ onAskModule })
+    );
+
+    const agnesConsult = result.current.commands.find((command) => command.id === 'ai:consult:agnes');
+    expect(agnesConsult).toBeDefined();
+
+    act(() => {
+      agnesConsult!.execute();
+    });
+
+    expect(result.current.search).toBe('Ask Agnes: ');
+
+    act(() => {
+      result.current.setSearch('Ask Agnes: help me understand my current stress spiral');
+    });
+
+    act(() => {
+      result.current.executeSelected();
+    });
+
+    expect(onAskModule).toHaveBeenCalledWith('agnes', 'help me understand my current stress spiral');
+  });
+
+  it('adds automation commands that update the autopilot level', () => {
+    const { result } = renderHook(() => useCommandPalette());
+
+    const ghostCommand = result.current.commands.find((command) => command.id === 'sys:automation:5');
+    expect(ghostCommand).toBeDefined();
+    expect(ghostCommand?.label).toMatch(/Set automation to L5 Ghost/i);
+
+    act(() => {
+      ghostCommand!.execute();
+    });
+
+    expect(useOrchestrationStore.getState().autopilotLevel).toBe(5);
+    expect(useOrchestrationStore.getState().historyMode).toBe('silent');
   });
 });
 

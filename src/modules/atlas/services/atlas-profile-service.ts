@@ -1,6 +1,7 @@
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
 import type {
   AtlasProfile,
   AtlasGoal,
@@ -18,7 +19,8 @@ import type {
   HabitRecord,
   EnergyWavePoint,
   RecoveryWindow,
-  TemporalReview
+  TemporalReview,
+  AtlasReviewBlueprint
 } from '@/lib/types';
 
 export type {
@@ -38,7 +40,8 @@ export type {
   HabitRecord,
   EnergyWavePoint,
   RecoveryWindow,
-  TemporalReview
+  TemporalReview,
+  AtlasReviewBlueprint
 } from '@/lib/types';
 
 const GUEST_ATLAS_KEY = 'nexus_atlas_profile_guest';
@@ -214,6 +217,18 @@ export async function saveAtlasProfile(profile: AtlasProfile, { userId, encrypti
       });
     } catch (error) {
       console.error('[AtlasProfileService] Failed to save atlas profile:', error);
+    }
+    try {
+      await syncAliveEntities(
+        dataLayer,
+        bootstrapAliveEntities({
+          goals: normalized.goals,
+          habits: normalized.habits,
+        }),
+        { uid: userId, pruneMissingWithinIncomingPrefixes: true },
+      );
+    } catch (error) {
+      console.error('[AtlasProfileService] Failed to sync alive entities:', error);
     }
     try {
       await GlobalProjectionService.updateCrossFunctionalState(userId, {

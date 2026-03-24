@@ -2,6 +2,11 @@ import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
 import { sanitizeJsonPayload } from '@/lib/ai-adapters/sanitize';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import type { Message } from '@/lib/ai-adapters/engine-types';
+import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
+import { AgentRegistryService } from '@/lib/agents/agent-registry';
+import { OrchestrationCacheService } from './orchestration-cache-service';
+import { AutonomyFeatureFlags } from './autonomy-feature-flags';
+import { OrchestrationRolloutService } from './orchestration-rollout-service';
 
 type SendMessageFn = (content: string, context: { systemPrompt: string; insights: string[]; summary: string; history: Message[] }) => Promise<{ response: StructuredResponse }>;
 // Each entry has a `weight` per keyword. Compound phrases (multi-word) score higher and
@@ -96,6 +101,46 @@ export interface RoutingDecision {
   reason: string;
 }
 
+function classifyMentionIntent(parsedCommand?: ParsedCommandEnvelope | null): RoutingDecision | null {
+  if (!parsedCommand?.mentions || parsedCommand.mentions.length === 0) return null;
+
+  const ownershipMention = parsedCommand.mentions.find((mention) => mention.disposition === 'ownership');
+  if (ownershipMention) {
+    return {
+      target: ownershipMention.moduleId,
+      confidence: ownershipMention.confidence,
+      reason: `mention:ownership:${ownershipMention.raw.toLowerCase()}`,
+    };
+  }
+
+  const consultativeMention = parsedCommand.mentions.find((mention) => mention.disposition === 'consultative');
+  if (consultativeMention) {
+    return {
+      target: 'nexus',
+      confidence: Math.max(0.72, consultativeMention.confidence),
+      reason: `mention:consult:${consultativeMention.moduleId}`,
+    };
+  }
+
+  const vocativeMention = parsedCommand.mentions.find((mention) => mention.disposition === 'vocative');
+  if (!vocativeMention) return null;
+
+  const targetedIntents = parsedCommand.intents.filter((intent) => intent.candidateModules.includes(vocativeMention.moduleId));
+  if (targetedIntents.some((intent) => intent.mutatesState)) {
+    return {
+      target: vocativeMention.moduleId,
+      confidence: Math.max(vocativeMention.confidence, parsedCommand.confidence ?? 0.62),
+      reason: `mention:vocative-owner:${vocativeMention.moduleId}`,
+    };
+  }
+
+  return {
+    target: 'nexus',
+    confidence: Math.max(0.68, vocativeMention.confidence - 0.08),
+    reason: `mention:vocative:${vocativeMention.moduleId}`,
+  };
+}
+
 const ROUTER_PROMPT = `
 You are Nexus, the intent router for the Nexus system.
 Classify the user's message into the single best target module.
@@ -131,48 +176,94 @@ function parseRoutingResponse(raw: string): RoutingDecision | null {
 }
 
 export const NexusRoutingService = {
-  classifyIntent(message: string): RoutingDecision {
-    const normalized = message.toLowerCase();
-
-    // Score every module — highest total weight wins, breaking ties by array order.
-    let best: { moduleId: ModuleId; score: number; topTerm: string } | null = null;
-
-    for (const route of KEYWORD_ROUTES) {
-      let score = 0;
-      let topTerm = '';
-
-      for (const { term, weight } of route.keywords) {
-        // Escape regex metacharacters in multi-word phrases (e.g. "fact-check")
-        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-        if (regex.test(normalized)) {
-          score += weight;
-          if (weight > (route.keywords.find(k => k.term === topTerm)?.weight ?? 0)) {
-            topTerm = term;
-          }
-        }
-      }
-
-      if (score > 0 && (!best || score > best.score)) {
-        best = { moduleId: route.moduleId, score, topTerm };
-      }
+  classifyIntentFromParsedCommand(parsedCommand?: ParsedCommandEnvelope | null): RoutingDecision | null {
+    if (!AutonomyFeatureFlags.isEnabled('parsedCommandRouting')) return null;
+    const mentionDecision = classifyMentionIntent(parsedCommand);
+    if (mentionDecision) {
+      return mentionDecision;
     }
 
+    const best = parsedCommand?.sharedRouteHints?.[0];
     if (best) {
-      // Scale confidence: single low-weight hit → 0.72, multiple/high-weight hits → up to 0.92
-      const confidence = Math.min(0.72 + (best.score - 1) * 0.08, 0.92);
       return {
         target: best.moduleId,
-        confidence,
-        reason: `matched:${best.topTerm}(${best.score})`
+        confidence: best.confidence,
+        reason: `command:${best.reason}`,
       };
     }
 
+    const primaryProvider = AgentRegistryService.resolvePrimaryProvider(
+      parsedCommand?.intents.flatMap((intent) => intent.capabilities) ?? [],
+      {
+        preferredModuleIds: parsedCommand?.intents.flatMap((intent) => intent.candidateModules) ?? [],
+      },
+    );
+    if (!primaryProvider || primaryProvider.moduleId === 'nexus') return null;
+
     return {
-      target: 'nexus',
-      confidence: 0.45,
-      reason: 'default_nexus'
+      target: primaryProvider.moduleId,
+      confidence: parsedCommand?.confidence ?? 0.62,
+      reason: `capability:${primaryProvider.id}`,
     };
+  },
+
+  classifyIntent(message: string, parsedCommand?: ParsedCommandEnvelope | null): RoutingDecision {
+    const cacheKey = [
+      message.trim().toLowerCase(),
+      parsedCommand?.parserVersion ?? 'no-parser',
+      parsedCommand?.mentions?.map((mention) => `${mention.moduleId}:${mention.disposition}:${mention.confidence}`).join(',') ?? 'no-mentions',
+      parsedCommand?.sharedRouteHints.map((hint) => `${hint.moduleId}:${hint.confidence}:${hint.reason}`).join(',') ?? 'no-hints',
+      parsedCommand?.intents.map((intent) => `${intent.intentType}:${intent.capabilities.join('+')}`).join(',') ?? 'no-intents',
+    ].join('|');
+
+    const decision: RoutingDecision = OrchestrationCacheService.remember('routing-decision', cacheKey, () => {
+      const parsedDecision = this.classifyIntentFromParsedCommand(parsedCommand);
+      if (parsedDecision) {
+        return parsedDecision;
+      }
+
+      const normalized = message.toLowerCase();
+
+      let best: { moduleId: ModuleId; score: number; topTerm: string } | null = null;
+
+      for (const route of KEYWORD_ROUTES) {
+        let score = 0;
+        let topTerm = '';
+
+        for (const { term, weight } of route.keywords) {
+          const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+          if (regex.test(normalized)) {
+            score += weight;
+            if (weight > (route.keywords.find(k => k.term === topTerm)?.weight ?? 0)) {
+              topTerm = term;
+            }
+          }
+        }
+
+        if (score > 0 && (!best || score > best.score)) {
+          best = { moduleId: route.moduleId, score, topTerm };
+        }
+      }
+
+      if (best) {
+        const confidence = Math.min(0.72 + (best.score - 1) * 0.08, 0.92);
+        const decision = {
+          target: best.moduleId,
+          confidence,
+          reason: `matched:${best.topTerm}(${best.score})`
+        };
+        return decision;
+      }
+
+      return {
+        target: 'nexus',
+        confidence: 0.45,
+        reason: 'default_nexus'
+      };
+    });
+    OrchestrationRolloutService.recordRoutingDecision(decision);
+    return decision;
   },
 
   async classifyIntentWithLLM(message: string, sendMessage: SendMessageFn): Promise<RoutingDecision> {

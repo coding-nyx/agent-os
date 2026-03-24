@@ -19,6 +19,8 @@ import {
   SomaSpineEvents,
   emitBiomarkerCommitted,
   emitClearanceChanged,
+  emitClearanceCoordinationEvents,
+  getClearanceChangeAction,
   emitReadinessUpdated,
 } from '@/modules/soma/actions/soma-field-actions';
 import type { SomaProfile, SomaHealthSnapshot } from '@/modules/soma/types';
@@ -227,7 +229,7 @@ class SomaDataServiceImpl {
   ): Promise<{ cleared: boolean; conditions: string[] }> {
     const profile = await this.loadProfile(userId, encryptionKey);
 
-    const hasDenied = profile.clearances.some((c) => c.status === 'denied');
+    const hasDenied = profile.clearances.some((c) => c.status === 'denied' || c.status === 'conditional');
     const conditions = [...profile.knownConditions];
 
     return {
@@ -389,8 +391,8 @@ class SomaDataServiceImpl {
     this.setCache(userId, updatedProfile);
 
     // Emit Spine events
-    const action = clearance.status === 'denied' ? 'revoked' as const : 'issued' as const;
-    emitClearanceChanged(clearance.id, action, clearance.activity);
+    emitClearanceChanged(clearance.id, getClearanceChangeAction(clearance.status), clearance.activity);
+    emitClearanceCoordinationEvents(clearance);
 
     Spine.emit({
       type: SomaSpineEvents.PROFILE_UPDATED,

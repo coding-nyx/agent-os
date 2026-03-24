@@ -16,6 +16,10 @@ export interface TrainTabProps {
   globalSoul: GlobalProjection | null;
   isLocked: boolean;
   isRecoveryActive: boolean;
+  clearanceStatus: 'granted' | 'pending' | 'conditional' | 'denied' | null;
+  clearanceMessage: string | null;
+  activeDebtCount: number;
+  readinessPresentationMode: 'performance' | 'recovery';
   directWriteMode: boolean;
   advisoryBanner: string | null;
   onDismissAdvisory: () => void;
@@ -36,6 +40,10 @@ export function TrainTab({
   globalSoul,
   isLocked,
   isRecoveryActive,
+  clearanceStatus,
+  clearanceMessage,
+  activeDebtCount,
+  readinessPresentationMode,
   directWriteMode,
   advisoryBanner,
   onDismissAdvisory,
@@ -49,6 +57,12 @@ export function TrainTab({
   commitWorkoutSession,
   onSetAdvisoryBanner,
 }: TrainTabProps) {
+  const latestBiomarkerDate = React.useMemo(() => {
+    const biomarkers = [...(somaProfile?.biomarkers ?? [])];
+    biomarkers.sort((left, right) => right.recordedAt.localeCompare(left.recordedAt));
+    return biomarkers[0]?.recordedAt ?? null;
+  }, [somaProfile?.biomarkers]);
+
   return (
     <div className="flex flex-col gap-4 pb-4 sm:gap-5 sm:pb-5 md:gap-6 md:pb-6">
       <AnimatePresence>
@@ -137,12 +151,21 @@ export function TrainTab({
       )}
 
       <ClearanceWidget
-        clearanceStatus={somaProfile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined ?? null}
-        lastBiomarkerDate={somaProfile?.biomarkers?.[0]?.recordedAt ?? null}
+        clearanceStatus={clearanceStatus}
+        lastBiomarkerDate={latestBiomarkerDate}
+        activeDebtCount={activeDebtCount}
+        enforcementMessage={clearanceMessage}
         className={SECTION_X}
       />
 
-      <TitanDashboard soul={globalSoul} isLocked={isLocked} onCalibrate={onCalibrate} />
+      <TitanDashboard
+        soul={globalSoul}
+        isLocked={isLocked}
+        onCalibrate={onCalibrate}
+        presentationMode={readinessPresentationMode}
+        presentationReason={clearanceMessage}
+        activeDebtCount={activeDebtCount}
+      />
 
       {!calendarSelectedRoutine && profile?.routines && profile.routines.length > 0 && (
         <section className={SECTION_X}>

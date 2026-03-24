@@ -156,6 +156,11 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // Belief Graph Workflows (Agnes proposal + invitation workflow state)
+    match /belief_graph_workflows/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // RAG Embeddings (Android semantic search index)
     match /rag_embeddings/{userId}/{document=**} {
       allow read, write: if isOwner(userId);

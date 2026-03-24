@@ -16,7 +16,7 @@ import { loadTitanProfile, saveTitanProfile } from '@/modules/titan/services/tit
 import { loadSomaProfile, saveSomaProfile } from '@/modules/soma/services/soma-profile-service';
 import type { SomaProfile } from '@/modules/soma/types';
 import { loadLedgerProfile, saveLedgerProfile, type LedgerIntakeProfile } from '@/modules/ledger/services/ledger-intake-service';
-import { saveBeliefGraph } from '@/modules/agnes/services/belief-graph-service';
+import { proposeBeliefGraphCandidate } from '@/modules/agnes/services/belief-graph-workflow-service';
 
 /**
  * Common extraction result interface
@@ -708,10 +708,21 @@ Confidence: 0.0-1.0`
       updatedAt: new Date().toISOString()
     };
 
-    // Save belief graph
-    if (encryptionKey) {
-      await saveBeliefGraph(beliefGraph, { userId, encryptionKey });
-    }
+    const reviewProposal = encryptionKey
+      ? await proposeBeliefGraphCandidate(
+          {
+            source: 'journal_entry',
+            title: 'Review journal belief extraction',
+            summary:
+              typeof extractedData.summary === 'string'
+                ? extractedData.summary
+                : `Extracted ${nodes.length} beliefs from journal entry`,
+            confidence: typeof extractedData.confidence === 'number' ? extractedData.confidence : null,
+            graph: beliefGraph,
+          },
+          { userId, encryptionKey },
+        )
+      : null;
 
     const confidence = typeof extractedData.confidence === 'number'
       ? Math.round(extractedData.confidence * 100)
@@ -733,7 +744,11 @@ Confidence: 0.0-1.0`
       distortions.length > 0 ? `• ${distortions.length} cognitive distortions noted` : null
     ].filter(Boolean).join('\n');
 
-    pushAssistantMessage?.(summary + '\n\n' + beliefGraph.summary);
+    const reviewMessage = reviewProposal
+      ? 'Pending review in Agnes — confirm or edit these beliefs before anything is saved.'
+      : 'Beliefs were extracted, but nothing was saved because the Agnes vault is not unlocked.';
+
+    pushAssistantMessage?.([summary, beliefGraph.summary, reviewMessage].filter(Boolean).join('\n\n'));
 
   } catch (error) {
     console.error('[parseJournalEntry] Error:', error);

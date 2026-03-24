@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { ORCHESTRATOR_PERSONA, ORCHESTRATOR_WELCOME } from './personas';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { CoreUserProfile } from '@/lib/types';
 import { NexusOnboarding } from './onboarding/NexusOnboarding';
@@ -19,6 +19,7 @@ export default function NexusPage() {
   const { user, isGuest, profile, refreshProfile, initializeNewUser } = useAuth();
   const { hasVault, isUnlocked, vaultSetupNudgeSeen, isLoading: vaultLoading, getMasterKey } = useVault();
   const navigate = useNavigate();
+  const location = useLocation();
   const [pageState, setPageState] = useState<PageState>('ONBOARDING');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNudge, setShowNudge] = useState(false);
@@ -124,12 +125,15 @@ export default function NexusPage() {
     }
   };
 
+  const surfaceMode = location.pathname.startsWith('/nexus/ops') ? 'operations' : 'chat';
+
   if (pageState === 'DASHBOARD') {
     return (
       <ModuleLayout title="Nexus" themeColor="cyan" moduleId="nexus" hideBack>
         <NexusDashboard
           ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage, clearSession }}
           agentName={profile?.agentPersonalityProvision?.orchestratorAlias || 'Nexus'}
+          surfaceMode={surfaceMode}
         />
         <AnimatePresence>
           {showNudge && (

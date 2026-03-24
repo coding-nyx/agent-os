@@ -248,7 +248,20 @@ export async function generateDigest(
       source: 'scout',
       domain: 'C',
       priority: 'info',
-      data: { digestId: id, generatedAt: now },
+      data: {
+        userId,
+        digestId: id,
+        generatedAt: now,
+        digest: {
+          id,
+          generatedAt: now,
+          generationType: triggerSource,
+          summary: digest.summary,
+          topClaims: digest.topClaims,
+          trendingInterests: digest.trendingInterests,
+          synthesizedContent: digest.synthesizedContent,
+        },
+      },
     });
 
     return decryptedDigest;

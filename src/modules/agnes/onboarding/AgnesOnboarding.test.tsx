@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AgnesOnboarding } from './AgnesOnboarding';
 import { useAI } from '@/llm-engine/ai-context';
 import { useAuth } from '@/lib/auth-context';
@@ -45,23 +46,33 @@ describe('AgnesOnboarding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useAI as any).mockReturnValue({
-      streamMessage: mockStreamMessage
+      streamMessage: mockStreamMessage,
+      generateJSON: vi.fn(),
+      isInitialized: false,
     });
     (useAuth as any).mockReturnValue({
       user: { uid: 'test-user' }
     });
   });
 
-  it('renders with initial greeting', () => {
+  async function openGuidedMode() {
+    await userEvent.click(screen.getByRole('button', { name: /guided/i }));
+  }
+
+  it('renders the Agnes shell and guided greeting', async () => {
     render(
       <AgnesOnboarding onComplete={mockOnComplete} />
     );
 
-    expect(screen.getByText(/Agnes Guided Intake/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Agnes$/i)).toBeInTheDocument();
+    expect(screen.getByText(/Choose onboarding style/i)).toBeInTheDocument();
+
+    await openGuidedMode();
+
     expect(screen.getByText(/assistant: Welcome to Agnes Intake/i)).toBeInTheDocument();
   });
 
-  it('handles identity prefill from base context', () => {
+  it('handles identity prefill from base context in guided mode', async () => {
     const initialBaseContext = {
       name: 'Bob',
       pronouns: 'he/him'
@@ -73,6 +84,8 @@ describe('AgnesOnboarding', () => {
         onComplete={mockOnComplete} 
       />
     );
+
+    await openGuidedMode();
 
     expect(screen.getByText(/assistant: Welcome to Agnes Intake. I have your name as Bob and pronouns as he\/him/i)).toBeInTheDocument();
   });
@@ -91,6 +104,8 @@ describe('AgnesOnboarding', () => {
     render(
       <AgnesOnboarding onComplete={mockOnComplete} />
     );
+
+    await openGuidedMode();
 
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: "Finalize please" } });
@@ -118,6 +133,8 @@ describe('AgnesOnboarding', () => {
     render(
       <AgnesOnboarding onComplete={mockOnComplete} />
     );
+
+    await openGuidedMode();
 
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: "My name is Alice and pronouns are she/her. I am ready." } });

@@ -40,7 +40,25 @@ describe('RagService', () => {
       id: 'test-web',
       runtime: 'web',
       async retrieve() {
-        return { status: 'ok', facts: ['from test adapter'] };
+        return {
+          status: 'ok',
+          facts: [
+            {
+              id: 'rag:test',
+              type: 'rag',
+              moduleId: 'atlas',
+              text: 'from test adapter',
+              score: 0.82,
+              timestamp: '2026-03-24T00:00:00.000Z',
+              citation: {
+                type: 'rag',
+                moduleId: 'atlas',
+                entityId: 'rag:test',
+                label: 'from test adapter',
+              },
+            },
+          ],
+        };
       }
     };
     RagService.registerAdapter(testAdapter);
@@ -51,6 +69,6 @@ describe('RagService', () => {
       requiresVault: false,
       encryptionKey: null
     });
-    expect(res.facts).toContain('from test adapter');
+    expect(res.facts[0]?.text).toBe('from test adapter');
   });
 });

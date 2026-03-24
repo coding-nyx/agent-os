@@ -50,24 +50,6 @@ export const AgnesSanctuarySidebar: React.FC<AgnesSanctuarySidebarProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Footer — vault & connection status */}
-          <div className="mt-auto pt-8 border-t border-white/5 space-y-4">
-             <div className="flex items-center justify-between px-2">
-                <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Vault</span>
-                <div className="flex items-center gap-1.5">
-                  <ShieldCheck size={10} className="text-indigo-400/60" />
-                  <span className="text-[9px] text-indigo-400/60 font-black uppercase tracking-widest">Encrypted</span>
-                </div>
-             </div>
-             <div className="flex items-center justify-between px-2">
-                <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Link</span>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[9px] text-emerald-400/60 font-black uppercase tracking-widest">Active</span>
-                </div>
-             </div>
-          </div>
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center py-8 gap-8">

@@ -72,6 +72,13 @@ export interface ScoutKnowledgeNode {
   status: 'pending' | 'verified' | 'contested';
   updatedAt: string;
   parentSessionId?: string;
+  provenance?: {
+    source: 'scout';
+    sourceEntityId: string;
+    sourceIds: string[];
+    sessionId?: string;
+    synthesizedAt: string;
+  };
 }
 
 export interface ScoutDigest {

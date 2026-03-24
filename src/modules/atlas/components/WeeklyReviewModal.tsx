@@ -1,49 +1,42 @@
-/**
- * WeeklyReviewModal
- *
- * A four-section modal that surfaces the Atlas predictive state, weekly energy
- * summary, top-3 pressure sources, burnout risk gauge, a capacity slider, and
- * a "Schedule Recovery Day" CTA that emits ATLAS_RECOVERY_SCHEDULED on the Spine.
- *
- * Uses NeuralModal (Radix Dialog + Framer Motion) — the same pattern used
- * across the codebase.
- */
-
-import React, { useMemo, useState } from 'react';
-import { CalendarDays } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CalendarDays, ArrowRight, Shield, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { cn } from '@/lib/utils';
-import type { GlobalProjection, EnergyWavePoint, ScheduledTask } from '@/lib/types';
+import type {
+  AtlasCapacityBlueprint,
+  AtlasProfile,
+  AtlasReviewAction,
+  AtlasReviewBlueprint,
+  GlobalProjection,
+} from '@/lib/types';
+import {
+  AtlasBlueprintService,
+  projectAtlasCapacityBlueprint,
+} from '../services/atlas-blueprint-service';
 import type { AtlasStateDisplay } from '../services/atlas-predictive-service';
-
-// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface WeeklyReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
+  profile: AtlasProfile | null;
   soul: GlobalProjection | null;
-  energyWave: EnergyWavePoint[];
-  scheduledTasks: ScheduledTask[];
   predictiveDisplay: AtlasStateDisplay;
-  /** Called when user completes the review — persists snapshot to profile.reviews */
-  onCompleteReview?: () => void;
+  onCompleteReview?: (blueprint?: AtlasReviewBlueprint) => void;
 }
 
 export interface WeeklyReviewCardProps {
+  profile: AtlasProfile | null;
   soul: GlobalProjection | null;
-  energyWave: EnergyWavePoint[];
-  scheduledTasks: ScheduledTask[];
+  energyWave: AtlasProfile['energyWave'];
+  scheduledTasks: AtlasProfile['scheduledTasks'];
   predictiveDisplay: AtlasStateDisplay;
   weeklyReviewPending: boolean;
   onOpenReview: () => void;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Compute burnout risk 0–100 from weighted domain signals. */
 function computeBurnoutRisk(soul: GlobalProjection | null): number {
   if (!soul) return 0;
 
@@ -52,174 +45,98 @@ function computeBurnoutRisk(soul: GlobalProjection | null): number {
   const cnsFatigue = nsv.biological?.cnsFatigue ?? nsv.cnsFatigue;
   const financialFriction = nsv.resource?.financialFriction;
 
-  // Each signal maps to a 0–100 sub-score, then weighted average
-  const resScore =
-    typeof resilience === 'number'
-      ? Math.max(0, ((4 - resilience) / 4) * 100) // worse when resilience is lower
-      : 0;
+  const resScore = typeof resilience === 'number' ? Math.max(0, ((4 - resilience) / 4) * 100) : 0;
+  const cnsScore = typeof cnsFatigue === 'number' ? Math.max(0, ((cnsFatigue - 4) / 6) * 100) : 0;
+  const finScore = typeof financialFriction === 'number' ? Math.max(0, ((financialFriction - 4) / 6) * 100) : 0;
 
-  const cnsScore =
-    typeof cnsFatigue === 'number'
-      ? Math.max(0, ((cnsFatigue - 4) / 6) * 100) // worse when fatigue is higher
-      : 0;
-
-  const finScore =
-    typeof financialFriction === 'number'
-      ? Math.max(0, ((financialFriction - 4) / 6) * 100)
-      : 0;
-
-  const weighted = 0.45 * resScore + 0.4 * cnsScore + 0.15 * finScore;
-  return Math.min(100, Math.max(0, Math.round(weighted)));
+  return Math.min(100, Math.max(0, Math.round(0.45 * resScore + 0.4 * cnsScore + 0.15 * finScore)));
 }
 
-/** Compute weekly capacity: sum of all energy-wave point energies. */
-function computeWeeklyEnergy(wave: EnergyWavePoint[]): { planned: number; max: number } {
-  const planned = wave.reduce((s, p) => s + p.energy, 0);
-  const max = wave.length * 10;
-  return { planned: Math.round(planned * 10) / 10, max };
-}
-
-/** How many tasks were completed vs total scheduled this week. */
-function computeWeeklyCompletion(tasks: ScheduledTask[]): { done: number; total: number } {
+function computeWeeklyCompletion(tasks: AtlasProfile['scheduledTasks']): { done: number; total: number } {
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const thisWeek = tasks.filter((t) => new Date(t.scheduledAt).getTime() >= weekAgo);
-  const done = thisWeek.filter((t) => t.status === 'done').length;
-  return { done, total: thisWeek.length };
-}
-
-interface PressureSource {
-  label: string;
-  value: number | null;
-  max: number;
-  /** Higher value = more pressure */
-  inverted: boolean;
-  colorClass: string;
-}
-
-function computePressureSources(soul: GlobalProjection | null): PressureSource[] {
-  if (!soul) return [];
-  const nsv = soul.crossFunctionalState;
-  return [
-    {
-      label: 'Planning Load',
-      value: nsv.cognitive?.planningLoad ?? null,
-      max: 10,
-      inverted: false,
-      colorClass: 'bg-amber-400',
-    },
-    {
-      label: 'Deadline Pressure',
-      value: nsv.planning?.deadlinePressure ?? null,
-      max: 10,
-      inverted: false,
-      colorClass: 'bg-orange-500',
-    },
-    {
-      label: 'Stress Load',
-      value: nsv.emotional?.stressLoad ?? null,
-      max: 10,
-      inverted: false,
-      colorClass: 'bg-rose-500',
-    },
-  ];
-}
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-function StateBadge({ display }: { display: AtlasStateDisplay }) {
-  const bgMap: Record<string, string> = {
-    Normal: 'bg-[var(--module-accent-glow)] border-[var(--module-accent-border)] text-[var(--module-color-400)]',
-    Compressed: 'bg-amber-400/15 border-amber-400/40 text-amber-400',
-    Overloaded: 'bg-orange-500/15 border-orange-500/40 text-orange-400',
-    Recovery: 'bg-rose-600/15 border-rose-600/40 text-rose-400',
+  const thisWeek = tasks.filter((task) => new Date(task.scheduledAt).getTime() >= weekAgo);
+  return {
+    done: thisWeek.filter((task) => task.status === 'done').length,
+    total: thisWeek.length,
   };
-
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-black uppercase tracking-widest',
-        bgMap[display.state] ?? 'bg-white/5 border-white/10 text-white/50'
-      )}
-    >
-      <span
-        className="w-1.5 h-1.5 rounded-full"
-        style={{ backgroundColor: display.hex }}
-        aria-hidden="true"
-      />
-      {display.label}
-    </span>
-  );
 }
 
-function BurnoutGauge({ risk }: { risk: number }) {
-  const color =
-    risk >= 70 ? '#e11d48' : risk >= 40 ? '#f97316' : risk >= 20 ? '#fbbf24' : '#22d3ee';
+function stateTone(state: AtlasCapacityBlueprint['state']): string {
+  switch (state) {
+    case 'recover':
+      return 'text-rose-400 bg-rose-500/10 border-rose-500/30';
+    case 'compress':
+      return 'text-amber-300 bg-amber-500/10 border-amber-500/30';
+    case 'expand':
+      return 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30';
+    default:
+      return 'text-sky-300 bg-sky-500/10 border-sky-500/30';
+  }
+}
+
+function ActionRow({ action }: { action: AtlasReviewAction }) {
+  const accent =
+    action.emphasis === 'protect'
+      ? 'border-rose-500/20 bg-rose-500/5'
+      : action.emphasis === 'focus'
+        ? 'border-sky-500/20 bg-sky-500/5'
+        : 'border-emerald-500/20 bg-emerald-500/5';
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-black text-white/50 uppercase tracking-widest">
-          Burnout Risk
-        </span>
-        <span className="text-sm font-black" style={{ color }}>
-          {risk}%
-        </span>
+    <div className={cn('rounded-xl border p-3 space-y-1', accent)}>
+      <div className="flex items-center gap-2">
+        <ArrowRight className="w-3.5 h-3.5 text-white/50" />
+        <p className="text-xs font-black text-white/85">{action.title}</p>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
-        <motion.div
-          className="h-full rounded-full"
-          initial={{ width: 0 }}
-          animate={{ width: `${risk}%` }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
-          style={{ backgroundColor: color }}
-        />
-      </div>
-      <p className="text-[10px] text-white/30 leading-relaxed">
-        {risk >= 70
-          ? 'High risk — consider scheduling a recovery day.'
-          : risk >= 40
-            ? 'Moderate risk — monitor closely.'
-            : 'Low risk — maintaining a healthy baseline.'}
-      </p>
+      <p className="text-[11px] leading-relaxed text-white/45">{action.detail}</p>
     </div>
   );
 }
 
-function PressureBar({ source }: { source: PressureSource }) {
-  if (source.value === null) {
-    return (
-      <div className="flex items-center gap-3">
-        <span className="w-28 text-xs text-white/40 truncate">{source.label}</span>
-        <span className="text-xs text-white/20 italic">—</span>
-      </div>
-    );
-  }
+function MetricCard({
+  label,
+  value,
+  hint,
+  accentClass = 'text-white/90',
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  accentClass?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-1">
+      <p className="text-[10px] text-white/30 uppercase tracking-widest">{label}</p>
+      <p className={cn('text-xl font-black', accentClass)}>{value}</p>
+      <p className="text-[10px] text-white/25 leading-relaxed">{hint}</p>
+    </div>
+  );
+}
 
-  const pct = Math.min(100, (source.value / source.max) * 100);
+function VectorBar({ label, value, invert = false }: { label: string; value: number; invert?: boolean }) {
+  const pct = Math.round((invert ? 10 - value : value) * 10);
+  const barClass = invert ? 'bg-rose-400' : 'bg-[var(--module-color-400)]';
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-white/60">{source.label}</span>
-        <span className="text-xs font-bold text-white/70">
-          {source.value}/{source.max}
-        </span>
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-white/55">{label}</span>
+        <span className="font-bold text-white/75">{value.toFixed(1)}/10</span>
       </div>
-      <div className="h-1 w-full rounded-full bg-white/5 overflow-hidden">
+      <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
         <motion.div
-          className={cn('h-full rounded-full', source.colorClass)}
+          className={cn('h-full rounded-full', barClass)}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
         />
       </div>
     </div>
   );
 }
 
-// ─── Main Components ──────────────────────────────────────────────────────────
-
 export function WeeklyReviewCard({
+  profile,
   soul,
   energyWave,
   scheduledTasks,
@@ -227,14 +144,16 @@ export function WeeklyReviewCard({
   weeklyReviewPending,
   onOpenReview,
 }: WeeklyReviewCardProps) {
+  const blueprint = useMemo(
+    () => AtlasBlueprintService.computeReviewBlueprint({ profile, soul }),
+    [profile, soul],
+  );
   const burnoutRisk = useMemo(() => computeBurnoutRisk(soul), [soul]);
-  const weekly = useMemo(() => computeWeeklyEnergy(energyWave), [energyWave]);
   const completion = useMemo(() => computeWeeklyCompletion(scheduledTasks), [scheduledTasks]);
-
-  const completionPct =
-    completion.total > 0
-      ? Math.round((completion.done / completion.total) * 100)
-      : null;
+  const energyPlanned = useMemo(
+    () => Math.round(energyWave.reduce((sum, point) => sum + point.energy, 0) * 10) / 10,
+    [energyWave],
+  );
 
   return (
     <div
@@ -242,94 +161,127 @@ export function WeeklyReviewCard({
         'group relative flex flex-col gap-4 rounded-2xl border bg-white/[0.02] p-4 transition-all duration-300',
         weeklyReviewPending
           ? 'border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
-          : 'border-white/10 hover:border-white/20'
+          : 'border-white/10 hover:border-white/20',
       )}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CalendarDays className="w-4 h-4 text-[var(--module-color-400)]" />
-          <h3 className="text-xs font-black text-white/90 uppercase tracking-widest">
-            Weekly Review
-          </h3>
+          <h3 className="text-xs font-black text-white/90 uppercase tracking-widest">Weekly Review</h3>
         </div>
-        {weeklyReviewPending && (
-          <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+        <span className={cn('rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em]', stateTone(blueprint.capacity.state))}>
+          {blueprint.capacity.state}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <MetricCard
+          label="Safe Capacity"
+          value={`${blueprint.capacity.safeCapacity}`}
+          hint={`${blueprint.capacity.recommendedCapacityPct}% of ${blueprint.capacity.baselineCapacity}`}
+          accentClass="text-[var(--module-color-400)]"
+        />
+        <MetricCard
+          label="Planned Demand"
+          value={`${blueprint.capacity.plannedDemand}`}
+          hint={blueprint.capacity.headroom >= 0 ? `${blueprint.capacity.headroom} headroom left` : `${Math.abs(blueprint.capacity.headroom)} overloaded`}
+          accentClass={blueprint.capacity.headroom >= 0 ? 'text-emerald-400' : 'text-rose-400'}
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
+          <p className="text-[10px] uppercase tracking-widest text-white/25">State</p>
+          <p className={cn('mt-1 text-xs font-black', predictiveDisplay.color)}>{predictiveDisplay.label}</p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
+          <p className="text-[10px] uppercase tracking-widest text-white/25">Risk</p>
+          <p className="mt-1 text-xs font-black text-amber-300">{burnoutRisk}%</p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
+          <p className="text-[10px] uppercase tracking-widest text-white/25">Done</p>
+          <p className="mt-1 text-xs font-black text-emerald-400">{completion.done}/{completion.total || 0}</p>
+        </div>
+      </div>
+
+      <p className="text-[11px] leading-relaxed text-white/40">
+        {blueprint.projection.summary} Atlas currently sees {energyPlanned} planned energy points in the visible wave.
+      </p>
+
+      <NeuralButton
+        onClick={onOpenReview}
+        themeColor="module"
+        variant="outline"
+        className={cn(
+          'w-full text-[10px] font-black uppercase tracking-[0.2em] h-10',
+          weeklyReviewPending && 'border-amber-500/50 text-amber-500 hover:bg-amber-500/10',
         )}
-      </div>
-
-      <div className="space-y-4">
-        {/* Burnout Risk */}
-        <BurnoutGauge risk={burnoutRisk} />
-
-        {/* Capacity Stats */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <p className="text-[10px] text-white/30 uppercase tracking-widest">Capacity</p>
-            <p className="text-sm font-black text-white/80">
-              {weekly.planned}<span className="text-[10px] text-white/30 ml-0.5">/{weekly.max}</span>
-            </p>
-          </div>
-          <div className="space-y-1 text-right">
-            <p className="text-[10px] text-white/30 uppercase tracking-widest">Done</p>
-            <p className="text-sm font-black text-emerald-400">
-              {completion.done}<span className="text-[10px] text-white/30 ml-0.5">/{completion.total}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-2">
-        <NeuralButton
-          onClick={onOpenReview}
-          themeColor="module"
-          variant="outline"
-          className={cn(
-            "w-full text-[10px] font-black uppercase tracking-[0.2em] h-10",
-            weeklyReviewPending && "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
-          )}
-        >
-          {weeklyReviewPending ? 'Run Review' : 'View Full Review'}
-        </NeuralButton>
-      </div>
-
-      {weeklyReviewPending && (
-        <p className="text-[9px] text-amber-400/70 text-center font-medium">
-          New predictive data available. Run review now.
-        </p>
-      )}
+      >
+        {weeklyReviewPending ? 'Run Review' : 'View Full Review'}
+      </NeuralButton>
     </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 export function WeeklyReviewModal({
   isOpen,
   onClose,
+  profile,
   soul,
-  energyWave,
-  scheduledTasks,
   predictiveDisplay,
   onCompleteReview,
 }: WeeklyReviewModalProps) {
   const [capacityPct, setCapacityPct] = useState(100);
   const [recoveryScheduled, setRecoveryScheduled] = useState(false);
 
+  const blueprint = useMemo(
+    () => AtlasBlueprintService.computeReviewBlueprint({ profile, soul }),
+    [profile, soul],
+  );
   const burnoutRisk = useMemo(() => computeBurnoutRisk(soul), [soul]);
-  const weekly = useMemo(() => computeWeeklyEnergy(energyWave), [energyWave]);
-  const completion = useMemo(() => computeWeeklyCompletion(scheduledTasks), [scheduledTasks]);
-  const pressureSources = useMemo(() => computePressureSources(soul), [soul]);
+  const completion = useMemo(() => computeWeeklyCompletion(profile?.scheduledTasks ?? []), [profile?.scheduledTasks]);
+  const projection = useMemo(
+    () => projectAtlasCapacityBlueprint(blueprint.capacity, capacityPct),
+    [blueprint.capacity, capacityPct],
+  );
+
+  useEffect(() => {
+    setCapacityPct(blueprint.capacity.recommendedCapacityPct);
+  }, [blueprint.capacity.recommendedCapacityPct, isOpen]);
 
   const weekLabel = useMemo(() => {
-    const d = new Date();
-    const start = new Date(d);
-    start.setDate(d.getDate() - d.getDay());
+    const date = new Date();
+    const start = new Date(date);
+    start.setDate(date.getDate() - date.getDay());
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
-    const fmt = (x: Date) =>
-      x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${fmt(start)} – ${fmt(end)}`;
+    const format = (value: Date) => value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${format(start)} – ${format(end)}`;
   }, []);
+
+  const adjustedBlueprint = useMemo<AtlasReviewBlueprint>(() => ({
+    ...blueprint,
+    capacity: {
+      ...blueprint.capacity,
+      recommendedCapacityPct: capacityPct,
+      safeCapacity: projection.capacity,
+      headroom: projection.headroom,
+      state:
+        capacityPct <= 72
+          ? 'recover'
+          : capacityPct < 92
+            ? 'compress'
+            : capacityPct >= 108
+              ? 'expand'
+              : 'hold',
+    },
+    projection: {
+      ...blueprint.projection,
+      projectedCapacity: projection.capacity,
+      projectedHeadroom: projection.headroom,
+      summary: projection.summary,
+    },
+  }), [blueprint, capacityPct, projection]);
 
   const handleScheduleRecovery = () => {
     Spine.emit({
@@ -343,15 +295,11 @@ export function WeeklyReviewModal({
         capacityPct,
         weekLabel,
         burnoutRisk,
+        blueprint: adjustedBlueprint,
       },
     });
     setRecoveryScheduled(true);
   };
-
-  const completionPct =
-    completion.total > 0
-      ? Math.round((completion.done / completion.total) * 100)
-      : null;
 
   return (
     <NeuralModal
@@ -367,87 +315,83 @@ export function WeeklyReviewModal({
       maxWidth="lg"
     >
       <div className="space-y-6">
-        {/* ── Atlas State ─────────────────────────────────────────────── */}
-        <section className="space-y-2">
-          <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">
-            Current State
-          </h3>
-          <div className="flex items-start gap-3">
-            <StateBadge display={predictiveDisplay} />
-            <p className="text-xs text-white/40 leading-relaxed flex-1">
-              {predictiveDisplay.description}
-            </p>
-          </div>
-        </section>
-
-        <div className="border-t border-white/5" />
-
-        {/* ── Energy Summary ──────────────────────────────────────────── */}
-        <section className="space-y-3">
-          <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">
-            Weekly Energy Summary
-          </h3>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-1">
-              <p className="text-[10px] text-white/30 uppercase tracking-widest">
-                Planned Capacity
-              </p>
-              <p className="text-xl font-black text-[var(--module-color-400)]">
-                {weekly.planned}
-                <span className="text-xs text-white/30 ml-1">/ {weekly.max}</span>
-              </p>
-              <p className="text-[10px] text-white/20">
-                {weekly.max > 0
-                  ? `${Math.round((weekly.planned / weekly.max) * 100)}% of max`
-                  : '—'}
-              </p>
+        <section className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Projection</p>
+                <h3 className="mt-1 text-lg font-black text-white/90">Next week blueprint</h3>
+              </div>
+              <span className={cn('rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em]', stateTone(adjustedBlueprint.capacity.state))}>
+                {adjustedBlueprint.capacity.state}
+              </span>
             </div>
+            <p className="text-sm leading-relaxed text-white/55">{adjustedBlueprint.projection.summary}</p>
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[var(--module-color-400)]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Focus for next period</span>
+              </div>
+              <p className="mt-2 text-sm font-bold text-white/85">{adjustedBlueprint.projection.nextPeriodFocus}</p>
+            </div>
+          </div>
 
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-1">
-              <p className="text-[10px] text-white/30 uppercase tracking-widest">
-                Tasks Completed
-              </p>
-              <p className="text-xl font-black text-emerald-400">
-                {completion.done}
-                <span className="text-xs text-white/30 ml-1">/ {completion.total}</span>
-              </p>
-              <p className="text-[10px] text-white/20">
-                {completionPct !== null ? `${completionPct}% completion` : 'No tasks scheduled'}
-              </p>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Current state</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className={cn('text-sm font-black', predictiveDisplay.color)}>{predictiveDisplay.label}</p>
+                <p className="mt-1 text-xs leading-relaxed text-white/40">{predictiveDisplay.description}</p>
+              </div>
+              <Shield className="w-4 h-4 text-white/25 shrink-0" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <MetricCard label="Burnout risk" value={`${burnoutRisk}%`} hint="Derived from resilience, fatigue, and friction" accentClass="text-amber-300" />
+              <MetricCard
+                label="Completion"
+                value={`${completion.done}/${completion.total || 0}`}
+                hint={completion.total > 0 ? `${Math.round((completion.done / completion.total) * 100)}% completed` : 'No scheduled tasks this week'}
+                accentClass="text-emerald-400"
+              />
             </div>
           </div>
         </section>
 
-        <div className="border-t border-white/5" />
-
-        {/* ── Top 3 Pressure Sources ──────────────────────────────────── */}
-        <section className="space-y-3">
-          <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">
-            Top Pressure Sources
-          </h3>
-          <div className="space-y-3">
-            {pressureSources.map((src) => (
-              <PressureBar key={src.label} source={src} />
-            ))}
-          </div>
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard label="Baseline capacity" value={`${blueprint.capacity.baselineCapacity}`} hint="Current visible energy wave total" accentClass="text-white/90" />
+          <MetricCard label="Safe capacity" value={`${adjustedBlueprint.capacity.safeCapacity}`} hint={`${capacityPct}% operating budget`} accentClass="text-[var(--module-color-400)]" />
+          <MetricCard label="Demand" value={`${blueprint.capacity.plannedDemand}`} hint={`Load ratio ${blueprint.capacity.loadRatio}x`} accentClass="text-white/90" />
+          <MetricCard
+            label="Headroom"
+            value={`${adjustedBlueprint.capacity.headroom}`}
+            hint={adjustedBlueprint.capacity.headroom >= 0 ? 'Available for interruptions or deep work' : 'Overbooked unless scope is reduced'}
+            accentClass={adjustedBlueprint.capacity.headroom >= 0 ? 'text-emerald-400' : 'text-rose-400'}
+          />
         </section>
 
-        <div className="border-t border-white/5" />
-
-        {/* ── Burnout Risk ─────────────────────────────────────────────── */}
-        <section>
-          <BurnoutGauge risk={burnoutRisk} />
-        </section>
-
-        <div className="border-t border-white/5" />
-
-        {/* ── Next Week Capacity Slider ────────────────────────────────── */}
-        <section className="space-y-3">
+        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">
-              Next Week's Capacity
-            </h3>
+            <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Blueprint vectors</h3>
+            <span className="text-[10px] text-white/25">Grounded in vitality, friction, resilience, and alignment</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <VectorBar label="Vitality" value={blueprint.capacity.vectors.vitality} />
+            <VectorBar label="Friction" value={blueprint.capacity.vectors.friction} invert />
+            <VectorBar label="Resilience" value={blueprint.capacity.vectors.resilience} />
+            <VectorBar label="Spec alignment" value={blueprint.capacity.vectors.specAlignment} />
+          </div>
+          {blueprint.capacity.pressurePoints.length > 0 && (
+            <div className="space-y-2 pt-1">
+              {blueprint.capacity.pressurePoints.map((point) => (
+                <p key={point} className="text-[11px] leading-relaxed text-white/45">• {point}</p>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Projection control</h3>
             <span className="text-sm font-black text-[var(--module-color-400)]">{capacityPct}%</span>
           </div>
           <input
@@ -456,50 +400,50 @@ export function WeeklyReviewModal({
             max={120}
             step={5}
             value={capacityPct}
-            onChange={(e) => setCapacityPct(Number(e.target.value))}
+            onChange={(event) => setCapacityPct(Number(event.target.value))}
             aria-label="Adjust next week's capacity percentage"
-            aria-valuemin={60}
-            aria-valuemax={120}
-            aria-valuenow={capacityPct}
-            className="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-[var(--module-color-400)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
+            className="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-[var(--module-color-400)] cursor-pointer"
           />
           <div className="flex justify-between text-[10px] text-white/20">
-            <span>60% (Recovery)</span>
-            <span>100% (Baseline)</span>
-            <span>120% (Surge)</span>
+            <span>60% recovery</span>
+            <span>{blueprint.capacity.recommendedCapacityPct}% recommended</span>
+            <span>120% surge</span>
           </div>
-          {capacityPct < 80 && (
-            <p className="text-[10px] text-amber-400/70 leading-relaxed">
-              ⚠ Reduced capacity selected. Atlas will soft-compress high-load tasks for
-              next week.
+          <p className="text-[11px] leading-relaxed text-white/45">{projection.summary}</p>
+          {projection.overflowTasks > 0 && (
+            <p className="text-[11px] text-amber-300">
+              Atlas expects you to defer roughly {projection.overflowTasks} high-energy task(s) at this setting.
             </p>
           )}
         </section>
 
-        <div className="border-t border-white/5" />
+        <section className="space-y-3">
+          <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Recommended actions</h3>
+          <div className="grid gap-3">
+            {blueprint.projection.recommendedActions.map((action) => (
+              <ActionRow key={action.id} action={action} />
+            ))}
+          </div>
+        </section>
 
-        {/* ── CTA ──────────────────────────────────────────────────────── */}
         <section className="space-y-3">
           {onCompleteReview && (
             <NeuralButton
               onClick={() => {
-                onCompleteReview();
+                onCompleteReview(adjustedBlueprint);
                 onClose();
               }}
               themeColor="module"
               className="w-full text-sm font-black uppercase tracking-widest h-12"
             >
-              Complete review & save
+              Complete review & save blueprint
             </NeuralButton>
           )}
+
           {recoveryScheduled ? (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
-              <p className="text-sm font-black text-emerald-400">
-                ✓ Recovery day scheduled
-              </p>
-              <p className="text-[10px] text-white/30 mt-1">
-                Atlas will protect this window from new commitments.
-              </p>
+              <p className="text-sm font-black text-emerald-400">✓ Recovery day scheduled</p>
+              <p className="text-[10px] text-white/30 mt-1">Atlas will protect this window from new commitments.</p>
             </div>
           ) : (
             <NeuralButton
