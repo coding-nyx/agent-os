@@ -170,7 +170,7 @@ export function GoalVelocityChart({ tasks }: GoalVelocityChartProps) {
   const chart = useMemo(() => deriveChartData(tasks), [tasks]);
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+    <div className="w-full max-w-3xl rounded-xl border border-white/10 bg-white/5 p-4">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp className="w-4 h-4 text-[var(--module-color-400)]" aria-hidden="true" />
@@ -190,63 +190,63 @@ export function GoalVelocityChart({ tasks }: GoalVelocityChartProps) {
           Complete tasks to see your velocity
         </div>
       ) : (
-        <svg
-          width="100%"
-          height="120"
-          viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
-          preserveAspectRatio="none"
-          role="img"
-          aria-label="Task completion velocity over the last 30 days"
-        >
-          <defs>
-            <linearGradient
-              id="velocityFill"
-              x1="0"
-              x2="0"
-              y1="0"
-              y2="1"
-            >
-              <stop
-                offset="0%"
-                stopColor={chart.color}
-                stopOpacity="0.35"
-              />
-              <stop
-                offset="100%"
-                stopColor={chart.color}
-                stopOpacity="0.0"
-              />
-            </linearGradient>
-          </defs>
+        <div className="w-full overflow-hidden">
+          <svg
+            className="block h-auto w-full"
+            viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
+            role="img"
+            aria-label="Task completion velocity over the last 30 days"
+          >
+            <defs>
+              <linearGradient
+                id="velocityFill"
+                x1="0"
+                x2="0"
+                y1="0"
+                y2="1"
+              >
+                <stop
+                  offset="0%"
+                  stopColor={chart.color}
+                  stopOpacity="0.35"
+                />
+                <stop
+                  offset="100%"
+                  stopColor={chart.color}
+                  stopOpacity="0.0"
+                />
+              </linearGradient>
+            </defs>
 
-          {/* Gradient area fill */}
-          <path d={chart.fillD} fill="url(#velocityFill)" />
+            {/* Gradient area fill */}
+            <path d={chart.fillD} fill="url(#velocityFill)" />
 
-          {/* Line */}
-          <path
-            d={chart.pathD}
-            fill="none"
-            stroke={chart.color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+            {/* Line */}
+            <path
+              d={chart.pathD}
+              fill="none"
+              stroke={chart.color}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
 
-          {/* X-axis date labels */}
-          {chart.xLabels.map(({ x, label, anchor }) => (
-            <text
-              key={label}
-              x={x}
-              y={VIEWBOX_H - 1}
-              textAnchor={anchor}
-              fontSize="7"
-              fill="rgba(255,255,255,0.35)"
-              fontFamily="system-ui, sans-serif"
-            >
-              {label}
-            </text>
-          ))}
-        </svg>
+            {/* X-axis date labels */}
+            {chart.xLabels.map(({ x, label, anchor }) => (
+              <text
+                key={label}
+                x={x}
+                y={VIEWBOX_H - 1}
+                textAnchor={anchor}
+                fontSize="7"
+                fill="rgba(255,255,255,0.35)"
+                fontFamily="system-ui, sans-serif"
+              >
+                {label}
+              </text>
+            ))}
+          </svg>
+        </div>
       )}
     </div>
   );

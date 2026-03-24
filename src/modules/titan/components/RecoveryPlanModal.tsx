@@ -198,9 +198,9 @@ export function RecoveryPlanModal({
       themeColor="module"
       maxWidth="lg"
     >
-      <div className="space-y-5">
+      <div className="space-y-6">
         {step === 0 && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <p className="text-xs uppercase tracking-wider text-white/40 mb-2">Reason</p>
               <div className="flex flex-wrap gap-2">
@@ -253,7 +253,7 @@ export function RecoveryPlanModal({
         )}
 
         {step === 1 && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <p className="text-xs uppercase tracking-wider text-white/40 mb-2">Recovery Type</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -319,8 +319,8 @@ export function RecoveryPlanModal({
         )}
 
         {step === 2 && (
-          <div className="space-y-4">
-            <div>
+          <div className="grid gap-5 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)] md:items-start">
+            <div className="space-y-5">
               <p className="text-xs uppercase tracking-wider text-white/40 mb-2">Duration (days)</p>
               <div className="flex items-center gap-3">
                 <CalendarClock className="w-4 h-4 text-white/40" />
@@ -333,7 +333,7 @@ export function RecoveryPlanModal({
                 />
               </div>
             </div>
-            <div>
+            <div className="space-y-5">
               <p className="text-xs uppercase tracking-wider text-white/40 mb-2">Notes</p>
               <NeuralInput
                 value={notes}
@@ -346,7 +346,7 @@ export function RecoveryPlanModal({
         )}
 
         {step === 3 && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="rounded-xl border border-white/10 bg-white/5 p-4">
               <p className="text-xs uppercase tracking-wider text-white/40 mb-2">Summary</p>
               <div className="text-sm text-white/70 space-y-1">
@@ -373,11 +373,11 @@ export function RecoveryPlanModal({
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col gap-3 border-t border-white/5 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <NeuralButton variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </NeuralButton>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             {step > 0 && (
               <NeuralButton variant="secondary" size="sm" onClick={() => setStep((s) => Math.max(s - 1, 0))}>
                 Back

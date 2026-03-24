@@ -4,10 +4,8 @@ import { Plus, X, Calendar as CalendarIcon, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { useUIStore } from '@/lib/stores/ui-store';
-import type { AtlasProject } from '../services/atlas-profile-service';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
-import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 
 // ---------------------------------------------------------------------------
 // QuickAddForm — FAB + modal for rapid task / habit / goal creation
@@ -20,7 +18,6 @@ export interface TaskInput {
   priority: 1 | 2 | 3 | 4 | 5;
   energyCost: number;
   deadline?: string;
-  projectId?: string;
 }
 
 export interface HabitInput {
@@ -38,7 +35,6 @@ export interface GoalInput {
 import type { AtlasTask, AtlasHabit, AtlasGoal } from '../services/atlas-profile-service';
 
 interface QuickAddFormProps {
-  projects: AtlasProject[];
   onCreateTask: (task: Partial<AtlasTask>) => void;
   onCreateHabit: (habit: Partial<AtlasHabit>) => void;
   onCreateGoal: (goal: Partial<AtlasGoal>) => void;
@@ -69,10 +65,7 @@ const PRIORITY_COLORS: Record<number, string> = {
 
 const FOCUSABLE_SELECTOR =
   'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-const NO_PROJECT_VALUE = '__none__';
-
 export function QuickAddForm({
-  projects,
   onCreateTask,
   onCreateHabit,
   onCreateGoal,
@@ -98,7 +91,6 @@ export function QuickAddForm({
   const [priority, setPriority] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [energyCost, setEnergyCost] = useState(5);
   const [deadline, setDeadline] = useState('');
-  const [projectId, setProjectId] = useState('');
   const [frequency, setFrequency] = useState<'daily' | 'weekdays' | 'weekends' | 'weekly' | 'custom'>('daily');
   const [minimumViableVersion, setMinimumViableVersion] = useState('');
 
@@ -123,7 +115,6 @@ export function QuickAddForm({
     setPriority(3);
     setEnergyCost(5);
     setDeadline('');
-    setProjectId('');
     setFrequency('daily');
     setMinimumViableVersion('');
     setItemType('task');
@@ -179,7 +170,6 @@ export function QuickAddForm({
             priority,
             energyCost,
             deadline: deadline || undefined,
-            projectId: projectId || undefined,
           });
           break;
         case 'habit':
@@ -203,7 +193,6 @@ export function QuickAddForm({
       priority,
       energyCost,
       deadline,
-      projectId,
       frequency,
       minimumViableVersion,
       onCreateTask,
@@ -400,30 +389,6 @@ export function QuickAddForm({
                     onChange={(e) => setDeadline(e.target.value)}
                     className="[color-scheme:dark]"
                   />
-                )}
-
-                {/* ── Project dropdown (tasks only) ── */}
-                {itemType === 'task' && projects.length > 0 && (
-                  <div>
-                    <label
-                      htmlFor="quick-add-project"
-                      className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-2"
-                    >
-                      Project (optional)
-                    </label>
-                    <NeuralSelectMenu
-                      value={projectId || NO_PROJECT_VALUE}
-                      onChange={(next) => {
-                        const selected = String(next);
-                        setProjectId(selected === NO_PROJECT_VALUE ? '' : selected);
-                      }}
-                      options={[
-                        { value: NO_PROJECT_VALUE, label: 'No project' },
-                        ...projects.map((p) => ({ value: p.id, label: p.title })),
-                      ]}
-                      ariaLabel="Project"
-                    />
-                  </div>
                 )}
 
                 {/* ── Frequency selector (habits only) ── */}

@@ -1320,46 +1320,54 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             </div>
           )}
 
-          <div className="shrink-0 px-4 sm:px-6 md:px-8 pb-3 sm:pb-4 md:pb-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-4 relative">
-            <div className="relative overflow-x-auto no-scrollbar mask-edges-horizontal">
+          <div className="shrink-0 border-b border-white/5 px-4 pb-4 sm:px-6 sm:pb-5 md:px-8 md:pb-6">
+            <div className="relative flex flex-col gap-3 sm:gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="relative min-w-0 overflow-x-auto no-scrollbar mask-edges-horizontal">
               <NeuralTabGroup
                 tabs={tabs}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
                 themeColor="module"
               />
-            </div>
+              </div>
 
-            {/* Module controls */}
-            <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs shrink-0 self-start xl:self-auto px-1 min-h-[2.75rem]">
-              <ModuleReminderEntry
-                title="Titan"
-                themeColor="orange"
-                panel={<TitanNotificationSettingsPanel />}
-                compact
-              />
-              {!isRecoveryActive && (
-                <NeuralButton
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => openRecoveryModal(null)}
-                >
-                  Start Recovery
-                </NeuralButton>
-              )}
-              <div className="w-px h-4 bg-white/10 hidden sm:block" />
-              {!isRecoveryActive && (
-                <>
-                  <span className="text-white/40">{directWrite ? 'Direct Logbook' : 'Coach Review'}</span>
-                  <NeuralToggle
-                    checked={directWrite}
-                    onChange={handleToggleDirectWrite}
-                    color="orange"
-                    label={directWrite ? 'Direct Logbook Mode: sessions save instantly' : 'Coach Review Mode: Titan reviews session updates before commit'}
+              {/* Module controls */}
+              <div className="flex flex-col gap-2 sm:gap-3 xl:items-end">
+                <div className="flex flex-wrap items-center gap-2">
+                  <ModuleReminderEntry
+                    title="Titan"
+                    themeColor="orange"
+                    panel={<TitanNotificationSettingsPanel />}
+                    compact
+                    iconOnly
                   />
-                  <Zap className={cn('w-3 h-3 transition-colors', directWrite ? 'text-[var(--module-color-400)]' : 'text-white/30')} />
-                </>
-              )}
+                  {!isRecoveryActive && (
+                    <NeuralButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => openRecoveryModal(null)}
+                      className="min-h-10 rounded-xl px-3.5 text-[11px] font-semibold tracking-[0.02em] sm:min-h-9"
+                    >
+                      Start Recovery
+                    </NeuralButton>
+                  )}
+                </div>
+
+                {!isRecoveryActive && (
+                  <div className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] sm:w-auto sm:justify-end sm:gap-2.5 sm:py-1.5 sm:text-xs">
+                    <span className="font-medium text-white/45">
+                      {directWrite ? 'Direct Logbook' : 'Coach Review'}
+                    </span>
+                    <NeuralToggle
+                      checked={directWrite}
+                      onChange={handleToggleDirectWrite}
+                      color="orange"
+                      label={directWrite ? 'Direct Logbook Mode: sessions save instantly' : 'Coach Review Mode: Titan reviews session updates before commit'}
+                    />
+                    <Zap className={cn('h-3.5 w-3.5 transition-colors', directWrite ? 'text-[var(--module-color-400)]' : 'text-white/30')} />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1409,6 +1417,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                       value={quickLogBarInput}
                       onChange={setQuickLogBarInput}
                       onSubmit={handleQuickLogBarSubmit}
+                      onOpenChat={() => setIsChatCollapsed(false)}
                       onManualLog={() => {
                         setQuickLogDate(new Date());
                         setQuickLogIsRecovery(isRecoveryActive);

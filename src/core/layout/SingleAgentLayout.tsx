@@ -287,7 +287,7 @@ export function SingleAgentLayout({
       </div>
 
       {/* ── Desktop: Floating Chat Panel ── */}
-      {canDockChat && (
+      {canDockChat && typeof document !== 'undefined' && createPortal(
         <FloatingChatPanel
           moduleId={moduleId}
           agentName={agentName}
@@ -322,7 +322,8 @@ export function SingleAgentLayout({
               renderMessageActions={renderMessageActions}
             />
           </div>
-        </FloatingChatPanel>
+        </FloatingChatPanel>,
+        document.body
       )}
 
       {/* ── Agent Overlay (Mobile/Tablet) — Bottom Sheet ── */}

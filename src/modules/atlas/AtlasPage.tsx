@@ -676,7 +676,6 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
           quickAddAction={
             <QuickAddForm
               isFluid
-              projects={profile?.projects ?? []}
               onCreateTask={handleCreateTask}
               onCreateHabit={handleCreateHabit}
               onCreateGoal={handleCreateGoal}

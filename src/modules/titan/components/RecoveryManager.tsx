@@ -27,44 +27,46 @@ export function RecoveryManager({
   onOpenQuickLog,
 }: RecoveryManagerProps) {
   return (
-    <div className="px-4 sm:px-6 md:px-8 pb-5 sm:pb-6 md:pb-8 pt-4 sm:pt-5 space-y-4 sm:space-y-5">
-      {recoveryPlan && (
-        <RecoveryDashboard
-          plan={recoveryPlan}
-          daysRemaining={daysRemaining}
-          onResume={onResume}
-        />
-      )}
+    <div className="px-4 pb-5 pt-4 sm:px-6 sm:pb-6 sm:pt-5 md:px-8 md:pb-8">
+      <div className="flex flex-col gap-5 sm:gap-6">
+        {recoveryPlan && (
+          <RecoveryDashboard
+            plan={recoveryPlan}
+            daysRemaining={daysRemaining}
+            onResume={onResume}
+          />
+        )}
 
-      {!hasCheckinToday && (
-        <RecoveryCheckinPanel
-          isNudge
-          onSubmit={(payload) => onSaveCheckin(payload)}
-          onSkip={() => onSaveCheckin({
-            pain: 0,
-            fatigue: 0,
-            sleepQuality: 0,
-            mood: 0,
-            skipped: true,
-          })}
-        />
-      )}
+        {!hasCheckinToday && (
+          <RecoveryCheckinPanel
+            isNudge
+            onSubmit={(payload) => onSaveCheckin(payload)}
+            onSkip={() => onSaveCheckin({
+              pain: 0,
+              fatigue: 0,
+              sleepQuality: 0,
+              mood: 0,
+              skipped: true,
+            })}
+          />
+        )}
 
-      <SurfaceCard className="p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-white/40">Light Activity</p>
-            <p className="text-sm text-white/70">Log a recovery-safe session (walk, mobility, rehab).</p>
+        <SurfaceCard className="p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-white/40">Light Activity</p>
+              <p className="text-sm text-white/70">Log a recovery-safe session (walk, mobility, rehab).</p>
+            </div>
+            <NeuralButton
+              variant="secondary"
+              size="sm"
+              onClick={onOpenQuickLog}
+            >
+              Log Session
+            </NeuralButton>
           </div>
-          <NeuralButton
-            variant="secondary"
-            size="sm"
-            onClick={onOpenQuickLog}
-          >
-            Log Session
-          </NeuralButton>
-        </div>
-      </SurfaceCard>
+        </SurfaceCard>
+      </div>
     </div>
   );
 }

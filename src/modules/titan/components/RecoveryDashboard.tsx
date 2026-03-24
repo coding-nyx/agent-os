@@ -14,22 +14,29 @@ interface RecoveryDashboardProps {
 export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDashboardProps) {
   const template = getRecoveryTemplate(plan.type, plan.bodyRegion);
   return (
-    <div className="space-y-4 sm:space-y-5">
+    <div className="space-y-5 sm:space-y-6">
       <SurfaceCard className="p-4 sm:p-5">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[var(--module-accent-glow)] border border-[var(--module-accent-border)] flex items-center justify-center">
-            <ShieldAlert className="w-5 h-5 text-[var(--module-color-400)]" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--module-accent-border)] bg-[var(--module-accent-glow)]">
+              <ShieldAlert className="w-5 h-5 text-[var(--module-color-400)]" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-white/40">Recovery Overview</p>
+              <p className="text-lg font-black text-white/90">{template.label}</p>
+              <p className="mt-1 text-xs text-white/50">
+                {plan.reasons.join(', ')} · {daysRemaining} days remaining
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-white/40">Recovery Overview</p>
-            <p className="text-lg font-black text-white/90">{template.label}</p>
-            <p className="text-xs text-white/50 mt-1">
-              {plan.reasons.join(', ')} · {daysRemaining} days remaining
-            </p>
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <NeuralButton variant="primary" size="sm" onClick={onResume}>
+              Resume Training
+            </NeuralButton>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs">
+        <div className="mt-5 grid grid-cols-2 gap-3 text-xs sm:gap-4 lg:grid-cols-4">
           <div>
             <p className="text-[10px] uppercase tracking-wider text-white/40">Start</p>
             <p className="text-white/80">{plan.startDate}</p>
@@ -47,22 +54,16 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
             <p className="text-white/80">{plan.bodyRegion ?? 'n/a'}</p>
           </div>
         </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <NeuralButton variant="primary" size="sm" onClick={onResume}>
-            Resume Training
-          </NeuralButton>
-        </div>
       </SurfaceCard>
 
       <SurfaceCard className="p-4 sm:p-5">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="mb-3 flex items-center gap-2">
           <CalendarClock className="w-4 h-4 text-[var(--module-color-400)]" />
           <h3 className="text-[13px] uppercase tracking-wider text-white/80 font-black">
             Recovery Protocol
           </h3>
         </div>
-        <p className="text-sm text-white/70 mb-3">{template.description}</p>
+        <p className="mb-4 text-sm text-white/70">{template.description}</p>
         <ul className="space-y-2 text-sm text-white/70">
           {template.steps.map((step) => (
             <li key={step} className="flex items-start gap-2">
@@ -73,7 +74,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
         </ul>
 
         {(plan.aiSummary || plan.somaSummary || plan.agnesSummary) && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {plan.somaSummary && (
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="flex items-center gap-2 mb-1">
@@ -93,7 +94,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
               </div>
             )}
             {plan.aiSummary && (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:col-span-2">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:col-span-2 xl:col-span-1">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="w-4 h-4 text-[var(--module-color-300)]" />
                   <span className="text-[11px] uppercase tracking-wider text-white/50">Titan Overlay</span>

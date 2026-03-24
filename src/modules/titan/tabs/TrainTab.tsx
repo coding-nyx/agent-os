@@ -8,6 +8,8 @@ import TrainingCalendar from '../components/TrainingCalendar';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import type { GlobalProjection, TitanProfile, SomaProfile, Routine, WorkoutSession } from '@/lib/types';
 
+const SECTION_X = 'px-4 sm:px-6 md:px-8';
+
 export interface TrainTabProps {
   profile: TitanProfile | null;
   somaProfile: SomaProfile | null;
@@ -48,33 +50,31 @@ export function TrainTab({
   onSetAdvisoryBanner,
 }: TrainTabProps) {
   return (
-    <>
-      {/* Advisory banner — surfaced after high-RPE direct-write sessions */}
+    <div className="flex flex-col gap-4 pb-4 sm:gap-5 sm:pb-5 md:gap-6 md:pb-6">
       <AnimatePresence>
         {advisoryBanner && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="mx-4 sm:mx-6 md:mx-8 mb-3 sm:mb-4 flex items-start justify-between p-3 sm:p-4 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]"
+            className="mx-4 flex items-start justify-between rounded-xl border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] p-3 sm:mx-6 sm:p-4 md:mx-8"
           >
-            <p className="text-[11px] sm:text-xs text-[var(--module-color-300)] leading-relaxed">{advisoryBanner}</p>
+            <p className="text-[11px] leading-relaxed text-[var(--module-color-300)] sm:text-xs">{advisoryBanner}</p>
             <NeuralButton
               variant="ghost"
               size="sm"
               onClick={onDismissAdvisory}
               className="ml-3 h-6 w-6 p-0 text-white/30 hover:text-white/60"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="h-3.5 w-3.5" />
             </NeuralButton>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 7-day calendar — primary training view */}
-      <div className="px-4 sm:px-6 md:px-8 pb-4 sm:pb-5 pt-2 sm:pt-3">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <span className="text-[11px] sm:text-xs font-bold text-white/40 uppercase tracking-wider">This Week</span>
+      <section className={SECTION_X}>
+        <div className="mb-3 flex items-center justify-between sm:mb-4">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-white/40 sm:text-xs">This Week</span>
         </div>
         <TrainingCalendar
           workoutLogs={profile?.workoutLogs ?? []}
@@ -84,20 +84,19 @@ export function TrainTab({
           }}
           onRemind={(isoDate) => onRemindDate(isoDate)}
         />
-      </div>
+      </section>
 
-      {/* Quick session logger for calendar-selected routine */}
       {calendarSelectedRoutine && (
-        <div className="px-4 sm:px-6 md:px-8 pb-4 sm:pb-5 pt-0">
-          <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <span className="text-[11px] sm:text-xs text-white/40 uppercase tracking-wider font-bold truncate mr-2">
+        <section className={SECTION_X}>
+          <div className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
+            <span className="mr-2 truncate text-[11px] font-bold uppercase tracking-wider text-white/40 sm:text-xs">
               Session: {calendarSelectedRoutine.name}
             </span>
             <NeuralButton
               variant="ghost"
               size="sm"
               onClick={() => onCalendarRoutineSelect(null)}
-              className="text-[11px] sm:text-xs text-white/30 hover:text-white/60 transition-colors shrink-0 min-h-[2.25rem] px-2 flex items-center justify-center"
+              className="flex min-h-[2.25rem] shrink-0 items-center justify-center px-2 text-[11px] text-white/30 transition-colors hover:text-white/60 sm:text-xs"
             >
               ✕ Dismiss
             </NeuralButton>
@@ -134,22 +133,19 @@ export function TrainTab({
               );
             }}
           />
-        </div>
+        </section>
       )}
 
-      {/* Clearance snapshot + warning banner (from Soma) */}
       <ClearanceWidget
         clearanceStatus={somaProfile?.clearances?.[0]?.status as 'granted' | 'pending' | 'denied' | undefined ?? null}
         lastBiomarkerDate={somaProfile?.biomarkers?.[0]?.recordedAt ?? null}
-        className="px-4 sm:px-6 md:px-8 mb-2 sm:mb-3"
+        className={SECTION_X}
       />
 
-      {/* Readiness — sets daily training context */}
       <TitanDashboard soul={globalSoul} isLocked={isLocked} onCalibrate={onCalibrate} />
 
-      {/* Session logger — shows all routines when no specific routine is selected */}
       {!calendarSelectedRoutine && profile?.routines && profile.routines.length > 0 && (
-        <div className="px-4 sm:px-6 md:px-8 pb-4 sm:pb-5 md:pb-6 pt-4 sm:pt-5">
+        <section className={SECTION_X}>
           <WorkoutSessionLogger
             routines={profile.routines}
             recentSessions={profile?.workoutSessions ?? []}
@@ -174,11 +170,10 @@ export function TrainTab({
               );
             }}
           />
-        </div>
+        </section>
       )}
 
-      {/* Bottom padding so content isn't flush against the QuickLogBar */}
       <div className="h-4" aria-hidden="true" />
-    </>
+    </div>
   );
 }

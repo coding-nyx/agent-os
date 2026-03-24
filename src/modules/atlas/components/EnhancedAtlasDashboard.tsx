@@ -651,17 +651,15 @@ export function EnhancedAtlasDashboard({
            <div className="space-y-8">
               <section className="space-y-4">
                   <h3 className="text-lg font-bold font-display text-white/90">Task Backlog</h3>
-                  <TaskManager
-                    tasks={tasks}
-                    projects={profile?.projects ?? []}
-                    onCreateTask={actions.onCreateTask}
-                    onUpdateTask={actions.onUpdateTask}
-                    onDeleteTask={actions.onDeleteTask}
-                    onCompleteTask={actions.onCompleteTask}
-                    onUncompleteTask={actions.onUncompleteTask}
-                    onScheduleTask={actions.onScheduleTask}
-                    focusTaskId={focusTaskId}
-                  />
+                   <TaskManager
+                     tasks={tasks}
+                     onCreateTask={actions.onCreateTask}
+                     onUpdateTask={actions.onUpdateTask}
+                     onDeleteTask={actions.onDeleteTask}
+                     onCompleteTask={actions.onCompleteTask}
+                     onUncompleteTask={actions.onUncompleteTask}
+                     focusTaskId={focusTaskId}
+                   />
               </section>
               <div className="border-t border-white/5" />
               <section className="space-y-4">

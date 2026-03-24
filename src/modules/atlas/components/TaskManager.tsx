@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
-import type { AtlasTask, AtlasProject } from '../services/atlas-profile-service';
+import type { AtlasTask } from '../services/atlas-profile-service';
 import { TaskCard } from './TaskCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
@@ -26,40 +26,33 @@ import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
-import { QuickReminderModal } from '@/core/components/QuickReminderModal';
 
 // Shared primitives
 import { StatsGrid } from './shared/StatsGrid';
 import { PortalledModal } from './shared/PortalledModal';
-import { ItemActionButtons } from './shared/ItemActionButtons';
 import { useDeleteConfirmation } from './shared/useDeleteConfirmation';
 import { useFilteredSortedList } from './shared/useFilteredSortedList';
 
 interface TaskManagerProps {
   tasks: AtlasTask[];
-  projects: AtlasProject[];
   onCreateTask: (task: Partial<AtlasTask>) => void;
   onUpdateTask: (taskId: string, updates: Partial<AtlasTask>) => void;
   onDeleteTask: (taskId: string) => void;
   onCompleteTask: (taskId: string) => void;
   onUncompleteTask?: (taskId: string) => void;
-  onScheduleTask?: (task: AtlasTask) => void;
   focusTaskId?: string;
 }
 
 type TaskFilter = 'all' | 'active' | 'blocked' | 'done' | 'deferred';
 type TaskSort = 'priority' | 'deadline' | 'energy' | 'created';
-const NO_PROJECT_VALUE = '__none__';
 
 export function TaskManager({
   tasks,
-  projects,
   onCreateTask,
   onUpdateTask,
   onDeleteTask,
   onCompleteTask,
   onUncompleteTask,
-  onScheduleTask,
   focusTaskId,
 }: TaskManagerProps) {
   const reducedMotion = useReducedMotion();
@@ -72,15 +65,12 @@ export function TaskManager({
   const [editingTask, setEditingTask] = useState<AtlasTask | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showDependencyGraph, setShowDependencyGraph] = useState(false);
-  const [remindTask, setRemindTask] = useState<AtlasTask | null>(null);
 
   const { promptDelete, ConfirmationDialog } = useDeleteConfirmation<AtlasTask>(onDeleteTask);
 
   useEffect(() => {
     if (!focusTaskId) return;
     setExpandedTaskId(focusTaskId);
-    const target = tasks.find((t) => t.id === focusTaskId);
-    if (target) setRemindTask(null);
   }, [focusTaskId, tasks]);
 
   // ── Form state ──
@@ -154,6 +144,15 @@ export function TaskManager({
 
     return { nodes, edges };
   }, [tasks]);
+
+  const expandedTask = useMemo(
+    () => tasks.find((task) => task.id === expandedTaskId) ?? null,
+    [tasks, expandedTaskId]
+  );
+  const controlSelectTriggerClassName =
+    'h-11 rounded-xl border-white/10 bg-white/[0.03] px-3.5 text-[11px] sm:h-10';
+  const controlButtonClassName =
+    'w-full justify-center rounded-xl px-3.5 sm:w-auto';
 
   // ── Handlers ──
   const handleOpenForm = useCallback((task?: AtlasTask) => {
@@ -246,65 +245,76 @@ export function TaskManager({
       />
 
       {/* ── Controls: Search, Filter, Sort, Actions ── */}
-      <div className="flex flex-wrap gap-2">
-        {/* Search */}
-        <div className="flex-1 min-w-[200px]">
-          <NeuralInput
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search tasks..."
-            icon={<Search className="w-4 h-4" />}
-          />
-        </div>
+      <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-2 sm:p-2.5">
+        <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
+          {/* Search */}
+          <div className="min-w-0 flex-1">
+            <NeuralInput
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search tasks..."
+              icon={<Search className="w-4 h-4" />}
+              className="h-11 rounded-xl border-white/10 bg-white/[0.03] text-[13px] sm:h-10"
+            />
+          </div>
 
-        {/* Filter dropdown */}
-        <div className="w-full sm:w-40">
-          <NeuralSelectMenu
-            value={filter}
-            onChange={(next) => setFilter(next as TaskFilter)}
-            options={[
-              { value: 'all', label: 'All Tasks' },
-              { value: 'active', label: 'Active' },
-              { value: 'blocked', label: 'Blocked' },
-              { value: 'done', label: 'Done' },
-              { value: 'deferred', label: 'Deferred' },
-            ]}
-            triggerClassName="w-full"
-            ariaLabel="Filter tasks"
-          />
-        </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex">
+            {/* Filter dropdown */}
+            <div className="w-full xl:w-[148px]">
+              <NeuralSelectMenu
+                value={filter}
+                onChange={(next) => setFilter(next as TaskFilter)}
+                options={[
+                  { value: 'all', label: 'All Tasks' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'blocked', label: 'Blocked' },
+                  { value: 'done', label: 'Done' },
+                  { value: 'deferred', label: 'Deferred' },
+                ]}
+                minWidthClassName="min-w-0"
+                triggerClassName={cn('w-full', controlSelectTriggerClassName)}
+                ariaLabel="Filter tasks"
+              />
+            </div>
 
-        {/* Sort dropdown */}
-        <div className="w-full sm:w-40">
-          <NeuralSelectMenu
-            value={sortBy}
-            onChange={(next) => setSortBy(next as TaskSort)}
-            options={[
-              { value: 'priority', label: 'Priority' },
-              { value: 'deadline', label: 'Deadline' },
-              { value: 'energy', label: 'Energy Cost' },
-              { value: 'created', label: 'Created Date' },
-            ]}
-            triggerClassName="w-full"
-            ariaLabel="Sort tasks"
-          />
-        </div>
+            {/* Sort dropdown */}
+            <div className="w-full xl:w-[148px]">
+              <NeuralSelectMenu
+                value={sortBy}
+                onChange={(next) => setSortBy(next as TaskSort)}
+                options={[
+                  { value: 'priority', label: 'Priority' },
+                  { value: 'deadline', label: 'Deadline' },
+                  { value: 'energy', label: 'Energy Cost' },
+                  { value: 'created', label: 'Created Date' },
+                ]}
+                minWidthClassName="min-w-0"
+                triggerClassName={cn('w-full', controlSelectTriggerClassName)}
+                ariaLabel="Sort tasks"
+              />
+            </div>
+          </div>
 
-        {/* Action buttons */}
-        <div className="flex gap-2 ml-auto">
-          <NeuralButton
-            onClick={() => setShowDependencyGraph(!showDependencyGraph)}
-            size="sm"
-            variant="ghost"
-            className="border border-white/10"
-          >
-            <GitBranch className="w-4 h-4 mr-2" />
-            Graph
-          </NeuralButton>
-          <NeuralButton onClick={() => handleOpenForm()} size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            New Task
-          </NeuralButton>
+          {/* Action buttons */}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:ml-auto xl:flex">
+            <NeuralButton
+              onClick={() => setShowDependencyGraph(!showDependencyGraph)}
+              size="sm"
+              variant="ghost"
+              className={cn(controlButtonClassName, 'border border-white/10 bg-white/[0.03]')}
+            >
+              <GitBranch className="w-4 h-4 mr-1.5" />
+              Graph
+            </NeuralButton>
+            <NeuralButton
+              onClick={() => handleOpenForm()}
+              size="sm"
+              className={cn(controlButtonClassName, 'sm:px-4')}
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              New Task
+            </NeuralButton>
+          </div>
         </div>
       </div>
 
@@ -359,7 +369,7 @@ export function TaskManager({
       </AnimatePresence>
 
       {/* ── Task List ── */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {filteredTasks.length === 0 ? (
           <EmptyState
             title={searchQuery ? 'No tasks found' : 'No tasks yet'}
@@ -373,7 +383,7 @@ export function TaskManager({
           />
         ) : (
           filteredTasks.map((task) => (
-            <div key={task.id} className="relative group">
+            <div key={task.id}>
               <TaskCard
                 task={task}
                 onComplete={onCompleteTask}
@@ -381,14 +391,8 @@ export function TaskManager({
                 isExpanded={expandedTaskId === task.id}
                 onToggleExpand={() => handleToggleExpand(task.id)}
                 allTasks={tasks}
-                onRemind={(t) => setRemindTask(t)}
-                onSchedule={onScheduleTask}
-              />
-              {/* Quick action buttons on hover */}
-              <ItemActionButtons
-                onEdit={() => handleOpenForm(task)}
-                onDelete={() => promptDelete(task)}
-                itemTitle={task.title}
+                onEdit={(currentTask) => handleOpenForm(currentTask)}
+                onDelete={(currentTask) => promptDelete(currentTask)}
               />
             </div>
           ))
@@ -470,8 +474,8 @@ export function TaskManager({
             />
           </div>
 
-          {/* Deadline & Project */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Deadline */}
+          <div className="grid grid-cols-1 gap-4">
             <NeuralInput
               label="Deadline"
               type="date"
@@ -479,26 +483,6 @@ export function TaskManager({
               value={formData.deadline || ''}
               onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
             />
-            <div className="space-y-2">
-              <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
-                Project
-              </label>
-              <NeuralSelectMenu
-                value={formData.projectId || NO_PROJECT_VALUE}
-                onChange={(next) => {
-                  const selected = String(next);
-                  setFormData({
-                    ...formData,
-                    projectId: selected === NO_PROJECT_VALUE ? undefined : selected,
-                  });
-                }}
-                options={[
-                  { value: NO_PROJECT_VALUE, label: 'None' },
-                  ...projects.map((p) => ({ value: p.id, label: p.title })),
-                ]}
-                ariaLabel="Project"
-              />
-            </div>
           </div>
 
           {/* Dependencies */}
@@ -566,27 +550,6 @@ export function TaskManager({
         </div>
       </PortalledModal>
 
-      <QuickReminderModal
-        open={!!remindTask}
-        moduleId="atlas"
-        defaultTitle={remindTask ? `Task: ${remindTask.title}` : ''}
-        defaultNote={remindTask?.description}
-        deepLink={
-          remindTask ? { route: '/atlas', focusId: `task:${remindTask.id}` } : undefined
-        }
-        source={
-          remindTask
-            ? {
-                moduleId: 'atlas',
-                entityType: 'task',
-                entityId: remindTask.id,
-                label: remindTask.title,
-              }
-            : undefined
-        }
-        tags={remindTask?.tags}
-        onClose={() => setRemindTask(null)}
-      />
       <ConfirmationDialog />
     </div>
   );

@@ -70,6 +70,16 @@ function IconDumbbell({ className, strokeWidth }: InlineIconProps) {
   );
 }
 
+function IconChat({ className, strokeWidth }: InlineIconProps) {
+  return (
+    <InlineIconBase className={className} strokeWidth={strokeWidth}>
+      <path d="M7 10h10" />
+      <path d="M7 14h6" />
+      <path d="M5 20l1.5-3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H11z" />
+    </InlineIconBase>
+  );
+}
+
 function IconChevronUp({ className, strokeWidth }: InlineIconProps) {
   return (
     <InlineIconBase className={className} strokeWidth={strokeWidth}>
@@ -85,6 +95,8 @@ export interface QuickLogBarProps {
   onChange: (value: string) => void;
   /** Called when user submits — parent runs the parser */
   onSubmit: (input: string) => void;
+  /** Called when user opens Titan chat */
+  onOpenChat?: () => void;
   /** Called when user taps the manual + button */
   onManualLog?: () => void;
   /** Called when user taps the cardio button */
@@ -130,6 +142,7 @@ export function QuickLogBar({
   value,
   onChange,
   onSubmit,
+  onOpenChat,
   onManualLog,
   onCardioLog,
   recentSessions,
@@ -230,6 +243,18 @@ export function QuickLogBar({
           )}
         >
           <div className="flex items-center gap-2 sm:gap-3 w-full py-2.5 px-4 sm:py-3 sm:px-6 md:px-8 min-w-0">
+            {onOpenChat && (
+              <button
+                type="button"
+                onClick={onOpenChat}
+                title="Open Titan chat"
+                aria-label="Open Titan chat"
+                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl bg-black/20 border border-white/10 text-white/50 hover:text-[var(--module-color-400)] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] shrink-0"
+              >
+                <IconChat className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Intelligence Input — visible boundary, min-w-0 so flex doesn't overflow */}
             <NeuralInput
               ref={inputRef}

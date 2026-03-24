@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Lock, Clock, Zap, ChevronDown, Link2, RotateCcw, CalendarPlus } from 'lucide-react';
-import { NeuralButton } from '@/core/components/NeuralButton';
+import { CheckCircle2, Circle, AlertTriangle, Clock, Zap, ChevronDown, Link2, RotateCcw, CalendarPlus, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasTask } from '../services/atlas-profile-service';
@@ -19,6 +18,8 @@ interface TaskCardProps {
   allTasks?: AtlasTask[];
   onRemind?: (task: AtlasTask) => void;
   onSchedule?: (task: AtlasTask) => void;
+  onEdit?: (task: AtlasTask) => void;
+  onDelete?: (task: AtlasTask) => void;
   /** Whether this card is currently selected for scoped chat */
   isEntitySelected?: boolean;
   /** Called when the user taps to select/deselect this card */
@@ -59,6 +60,8 @@ export const TaskCard = React.memo(function TaskCard({
   allTasks = [],
   onRemind,
   onSchedule,
+  onEdit,
+  onDelete,
   isEntitySelected = false,
   onEntitySelect,
 }: TaskCardProps) {
@@ -66,6 +69,12 @@ export const TaskCard = React.memo(function TaskCard({
   const isBlocked = task.status === 'blocked';
   const isDone = task.status === 'done';
   const isDeferred = task.status === 'deferred';
+  const StatusIcon = isDone ? CheckCircle2 : isBlocked ? AlertTriangle : Circle;
+  const statusColor = isDone
+    ? 'text-emerald-400'
+    : isBlocked
+      ? 'text-amber-400'
+      : 'text-white/40';
 
   // Resolve dependency names for "Blocked by" display
   const blockedByNames = useMemo(() => {
@@ -108,7 +117,7 @@ export const TaskCard = React.memo(function TaskCard({
       onClick={() => onEntitySelect?.(task)}
       className={cn(
         'group relative rounded-xl border overflow-hidden transition-all cursor-pointer min-h-[44px]',
-        'bg-gradient-to-r from-white/[0.02] to-transparent hover:from-white/[0.04]',
+        'bg-white/[0.02] hover:bg-white/[0.035]',
         isEntitySelected && 'ring-2 ring-[var(--module-accent-ring)] shadow-[var(--module-accent-glow)]',
         isBlocked && 'opacity-60 border-white/5',
         isDone && 'border-white/[0.04] bg-white/[0.01]',
@@ -119,27 +128,18 @@ export const TaskCard = React.memo(function TaskCard({
       {/* Left priority bar */}
       <div
         className={cn(
-          'absolute left-0 top-0 bottom-0 w-1',
+          'absolute left-0 top-0 bottom-0 w-1 opacity-80',
           PRIORITY_COLORS[task.priority] || 'bg-zinc-400'
         )}
         aria-hidden="true"
       />
 
-      <div className="pl-4 pr-3 py-3">
+      <div className="pl-4 pr-4 py-3">
         {/* Main row — clickable for expand */}
-        <NeuralButton
-          as="div"
-          variant="emerald"
-          role="button"
-          tabIndex={0}
-          onClick={onToggleExpand}
-          onKeyDown={handleExpandKeyDown}
-          aria-expanded={isExpanded}
-          aria-label={`${task.title}, priority ${PRIORITY_LABELS[task.priority]}, energy cost ${task.energyCost}${isBlocked ? ', blocked' : ''}${isDone ? ', completed' : ''}`}
-          className="flex items-start gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 rounded-lg -m-1 p-1"
-        >
-          {/* Checkbox */}
-          <NeuralButton
+        <div className="flex w-full items-start gap-3 rounded-lg bg-transparent p-0 text-left text-white/80">
+          {/* Status button */}
+          <button
+            type="button"
             onClick={handleComplete}
             onKeyDown={handleCheckboxKeyDown}
             disabled={isBlocked}
@@ -148,75 +148,116 @@ export const TaskCard = React.memo(function TaskCard({
                 ? `Mark ${task.title} as undone`
                 : `Mark ${task.title} as complete`
             }
-            variant="ghost"
-            size="sm"
             className={cn(
-              'mt-0.5 flex-shrink-0 w-5 h-5 min-w-0 !p-0 rounded-md border-2 flex items-center justify-center transition-all min-h-[44px]',
+              'mt-0.5 flex h-5 w-5 min-h-[44px] min-w-0 flex-shrink-0 items-center justify-center rounded-md p-0 transition-all sm:min-h-0',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
               isDone
-                ? 'bg-emerald-500 border-emerald-500 hover:bg-emerald-600 hover:border-emerald-600 cursor-pointer'
+                ? 'text-emerald-400'
                 : isBlocked
-                  ? 'border-white/10 cursor-not-allowed'
-                  : 'border-white/20 hover:border-emerald-400/50 cursor-pointer'
+                  ? 'cursor-not-allowed text-amber-400/80'
+                  : 'cursor-pointer text-white/40 hover:text-white/70'
             )}
           >
-            {isDone && (
-              <Check className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-            )}
-            {isBlocked && (
-              <Lock className="w-3 h-3 text-white/30" aria-hidden="true" />
-            )}
-          </NeuralButton>
+            <StatusIcon className={cn('h-4 w-4', statusColor)} aria-hidden="true" />
+          </button>
 
           {/* Title, badges, description preview */}
-          <div className="flex-1 min-w-0 pt-0.5 text-left">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
-              <span
-                className={cn(
-                  'text-sm font-semibold leading-tight break-words',
-                  isDone ? 'text-white/30 line-through' : 'text-white/80'
-                )}
+          <div className="min-w-0 flex-1 pt-0.5 text-left">
+            <div className="flex items-start justify-between gap-3">
+              <button
+                type="button"
+                onClick={onToggleExpand}
+                onKeyDown={handleExpandKeyDown}
+                aria-expanded={isExpanded}
+                aria-label={`${task.title}, priority ${PRIORITY_LABELS[task.priority]}, energy cost ${task.energyCost}${isBlocked ? ', blocked' : ''}${isDone ? ', completed' : ''}`}
+                className="min-w-0 flex-1 space-y-1.5 rounded-lg bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
               >
-                {task.title}
-              </span>
-
-              <div className="flex items-center gap-2 flex-wrap mt-0.5 sm:mt-0">
-                {/* Energy cost pill */}
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/5 text-white/50 text-[10px] font-semibold tabular-nums">
-                  <Zap className="w-2.5 h-2.5" aria-hidden="true" />
-                  {task.energyCost}
+                <span
+                  className={cn(
+                    'block text-sm font-bold leading-tight break-words',
+                    isDone ? 'text-white/50 line-through' : 'text-white/80'
+                  )}
+                >
+                  {task.title}
                 </span>
 
-                {/* Recurrence indicator */}
-                {task.recurrenceRule && (
-                  <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/5 text-white/50 text-[10px] font-semibold"
-                    title={`Recurring: ${task.recurrenceRule}`}
-                    aria-label={`Recurring task, ${task.recurrenceRule}`}
-                  >
-                    <RotateCcw className="w-2.5 h-2.5" aria-hidden="true" />
+                <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/45">
+                  <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-[var(--module-color-300)]">
+                    <Zap className="h-3 w-3 text-[var(--module-color-400)]" aria-hidden="true" />
+                    {task.energyCost}
                   </span>
+
+                  {task.recurrenceRule && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-0.5 font-semibold text-white/45"
+                      title={`Recurring: ${task.recurrenceRule}`}
+                      aria-label={`Recurring task, ${task.recurrenceRule}`}
+                    >
+                      <RotateCcw className="h-2.5 w-2.5" aria-hidden="true" />
+                      {task.recurrenceRule}
+                    </span>
+                  )}
+
+                  {task.deadline && !isDone && (
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-semibold',
+                        deadlineOverdue
+                          ? 'bg-rose-500/10 text-rose-300'
+                          : deadlineUrgent
+                            ? 'bg-amber-500/10 text-amber-300'
+                            : 'bg-white/5 text-white/45'
+                      )}
+                    >
+                      <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+                      {new Date(task.deadline).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </span>
+                  )}
+                </div>
+              </button>
+
+              <div className="mt-0.5 flex shrink-0 items-start gap-1.5 pl-2">
+                {(onEdit || onDelete) && (
+                  <div className="flex items-center gap-1">
+                    {onEdit && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(task);
+                        }}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-white/45 transition-colors hover:bg-white/5 hover:text-white/80"
+                        aria-label={`Edit ${task.title}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(task);
+                        }}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-rose-300/70 transition-colors hover:bg-rose-500/10 hover:text-rose-200"
+                        aria-label={`Delete ${task.title}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
                 )}
 
-                {/* Deadline badge */}
-                {task.deadline && !isDone && (
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold',
-                      deadlineOverdue
-                        ? 'bg-rose-500/10 text-rose-300'
-                        : deadlineUrgent
-                          ? 'bg-amber-500/10 text-amber-300'
-                          : 'bg-white/5 text-white/50'
-                    )}
-                  >
-                    <Clock className="w-2.5 h-2.5" aria-hidden="true" />
-                    {new Date(task.deadline).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </span>
-                )}
+                <ChevronDown
+                  className={cn(
+                    'mt-1 h-4 w-4 text-white/20 transition-transform',
+                    isExpanded && 'rotate-180'
+                  )}
+                  aria-hidden="true"
+                />
               </div>
             </div>
 
@@ -229,22 +270,13 @@ export const TaskCard = React.memo(function TaskCard({
 
             {/* Blocked indicator */}
             {isBlocked && blockedByNames.length > 0 && (
-              <p className="mt-1.5 text-[11px] text-amber-300/70 flex items-center gap-1.5">
-                <Lock className="w-3 h-3 shrink-0" aria-hidden="true" />
+              <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-amber-300/70">
+                <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
                 Blocked by: {blockedByNames.join(', ')}
               </p>
             )}
           </div>
-
-          {/* Expand chevron */}
-          <ChevronDown
-            className={cn(
-              'w-4 h-4 text-white/20 shrink-0 transition-transform mt-0.5',
-              isExpanded && 'rotate-180'
-            )}
-            aria-hidden="true"
-          />
-        </NeuralButton>
+        </div>
 
         {/* Expanded details panel */}
         <AnimatePresence>
@@ -336,31 +368,29 @@ export const TaskCard = React.memo(function TaskCard({
 
                 <div className="pt-2 flex items-center gap-2">
                   {onRemind && (
-                    <NeuralButton
-                      variant="ghost"
-                      size="sm"
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onRemind(task);
                       }}
-                      className="text-[10px] uppercase tracking-[0.14em] text-white/50 hover:text-white/80 h-auto px-3 py-2"
+                      className="rounded-lg px-3 py-2 text-[10px] uppercase tracking-[0.14em] text-white/50 transition-colors hover:bg-white/5 hover:text-white/80"
                     >
                       Remind me
-                    </NeuralButton>
+                    </button>
                   )}
                   {onSchedule && !isDone && (
-                    <NeuralButton
-                      variant="ghost"
-                      size="sm"
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onSchedule(task);
                       }}
-                      className="text-[10px] uppercase tracking-[0.14em] text-[var(--module-color-400)] hover:text-[var(--module-color-300)] h-auto px-3 py-2 flex items-center gap-1.5"
+                      className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] uppercase tracking-[0.14em] text-[var(--module-color-400)] transition-colors hover:bg-white/5 hover:text-[var(--module-color-300)]"
                     >
                       <CalendarPlus className="w-3 h-3" />
                       Schedule
-                    </NeuralButton>
+                    </button>
                   )}
                 </div>
               </div>
