@@ -68,14 +68,38 @@ async function googleEmbedding(text: string): Promise<number[] | null> {
   }
 }
 
+const embedCache = new Map<string, Promise<number[]>>();
+const MAX_CACHE_SIZE = 500;
+
 export const EmbeddingService = {
-  async embed(text: string): Promise<number[]> {
+  embed(text: string): Promise<number[]> {
     const normalized = text.trim();
-    if (!normalized) return lexicalFallbackEmbedding('empty');
+    if (!normalized) return Promise.resolve(lexicalFallbackEmbedding('empty'));
 
-    const remote = await googleEmbedding(normalized);
-    if (remote && remote.length > 0) return remote;
+    // Return cached promise to deduplicate concurrent identical requests
+    if (embedCache.has(normalized)) {
+      return embedCache.get(normalized)!;
+    }
 
-    return lexicalFallbackEmbedding(normalized);
+    const promise = (async () => {
+      const remote = await googleEmbedding(normalized);
+      if (remote && remote.length > 0) return remote;
+      return lexicalFallbackEmbedding(normalized);
+    })();
+
+    // Remove rejected promises from cache to allow retrying
+    promise.catch(() => embedCache.delete(normalized));
+
+    embedCache.set(normalized, promise);
+
+    // Prevent memory leaks in long sessions
+    if (embedCache.size > MAX_CACHE_SIZE) {
+      const firstKey = embedCache.keys().next().value;
+      if (firstKey !== undefined) {
+        embedCache.delete(firstKey);
+      }
+    }
+
+    return promise;
   }
 };
