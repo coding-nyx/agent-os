@@ -78,6 +78,7 @@ const silentHistoryEntries: SilentHistoryEntry[] = [
 
 describe('OperationalCommandCenterCard', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 

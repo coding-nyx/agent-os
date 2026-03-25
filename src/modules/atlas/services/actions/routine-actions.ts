@@ -18,7 +18,7 @@ import {
 } from './shared';
 
 export const routineActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
-  flatten_schedule: async ({ userId, encryptionKey, payload, updateGlobalSoul }) => {
+  flatten_schedule: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -30,6 +30,15 @@ export const routineActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
     };
 
     await persistProfile(next, userId ?? null, encryptionKey ?? null);
+
+    emitSpineEvent('ATLAS_RECOVERY_SCHEDULED', {
+      flattenedUntil,
+      reason: typeof payload?.reason === 'string' ? payload.reason : 'schedule_flattened'
+    });
+    emitSpineEvent('ATLAS_STATE_CHANGED', {
+      changedFields: ['flattenedUntil'],
+      flattenedUntil
+    });
 
     const nextLoad = typeof payload?.activeLoad === 'number' ? payload.activeLoad : undefined;
     if (typeof nextLoad === 'number') {
@@ -175,7 +184,7 @@ export const routineActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
     });
   },
 
-  schedule_block: async ({ userId, encryptionKey, payload }) => {
+  schedule_block: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;
     const profile = raw;
@@ -213,6 +222,16 @@ export const routineActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
 
     profile.scheduledTasks.push(entry);
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+    emitSpineEvent('ATLAS_TASK_CREATED', {
+      taskId: entry.id,
+      title: entry.title,
+      scheduledAt: entry.scheduledAt,
+      duration: entry.duration,
+      category: entry.category,
+      status: entry.status,
+      source: 'schedule_block'
+    });
   },
 
   update_nsv_planning: async ({ payload, updateGlobalSoul, emitSpineEvent }) => {

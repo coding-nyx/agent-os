@@ -73,6 +73,7 @@ export const TITAN_ALLOWED_ACTIONS: Record<TitanContextMode['kind'], readonly st
     'create_field',
     'delete_field',
     'log_field_value',
+    'create_workout_plan',
   ],
 
   'routine-edit': [
@@ -353,40 +354,35 @@ ${recoveryBlock}${clearanceNote}${activeCycleBlock}
 - Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.
 
 [INLINE PROPOSALS]
-When the user asks to create a new routine, log sleep, or log a workout, you MUST respond with the inline proposal format — never use update_routine, log_sleep, or log_workout_session action tags directly for user-initiated requests. The proposal format lets the user confirm before data is committed. Direct action tags for these intents are blocked in this mode anyway.
+When the user asks to create a new routine, log sleep, or log a workout, you MUST respond with a proposal action tag — never use update_routine, log_sleep, or log_workout_session action tags directly for user-initiated requests. The proposal format lets the user confirm before data is committed. Direct action tags for these intents are blocked in this mode anyway.
 
-Supported proposal intents:
-1. **log_sleep**: User mentions sleeping, bedtime, wake time, sleep quality
-2. **log_workout**: User describes a completed workout (exercises, sets, reps, weights, or "I worked out")
-3. **request_routine**: User asks for a new routine, workout plan, or training schedule
+Supported proposal action tags:
+- <action type="propose_sleep_log">
+- <action type="propose_workout_log">
+- <action type="propose_routine">
 
-When you have sufficient data to fulfill the intent, write a brief 1-sentence confirmation to the user, then on the very next line output the proposal JSON (raw, no code fences). This satisfies both the user-facing message requirement and the inline proposal format.
+When you have sufficient data to fulfill the intent, write a brief 1-sentence confirmation to the user, then emit the action tag with a JSON payload.
 
-Proposal JSON schema (all fields required):
-- "__isTitanProposal": true  (literal boolean)
-- "type": one of "sleep_log_proposal", "workout_log_proposal", "routine_proposal"
-- "intent": one of "log_sleep", "log_workout", "request_routine"
-- "generatedData": object — for routines use {"routines":[{weekday,timeframe,status,rationale,exercises}]}; for sleep use {date,durationHours,quality,bedtime?,wakeTime?,notes?}; for workout use the log_workout_session schema
-- "message": short user-friendly summary of what will be logged/created
-- "actions": array of action objects
-
-Action handlers by type:
-- sleep_log_proposal → handler "log_sleep"
-- workout_log_proposal → handler "log_workout_session"
-- routine_proposal → handler "update_routine"
-Always add: {"label":"Cancel","handler":"dismissProposal","variant":"ghost"}
+Payload schemas:
+- propose_routine: {"routines":[{weekday,timeframe,status,rationale,exercises}], "message":"..."}
+- propose_sleep_log: {"date":"...","durationHours":0,"quality":0,"bedtime":"...","wakeTime":"...","notes":"...","message":"..."}
+- propose_workout_log: use the log_workout_session schema, plus "message":"..."
 
 Example for sleep:
 User: "Slept 7.5 hours last night, quality was decent, went to bed around 11"
 Response:
 Here's your sleep log — confirm to save it.
-{"__isTitanProposal":true,"type":"sleep_log_proposal","intent":"log_sleep","generatedData":{"date":"2024-01-15","durationHours":7.5,"quality":7,"bedtime":"23:00"},"message":"7.5h sleep · quality 7/10","actions":[{"label":"Log Sleep","handler":"log_sleep"},{"label":"Cancel","handler":"dismissProposal","variant":"ghost"}]}
+<action type="propose_sleep_log">
+{"date":"2024-01-15","durationHours":7.5,"quality":7,"bedtime":"23:00","message":"7.5h sleep · quality 7/10"}
+</action>
 
 Example for routine:
 User: "Create me a push/pull/legs routine"
 Response:
 Here's a Push/Pull/Legs split — confirm to save it to your profile.
-{"__isTitanProposal":true,"type":"routine_proposal","intent":"request_routine","generatedData":{"routines":[{"weekday":"monday","timeframe":"daily","status":"active","rationale":"Push day","exercises":[{"name":"Bench Press","sets":4,"reps":"8","notes":""}]},{"weekday":"wednesday","timeframe":"daily","status":"active","rationale":"Pull day","exercises":[{"name":"Pull-ups","sets":4,"reps":"8","notes":""}]},{"weekday":"friday","timeframe":"daily","status":"active","rationale":"Legs day","exercises":[{"name":"Squat","sets":4,"reps":"8","notes":""}]}]},"message":"Push/Pull/Legs · 3 days/week","actions":[{"label":"Save Routine","handler":"update_routine"},{"label":"Cancel","handler":"dismissProposal","variant":"ghost"}]}
+<action type="propose_routine">
+{"routines":[{"weekday":"monday","timeframe":"daily","status":"active","rationale":"Push day","exercises":[{"name":"Bench Press","sets":4,"reps":"8","notes":""}]},{"weekday":"wednesday","timeframe":"daily","status":"active","rationale":"Pull day","exercises":[{"name":"Pull-ups","sets":4,"reps":"8","notes":""}]},{"weekday":"friday","timeframe":"daily","status":"active","rationale":"Legs day","exercises":[{"name":"Squat","sets":4,"reps":"8","notes":""}]}], "message":"Push/Pull/Legs · 3 days/week"}
+</action>
 
 IMPORTANT: Only emit proposals when you have enough data. If essential fields are missing, ask clarifying questions first. Never emit a proposal with placeholder or incomplete generatedData.
 

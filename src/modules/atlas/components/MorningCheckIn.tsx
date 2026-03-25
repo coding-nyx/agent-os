@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sunrise, Zap, Brain, Activity, X, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { Spine } from '@/lib/spine/spine-event-bus';
 import type { AtlasProfile } from '../services/atlas-profile-service';
 import type { GlobalProjection } from '@/lib/types';
 import type { AtlasState } from '../services/atlas-predictive-service';
@@ -226,6 +227,18 @@ export function MorningCheckIn({
 
   async function handleGetBrief() {
     setIsLoading(true);
+    Spine.emit({
+      type: 'MORNING_BRIEF',
+      source: 'atlas',
+      domain: 'C',
+      data: {
+        date: todayISO(),
+        triggeredBy: 'user',
+        predictiveState: predictiveState ?? undefined,
+      },
+      cascadeDepth: 0,
+      priority: 'info',
+    });
     onSendMessage(buildMorningBriefPrompt(profile, soul, predictiveState));
     await new Promise((resolve) => setTimeout(resolve, 300));
     setIsLoading(false);

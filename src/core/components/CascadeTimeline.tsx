@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { useGlobalSoul } from '@/lib/global-soul-context';
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+import { useMotionConfig } from '@/lib/hooks/use-motion-config';
 import { EVENT_DISPLAY_NAMES } from '@/lib/state-display-config';
 import type { SpineEvent, SpineEventType } from '@/lib/types';
 
@@ -205,7 +205,7 @@ function CascadeChainItem({ chain, moduleNames, reducedMotion }: CascadeChainIte
             initial={reducedMotion ? false : { height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={reducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-            transition={reducedMotion ? { duration: 0 } : { duration: 0.3 }}
+            transition={reducedMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
             className="border-t border-white/5 bg-white/[0.01]"
           >
             {chain.children.map((child, idx) => (
@@ -257,7 +257,8 @@ interface CascadeTimelineProps {
 
 export function CascadeTimeline({ maxChains = 10, className }: CascadeTimelineProps) {
   const { globalSoul } = useGlobalSoul();
-  const reducedMotion = useReducedMotion();
+  const { shouldReduceMotion, transition } = useMotionConfig();
+  const reducedMotion = shouldReduceMotion;
   const [events, setEvents] = useState<SpineEvent[]>([]);
 
   const moduleNames = globalSoul?.displayNames ?? {};

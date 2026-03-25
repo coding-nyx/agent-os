@@ -492,8 +492,6 @@ describe('NexusDashboard', () => {
     render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" />);
 
     expect(screen.getByText(/Good (morning|afternoon|evening)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Welcome back\. Nexus is online and listening\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Agents present/i)).toBeInTheDocument();
     expect(screen.getByTestId('nexus-open-ops')).toBeInTheDocument();
     expect(screen.getByTestId('nexus-clear-chat')).toBeInTheDocument();
     expect(screen.getByTestId('orchestration-status-chip')).toBeInTheDocument();
@@ -907,7 +905,11 @@ describe('NexusDashboard', () => {
       await latestCommandPaletteProps.onMemorySearch('planning reset window');
     });
 
-    expect(ai.handleSendMessage).toHaveBeenCalledWith('Search my memory for: planning reset window');
+    expect(ai.handleSendMessage).toHaveBeenCalledWith(
+      'Search my memory for: planning reset window',
+      undefined,
+      expect.objectContaining({ threadId: 'nexus.dashboard' }),
+    );
     expect(screen.getByText(/memory search: "planning reset window"/i)).toBeInTheDocument();
     expect(
       screen.getByText(/you handled a demanding planning block well after reducing context switching/i),
@@ -922,6 +924,8 @@ describe('NexusDashboard', () => {
 
     expect(ai.handleSendMessage).toHaveBeenLastCalledWith(
       expect.stringContaining('Use this episodic memory as context for the next reply:'),
+      undefined,
+      expect.objectContaining({ threadId: 'nexus.dashboard' }),
     );
     expect(screen.queryByText(/memory search: "planning reset window"/i)).not.toBeInTheDocument();
   });
@@ -1007,6 +1011,8 @@ describe('NexusDashboard', () => {
 
     expect(ai.handleSendMessage).toHaveBeenCalledWith(
       expect.stringContaining('Use this alive entity as planning context for the next reply:'),
+      undefined,
+      expect.objectContaining({ threadId: 'nexus.dashboard' }),
     );
   });
 

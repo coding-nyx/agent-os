@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint",
     "test": "vitest run",
+    "validate:flows": "node scripts/validate-flow-registry.mjs",
     "migrate": "tsx scripts/migrate-data.ts",
     "install-doc-hooks": "bash scripts/install-doc-hooks.sh"
   },

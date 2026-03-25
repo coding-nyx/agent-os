@@ -15,20 +15,19 @@ const KEYWORD_ROUTES: Array<{ moduleId: ModuleId; keywords: Array<{ term: string
   {
     moduleId: 'soma',
     keywords: [
-      // High-weight compound phrases unique to somatic/recovery domain
       { term: 'heart rate variability', weight: 3 }, { term: 'sleep score', weight: 3 },
       { term: 'heart rate', weight: 2 }, { term: 'hrv', weight: 2 },
-      { term: 'soma', weight: 2 },
-      { term: 'recovery', weight: 1 }, { term: 'readiness', weight: 1 },
-      { term: 'resting', weight: 1 }, { term: 'soreness', weight: 1 },
-      { term: 'somatic', weight: 1 }, { term: 'biomarker', weight: 1 }
+      { term: 'soma', weight: 2 }, { term: 'recovery', weight: 2 }, 
+      { term: 'medical', weight: 2 }, { term: 'clearance', weight: 2 }, { term: 'bloodwork', weight: 2 },
+      { term: 'lab results', weight: 2 }, { term: 'lab', weight: 1 },
+      { term: 'readiness', weight: 1 }, { term: 'resting', weight: 1 }, 
+      { term: 'soreness', weight: 1 }, { term: 'somatic', weight: 1 }, { term: 'biomarker', weight: 1 }
     ]
   },
   {
     moduleId: 'agnes',
     keywords: [
-      { term: 'mental health', weight: 2 },
-      { term: 'agnes', weight: 2 },
+      { term: 'mental health', weight: 2 }, { term: 'agnes', weight: 2 },
       { term: 'anxiety', weight: 1 }, { term: 'trauma', weight: 1 }, { term: 'emotion', weight: 1 },
       { term: 'feeling', weight: 1 }, { term: 'relationship', weight: 1 }, { term: 'depression', weight: 1 },
       { term: 'therapy', weight: 1 }
@@ -37,40 +36,32 @@ const KEYWORD_ROUTES: Array<{ moduleId: ModuleId; keywords: Array<{ term: string
   {
     moduleId: 'titan',
     keywords: [
-      // Compound phrases first — these disambiguate "plan" in a fitness context
-      { term: 'workout plan', weight: 2 }, { term: 'training plan', weight: 2 },
-      { term: 'fitness plan', weight: 2 }, { term: 'exercise plan', weight: 2 },
-      { term: 'personal record', weight: 2 },
-      { term: 'titan', weight: 2 },
-      { term: 'workout', weight: 1 }, { term: 'training', weight: 1 }, { term: 'gym', weight: 1 },
-      { term: 'strength', weight: 1 }, { term: 'routine', weight: 1 }, { term: 'fatigue', weight: 1 },
-      { term: 'lab', weight: 1 }, { term: 'bloodwork', weight: 1 }, { term: 'biomarker', weight: 1 },
-      { term: 'hormone', weight: 1 }, { term: 'medical', weight: 1 }, { term: 'clearance', weight: 1 },
-      { term: 'recovery', weight: 1 }, { term: 'soma', weight: 1 }, { term: 'fitness', weight: 1 }
+      { term: 'workout plan', weight: 3 }, { term: 'training plan', weight: 3 },
+      { term: 'fitness plan', weight: 3 }, { term: 'exercise plan', weight: 3 },
+      { term: 'personal record', weight: 2 }, { term: 'titan', weight: 2 },
+      { term: 'workout', weight: 2 }, { term: 'training', weight: 2 }, { term: 'gym', weight: 2 },
+      { term: 'fitness', weight: 2 }, { term: 'strength', weight: 1 }, { term: 'routine', weight: 1 }, 
+      { term: 'fatigue', weight: 1 }
     ]
   },
   {
     moduleId: 'ledger',
     keywords: [
-      { term: 'ledger', weight: 2 },
-      { term: 'budget', weight: 1 }, { term: 'expense', weight: 1 }, { term: 'spending', weight: 1 },
+      { term: 'ledger', weight: 2 }, { term: 'budget', weight: 2 }, { term: 'finance', weight: 2 },
+      { term: 'money', weight: 2 }, { term: 'expense', weight: 1 }, { term: 'spending', weight: 1 },
       { term: 'debt', weight: 1 }, { term: 'cashflow', weight: 1 }, { term: 'savings', weight: 1 },
-      { term: 'finance', weight: 1 }, { term: 'money', weight: 1 }, { term: 'crypto', weight: 1 },
-      { term: 'investment', weight: 1 }
+      { term: 'crypto', weight: 1 }, { term: 'investment', weight: 1 }
     ]
   },
   {
     moduleId: 'atlas',
     keywords: [
-      // Compound phrases that signal scheduling/energy planning
       { term: 'week plan', weight: 2 }, { term: 'weekly plan', weight: 2 },
       { term: 'day plan', weight: 2 }, { term: 'daily plan', weight: 2 },
       { term: 'energy plan', weight: 2 }, { term: 'task load', weight: 2 },
-      { term: 'deep work', weight: 2 },
-      { term: 'atlas', weight: 2 },
-      // "plan" alone defaults to atlas — the cognitive/scheduling domain
+      { term: 'deep work', weight: 2 }, { term: 'atlas', weight: 2 }, { term: 'schedule', weight: 2 },
       { term: 'plan', weight: 1 }, { term: 'planning', weight: 1 },
-      { term: 'schedule', weight: 1 }, { term: 'energy', weight: 1 }, { term: 'focus', weight: 1 },
+      { term: 'energy', weight: 1 }, { term: 'focus', weight: 1 },
       { term: 'calendar', weight: 1 }, { term: 'productivity', weight: 1 }
     ]
   },
@@ -78,19 +69,18 @@ const KEYWORD_ROUTES: Array<{ moduleId: ModuleId; keywords: Array<{ term: string
     moduleId: 'scout',
     keywords: [
       { term: 'topic map', weight: 2 }, { term: 'fact-check', weight: 2 },
-      { term: 'scout', weight: 2 },
-      { term: 'research', weight: 1 }, { term: 'verify', weight: 1 }, { term: 'evidence', weight: 1 },
+      { term: 'scout', weight: 2 }, { term: 'research', weight: 2 }, { term: 'search', weight: 2 },
+      { term: 'verify', weight: 1 }, { term: 'evidence', weight: 1 },
       { term: 'sources', weight: 1 }, { term: 'trend', weight: 1 }, { term: 'news', weight: 1 },
-      { term: 'interest', weight: 1 }, { term: 'discover', weight: 1 }, { term: 'search', weight: 1 }
+      { term: 'interest', weight: 1 }, { term: 'discover', weight: 1 }
     ]
   },
   {
     moduleId: 'forge',
     keywords: [
-      { term: 'forge', weight: 2 },
-      { term: 'code', weight: 1 }, { term: 'refactor', weight: 1 }, { term: 'build', weight: 1 },
-      { term: 'typescript', weight: 1 }, { term: 'bug', weight: 1 }, { term: 'repository', weight: 1 },
-      { term: 'github', weight: 1 }, { term: 'programming', weight: 1 }
+      { term: 'forge', weight: 2 }, { term: 'code', weight: 2 }, { term: 'refactor', weight: 2 },
+      { term: 'build', weight: 1 }, { term: 'typescript', weight: 1 }, { term: 'bug', weight: 1 }, 
+      { term: 'repository', weight: 1 }, { term: 'github', weight: 1 }, { term: 'programming', weight: 1 }
     ]
   }
 ];

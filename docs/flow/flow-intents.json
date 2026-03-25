@@ -1,0 +1,128 @@
+[
+  {
+    "intentType": "plan_day",
+    "capabilities": [
+      "daily-planning"
+    ],
+    "primaryModule": "atlas",
+    "defaultActionTypes": [
+      "propose_draft"
+    ],
+    "fallbackProposalType": "draft"
+  },
+  {
+    "intentType": "schedule_item",
+    "capabilities": [
+      "schedule-mutation",
+      "daily-planning"
+    ],
+    "primaryModule": "atlas",
+    "defaultActionTypes": [
+      "schedule_block"
+    ],
+    "fallbackProposalType": "draft"
+  },
+  {
+    "intentType": "update_schedule",
+    "capabilities": [
+      "schedule-mutation"
+    ],
+    "primaryModule": "atlas",
+    "defaultActionTypes": [
+      "propose_draft"
+    ],
+    "fallbackProposalType": "draft"
+  },
+  {
+    "intentType": "recovery_day",
+    "capabilities": [
+      "recovery-planning"
+    ],
+    "primaryModule": "atlas",
+    "supportingModules": [
+      "soma",
+      "agnes"
+    ],
+    "defaultActionTypes": [
+      "flatten_schedule"
+    ],
+    "fallbackProposalType": "draft"
+  },
+  {
+    "intentType": "emotional_support",
+    "capabilities": [
+      "emotional-support"
+    ],
+    "primaryModule": "agnes",
+    "defaultActionTypes": [
+      "create_emotional_support_session"
+    ],
+    "fallbackProposalType": "draft"
+  },
+  {
+    "intentType": "fitness",
+    "capabilities": [
+      "fitness-planning"
+    ],
+    "primaryModule": "titan",
+    "defaultActionTypes": [
+      "create_workout_plan"
+    ],
+    "fallbackProposalType": "draft"
+  },
+  {
+    "intentType": "medical",
+    "capabilities": [
+      "medical-review"
+    ],
+    "primaryModule": "soma",
+    "defaultActionTypes": [
+      "create_medical_review"
+    ],
+    "fallbackProposalType": "draft"
+  },
+  {
+    "intentType": "financial",
+    "capabilities": [
+      "financial-planning"
+    ],
+    "primaryModule": "ledger",
+    "defaultActionTypes": [
+      "create_financial_plan_request"
+    ],
+    "fallbackProposalType": "draft"
+  },
+  {
+    "intentType": "research",
+    "capabilities": [
+      "research"
+    ],
+    "primaryModule": "scout",
+    "defaultActionTypes": [
+      "create_research_request"
+    ],
+    "fallbackProposalType": "draft"
+  },
+  {
+    "intentType": "technical",
+    "capabilities": [
+      "technical-work"
+    ],
+    "primaryModule": "forge",
+    "defaultActionTypes": [
+      "create_technical_task"
+    ],
+    "fallbackProposalType": "draft"
+  },
+  {
+    "intentType": "general",
+    "capabilities": [
+      "general-orchestration"
+    ],
+    "primaryModule": "nexus",
+    "defaultActionTypes": [
+      "create_general_request"
+    ],
+    "fallbackProposalType": "draft"
+  }
+]

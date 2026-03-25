@@ -1,0 +1,327 @@
+# Flow System Audit Report
+
+Generated: 2026-03-25T14:47:40.587Z
+
+## Summary
+- Spine events in registry: 153
+- Events with no emitters: 45
+- Events with no listeners: 109
+- Events with no emitters AND no listeners: 39
+- Action tags referenced in prompts: 161
+- ActionHub registered actions: 113
+- Missing ActionHub handlers for action tags: 95
+
+## Events Missing Emitters
+- CLEARANCE_DENIED
+- CLEARANCE_GRANTED
+- COGNITIVE_OVERLOAD
+- SECURITY_POLICY_UPDATED
+- DEADLINE_CRUNCH
+- EXECUTION_COLLAPSE
+- STREAK_BROKEN
+- SPENDING_DETECTED
+- ATLAS_GOAL_MILESTONE
+- ATLAS_ENERGY_UPDATED
+- ATLAS_ENERGY_OVERLOAD
+- ATLAS_RECOVERY_WINDOW_CREATED
+- ATLAS_TASK_CREATED
+- ATLAS_TASK_BLOCKED
+- ATLAS_TASK_UNBLOCKED
+- ATLAS_HABIT_MILESTONE
+- ATLAS_FIELD_CREATED
+- ATLAS_FIELD_DELETED
+- ATLAS_FIELD_VALUE_UPDATED
+- BUDGET_UPDATED
+- DOCUMENT_ANALYZED
+- FINANCIAL_FRICTION_UPDATED
+- BUDGET_ALERT
+- OVERSPEND_DETECTED
+- DEBT_MILESTONE
+- SAVINGS_MILESTONE
+- INCOME_CHANGE
+- EXPENSE_SPIKE
+- CASHFLOW_POSITIVE
+- CASHFLOW_NEGATIVE
+- SOMA_CLEARANCE_CHANGED
+- SOMA_FIELD_CREATED
+- SOMA_FIELD_UPDATED
+- SOMA_FIELD_DELETED
+- HEALTH_CONTEXT_STALE
+- MODULE_REMINDER_DUE
+- MODULE_REMINDER_COMPLETED
+- SOMATIC_SUPPORT_REQUESTED
+- EVENING_CHECKIN_DUE
+- MORNING_BRIEF
+- HABIT_STREAK_MILESTONE
+- DEEP_RESEARCH_REQUESTED
+- DEEP_RESEARCH_BACKUP_FOUND
+- EXPORT_REQUESTED
+- FINANCIAL_STREAK_MILESTONE
+
+## Events Missing Listeners
+- CLEARANCE_DENIED
+- CLEARANCE_GRANTED
+- COGNITIVE_OVERLOAD
+- SECURITY_POLICY_UPDATED
+- MEDICAL_ALERT
+- CRISIS_DETECTED
+- DRAFT_APPROVED
+- DRAFT_DISMISSED
+- EXECUTION_COLLAPSE
+- STREAK_BROKEN
+- TASK_COMPLETED
+- DEADLINE_APPROACHING
+- HABIT_STREAK_BROKEN
+- TEMPORAL_REVIEW_COMPLETE
+- DELEGATION_REQUEST
+- NSV_CALIBRATION_REQUEST
+- SCHEMA_EXTENDED
+- SCHEMA_MODIFIED
+- SCHEMA_MIGRATED
+- FIELD_CREATED
+- FIELD_DELETED
+- FIELD_VALUE_UPDATED
+- ATLAS_RECOVERY_SCHEDULED
+- ATLAS_PREDICTIVE_ALERT
+- ATLAS_STATE_CHANGED
+- GOAL_MISSING_PROGRESS
+- ATLAS_TASK_COMPLETED
+- ATLAS_HABIT_LOGGED
+- ATLAS_GOAL_MILESTONE
+- ATLAS_GOAL_COMPLETED
+- ATLAS_ENERGY_UPDATED
+- ATLAS_ENERGY_OVERLOAD
+- ATLAS_RECOVERY_WINDOW_CREATED
+- ATLAS_TASK_CREATED
+- ATLAS_TASK_BLOCKED
+- ATLAS_TASK_UNBLOCKED
+- ATLAS_HABIT_MILESTONE
+- ATLAS_FIELD_CREATED
+- ATLAS_FIELD_DELETED
+- ATLAS_FIELD_VALUE_UPDATED
+- ATLAS_GOAL_UPDATED
+- DEADLINE_PRESSURE_CHANGED
+- PLANNING_STATE_UPDATED
+- BUDGET_UPDATED
+- GOAL_PROGRESS
+- RESONANCE_ROI_UPDATED
+- FINANCIAL_PLAN_CREATED
+- DOCUMENT_ANALYZED
+- TRANSACTION_CREATED
+- TRANSACTION_UPDATED
+- TRANSACTION_DELETED
+- BUDGET_CREATED
+- BUDGET_MODIFIED
+- GOAL_CREATED
+- GOAL_COMPLETED
+- FINANCIAL_HEALTH_CHECK
+- RISK_DETECTED
+- FINANCIAL_FRICTION_UPDATED
+- BUDGET_ALERT
+- OVERSPEND_DETECTED
+- DEBT_MILESTONE
+- SAVINGS_MILESTONE
+- INCOME_CHANGE
+- EXPENSE_SPIKE
+- CASHFLOW_POSITIVE
+- CASHFLOW_NEGATIVE
+- SOMA_BIOMARKER_COMMITTED
+- SOMA_CLEARANCE_CHANGED
+- SOMA_FIELD_CREATED
+- SOMA_FIELD_UPDATED
+- SOMA_FIELD_DELETED
+- SOMA_VITAL_LOGGED
+- SOMA_LAB_REPORT_PARSED
+- SOMA_PROFILE_UPDATED
+- SOMA_DIAGNOSIS_MERGED
+- SOMA_DIAGNOSIS_DISCARDED
+- MODULE_REMINDER_DUE
+- MODULE_REMINDER_COMPLETED
+- REMINDER_CONFIRMED
+- REMINDER_DISMISSED
+- CYCLE_STARTED
+- CYCLE_COMPLETED
+- TITAN_RECOVERY_NEEDED
+- TITAN_TRAINING_STREAK
+- SOMA_VETO_OVERRIDDEN
+- ai_validation_suggestion
+- ai_contextual_validation
+- ai_error_explanation
+- AI_LINK_FAILURE
+- SOUL_WRITE_APPROVED
+- SOUL_WRITE_REJECTED
+- CONTEXT_HINT_CONFIRMED
+- CONTEXT_HINT_DISMISSED
+- ROUTINE_UPDATED
+- MORNING_BRIEF
+- ATLAS_OVERLOAD_DETECTED
+- JOURNAL_ENTRY_CREATED
+- JOURNAL_ENTRY_UPDATED
+- HABIT_STREAK_MILESTONE
+- DEEP_RESEARCH_REQUESTED
+- DEEP_RESEARCH_BACKUP_FOUND
+- DEEP_RESEARCH_COMPLETED
+- DIGEST_GENERATION_FAILED
+- SOURCE_ADDED
+- HABIT_SUGGESTED
+- RESEARCH_SEARCHING
+- RESEARCH_RESULTS
+- LEDGER_FIELD_SUGGESTION
+- FINANCIAL_STREAK_MILESTONE
+
+## Events Missing Both Emitters and Listeners
+- CLEARANCE_DENIED
+- CLEARANCE_GRANTED
+- COGNITIVE_OVERLOAD
+- SECURITY_POLICY_UPDATED
+- EXECUTION_COLLAPSE
+- STREAK_BROKEN
+- ATLAS_GOAL_MILESTONE
+- ATLAS_ENERGY_UPDATED
+- ATLAS_ENERGY_OVERLOAD
+- ATLAS_RECOVERY_WINDOW_CREATED
+- ATLAS_TASK_CREATED
+- ATLAS_TASK_BLOCKED
+- ATLAS_TASK_UNBLOCKED
+- ATLAS_HABIT_MILESTONE
+- ATLAS_FIELD_CREATED
+- ATLAS_FIELD_DELETED
+- ATLAS_FIELD_VALUE_UPDATED
+- BUDGET_UPDATED
+- DOCUMENT_ANALYZED
+- FINANCIAL_FRICTION_UPDATED
+- BUDGET_ALERT
+- OVERSPEND_DETECTED
+- DEBT_MILESTONE
+- SAVINGS_MILESTONE
+- INCOME_CHANGE
+- EXPENSE_SPIKE
+- CASHFLOW_POSITIVE
+- CASHFLOW_NEGATIVE
+- SOMA_CLEARANCE_CHANGED
+- SOMA_FIELD_CREATED
+- SOMA_FIELD_UPDATED
+- SOMA_FIELD_DELETED
+- MODULE_REMINDER_DUE
+- MODULE_REMINDER_COMPLETED
+- MORNING_BRIEF
+- HABIT_STREAK_MILESTONE
+- DEEP_RESEARCH_REQUESTED
+- DEEP_RESEARCH_BACKUP_FOUND
+- FINANCIAL_STREAK_MILESTONE
+
+## Cascade References Missing from Registry
+### Missing Cascade Targets
+- RISK_DETECTED, FLATTEN_ENERGY_WAVE, SOMATIC_SUPPORT_REQUESTED
+- WEEKLY_REVIEW_DUE, MORNING_BRIEF_DUE, EVENING_CHECKIN_DUE
+- ATLAS_STATE_CHANGED, ATLAS_GOAL_MILESTONE
+
+### Missing Cascade Sources
+- GOAL_COMPLETED, PLANNING_STATE_UPDATED, ATLAS_TASK_COMPLETED, soma_poor_readiness, clearance_revoked
+- ATLAS_RECOVERY_SCHEDULED, soma_optimal_readiness
+- BURNOUT_WARNING, BLOCK_HIGH_INTENSITY, ATLAS_PREDICTIVE_ALERT
+- SOMA_READINESS_UPDATED, TITAN_BODY_WEIGHT_LOGGED
+- GOAL_PROGRESS, STRESS_SPIKE
+- SESSION_STARTED, ATLAS_STATE_CHANGED
+- FINANCIAL_FRICTION_CHANGED, BURNOUT_WARNING, HABIT_STREAK_BROKEN, ATLAS_GOAL_MILESTONE, TITAN_RECOVERY_NEEDED, TITAN_TRAINING_STREAK
+
+## Missing Action Handlers for Action Tags
+- action_name
+- add_knowledge_node
+- add_soul_insight
+- advance_cycle_phase
+- analyze_financial_document
+- analyze_medical_image
+- categorize_expense
+- commit_research
+- commit_transaction
+- complete_agnes_onboarding
+- complete_atlas_onboarding
+- complete_cycle
+- complete_forge_onboarding
+- complete_ledger_onboarding
+- complete_onboarding
+- complete_scout_onboarding
+- complete_task
+- complete_titan_onboarding
+- create_cycle
+- create_financial_plan
+- create_habit
+- create_project
+- create_task
+- defer_task
+- diagnosis_summary
+- end_recovery_plan
+- extract_citation
+- extract_finding
+- flag_anomaly
+- focus_background
+- focus_baseline_summary
+- focus_debt_goals
+- focus_energy_wave
+- focus_environment
+- focus_evidence_quality
+- focus_execution_baseline
+- focus_expenses
+- focus_goals
+- focus_history_goals
+- focus_income
+- focus_load_pressure
+- focus_nutrition
+- focus_output_shape
+- focus_physical_data
+- focus_plan_horizon
+- focus_preferences
+- focus_recovery_constraints
+- focus_reporting
+- focus_research_focus
+- focus_safety
+- focus_struggles
+- focus_summary
+- format_for_export
+- log_habit_metric
+- log_recovery_checkin
+- log_sleep
+- log_transaction_summary
+- log_workout_session
+- move_task
+- parse_biometric_data
+- parse_financial_document
+- parse_health_report
+- pause_habit
+- project_savings_timeline
+- propose_refactor
+- propose_sleep_log
+- propose_workout_log
+- run_debt_simulation
+- run_tests
+- schedule_send
+- self_clearance_check
+- set_daily_intention
+- set_deadline
+- set_financial_goal
+- start_recovery_plan
+- summarize_section
+- temporal_review
+- track_interest
+- update_atlas_profile
+- update_budget_snapshot
+- update_forge_profile
+- update_global_base_context
+- update_goal
+- update_goal_progress
+- update_habit
+- update_habit_streak
+- update_interest_cluster
+- update_ledger_profile
+- update_nsv
+- update_routine
+- update_scout_profile
+- update_task
+- update_titan_profile
+- verify_claim
+- x
+
+## Notes
+- This report is derived from docs/nexus-flows.md and static code scan of ActionHub registrations and prompt action tags.
+- Use this report to drive registry completion and deterministic dispatch mapping.

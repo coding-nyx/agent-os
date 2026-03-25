@@ -66,9 +66,10 @@ export default function HubPage() {
 
   useSpineEvent('*', pushSpineEvent, { minPriority: 'alert' });
 
-  // Edge pulse decay with debounced state updates
+  // Edge pulse decay with debounced state updates — skips when tab is hidden
   useEffect(() => {
     const interval = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
       if (!edgePulseRef.current.at) {
         setEdgePulse((prev) => (prev === 0 ? prev : 0));
         return;

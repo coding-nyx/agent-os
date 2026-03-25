@@ -8,7 +8,7 @@ import { ConversationContext } from '@/lib/ai-adapters/engine-types';
 import { formatNSVForPrompt, formatNSVForModulePrompt, formatNSVForAtlasPlanner, normalizeNSV } from './services/nsv-service';
 import { NSV_READ_PERMISSIONS, filterGlobalSoulForModule } from './services/nsv-ownership';
 import type { ModuleId } from './module-manifest';
-import { useSpineEvent } from '@/lib/spine/spine-event-bus';
+import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { useDataLayer } from './data-layer/provider';
 
 interface GlobalSoulStore {
@@ -65,6 +65,14 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
       setGlobalSoul(projection);
     } catch (e) {
       console.error("Failed to refresh Global Projection:", e);
+      Spine.emit({
+        type: 'HEALTH_CONTEXT_STALE',
+        source: 'nexus',
+        domain: 'system',
+        data: { reason: 'refresh_failed' },
+        cascadeDepth: 0,
+        priority: 'info'
+      });
     } finally {
       setIsLoading(false);
     }

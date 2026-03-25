@@ -3,6 +3,7 @@ import type { NexusActionPlan, NexusActionPlanExecutionPacket, NexusActionPlanNo
 import type { ModuleId } from '@/lib/module-manifest';
 import type { ThreadPlanningSuggestionDraft } from '@/lib/stores/orchestration-store';
 import { AgentRegistryService } from '@/lib/agents/agent-registry';
+import { FLOW_REGISTRY } from '@/lib/flow-registry/registry';
 import { OrchestrationCacheService } from './orchestration-cache-service';
 import { AutonomyFeatureFlags } from './autonomy-feature-flags';
 import { OrchestrationRolloutService } from './orchestration-rollout-service';
@@ -21,10 +22,38 @@ interface BuildActionPlanAnalysis {
 
 const ACTION_PLAN_START_MARKER = '[NEXUS_ACTION_PLAN]';
 const ACTION_PLAN_END_MARKER = '[/NEXUS_ACTION_PLAN]';
+const DRAFT_ACTION_TYPES = new Set([
+  'create_emotional_support_session',
+  'create_workout_plan',
+  'create_medical_review',
+  'create_financial_plan_request',
+  'create_research_request',
+  'create_technical_task',
+  'create_general_request',
+]);
 
 function sentenceCase(input: string): string {
   if (!input) return input;
   return input.charAt(0).toUpperCase() + input.slice(1);
+}
+
+function toDateTimeString(dateText?: string, timeText?: string): string | undefined {
+  if (!dateText && !timeText) return undefined;
+  if (dateText && timeText) return `${dateText}T${timeText}:00`;
+  if (dateText) return dateText;
+  return undefined;
+}
+
+function buildDraftPayload(intent: ParsedCommandIntent, targetModuleId: ModuleId): Record<string, unknown> {
+  return {
+    title: `Draft: ${sentenceCase(intent.intentType.replace(/_/g, ' '))}`,
+    summary: intent.rawSegment,
+    target: targetModuleId,
+    intentType: intent.intentType,
+    rawSegment: intent.rawSegment,
+    entities: intent.entities,
+    temporal: intent.temporal,
+  };
 }
 
 function summarizeTemporal(intent: ParsedCommandIntent): string {
@@ -133,8 +162,40 @@ function resolveIntentModules(intent: ParsedCommandIntent): {
 }
 
 function buildNode(intent: ParsedCommandIntent): NexusActionPlanNode {
-  const { targetModuleId, supportingModuleIds } = resolveIntentModules(intent);
+  const { targetModuleId: resolvedTarget, supportingModuleIds: resolvedSupporting } = resolveIntentModules(intent);
+  const registryIntent = FLOW_REGISTRY.intents.find((entry) => entry.intentType === intent.intentType);
+  const targetModuleId = registryIntent?.primaryModule ?? resolvedTarget;
+  const supportingModuleIds = dedupeModules([
+    ...resolvedSupporting,
+    ...(registryIntent?.supportingModules ?? []),
+  ].filter((moduleId): moduleId is ModuleId => moduleId !== targetModuleId));
+  let mappedActionType = registryIntent?.defaultActionTypes?.[0];
+  if (mappedActionType) {
+    const actionSpec = FLOW_REGISTRY.actions.find((action) =>
+      action.actionType === mappedActionType && action.moduleId === targetModuleId,
+    );
+    if (!actionSpec || actionSpec.status === 'planned') {
+      mappedActionType = 'propose_draft';
+    }
+  }
   const temporalSummary = summarizeTemporal(intent);
+
+  if (mappedActionType === 'propose_draft') {
+    return {
+      id: `${intent.id}.node.propose-draft`,
+      intentId: intent.id,
+      intentType: intent.intentType,
+      label: sentenceCase(intent.rawSegment),
+      summary: `Draft proposal for ${temporalSummary}`,
+      targetModuleId,
+      supportingModuleIds,
+      actionType: 'propose_draft',
+      mutatesState: false,
+      canRunInParallel: false,
+      dependsOn: [...intent.dependsOn],
+      payload: buildDraftPayload(intent, targetModuleId),
+    };
+  }
 
   switch (intent.intentType) {
     case 'plan_day':
@@ -144,10 +205,10 @@ function buildNode(intent: ParsedCommandIntent): NexusActionPlanNode {
         intentType: intent.intentType,
         label: 'Plan the day',
         summary: `Build or revise the day plan for ${temporalSummary}`,
-        targetModuleId: targetModuleId === 'nexus' ? 'atlas' : targetModuleId,
+        targetModuleId,
         supportingModuleIds,
-        actionType: 'plan_day',
-        mutatesState: true,
+        actionType: mappedActionType ?? 'plan_day',
+        mutatesState: mappedActionType ? !DRAFT_ACTION_TYPES.has(mappedActionType) : true,
         canRunInParallel: false,
         dependsOn: [...intent.dependsOn],
         payload: {
@@ -157,15 +218,57 @@ function buildNode(intent: ParsedCommandIntent): NexusActionPlanNode {
         },
       };
     case 'schedule_item':
+      if (mappedActionType === 'schedule_block') {
+        return {
+          id: `${intent.id}.node.schedule-block`,
+          intentId: intent.id,
+          intentType: intent.intentType,
+          label: `Schedule ${intent.entities.title ?? 'item'}`,
+          summary: `Add "${intent.entities.title ?? 'item'}" to the plan for ${temporalSummary}`,
+          targetModuleId,
+          supportingModuleIds,
+          actionType: 'schedule_block',
+          mutatesState: true,
+          canRunInParallel: false,
+          dependsOn: [...intent.dependsOn],
+          payload: {
+            title: intent.entities.title,
+            scheduledAt: toDateTimeString(intent.entities.dateText, intent.entities.timeText),
+            duration: 60,
+            category: 'other',
+            sourceSegment: intent.rawSegment,
+          },
+        };
+      }
+      if (mappedActionType === 'create_task') {
+        return {
+          id: `${intent.id}.node.create-task`,
+          intentId: intent.id,
+          intentType: intent.intentType,
+          label: `Schedule ${intent.entities.title ?? 'item'}`,
+          summary: `Add "${intent.entities.title ?? 'item'}" to the plan for ${temporalSummary}`,
+          targetModuleId,
+          supportingModuleIds,
+          actionType: 'create_task',
+          mutatesState: true,
+          canRunInParallel: false,
+          dependsOn: [...intent.dependsOn],
+          payload: {
+            title: intent.entities.title,
+            deadline: toDateTimeString(intent.entities.dateText, intent.entities.timeText),
+            sourceSegment: intent.rawSegment,
+          },
+        };
+      }
       return {
         id: `${intent.id}.node.schedule-item`,
         intentId: intent.id,
         intentType: intent.intentType,
         label: `Schedule ${intent.entities.title ?? 'item'}`,
         summary: `Add "${intent.entities.title ?? 'item'}" to the plan for ${temporalSummary}`,
-        targetModuleId: targetModuleId === 'nexus' ? 'atlas' : targetModuleId,
+        targetModuleId,
         supportingModuleIds,
-        actionType: 'schedule_item',
+        actionType: mappedActionType ?? 'schedule_item',
         mutatesState: true,
         canRunInParallel: false,
         dependsOn: [...intent.dependsOn],
@@ -177,19 +280,64 @@ function buildNode(intent: ParsedCommandIntent): NexusActionPlanNode {
         },
       };
     case 'recovery_day':
+      if (mappedActionType === 'flatten_schedule') {
+        return {
+          id: `${intent.id}.node.flatten-schedule`,
+          intentId: intent.id,
+          intentType: intent.intentType,
+          label: 'Shift the plan to recovery',
+          summary: `Update the schedule to a recovery/rest posture for ${temporalSummary}`,
+          targetModuleId,
+          supportingModuleIds,
+          actionType: 'flatten_schedule',
+          mutatesState: true,
+          canRunInParallel: false,
+          dependsOn: [...intent.dependsOn],
+          payload: {
+            flattenedUntil: toDateTimeString(intent.entities.dateText, intent.entities.timeText) ?? new Date().toISOString(),
+            reason: intent.entities.status ?? 'rest',
+            sourceSegment: intent.rawSegment,
+          },
+        };
+      }
+      if (mappedActionType === 'create_recovery_window') {
+        const start = toDateTimeString(intent.entities.dateText, intent.entities.timeText) ?? new Date().toISOString();
+        const end = new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString();
+        return {
+          id: `${intent.id}.node.recovery-window`,
+          intentId: intent.id,
+          intentType: intent.intentType,
+          label: 'Shift the plan to recovery',
+          summary: `Update the schedule to a recovery/rest posture for ${temporalSummary}`,
+          targetModuleId,
+          supportingModuleIds,
+          actionType: 'create_recovery_window',
+          mutatesState: true,
+          canRunInParallel: false,
+          dependsOn: [...intent.dependsOn],
+          payload: {
+            title: 'Recovery Window',
+            start,
+            end,
+            reason: intent.entities.status ?? 'rest',
+            status: 'planned',
+            sourceSegment: intent.rawSegment,
+          },
+        };
+      }
       return {
         id: `${intent.id}.node.recovery-day`,
         intentId: intent.id,
         intentType: intent.intentType,
         label: 'Shift the plan to recovery',
         summary: `Update the schedule to a recovery/rest posture for ${temporalSummary}`,
-        targetModuleId: targetModuleId === 'nexus' ? 'atlas' : targetModuleId,
+        targetModuleId,
         supportingModuleIds: dedupeModules(
           ['agnes', 'soma', ...supportingModuleIds].filter(
             (moduleId): moduleId is ModuleId => moduleId !== 'nexus' && moduleId !== targetModuleId,
           ),
         ),
-        actionType: 'recovery_day',
+        actionType: mappedActionType ?? 'recovery_day',
         mutatesState: true,
         canRunInParallel: false,
         dependsOn: [...intent.dependsOn],
@@ -207,9 +355,9 @@ function buildNode(intent: ParsedCommandIntent): NexusActionPlanNode {
         intentType: intent.intentType,
         label: 'Update the schedule',
         summary: `Revise the plan for ${temporalSummary}`,
-        targetModuleId: targetModuleId === 'nexus' ? 'atlas' : targetModuleId,
+        targetModuleId,
         supportingModuleIds,
-        actionType: 'update_schedule',
+        actionType: mappedActionType ?? 'update_schedule',
         mutatesState: true,
         canRunInParallel: false,
         dependsOn: [...intent.dependsOn],
@@ -228,8 +376,8 @@ function buildNode(intent: ParsedCommandIntent): NexusActionPlanNode {
         summary: `Handle the request in ${temporalSummary}`,
         targetModuleId,
         supportingModuleIds,
-        actionType: intent.intentType,
-        mutatesState: intent.mutatesState,
+        actionType: mappedActionType ?? intent.intentType,
+        mutatesState: mappedActionType ? !DRAFT_ACTION_TYPES.has(mappedActionType) : intent.mutatesState,
         canRunInParallel: false,
         dependsOn: [...intent.dependsOn],
         payload: {
@@ -299,9 +447,7 @@ export class NexusActionPlannerService {
     ].join('|');
 
     const plan = OrchestrationCacheService.remember('planning-suggestion', cacheKey, () => {
-      const nodes = parsedCommand.intents
-        .map(buildNode)
-        .filter((node) => ['plan_day', 'schedule_item', 'update_schedule', 'recovery_day'].includes(node.intentType));
+      const nodes = parsedCommand.intents.map(buildNode);
 
       if (nodes.length === 0) {
         return null;

@@ -257,7 +257,7 @@ export function registerAtlasFieldActions(): void {
       }
 
       // Emit Spine event
-      emitSpineEvent(ATLAS_SPINE_EVENTS.FIELD_CREATED, {
+      emitSpineEvent('ATLAS_FIELD_CREATED', {
         moduleId: 'atlas',
         fieldId: field.id,
         fieldName: field.name,
@@ -348,7 +348,7 @@ export function registerAtlasFieldActions(): void {
         console.warn('[Atlas] delete_field: Failed to clean up orphaned field value:', cleanupErr);
       }
 
-      emitSpineEvent(ATLAS_SPINE_EVENTS.FIELD_DELETED, {
+      emitSpineEvent('ATLAS_FIELD_DELETED', {
         moduleId: 'atlas',
         fieldId,
         fieldName,
@@ -412,7 +412,7 @@ export function registerAtlasFieldActions(): void {
 
       // Value storage is handled by the FieldsTab component via Firestore.
       // This action exists for LLM-initiated value updates and Spine event emission.
-      emitSpineEvent(ATLAS_SPINE_EVENTS.FIELD_VALUE_UPDATED, {
+      emitSpineEvent('ATLAS_FIELD_VALUE_UPDATED', {
         moduleId: 'atlas',
         fieldId,
         previousValue: payload.previousValue ?? null,

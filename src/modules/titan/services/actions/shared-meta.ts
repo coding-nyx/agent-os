@@ -30,4 +30,8 @@ export const titanAllowedActions = [
   'start_recovery_plan',
   'end_recovery_plan',
   'log_recovery_checkin',
+  // Proposal Actions
+  'propose_routine',
+  'propose_sleep_log',
+  'propose_workout_log',
 ] as const;

@@ -124,7 +124,7 @@ export function NexusOverlay() {
         onStageChange: (stage) => setDocStage(stage),
       });
       setDocStage((prev) => prev ?? { id: 'done', label: 'Document analyzed.' });
-      await ai.handleSendMessage(result.prompt, undefined, { visibleContent: request.visibleContent });
+      await ai.handleSendMessage(result.prompt, undefined, { visibleContent: request.visibleContent, threadId: currentThreadId });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Document analysis failed.';
       setDocUploadError(message);
@@ -335,18 +335,18 @@ export function NexusOverlay() {
                   <div className="w-9 h-1 rounded-full bg-white/[0.12]" />
                 </div>
 
-                <div className="rounded-[26px] border border-cyan-500/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_42%),linear-gradient(180deg,rgba(8,12,18,0.96),rgba(5,8,13,0.98))] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:px-5 sm:py-5">
+                <div className="rounded-[26px] border border-cyan-500/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_42%),linear-gradient(180deg,rgba(8,12,18,0.96),rgba(5,8,13,0.98))] px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:px-5 sm:py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200/70">Nexus</p>
-                      <h2 className="mt-2 text-[clamp(1.2rem,2.8vw,1.8rem)] font-semibold leading-none tracking-[-0.03em] text-white">
+                      <h2 className="mt-1 text-[clamp(1.15rem,2.2vw,1.6rem)] font-semibold leading-none tracking-[-0.03em] text-white">
                         {welcomeGreeting}
                         {welcomeName ? `, ${welcomeName}` : ''}.
                       </h2>
-                      <p className="mt-2 text-sm text-white/55">
+                      <p className="mt-1 text-sm text-white/55">
                         {isNexusBusy ? busyLabel : 'Welcome back. Nexus is online and listening.'}
                       </p>
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           data-testid="nexus-overlay-open-ops"
@@ -382,7 +382,7 @@ export function NexusOverlay() {
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 px-3 py-3">
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
                     <NexusAgentPresenceStack participants={masterThreadSnapshot.thread.participants} />
                   </div>
                 </div>
@@ -391,7 +391,14 @@ export function NexusOverlay() {
               {/* Chat */}
               <div className="flex-1 overflow-hidden flex flex-col relative min-h-0">
                 <NexusChat
-                  ai={{ ...ai, isProcessing: ai.isProcessing || isNexusBusy }}
+                  ai={{
+                    ...ai,
+                    messages: ai.messages.filter((m) => {
+                      if (m.threadId) return m.threadId === currentThreadId;
+                      return currentThreadId === 'nexus.dashboard';
+                    }),
+                    isProcessing: ai.isProcessing || isNexusBusy,
+                  }}
                   agentName="Nexus"
                   moduleId="nexus"
                   themeColor="indigo"

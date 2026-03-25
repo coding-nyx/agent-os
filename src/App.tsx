@@ -33,8 +33,7 @@ import {
   ATLAS_FAILURE_RULES, 
   SOMA_CASCADE_RULES, 
   TITAN_CASCADE_RULES,
-  ATLAS_MORNING_RULES,
-  ATLAS_JOURNAL_RULES
+  ATLAS_MORNING_RULES
 } from './lib/spine/cascade-rules';
 import { DataLayerProvider } from './lib/data-layer/provider';
 
@@ -69,7 +68,6 @@ function SpineRuntimeBootstrap() {
     Spine.registerCascadeRules(SOMA_CASCADE_RULES);
     Spine.registerCascadeRules(TITAN_CASCADE_RULES);
     Spine.registerCascadeRules(ATLAS_MORNING_RULES);
-    Spine.registerCascadeRules(ATLAS_JOURNAL_RULES);
   }, []);
 
   useEffect(() => {

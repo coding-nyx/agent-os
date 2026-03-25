@@ -62,15 +62,35 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
 
-          // 1. Large Data Processors (Isolated to keep main bundle smaller)
+          // Large data processors — keep isolated to avoid bloating main bundle
           if (id.includes('/gpt-tokenizer/')) return 'vendor-gpt';
           if (id.includes('/pdfjs-dist/')) return 'vendor-pdf';
 
-          // 2. Unified Vendor Chunk
-          // Consolidating all other node_modules (React, Three, Firebase, UI, etc.)
-          // into one chunk to ensure Rollup handles dependency initialization 
-          // order correctly and avoids 'useLayoutEffect' of undefined errors.
-          return 'vendor';
+          // Animation — large lib loaded on every route, worth caching separately
+          if (id.includes('/framer-motion/')) return 'vendor-animation';
+
+          // 3D / WebGL — only loaded when 3D view is active
+          if (id.includes('/three/') || id.includes('/@react-three/')) return 'vendor-three';
+
+          // Firebase — auth + storage always needed; keep in one chunk for init ordering
+          if (id.includes('/firebase/')) return 'vendor-firebase';
+
+          // Rich text editor — only loaded in specific modules
+          if (id.includes('/@tiptap/') || id.includes('/tiptap-')) return 'vendor-editor';
+
+          // UI primitives — Radix, Recharts; cached across deploys
+          if (id.includes('/@radix-ui/') || id.includes('/recharts/')) return 'vendor-ui';
+
+          // React core — very stable, maximize cache lifetime
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react-router') ||
+            id.includes('/scheduler/')
+          ) return 'vendor-core';
+
+          // Everything else consolidated to avoid too many small chunks
+          return 'vendor-other';
         },
       },
     },

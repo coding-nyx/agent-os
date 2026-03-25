@@ -1,5 +1,5 @@
 import type React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { AtlasActionRail } from './AtlasActionRail';
 
@@ -17,6 +17,10 @@ vi.mock('@/core/components/NeuralButton', () => ({
 }));
 
 describe('AtlasActionRail', () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders alongside the supplied quick add action', () => {
     render(
       <AtlasActionRail quickAddAction={<button type="button">Quick add</button>} />

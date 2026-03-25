@@ -1,4 +1,5 @@
 import { ActionHub } from '@/lib/actions/action-hub';
+import { Spine } from '@/lib/spine/spine-event-bus';
 import { ForgeCloudExecutionService } from './forge-cloud-execution';
 import {
   ForgeArtifact,
@@ -36,6 +37,18 @@ export function registerForgeActions() {
   });
 
   ActionHub.registerMultiple('forge', {
+    create_technical_task: ({ moduleId, payload }) => {
+      Spine.emit({
+        type: 'DRAFT_PROPOSED',
+        source: moduleId,
+        target: typeof payload?.target === 'string' ? payload.target : moduleId,
+        domain: 'system',
+        data: payload,
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    },
+
     execute_code: async ({ userId, payload, encryptionKey }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;

@@ -28,6 +28,7 @@ import type { ActorIdentityRef } from '@/lib/agent-identity';
 import { resolveConversationalActorIdentity } from '@/lib/agent-identity';
 import { AgentIcon } from './AgentIcon';
 import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
+import { useMotionConfig } from '@/lib/hooks/use-motion-config';
 
 // Helper to convert MessageContent to string for display
 function messageContentToString(content: MessageContent): string {
@@ -167,6 +168,17 @@ const THEMES = {
 
 type ThemeConfig = typeof THEMES[keyof typeof THEMES];
 
+const SILENT_INTERNAL_ACTIONS = ['query_module', 'query_module_data', 'search_memory', 'delegate_to_module'];
+
+function ActionStatusMessage({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5 text-[10px] font-semibold uppercase tracking-widest text-white/30 my-2">
+      <div className="w-1 h-1 rounded-full bg-cyan-500 animate-pulse" />
+      {label}
+    </div>
+  );
+}
+
 const AIMessage = React.memo(function AIMessage({ content, theme, actorLabel, isLast, isLoading, isAgnes, debugMode, debugMeta, isStreaming, showInternalSignals }: { content: string, theme: ThemeConfig, actorLabel: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean, debugMode?: boolean, debugMeta?: import('@/lib/types').MessageDebugMeta, isStreaming?: boolean, showInternalSignals?: boolean }) {
     // Run the stripping logic even during streaming so internal tags like <thought>
     // are filtered out in real-time. The stripInternalTags function handles 
@@ -190,6 +202,9 @@ const AIMessage = React.memo(function AIMessage({ content, theme, actorLabel, is
     const actionTagMatch = !hasPublicContent
       ? content.match(/<action\s+type="([^"]+)">/i)
       : null;
+    
+    const isInternalSilentAction = actionTagMatch && SILENT_INTERNAL_ACTIONS.includes(actionTagMatch[1]);
+
     const hasBareActionTag = !hasPublicContent && /<action\b/i.test(content);
     const actionFallback = actionTagMatch
       ? `${getActionLabel(actionTagMatch[1])}.`
@@ -197,6 +212,10 @@ const AIMessage = React.memo(function AIMessage({ content, theme, actorLabel, is
     const bubbleText = hasPublicContent
       ? publicText
       : (hasInternalOnlyCompletion ? 'Processed.' : actionFallback);
+
+    if (isInternalSilentAction && !hasPublicContent && !showInternalSignals) {
+      return <ActionStatusMessage label={actionFallback} />;
+    }
 
     // Debug chips — actions and spine events
     const actionChips = debugMode ? (debugMeta?.actionTagsExtracted ?? []) : [];
@@ -341,6 +360,7 @@ export const ChatInterface = React.memo(function ChatInterface({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isNearBottomRef = useRef(true);
   const { debugMode } = useDebugMode();
+  const { transition, shouldReduceMotion } = useMotionConfig();
   const chatActorIdentityEnabled = AutonomyFeatureFlags.isEnabled('chatActorIdentity');
   const resolvedAssistantIdentity = resolveConversationalActorIdentity({
     moduleId: moduleId && moduleId !== 'user' && moduleId !== 'system' ? moduleId as ModuleId : undefined,
@@ -579,7 +599,7 @@ export const ChatInterface = React.memo(function ChatInterface({
             
             const actions = renderMessageActions ? renderMessageActions(msg, i) : null;
             return (
-              <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
+              <motion.div key={i} initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={transition} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
                 <div className={cn("flex gap-4 w-full", isAI ? "justify-start" : "justify-end")}>
                 {isAI && (
                   <AgentIcon
@@ -674,8 +694,10 @@ export const ChatInterface = React.memo(function ChatInterface({
                 )}
                 </div>
                 {actions && (
-                  <div className={cn("mt-3 self-stretch overflow-hidden", isAI ? "pl-[52px]" : "pr-[52px]")}>
-                    {actions}
+                  <div className={cn("mt-4 self-stretch overflow-hidden", isAI ? "pl-[52px]" : "pr-[52px]")}>
+                    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-1 shadow-sm">
+                      {actions}
+                    </div>
                   </div>
                 )}
               </motion.div>
@@ -851,7 +873,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                     className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
                   >
                     {draft.previewUrl ? (
-                      <img src={draft.previewUrl} alt={draft.file.name} className="h-10 w-10 rounded-lg object-cover" />
+                      <img src={draft.previewUrl} alt={draft.file.name} className="h-10 w-10 rounded-lg object-cover" loading="lazy" decoding="async" />
                     ) : (
                       <FileText className="w-4 h-4 text-indigo-400" />
                     )}

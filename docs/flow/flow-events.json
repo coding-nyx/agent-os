@@ -1,0 +1,1823 @@
+[
+  {
+    "type": "VITAL_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "agnes",
+      "nexus"
+    ],
+    "consumedBy": [
+      "atlas",
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "REDUCE_TRAINING_LOAD",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "titan"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "BLOCK_HIGH_INTENSITY",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma",
+      "titan"
+    ],
+    "consumedBy": [
+      "atlas"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "FLATTEN_ENERGY_WAVE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "atlas"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "RECOVERY_AVAILABLE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma",
+      "titan"
+    ],
+    "consumedBy": [
+      "titan"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "BURNOUT_WARNING",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "agnes"
+    ],
+    "consumedBy": [
+      "atlas",
+      "titan"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CLEARANCE_DENIED",
+    "description": "Clearance was denied for a requested activity.",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CLEARANCE_GRANTED",
+    "description": "Clearance was granted for a requested activity.",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "COGNITIVE_OVERLOAD",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SECURITY_POLICY_UPDATED",
+    "description": "Security preferences updated.",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "FINANCIAL_STRESS",
+    "description": "Financial stress threshold detected.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "titan"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "MEDICAL_ALERT",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CRISIS_DETECTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "agnes"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DRAFT_PROPOSED",
+    "description": "A draft proposal is ready for review.",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DRAFT_APPROVED",
+    "description": "A draft proposal was approved.",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DRAFT_DISMISSED",
+    "description": "A draft proposal was dismissed.",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SESSION_STARTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "scout"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SESSION_ENDED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "MODULE_DELEGATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas",
+      "nexus",
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "MODULE_HANDOFF_RECEIVED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "titan"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "TITAN_PROPOSAL",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "titan"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "PLANNING_OVERLOAD",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "atlas"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DEADLINE_CRUNCH",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "COMPOUND_STRESS",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "agnes"
+    ],
+    "consumedBy": [
+      "titan"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CRISIS_MODE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "atlas"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "STREAK_BROKEN",
+    "description": "Habit streak broken.",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "TASK_COMPLETED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DEADLINE_APPROACHING",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "HABIT_STREAK_BROKEN",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "TEMPORAL_REVIEW_COMPLETE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DELEGATION_REQUEST",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "NSV_CALIBRATION_REQUEST",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SCHEMA_EXTENDED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SCHEMA_MODIFIED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SCHEMA_MIGRATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "FIELD_CREATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "FIELD_DELETED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "FIELD_VALUE_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SPENDING_DETECTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CONFLICT_DETECTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CONFLICT_RESOLVED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_RECOVERY_SCHEDULED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_PREDICTIVE_ALERT",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_STATE_CHANGED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "GOAL_MISSING_PROGRESS",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_TASK_COMPLETED",
+    "description": "A task was marked complete.",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_HABIT_LOGGED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_GOAL_MILESTONE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_GOAL_COMPLETED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_ENERGY_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_ENERGY_OVERLOAD",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_RECOVERY_WINDOW_CREATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_TASK_CREATED",
+    "description": "A scheduled task or block was created.",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_TASK_BLOCKED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_TASK_UNBLOCKED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_HABIT_MILESTONE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_FIELD_CREATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_FIELD_DELETED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_FIELD_VALUE_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_GOAL_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DEADLINE_PRESSURE_CHANGED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "PLANNING_STATE_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "BUDGET_UPDATED",
+    "description": "Budget snapshot updated.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "GOAL_PROGRESS",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "FINANCIAL_FRICTION_CHANGED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "RESONANCE_ROI_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "FINANCIAL_PLAN_CREATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DOCUMENT_ANALYZED",
+    "description": "Financial document analyzed.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "TRANSACTION_CREATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "TRANSACTION_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "TRANSACTION_DELETED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "BUDGET_CREATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "BUDGET_MODIFIED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "GOAL_CREATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "GOAL_COMPLETED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "FINANCIAL_HEALTH_CHECK",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "RISK_DETECTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "FINANCIAL_FRICTION_UPDATED",
+    "description": "Financial friction recalculated.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "BUDGET_ALERT",
+    "description": "Budget overspend alert.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "OVERSPEND_DETECTED",
+    "description": "Budget category overspend detected.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DEBT_MILESTONE",
+    "description": "Debt payoff milestone reached.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SAVINGS_MILESTONE",
+    "description": "Savings milestone reached.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "INCOME_CHANGE",
+    "description": "Income change detected.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "EXPENSE_SPIKE",
+    "description": "Expense spike detected.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CASHFLOW_POSITIVE",
+    "description": "Positive cashflow detected.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CASHFLOW_NEGATIVE",
+    "description": "Negative cashflow detected.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_BIOMARKER_COMMITTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_READINESS_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_CLEARANCE_CHANGED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_FIELD_CREATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_FIELD_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_FIELD_DELETED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_VITAL_LOGGED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_LAB_REPORT_PARSED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma",
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_PROFILE_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_DIAGNOSIS_MERGED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_DIAGNOSIS_DISCARDED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "soma"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "HEALTH_CONTEXT_STALE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "MODULE_PROFILE_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas",
+      "soma"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "MODULE_REMINDER_DUE",
+    "description": "A reminder occurrence is due.",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "MODULE_REMINDER_COMPLETED",
+    "description": "A reminder outcome was recorded.",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "REMINDER_PROPOSED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "REMINDER_CONFIRMED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "REMINDER_DISMISSED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ROUTINE_PROPOSED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ROUTINE_CONFIRMED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ROUTINE_DISMISSED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CYCLE_STARTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CYCLE_COMPLETED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "WORKOUT_COMPLETED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "soma"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "TITAN_BODY_WEIGHT_LOGGED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "soma"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "TITAN_RECOVERY_NEEDED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "TITAN_TRAINING_STREAK",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMA_VETO_OVERRIDDEN",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ai_validation_suggestion",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ai_contextual_validation",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ai_error_explanation",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "AI_LINK_FAILURE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOUL_WRITE_REQUESTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOUL_WRITE_APPROVED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOUL_WRITE_REJECTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CONTEXT_HINT_DETECTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CONTEXT_HINT_CONFIRMED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "CONTEXT_HINT_DISMISSED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "nexus"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "WEEKLY_REVIEW_DUE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "atlas"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ROUTINE_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMATIC_SUPPORT_REQUESTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "titan"
+    ],
+    "consumedBy": [
+      "agnes"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "MORNING_BRIEF_DUE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "atlas"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "EVENING_CHECKIN_DUE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "atlas"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "COMMITMENT_MISSED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "titan"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "MORNING_BRIEF",
+    "description": "Morning brief requested.",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "ATLAS_OVERLOAD_DETECTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOMATIC_SESSION_COMPLETE",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "agnes"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "JOURNAL_ENTRY_CREATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "JOURNAL_ENTRY_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "atlas"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DEEP_RESEARCH_REQUESTED",
+    "description": "Deep research requested.",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DEEP_RESEARCH_BACKUP_FOUND",
+    "description": "Research backup found for query.",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DEEP_RESEARCH_STARTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "scout"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DEEP_RESEARCH_COMPLETED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DIGEST_GENERATION_STARTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "scout"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DIGEST_GENERATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "scout"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "DIGEST_GENERATION_FAILED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "EXPORT_REQUESTED",
+    "description": "An export flow was requested.",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "scout"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SOURCE_ADDED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "KNOWLEDGE_SYNTHESIZED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "scout"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "SCOUT_PROFILE_UPDATED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "scout"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "HABIT_SUGGESTED",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "RESEARCH_SEARCHING",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "RESEARCH_RESULTS",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "scout"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "LEDGER_FIELD_SUGGESTION",
+    "description": "",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  },
+  {
+    "type": "FINANCIAL_STREAK_MILESTONE",
+    "description": "Financial streak milestone reached.",
+    "visibility": "standard",
+    "producedBy": [
+      "ledger"
+    ],
+    "consumedBy": [
+      "nexus"
+    ],
+    "source": "curated"
+  }
+]

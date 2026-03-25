@@ -238,11 +238,12 @@ export type SpineEventType =
   | 'SESSION_STARTED'
   | 'SESSION_ENDED'
   | 'MODULE_DELEGATED'
+  | 'MODULE_HANDOFF_RECEIVED'
+  | 'TITAN_PROPOSAL'
   | 'PLANNING_OVERLOAD'
   | 'DEADLINE_CRUNCH'
   | 'COMPOUND_STRESS'
   | 'CRISIS_MODE'
-  | 'EXECUTION_COLLAPSE'
   | 'STREAK_BROKEN'
   | 'TASK_COMPLETED'
   | 'DEADLINE_APPROACHING'
@@ -382,8 +383,6 @@ export type SpineEventType =
   // Atlas Journal Events — Added by spine agent — deduplicated with schema agent
   | 'JOURNAL_ENTRY_CREATED'
   | 'JOURNAL_ENTRY_UPDATED'
-  // Atlas Habit Milestone Events
-  | 'HABIT_STREAK_MILESTONE'
   // Scout v2 Research Events
   | 'DEEP_RESEARCH_REQUESTED'
   | 'DEEP_RESEARCH_BACKUP_FOUND'
@@ -490,6 +489,7 @@ export interface Message {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: MessageContent;
   timestamp?: string;
+  threadId?: string;
   tool_calls?: ToolCall[];
   tool_call_id?: string;
   actor?: ActorIdentityRef;

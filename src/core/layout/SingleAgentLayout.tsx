@@ -11,6 +11,7 @@ import { FloatingChatPanel } from '@/core/layout/FloatingChatPanel';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import type { Message, GuestQuota, MessageContent } from '@/lib/types';
 import type { AuthMode } from '@/core/components/UnifiedAuthModal';
+import { useMotionConfig } from '@/lib/hooks/use-motion-config';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { SpineMobileBar } from '@/core/components/SpineMobileBar';
 import { ModuleSwitcherPopover } from '@/core/components/ModuleSwitcherPopover';
@@ -47,6 +48,8 @@ interface SingleAgentLayoutProps {
   onUploadDocument?: (file: File) => void;
   onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
   hideChatTrigger?: boolean;
+  /** Optional content rendered persistently above the scrollable chat feed (e.g. active proposals). */
+  topContent?: React.ReactNode;
   /** Optional per-message extra content rendered below the message bubble (e.g. inline proposal cards). */
   renderMessageActions?: (message: Message, index: number) => React.ReactNode;
   // External control for layout intelligence
@@ -69,6 +72,7 @@ export function SingleAgentLayout({
   onUploadDocument,
   onUploadDocuments,
   hideChatTrigger = false,
+  topContent,
   renderMessageActions,
   isChatCollapsed: externalIsChatCollapsed,
   onToggleChat
@@ -78,6 +82,7 @@ export function SingleAgentLayout({
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : dockChatBreakpoint
   );
+  const { transition } = useMotionConfig();
   
   const isChatCollapsed = externalIsChatCollapsed ?? internalIsChatCollapsed;
   const toggleChat = useCallback((val: boolean) => {
@@ -308,6 +313,7 @@ export function SingleAgentLayout({
             </div>
           </div>
           <div className="flex-1 min-w-0 w-full h-full flex flex-col">
+            {topContent}
             <NexusChat
               moduleId={moduleId}
               ai={ai}
@@ -342,7 +348,7 @@ export function SingleAgentLayout({
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                transition={transition}
                 onClick={(e) => e.stopPropagation()}
                 drag="y"
                 dragConstraints={{ top: 0 }}
@@ -386,8 +392,8 @@ export function SingleAgentLayout({
                   <div
                     className="flex min-h-0 flex-1 flex-col pb-safe"
                   >
-                    <NexusChat
-                      moduleId={moduleId}
+                    {topContent}
+                    <NexusChat                      moduleId={moduleId}
                       ai={ai}
                       agentName={agentName}
                       themeColor={themeColor as any}

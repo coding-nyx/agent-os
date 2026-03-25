@@ -102,7 +102,7 @@ describe('core-handlers Phase 4 Nexus actions', () => {
       target: 'nexus',
       data: expect.objectContaining({ reason: 'query_result' }),
     }));
-    expect(pushAssistantMessage).toHaveBeenCalledWith(expect.stringContaining('**Atlas** reports:'));
+    expect(pushAssistantMessage).toHaveBeenCalledWith(expect.stringContaining('Specialist Report: Atlas'));
     expect(emitThreadArtifact).toHaveBeenCalledWith(expect.objectContaining({
       targetModuleId: 'atlas',
       mode: 'state_only',

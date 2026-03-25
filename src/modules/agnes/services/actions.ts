@@ -17,6 +17,18 @@ export function registerAgnesActions() {
     latencyTier: 'balanced',
   });
 
+  ActionHub.register('agnes', 'create_emotional_support_session', ({ moduleId, payload }) => {
+    Spine.emit({
+      type: 'DRAFT_PROPOSED',
+      source: moduleId,
+      target: typeof payload?.target === 'string' ? payload.target : moduleId,
+      domain: 'system',
+      data: payload,
+      cascadeDepth: 0,
+      priority: 'info'
+    });
+  });
+
   ActionHub.register('agnes', 'update_belief_graph', async ({ userId, encryptionKey, payload }) => {
     if (!userId || !encryptionKey) return;
     const graph = normalizeBeliefGraph(payload);

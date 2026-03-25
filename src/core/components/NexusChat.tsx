@@ -96,19 +96,7 @@ export function NexusChat({
         : message.content.filter(p => p.type === 'text').map(p => (p as any).text).join(' ');
       const hasProposeAction = contentStr.includes('<action type="propose_reminder"');
 
-      if (activeProposal) {
-        return (
-          <ReminderProposalCard
-            proposal={activeProposal}
-            onConfirm={confirm}
-            onDismiss={dismiss}
-            isConfirming={isConfirming}
-            isDismissing={isDismissing}
-          />
-        );
-      }
-
-      if (!isProcessing && hasProposeAction) {
+      if (!activeProposal && !isProcessing && hasProposeAction) {
         if (proposalStatus === 'confirmed') {
           return (
             <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 w-fit">
@@ -231,6 +219,17 @@ export function NexusChat({
 
     return (
         <div className="flex-1 flex flex-col min-h-0 relative h-full">
+            {activeProposal && (
+                <div className="shrink-0 p-3 sm:p-4 bg-[#0a0a0f] border-b border-white/10 z-10 relative">
+                    <ReminderProposalCard
+                        proposal={activeProposal}
+                        onConfirm={confirm}
+                        onDismiss={dismiss}
+                        isConfirming={isConfirming}
+                        isDismissing={isDismissing}
+                    />
+                </div>
+            )}
             <ChatInterface 
                 messages={renderedMessages}
                 onSendMessage={(content) => handleSendMessage(content, onActionParsed)}

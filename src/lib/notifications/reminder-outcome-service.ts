@@ -3,6 +3,7 @@ import type { ModuleId } from '@/lib/module-manifest';
 import type { NotificationOccurrenceRecord } from '@/lib/notifications/types';
 import { upsertAliveEntity } from '@/lib/services/alive-entity-service';
 import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 export type ReminderOutcomeStatus = 'completed' | 'skipped';
 
@@ -124,6 +125,21 @@ export class ReminderOutcomeService {
       createdAt: now,
       updatedAt: now,
     }, { uid });
+
+    Spine.emit({
+      type: 'MODULE_REMINDER_COMPLETED',
+      source: moduleId,
+      domain: 'system',
+      data: {
+        moduleId,
+        occurrenceId,
+        scheduleId: scheduleId ?? null,
+        outcome,
+        dueAt: data.dueAt ?? null
+      },
+      cascadeDepth: 0,
+      priority: outcome === 'completed' ? 'info' : 'alert'
+    });
 
     return true;
   }

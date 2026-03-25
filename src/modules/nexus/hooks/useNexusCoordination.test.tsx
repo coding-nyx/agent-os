@@ -31,7 +31,11 @@ describe('useNexusCoordination mention-aware routing', () => {
       await result.current.handleSendWithRouting('Agnes, I feel anxious about my relationship');
     });
 
-    expect(handleSendMessage).toHaveBeenCalledWith('Agnes, I feel anxious about my relationship', undefined);
+    expect(handleSendMessage).toHaveBeenCalledWith(
+      'Agnes, I feel anxious about my relationship',
+      undefined,
+      expect.objectContaining({ threadId: 'thread-1' }),
+    );
     expect(setThreadRoutingSuggestion).not.toHaveBeenCalled();
   });
 
@@ -90,7 +94,11 @@ describe('useNexusCoordination mention-aware routing', () => {
       await result.current.handleSendWithRouting('Ask Soma whether tomorrow should be a rest day');
     });
 
-    expect(handleSendMessage).toHaveBeenCalledWith('Ask Soma whether tomorrow should be a rest day', undefined);
+    expect(handleSendMessage).toHaveBeenCalledWith(
+      'Ask Soma whether tomorrow should be a rest day',
+      undefined,
+      expect.objectContaining({ threadId: 'thread-1' }),
+    );
     expect(setThreadRoutingSuggestion).not.toHaveBeenCalled();
   });
 
@@ -152,6 +160,7 @@ describe('useNexusCoordination mention-aware routing', () => {
     expect(handleSendMessage).toHaveBeenCalledWith(
       'plan my day tomorrow, update tomorrow to rest, schedule cooking at 1100 tomorrow',
       undefined,
+      expect.objectContaining({ threadId: 'thread-1' }),
     );
     expect(setThreadRoutingSuggestion).not.toHaveBeenCalled();
   });

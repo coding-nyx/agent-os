@@ -8,7 +8,7 @@ import {
 } from './shared';
 
 export const energyActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
-  update_energy_wave: async ({ userId, encryptionKey, payload, updateGlobalSoul }) => {
+  update_energy_wave: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -40,9 +40,34 @@ export const energyActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
         activeLoad: parseBoundedScore(payload?.activeLoad, 5)
       }
     });
+
+    const energyBudget = parseBoundedScore(payload?.energyBudget, 5);
+    const focusScore = parseBoundedScore(payload?.focusScore, 5);
+    const activeLoad = parseBoundedScore(payload?.activeLoad, 5);
+
+    emitSpineEvent('ATLAS_ENERGY_UPDATED', {
+      energyBudget,
+      focusScore,
+      activeLoad
+    });
+
+    if (activeLoad >= 8 || energyBudget <= 3) {
+      emitSpineEvent('ATLAS_ENERGY_OVERLOAD', {
+        energyBudget,
+        activeLoad,
+        focusScore,
+        trigger: activeLoad >= 8 ? 'active_load' : 'low_energy_budget'
+      });
+      emitSpineEvent('COGNITIVE_OVERLOAD', {
+        energyBudget,
+        activeLoad,
+        focusScore,
+        source: 'atlas'
+      });
+    }
   },
 
-  create_recovery_window: async ({ userId, encryptionKey, payload }) => {
+  create_recovery_window: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -62,6 +87,15 @@ export const energyActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     };
 
     await persistProfile(next, userId ?? null, encryptionKey ?? null);
+
+    emitSpineEvent('ATLAS_RECOVERY_WINDOW_CREATED', {
+      windowId: window.id,
+      title: window.title,
+      start: window.start,
+      end: window.end,
+      reason: window.reason,
+      status: window.status
+    });
   },
 
   sync_vitals: async ({ userId, payload }) => {

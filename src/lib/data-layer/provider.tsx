@@ -23,6 +23,10 @@ let globalDataLayer: NexusDataLayer | null = null;
 
 export function getNexusDataLayer(): NexusDataLayer {
   if (globalDataLayer) return globalDataLayer;
+  if (import.meta.env.MODE === 'test') {
+    globalDataLayer = new InMemoryDataProvider();
+    return globalDataLayer;
+  }
   const firebaseAdapter = createFirebaseDataLayer();
   globalDataLayer = firebaseAdapter ?? new InMemoryDataProvider();
   return globalDataLayer;

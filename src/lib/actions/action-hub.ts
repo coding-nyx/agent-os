@@ -58,6 +58,13 @@ const NON_MUTATING_ACTIONS = new Set([
   'query_reminders',
   'suggest_field',
   'suggest_interventions',
+  'create_emotional_support_session',
+  'create_workout_plan',
+  'create_medical_review',
+  'create_financial_plan_request',
+  'create_research_request',
+  'create_technical_task',
+  'create_general_request',
 ]);
 
 function getMetricValueFromPatch(patch: NeuralStateVectorPatch, metric: NSVMetricPath): unknown {

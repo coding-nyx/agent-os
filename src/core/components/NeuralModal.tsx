@@ -89,7 +89,7 @@ export function NeuralModal({
                       // Mobile: bottom-sheet shape
                       "rounded-t-3xl border-t border-x border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] max-h-[85vh]",
                       // Desktop: centered modal shape
-                      "sm:rounded-modal sm:border sm:shadow-[0_0_50px_rgba(0,0,0,0.5)] sm:max-h-[calc(100vh-2rem)]",
+                      "sm:rounded-modal sm:border sm:shadow-[0_0_50px_rgba(0,0,0,0.5)] sm:max-h-[calc(100dvh-2rem)]",
                       widths[maxWidth]
                     )}
                   >

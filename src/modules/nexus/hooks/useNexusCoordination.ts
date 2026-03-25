@@ -34,7 +34,7 @@ interface NexusCoordinationAI {
   handleSendMessage: (
     content: MessageContent,
     onActionParsed?: (type: string, payload: Record<string, unknown>) => void,
-    options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent },
+    options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; threadId?: string },
   ) => Promise<void>;
 }
 
@@ -235,17 +235,17 @@ export function useNexusCoordination(input: UseNexusCoordinationInput) {
       }
     }
 
-    await ai.handleSendMessage(content, onActionParsed);
+    await ai.handleSendMessage(content, onActionParsed, { threadId: currentThreadId });
   }, [ai, currentThreadId, presentRoutingSuggestion, suggestionCount]);
 
   const handleInjectChat = useCallback((text: string) => {
-    void ai.handleSendMessage(text);
-  }, [ai]);
+    void ai.handleSendMessage(text, undefined, { threadId: currentThreadId });
+  }, [ai, currentThreadId]);
 
   const handleMemoryResultClick = useCallback((result: UnifiedMemoryResult) => {
     setMemorySearchState(null);
-    void ai.handleSendMessage(MemoryResultInjectionService.formatForChat(result));
-  }, [ai]);
+    void ai.handleSendMessage(MemoryResultInjectionService.formatForChat(result), undefined, { threadId: currentThreadId });
+  }, [ai, currentThreadId]);
 
   const handleDismissMemoryResults = useCallback(() => {
     setMemorySearchState(null);
@@ -257,21 +257,22 @@ export function useNexusCoordination(input: UseNexusCoordinationInput) {
     const prompt = trimmedQuestion
       ? `Consult ${moduleName} about: ${trimmedQuestion}`
       : `Consult ${moduleName} about my current state.`;
-    void ai.handleSendMessage(prompt);
-  }, [ai]);
+    void ai.handleSendMessage(prompt, undefined, { threadId: currentThreadId });
+  }, [ai, currentThreadId]);
 
   const handleMemorySearch = useCallback(async (query: string) => {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) return;
 
+    setMemorySearchState(null);
     paletteMemoryQueryRef.current = trimmedQuery;
     await resolveMemorySearchResults(trimmedQuery);
-    await ai.handleSendMessage(`Search my memory for: ${trimmedQuery}`);
-  }, [ai, resolveMemorySearchResults]);
+    await ai.handleSendMessage(`Search my memory for: ${trimmedQuery}`, undefined, { threadId: currentThreadId });
+  }, [ai, currentThreadId, resolveMemorySearchResults]);
 
   const handleAskAboutDomain = useCallback((domain: string) => {
-    void ai.handleSendMessage(`Tell me about my ${domain} state right now.`);
-  }, [ai]);
+    void ai.handleSendMessage(`Tell me about my ${domain} state right now.`, undefined, { threadId: currentThreadId });
+  }, [ai, currentThreadId]);
 
   return {
     memorySearchState,

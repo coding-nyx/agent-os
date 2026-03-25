@@ -30,9 +30,9 @@ describe('NexusRoutingService.classifyIntent', () => {
     expect(result.target).toBe('ledger');
   });
 
-  it('routes medical keywords to titan module (soma absorbed)', () => {
+  it('routes medical keywords to soma module (soma absorbed)', () => {
     const result = NexusRoutingService.classifyIntent('Can you check my bloodwork results?');
-    expect(result.target).toBe('titan');
+    expect(result.target).toBe('soma');
   });
 
   it('routes code keywords to forge module', () => {

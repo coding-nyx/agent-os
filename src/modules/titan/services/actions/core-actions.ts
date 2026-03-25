@@ -15,6 +15,18 @@ import type { ActionHandler, TitanProfile, Routine } from './shared';
 
 export const coreHandlers: Record<string, ActionHandler> = {
 
+  create_workout_plan: async ({ moduleId, payload }) => {
+    Spine.emit({
+      type: 'DRAFT_PROPOSED',
+      source: moduleId,
+      target: typeof payload?.target === 'string' ? payload.target : moduleId,
+      domain: 'system',
+      data: payload,
+      cascadeDepth: 0,
+      priority: 'info',
+    });
+  },
+
   update_titan_profile: async ({ userId, encryptionKey, payload }) => {
     const current = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!current) return;
@@ -112,7 +124,7 @@ export const coreHandlers: Record<string, ActionHandler> = {
     }
   },
 
-  self_clearance_check: async ({ userId, encryptionKey, payload, pushAssistantMessage, getLatestNSV }) => {
+  self_clearance_check: async ({ userId, encryptionKey, payload, pushAssistantMessage, getLatestNSV, emitSpineEvent }) => {
     const activity = typeof payload?.activity === 'string' ? payload.activity : 'high_intensity';
     const RECOVERY_THRESHOLD = 4;
 
@@ -182,6 +194,12 @@ export const coreHandlers: Record<string, ActionHandler> = {
         cascadeDepth: 0,
         priority: 'alert',
       });
+      emitSpineEvent('CLEARANCE_DENIED', {
+        activity,
+        recoveryScore,
+        cnsFatigue,
+        reasons
+      });
       Spine.publish({
         type: 'SOMA_READINESS_UPDATED',
         source: 'titan',
@@ -196,6 +214,11 @@ export const coreHandlers: Record<string, ActionHandler> = {
     }
 
     pushAssistantMessage?.(`✅ Clearance check passed for "${activity}". Recovery ${recoveryScore !== null ? `${recoveryScore}/10` : 'unknown'} — proceed safely.`);
+    emitSpineEvent('CLEARANCE_GRANTED', {
+      activity,
+      recoveryScore,
+      cnsFatigue
+    });
     Spine.publish({
       type: 'SOMA_READINESS_UPDATED',
       source: 'titan',

@@ -30,7 +30,10 @@ export function getFirebase() {
       // experimentalAutoDetectLongPolling prevents 400 errors on the Write/channel
       // by automatically falling back from WebSockets to HTTP long-polling when needed.
       db = isFirstInit
-        ? initializeFirestore(app, { experimentalAutoDetectLongPolling: true })
+        ? initializeFirestore(app, { 
+            experimentalAutoDetectLongPolling: true,
+            ignoreUndefinedProperties: true
+          })
         : getFirestore(app);
       auth = getAuth(app);
       storage = getStorage(app);

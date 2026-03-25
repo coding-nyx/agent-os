@@ -2,6 +2,7 @@ import { CoreUserProfile, AgentPersonalityProvision, OrchestrationPreferences, U
 import { buildDefaultVaultLocks, MODULE_MANIFEST } from '@/lib/module-manifest';
 import { getNexusDataLayer } from '../data-layer/provider';
 import { NexusDataLayer } from '../data-layer';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 const COLLECTION = 'users';
 
@@ -232,6 +233,18 @@ export const CoreProfileService = {
 
     try {
       await dataLayer.setDocument(COLLECTION, uid, nextProfile);
+      Spine.emit({
+        type: 'SECURITY_POLICY_UPDATED',
+        source: 'nexus',
+        domain: 'system',
+        data: {
+          updatedKeys: Object.keys(prefs ?? {}),
+          vaultSessionTtlMinutes: nextProfile.securityPreferences?.vaultSessionTtlMinutes ?? 0,
+          vaultLocks: prefs.vaultLocks ? Object.keys(prefs.vaultLocks) : undefined,
+        },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
     } catch (error) {
       console.error('[CoreProfileService] Failed to update security preferences:', error);
     }

@@ -387,41 +387,9 @@ export const ATLAS_MORNING_RULES: CascadeRule[] = [
   }
 ];
 
-// ---------------------------------------------------------------------------
-// Atlas Journal Cascade Rules — reflection-streak milestone (Atlas journaling)
-// ---------------------------------------------------------------------------
-
-/**
- * When a journal entry is created AND the user's reflection streak has reached
- * 7 or more consecutive days, emit a HABIT_STREAK_MILESTONE event so the rest
- * of the Spine ecosystem (badges, Agnes acknowledgements, etc.) can react.
- */
-export const ATLAS_JOURNAL_RULES: CascadeRule[] = [
-  {
-    id: 'atlas-journal-reflection-streak-milestone',
-    trigger: 'JOURNAL_ENTRY_CREATED' as SpineEventType,
-    condition: (event) => {
-      const streak = (event.data as Record<string, unknown>)?.reflectionStreak;
-      return typeof streak === 'number' && streak >= 7;
-    },
-    transform: (event) => ({
-      type: 'HABIT_STREAK_MILESTONE' as SpineEventType,
-      domain: 'C' as const,
-      source: 'spine-cascade',
-      priority: 'info' as const,
-      data: {
-        source: 'atlas',
-        habitName: 'Daily Reflection',
-        streak: event.data.reflectionStreak,
-      },
-    }),
-  },
-];
-
 export function registerAtlasCascadeRules(): void {
   Spine.registerCascadeRules(ATLAS_CASCADE_RULES);
   Spine.registerCascadeRules(ATLAS_MORNING_RULES);
-  Spine.registerCascadeRules(ATLAS_JOURNAL_RULES);
   // Planning intelligence rules are registered separately via registerAtlasPlanningCascadeRules()
   // to avoid forward-reference issues (ATLAS_PLANNING_CASCADE_RULES is defined after this function).
 }

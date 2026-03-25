@@ -286,6 +286,20 @@
   }
 }
 
+/* On mobile viewports, cap all CSS animation/transition durations to prevent jank.
+   Framer Motion transitions are handled separately via useMotionConfig(). */
+@media (max-width: 767px) {
+  .hub-ambient {
+    animation: none !important;
+  }
+  .hub-card-sheen {
+    animation: none !important;
+  }
+  .hub-edge-flow {
+    animation: none !important;
+  }
+}
+
 /* Minimalist Native Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;

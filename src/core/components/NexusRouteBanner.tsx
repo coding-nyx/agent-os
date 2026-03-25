@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { SpineEvent } from '@/lib/types';
+import { useMotionConfig } from '@/lib/hooks/use-motion-config';
 
 const DISMISS_AFTER_MS = 9000;
 
@@ -33,6 +34,7 @@ export function NexusRouteBanner() {
   const [prompt, setPrompt] = useState<RoutePrompt | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const { transition } = useMotionConfig();
 
   const targetModule = useMemo(() => {
     if (!prompt?.target) return null;
@@ -66,6 +68,7 @@ export function NexusRouteBanner() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
+        transition={transition}
         className="fixed bottom-6 left-1/2 z-[var(--z-toast)] w-[92vw] max-w-xl -translate-x-1/2 rounded-3xl border border-white/10 bg-[#05050a]/95 px-5 py-4 backdrop-blur-xl shadow-[0_0_40px_rgba(139,92,246,0.18)]"
         role="alert"
       >
@@ -81,7 +84,7 @@ export function NexusRouteBanner() {
           </div>
           <button
             onClick={() => setPrompt(null)}
-            className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 flex items-center justify-center"
+            className="w-11 h-11 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:bg-white/15 flex items-center justify-center"
             aria-label="Dismiss routing prompt"
           >
             <X className="w-4 h-4 text-white/60" />

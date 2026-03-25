@@ -1,4 +1,5 @@
 import { ActionHub } from '@/lib/actions/action-hub';
+import { Spine } from '@/lib/spine/spine-event-bus';
 import {
   FinancialPlan,
   DocumentAnalysis,
@@ -18,6 +19,10 @@ let registered = false;
 function parseNumber(value: unknown, fallback = 0): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   return fallback;
+}
+
+function sumLineItems(items: BudgetLineItem[]): number {
+  return items.reduce((total, item) => total + item.amount, 0);
 }
 
 function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
@@ -78,6 +83,18 @@ export function registerLedgerActions() {
   });
 
   ActionHub.registerMultiple('ledger', {
+    create_financial_plan_request: ({ moduleId, payload }) => {
+      Spine.emit({
+        type: 'DRAFT_PROPOSED',
+        source: moduleId,
+        target: typeof payload?.target === 'string' ? payload.target : moduleId,
+        domain: 'system',
+        data: payload,
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    },
+
     create_financial_plan: async ({ userId, encryptionKey, payload, markProfileDirty, emitSpineEvent }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
@@ -121,7 +138,7 @@ export function registerLedgerActions() {
       markProfileDirty?.();
     },
 
-    update_budget_snapshot: async ({ userId, encryptionKey, payload, markProfileDirty }) => {
+    update_budget_snapshot: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -154,6 +171,19 @@ export function registerLedgerActions() {
 
       ensureActivePlan(next);
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      const totalFixed = sumLineItems(next.fixedExpenses);
+      const totalVariable = sumLineItems(next.variableExpenses);
+      const totalExpenses = totalFixed + totalVariable;
+      const netCashflow = next.monthlyIncome - totalExpenses;
+      emitSpineEvent?.('BUDGET_UPDATED', {
+        domain: 'R',
+        source: 'ledger',
+        priority: 'info',
+        monthlyIncome: next.monthlyIncome,
+        totalExpenses,
+        netCashflow,
+        currency: next.currency,
+      });
       markProfileDirty?.();
     },
 
@@ -173,7 +203,7 @@ export function registerLedgerActions() {
       markProfileDirty?.();
     },
 
-    analyze_financial_document: async ({ userId, encryptionKey, payload, markProfileDirty }) => {
+    analyze_financial_document: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
       if (!profile) return;
 
@@ -222,6 +252,13 @@ export function registerLedgerActions() {
 
       ensureActivePlan(next);
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      emitSpineEvent?.('DOCUMENT_ANALYZED', {
+        domain: 'R',
+        source: 'ledger',
+        priority: 'info',
+        periodLabel: analysis.periodLabel,
+        transactionCount: analysis.transactionCount,
+      });
       markProfileDirty?.();
     },
 

@@ -77,7 +77,7 @@ export interface ParsedCommandIntent {
 export interface ParsedCommandEnvelope {
   rawInput: string;
   normalizedInput: string;
-  parserVersion: 'phase1-v1';
+  parserVersion: 'phase1-v1' | 'llm-v1';
   sourceModuleId: string;
   generatedAt: string;
   timezone: string;

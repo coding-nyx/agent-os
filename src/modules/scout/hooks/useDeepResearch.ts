@@ -147,6 +147,14 @@ export function useDeepResearch({
       const depth = options.depth || 'quick';
       const useExpertSources = options.useExpertSources || false;
 
+      Spine.publish({
+        type: 'DEEP_RESEARCH_REQUESTED',
+        source: 'scout',
+        domain: 'C',
+        priority: 'info',
+        data: { query, depth, useExpertSources },
+      });
+
       updateState({
         status: 'generating_questions',
         query,

@@ -25,6 +25,7 @@ import { parseDocumentUploadMessage, summarizeDocumentUploadMessage } from '@/li
 import { useOrchestrationStore } from '@/lib/stores/orchestration-store';
 import { OrchestrationHistoryService } from '@/lib/services/orchestration-history-service';
 import { OrchestrationInteractionGateService } from '@/lib/services/orchestration-interaction-gate-service';
+import { OrchestrationActionGateService } from '@/lib/services/orchestration-action-gate-service';
 import { OrchestrationPersistenceService } from '@/lib/services/orchestration-persistence-service';
 import { OrchestrationRuntimeService } from '@/lib/services/orchestration-runtime-service';
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
@@ -153,19 +154,19 @@ function appendExecutionHoldNotice(
   return `${text}\n\n${notice}`;
 }
 
-export function useModuleAI({ 
-  moduleId, 
-  systemPrompt: baseRole, 
-  encryptionKey, 
-  navigateTo, 
-  sessionId, 
+export function useModuleAI({
+  moduleId,
+  systemPrompt: baseRole,
+  encryptionKey,
+  navigateTo,
+  sessionId,
   contextPolicy,
   persistencePolicy = 'auto',
   onError
 }: UseModuleAIOptions) {
-  const { streamMessage, sendMessage } = useAI();
-  const { enhanceContext, enhanceContextForModule, globalSoul } = useGlobalSoul();
-  const { user, isGuest, profile } = useAuth();
+  const { streamMessage, sendMessage, generateJSON } = useAI();
+  const threadIdRef = useRef<string | undefined>(undefined);
+  const { enhanceContext, enhanceContextForModule, globalSoul } = useGlobalSoul();  const { user, isGuest, profile } = useAuth();
   const autopilotLevel = useOrchestrationStore((state) => state.autopilotLevel);
   const orchestrationHistoryMode = useOrchestrationStore((state) => state.historyMode);
   const activeThreadId = useOrchestrationStore((state) => state.activeThreadId);
@@ -372,7 +373,7 @@ export function useModuleAI({
     // If we are currently processing a stream, include the partial content
     // so it's not lost on page reload/unmount.
     if (isProcessingRef.current && currentAssistantMessageBodyRef.current.trim()) {
-        currentMessages = [...currentMessages, { role: 'assistant', content: currentAssistantMessageBodyRef.current } as Message];
+        currentMessages = [...currentMessages, { role: 'assistant', content: currentAssistantMessageBodyRef.current, threadId: threadIdRef.current } as Message];
     }
 
     if (currentMessages.length === 0) return;
@@ -445,16 +446,19 @@ export function useModuleAI({
     async (
       content: MessageContent,
       onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void,
-      options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }
+      options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; threadId?: string }
     ) => {
       if (isProcessingRef.current) return;
       if (isGuest && quota.isHardLocked) return;
+
+      threadIdRef.current = options?.threadId;
 
       // Show user message and processing state IMMEDIATELY
       const userMsg: Message = {
         role: 'user',
         content: options?.visibleContent ?? content,
         timestamp: new Date().toISOString(),
+        threadId: options?.threadId,
       };
       // H-2: maintain local history to avoid stale-closure issues with setMessages updater
       let localHistory = [...messages, userMsg].slice(-MAX_MESSAGES);
@@ -469,10 +473,23 @@ export function useModuleAI({
         ? NexusActionPlannerService.extractExecutionPacket(contentText)
         : null;
       const semanticContentText = NexusActionPlannerService.getSemanticInput(contentText);
-      const parsedCommand = CommandIntelligenceService.parse(semanticContentText, {
+      const parsedCommand = await CommandIntelligenceService.parseWithLLM(semanticContentText, {
         sourceModuleId: moduleId,
+        generateJSON,
       });
       setLastParsedCommand(parsedCommand);
+      if (debugModeRef.current) {
+        NexusLogger.emit('ai', {
+          moduleId,
+          label: 'command_parse',
+          detail: {
+            parserVersion: parsedCommand.parserVersion,
+            confidence: parsedCommand.confidence,
+            intentTypes: parsedCommand.intents.map((intent) => intent.intentType),
+            rawInput: parsedCommand.rawInput,
+          },
+        });
+      }
 
       NexusLogger.emit('ai', {
         moduleId,
@@ -546,8 +563,27 @@ export function useModuleAI({
           !isGuest &&
           NexusActionDispatchExecutionService.canExecutePacketDeterministically(executionPacket)
         ) {
-          const deterministicSoulUpdates: NeuralStateVectorPatch = {};
-          const results = await NexusActionDispatchExecutionService.executePacket(executionPacket, {
+          let canExecuteFastPath = true;
+          for (const node of executionPacket.nodes) {
+            const gate = OrchestrationActionGateService.evaluate({
+              moduleId,
+              actionType: node.actionType,
+              payload: (node.payload as Record<string, unknown>) ?? {},
+              autopilotLevel,
+              historyMode: orchestrationHistoryMode,
+              isGuest,
+              activeThreadId,
+              persistencePolicy,
+            });
+            if (!gate.shouldDispatch) {
+              canExecuteFastPath = false;
+              break;
+            }
+          }
+
+          if (canExecuteFastPath) {
+            const deterministicSoulUpdates: NeuralStateVectorPatch = {};
+            const results = await NexusActionDispatchExecutionService.executePacket(executionPacket, {
             userId: user?.uid,
             isGuest: false,
             encryptionKey,
@@ -602,6 +638,7 @@ export function useModuleAI({
             role: 'assistant',
             content: NexusActionDispatchExecutionService.buildExecutionSummary(executionPacket, results),
             timestamp: new Date().toISOString(),
+            threadId: threadIdRef.current,
           };
           localHistory = [...localHistory, assistantMessage].slice(-MAX_MESSAGES);
           messagesRef.current = localHistory;
@@ -610,9 +647,10 @@ export function useModuleAI({
           clearPendingRequest();
           return;
         }
+      }
 
-        // --- Memory retrieval — use pre-warmed cache on first message, then fetch fresh ---
-        const recentHistorySlice = messages
+      // --- Memory retrieval — use pre-warmed cache on first message, then fetch fresh ---
+      const recentHistorySlice = messages
           .slice(-3)
           .map((msg) => `${msg.role}: ${contentToText(msg.content)}`)
           .join('\n');
@@ -687,10 +725,12 @@ export function useModuleAI({
               ? `Memory unavailable: vault locked for ${moduleId}.`
               : cappedMemorySummary || `Active session in ${moduleId}${resolvedContextPolicy === 'doc-only' ? ' (doc-only).' : '.'}`,
             parsedCommand,
-            history: messages.map((message) => ({
-              ...message,
-              content: normalizeContentForAI(message.content),
-            }))  // history before user message — CognitiveAgent adds user msg
+            history: messages
+              .filter((m) => !m.threadId || m.threadId === userMsg.threadId)
+              .map((message) => ({
+                ...message,
+                content: normalizeContentForAI(message.content),
+              })) // history before user message — CognitiveAgent adds user msg
           }),
           (chunk) => {
             // Update refs synchronously on every chunk (for post-stream processing)
@@ -772,6 +812,7 @@ export function useModuleAI({
               role: 'assistant',
               content: assistantContent,
               timestamp: new Date().toISOString(),
+              threadId: threadIdRef.current,
             } as Message].slice(-MAX_MESSAGES);
             messagesRef.current = localHistory;
             setMessages(localHistory);
@@ -962,6 +1003,7 @@ export function useModuleAI({
             role: 'assistant',
             content: finalContent,
             timestamp: new Date().toISOString(),
+            threadId: userMsg.threadId,
           };
 
           // Populate debugMeta when debug mode is active
@@ -1027,8 +1069,23 @@ export function useModuleAI({
           }
         }
       } catch (e: unknown) {
-        if (e instanceof DOMException && e.name === 'AbortError') return; // stream was aborted on unmount — silent
+        if (e instanceof DOMException && e.name === 'AbortError') {
+          if (pendingStreamTextRef.current) {
+            localHistory = [...localHistory, { role: 'assistant', content: pendingStreamTextRef.current, timestamp: new Date().toISOString(), threadId: threadIdRef.current } as Message].slice(-MAX_MESSAGES);
+            messagesRef.current = localHistory;
+            if (mountedRef.current) setMessages(localHistory);
+            flushActiveSession();
+          }
+          return;
+        }
         console.error(`Module ${moduleId} AI link failure:`, e);
+        
+        if (pendingStreamTextRef.current) {
+          localHistory = [...localHistory, { role: 'assistant', content: pendingStreamTextRef.current + '\n\n[Link interrupted]', timestamp: new Date().toISOString(), threadId: threadIdRef.current } as Message].slice(-MAX_MESSAGES);
+          messagesRef.current = localHistory;
+          if (mountedRef.current) setMessages(localHistory);
+          flushActiveSession();
+        }
         
         // Emit critical failure event so the notification system can alert the user
         Spine.emit({

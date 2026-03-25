@@ -73,10 +73,12 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
       : [];
 
     const now = new Date().toISOString();
+    const newlyCompleted: string[] = [];
     for (const ms of goal.milestones) {
       if (completedIds.includes(ms.id) && !ms.completed) {
         ms.completed = true;
         ms.completedAt = now;
+        newlyCompleted.push(ms.id);
       }
     }
 
@@ -102,6 +104,15 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
       progressPercent: goal.progressPercent,
       status: goal.status
     });
+
+    if (newlyCompleted.length > 0) {
+      emitSpineEvent('ATLAS_GOAL_MILESTONE', {
+        goalId: goal.id,
+        title: goal.title,
+        milestoneIds: newlyCompleted,
+        completedAt: now
+      });
+    }
 
     if (goal.progressPercent >= 100) {
       emitSpineEvent('ATLAS_GOAL_COMPLETED', {

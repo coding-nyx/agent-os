@@ -252,21 +252,21 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         {/* Background Stages */}
         {workspaceType === 'focus' && (
           <div className="fixed inset-0 z-[-1] pointer-events-none opacity-40">
-            <img src="/assets/images/belief_nebula.png" className="w-full h-full object-cover blur-sm" alt="" />
+            <img src="/assets/images/belief_nebula.png" className="w-full h-full object-cover blur-sm" alt="" loading="lazy" decoding="async" />
             <div className="absolute inset-0 bg-gradient-to-b from-[#020205]/60 via-transparent to-[#020205]" />
           </div>
         )}
 
         {workspaceType === 'lab' && (
           <div className="fixed inset-0 z-[-1] pointer-events-none opacity-30">
-            <img src="/assets/images/soma.png" className="w-full h-full object-cover" alt="" />
+            <img src="/assets/images/soma.png" className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" />
             <div className="absolute inset-0 bg-[#020205]/40 backdrop-blur-[2px]" />
           </div>
         )}
 
         {(workspaceType === 'command' || workspaceType === 'terminal') && (
           <div className="fixed inset-0 z-[-1] pointer-events-none opacity-10">
-            <img src="/assets/images/nerve_line.png" className="w-full h-full object-cover" alt="" />
+            <img src="/assets/images/nerve_line.png" className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" />
             <div className="absolute inset-0 bg-gradient-to-tr from-[#020205] via-transparent to-[#020205]/80" />
           </div>
         )}

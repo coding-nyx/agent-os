@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, GripHorizontal, RotateCcw, Trash2 } from 'lucide-react';
+import { useMotionConfig } from '@/lib/hooks/use-motion-config';
 import { cn } from '@/lib/utils';
 
 interface FloatingPanelGeometry {
@@ -100,6 +101,7 @@ export function FloatingChatPanel({
   const [navBottom, setNavBottom] = useState(() =>
     typeof window !== 'undefined' ? getNavbarBottom() : 60
   );
+  const { transition } = useMotionConfig();
 
   // Re-measure navbar height on mount and window resize
   useEffect(() => {
@@ -226,7 +228,7 @@ export function FloatingChatPanel({
           initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.92 }}
-          transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+          transition={transition}
           className={cn(
             'fixed flex flex-col overflow-hidden rounded-2xl border bg-[#09090b]/95 backdrop-blur-xl shadow-[0_16px_60px_rgba(0,0,0,0.7)]',
             themeClasses.sidebarBorder

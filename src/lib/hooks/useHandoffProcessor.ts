@@ -110,7 +110,7 @@ export function useHandoffProcessor({
           setTimeout(() => {
             routingAbort.abort('timeout');
             reject(new Error('Routing classification timeout'));
-          }, 10000) // Increased to 10s for better resilience
+          }, 20000) // Increased to 20s for better resilience
         )
       ]);
 
@@ -200,52 +200,84 @@ export function useHandoffProcessor({
   // Consume and process incoming handoffs on mount / when hydration completes
   useEffect(() => {
     if (handoffProcessedRef.current) return;
-    if (isHydrating || messagesCount > 0) return;
+    if (isHydrating) return;
 
-    const handoff = NexusHandoffService.consume(moduleId);
-    if (!handoff) {
-      handoffProcessedRef.current = true;
-      return;
-    }
+    const processHandoff = (handoff: import('../services/nexus-handoff-service').NexusHandoff) => {
+      // Fire a synthetic spine event so local components (like TitanContent) can intercept it
+      // before it gets dumped into the generic chat history.
+      const eventId = Spine.emit({
+        type: 'MODULE_HANDOFF_RECEIVED',
+        source: handoff.sourceModuleId || 'nexus',
+        domain: 'system',
+        data: { ...handoff } as Record<string, unknown>,
+        cascadeDepth: 0,
+        priority: 'alert'
+      });
 
-    handoffProcessedRef.current = true;
-    const handoffNote = handoff.content
-      ? `Nexus handoff: ${handoff.content}`
-      : 'Nexus handoff received.';
+      // If a component called preventDefault or handled the event, we skip generic chat insertion.
+      // (We assume the component will handle the UI representation).
+      
+      const handoffNote = handoff.content
+        ? `Nexus handoff: ${handoff.content}`
+        : 'Nexus handoff received.';
 
-    if (handoff.type === 'delegate') {
-      setMessages((prev) => (prev.length === 0 ? [{ role: 'assistant', content: handoffNote }] : prev));
-      if (handoff.content) {
+      if (handoff.type === 'delegate') {
+        setMessages((prev) => (prev.length === 0 ? [{ role: 'assistant', content: handoffNote }] : prev));
+        if (handoff.content) {
+          queueMicrotask(() => {
+            skipRoutingRef.current = true;
+            onSendMessageRef.current?.(handoff.content);
+          });
+        }
+        return;
+      }
+
+      if (handoff.type === 'query' && handoff.content) {
+        setMessages((prev) => (prev.length === 0 ? [{ role: 'assistant', content: handoffNote }] : prev));
+        pendingQueryRef.current = {
+          origin: handoff.sourceModuleId || 'nexus',
+          issuedAt: handoff.createdAt
+        };
         queueMicrotask(() => {
           skipRoutingRef.current = true;
           onSendMessageRef.current?.(handoff.content);
         });
+        return;
       }
-      return;
+
+      if (handoff.type === 'query_result' && handoff.content) {
+        const sourceLabel = handoff.sourceModuleId ? ` from ${handoff.sourceModuleId}` : '';
+        const note = `Nexus query result${sourceLabel}: ${handoff.content}`;
+        setMessages((prev) =>
+          prev.length === 0
+            ? [{ role: 'assistant', content: note }]
+            : [...prev, { role: 'assistant', content: note }]
+        );
+      }
+    };
+
+    // 1. Process anything waiting in sessionStorage (cross-tab or cross-navigation)
+    const handoff = NexusHandoffService.consume(moduleId);
+    if (handoff) {
+      handoffProcessedRef.current = true;
+      processHandoff(handoff);
     }
 
-    if (handoff.type === 'query' && handoff.content) {
-      setMessages((prev) => (prev.length === 0 ? [{ role: 'assistant', content: handoffNote }] : prev));
-      pendingQueryRef.current = {
-        origin: handoff.sourceModuleId || 'nexus',
-        issuedAt: handoff.createdAt
-      };
-      queueMicrotask(() => {
-        skipRoutingRef.current = true;
-        onSendMessageRef.current?.(handoff.content);
-      });
-    }
+    // 2. Subscribe to active session handoffs
+    const unsubscribe = Spine.subscribe('MODULE_DELEGATED', (event) => {
+      if (event.target === moduleId && event.data?.content) {
+         processHandoff({
+           moduleId,
+           type: event.data.reason === 'query_result' ? 'query_result' : 'delegate',
+           content: event.data.content as string,
+           sourceModuleId: event.source,
+           createdAt: new Date().toISOString()
+         });
+      }
+    });
 
-    if (handoff.type === 'query_result' && handoff.content) {
-      const sourceLabel = handoff.sourceModuleId ? ` from ${handoff.sourceModuleId}` : '';
-      const note = `Nexus query result${sourceLabel}: ${handoff.content}`;
-      setMessages((prev) =>
-        prev.length === 0
-          ? [{ role: 'assistant', content: note }]
-          : [...prev, { role: 'assistant', content: note }]
-      );
-    }
-  }, [isHydrating, messagesCount, moduleId, setMessages, onSendMessageRef]);
+    return () => unsubscribe();
+  }, [isHydrating, moduleId, setMessages, onSendMessageRef]);
 
   return {
     classifyAndRoute,

@@ -18,6 +18,7 @@ import { registerFieldSuggestionActions } from './lib/actions/field-suggestion-a
 import { initializeSchemas } from './lib/schemas/init'
 import { getNexusDataLayer } from './lib/data-layer/provider'
 import { Spine } from './lib/spine/spine-event-bus'
+import { registerFlowConsumers } from './lib/spine/flow-consumers'
 
 // Module-specific action registrations — imported here so handlers are available
 // immediately, regardless of which page the user visits first (or Nexus delegates to).
@@ -80,6 +81,7 @@ initializeSchemas();
 // the abstraction layer rather than hitting Firebase directly. This allows tests
 // to inject InMemoryDataLayer via setNexusDataLayer() before the Spine emits.
 Spine.setDataLayer(getNexusDataLayer());
+registerFlowConsumers();
 
 // Filter out noisy THREE.Clock deprecation warnings from @react-three/fiber internals.
 // We patch console.warn AFTER NexusLogger.init() so the original method is already

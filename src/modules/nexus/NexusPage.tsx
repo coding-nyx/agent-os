@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import { useAuth } from '@/lib/auth-context';
@@ -110,7 +110,7 @@ export default function NexusPage() {
     );
   }
 
-  const handleComplete = async (updates: Partial<CoreUserProfile>) => {
+  const handleComplete = useCallback(async (updates: Partial<CoreUserProfile>) => {
     if (!user) return;
     setIsSubmitting(true);
     try {
@@ -123,9 +123,12 @@ export default function NexusPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [user, refreshProfile]);
 
-  const surfaceMode = location.pathname.startsWith('/nexus/ops') ? 'operations' : 'chat';
+  const surfaceMode = useMemo(
+    () => location.pathname.startsWith('/nexus/ops') ? 'operations' : 'chat',
+    [location.pathname]
+  );
 
   if (pageState === 'DASHBOARD') {
     return (

@@ -58,7 +58,7 @@ describe('NexusActionPlannerService', () => {
           {
             id: 'intent-1',
             rawSegment: 'help me research this topic',
-            intentType: 'update_schedule',
+            intentType: 'research',
             verb: 'research',
             mutatesState: false,
             confidence: 0.81,
@@ -120,7 +120,7 @@ describe('NexusActionPlannerService', () => {
     expect(suggestion?.supportingModuleIds).toContain('soma');
     expect(suggestion?.supportingModuleIds).toContain('agnes');
     expect(suggestion?.prompt).toContain('"nodes"');
-    expect(suggestion?.prompt).toContain('"actionType": "plan_day"');
+    expect(suggestion?.prompt).toContain('"actionType": "propose_draft"');
   });
 
   it('extracts the structured execution packet and recovers the semantic raw input', () => {

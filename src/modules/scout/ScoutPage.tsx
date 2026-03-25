@@ -213,6 +213,44 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   const digestsRef = useRef(digests);
   digestsRef.current = digests;
 
+  const emitDeepResearchBackupFound = useCallback((query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    const normalized = trimmed.toLowerCase();
+    const matches = knowledgeNodes
+      .filter((node) => {
+        const title = node.title ?? '';
+        const claim = node.claim ?? '';
+        return (
+          title.toLowerCase().includes(normalized) ||
+          claim.toLowerCase().includes(normalized)
+        );
+      })
+      .slice(0, 5);
+
+    if (matches.length === 0) return;
+
+    Spine.emit({
+      type: 'DEEP_RESEARCH_BACKUP_FOUND',
+      source: 'scout',
+      domain: 'C',
+      data: {
+        query: trimmed,
+        nodeIds: matches.map((node) => node.id),
+        count: matches.length,
+      },
+      cascadeDepth: 0,
+      priority: 'info',
+    });
+  }, [knowledgeNodes]);
+
+  const openDeepResearch = useCallback((query: string) => {
+    const trimmed = query.trim();
+    setDeepResearchInitialQuery(trimmed);
+    setDeepResearchOpen(true);
+    emitDeepResearchBackupFound(trimmed);
+  }, [emitDeepResearchBackupFound]);
+
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [sessions, activeSessionId],
@@ -226,6 +264,14 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   }, [activeSessionId, activeSession]);
 
   const openExportDialog = useCallback((target: ExportTarget) => {
+    Spine.emit({
+      type: 'EXPORT_REQUESTED',
+      source: 'scout',
+      domain: 'C',
+      data: { exportType: target.type },
+      cascadeDepth: 0,
+      priority: 'info',
+    });
     setExportTarget(target);
     setExportDialogOpen(true);
   }, []);
@@ -293,8 +339,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   useEffect(() => {
     const unsubDeepResearch = Spine.subscribe('DEEP_RESEARCH_STARTED', (event) => {
       const query = (event.data?.query as string) ?? '';
-      setDeepResearchInitialQuery(query);
-      setDeepResearchOpen(true);
+      openDeepResearch(query);
     });
 
     const unsubExport = Spine.subscribe('EXPORT_REQUESTED', (event) => {
@@ -333,7 +378,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       unsubDigest();
       unsubSession();
     };
-  }, [openExportDialog, user?.uid, encryptionKey]);
+  }, [openDeepResearch, openExportDialog, user?.uid, encryptionKey]);
 
   const ai = useModuleAI({
     moduleId: 'scout',
@@ -495,14 +540,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
         setSelectedView('research');
         setIsSessionSheetOpen(false);
         if (isDeepResearch) {
-          setDeepResearchInitialQuery(topic);
-          setDeepResearchOpen(true);
+          openDeepResearch(topic);
         }
       }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to create session.');
     }
-  }, [createSessionFn]);
+  }, [createSessionFn, openDeepResearch]);
 
   const renderNewSessionButton = () => (
     <NeuralButton
@@ -578,8 +622,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           session={activeSession}
           encryptionKey={encryptionKey}
           onStartDeepResearch={(query) => {
-            setDeepResearchInitialQuery(query);
-            setDeepResearchOpen(true);
+            openDeepResearch(query);
           }}
           onSendMessage={(text) => ai.handleSendMessage(text, onActionParsed)}
           onUpdateSession={updateSessionFn}

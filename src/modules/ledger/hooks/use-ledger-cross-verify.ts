@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGlobalSoul } from '@/lib/global-soul-context';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import type { NeuralStateVectorPatch } from '@/lib/types';
+import type { NeuralStateVectorPatch, SpineEventPayload } from '@/lib/types';
 import type { LedgerIntakeProfile } from '../services/ledger-intake-service';
 import {
   verifyFinancialCoherence,
@@ -26,6 +26,49 @@ export interface LedgerCrossVerifyResult {
   coherenceReport: CoherenceReport | null;
   nsvPatch: NeuralStateVectorPatch | null;
   isVerifying: boolean;
+}
+
+const FINANCIAL_STREAK_KEY = 'ledger_financial_streak_count';
+const FINANCIAL_STREAK_MILESTONE_KEY = 'ledger_financial_streak_last_milestone';
+
+function buildFinancialStreakEvent(profile: LedgerIntakeProfile): SpineEventPayload | null {
+  try {
+    const totalIncome = Math.max(profile.monthlyIncome, 0);
+    const totalExpenses = profile.fixedExpenses.reduce((sum, item) => sum + item.amount, 0)
+      + profile.variableExpenses.reduce((sum, item) => sum + item.amount, 0);
+    const netCashflow = totalIncome - totalExpenses;
+
+    const prevStreak = Number.parseInt(localStorage.getItem(FINANCIAL_STREAK_KEY) ?? '0', 10) || 0;
+    const nextStreak = netCashflow > 0 ? prevStreak + 1 : 0;
+    localStorage.setItem(FINANCIAL_STREAK_KEY, String(nextStreak));
+
+    if (nextStreak === 0) {
+      localStorage.setItem(FINANCIAL_STREAK_MILESTONE_KEY, '0');
+      return null;
+    }
+
+    const lastMilestone = Number.parseInt(localStorage.getItem(FINANCIAL_STREAK_MILESTONE_KEY) ?? '0', 10) || 0;
+    const milestoneStep = 3;
+    const isMilestone = nextStreak % milestoneStep === 0 && nextStreak !== lastMilestone;
+
+    if (!isMilestone) return null;
+
+    localStorage.setItem(FINANCIAL_STREAK_MILESTONE_KEY, String(nextStreak));
+
+    return {
+      type: 'FINANCIAL_STREAK_MILESTONE',
+      source: 'ledger',
+      domain: 'R',
+      priority: 'info',
+      data: {
+        streak: nextStreak,
+        netCashflow,
+        cadence: profile.planningHorizon ?? 'monthly',
+      },
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -63,6 +106,8 @@ export function useLedgerCrossVerify(
       profile,
       prevProfileRef.current ?? undefined,
     );
+    const streakEvent = buildFinancialStreakEvent(profile);
+    if (streakEvent) spineEvents.push(streakEvent);
 
     // --- Side-effects ---
 

@@ -210,7 +210,7 @@ export function emitBiomarkerCommitted(
   previousValue?: unknown
 ): void {
   Spine.emit({
-    type: SomaSpineEvents.BIOMARKER_COMMITTED,
+    type: 'SOMA_BIOMARKER_COMMITTED',
     source: 'soma',
     domain: 'B',
     data: {
@@ -233,7 +233,7 @@ export function emitReadinessUpdated(
   previousScore?: number
 ): void {
   Spine.emit({
-    type: SomaSpineEvents.READINESS_UPDATED,
+    type: 'SOMA_READINESS_UPDATED',
     source: 'soma',
     domain: 'B',
     data: {
@@ -259,7 +259,7 @@ export function emitClearanceChanged(
   clearanceType: string
 ): void {
   Spine.emit({
-    type: SomaSpineEvents.CLEARANCE_CHANGED,
+    type: 'SOMA_CLEARANCE_CHANGED',
     source: 'soma',
     domain: 'B',
     data: {
@@ -339,7 +339,7 @@ export function emitClearanceCoordinationEvents(clearance: ClearanceRecord): voi
  */
 export function emitFieldCreated(field: FieldDefinition): void {
   Spine.emit({
-    type: SomaSpineEvents.FIELD_CREATED,
+    type: 'SOMA_FIELD_CREATED',
     source: 'soma',
     domain: 'B',
     data: {
@@ -360,7 +360,7 @@ export function emitFieldCreated(field: FieldDefinition): void {
  */
 export function emitFieldDeleted(fieldId: string, fieldName: string): void {
   Spine.emit({
-    type: SomaSpineEvents.FIELD_DELETED,
+    type: 'SOMA_FIELD_DELETED',
     source: 'soma',
     domain: 'B',
     data: {
@@ -449,6 +449,18 @@ export function registerSomaFieldActions(): void {
   ActionHub.addDependency('titan', 'soma');
 
   ActionHub.registerMultiple('soma', {
+    create_medical_review: async ({ moduleId, payload }) => {
+      Spine.emit({
+        type: 'DRAFT_PROPOSED',
+        source: moduleId,
+        target: typeof payload?.target === 'string' ? payload.target : moduleId,
+        domain: 'system',
+        data: payload,
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    },
+
     // ── Create Extension Field ──────────────────────────────────────────
     create_field: async ({ payload, pushAssistantMessage }) => {
       const fieldDef = payload as unknown as FieldDefinition;
@@ -523,7 +535,7 @@ export function registerSomaFieldActions(): void {
       await SchemaRegistry.extendSchema('soma', [updated]);
 
       Spine.emit({
-        type: SomaSpineEvents.FIELD_UPDATED,
+        type: 'SOMA_FIELD_UPDATED',
         source: 'soma',
         domain: 'B',
         data: {
@@ -665,7 +677,7 @@ export function registerSomaFieldActions(): void {
         { userId, encryptionKey }
       );
       Spine.emit({
-        type: SomaSpineEvents.BIOMARKER_COMMITTED,
+        type: 'SOMA_BIOMARKER_COMMITTED',
         source: 'soma',
         domain: 'B',
         data: { moduleId: 'soma', fieldId: record.id, newValue: record.value, fieldName: record.name, timestamp: Date.now() },
@@ -696,7 +708,7 @@ export function registerSomaFieldActions(): void {
       }
       await addVitalReading(userId, fields, encryptionKey);
       Spine.emit({
-        type: SomaSpineEvents.VITAL_LOGGED,
+        type: 'SOMA_VITAL_LOGGED',
         source: 'soma',
         domain: 'B',
         data: { moduleId: 'soma', fields, timestamp: Date.now() },
@@ -774,7 +786,7 @@ export function registerSomaFieldActions(): void {
         { userId, encryptionKey }
       );
       Spine.emit({
-        type: SomaSpineEvents.LAB_REPORT_PARSED,
+        type: 'SOMA_LAB_REPORT_PARSED',
         source: 'soma',
         domain: 'B',
         data: { moduleId: 'soma', panel, findings: record.findings.length, timestamp: Date.now() },
@@ -820,7 +832,7 @@ export function registerSomaFieldActions(): void {
         { userId, encryptionKey }
       );
       Spine.emit({
-        type: SomaSpineEvents.PROFILE_UPDATED,
+        type: 'SOMA_PROFILE_UPDATED',
         source: 'soma',
         domain: 'B',
         data: { moduleId: 'soma', updatedFields: Object.keys(updates), timestamp: Date.now() },

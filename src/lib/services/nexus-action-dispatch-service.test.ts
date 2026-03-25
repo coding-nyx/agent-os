@@ -24,22 +24,22 @@ describe('NexusActionDispatchService', () => {
     const dispatches = NexusActionDispatchService.resolvePlan(plan!);
 
     expect(dispatches[0]).toMatchObject({
-      sourceActionType: 'plan_day',
+      sourceActionType: 'propose_draft',
       status: 'requires_followup',
       resolvedActionType: null,
     });
     expect(dispatches[1]).toMatchObject({
-      sourceActionType: 'recovery_day',
+      sourceActionType: 'flatten_schedule',
       status: 'resolved',
       resolvedActionType: 'flatten_schedule',
       payload: expect.objectContaining({
-        activeLoad: 2,
-        flattenedUntil: '2026-03-25T23:59:59',
+        flattenedUntil: expect.stringContaining('2026-03-25'),
+        reason: 'rest',
         sourceSegment: 'update tomorrow to rest',
       }),
     });
     expect(dispatches[2]).toMatchObject({
-      sourceActionType: 'schedule_item',
+      sourceActionType: 'schedule_block',
       status: 'resolved',
       resolvedActionType: 'schedule_block',
       payload: expect.objectContaining({
@@ -67,12 +67,12 @@ describe('NexusActionDispatchService', () => {
     const packet = NexusActionPlannerService.extractExecutionPacket(suggestion?.prompt ?? '');
     expect(packet?.dispatchPlan).toEqual([
       expect.objectContaining({
-        sourceActionType: 'recovery_day',
+        sourceActionType: 'flatten_schedule',
         resolvedActionType: 'flatten_schedule',
         status: 'resolved',
       }),
       expect.objectContaining({
-        sourceActionType: 'schedule_item',
+        sourceActionType: 'schedule_block',
         resolvedActionType: 'schedule_block',
         status: 'resolved',
       }),

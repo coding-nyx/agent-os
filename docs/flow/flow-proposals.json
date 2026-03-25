@@ -1,0 +1,32 @@
+[
+  {
+    "proposalType": "mutation",
+    "sourceModule": "nexus",
+    "requiresApproval": true,
+    "lifecycleEvents": [
+      "DRAFT_PROPOSED",
+      "DRAFT_APPROVED",
+      "DRAFT_DISMISSED"
+    ]
+  },
+  {
+    "proposalType": "routine",
+    "sourceModule": "atlas",
+    "requiresApproval": true,
+    "lifecycleEvents": [
+      "ROUTINE_PROPOSED",
+      "ROUTINE_CONFIRMED",
+      "ROUTINE_DISMISSED"
+    ]
+  },
+  {
+    "proposalType": "reminder",
+    "sourceModule": "atlas",
+    "requiresApproval": true,
+    "lifecycleEvents": [
+      "REMINDER_PROPOSED",
+      "REMINDER_CONFIRMED",
+      "REMINDER_DISMISSED"
+    ]
+  }
+]

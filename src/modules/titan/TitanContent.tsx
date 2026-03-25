@@ -4,7 +4,7 @@ import { QuickLogDrawer } from './components/QuickLogDrawer';
 import type { QuickLogPayload } from './components/QuickLogDrawer';
 import { QuickLogBar } from './components/QuickLogBar';
 import { LogConfirmCard } from './components/LogConfirmCard';
-import { TitanProposalCard, TitanProposalSkeleton, extractProposalFromMessage, type TitanProposal } from './components/TitanProposalCard';
+import { TitanProposalCard, TitanProposalSkeleton, type TitanProposal } from './components/TitanProposalCard';
 import { RecoveryPlanModal } from './components/RecoveryPlanModal';
 import type { RecoveryPlanDraft, RecoveryConsultResult } from './components/RecoveryPlanModal';
 import { RecoveryBanner } from './components/RecoveryBanner';
@@ -309,24 +309,13 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     });
   }, [profile, user?.uid, encryptionKey, trainingGateState.latestClearance]);
 
-  // ── Watch for AI proposals in messages ────────────────────────────────────
-  useEffect(() => {
-    if (!ai.messages.length) return;
-    // Check only the last assistant message
-    const lastMsg = ai.messages[ai.messages.length - 1];
-    if (lastMsg.role !== 'assistant') return;
-    
-    const content = typeof lastMsg.content === 'string' 
-      ? lastMsg.content 
-      : Array.isArray(lastMsg.content) 
-        ? lastMsg.content.filter(p => p.type === 'text').map(p => (p as { text: string }).text).join('')
-        : '';
-    
-    const proposal = extractProposalFromMessage(content);
-    if (proposal) {
+  // ── Watch for AI proposals via Spine ────────────────────────────────────
+  useSpineEvent('TITAN_PROPOSAL', useCallback((event) => {
+    const proposal = event.data as unknown as TitanProposal;
+    if (proposal && (proposal.type === 'routine_proposal' || proposal.type === 'sleep_log_proposal' || proposal.type === 'workout_log_proposal')) {
       setActiveProposal(proposal);
     }
-  }, [ai.messages]);
+  }, []));
 
   // ── Handle proposal actions via ActionHub ─────────────────────────────────
   const handleProposalAction = useCallback(async (handler: string, data?: Record<string, unknown>) => {
@@ -440,6 +429,13 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       );
     }
   }, [openChatAndSend, parseRecoveryConsult]);
+
+  useSpineEvent('MODULE_HANDOFF_RECEIVED', useCallback((event) => {
+    const handoff = event.data as unknown as NexusHandoff;
+    if (handoff && handoff.moduleId === 'titan') {
+      handleIncomingHandoff(handoff);
+    }
+  }, [handleIncomingHandoff]));
 
   // ── Direct Write (Logbook) Mode ────────────────────────────────────────────
   const directWrite = profile?.directWriteMode ?? false;
@@ -611,21 +607,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.cycles, user, encryptionKey]);
 
-  useEffect(() => {
-    const handoff = NexusHandoffService.consume('titan');
-    if (!handoff) return;
-    handleIncomingHandoff(handoff);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!isRecoveryModalOpen) return;
-    const interval = window.setInterval(() => {
-      const handoff = NexusHandoffService.consume('titan');
-      if (handoff) handleIncomingHandoff(handoff);
-    }, 1500);
-    return () => window.clearInterval(interval);
-  }, [isRecoveryModalOpen, handleIncomingHandoff]);
+  // Handoff consumption is now handled by Spine listener and useHandoffProcessor
 
   useEffect(() => {
     if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
@@ -1364,90 +1346,29 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     }
   };
 
-  // ── Strip proposal JSON from chat display ─────────────────────────────────
-  // The AI embeds the TitanProposal JSON at the end of its message for extraction,
-  // but we don't want raw JSON visible in the chat bubble. Strip it for display;
-  // the detection useEffect above still reads from the original ai.messages.
-  const displayAi = useMemo(() => {
-    const stripProposalJson = (text: string): string => {
-      const markerIdx = text.indexOf('"__isTitanProposal"');
-      if (markerIdx === -1) return text;
-      const openBrace = text.lastIndexOf('{', markerIdx);
-      return openBrace === -1 ? text : text.substring(0, openBrace).trim();
-    };
-
-    const cleanContent = (content: unknown): import('@/lib/types').MessageContent => {
-      if (typeof content === 'string') return stripProposalJson(content);
-      if (Array.isArray(content)) {
-        return content.map((part) => {
-          if (part && typeof part === 'object' && (part as { type?: string }).type === 'text') {
-            return { ...part, text: stripProposalJson((part as { text: string }).text) };
-          }
-          return part;
-        }) as import('@/lib/types').MessageContentPart[];
-      }
-      return typeof content === 'string' ? content : '';
-    };
-
-    return {
-      ...ai,
-      messages: ai.messages.map((msg) =>
-        msg.role === 'assistant' ? { ...msg, content: cleanContent(msg.content) } : msg
-      ),
-      streamingText: stripProposalJson(ai.streamingText ?? ''),
-    };
-  }, [ai]);
-
-  // ── Inline proposal card — rendered below the last assistant message ─────
-  const lastAssistantIndex = useMemo(() => {
-    for (let i = displayAi.messages.length - 1; i >= 0; i--) {
-      if (displayAi.messages[i].role === 'assistant') return i;
-    }
-    return -1;
-  }, [displayAi.messages]);
-
-  // Detect when the AI is actively streaming a proposal JSON block.
-  // Uses original ai.streamingText (not displayAi which is already stripped).
-  const isGeneratingProposal = useMemo(
-    () => ai.isProcessing && ai.streamingText.includes('"__isTitanProposal"'),
-    [ai.isProcessing, ai.streamingText]
-  );
-
-  const renderProposalMessageActions = useCallback(
-    (msg: import('@/lib/types').Message, index: number) => {
-      // Skeleton below the transient streaming bubble (NexusChat appends it at
-      // index > lastAssistantIndex while streaming, so this targets exactly that slot).
-      if (isGeneratingProposal && !activeProposal && msg.role === 'assistant' && index > lastAssistantIndex) {
-        return <TitanProposalSkeleton />;
-      }
-      // Real card below the last committed assistant message.
-      if (activeProposal && index === lastAssistantIndex) {
-        return (
-          <TitanProposalCard
-            proposal={activeProposal}
-            onAction={handleProposalAction}
-            onDismiss={() => setActiveProposal(null)}
-          />
-        );
-      }
-      return null;
-    },
-    [isGeneratingProposal, activeProposal, lastAssistantIndex, handleProposalAction]
-  );
-
   return (
     <>
       <SingleAgentLayout
         moduleId="titan"
         agentName={agentAlias}
         themeColor="module"
-        ai={displayAi}
+        ai={ai}
         authMode="titan"
         placeholder="Input training data or queries..."
         isChatCollapsed={isChatCollapsed}
         onToggleChat={setIsChatCollapsed}
         hideChatTrigger={activeTab === 'train'}
-        renderMessageActions={renderProposalMessageActions}
+        topContent={
+          activeProposal ? (
+            <div className="shrink-0 p-3 sm:p-4 bg-[#0a0a0f] border-b border-white/10 z-10 relative">
+              <TitanProposalCard
+                proposal={activeProposal}
+                onAction={handleProposalAction}
+                onDismiss={() => setActiveProposal(null)}
+              />
+            </div>
+          ) : null
+        }
       >
         <div className="titan-theme flex flex-col h-full min-h-0 relative">
           <div className="shrink-0 px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-3 sm:pb-4 md:pb-5">

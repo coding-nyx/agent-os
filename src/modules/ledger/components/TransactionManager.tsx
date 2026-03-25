@@ -444,7 +444,7 @@ export function TransactionManager({
             </div>
 
             {/* Desktop table view */}
-            <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[calc(100vh-16rem)]">
+            <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[calc(100dvh-16rem)]">
               <table className="w-full" role="table">
                 <thead>
                   <tr className="border-b border-white/10 sticky top-0 z-10 backdrop-blur-xl bg-black/60">

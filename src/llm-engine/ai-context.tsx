@@ -180,26 +180,22 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
 
   const sendMessage = useCallback(async (content: MessageContent, context: ConversationContext, signal?: AbortSignal) => {
       if (!agent) {
-        // Degraded mode: agent unavailable (timeout or missing API key). Return an empty
-        // response rather than throwing so callers don't need a separate error path.
-        console.warn('AIProvider.sendMessage: agent unavailable — returning empty degraded response.');
-        return degradedResponse(context);
+        throw new Error('AI Engine is currently unavailable (initialization failed or missing API keys).');
       }
       const result = await agent.chat(content, context, undefined, signal);
       return result;
-  }, [agent, degradedResponse]);
+  }, [agent]);
 
   const streamMessage = useCallback(async (content: MessageContent, context: ConversationContext, onChunk: (chunk: StreamChunk) => void, signal?: AbortSignal) => {
       if (!agent) {
-        console.warn('AIProvider.streamMessage: agent unavailable — returning empty degraded response.');
-        return degradedResponse(context);
+        throw new Error('AI Engine is currently unavailable (initialization failed or missing API keys).');
       }
       const safeChunk = (chunk: StreamChunk) => {
         try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }
       };
       const result = await agent.chat(content, context, safeChunk, signal);
       return result;
-  }, [agent, degradedResponse]);
+  }, [agent]);
 
   const generateJSON = useCallback(async (prompt: string, options?: any) => {
     if (!agent) throw new Error('AI agent unavailable');

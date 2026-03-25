@@ -84,6 +84,7 @@ export const LEDGER_SCOPE_ACTIONS: Record<
 > = {
   general: [
     'create_financial_plan',
+    'create_financial_plan_request',
     'update_budget_snapshot',
     'update_financial_friction',
     'compute_resonance_roi',

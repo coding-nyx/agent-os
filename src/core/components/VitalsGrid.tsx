@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Handshake, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMotionConfig } from '@/lib/hooks/use-motion-config';
 
 interface Metric {
     label: string;
@@ -24,6 +25,7 @@ interface VitalsGridProps {
 }
 
 export function VitalsGrid({ metrics, columns = 4, isLocked = false, onCalibrate }: VitalsGridProps) {
+    const { transition, shouldReduceMotion } = useMotionConfig();
     const gridCols = {
         1: 'grid-cols-1',
         2: 'grid-cols-2',
@@ -52,9 +54,9 @@ export function VitalsGrid({ metrics, columns = 4, isLocked = false, onCalibrate
                 return (
                     <motion.div 
                         key={metric.label}
-                        initial={{ opacity: 0, y: -10 }}
+                        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
+                        transition={{ ...transition, delay: shouldReduceMotion ? 0 : i * 0.05 }}
                         className="p-3 sm:p-4 border border-white/5 rounded-2xl bg-white/[0.02] space-y-2 sm:space-y-3 flex flex-col justify-between"
                     >
                         <div className="flex items-center justify-between">
@@ -100,8 +102,9 @@ export function VitalsGrid({ metrics, columns = 4, isLocked = false, onCalibrate
                                 <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
                                     <motion.div 
                                         initial={{ width: 0 }}
-                                    animate={{ width: `${progressWidth}%` }}
-                                    className={cn("h-full", metric.colorClass.replace('text-', 'bg-'), ghosted ? "opacity-50" : "")}
+                                        animate={{ width: `${progressWidth}%` }}
+                                        transition={transition}
+                                        className={cn("h-full", metric.colorClass.replace('text-', 'bg-'), ghosted ? "opacity-50" : "")}
                                     />
                                 </div>
                             ) : (

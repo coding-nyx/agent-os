@@ -81,7 +81,7 @@ function SourceCard({
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {source.favicon ? (
-              <img src={source.favicon} alt="" className="w-4 h-4 rounded-sm" />
+              <img src={source.favicon} alt="" className="w-4 h-4 rounded-sm" loading="lazy" decoding="async" />
             ) : (
               <Globe className="w-4 h-4 text-white/20 shrink-0" />
             )}

@@ -44,7 +44,7 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     }
   },
 
-  create_task: async ({ userId, encryptionKey, payload }) => {
+  create_task: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;
     const profile = raw;
@@ -96,9 +96,19 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     }
 
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+    emitSpineEvent('ATLAS_TASK_CREATED', {
+      taskId: newTask.id,
+      title: newTask.title,
+      deadline: newTask.deadline,
+      priority: newTask.priority,
+      status: newTask.status,
+      goalId: newTask.goalId,
+      projectId: newTask.projectId
+    });
   },
 
-  update_task: async ({ userId, encryptionKey, payload }) => {
+  update_task: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;
     const profile = raw;
@@ -110,6 +120,7 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     if (!task) return;
 
     const now = new Date().toISOString();
+    const previousStatus = task.status;
 
     if (typeof payload?.title === 'string') task.title = payload.title;
     if (typeof payload?.description === 'string') task.description = payload.description;
@@ -144,6 +155,30 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     task.updatedAt = now;
 
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+    if (previousStatus !== task.status) {
+      if (task.status === 'blocked') {
+        emitSpineEvent('ATLAS_TASK_BLOCKED', {
+          taskId: task.id,
+          title: task.title,
+          previousStatus
+        });
+      }
+      if (previousStatus === 'blocked' && task.status === 'active') {
+        emitSpineEvent('ATLAS_TASK_UNBLOCKED', {
+          taskId: task.id,
+          title: task.title
+        });
+      }
+      if (task.status === 'done') {
+        emitSpineEvent('ATLAS_TASK_COMPLETED', {
+          taskId: task.id,
+          title: task.title,
+          energyCost: task.energyCost,
+          actualEnergyCost: task.actualEnergyCost
+        });
+      }
+    }
   },
 
   uncomplete_task: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {

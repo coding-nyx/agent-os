@@ -347,9 +347,18 @@ export class Orchestrator {
                     // If key already exists, convert to array (handle duplicate keys at this level too)
                     if (result[key]) {
                         if (Array.isArray(result[key])) {
-                            result[key].push(parsedContent);
+                            // Prevent deeply nested arrays when the same list wrapper is repeated
+                            if (Array.isArray(parsedContent)) {
+                                result[key].push(...parsedContent);
+                            } else {
+                                result[key].push(parsedContent);
+                            }
                         } else {
-                            result[key] = [result[key], parsedContent];
+                            if (Array.isArray(parsedContent)) {
+                                result[key] = [result[key], ...parsedContent];
+                            } else {
+                                result[key] = [result[key], parsedContent];
+                            }
                         }
                     } else {
                         result[key] = parsedContent;

@@ -35,9 +35,8 @@ export interface TitanProposalAction {
 }
 
 export interface TitanProposal {
-  __isTitanProposal: true;
   type: 'routine_proposal' | 'sleep_log_proposal' | 'workout_log_proposal';
-  intent: 'request_routine' | 'log_sleep' | 'log_workout';
+  intent: 'request_routine' | 'log_sleep' | 'log_workout' | string;
   generatedData: Record<string, unknown>;
   message: string;
   actions: TitanProposalAction[];
@@ -366,32 +365,10 @@ export function isTitanProposal(obj: unknown): obj is TitanProposal {
   if (!obj || typeof obj !== 'object') return false;
   const p = obj as Record<string, unknown>;
   return (
-    p.__isTitanProposal === true &&
     typeof p.type === 'string' &&
     typeof p.intent === 'string' &&
     typeof p.generatedData === 'object' &&
     typeof p.message === 'string' &&
     Array.isArray(p.actions)
   );
-}
-
-/**
- * Attempts to parse a message content string for an embedded TitanProposal.
- * Returns the proposal if found, null otherwise.
- */
-export function extractProposalFromMessage(content: string): TitanProposal | null {
-  // Look for JSON object in the message
-  const jsonMatch = content.match(/\{[\s\S]*"__isTitanProposal"\s*:\s*true[\s\S]*\}/);
-  if (!jsonMatch) return null;
-
-  try {
-    const parsed = JSON.parse(jsonMatch[0]);
-    if (isTitanProposal(parsed)) {
-      return parsed;
-    }
-  } catch {
-    // Invalid JSON
-  }
-
-  return null;
 }

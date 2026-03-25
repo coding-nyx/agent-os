@@ -573,7 +573,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
             )}
           </div>
 
-          <div className="hidden lg:flex gap-4 items-start h-[calc(100vh-200px)]">
+          <div className="hidden lg:flex gap-4 items-start h-[calc(100dvh-200px)]">
             <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col gap-3">
               {/* Document preview - desktop */}
               {diagnosis.parsedDocInfo && (

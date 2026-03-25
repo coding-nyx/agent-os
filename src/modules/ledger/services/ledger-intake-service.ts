@@ -72,6 +72,7 @@ export interface Transaction {
   amount: number;
   type: 'income' | 'expense';
   category: string;
+  resonance_score?: number;
   isRecurring?: boolean;
   goalId?: string;
   budgetCategoryId?: string;

@@ -10,7 +10,7 @@ import { ModuleId, type ModuleTheme } from '@/lib/module-manifest';
 import { UnifiedAuthModal } from '@/core/components/UnifiedAuthModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+import { useMotionConfig } from '@/lib/hooks/use-motion-config';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { ScopedChatPanel } from '@/core/components/field-management/ScopedChatPanel';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
@@ -247,9 +247,9 @@ export function ModuleLayout({
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const { isModuleAccessible } = useVault();
-  const reducedMotion = useReducedMotion();
   const { isLeftRailVisible, isRightRailVisible } = useUIStore();
   const { debugMode } = useDebugMode();
+  const { transition, shouldReduceMotion } = useMotionConfig();
 
   // Contextual Inference Engine — S10-008
   const { activeHint, dismissHint, confirmHint } = useCrossModuleHintListener();
@@ -335,7 +335,7 @@ export function ModuleLayout({
                 <button 
                   onClick={handleExit}
                   aria-label="Back to Hub"
-                  className="w-11 h-11 sm:w-9 sm:h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all group shrink-0"
+                  className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 active:bg-white/15 transition-all group shrink-0"
                 >
                   <ArrowLeft className="w-4 h-4 text-white/40 group-hover:text-white" />
                 </button>
@@ -365,7 +365,7 @@ export function ModuleLayout({
                   type="button"
                   onClick={() => window.dispatchEvent(new Event('open-nexus'))}
                   aria-label="Open Nexus"
-                  className="relative w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 shrink-0"
+                  className="relative w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 active:bg-white/15 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 shrink-0"
                 >
                     <Sparkles className="w-4 h-4 text-white/50" />
                 </button>
@@ -408,7 +408,7 @@ export function ModuleLayout({
               initial={{ x: -300, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -300, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              transition={transition}
               className="hidden lg:block shrink-0 h-full relative z-[var(--z-content)]"
             >
               {RenderLeftRail()}
@@ -421,10 +421,10 @@ export function ModuleLayout({
             {!isSyncing && (
               <motion.div
                 key={title}
-                initial={reducedMotion ? false : { opacity: 0, y: 10 }}
-                animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
-                transition={reducedMotion ? { duration: 0 } : undefined}
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+                animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
+                transition={shouldReduceMotion ? { duration: 0 } : transition}
                 className="flex-1 w-full flex flex-col min-h-0"
               >
                 {isLocked ? (
@@ -471,7 +471,7 @@ export function ModuleLayout({
               initial={{ x: 300, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 300, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              transition={transition}
               className="hidden lg:block shrink-0 h-full relative z-[var(--z-content)]"
             >
               <RenderRightRail />

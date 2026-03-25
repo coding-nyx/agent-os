@@ -31,6 +31,18 @@ export function registerScoutActions() {
   });
 
   ActionHub.registerMultiple('scout', {
+    create_research_request: async ({ moduleId, payload }) => {
+      Spine.emit({
+        type: 'DRAFT_PROPOSED',
+        source: moduleId,
+        target: typeof payload?.target === 'string' ? payload.target : moduleId,
+        domain: 'system',
+        data: payload,
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    },
+
     /**
      * List recent research sessions.
      */
@@ -313,6 +325,14 @@ export function registerScoutActions() {
       }
 
       // In v2, this opens the specialized DeepResearchPanel via Spine event
+      Spine.emit({
+        type: 'DEEP_RESEARCH_REQUESTED',
+        source: 'scout',
+        domain: 'C',
+        data: { query },
+        cascadeDepth: 0,
+        priority: 'info'
+      });
       Spine.emit({
         type: 'DEEP_RESEARCH_STARTED',
         source: 'scout',

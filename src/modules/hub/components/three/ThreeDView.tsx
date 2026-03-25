@@ -334,6 +334,8 @@ interface ThreeDViewProps {
 export default function ThreeDView({ podLayout, moduleAccess, globalSoul, onModuleNavigate }: ThreeDViewProps) {
   const pulseRef = useRef(0);
   const centerPos = useMemo(() => new THREE.Vector3(0, 0, 0), []);
+  const { size } = useThree();
+  const isMobile = size.width < 768;
 
   useSpineEvent('*', (event) => {
     if (event.priority !== 'info') {
@@ -408,10 +410,13 @@ export default function ThreeDView({ podLayout, moduleAccess, globalSoul, onModu
 
       <ContactShadows position={[0, -4, 0]} opacity={0.4} scale={20} blur={2.4} far={4.5} />
 
-      <EffectComposer>
-        <Bloom luminanceThreshold={0.3} luminanceSmoothing={0.9} intensity={0.8} mipmapBlur />
-        <Vignette eskil={false} offset={0.1} darkness={0.8} />
-      </EffectComposer>
+      {/* Skip GPU-heavy postprocessing on mobile to prevent frame drops */}
+      {!isMobile && (
+        <EffectComposer>
+          <Bloom luminanceThreshold={0.3} luminanceSmoothing={0.9} intensity={0.8} mipmapBlur />
+          <Vignette eskil={false} offset={0.1} darkness={0.8} />
+        </EffectComposer>
+      )}
     </Suspense>
     </>
   );

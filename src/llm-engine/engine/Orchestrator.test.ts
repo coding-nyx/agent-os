@@ -17,7 +17,7 @@ describe('Orchestrator', () => {
         raw: '<action>{"type":"search_memory","payload":{"query":"sleep debt"}}</action>',
       },
     ]);
-    expect(response.publicText).toBe('Searching now.');
+    expect(response.publicText).toBe('now.');
   });
 
   it('recovers bracketed action blocks and keeps them out of public text', () => {

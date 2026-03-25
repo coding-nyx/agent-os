@@ -568,7 +568,7 @@ export default function NotificationsPage() {
           )}
 
           {(isWide || viewMode === 'reminders') && !isGuest && (
-            <div className={cn('space-y-3', isWide ? 'max-h-[calc(100vh-170px)] overflow-y-auto pr-1 no-scrollbar' : '')}>
+            <div className={cn('space-y-3', isWide ? 'max-h-[calc(100dvh-170px)] overflow-y-auto pr-1 no-scrollbar' : '')}>
 
               {/* Presets */}
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">

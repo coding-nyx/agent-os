@@ -1,0 +1,3499 @@
+{
+  "intents": [
+    {
+      "intentType": "plan_day",
+      "capabilities": [
+        "daily-planning"
+      ],
+      "primaryModule": "atlas",
+      "defaultActionTypes": [
+        "propose_draft"
+      ],
+      "fallbackProposalType": "draft"
+    },
+    {
+      "intentType": "schedule_item",
+      "capabilities": [
+        "schedule-mutation",
+        "daily-planning"
+      ],
+      "primaryModule": "atlas",
+      "defaultActionTypes": [
+        "schedule_block"
+      ],
+      "fallbackProposalType": "draft"
+    },
+    {
+      "intentType": "update_schedule",
+      "capabilities": [
+        "schedule-mutation"
+      ],
+      "primaryModule": "atlas",
+      "defaultActionTypes": [
+        "propose_draft"
+      ],
+      "fallbackProposalType": "draft"
+    },
+    {
+      "intentType": "recovery_day",
+      "capabilities": [
+        "recovery-planning"
+      ],
+      "primaryModule": "atlas",
+      "supportingModules": [
+        "soma",
+        "agnes"
+      ],
+      "defaultActionTypes": [
+        "flatten_schedule"
+      ],
+      "fallbackProposalType": "draft"
+    },
+    {
+      "intentType": "emotional_support",
+      "capabilities": [
+        "emotional-support"
+      ],
+      "primaryModule": "agnes",
+      "defaultActionTypes": [
+        "create_emotional_support_session"
+      ],
+      "fallbackProposalType": "draft"
+    },
+    {
+      "intentType": "fitness",
+      "capabilities": [
+        "fitness-planning"
+      ],
+      "primaryModule": "titan",
+      "defaultActionTypes": [
+        "create_workout_plan"
+      ],
+      "fallbackProposalType": "draft"
+    },
+    {
+      "intentType": "medical",
+      "capabilities": [
+        "medical-review"
+      ],
+      "primaryModule": "soma",
+      "defaultActionTypes": [
+        "create_medical_review"
+      ],
+      "fallbackProposalType": "draft"
+    },
+    {
+      "intentType": "financial",
+      "capabilities": [
+        "financial-planning"
+      ],
+      "primaryModule": "ledger",
+      "defaultActionTypes": [
+        "create_financial_plan_request"
+      ],
+      "fallbackProposalType": "draft"
+    },
+    {
+      "intentType": "research",
+      "capabilities": [
+        "research"
+      ],
+      "primaryModule": "scout",
+      "defaultActionTypes": [
+        "create_research_request"
+      ],
+      "fallbackProposalType": "draft"
+    },
+    {
+      "intentType": "technical",
+      "capabilities": [
+        "technical-work"
+      ],
+      "primaryModule": "forge",
+      "defaultActionTypes": [
+        "create_technical_task"
+      ],
+      "fallbackProposalType": "draft"
+    },
+    {
+      "intentType": "general",
+      "capabilities": [
+        "general-orchestration"
+      ],
+      "primaryModule": "nexus",
+      "defaultActionTypes": [
+        "create_general_request"
+      ],
+      "fallbackProposalType": "draft"
+    }
+  ],
+  "actions": [
+    {
+      "actionType": "query_knowledge",
+      "label": "Query Knowledge",
+      "moduleId": "scout",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_soul_resilience",
+      "label": "Update Soul Resilience",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_emotional_resilience",
+      "label": "Update Emotional Resilience",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_stress_load",
+      "label": "Update Stress Load",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_mood_trend",
+      "label": "Update Mood Trend",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_trauma_markers",
+      "label": "Update Trauma Markers",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_cns_fatigue",
+      "label": "Update Cns Fatigue",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_sleep_quality",
+      "label": "Update Sleep Quality",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "request_clearance",
+      "label": "Request Clearance",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_energy_wave",
+      "label": "Recalculating energy wave projections",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "flatten_schedule",
+      "label": "Flatten Schedule",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_task_graph",
+      "label": "Update Task Graph",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_emotional_state",
+      "label": "Update Emotional State",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_energy_budget",
+      "label": "Update Energy Budget",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_focus_score",
+      "label": "Update Focus Score",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_active_load",
+      "label": "Update Active Load",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_planning_load",
+      "label": "Update Planning Load",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_task_completion_rate",
+      "label": "Update Task Completion Rate",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_research_load",
+      "label": "Update Research Load",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "track_research_thread",
+      "label": "Track Research Thread",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_research_interests",
+      "label": "Update Research Interests",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "synthesize_research_trends",
+      "label": "Synthesize Research Trends",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_interest_diversity",
+      "label": "Update Interest Diversity",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_streak_health",
+      "label": "Update Streak Health",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_deadline_pressure",
+      "label": "Update Deadline Pressure",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_resonance_roi",
+      "label": "Update Resonance Roi",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "sync_vitals",
+      "label": "Synchronizing neural state vectors",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "sync_vitals",
+      "label": "Synchronizing neural state vectors",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "sync_vitals",
+      "label": "Synchronizing neural state vectors",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "sync_vitals",
+      "label": "Synchronizing neural state vectors",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "compute_resonance_roi",
+      "label": "Compute Resonance Roi",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_financial_friction",
+      "label": "Update Financial Friction",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "detect_data_hint",
+      "label": "Detect Data Hint",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "propose_draft",
+      "label": "Propose Draft",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "delegate_to_module",
+      "label": "Delegate To Module",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "broadcast_spine_event",
+      "label": "Broadcast Spine Event",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "query_module",
+      "label": "Query Module",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "query_module_data",
+      "label": "Query Module Data",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_global_identity",
+      "label": "Update Global Identity",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_orchestrator_intake",
+      "label": "Update Orchestrator Intake",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "focus_identity",
+      "label": "Focus Identity",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "focus_bio",
+      "label": "Focus Bio",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "focus_review",
+      "label": "Focus Review",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "complete_orchestrator_onboarding",
+      "label": "Complete Orchestrator Onboarding",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "propose_reminder",
+      "label": "Proposing a reminder",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "propose_routine",
+      "label": "Propose Routine",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "confirm_routine",
+      "label": "Confirm Routine",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "dismiss_routine",
+      "label": "Dismiss Routine",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "confirm_reminder",
+      "label": "Scheduling reminder",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "dismiss_reminder",
+      "label": "Dismissing reminder",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "query_reminders",
+      "label": "Listing reminders",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "sync_personality_provision",
+      "label": "Sync Personality Provision",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "web_search",
+      "label": "Web Search",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "web_search",
+      "label": "Web Search",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "search_memory",
+      "label": "Search Memory",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "suggest_field",
+      "label": "Suggesting a new tracking field",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "suggest_field",
+      "label": "Suggesting a new tracking field",
+      "moduleId": "ledger",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "suggest_field",
+      "label": "Suggesting a new tracking field",
+      "moduleId": "titan",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_field",
+      "label": "Creating custom tracking field",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_field",
+      "label": "Creating custom tracking field",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_field",
+      "label": "Creating custom tracking field",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_field",
+      "label": "Creating custom tracking field",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "delete_field",
+      "label": "Removing custom tracking field",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "delete_field",
+      "label": "Removing custom tracking field",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "delete_field",
+      "label": "Removing custom tracking field",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "delete_field",
+      "label": "Removing custom tracking field",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "suggest_field_fix",
+      "label": "Suggest Field Fix",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "validate_with_context",
+      "label": "Validate With Context",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "explain_validation_error",
+      "label": "Explain Validation Error",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "schedule_block",
+      "label": "Schedule Block",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "flatten_schedule_fail_once",
+      "label": "Flatten Schedule Fail Once",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "schedule_block_after_fail",
+      "label": "Schedule Block After Fail",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "record_transaction_retry_success",
+      "label": "Record Transaction Retry Success",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "record_transaction_retry_fail",
+      "label": "Record Transaction Retry Fail",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_belief_graph",
+      "label": "Drafting belief graph suggestion",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_agnes_profile",
+      "label": "Updating therapy intake profile",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "crisis_flag",
+      "label": "Crisis Flag",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_recovery_window",
+      "label": "Create Recovery Window",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "request_nsv_calibration",
+      "label": "Request Nsv Calibration",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_goal",
+      "label": "Create Goal",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_goal",
+      "label": "Create Goal",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_goal_progress",
+      "label": "Update Goal Progress",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_goal",
+      "label": "Updating strategic goal progress",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "delete_goal",
+      "label": "Delete Goal",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "complete_goal",
+      "label": "Complete Goal",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "complete_goal",
+      "label": "Complete Goal",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_habit",
+      "label": "Initializing habit tracker",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_habit_streak",
+      "label": "Update Habit Streak",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "pause_habit",
+      "label": "Pause Habit",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_habit",
+      "label": "Update Habit",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "delete_habit",
+      "label": "Delete Habit",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "log_habit_metric",
+      "label": "Log Habit Metric",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "complete_habit",
+      "label": "Complete Habit",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "complete_check_in",
+      "label": "Complete Check In",
+      "moduleId": "atlas",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "execute_code",
+      "label": "Execute Code",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "nexus_link_command",
+      "label": "Nexus Link Command",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "read_file",
+      "label": "Read File",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "write_file",
+      "label": "Write File",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "draft_email",
+      "label": "Draft Email",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "suggest_reply",
+      "label": "Suggest Reply",
+      "moduleId": "forge",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "summarize_thread",
+      "label": "Summarize Thread",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_document",
+      "label": "Create Document",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "edit_section",
+      "label": "Edit Section",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_checklist",
+      "label": "Create Checklist",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "plan_trip",
+      "label": "Plan Trip",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "budget_event",
+      "label": "Budget Event",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "set_field_value",
+      "label": "Set Field Value",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_transaction",
+      "label": "Create Transaction",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_transaction",
+      "label": "Update Transaction",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "delete_transaction",
+      "label": "Delete Transaction",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_budget",
+      "label": "Create Budget",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "modify_budget",
+      "label": "Modify Budget",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "financial_health_check",
+      "label": "Financial Health Check",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "detect_risk",
+      "label": "Detect Risk",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "navigate_to_module",
+      "label": "Navigate To Module",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_module_handoff",
+      "label": "Create Module Handoff",
+      "moduleId": "nexus",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "list_sessions",
+      "label": "List Sessions",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "resume_session",
+      "label": "Resume Session",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "start_session",
+      "label": "Start Session",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "add_sources",
+      "label": "Add Sources",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "synthesize_knowledge",
+      "label": "Synthesize Knowledge",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "search_web",
+      "label": "Search Web",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "generate_digest",
+      "label": "Generate Digest",
+      "moduleId": "scout",
+      "mutability": "read",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "start_deep_research",
+      "label": "Start Deep Research",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "handoff_to_atlas",
+      "label": "Handoff To Atlas",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_field",
+      "label": "Update Field",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "compute_readiness",
+      "label": "Compute Readiness",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "commit_biomarker",
+      "label": "Recording new biomarker data",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "log_vital",
+      "label": "Log Vital",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "issue_clearance",
+      "label": "Evaluating medical clearance",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "parse_lab_report",
+      "label": "Analyzing laboratory panel",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "medical_image_analysis",
+      "label": "Medical Image Analysis",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_conditions",
+      "label": "Update Conditions",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "approve_health_entry",
+      "label": "Approve Health Entry",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "reject_health_entry",
+      "label": "Reject Health Entry",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "approve_diagnosis_merge",
+      "label": "Approve Diagnosis Merge",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "reject_diagnosis_merge",
+      "label": "Reject Diagnosis Merge",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "get_biomarker_history",
+      "label": "Get Biomarker History",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "get_lab_history",
+      "label": "Get Lab History",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "get_medical_summary",
+      "label": "Get Medical Summary",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_titan_profile",
+      "label": "Updating your training profile",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "update_routine",
+      "label": "Refining your workout routine",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "self_clearance_check",
+      "label": "Performing readiness clearance check",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "high",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "log_field_value",
+      "label": "Log Field Value",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "medium",
+      "emits": [],
+      "dependsOnEvents": [],
+      "source": "curated"
+    },
+    {
+      "actionType": "create_emotional_support_session",
+      "label": "Create Emotional Support Session",
+      "moduleId": "agnes",
+      "mutability": "write",
+      "risk": "medium",
+      "status": "implemented",
+      "source": "curated"
+    },
+    {
+      "actionType": "create_workout_plan",
+      "label": "Create Workout Plan",
+      "moduleId": "titan",
+      "mutability": "write",
+      "risk": "medium",
+      "status": "implemented",
+      "source": "curated"
+    },
+    {
+      "actionType": "create_medical_review",
+      "label": "Create Medical Review",
+      "moduleId": "soma",
+      "mutability": "write",
+      "risk": "high",
+      "status": "implemented",
+      "source": "curated"
+    },
+    {
+      "actionType": "create_financial_plan",
+      "label": "Create Financial Plan",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "status": "implemented",
+      "source": "curated"
+    },
+    {
+      "actionType": "create_financial_plan_request",
+      "label": "Create Financial Plan Request",
+      "moduleId": "ledger",
+      "mutability": "write",
+      "risk": "high",
+      "status": "implemented",
+      "source": "curated"
+    },
+    {
+      "actionType": "create_research_request",
+      "label": "Create Research Request",
+      "moduleId": "scout",
+      "mutability": "write",
+      "risk": "medium",
+      "status": "implemented",
+      "source": "curated"
+    },
+    {
+      "actionType": "create_technical_task",
+      "label": "Create Technical Task",
+      "moduleId": "forge",
+      "mutability": "write",
+      "risk": "medium",
+      "status": "implemented",
+      "source": "curated"
+    },
+    {
+      "actionType": "create_general_request",
+      "label": "Create General Request",
+      "moduleId": "nexus",
+      "mutability": "write",
+      "risk": "medium",
+      "status": "implemented",
+      "source": "curated"
+    }
+  ],
+  "events": [
+    {
+      "type": "VITAL_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "agnes",
+        "nexus"
+      ],
+      "consumedBy": [
+        "atlas",
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "REDUCE_TRAINING_LOAD",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "titan"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "BLOCK_HIGH_INTENSITY",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma",
+        "titan"
+      ],
+      "consumedBy": [
+        "atlas"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "FLATTEN_ENERGY_WAVE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "atlas"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "RECOVERY_AVAILABLE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma",
+        "titan"
+      ],
+      "consumedBy": [
+        "titan"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "BURNOUT_WARNING",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "agnes"
+      ],
+      "consumedBy": [
+        "atlas",
+        "titan"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CLEARANCE_DENIED",
+      "description": "Clearance was denied for a requested activity.",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CLEARANCE_GRANTED",
+      "description": "Clearance was granted for a requested activity.",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "COGNITIVE_OVERLOAD",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SECURITY_POLICY_UPDATED",
+      "description": "Security preferences updated.",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "FINANCIAL_STRESS",
+      "description": "Financial stress threshold detected.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "titan"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "MEDICAL_ALERT",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CRISIS_DETECTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "agnes"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DRAFT_PROPOSED",
+      "description": "A draft proposal is ready for review.",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DRAFT_APPROVED",
+      "description": "A draft proposal was approved.",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DRAFT_DISMISSED",
+      "description": "A draft proposal was dismissed.",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SESSION_STARTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "scout"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SESSION_ENDED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "MODULE_DELEGATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas",
+        "nexus",
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "MODULE_HANDOFF_RECEIVED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "titan"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "TITAN_PROPOSAL",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "titan"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "PLANNING_OVERLOAD",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "atlas"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DEADLINE_CRUNCH",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "COMPOUND_STRESS",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "agnes"
+      ],
+      "consumedBy": [
+        "titan"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CRISIS_MODE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "atlas"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "STREAK_BROKEN",
+      "description": "Habit streak broken.",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "TASK_COMPLETED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DEADLINE_APPROACHING",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "HABIT_STREAK_BROKEN",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "TEMPORAL_REVIEW_COMPLETE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DELEGATION_REQUEST",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "NSV_CALIBRATION_REQUEST",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SCHEMA_EXTENDED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SCHEMA_MODIFIED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SCHEMA_MIGRATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "FIELD_CREATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "FIELD_DELETED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "FIELD_VALUE_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SPENDING_DETECTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CONFLICT_DETECTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CONFLICT_RESOLVED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_RECOVERY_SCHEDULED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_PREDICTIVE_ALERT",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_STATE_CHANGED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "GOAL_MISSING_PROGRESS",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_TASK_COMPLETED",
+      "description": "A task was marked complete.",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_HABIT_LOGGED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_GOAL_MILESTONE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_GOAL_COMPLETED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_ENERGY_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_ENERGY_OVERLOAD",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_RECOVERY_WINDOW_CREATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_TASK_CREATED",
+      "description": "A scheduled task or block was created.",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_TASK_BLOCKED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_TASK_UNBLOCKED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_HABIT_MILESTONE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_FIELD_CREATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_FIELD_DELETED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_FIELD_VALUE_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_GOAL_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DEADLINE_PRESSURE_CHANGED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "PLANNING_STATE_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "BUDGET_UPDATED",
+      "description": "Budget snapshot updated.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "GOAL_PROGRESS",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "FINANCIAL_FRICTION_CHANGED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "RESONANCE_ROI_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "FINANCIAL_PLAN_CREATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DOCUMENT_ANALYZED",
+      "description": "Financial document analyzed.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "TRANSACTION_CREATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "TRANSACTION_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "TRANSACTION_DELETED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "BUDGET_CREATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "BUDGET_MODIFIED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "GOAL_CREATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "GOAL_COMPLETED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "FINANCIAL_HEALTH_CHECK",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "RISK_DETECTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "FINANCIAL_FRICTION_UPDATED",
+      "description": "Financial friction recalculated.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "BUDGET_ALERT",
+      "description": "Budget overspend alert.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "OVERSPEND_DETECTED",
+      "description": "Budget category overspend detected.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DEBT_MILESTONE",
+      "description": "Debt payoff milestone reached.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SAVINGS_MILESTONE",
+      "description": "Savings milestone reached.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "INCOME_CHANGE",
+      "description": "Income change detected.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "EXPENSE_SPIKE",
+      "description": "Expense spike detected.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CASHFLOW_POSITIVE",
+      "description": "Positive cashflow detected.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CASHFLOW_NEGATIVE",
+      "description": "Negative cashflow detected.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_BIOMARKER_COMMITTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_READINESS_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_CLEARANCE_CHANGED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_FIELD_CREATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_FIELD_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_FIELD_DELETED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_VITAL_LOGGED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_LAB_REPORT_PARSED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma",
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_PROFILE_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_DIAGNOSIS_MERGED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_DIAGNOSIS_DISCARDED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "soma"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "HEALTH_CONTEXT_STALE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "MODULE_PROFILE_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas",
+        "soma"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "MODULE_REMINDER_DUE",
+      "description": "A reminder occurrence is due.",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "MODULE_REMINDER_COMPLETED",
+      "description": "A reminder outcome was recorded.",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "REMINDER_PROPOSED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "REMINDER_CONFIRMED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "REMINDER_DISMISSED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ROUTINE_PROPOSED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ROUTINE_CONFIRMED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ROUTINE_DISMISSED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CYCLE_STARTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CYCLE_COMPLETED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "WORKOUT_COMPLETED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "soma"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "TITAN_BODY_WEIGHT_LOGGED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "soma"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "TITAN_RECOVERY_NEEDED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "TITAN_TRAINING_STREAK",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMA_VETO_OVERRIDDEN",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ai_validation_suggestion",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ai_contextual_validation",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ai_error_explanation",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "AI_LINK_FAILURE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOUL_WRITE_REQUESTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOUL_WRITE_APPROVED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOUL_WRITE_REJECTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CONTEXT_HINT_DETECTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CONTEXT_HINT_CONFIRMED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "CONTEXT_HINT_DISMISSED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "nexus"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "WEEKLY_REVIEW_DUE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "atlas"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ROUTINE_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMATIC_SUPPORT_REQUESTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "titan"
+      ],
+      "consumedBy": [
+        "agnes"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "MORNING_BRIEF_DUE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "atlas"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "EVENING_CHECKIN_DUE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "atlas"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "COMMITMENT_MISSED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "titan"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "MORNING_BRIEF",
+      "description": "Morning brief requested.",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "ATLAS_OVERLOAD_DETECTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOMATIC_SESSION_COMPLETE",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "agnes"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "JOURNAL_ENTRY_CREATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "JOURNAL_ENTRY_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "atlas"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DEEP_RESEARCH_REQUESTED",
+      "description": "Deep research requested.",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DEEP_RESEARCH_BACKUP_FOUND",
+      "description": "Research backup found for query.",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DEEP_RESEARCH_STARTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "scout"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DEEP_RESEARCH_COMPLETED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DIGEST_GENERATION_STARTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "scout"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DIGEST_GENERATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "scout"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "DIGEST_GENERATION_FAILED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "EXPORT_REQUESTED",
+      "description": "An export flow was requested.",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "scout"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SOURCE_ADDED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "KNOWLEDGE_SYNTHESIZED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "scout"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "SCOUT_PROFILE_UPDATED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "scout"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "HABIT_SUGGESTED",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "RESEARCH_SEARCHING",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "RESEARCH_RESULTS",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "scout"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "LEDGER_FIELD_SUGGESTION",
+      "description": "",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    },
+    {
+      "type": "FINANCIAL_STREAK_MILESTONE",
+      "description": "Financial streak milestone reached.",
+      "visibility": "standard",
+      "producedBy": [
+        "ledger"
+      ],
+      "consumedBy": [
+        "nexus"
+      ],
+      "source": "curated"
+    }
+  ],
+  "proposals": [
+    {
+      "proposalType": "mutation",
+      "sourceModule": "nexus",
+      "requiresApproval": true,
+      "lifecycleEvents": [
+        "DRAFT_PROPOSED",
+        "DRAFT_APPROVED",
+        "DRAFT_DISMISSED"
+      ]
+    },
+    {
+      "proposalType": "routine",
+      "sourceModule": "atlas",
+      "requiresApproval": true,
+      "lifecycleEvents": [
+        "ROUTINE_PROPOSED",
+        "ROUTINE_CONFIRMED",
+        "ROUTINE_DISMISSED"
+      ]
+    },
+    {
+      "proposalType": "reminder",
+      "sourceModule": "atlas",
+      "requiresApproval": true,
+      "lifecycleEvents": [
+        "REMINDER_PROPOSED",
+        "REMINDER_CONFIRMED",
+        "REMINDER_DISMISSED"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,762 @@
+[
+  {
+    "actionType": "query_knowledge",
+    "label": "Query Knowledge",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "update_soul_resilience",
+    "label": "Update Soul Resilience",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "update_emotional_resilience",
+    "label": "Update Emotional Resilience",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "update_stress_load",
+    "label": "Update Stress Load",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "update_mood_trend",
+    "label": "Update Mood Trend",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "update_trauma_markers",
+    "label": "Update Trauma Markers",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "update_cns_fatigue",
+    "label": "Update Cns Fatigue",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "update_sleep_quality",
+    "label": "Update Sleep Quality",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "request_clearance",
+    "label": "Request Clearance",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "update_energy_wave",
+    "label": "Recalculating energy wave projections",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "flatten_schedule",
+    "label": "Flatten Schedule",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_task_graph",
+    "label": "Update Task Graph",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_emotional_state",
+    "label": "Update Emotional State",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "update_energy_budget",
+    "label": "Update Energy Budget",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_focus_score",
+    "label": "Update Focus Score",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_active_load",
+    "label": "Update Active Load",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_planning_load",
+    "label": "Update Planning Load",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_task_completion_rate",
+    "label": "Update Task Completion Rate",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_research_load",
+    "label": "Update Research Load",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "track_research_thread",
+    "label": "Track Research Thread",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "update_research_interests",
+    "label": "Update Research Interests",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "synthesize_research_trends",
+    "label": "Synthesize Research Trends",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "update_interest_diversity",
+    "label": "Update Interest Diversity",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "update_streak_health",
+    "label": "Update Streak Health",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_deadline_pressure",
+    "label": "Update Deadline Pressure",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_resonance_roi",
+    "label": "Update Resonance Roi",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "sync_vitals",
+    "label": "Synchronizing neural state vectors",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "sync_vitals",
+    "label": "Synchronizing neural state vectors",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "sync_vitals",
+    "label": "Synchronizing neural state vectors",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "sync_vitals",
+    "label": "Synchronizing neural state vectors",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "compute_resonance_roi",
+    "label": "Compute Resonance Roi",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "update_financial_friction",
+    "label": "Update Financial Friction",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "detect_data_hint",
+    "label": "Detect Data Hint",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "propose_draft",
+    "label": "Propose Draft",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "delegate_to_module",
+    "label": "Delegate To Module",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "broadcast_spine_event",
+    "label": "Broadcast Spine Event",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "query_module",
+    "label": "Query Module",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "query_module_data",
+    "label": "Query Module Data",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "update_global_identity",
+    "label": "Update Global Identity",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "update_orchestrator_intake",
+    "label": "Update Orchestrator Intake",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "focus_identity",
+    "label": "Focus Identity",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "focus_bio",
+    "label": "Focus Bio",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "focus_review",
+    "label": "Focus Review",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "complete_orchestrator_onboarding",
+    "label": "Complete Orchestrator Onboarding",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "propose_reminder",
+    "label": "Proposing a reminder",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "propose_routine",
+    "label": "Propose Routine",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "confirm_routine",
+    "label": "Confirm Routine",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "dismiss_routine",
+    "label": "Dismiss Routine",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "confirm_reminder",
+    "label": "Scheduling reminder",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "dismiss_reminder",
+    "label": "Dismissing reminder",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "query_reminders",
+    "label": "Listing reminders",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "sync_personality_provision",
+    "label": "Sync Personality Provision",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "web_search",
+    "label": "Web Search",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "web_search",
+    "label": "Web Search",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "search_memory",
+    "label": "Search Memory",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "suggest_field",
+    "label": "Suggesting a new tracking field",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "suggest_field",
+    "label": "Suggesting a new tracking field",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "suggest_field",
+    "label": "Suggesting a new tracking field",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "create_field",
+    "label": "Creating custom tracking field",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "create_field",
+    "label": "Creating custom tracking field",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "create_field",
+    "label": "Creating custom tracking field",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "create_field",
+    "label": "Creating custom tracking field",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "delete_field",
+    "label": "Removing custom tracking field",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "delete_field",
+    "label": "Removing custom tracking field",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "delete_field",
+    "label": "Removing custom tracking field",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "delete_field",
+    "label": "Removing custom tracking field",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "suggest_field_fix",
+    "label": "Suggest Field Fix",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "validate_with_context",
+    "label": "Validate With Context",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "explain_validation_error",
+    "label": "Explain Validation Error",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "schedule_block",
+    "label": "Schedule Block",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "flatten_schedule_fail_once",
+    "label": "Flatten Schedule Fail Once",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "schedule_block_after_fail",
+    "label": "Schedule Block After Fail",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "record_transaction_retry_success",
+    "label": "Record Transaction Retry Success",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "record_transaction_retry_fail",
+    "label": "Record Transaction Retry Fail",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "update_belief_graph",
+    "label": "Drafting belief graph suggestion",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "update_agnes_profile",
+    "label": "Updating therapy intake profile",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "crisis_flag",
+    "label": "Crisis Flag",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "create_recovery_window",
+    "label": "Create Recovery Window",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "request_nsv_calibration",
+    "label": "Request Nsv Calibration",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "create_goal",
+    "label": "Create Goal",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "create_goal",
+    "label": "Create Goal",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "update_goal_progress",
+    "label": "Update Goal Progress",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_goal",
+    "label": "Updating strategic goal progress",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "delete_goal",
+    "label": "Delete Goal",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "complete_goal",
+    "label": "Complete Goal",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "complete_goal",
+    "label": "Complete Goal",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "create_habit",
+    "label": "Initializing habit tracker",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_habit_streak",
+    "label": "Update Habit Streak",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "pause_habit",
+    "label": "Pause Habit",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "update_habit",
+    "label": "Update Habit",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "delete_habit",
+    "label": "Delete Habit",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "log_habit_metric",
+    "label": "Log Habit Metric",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "complete_habit",
+    "label": "Complete Habit",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "complete_check_in",
+    "label": "Complete Check In",
+    "moduleId": "atlas"
+  },
+  {
+    "actionType": "execute_code",
+    "label": "Execute Code",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "nexus_link_command",
+    "label": "Nexus Link Command",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "read_file",
+    "label": "Read File",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "write_file",
+    "label": "Write File",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "draft_email",
+    "label": "Draft Email",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "suggest_reply",
+    "label": "Suggest Reply",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "summarize_thread",
+    "label": "Summarize Thread",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "create_document",
+    "label": "Create Document",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "edit_section",
+    "label": "Edit Section",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "create_checklist",
+    "label": "Create Checklist",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "plan_trip",
+    "label": "Plan Trip",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "budget_event",
+    "label": "Budget Event",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "set_field_value",
+    "label": "Set Field Value",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "create_transaction",
+    "label": "Create Transaction",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "update_transaction",
+    "label": "Update Transaction",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "delete_transaction",
+    "label": "Delete Transaction",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "create_budget",
+    "label": "Create Budget",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "modify_budget",
+    "label": "Modify Budget",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "financial_health_check",
+    "label": "Financial Health Check",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "detect_risk",
+    "label": "Detect Risk",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "navigate_to_module",
+    "label": "Navigate To Module",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "create_module_handoff",
+    "label": "Create Module Handoff",
+    "moduleId": "nexus"
+  },
+  {
+    "actionType": "list_sessions",
+    "label": "List Sessions",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "resume_session",
+    "label": "Resume Session",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "start_session",
+    "label": "Start Session",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "add_sources",
+    "label": "Add Sources",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "synthesize_knowledge",
+    "label": "Synthesize Knowledge",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "search_web",
+    "label": "Search Web",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "generate_digest",
+    "label": "Generate Digest",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "start_deep_research",
+    "label": "Start Deep Research",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "handoff_to_atlas",
+    "label": "Handoff To Atlas",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "update_field",
+    "label": "Update Field",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "compute_readiness",
+    "label": "Compute Readiness",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "commit_biomarker",
+    "label": "Recording new biomarker data",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "log_vital",
+    "label": "Log Vital",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "issue_clearance",
+    "label": "Evaluating medical clearance",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "parse_lab_report",
+    "label": "Analyzing laboratory panel",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "medical_image_analysis",
+    "label": "Medical Image Analysis",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "update_conditions",
+    "label": "Update Conditions",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "approve_health_entry",
+    "label": "Approve Health Entry",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "reject_health_entry",
+    "label": "Reject Health Entry",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "approve_diagnosis_merge",
+    "label": "Approve Diagnosis Merge",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "reject_diagnosis_merge",
+    "label": "Reject Diagnosis Merge",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "get_biomarker_history",
+    "label": "Get Biomarker History",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "get_lab_history",
+    "label": "Get Lab History",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "get_medical_summary",
+    "label": "Get Medical Summary",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "update_titan_profile",
+    "label": "Updating your training profile",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "update_routine",
+    "label": "Refining your workout routine",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "self_clearance_check",
+    "label": "Performing readiness clearance check",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "log_field_value",
+    "label": "Log Field Value",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "create_emotional_support_session",
+    "label": "Create Emotional Support Session",
+    "moduleId": "agnes"
+  },
+  {
+    "actionType": "create_workout_plan",
+    "label": "Create Workout Plan",
+    "moduleId": "titan"
+  },
+  {
+    "actionType": "create_medical_review",
+    "label": "Create Medical Review",
+    "moduleId": "soma"
+  },
+  {
+    "actionType": "create_financial_plan",
+    "label": "Create Financial Plan",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "create_financial_plan_request",
+    "label": "Create Financial Plan Request",
+    "moduleId": "ledger"
+  },
+  {
+    "actionType": "create_research_request",
+    "label": "Create Research Request",
+    "moduleId": "scout"
+  },
+  {
+    "actionType": "create_technical_task",
+    "label": "Create Technical Task",
+    "moduleId": "forge"
+  },
+  {
+    "actionType": "create_general_request",
+    "label": "Create General Request",
+    "moduleId": "nexus"
+  }
+]

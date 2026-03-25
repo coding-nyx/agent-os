@@ -36,6 +36,19 @@ export function isProviderControlOnly(content: string): boolean {
   return hasControlPattern && next.trim().length === 0;
 }
 
+const TECHNICAL_FILLER_PATTERNS = [
+  /^(?:Query(?:\s+Module)?|Searching(?:\s+Memory)?|Delegating(?:\s+to\s+module)?|Consulting(?:\s+module)?|Proposing(?:\s+reminder)?)\.?\s*/i,
+];
+
+export function stripTechnicalFiller(text: string): string {
+  if (!text) return '';
+  let next = text.trim();
+  for (const pattern of TECHNICAL_FILLER_PATTERNS) {
+    next = next.replace(pattern, '');
+  }
+  return next;
+}
+
 export function stripInternalTags(content: string, options: StripOptions = {}): SanitizedContent {
   const normalized = stripProviderControlTokens(content);
 
@@ -119,6 +132,9 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
     // 2. Collapse 3+ consecutive newlines into exactly 2 newlines
     publicText = publicText.replace(/\n{3,}/g, '\n\n');
   }
+
+  // 5. Post-process public text
+  publicText = stripTechnicalFiller(publicText);
 
   return { publicText, internalText, isThinking, isActing, currentActionType };
 }

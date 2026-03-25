@@ -7,7 +7,7 @@ import {
 } from './shared';
 
 export const habitActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
-  create_habit: async ({ userId, encryptionKey, payload }) => {
+  create_habit: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;
     const profile = raw;
@@ -36,6 +36,12 @@ export const habitActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
 
     profile.habits.push(newHabit);
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+    emitSpineEvent('ATLAS_STATE_CHANGED', {
+      changedFields: ['habits'],
+      habitId: newHabit.id,
+      title: newHabit.title
+    });
   },
 
   update_habit_streak: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {
@@ -66,6 +72,20 @@ export const habitActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
         habitId: habit.id,
         title: habit.title,
         previousStreak
+      });
+      emitSpineEvent('STREAK_BROKEN', {
+        habitId: habit.id,
+        title: habit.title,
+        previousStreak
+      });
+    }
+
+    if (habit.currentStreak >= habit.targetStreak && previousStreak < habit.targetStreak) {
+      emitSpineEvent('ATLAS_HABIT_MILESTONE', {
+        habitId: habit.id,
+        title: habit.title,
+        milestone: habit.targetStreak,
+        currentStreak: habit.currentStreak
       });
     }
 
@@ -241,5 +261,14 @@ export const habitActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
       currentStreak: habit.currentStreak,
       bestStreak: habit.bestStreak,
     });
+
+    if (habit.currentStreak >= habit.targetStreak) {
+      emitSpineEvent('ATLAS_HABIT_MILESTONE', {
+        habitId: habit.id,
+        title: habit.title,
+        milestone: habit.targetStreak,
+        currentStreak: habit.currentStreak
+      });
+    }
   },
 };

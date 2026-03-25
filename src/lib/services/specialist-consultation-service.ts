@@ -280,8 +280,8 @@ export class SpecialistConsultationService {
         artifact,
         assistantMessage:
           input.mode === 'state_plus_persisted_data'
-            ? `**${moduleName}** (persisted data) reports: ${responseText}`
-            : `**${moduleName}** reports: ${responseText}`,
+            ? `> ### 📊 Specialist Report: ${moduleName} (Persisted Data)\n> ${responseText}`
+            : `> ### 📋 Specialist Report: ${moduleName}\n> ${responseText}`,
       };
     } catch (error) {
       const artifact = buildArtifact({ ...input, requestedAt }, {
@@ -294,8 +294,8 @@ export class SpecialistConsultationService {
         artifact,
         assistantMessage:
           input.mode === 'state_plus_persisted_data'
-            ? `[Module persisted data consultation with ${moduleName} failed — try again or delegate directly]`
-            : `[Module consultation with ${moduleName} failed — try again or delegate directly]`,
+            ? `> ### ⚠️ Specialist Report: ${moduleName} (Persisted Data) FAILED\n> The consultation could not be completed at this time.`
+            : `> ### ⚠️ Specialist Report: ${moduleName} FAILED\n> The consultation could not be completed at this time.`,
       };
     }
   }

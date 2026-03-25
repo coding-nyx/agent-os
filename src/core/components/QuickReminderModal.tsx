@@ -71,6 +71,8 @@ export function QuickReminderModal({
         createdBy: 'user',
       });
       onClose();
+    } catch (err) {
+      console.error('[QuickReminderModal] Failed to save reminder:', err);
     } finally {
       setSaving(false);
     }

@@ -408,6 +408,15 @@ export class MasterThreadService {
     const assistantSource = options?.assistantSource ?? 'nexus';
     const projectedHistory = history.flatMap((message, index) => {
       if (message.role !== 'user' && message.role !== 'assistant') return [];
+      
+      // Thread Isolation: Only project messages belonging to this thread.
+      // Messages with NO threadId are treated as legacy or dashboard-only.
+      if (message.threadId) {
+        if (message.threadId !== threadId) return [];
+      } else if (threadId !== 'nexus.dashboard') {
+        return [];
+      }
+
       const body = this.normalizeConversationBody(message.role, message.content);
       if (!body) return [];
 

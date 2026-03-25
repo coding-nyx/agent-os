@@ -46,7 +46,7 @@ interface NexusDashboardProps {
     handleSendMessage: (
       content: MessageContent,
       onActionParsed?: (type: string, payload: Record<string, unknown>) => void,
-      options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }
+      options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; threadId?: string }
     ) => Promise<void>;
     clearSession: () => Promise<void>;
   };
@@ -383,8 +383,8 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
 
 
   const handleAliveEntitySelect = useCallback((entity: AliveEntityRuntimeReference) => {
-    ai.handleSendMessage(AliveEntityInjectionService.formatForChat(entity));
-  }, [ai]);
+    ai.handleSendMessage(AliveEntityInjectionService.formatForChat(entity), undefined, { threadId: currentThreadId });
+  }, [ai, currentThreadId]);
 
   const handleUploadDocuments = useCallback(async (request: DocumentUploadRequest) => {
     if (!sendMessage) {
@@ -442,7 +442,7 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
       }
 
       setDocStage((prev) => prev ?? { id: 'done', label: 'Document analyzed.' });
-      await ai.handleSendMessage(result.prompt, undefined, { visibleContent: request.visibleContent });
+      await ai.handleSendMessage(result.prompt, undefined, { visibleContent: request.visibleContent, threadId: currentThreadId });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Document analysis failed.';
       setDocUploadError(message);
@@ -522,6 +522,27 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
   const handleClearChat = useCallback(() => {
     void ai.clearSession();
   }, [ai]);
+
+  const headerOpsBtn = (
+    <button
+      type="button"
+      data-testid="nexus-open-ops"
+      onClick={handleOpenOperations}
+      className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 sm:px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-cyan-100 transition-colors hover:border-cyan-300/35 hover:bg-cyan-300/15 active:bg-cyan-300/20"
+    >
+      Ops
+    </button>
+  );
+  const headerClearBtn = (
+    <button
+      type="button"
+      data-testid="nexus-clear-chat"
+      onClick={handleClearChat}
+      className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 sm:px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/60 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white/90 active:bg-white/15"
+    >
+      Clear
+    </button>
+  );
   const commandPalette = (
     <CommandPalette
       onSynthesisRefresh={() => {
@@ -662,41 +683,36 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0">
-      <div className="shrink-0 px-3 pt-3 sm:px-5 sm:pt-5">
-        <div className="rounded-[28px] border border-cyan-500/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_42%),linear-gradient(180deg,rgba(8,12,18,0.96),rgba(5,8,13,0.98))] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:px-5 sm:py-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200/70">Nexus</p>
-              <h1 className="mt-2 text-[clamp(1.4rem,3vw,2.15rem)] font-semibold leading-none tracking-[-0.03em] text-white">
-                {welcomeGreeting}
-                {welcomeName ? `, ${welcomeName}` : ''}.
-              </h1>
-              <p className="mt-2 text-sm text-white/55">
-                Welcome back. Nexus is online and listening.
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  data-testid="nexus-open-ops"
-                  onClick={handleOpenOperations}
-                  className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100 transition-colors hover:border-cyan-300/35 hover:bg-cyan-300/14"
-                >
-                  Ops
-                </button>
-                <button
-                  type="button"
-                  data-testid="nexus-clear-chat"
-                  onClick={handleClearChat}
-                  className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white/90"
-                >
-                  Clear chat
-                </button>
-                <OrchestrationStatusChip compact variant="minimal" />
-              </div>
-            </div>
-            <div className="max-w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-3">
+      <div className="shrink-0 px-3 pt-2 sm:px-4 sm:pt-3">
+        <div className="rounded-2xl border border-cyan-500/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.10),transparent_50%),linear-gradient(180deg,rgba(8,12,18,0.96),rgba(5,8,13,0.98))] px-3 py-2.5 sm:px-4 sm:py-3 shadow-[0_8px_24px_rgba(0,0,0,0.22)]">
+
+          {/*
+           * Responsive layout (single DOM tree, no duplication):
+           *   Mobile  — wraps into 2 rows: [badge · status · presence] then [title]
+           *             + action pills below on their own third row
+           *   Tablet+ — single row: [badge + title · · · actions + status + presence]
+           *
+           * flex-wrap + order utilities reorder items without duplicating nodes.
+           */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+
+            {/* Title greeting — on mobile fills full width (order-1, basis-full); sm+ becomes flex-1 in-line */}
+            <h1 className="order-1 sm:order-1 basis-full sm:basis-auto flex-1 sm:min-w-0 text-[1.1rem] sm:text-base md:text-lg font-bold leading-tight tracking-tight text-white font-display sm:truncate">
+              {welcomeGreeting}{welcomeName ? `, ${welcomeName}` : ''}
+            </h1>
+
+            {/* Right cluster — status + presence */}
+            <div className="order-2 flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+              <OrchestrationStatusChip compact variant="minimal" />
               <NexusAgentPresenceStack participants={masterThreadSnapshot.thread.participants} />
             </div>
+
+            {/* Action pills — order-3: below title on mobile, after presence on sm+ */}
+            <div className="order-3 sm:order-3 flex items-center gap-1.5 sm:gap-2 shrink-0 sm:ml-2">
+              {headerOpsBtn}
+              {headerClearBtn}
+            </div>
+
           </div>
         </div>
       </div>
@@ -706,6 +722,10 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
         <NexusChat
           ai={{
             ...ai,
+            messages: ai.messages.filter((m) => {
+              if (m.threadId) return m.threadId === currentThreadId;
+              return currentThreadId === 'nexus.dashboard';
+            }),
             handleSendMessage: handleSendWithRouting,
             isProcessing: ai.isProcessing || isNexusBusy,
           }}

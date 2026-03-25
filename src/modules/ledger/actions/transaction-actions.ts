@@ -554,6 +554,15 @@ async function handleFinancialHealthCheck(context: ActionContext): Promise<void>
     healthStatus
   });
 
+  if (healthScore <= 3) {
+    emitSpineEvent('FINANCIAL_STRESS' as SpineEventType, {
+      moduleId: 'ledger' as const,
+      healthScore,
+      healthStatus,
+      severity: 'high'
+    });
+  }
+
   await spineEventService.logLedgerEvent({
   type: 'FINANCIAL_HEALTH_CHECK' as LedgerSpineEventType,
   domain: 'R' as const,

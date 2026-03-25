@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import type { NotificationAction, NotificationPriority } from '@/lib/notifications/types';
 import { ActionRegistry } from './action-registry';
 import { ReminderOutcomeService } from './reminder-outcome-service';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 export interface InboxRecord {
   id: string;
@@ -111,12 +112,24 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const now = Date.now();
     const newItems = inbox.filter(r => !r.read && (now - new Date(r.createdAt).getTime()) < 30000);
-    
+
     setToasts(prev => {
       const existingIds = new Set(prev.map(t => t.id));
       const filteredNew = newItems.filter(item => !existingIds.has(item.id));
       
       if (filteredNew.length === 0) return prev;
+
+      const dueItems = filteredNew.filter(item => item.type === 'MODULE_REMINDER_DUE');
+      for (const item of dueItems) {
+        Spine.emit({
+          type: 'MODULE_REMINDER_DUE',
+          source: 'nexus',
+          domain: 'system',
+          data: { ...item.data, moduleId: item.data?.moduleId, reminderId: item.id },
+          cascadeDepth: 0,
+          priority: 'info',
+        });
+      }
 
       return [
         ...prev,
