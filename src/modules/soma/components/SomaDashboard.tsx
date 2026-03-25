@@ -50,12 +50,14 @@ import { DiagnosisChatPanel } from './DiagnosisChatPanel';
 import { DiagnosisDocumentPreview } from './DiagnosisDocumentPreview';
 import { MobileDiagnosisTabs, type MobileDiagnosisTab } from './MobileDiagnosisTabs';
 import { MobileExtractedDataSheet } from './MobileExtractedDataSheet';
+import { ClearancePanel } from './ClearancePanel';
+import { useLocation } from 'react-router-dom';
 import { useDiagnosis } from '@/core/diagnosis/use-diagnosis';
 import type { SomaDiagnosisSummary } from '../types';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 
-export type SomaView = 'dashboard' | 'vitals' | 'assessments' | 'history' | 'labs';
+export type SomaView = 'dashboard' | 'vitals' | 'assessments' | 'history' | 'labs' | 'clearance';
 
 export interface VitalReading {
   timestamp: number;
@@ -85,6 +87,7 @@ interface SomaDashboardProps {
   onAddAssessment?: (assessment: PhysicalAssessment) => void;
   queuedUpload?: File | null;
   onQueuedUploadHandled?: () => void;
+  onAnalyze?: (prompt: string) => void;
 }
 
 const noop = () => {};
@@ -310,8 +313,16 @@ export const SomaDashboard = React.memo(function SomaDashboard({
   onAddAssessment = noop,
   queuedUpload = null,
   onQueuedUploadHandled = noop,
+  onAnalyze,
 }: SomaDashboardProps) {
-  const [activeView, setActiveView] = useState<SomaView>('dashboard');
+  const location = useLocation();
+  const initialTab = (): SomaView => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'clearance') return 'clearance';
+    return 'dashboard';
+  };
+  const [activeView, setActiveView] = useState<SomaView>(initialTab);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const toggleAIPanel = useCallback(() => setShowAIPanel(prev => !prev), []);
 
@@ -343,7 +354,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
   // Sync selected IDs from diagnosis.extractedData
   useEffect(() => {
     if (diagnosis.phase === 'active' || diagnosis.phase === 'reviewing') {
-      setSelectedFieldIds(diagnosis.extractedData.items.map(i => i.id));
+      setSelectedFieldIds(diagnosis.extractedData.items.map((i: { id: string }) => i.id));
     }
   }, [diagnosis.extractedData.items, diagnosis.phase]);
 
@@ -611,6 +622,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
     { id: 'assessments', label: 'Assessments', icon: Dumbbell },
     { id: 'history', label: 'History', icon: History },
     { id: 'labs', label: 'Labs', icon: FlaskConical },
+    { id: 'clearance', label: 'Clearance', icon: ShieldCheck },
   ];
 
   return (
@@ -640,6 +652,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
         {activeView === 'assessments' && <PhysicalAssessmentForm profile={profile} onSubmit={(a) => onAddAssessment({ id: `pa-${Date.now()}`, timestamp: Date.now(), ...a })} />}
         {activeView === 'history' && <BiometricHistory vitalHistory={profile.vitalReadings ?? []} assessmentHistory={[]} />}
         {activeView === 'labs' && renderLabs()}
+        {activeView === 'clearance' && <ClearancePanel profile={profile} soul={_soul} onAnalyze={onAnalyze} />}
       </div>
 
       {diagnosis._showMergeReview && (

@@ -27,6 +27,11 @@ import {
   BodyWeightEntry,
   CardioSession,
   CustomField,
+  Routine,
+  MealEntry,
+  Injury,
+  WorkoutGoal,
+  PlannedWorkout,
 } from '@/lib/types';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { Spine } from '@/lib/spine/spine-event-bus';
@@ -426,6 +431,90 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     await saveTitanProfile({ ...profile, sleepLog: [entry, ...(profile.sleepLog ?? [])].slice(0, 365), updatedAt: new Date().toISOString() }, { userId: user.uid, encryptionKey });
   }, [profile, encryptionKey, user]);
 
+  const handleDirectSaveInjury = useCallback(async (injury: Injury) => {
+    if (!profile || !encryptionKey || !user) return;
+    const existingInjuries: Injury[] = (profile.history?.injuries ?? []).filter(
+      (i): i is Injury => typeof i === 'object' && i !== null && 'id' in i
+    );
+    const updatedHistory = {
+      ...profile.history,
+      injuries: [injury, ...existingInjuries].slice(0, 50),
+    };
+    await saveTitanProfile(
+      { ...profile, history: updatedHistory, updatedAt: new Date().toISOString() },
+      { userId: user.uid, encryptionKey }
+    );
+  }, [profile, encryptionKey, user]);
+
+  const handleDirectUpdateInjury = useCallback(async (updated: Injury) => {
+    if (!profile || !encryptionKey || !user) return;
+    const existingInjuries: Injury[] = (profile.history?.injuries ?? []).filter(
+      (i): i is Injury => typeof i === 'object' && i !== null && 'id' in i
+    );
+    const updatedInjuries = existingInjuries.map((i) => (i.id === updated.id ? updated : i));
+    const updatedHistory = { ...profile.history, injuries: updatedInjuries };
+    await saveTitanProfile(
+      { ...profile, history: updatedHistory, updatedAt: new Date().toISOString() },
+      { userId: user.uid, encryptionKey }
+    );
+  }, [profile, encryptionKey, user]);
+
+  const handleDirectSaveMeal = useCallback(async (entry: MealEntry) => {
+    if (!profile || !encryptionKey || !user) return;
+    await saveTitanProfile(
+      { ...profile, mealLog: [entry, ...(profile.mealLog ?? [])].slice(0, 2000), updatedAt: new Date().toISOString() },
+      { userId: user.uid, encryptionKey },
+    );
+  }, [profile, encryptionKey, user]);
+
+  const handleDirectSavePlan = useCallback(async (plan: PlannedWorkout) => {
+    if (!profile || !encryptionKey || !user) return;
+    await saveTitanProfile(
+      {
+        ...profile,
+        plannedWorkouts: [plan, ...(profile.plannedWorkouts ?? [])].slice(0, 200),
+        updatedAt: new Date().toISOString(),
+      },
+      { userId: user.uid, encryptionKey },
+    );
+  }, [profile, encryptionKey, user]);
+
+  const handleDirectUpdatePlan = useCallback(async (updated: PlannedWorkout) => {
+    if (!profile || !encryptionKey || !user) return;
+    const existing = profile.plannedWorkouts ?? [];
+    const idx = existing.findIndex(pw => pw.id === updated.id);
+    const updatedList = idx >= 0
+      ? existing.map((pw, i) => (i === idx ? updated : pw))
+      : existing;
+    await saveTitanProfile(
+      { ...profile, plannedWorkouts: updatedList, updatedAt: new Date().toISOString() },
+      { userId: user.uid, encryptionKey },
+    );
+  }, [profile, encryptionKey, user]);
+
+  const handleDirectSaveGoal = useCallback(async (goal: WorkoutGoal) => {
+    if (!profile || !encryptionKey || !user) return;
+    const existingGoals: WorkoutGoal[] = (profile.goals ?? []).filter(
+      (g): g is WorkoutGoal => typeof g === 'object' && g !== null && 'id' in g
+    );
+    await saveTitanProfile(
+      { ...profile, goals: [goal, ...existingGoals].slice(0, 50), updatedAt: new Date().toISOString() },
+      { userId: user.uid, encryptionKey }
+    );
+  }, [profile, encryptionKey, user]);
+
+  const handleDirectUpdateGoal = useCallback(async (updated: WorkoutGoal) => {
+    if (!profile || !encryptionKey || !user) return;
+    const existingGoals: WorkoutGoal[] = (profile.goals ?? []).filter(
+      (g): g is WorkoutGoal => typeof g === 'object' && g !== null && 'id' in g
+    );
+    const updatedGoals = existingGoals.map((g) => (g.id === updated.id ? updated : g));
+    await saveTitanProfile(
+      { ...profile, goals: updatedGoals, updatedAt: new Date().toISOString() },
+      { userId: user.uid, encryptionKey }
+    );
+  }, [profile, encryptionKey, user]);
+
   const handleDirectCreateMacros = useCallback(async (fields: CustomField[]) => {
     if (!profile || !encryptionKey || !user) return;
     const existing = profile.customFields ?? [];
@@ -512,6 +601,22 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     ].filter(Boolean).join('\n'));
   }, [profile?.routines, openChatAndSend]);
 
+  const handleApplyProgram = useCallback(async (routines: Routine[], programName: string) => {
+    if (!profile || !encryptionKey || !user) return;
+
+    // Always apply program templates as direct writes — they're static trusted data.
+    // Sending the full routine dump as a chat message breaks parseWithLLM on free LLMs
+    // (embedded quotes + multi-line text causes JSON parse failures in CognitiveAgent.generateJSON).
+    const existingNames = new Set((profile.routines ?? []).map((r) => r.name));
+    const incoming = routines.filter((r) => !existingNames.has(r.name));
+    const merged = [...incoming, ...(profile.routines ?? [])];
+    await saveTitanProfile(
+      { ...profile, routines: merged, updatedAt: new Date().toISOString() },
+      { userId: user.uid, encryptionKey },
+    );
+    // No AI notification needed — routines are saved, user sees them in Plan tab immediately.
+  }, [profile, directWrite, encryptionKey, user, openChatAndSend]);
+
   const handleSubmitCustomFieldsForApproval = useCallback((values: Record<string, unknown>, categoryLabel: string) => {
     const nonEmpty = Object.entries(values).filter(([, v]) => v !== '' && v !== null && v !== undefined);
     if (nonEmpty.length === 0) return;
@@ -571,6 +676,14 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             onDirectSaveBodyWeight={handleDirectSaveBodyWeight}
             onDirectSaveCardio={handleDirectSaveCardio}
             onDirectSaveSleep={handleDirectSaveSleep}
+            mealLog={profile?.mealLog}
+            macroTargets={profile?.nutrition?.macroEstimate}
+            onDirectSaveMeal={handleDirectSaveMeal}
+            onDirectSaveInjury={handleDirectSaveInjury}
+            onDirectUpdateInjury={handleDirectUpdateInjury}
+            goals={profile?.goals}
+            onDirectSaveGoal={handleDirectSaveGoal}
+            onDirectUpdateGoal={handleDirectUpdateGoal}
           />
         );
       case 'cycles':
@@ -598,6 +711,12 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             }}
             onSubmitCustomFieldsForApproval={handleSubmitCustomFieldsForApproval}
             onDirectCreateMacros={handleDirectCreateMacros}
+            onApplyProgram={handleApplyProgram}
+            plannedWorkouts={profile?.plannedWorkouts}
+            completedSessions={profile?.workoutSessions}
+            onDirectSavePlan={handleDirectSavePlan}
+            onDirectUpdatePlan={handleDirectUpdatePlan}
+            onAnalyzePlan={ai.handleSendMessage}
           />
         );
       default: // train
@@ -617,6 +736,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             onDismissAdvisory={() => clearanceGate.setAdvisoryBanner(null)}
             calendarSelectedRoutine={calendarSelectedRoutine}
             onCalendarRoutineSelect={setCalendarSelectedRoutine}
+            plannedWorkouts={profile?.plannedWorkouts}
             onOpenQuickLog={(date, isRecovery) => {
               quickLog.setQuickLogDate(date);
               quickLog.setQuickLogIsRecovery(isRecovery);
@@ -646,9 +766,9 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
         isChatCollapsed={isChatCollapsed}
         onToggleChat={setIsChatCollapsed}
         hideChatTrigger={activeTab === 'train'}
-        topContent={
+        aboveInput={
           activeProposal ? (
-            <div className="shrink-0 p-3 sm:p-4 bg-[#0a0a0f] border-b border-white/10 z-10 relative">
+            <div className="px-3 sm:px-4 pb-2">
               <TitanProposalCard
                 proposal={activeProposal}
                 onAction={handleProposalAction}

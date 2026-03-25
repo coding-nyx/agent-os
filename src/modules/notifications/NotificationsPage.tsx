@@ -16,6 +16,8 @@ import {
   Clock,
   Inbox,
   Plus,
+  Moon,
+  Bot,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
@@ -35,6 +37,22 @@ import { ModuleIcon, moduleTextColor } from '@/core/components/ModuleIcon';
 import { getFirebase } from '@/lib/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { ReminderOutcomeService } from '@/lib/notifications/reminder-outcome-service';
+import { useModuleAI } from '@/lib/hooks/use-module-ai';
+import { NexusChat } from '@/core/components/NexusChat';
+import { NOTIFICATIONS_PERSONA } from './personas';
+import { serializeNotificationContext, NOTIFICATION_SCOPE_ACTIONS } from './prompts/notification-prompt-builder';
+import {
+  buildNotificationSummary,
+  isSnoozed,
+  snoozeCountdown,
+  computeSnoozedUntil,
+  SNOOZE_OPTIONS,
+  suggestSnooze,
+  QuietHoursConfig,
+  createDefaultQuietHours,
+  isInQuietHours,
+  groupByDate,
+} from './services/notification-service';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -255,6 +273,87 @@ function NotificationCard({
 }
 
 // ---------------------------------------------------------------------------
+// SnoozeButton — inline snooze dropdown per notification
+// ---------------------------------------------------------------------------
+
+function SnoozeButton({
+  item,
+  snoozedUntil,
+  onSnooze,
+  onUnsnooze,
+}: {
+  item: InboxRecord;
+  snoozedUntil?: string;
+  onSnooze: (id: string, until: string) => void;
+  onUnsnooze: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  const suggestion = useMemo(() => suggestSnooze(item), [item]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const snoozed = isSnoozed(snoozedUntil);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => snoozed ? onUnsnooze(item.id) : setOpen(v => !v)}
+        className={cn(
+          'w-7 h-7 flex items-center justify-center rounded-lg border transition-all',
+          snoozed
+            ? 'bg-amber-500/20 border-amber-500/30 text-amber-300'
+            : 'bg-white/[0.04] border-white/10 text-white/30 hover:text-white/60 hover:bg-white/[0.08]'
+        )}
+        title={snoozed ? `Snoozed (${snoozeCountdown(snoozedUntil!)}) — click to unsnooze` : 'Snooze'}
+      >
+        {snoozed ? <Moon className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute right-0 top-full mt-1 z-50 w-52 bg-[#0e0e16] border border-white/10 rounded-xl shadow-xl overflow-hidden"
+          >
+            <div className="px-3 py-2 border-b border-white/5">
+              <p className="text-[9px] uppercase tracking-widest text-indigo-400/70 font-black mb-1">Suggested</p>
+              <button
+                onClick={() => { onSnooze(item.id, computeSnoozedUntil(suggestion.option)); setOpen(false); }}
+                className="w-full text-left flex items-center justify-between group"
+              >
+                <span className="text-xs font-medium text-white/70 group-hover:text-white">{suggestion.option.label}</span>
+                <span className="text-[10px] text-white/30 italic max-w-[100px] text-right leading-tight">{suggestion.reason}</span>
+              </button>
+            </div>
+            {SNOOZE_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => { onSnooze(item.id, computeSnoozedUntil(opt)); setOpen(false); }}
+                className="w-full text-left px-3 py-2 text-xs text-white/50 hover:text-white hover:bg-white/[0.05] transition-colors flex items-center gap-2"
+              >
+                <Clock className="w-3 h-3 shrink-0" />
+                {opt.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -281,6 +380,25 @@ export default function NotificationsPage() {
   const [deleteScheduleTarget, setDeleteScheduleTarget] = useState<{ id: string; title: string } | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // ── New state: bulk selection, snooze, quiet hours, AI ──────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [snoozedMap, setSnoozedMap] = useState<Record<string, string>>({}); // id → snoozedUntil ISO
+  const [quietHours, setQuietHours] = useState<QuietHoursConfig>(createDefaultQuietHours());
+  const [showAI, setShowAI] = useState(false);
+
+  // AI agent
+  const notificationSummary = useMemo(() => buildNotificationSummary(items), [items]);
+  const enrichedSystemPrompt = useMemo(() => {
+    const ctx = serializeNotificationContext(notificationSummary, quietHours.enabled);
+    return `${NOTIFICATIONS_PERSONA}\n\n${ctx}`;
+  }, [notificationSummary, quietHours.enabled]);
+
+  const ai = useModuleAI({
+    moduleId: 'notifications' as ModuleId,
+    systemPrompt: enrichedSystemPrompt,
+    persistencePolicy: 'session-only' as any,
+  });
 
   useEffect(() => {
     const onResize = () => setIsWide(window.innerWidth >= 1024);
@@ -423,10 +541,52 @@ export default function NotificationsPage() {
   const criticalCount = items.filter((i) => i.priority === 'critical' || i.priority === 'alert').length;
 
   const filtered = items.filter((item) => {
+    if (isSnoozed(snoozedMap[item.id])) return false;
     if (filter === 'unread') return !item.read;
     if (filter === 'critical') return item.priority === 'critical' || item.priority === 'alert';
     return true;
   });
+
+  // ── Bulk action handlers ─────────────────────────────────────────────────
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filtered.map(i => i.id)));
+  }, [filtered]);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const markReadSelected = useCallback(async () => {
+    await Promise.all(Array.from(selectedIds).map(id => markAsRead(id)));
+    setSelectedIds(new Set());
+  }, [selectedIds, markAsRead]);
+
+  const deleteSelected = useCallback(async () => {
+    if (!user) return;
+    await Promise.all(
+      Array.from(selectedIds).map(id =>
+        dataLayer.deleteDocument(`users/${user.uid}/notification_inbox`, id)
+      )
+    );
+    setSelectedIds(new Set());
+  }, [selectedIds, user, dataLayer]);
+
+  // ── Snooze handlers ──────────────────────────────────────────────────────
+  const handleSnooze = useCallback((id: string, snoozedUntil: string) => {
+    setSnoozedMap(prev => ({ ...prev, [id]: snoozedUntil }));
+  }, []);
+
+  const handleUnsnooze = useCallback((id: string) => {
+    setSnoozedMap(prev => { const next = { ...prev }; delete next[id]; return next; });
+  }, []);
+
+  const filtered2 = filtered;
 
   const loading = inboxLoading;
 
@@ -469,6 +629,19 @@ export default function NotificationsPage() {
                 <span className="hidden sm:inline">Read all</span>
               </NeuralButton>
             )}
+            <NeuralButton
+              variant="ghost"
+              onClick={() => setShowAI(v => !v)}
+              className={cn(
+                'w-9 h-9 !px-0 rounded-xl border transition-all',
+                showAI
+                  ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300'
+                  : 'bg-white/[0.04] border-white/[0.06] text-white/40 hover:text-white/70'
+              )}
+              aria-label="AI triage assistant"
+            >
+              <Bot className="w-3.5 h-3.5" />
+            </NeuralButton>
             {items.length > 0 && (
               <NeuralButton
                 variant="ghost"
@@ -522,6 +695,71 @@ export default function NotificationsPage() {
       </div>
 
       <div className={cn('flex-1 mx-auto w-full px-4 py-4', isWide ? 'max-w-5xl' : 'max-w-2xl')}>
+
+        {/* AI Chat Panel */}
+        <AnimatePresence>
+          {showAI && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 400 }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden rounded-2xl border border-indigo-500/20 bg-indigo-500/5 mb-4"
+            >
+              <NexusChat
+                moduleId={'notifications' as ModuleId}
+                ai={ai}
+                agentName="Nexus Notify"
+                themeColor={'indigo' as any}
+                placeholder="Triage my inbox, set quiet hours, snooze alerts..."
+                authMode="global"
+                showInternalSignals={false}
+                hideClearHistory={true}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Bulk action bar */}
+        <AnimatePresence>
+          {selectedIds.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="flex items-center gap-2 mb-3 px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 backdrop-blur-xl"
+            >
+              <span className="text-xs text-white/60 font-medium flex-1">
+                {selectedIds.size} selected
+              </span>
+              <NeuralButton variant="ghost" size="sm" onClick={selectAll} className="text-xs text-white/40 hover:text-white/70">
+                All {filtered.length}
+              </NeuralButton>
+              <NeuralButton variant="ghost" size="sm" onClick={clearSelection} className="text-xs text-white/40 hover:text-white/70">
+                Clear
+              </NeuralButton>
+              <NeuralButton
+                variant="secondary"
+                size="sm"
+                onClick={() => void markReadSelected()}
+                className="flex items-center gap-1.5 text-cyan-400 border-cyan-500/20 bg-cyan-500/10"
+              >
+                <CheckCheck className="w-3 h-3" />
+                Mark read
+              </NeuralButton>
+              <NeuralButton
+                variant="ghost"
+                size="sm"
+                onClick={() => void deleteSelected()}
+                className="flex items-center gap-1.5 text-rose-400 border-rose-500/20 bg-rose-500/10"
+              >
+                <Trash2 className="w-3 h-3" />
+                Delete
+              </NeuralButton>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className={cn(isWide ? 'grid grid-cols-[minmax(0,1fr)_360px] gap-4' : 'space-y-4')}>
           {(isWide || viewMode === 'notifications') && (
             <div className="min-w-0">
@@ -552,14 +790,41 @@ export default function NotificationsPage() {
                 <motion.div layout className="flex flex-col gap-2">
                   <AnimatePresence mode="popLayout">
                     {filtered.map((item, i) => (
-                      <NotificationCard
-                        key={item.id}
-                        item={item}
-                        index={i}
-                        onRead={markAsRead}
-                        onDelete={deleteItem}
-                        onNavigate={navigateToItem}
-                      />
+                      <div key={item.id} className="flex items-start gap-2">
+                        {/* Checkbox for bulk selection */}
+                        <button
+                          onClick={() => toggleSelect(item.id)}
+                          className={cn(
+                            'mt-3.5 shrink-0 w-4 h-4 rounded border transition-colors',
+                            selectedIds.has(item.id)
+                              ? 'bg-indigo-500 border-indigo-500'
+                              : 'bg-white/[0.04] border-white/20 hover:border-white/40'
+                          )}
+                          aria-label={selectedIds.has(item.id) ? 'Deselect' : 'Select'}
+                        >
+                          {selectedIds.has(item.id) && <Check className="w-3 h-3 text-white mx-auto" />}
+                        </button>
+
+                        <div className="flex-1 min-w-0">
+                          <NotificationCard
+                            item={item}
+                            index={i}
+                            onRead={markAsRead}
+                            onDelete={deleteItem}
+                            onNavigate={navigateToItem}
+                          />
+                        </div>
+
+                        {/* Snooze button */}
+                        <div className="relative shrink-0 mt-2">
+                          <SnoozeButton
+                            item={item}
+                            snoozedUntil={snoozedMap[item.id]}
+                            onSnooze={handleSnooze}
+                            onUnsnooze={handleUnsnooze}
+                          />
+                        </div>
+                      </div>
                     ))}
                   </AnimatePresence>
                 </motion.div>
@@ -569,6 +834,82 @@ export default function NotificationsPage() {
 
           {(isWide || viewMode === 'reminders') && !isGuest && (
             <div className={cn('space-y-3', isWide ? 'max-h-[calc(100dvh-170px)] overflow-y-auto pr-1 no-scrollbar' : '')}>
+
+              {/* Quiet Hours / DND */}
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/50 font-semibold flex-1">
+                    Quiet Hours / DND
+                  </p>
+                  <NeuralToggle
+                    checked={quietHours.enabled}
+                    onChange={(enabled) => setQuietHours(q => ({ ...q, enabled, updatedAt: new Date().toISOString() }))}
+                    size="sm"
+                    color="indigo"
+                  />
+                </div>
+                {quietHours.enabled ? (
+                  <div className="space-y-3">
+                    {isInQuietHours(quietHours) && (
+                      <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
+                        <Moon className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span className="text-xs text-amber-300">DND active right now</span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-white/40 mb-1">From</label>
+                        <input
+                          type="time"
+                          value={quietHours.from}
+                          onChange={e => setQuietHours(q => ({ ...q, from: e.target.value, updatedAt: new Date().toISOString() }))}
+                          className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/70 focus:outline-none focus:border-indigo-500/40"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-white/40 mb-1">To</label>
+                        <input
+                          type="time"
+                          value={quietHours.to}
+                          onChange={e => setQuietHours(q => ({ ...q, to: e.target.value, updatedAt: new Date().toISOString() }))}
+                          className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/70 focus:outline-none focus:border-indigo-500/40"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/40 mb-1.5">Exempt modules (always delivered)</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(['agnes', 'atlas', 'titan', 'soma', 'ledger', 'scout', 'forge'] as const).map(mod => {
+                          const isExempt = quietHours.exemptModules.includes(mod);
+                          return (
+                            <button
+                              key={mod}
+                              onClick={() => setQuietHours(q => ({
+                                ...q,
+                                exemptModules: isExempt
+                                  ? q.exemptModules.filter(m => m !== mod)
+                                  : [...q.exemptModules, mod],
+                                updatedAt: new Date().toISOString(),
+                              }))}
+                              className={cn(
+                                'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border transition-all',
+                                isExempt
+                                  ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300'
+                                  : 'bg-white/[0.03] border-white/[0.06] text-white/30 hover:text-white/50'
+                              )}
+                            >
+                              {mod}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-white/25">Enable to suppress non-critical notifications during set hours.</p>
+                )}
+              </div>
 
               {/* Presets */}
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">

@@ -348,6 +348,7 @@ export type SpineEventType =
   // Titan Body Composition / Recovery Events
   /** Emitted whenever a body weight entry is committed (direct-write or AI action). */
   | 'TITAN_BODY_WEIGHT_LOGGED'
+  | 'TITAN_MEAL_LOGGED'
   /** Emitted when accumulated cnsFatigue crosses the critical threshold (≥ 8). */
   | 'TITAN_RECOVERY_NEEDED'
   /** Emitted when consecutive training days reach a milestone (7, 14, 21, 30). */
@@ -637,6 +638,81 @@ export interface TitanMacroEstimate {
   source?: string;
 }
 
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'pre_workout' | 'post_workout';
+
+export interface MealEntry {
+  id: string;
+  /** ISO date YYYY-MM-DD */
+  date: string;
+  mealType: MealType;
+  /** Descriptive name e.g. "Chicken & Rice", "Protein Shake" */
+  name: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  notes?: string;
+  recordedAt: string;
+}
+
+export type InjurySeverity = 'mild' | 'moderate' | 'severe';
+export type InjuryStatus = 'active' | 'recovering' | 'resolved';
+export type BodyRegion =
+  | 'shoulder' | 'elbow' | 'wrist' | 'hand'
+  | 'upper_back' | 'lower_back' | 'hip'
+  | 'knee' | 'ankle' | 'foot'
+  | 'neck' | 'chest' | 'abdomen' | 'other';
+
+export interface Injury {
+  id: string;
+  /** e.g. "Left shoulder impingement" */
+  name: string;
+  bodyRegion: BodyRegion;
+  /** ISO YYYY-MM-DD */
+  onsetDate: string;
+  /** ISO YYYY-MM-DD — set when status becomes 'resolved' */
+  resolvedDate?: string;
+  severity: InjurySeverity;
+  status: InjuryStatus;
+  /** Exercise names to completely avoid (matched against exercise library) */
+  exercisesToAvoid?: string[];
+  /** Coaching note on safer alternatives / modifications */
+  modifications?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Goal Milestones ──────────────────────────────────────────────────────────
+
+export type GoalMetric =
+  | 'lift_1rm'         // e.g. Bench press 1RM
+  | 'body_weight'      // Target body weight (kg)
+  | 'body_fat_pct'     // Target body fat %
+  | 'run_pace'         // Target pace min/km
+  | 'cardio_distance'  // Total distance in a single session (km)
+  | 'weekly_sessions'  // Sessions per week
+  | 'custom';          // Free-form
+
+export type GoalStatus = 'active' | 'achieved' | 'missed' | 'abandoned';
+
+export interface WorkoutGoal {
+  id: string;
+  name: string;                  // e.g. "Bench 100kg", "Run 5km sub-25min"
+  metric: GoalMetric;
+  targetValue: number;           // The number to hit
+  currentValue?: number;         // Latest measured value (updated automatically where possible)
+  unit: string;                  // e.g. "kg", "%", "min/km", "sessions"
+  /** Optional: link to a specific exercise for lift_1rm goals */
+  exerciseName?: string;
+  deadline?: string;             // ISO YYYY-MM-DD
+  status: GoalStatus;
+  achievedDate?: string;         // ISO YYYY-MM-DD
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TitanNutrition {
   dietNotes?: string;
   supplements?: TitanSupplement[];
@@ -664,7 +740,9 @@ export interface TitanActivity {
 
 export interface TitanHistory {
   yearsTraining?: number;
-  injuries?: string[];
+  injuries?: Injury[];
+  /** Preserved for backwards compatibility with old string-array injury data. */
+  legacyInjuryStrings?: string[];
   goals?: string[];
   bodyGoals?: string;
   [key: string]: unknown;
@@ -685,6 +763,8 @@ export interface SleepEntry {
   notes?: string;
   /** e.g. 'alcohol', 'late_meal', 'stress', 'caffeine' */
   tags?: string[];
+  /** Heart Rate Variability in milliseconds (typical range 20–200 ms). Higher = better recovery. */
+  hrv?: number;
   recordedAt: string;
 }
 
@@ -808,12 +888,14 @@ export interface BodyWeightEntry {
     rightArm?: number;
     leftLeg?: number;
     rightLeg?: number;
+    neck?: number;
+    calves?: number;
   };
   notes?: string;
+  /** Firebase Storage URL for progress photo taken on this date. */
+  photoUrl?: string;
   recordedAt: string;
 }
-
-/** Cardio activity type union. */
 export type CardioSessionType =
   | 'run' | 'bike' | 'swim' | 'row'
   | 'hike' | 'elliptical' | 'jump_rope' | 'other';
@@ -829,6 +911,13 @@ export interface CardioSession {
   durationMinutes: number;
   distanceKm?: number;
   avgHeartRate?: number;
+  /** Peak heart rate recorded during session (bpm). */
+  maxHeartRate?: number;
+  /**
+   * Time spent (minutes) in each HR training zone.
+   * Zones based on % of maxHR: Z1 <60%, Z2 60-70%, Z3 70-80%, Z4 80-90%, Z5 >90%.
+   */
+  hrZones?: { z1: number; z2: number; z3: number; z4: number; z5: number };
   calories?: number;
   notes?: string;
   /** Rate of perceived exertion 1–10. */
@@ -874,6 +963,23 @@ export interface CustomFieldValue {
   note?: string;
 }
 
+/**
+ * A single planned/scheduled workout entry.
+ * Stored in TitanProfile.plannedWorkouts (newest first, capped at 200).
+ */
+export interface PlannedWorkout {
+  id: string;
+  /** ISO YYYY-MM-DD */
+  date: string;
+  routineName: string;
+  /** Optional exercise names for quick preview */
+  exerciseNames?: string[];
+  notes?: string;
+  /** 'planned' → 'completed' when a workout session is logged on this date */
+  status: 'planned' | 'completed' | 'skipped';
+  createdAt: string;
+}
+
 export interface TitanProfile {
   onboardingComplete: boolean;
   privacyLevel: TitanPrivacyLevel;
@@ -912,6 +1018,12 @@ export interface TitanProfile {
   customFieldValues?: Record<string, CustomFieldValue[]>;
   /** Body weight / composition log — newest first, capped at 1 000 entries. */
   bodyWeightLog?: BodyWeightEntry[];
+  /** Daily meal and macro log — newest first, capped at 2 000 entries (~6/day × 1 year). */
+  mealLog?: MealEntry[];
+  /** Scheduled/planned future workouts — newest first, capped at 200. */
+  plannedWorkouts?: PlannedWorkout[];
+  /** Structured fitness goals with deadlines and progress tracking. */
+  goals?: WorkoutGoal[];
   /** Cardiovascular session log — newest first, capped at 500 entries. */
   cardioLog?: CardioSession[];
   /** Recovery plan state (global recovery mode). */
@@ -1101,6 +1213,11 @@ export interface Exercise {
   equipment?: 'barbell' | 'dumbbell' | 'cable' | 'kettlebell' | 'bodyweight' | 'machine' | 'band' | 'other';
   /** Primary muscle groups trained. Used for frequency analytics. */
   muscleGroups?: MuscleGroup[];
+  /**
+   * Name of another exercise in the same routine that this exercise is paired with
+   * as a superset. When set, the session logger groups them visually.
+   */
+  supersetWith?: string;
 }
 
 export interface HealthDataLog {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Routine, Weekday } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { ProgramTemplateSelector } from './ProgramTemplateSelector';
 import { EmptyState } from '@/core/components/EmptyState';
 import { getTodayWeekday } from '../utils';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -8,7 +9,7 @@ import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
 import { RoutineBuilder } from './RoutineBuilder';
 import { RestPeriodCalculator } from './RestPeriodCalculator';
-import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus, Pencil, MoreVertical, Play } from 'lucide-react';
+import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus, Pencil, MoreVertical, Play, ChevronDown, ChevronUp, LayoutTemplate } from 'lucide-react';
 
 interface TitanRoutinePanelProps {
   routines: Routine[];
@@ -17,6 +18,7 @@ interface TitanRoutinePanelProps {
   onImportRoutine?: () => void;
   onSubmitForApproval?: (routine: Routine) => void;
   onStartSession?: (routine: Routine) => void;
+  onApplyProgram?: (routines: Routine[], programName: string) => void;
 }
 
 const WEEKDAY_ORDER: Weekday[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -33,12 +35,14 @@ export function TitanRoutinePanel({
   onImportRoutine,
   onSubmitForApproval,
   onStartSession,
+  onApplyProgram,
 }: TitanRoutinePanelProps) {
   const today = getTodayWeekday();
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<Routine | undefined>(undefined);
   const [showBuilder, setShowBuilder] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showQuickStart, setShowQuickStart] = useState(false);
 
   const sorted = [...(routines || [])].sort((a, b) => {
     const aIndex = WEEKDAY_ORDER.indexOf(a.weekday || 'monday');
@@ -123,6 +127,15 @@ export function TitanRoutinePanel({
           />
         </div>
 
+        {/* ── Quick-Start Programs (empty state) ── */}
+        {onApplyProgram && (
+          <QuickStartSection
+            show={showQuickStart}
+            onToggle={() => setShowQuickStart((v) => !v)}
+            onApplyProgram={onApplyProgram}
+          />
+        )}
+
         <RoutineBuilderModal
           isOpen={showBuilder}
           routine={editingRoutine}
@@ -136,6 +149,15 @@ export function TitanRoutinePanel({
   // ── Populated state ──
   return (
     <>
+      {/* ── Quick-Start Programs (populated state) ── */}
+      {onApplyProgram && (
+        <QuickStartSection
+          show={showQuickStart}
+          onToggle={() => setShowQuickStart((v) => !v)}
+          onApplyProgram={onApplyProgram}
+        />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 md:gap-6 px-4 sm:px-6 md:px-8 pt-4 sm:pt-5 pb-5 sm:pb-6 md:pb-8 bg-black/40 border-b border-white/5 backdrop-blur-xl">
 
         {/* ── Weekly Plan ── */}
@@ -453,6 +475,45 @@ export function TitanRoutinePanel({
         onClose={handleBuilderClose}
       />
     </>
+  );
+}
+
+// ── QuickStartSection ────────────────────────────────────────────────────────
+
+interface QuickStartSectionProps {
+  show: boolean;
+  onToggle: () => void;
+  onApplyProgram: (routines: Routine[], programName: string) => void;
+}
+
+function QuickStartSection({ show, onToggle, onApplyProgram }: QuickStartSectionProps) {
+  return (
+    <div className="border-b border-white/[0.05]">
+      {/* Collapsible header */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-3 px-4 sm:px-6 md:px-8 py-3 hover:bg-white/[0.02] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent)]/40"
+        aria-expanded={show}
+      >
+        <div className="flex items-center gap-2.5">
+          <LayoutTemplate className="w-3.5 h-3.5 text-[var(--module-color-400)]/60 shrink-0" />
+          <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
+            Quick-Start Programs
+          </span>
+        </div>
+        <div className="text-white/25">
+          {show ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </div>
+      </button>
+
+      {/* Collapsible body */}
+      {show && (
+        <div className="px-4 sm:px-6 md:px-8 pb-5 pt-1">
+          <ProgramTemplateSelector onApplyProgram={onApplyProgram} />
+        </div>
+      )}
+    </div>
   );
 }
 

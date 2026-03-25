@@ -11,7 +11,7 @@
 
 import React, { useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { TrendingUp, Layers, Grid, Moon, ChevronDown } from 'lucide-react';
+import { TrendingUp, Layers, Grid, Moon, ChevronDown, Zap, Activity, Download } from 'lucide-react';
 import type { TitanProfile, WorkoutSession, SleepEntry, TitanRecoveryCheckin } from '@/lib/types';
 import { EXERCISE_LIBRARY } from '../data/exercise-library';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,8 @@ import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
+import { NeuralButton } from '@/core/components/NeuralButton';
+import { ProgressiveOverloadPanel } from './ProgressiveOverloadPanel';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -580,6 +582,189 @@ function AnalyticsPanel({
 }
 
 // ---------------------------------------------------------------------------
+// HRV Trend Panel
+// ---------------------------------------------------------------------------
+
+function HRVTrendPanel({ sleepLog }: { sleepLog: SleepEntry[] }) {
+  const data = useMemo(() => {
+    const cutoff = daysAgo(30);
+    return [...sleepLog]
+      .filter(e => e.date >= cutoff && typeof e.hrv === 'number')
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-30);
+  }, [sleepLog]);
+
+  if (data.length < 2) {
+    return (
+      <EmptyState
+        icon={Activity}
+        title="No HRV data yet"
+        description="Log HRV when recording sleep to see your heart rate variability trend."
+      />
+    );
+  }
+
+  const W = 500; const H = 80;
+  const PAD_X = 4; const PAD_Y = 4;
+  const n = data.length;
+  const values = data.map(e => e.hrv as number);
+  const minVal = Math.min(...values);
+  const maxVal = Math.max(...values);
+  const range = maxVal - minVal || 1;
+  const avg = values.reduce((s, v) => s + v, 0) / n;
+
+  const pts = data.map((e, i): [number, number] => [
+    PAD_X + (i / (n - 1)) * (W - PAD_X * 2),
+    H - PAD_Y - (((e.hrv as number) - minVal) / range) * (H - PAD_Y * 2),
+  ]);
+
+  const polyline = pts.map(([x, y]) => `${x},${y}`).join(' ');
+  const area = [...pts, [pts[n - 1][0], H] as [number, number], [pts[0][0], H] as [number, number]]
+    .map(([x, y]) => `${x},${y}`).join(' ');
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-6">
+        <div>
+          <div className="text-lg font-black tabular-nums text-emerald-400">{Math.round(avg)} ms</div>
+          <div className="text-[9px] text-white/40 uppercase">30-day avg HRV</div>
+        </div>
+        <div>
+          <div className="text-lg font-black tabular-nums text-white/80">{Math.round(values[values.length - 1])} ms</div>
+          <div className="text-[9px] text-white/40 uppercase">last reading</div>
+        </div>
+        <div>
+          <div className="text-[10px] font-black text-white/50">
+            {values[values.length - 1] >= avg ? '↑ above avg' : '↓ below avg'}
+          </div>
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-20 overflow-visible" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="hrv-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#34d399" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#34d399" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon points={area} fill="url(#hrv-fill)" />
+        <polyline points={polyline} fill="none" stroke="#34d399" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {pts.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={2.5} fill="#34d399" opacity={0.8} />
+        ))}
+      </svg>
+      <div className="flex justify-between text-[9px] text-white/30 tabular-nums">
+        <span>{data[0].date}</span>
+        <span className="text-emerald-400/60">HRV (ms)</span>
+        <span>{data[data.length - 1].date}</span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Export Panel
+// ---------------------------------------------------------------------------
+
+function ExportPanel({ profile }: { profile: TitanProfile }) {
+  const [format, setFormat] = useState<'json' | 'csv'>('json');
+
+  const exportData = () => {
+    if (format === 'json') {
+      const data = {
+        exportedAt: new Date().toISOString(),
+        workoutSessions: profile.workoutSessions ?? [],
+        personalRecords: profile.personalRecords ?? {},
+        bodyWeightLog: profile.bodyWeightLog ?? [],
+        cardioLog: profile.cardioLog ?? [],
+        sleepLog: profile.sleepLog ?? [],
+        mealLog: profile.mealLog ?? [],
+        goals: profile.goals ?? [],
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `titan-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      // CSV — export workout sessions
+      const sessions = profile.workoutSessions ?? [];
+      const rows: string[] = ['date,routine,exercise,set,reps,weight_kg,rpe,volume_kg'];
+      for (const session of sessions) {
+        for (const ex of session.exercises ?? []) {
+          for (const set of ex.sets ?? []) {
+            rows.push([
+              session.date,
+              `"${session.routineName}"`,
+              `"${ex.exerciseName}"`,
+              set.setNumber,
+              set.repsCompleted ?? '',
+              set.weight ?? '',
+              set.rpe ?? '',
+              (((set.weight ?? 0) * (set.repsCompleted ?? 0))).toFixed(1),
+            ].join(','));
+          }
+        }
+      }
+      const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `titan-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const sessionCount = profile.workoutSessions?.length ?? 0;
+  const bodyCount = profile.bodyWeightLog?.length ?? 0;
+  const cardioCount = profile.cardioLog?.length ?? 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Workout Sessions', value: sessionCount },
+          { label: 'Body Weight Entries', value: bodyCount },
+          { label: 'Cardio Sessions', value: cardioCount },
+        ].map(({ label, value }) => (
+          <div key={label} className="rounded-xl bg-white/[0.03] border border-white/5 px-3 py-2.5 text-center">
+            <div className="text-lg font-black tabular-nums text-[var(--module-color-400)]">{value}</div>
+            <div className="text-[9px] text-white/40 uppercase mt-0.5">{label}</div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="flex rounded-xl overflow-hidden border border-white/10">
+          {(['json', 'csv'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFormat(f)}
+              className={cn(
+                'px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors',
+                format === f
+                  ? 'bg-[var(--module-accent-muted)] text-[var(--module-color-300)]'
+                  : 'bg-transparent text-white/40 hover:text-white/60',
+              )}
+            >
+              {f.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <NeuralButton onClick={exportData} size="sm" className="flex items-center gap-2">
+          <Download className="w-3.5 h-3.5" />
+          Export {format.toUpperCase()}
+        </NeuralButton>
+      </div>
+      <p className="text-[10px] text-white/30">
+        JSON includes all logs. CSV exports workout sessions as flat rows (one set per row).
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Public export
 // ---------------------------------------------------------------------------
 
@@ -591,6 +776,14 @@ export function AnalyticsTab({ profile }: AnalyticsTabProps) {
 
   return (
     <div className="px-4 sm:px-6 md:px-8 pb-5 sm:pb-6 md:pb-8 pt-4 sm:pt-5 space-y-5 sm:space-y-6 md:space-y-8">
+      {/* Overload Engine — first, most actionable */}
+      <AnalyticsPanel icon={Zap} title="Overload Engine">
+        <ProgressiveOverloadPanel
+          sessions={sessions}
+          personalRecords={personalRecords}
+        />
+      </AnalyticsPanel>
+
       <AnalyticsPanel icon={TrendingUp} title="Strength Progression">
         <StrengthProgressionChart sessions={sessions} personalRecords={personalRecords} />
       </AnalyticsPanel>
@@ -607,9 +800,19 @@ export function AnalyticsTab({ profile }: AnalyticsTabProps) {
         <RecoveryTrendPanel sleepLog={sleepLog} />
       </AnalyticsPanel>
 
+      <AnalyticsPanel icon={Activity} title="HRV Trend — Last 30 Days">
+        <HRVTrendPanel sleepLog={sleepLog} />
+      </AnalyticsPanel>
+
       <AnalyticsPanel icon={Moon} title="Recovery Check-ins — Last 30 Days">
         <RecoveryCheckinTrend checkins={recoveryCheckins} />
       </AnalyticsPanel>
+
+      {profile && (
+        <AnalyticsPanel icon={Download} title="Export Data">
+          <ExportPanel profile={profile} />
+        </AnalyticsPanel>
+      )}
     </div>
   );
 }

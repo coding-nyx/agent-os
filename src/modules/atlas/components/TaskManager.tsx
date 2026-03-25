@@ -3,7 +3,8 @@
  * Comprehensive task CRUD with dependencies, energy cost, and AI-suggested scheduling
  */
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -81,7 +82,6 @@ export function TaskManager({
   const [editingTask, setEditingTask] = useState<AtlasTask | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showDependencyGraph, setShowDependencyGraph] = useState(false);
-  const [showAllTasks, setShowAllTasks] = useState(false);
 
   const { promptDelete, ConfirmationDialog } = useDeleteConfirmation<AtlasTask>(onDeleteTask);
 
@@ -99,6 +99,7 @@ export function TaskManager({
     status: 'queued',
     dependencies: [],
     tags: [],
+    recurrenceRule: undefined,
   });
 
   // ── Filtered & sorted tasks ──
@@ -130,6 +131,14 @@ export function TaskManager({
           return 0;
       }
     },
+  });
+
+  const taskListRef = useRef<HTMLDivElement>(null);
+  const taskVirtualizer = useVirtualizer({
+    count: filteredTasks.length,
+    getScrollElement: () => taskListRef.current,
+    estimateSize: () => 108,
+    overscan: 5,
   });
 
   // ── Task statistics ──
@@ -188,6 +197,7 @@ export function TaskManager({
         status: 'queued',
         dependencies: [],
         tags: [],
+        recurrenceRule: undefined,
       });
     }
     setShowForm(true);
@@ -204,6 +214,7 @@ export function TaskManager({
       status: 'queued',
       dependencies: [],
       tags: [],
+      recurrenceRule: undefined,
     });
   }, []);
 
@@ -366,31 +377,27 @@ export function TaskManager({
             size="lg"
           />
         ) : (
-          <>
-            {(showAllTasks ? filteredTasks : filteredTasks.slice(0, 30)).map((task) => (
-              <div key={task.id}>
-                <TaskCard
-                  task={task}
-                  onComplete={onCompleteTask}
-                  onUncomplete={onUncompleteTask}
-                  isExpanded={expandedTaskId === task.id}
-                  onToggleExpand={() => handleToggleExpand(task.id)}
-                  allTasks={tasks}
-                  onEdit={(currentTask) => handleOpenForm(currentTask)}
-                  onDelete={(currentTask) => promptDelete(currentTask)}
-                />
-              </div>
-            ))}
-            {!showAllTasks && filteredTasks.length > 30 && (
-              <button
-                type="button"
-                onClick={() => setShowAllTasks(true)}
-                className="w-full py-2 text-xs text-white/40 hover:text-white/60 transition-colors border border-white/10 rounded-xl hover:border-white/20"
-              >
-                Show {filteredTasks.length - 30} more tasks
-              </button>
-            )}
-          </>
+          <div ref={taskListRef} className="overflow-y-auto max-h-[600px]">
+            <div style={{ height: taskVirtualizer.getTotalSize(), position: 'relative' }}>
+              {taskVirtualizer.getVirtualItems().map(vitem => (
+                <div
+                  key={vitem.key}
+                  style={{ position: 'absolute', top: vitem.start, left: 0, right: 0, paddingBottom: 8 }}
+                >
+                  <TaskCard
+                    task={filteredTasks[vitem.index]}
+                    onComplete={onCompleteTask}
+                    onUncomplete={onUncompleteTask}
+                    isExpanded={expandedTaskId === filteredTasks[vitem.index].id}
+                    onToggleExpand={() => handleToggleExpand(filteredTasks[vitem.index].id)}
+                    allTasks={tasks}
+                    onEdit={(currentTask) => handleOpenForm(currentTask)}
+                    onDelete={(currentTask) => promptDelete(currentTask)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
@@ -528,6 +535,30 @@ export function TaskManager({
             }
             placeholder="work, urgent, research..."
           />
+
+          {/* Recurrence */}
+          <div className="space-y-2">
+            <label className="block text-[11px] sm:text-xs font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+              Recurrence
+            </label>
+            <NeuralSelectMenu
+              value={formData.recurrenceRule ?? ''}
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  recurrenceRule: value || undefined,
+                })
+              }
+              options={[
+                { value: '', label: 'None (one-time)' },
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekdays', label: 'Weekdays (Mon–Fri)' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'monthly', label: 'Monthly' },
+              ]}
+              ariaLabel="Recurrence"
+            />
+          </div>
         </div>
 
         {/* Actions */}

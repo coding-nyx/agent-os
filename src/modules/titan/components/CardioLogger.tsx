@@ -91,6 +91,22 @@ function SessionRow({ session }: { session: CardioSession }) {
             <div className="text-[9px] text-white/40">dist</div>
           </div>
         )}
+        {session.avgHeartRate != null && (
+          <div className="text-right hidden sm:block">
+            <div className="text-xs font-black text-rose-400 tabular-nums">{session.avgHeartRate}{session.maxHeartRate ? `/${session.maxHeartRate}` : ''}</div>
+            <div className="text-[9px] text-white/40">bpm</div>
+          </div>
+        )}
+        {session.hrZones && (
+          <div className="hidden md:flex items-end gap-0.5 h-6" title="HR zones Z1–Z5">
+            {(['z1','z2','z3','z4','z5'] as const).map((z, i) => {
+              const total = Object.values(session.hrZones!).reduce((s, v) => s + v, 0);
+              const pct = total > 0 ? (session.hrZones![z] / total) * 100 : 0;
+              const colors = ['bg-sky-400/60','bg-emerald-400/60','bg-amber-400/60','bg-orange-400/60','bg-rose-400/60'];
+              return <div key={z} className={`w-1.5 rounded-sm ${colors[i]}`} style={{ height: `${Math.max(pct, 4)}%` }} />;
+            })}
+          </div>
+        )}
         <div className="text-right">
           <div className="text-xs font-black text-white/80 tabular-nums">
             {formatDuration(session.durationMinutes)}
@@ -109,6 +125,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
   const [durationMins, setDurationMins] = useState<string | number>('30');
   const [distance, setDistance] = useState<string | number>('');
   const [avgHR, setAvgHR] = useState<string | number>('');
+  const [maxHR, setMaxHR] = useState<string | number>('');
   const [calories, setCalories] = useState<string | number>('');
   const [rpe, setRpe] = useState<number>(6);
   const [notes, setNotes] = useState('');
@@ -138,13 +155,31 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
         return null;
       }
 
+      const avgHRVal = avgHR ? parseInt(avgHR as string) : undefined;
+      const maxHRVal = maxHR ? parseInt(maxHR as string) : undefined;
+
+      // Auto-calculate HR zones if both avgHR and maxHR provided
+      let hrZones: CardioSession['hrZones'];
+      if (maxHRVal && avgHRVal) {
+        // Simple heuristic: distribute total minutes across zones based on avg/max ratio
+        const ratio = avgHRVal / maxHRVal;
+        const dur = totalDurationMins;
+        if (ratio >= 0.9) hrZones = { z1: 0, z2: Math.round(dur * 0.05), z3: Math.round(dur * 0.1), z4: Math.round(dur * 0.2), z5: Math.round(dur * 0.65) };
+        else if (ratio >= 0.8) hrZones = { z1: Math.round(dur * 0.05), z2: Math.round(dur * 0.1), z3: Math.round(dur * 0.15), z4: Math.round(dur * 0.5), z5: Math.round(dur * 0.2) };
+        else if (ratio >= 0.7) hrZones = { z1: Math.round(dur * 0.1), z2: Math.round(dur * 0.2), z3: Math.round(dur * 0.45), z4: Math.round(dur * 0.2), z5: Math.round(dur * 0.05) };
+        else if (ratio >= 0.6) hrZones = { z1: Math.round(dur * 0.2), z2: Math.round(dur * 0.5), z3: Math.round(dur * 0.2), z4: Math.round(dur * 0.08), z5: Math.round(dur * 0.02) };
+        else hrZones = { z1: Math.round(dur * 0.6), z2: Math.round(dur * 0.3), z3: Math.round(dur * 0.07), z4: Math.round(dur * 0.02), z5: Math.round(dur * 0.01) };
+      }
+
       const entry: CardioSession = {
         id: crypto.randomUUID(),
         date,
         type,
         durationMinutes: totalDurationMins,
         distanceKm: distance ? parseFloat(distance as string) : undefined,
-        avgHeartRate: avgHR ? parseInt(avgHR as string) : undefined,
+        avgHeartRate: avgHRVal,
+        maxHeartRate: maxHRVal,
+        hrZones,
         calories: calories ? parseInt(calories as string) : undefined,
         rpe,
         notes: notes.trim() || undefined,
@@ -156,13 +191,14 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
       const analyzePrompt = `Log cardio session: ${typeLabel} for ${formatDuration(totalDurationMins)} on ${date}. ` +
         (distance ? `Distance: ${distance}km. ` : '') +
         (avgHR ? `Avg HR: ${avgHR}bpm. ` : '') +
+        (maxHR ? `Max HR: ${maxHR}bpm. ` : '') +
         (calories ? `Calories: ${calories}. ` : '') +
         `RPE: ${rpe}/10. ` +
         (notes ? `Notes: ${notes}` : '');
 
       return { entry, analyzePrompt };
     });
-  }, [handleSave, date, type, totalDurationMins, distance, avgHR, calories, rpe, notes, setFormError]);
+  }, [handleSave, date, type, totalDurationMins, distance, avgHR, maxHR, calories, rpe, notes, setFormError]);
 
   return (
     <>
@@ -334,6 +370,16 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
               placeholder="—"
               value={avgHR}
               onChange={e => setAvgHR(e.target.value)}
+              className="tabular-nums"
+            />
+            <NeuralInput
+              label="Max HR (bpm)"
+              type="number"
+              min={40}
+              max={220}
+              placeholder="—"
+              value={maxHR}
+              onChange={e => setMaxHR(e.target.value)}
               className="tabular-nums"
             />
             <NeuralInput

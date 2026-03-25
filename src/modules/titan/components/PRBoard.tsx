@@ -19,13 +19,14 @@
  *   - Total: effectively O(W × S × 6) ≈ O(W) for typical usage
  */
 
-import React, { useMemo } from 'react';
-import { Trophy } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Trophy, Share2 } from 'lucide-react';
 import type { PersonalRecord, TitanWorkoutLog } from '@/lib/types';
 import type { ExerciseCategory } from '../types';
 import { EXERCISE_LIBRARY } from '../data/exercise-library';
 import { calculateE1RM } from '../utils/e1rm';
 import { cn } from '@/lib/utils';
+import { ShareCard } from './ShareCard';
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -198,6 +199,7 @@ interface PRCardProps {
 
 function PRCard({ pr, workoutLogs }: PRCardProps) {
   const exercise = useMemo(() => lookupExerciseByName(pr.exerciseName), [pr.exerciseName]);
+  const [showShare, setShowShare] = useState(false);
 
   const displayName  = exercise?.name ?? pr.exerciseName;
   // Sanitise exerciseId so it's always a valid DOM id fragment
@@ -205,6 +207,7 @@ function PRCard({ pr, workoutLogs }: PRCardProps) {
   const category: ExerciseCategory = exercise?.category ?? 'compound';
 
   return (
+    <>
     <div
       className={cn(
         'bg-white/5 border border-white/10 rounded-2xl p-4',
@@ -216,14 +219,24 @@ function PRCard({ pr, workoutLogs }: PRCardProps) {
         <p className="text-sm font-bold text-white/90 leading-tight line-clamp-2">
           {displayName}
         </p>
-        <span
-          className={cn(
-            'text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 capitalize',
-            CATEGORY_STYLES[category],
-          )}
-        >
-          {category}
-        </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span
+            className={cn(
+              'text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize',
+              CATEGORY_STYLES[category],
+            )}
+          >
+            {category}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowShare(true)}
+            aria-label={`Share ${displayName} PR`}
+            className="w-6 h-6 rounded-lg flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* ── e1RM: large value ── */}
@@ -249,6 +262,18 @@ function PRCard({ pr, workoutLogs }: PRCardProps) {
         />
       </div>
     </div>
+
+    {/* Share Card */}
+    <ShareCard
+      type="pr"
+      prExercise={displayName}
+      prWeight={pr.maxWeight}
+      prReps={pr.repsAtMax}
+      prDate={pr.achievedDate}
+      isOpen={showShare}
+      onClose={() => setShowShare(false)}
+    />
+    </>
   );
 }
 

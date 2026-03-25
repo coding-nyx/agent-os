@@ -7,10 +7,10 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Bell } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Bell, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
-import type { TitanWorkoutLog, WorkoutSession } from '@/lib/types';
+import type { TitanWorkoutLog, WorkoutSession, PlannedWorkout, Routine } from '@/lib/types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -42,13 +42,17 @@ const MUSCLE_COLORS: Record<string, string> = {
 export interface TrainingCalendarProps {
   workoutLogs: TitanWorkoutLog[];
   sessions?: WorkoutSession[];
+  plannedWorkouts?: PlannedWorkout[];
+  routines?: Routine[];
   onQuickLog?: (date: string) => void;
   onRemind?: (date: string) => void;
+  onStartPlannedSession?: (routine: Routine) => void;
 }
 
 interface DayData {
   workoutLog?: TitanWorkoutLog;
   session?: WorkoutSession;
+  plannedWorkout?: PlannedWorkout;
 }
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
@@ -118,15 +122,23 @@ interface DayDetailProps {
   date: Date;
   dayLabel: string;
   data: DayData;
+  routines?: Routine[];
   onQuickLog?: (isoDate: string) => void;
   onRemind?: (isoDate: string) => void;
+  onStartPlannedSession?: (routine: Routine) => void;
 }
 
-function DayDetail({ date, dayLabel, data, onQuickLog, onRemind }: DayDetailProps) {
+function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onStartPlannedSession }: DayDetailProps) {
   const isoDate = toIsoDate(date);
   const log     = data.workoutLog;
   const session = data.session;
+  const planned = data.plannedWorkout;
   const hasActivity = Boolean(log ?? session);
+
+  // Find the matching routine for a planned workout
+  const plannedRoutine = planned && routines
+    ? routines.find((r) => r.name === planned.routineName) ?? null
+    : null;
 
   let exercises: string[] = [];
   let totalSets = 0;
@@ -182,6 +194,24 @@ function DayDetail({ date, dayLabel, data, onQuickLog, onRemind }: DayDetailProp
               ))}
             </div>
           </div>
+        ) : planned ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-[var(--module-color-400)] shrink-0" />
+              <p className="text-sm font-semibold text-white/70 leading-snug truncate">
+                {planned.routineName}
+              </p>
+            </div>
+            {planned.exerciseNames && planned.exerciseNames.length > 0 && (
+              <p className="text-[10px] text-white/35 truncate">
+                {planned.exerciseNames.slice(0, 3).join(' · ')}
+                {planned.exerciseNames.length > 3 && ` +${planned.exerciseNames.length - 3}`}
+              </p>
+            )}
+            {planned.notes && (
+              <p className="text-[10px] text-white/25 italic truncate">{planned.notes}</p>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-white/20 font-medium">Rest day</p>
         )}
@@ -189,7 +219,17 @@ function DayDetail({ date, dayLabel, data, onQuickLog, onRemind }: DayDetailProp
 
       {/* Right: actions */}
       <div className="flex flex-col items-center gap-1.5 shrink-0">
-        {!hasActivity && onQuickLog && (
+        {planned && plannedRoutine && onStartPlannedSession && !hasActivity && (
+          <NeuralButton
+            variant="ghost"
+            size="sm"
+            onClick={() => onStartPlannedSession(plannedRoutine)}
+            className="h-7 px-2 text-[10px] font-bold text-[var(--module-color-300)] hover:bg-[var(--module-accent-muted)] shrink-0"
+          >
+            Start
+          </NeuralButton>
+        )}
+        {!hasActivity && !planned && onQuickLog && (
           <NeuralIconButton
             variant="ghost"
             size="sm"
@@ -199,7 +239,7 @@ function DayDetail({ date, dayLabel, data, onQuickLog, onRemind }: DayDetailProp
             icon={<Plus className="w-4 h-4" />}
           />
         )}
-        {onRemind && (
+        {!hasActivity && onRemind && (
           <NeuralIconButton
             variant="ghost"
             size="sm"
@@ -266,8 +306,11 @@ function WeeklySummary({ weekDays, workoutLogs, sessions }: WeeklySummaryProps) 
 export function TrainingCalendar({
   workoutLogs,
   sessions = [],
+  plannedWorkouts = [],
+  routines = [],
   onQuickLog,
   onRemind,
+  onStartPlannedSession,
 }: TrainingCalendarProps) {
   const todayISO = toIsoDate(new Date());
   const [weekOffset, setWeekOffset]   = useState(0);
@@ -298,8 +341,16 @@ export function TrainingCalendar({
       const existing = map.get(session.date);
       map.set(session.date, existing ? { ...existing, session } : { session });
     }
+    // Merge planned workouts — only show if status is 'planned' (not completed/skipped)
+    for (const pw of plannedWorkouts) {
+      if (pw.status === 'planned') {
+        const existing = map.get(pw.date);
+        // Don't override completed sessions with planned info
+        map.set(pw.date, existing ? { ...existing, plannedWorkout: pw } : { plannedWorkout: pw });
+      }
+    }
     return map;
-  }, [workoutLogs, sessions]);
+  }, [workoutLogs, sessions, plannedWorkouts]);
 
   const weekISOs     = weekDays.map(toIsoDate);
   const effectiveISO = weekISOs.includes(selectedISO) ? selectedISO : weekISOs[0];
@@ -351,7 +402,9 @@ export function TrainingCalendar({
           const iso        = toIsoDate(date);
           const isToday    = iso === todayISO;
           const isSelected = iso === effectiveISO;
-          const hasData    = dayMap.has(iso);
+          const dayData    = dayMap.get(iso);
+          const hasCompleted = Boolean(dayData?.workoutLog ?? dayData?.session);
+          const hasPlanned   = Boolean(dayData?.plannedWorkout) && !hasCompleted;
 
           return (
             <button
@@ -384,7 +437,9 @@ export function TrainingCalendar({
 
               <div className={cn(
                 'w-1.5 h-1.5 rounded-full transition-opacity',
-                hasData ? 'bg-[var(--module-color-400)] opacity-80' : 'opacity-0',
+                hasCompleted ? 'bg-[var(--module-color-400)] opacity-80'
+                  : hasPlanned ? 'bg-white/25 opacity-80 border border-white/30'
+                  : 'opacity-0',
               )} aria-hidden="true" />
             </button>
           );
@@ -396,8 +451,10 @@ export function TrainingCalendar({
         date={selectedDate}
         dayLabel={DAY_LABELS[selectedIdx]}
         data={selectedData}
+        routines={routines}
         onQuickLog={onQuickLog}
         onRemind={onRemind}
+        onStartPlannedSession={onStartPlannedSession}
       />
 
       {/* ── Weekly summary ── */}

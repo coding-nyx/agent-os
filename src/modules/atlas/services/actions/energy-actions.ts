@@ -98,6 +98,62 @@ export const energyActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     });
   },
 
+  update_recovery_window: async ({ userId, encryptionKey, payload }) => {
+    const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!profile) return;
+
+    const id = typeof payload?.id === 'string' ? payload.id : null;
+    if (!id) return;
+
+    const existingIndex = profile.recoveryWindows.findIndex((w) => w.id === id);
+    if (existingIndex === -1) return;
+
+    const existing = profile.recoveryWindows[existingIndex];
+    const updated: RecoveryWindow = {
+      ...existing,
+      title: typeof payload?.title === 'string' ? payload.title : existing.title,
+      start: typeof payload?.start === 'string' ? payload.start : existing.start,
+      end: typeof payload?.end === 'string' ? payload.end : existing.end,
+      reason: typeof payload?.reason === 'string' ? payload.reason : existing.reason,
+      status:
+        payload?.status === 'planned' || payload?.status === 'active' || payload?.status === 'completed'
+          ? payload.status
+          : existing.status,
+    };
+
+    const updatedWindows = [...profile.recoveryWindows];
+    updatedWindows[existingIndex] = updated;
+
+    const next: AtlasProfile = {
+      ...profile,
+      recoveryWindows: updatedWindows,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await persistProfile(next, userId ?? null, encryptionKey ?? null);
+  },
+
+  delete_recovery_window: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
+    const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!profile) return;
+
+    const id = typeof payload?.id === 'string' ? payload.id : null;
+    if (!id) return;
+
+    const next: AtlasProfile = {
+      ...profile,
+      recoveryWindows: profile.recoveryWindows.filter((w) => w.id !== id),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await persistProfile(next, userId ?? null, encryptionKey ?? null);
+
+    emitSpineEvent('ATLAS_STATE_CHANGED', {
+      reason: 'recovery_window_deleted',
+      windowId: id,
+    });
+  },
+
   sync_vitals: async ({ userId, payload }) => {
     if (!userId) return;
     const cognitive = payload?.cognitive as Record<string, unknown> | undefined;

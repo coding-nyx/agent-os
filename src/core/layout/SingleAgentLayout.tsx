@@ -50,6 +50,8 @@ interface SingleAgentLayoutProps {
   hideChatTrigger?: boolean;
   /** Optional content rendered persistently above the scrollable chat feed (e.g. active proposals). */
   topContent?: React.ReactNode;
+  /** Optional content rendered just above the chat input (below messages, above the NeuralInput). */
+  aboveInput?: React.ReactNode;
   /** Optional per-message extra content rendered below the message bubble (e.g. inline proposal cards). */
   renderMessageActions?: (message: Message, index: number) => React.ReactNode;
   // External control for layout intelligence
@@ -73,6 +75,7 @@ export function SingleAgentLayout({
   onUploadDocuments,
   hideChatTrigger = false,
   topContent,
+  aboveInput,
   renderMessageActions,
   isChatCollapsed: externalIsChatCollapsed,
   onToggleChat
@@ -326,6 +329,7 @@ export function SingleAgentLayout({
               onUploadDocument={onUploadDocument}
               onUploadDocuments={onUploadDocuments}
               renderMessageActions={renderMessageActions}
+              aboveInput={aboveInput}
             />
           </div>
         </FloatingChatPanel>,
@@ -404,6 +408,7 @@ export function SingleAgentLayout({
                        onUploadDocument={onUploadDocument}
                        onUploadDocuments={onUploadDocuments}
                        renderMessageActions={renderMessageActions}
+                       aboveInput={aboveInput}
                      />
                     {/* Routing suggestion — inline below chat input */}
                     <RoutingSuggestion

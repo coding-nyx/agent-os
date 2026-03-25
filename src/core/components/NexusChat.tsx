@@ -49,6 +49,7 @@ interface NexusChatProps {
     onUploadDocuments?: (request: DocumentUploadRequest) => void | Promise<void>;
     processingLabel?: string;
     enableSpeechToText?: boolean;
+    aboveInput?: ReactNode;
 }
 
 export function NexusChat({ 
@@ -69,6 +70,7 @@ export function NexusChat({
     onUploadDocuments,
     processingLabel,
     enableSpeechToText = false,
+    aboveInput,
 }: NexusChatProps) {
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
@@ -275,6 +277,7 @@ export function NexusChat({
                       handleSendMessage(content, onActionParsed);
                     }
                 }}
+                aboveInput={aboveInput}
             />
 
             <UnifiedAuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} mode={authMode} />

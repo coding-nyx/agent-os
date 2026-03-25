@@ -74,6 +74,16 @@ export const TITAN_ALLOWED_ACTIONS: Record<TitanContextMode['kind'], readonly st
     'delete_field',
     'log_field_value',
     'create_workout_plan',
+    // ── Progressive overload & programming ──────────────────────────────────
+    'suggest_progression',      // emit per-exercise overload recommendations
+    'apply_program_template',   // apply a predefined program (PPL, 5/3/1, etc.)
+    'log_meal',                 // log a meal / snack with macro data
+    // ── Injury management ────────────────────────────────────────────────────
+    'log_injury',               // create structured injury record
+    'update_injury',            // update status / mark resolved
+    // ── Goal tracking ────────────────────────────────────────────────────────
+    'log_goal',                 // create a new fitness goal milestone
+    'update_goal',              // update progress, status, or mark achieved
   ],
 
   'routine-edit': [
@@ -230,8 +240,32 @@ ${formatSleepLog(profile.sleepLog ?? [])}
 
 HISTORY & GOALS:
 Years Training: ${profile.history?.yearsTraining || 'Unknown'}
-Injuries: ${Array.isArray(profile.history?.injuries) ? profile.history.injuries.join(', ') : (profile.history?.injuries || 'None')}
+Injuries: ${(() => {
+  const raw = profile.history?.injuries;
+  if (!Array.isArray(raw) || raw.length === 0) return 'None';
+  const injuriesSummary = (raw as Array<unknown>)
+    .filter((inj): inj is import('@/lib/types').Injury => typeof inj === 'object' && inj !== null && 'id' in inj && (inj as import('@/lib/types').Injury).status !== 'resolved')
+    .map((inj) => `${inj.name} (${inj.bodyRegion.replace('_', ' ')}, ${inj.severity}, since ${inj.onsetDate})`)
+    .join('; ');
+  return injuriesSummary || 'None active';
+})()}
 Goals: ${Array.isArray(profile.history?.goals) ? profile.history.goals.join(', ') : (profile.history?.goals || profile.history?.bodyGoals || 'Unknown')}
+
+GOAL MILESTONES:
+${(() => {
+  const goals = profile.goals;
+  if (!Array.isArray(goals) || goals.length === 0) return 'None set';
+  const active = (goals as import('@/lib/types').WorkoutGoal[]).filter((g) => g.status === 'active');
+  if (active.length === 0) return 'No active goals';
+  return active.map((g) => {
+    const pct = g.currentValue !== undefined && g.targetValue > 0
+      ? Math.round(Math.min((g.currentValue / g.targetValue) * 100, 100))
+      : null;
+    const progressStr = pct !== null ? ` (${pct}% — ${g.currentValue} → ${g.targetValue} ${g.unit})` : ` (target: ${g.targetValue} ${g.unit})`;
+    const deadlineStr = g.deadline ? `, deadline: ${g.deadline}` : '';
+    return `• ${g.name} [${g.metric}]${progressStr}${deadlineStr} [id: ${g.id}]`;
+  }).join('\n');
+})()}
 
 CURRENT ROUTINES:
 ${routinesText}
@@ -338,7 +372,7 @@ ${recoveryBlock}${clearanceNote}${activeCycleBlock}
 [AVAILABLE ACTIONS]
 - Update profile: <action type="update_titan_profile">{...partialProfile}</action>
 - Routine creation/update: use the proposal format (see [INLINE PROPOSALS]) — update_routine action tags are blocked in this mode
-- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","tags":["stress"]}</action>
+- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":[user-reported hours],"quality":[1-10],"bedtime":"[HH:mm]","wakeTime":"[HH:mm]","tags":[relevant tags]}</action>
 - Propose reminder: <action type="propose_reminder">{"title","note","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"session|workout","entityId","label"}}</action>
 - Query reminders: <action type="query_reminders">{"moduleId":"titan"}</action>
 - Create cycle: <action type="create_cycle">{"name","type":"supplement|workout|hormonal|nutrition|recovery|custom","startDate":"YYYY-MM-DD","phases":[{"id","name","durationDays","dosage"}]}</action>
@@ -349,9 +383,27 @@ ${recoveryBlock}${clearanceNote}${activeCycleBlock}
 - Start recovery plan: <action type="start_recovery_plan">{"type":"rest|active|rehab|deload","reasons":[...],"durationDays":7,"severity":"low|medium|high","bodyRegion":"...","notes":"..."}</action>
 - End recovery plan: <action type="end_recovery_plan">{"reason":"completed|cancelled|early_return","notes":"..."}</action>
 - Log recovery check-in: <action type="log_recovery_checkin">{"pain":5,"fatigue":5,"sleepQuality":7,"mood":6,"notes":"..."}</action>
+- **Apply program template**: <action type="apply_program_template">{"programId":"ppl"|"531"|"starting_strength"|"upper_lower"|"phul"|"full_body_3x","message":"..."}</action>
+- **Suggest progression**: <action type="suggest_progression">{"exercises":["back squat","bench press"],"strategy":"linear"|"double_progression"|"deload","message":"..."}</action>
+- **Schedule workout**: <action type="schedule_workout">{"date":"YYYY-MM-DD","routineName":"[exact routine name]","exerciseNames":["optional","list"],"notes":"optional note"}</action>
+- **Update planned workout**: <action type="update_planned_workout">{"id":"[workout-id]","status":"planned|completed|skipped","notes":"optional"}</action>
 - Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
 - Keep <thought> strictly internal. Do NOT place user-facing text inside it.
 - Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.
+
+[NEW TRAINER CAPABILITIES]
+You now have access to the following features — use them proactively:
+- **Exercise Library (200+ exercises)**: When recommending exercises, use canonical exercise names (e.g. "Back Squat", "Barbell Bench Press", "Romanian Deadlift") so the app can resolve muscle groups and equipment.
+- **Program Templates**: When a user asks for a complete training program, offer: PPL (6-day hypertrophy), 5/3/1 (4-day powerlifting), Starting Strength (3-day beginner strength), Upper/Lower (4-day), PHUL (4-day power/hypertrophy), Full Body 3x (3-day beginner). Apply via apply_program_template action.
+- **Progressive Overload**: The Analytics tab shows weekly sets per muscle group vs MEV/MAV/MRV thresholds and ACWR (Acute:Chronic Workload Ratio). When users hit a plateau or ask "what should I do next?", use suggest_progression action. Strategy guide:
+  - linear: add 2.5kg to barbell lifts each session (beginner)
+  - double_progression: add reps first (up to top of rep range), then add weight and restart reps (intermediate)
+  - deload: reduce volume/intensity by 40-50% for 1 week when ACWR > 1.5 or accumulated fatigue is high
+- **Superset Support**: When designing routines, you can pair exercises by setting supersetWith on an exercise object (e.g., bench press supersetWith: "Cable Flyes"). Use for antagonist pairs or time-efficient training.
+- **Plate Calculator**: Automatically available for barbell exercises in session logger — no action needed.
+- **Injury Management**: Log injuries with <action type="log_injury">{"name":"Left shoulder impingement","bodyRegion":"shoulder","onsetDate":"YYYY-MM-DD","severity":"moderate","exercisesToAvoid":["Overhead Press","Lateral Raise"],"modifications":"Use cable face pulls instead of overhead pressing movements","notes":"Pain on abduction above 90°"}</action>. Update status: <action type="update_injury">{"id":"...","status":"resolved","resolvedDate":"YYYY-MM-DD"}</action>. Use bodyRegion values: shoulder, elbow, wrist, hand, upper_back, lower_back, hip, knee, ankle, foot, neck, chest, abdomen, other. Severity: mild | moderate | severe. Always factor active injuries into workout recommendations — never prescribe exercises from the exercisesToAvoid list.
+- **Meal Logging**: Log meals with <action type="log_meal">{"date":"YYYY-MM-DD","mealType":"breakfast|lunch|dinner|snack|pre_workout|post_workout","name":"Chicken Rice Bowl","calories":520,"protein":45,"carbs":60,"fat":10}</action>
+- **Goal Tracking**: Set goals with <action type="log_goal">{"name":"Bench 100kg","metric":"lift_1rm","targetValue":100,"unit":"kg","exerciseName":"Barbell Bench Press","deadline":"2026-06-01"}</action>. Mark achieved: <action type="update_goal">{"id":"...","status":"achieved","achievedDate":"YYYY-MM-DD"}</action>. Metric values: lift_1rm | body_weight | body_fat_pct | run_pace | cardio_distance | weekly_sessions | custom. Always celebrate achievements enthusiastically. Use update_goal to record progress: <action type="update_goal">{"id":"...","currentValue":85}</action>.
 
 [INLINE PROPOSALS]
 When the user asks to create a new routine, log sleep, or log a workout, you MUST respond with a proposal action tag — never use update_routine, log_sleep, or log_workout_session action tags directly for user-initiated requests. The proposal format lets the user confirm before data is committed. Direct action tags for these intents are blocked in this mode anyway.
@@ -397,10 +449,12 @@ ${planLine}
 
 [AVAILABLE ACTIONS]
 - Update profile: <action type="update_titan_profile">{...partialProfile}</action>
-- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","tags":["stress"]}</action>
+- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":[user-reported hours],"quality":[1-10],"bedtime":"[HH:mm]","wakeTime":"[HH:mm]","tags":[relevant tags]}</action>
 - Propose reminder: <action type="propose_reminder">{"title","note","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"session|workout","entityId","label"}}</action>
 - Query reminders: <action type="query_reminders">{"moduleId":"titan"}</action>
 - Log workout session: <action type="log_workout_session">{"routineId","routineName","date":"YYYY-MM-DD","rpe":5,"status":"completed","exercises":[{"exerciseName","plannedSets","plannedReps","sets":[{"setNumber","completed"}]}]}</action>
+- **Schedule workout**: <action type="schedule_workout">{"date":"YYYY-MM-DD","routineName":"[exact routine name]","exerciseNames":["optional","list"],"notes":"optional note"}</action>
+- **Update planned workout**: <action type="update_planned_workout">{"id":"[workout-id]","status":"planned|completed|skipped","notes":"optional"}</action>
 - Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
 - Keep <thought> strictly internal. Do NOT place user-facing text inside it.
 - Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.`;
@@ -689,7 +743,7 @@ ${options?.profileSummary ? `[PROFILE SUMMARY]\n${options.profileSummary}\n` : '
 - Record biomarker: <action type="commit_biomarker">{"name":"...","value":...,"unit":"..."}</action>
 - Parse lab report: <action type="parse_lab_report">{"panel":"...","findings":[...],"flags":[...]}</action>
 - Issue clearance: <action type="issue_clearance">{"activity":"...","status":"granted|denied|conditional","reason":"..."}</action>
-- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","tags":["stress"]}</action>
+- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":[user-reported hours],"quality":[1-10],"bedtime":"[HH:mm]","wakeTime":"[HH:mm]","tags":[relevant tags]}</action>
 - Create cycle: <action type="create_cycle">{"name":"...","type":"supplement|workout|hormonal|nutrition|recovery|custom","startDate":"YYYY-MM-DD","phases":[{"id":"...","name":"...","durationDays":7,"dosage":"...","trainingModifier":"increase|maintain|reduce|rest"}]}</action>
 - Advance cycle phase: <action type="advance_cycle_phase">{"cycleId":"..."}</action>
 - Complete cycle: <action type="complete_cycle">{"cycleId":"..."}</action>

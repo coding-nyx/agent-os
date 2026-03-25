@@ -89,6 +89,22 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
   const [showMorningBrief, setShowMorningBrief] = useState(false);
   const [showEveningCheckin, setShowEveningCheckin] = useState(false);
 
+  // Optimistic UI — applied immediately before Firestore confirms
+  const [optimisticPatch, setOptimisticPatch] = useState<Partial<AtlasProfile> | null>(null);
+  const effectiveProfile = useMemo(
+    () => (optimisticPatch && profile ? { ...profile, ...optimisticPatch } : profile),
+    [profile, optimisticPatch],
+  );
+
+  // Clear optimistic patch when real Firestore profile arrives
+  const lastProfileRef = useRef(profile);
+  useEffect(() => {
+    if (profile !== lastProfileRef.current) {
+      lastProfileRef.current = profile;
+      setOptimisticPatch(null);
+    }
+  }, [profile]);
+
   useEffect(() => {
     setHideGlobalFAB(true);
     return () => setHideGlobalFAB(false);
@@ -368,24 +384,50 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
 
 
   const handleUncompleteTask = useCallback((taskId: string) => {
+    if (profile?.tasks) {
+      setOptimisticPatch(prev => ({
+        ...(prev ?? {}),
+        tasks: profile.tasks.map(t =>
+          t.id === taskId ? { ...t, status: 'active' as const, completedAt: undefined } : t
+        ),
+      }));
+    }
     executeAtlasAction('uncomplete_task', {
       id: taskId
     }, 'task_uncompleted');
-  }, [executeAtlasAction]);
+  }, [profile?.tasks, executeAtlasAction]);
 
   const handleCompleteTask = useCallback((taskId: string) => {
+    if (profile?.tasks) {
+      const now = new Date().toISOString();
+      setOptimisticPatch(prev => ({
+        ...(prev ?? {}),
+        tasks: profile.tasks.map(t =>
+          t.id === taskId ? { ...t, status: 'done' as const, completedAt: now } : t
+        ),
+      }));
+    }
     executeAtlasAction('complete_task', {
       id: taskId,
       completedAt: new Date().toISOString()
     }, 'task_completed');
-  }, [executeAtlasAction]);
+  }, [profile?.tasks, executeAtlasAction]);
 
   const handleCompleteHabit = useCallback((habitId: string) => {
+    if (profile?.habits) {
+      const now = new Date().toISOString();
+      setOptimisticPatch(prev => ({
+        ...(prev ?? {}),
+        habits: profile.habits.map(h =>
+          h.id === habitId ? { ...h, lastCompleted: now, currentStreak: (h.currentStreak ?? 0) + 1 } : h
+        ),
+      }));
+    }
     executeAtlasAction('complete_habit', {
       id: habitId,
       completedAt: new Date().toISOString()
     }, 'habit_completed');
-  }, [executeAtlasAction]);
+  }, [profile?.habits, executeAtlasAction]);
 
   const handleUpdateGoalProgress = useCallback((goalId: string, milestoneId: string) => {
     executeAtlasAction('update_goal_progress', {
@@ -472,6 +514,25 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     }, 'goal_deleted');
   }, [executeAtlasAction]);
 
+  const handleCreateProject = useCallback((project: Partial<import('./services/atlas-profile-service').AtlasProject>) => {
+    executeAtlasAction('create_project', {
+      ...project,
+    }, 'project_created');
+  }, [executeAtlasAction]);
+
+  const handleUpdateProject = useCallback((projectId: string, updates: Partial<import('./services/atlas-profile-service').AtlasProject>) => {
+    executeAtlasAction('update_project', {
+      id: projectId,
+      ...updates,
+    }, 'project_updated');
+  }, [executeAtlasAction]);
+
+  const handleDeleteProject = useCallback((projectId: string) => {
+    executeAtlasAction('delete_project', {
+      id: projectId,
+    }, 'project_deleted');
+  }, [executeAtlasAction]);
+
   const handleUpdateHabit = useCallback((habitId: string, updates: Record<string, unknown>) => {
     executeAtlasAction('update_habit', {
       id: habitId,
@@ -485,19 +546,34 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     }, 'habit_deleted');
   }, [executeAtlasAction]);
 
+  const handleCreateRecoveryWindow = useCallback((window: Partial<RecoveryWindow>) => {
+    executeAtlasAction('create_recovery_window', {
+      title: window.title ?? 'Recovery Window',
+      start: window.start ?? new Date().toISOString(),
+      end: window.end ?? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      reason: window.reason ?? 'Scheduled recovery',
+      status: window.status ?? 'planned',
+    }, 'recovery_window_created');
+  }, [executeAtlasAction]);
+
+  const handleUpdateRecoveryWindow = useCallback((windowId: string, updates: Partial<RecoveryWindow>) => {
+    executeAtlasAction('update_recovery_window', { id: windowId, ...updates }, 'recovery_window_updated');
+  }, [executeAtlasAction]);
+
+  const handleDeleteRecoveryWindow = useCallback((windowId: string) => {
+    executeAtlasAction('delete_recovery_window', { id: windowId }, 'recovery_window_deleted');
+  }, [executeAtlasAction]);
+
   const handleUpdateRoutine = useCallback((updates: Record<string, unknown>) => {
     executeAtlasAction('update_routine', updates, 'routine_updated');
   }, [executeAtlasAction]);
 
-  const handleScheduleTask = useCallback((task: AtlasTask) => {
-    executeAtlasAction('schedule_block', {
-      taskId: task.id,
-      title: task.title,
-      energyCost: task.energyCost,
-      category: 'other',
-      duration: 60,
-      scheduledAt: new Date().toISOString()
-    }, 'task_scheduled');
+  const handleScheduleTask = useCallback((taskId: string, date: string) => {
+    executeAtlasAction('update_task', { id: taskId, scheduledSlot: date }, 'task_scheduled');
+  }, [executeAtlasAction]);
+
+  const handleUnscheduleTask = useCallback((taskId: string) => {
+    executeAtlasAction('update_task', { id: taskId, scheduledSlot: null }, 'task_unscheduled');
   }, [executeAtlasAction]);
 
   const handleUpdateIntention = useCallback((updates: Record<string, unknown>) => {
@@ -741,7 +817,14 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
           onDeleteTask: handleDeleteTask,
           onDeleteHabit: handleDeleteHabit,
           onDeleteGoal: handleDeleteGoal,
+          onCreateRecoveryWindow: handleCreateRecoveryWindow,
+          onUpdateRecoveryWindow: handleUpdateRecoveryWindow,
+          onDeleteRecoveryWindow: handleDeleteRecoveryWindow,
+          onCreateProject: handleCreateProject,
+          onUpdateProject: handleUpdateProject,
+          onDeleteProject: handleDeleteProject,
           onScheduleTask: handleScheduleTask,
+          onUnscheduleTask: handleUnscheduleTask,
           onUpdateRoutine: handleUpdateRoutine,
           onUpdateIntention: handleUpdateIntention,
           onSaveFieldValue: handleSaveFieldValue,
@@ -758,7 +841,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
         }}>
           <EnhancedAtlasDashboard
             soul={globalSoul}
-            profile={profile}
+            profile={effectiveProfile}
             isLocked={isLocked}
             activeTab={activeTab}
             activeView={activeView}

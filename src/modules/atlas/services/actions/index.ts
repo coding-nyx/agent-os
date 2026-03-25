@@ -6,6 +6,7 @@ import { goalActions } from './goal-actions';
 import { habitActions } from './habit-actions';
 import { checkinActions } from './checkin-actions';
 import { journalActions } from './journal-actions';
+import { projectActions } from './project-actions';
 
 export { calculateActiveLoad } from './shared';
 
@@ -27,6 +28,7 @@ export function registerAtlasActions() {
     ...goalActions,
     ...habitActions,
     ...checkinActions,
-    ...journalActions
+    ...journalActions,
+    ...projectActions,
   });
 }

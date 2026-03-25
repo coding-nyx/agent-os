@@ -487,7 +487,7 @@ export function toProfilePatchFromAccumulator(acc: TitanIntakeAccumulator): Part
     },
     history: {
       ...(acc.history.yearsTraining ? { yearsTraining: acc.history.yearsTraining } : {}),
-      ...(acc.history.injuries.length > 0 ? { injuries: acc.history.injuries } : {}),
+      ...(acc.history.injuries.length > 0 ? { legacyInjuryStrings: acc.history.injuries } : {}),
       ...(acc.history.goals.length > 0 ? { goals: acc.history.goals } : {}),
       ...(acc.history.bodyGoals ? { bodyGoals: acc.history.bodyGoals } : {})
     },

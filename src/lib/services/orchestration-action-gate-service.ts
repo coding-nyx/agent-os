@@ -52,9 +52,13 @@ const NON_MUTATING_ACTIONS = new Set([
   'navigate_to_module',
   'delegate_to_module',
   'create_module_handoff',
+  // Titan program application — the action handler is guidance-only (no DB write);
+  // actual routine merge happens via the ProgramTemplateSelector UI.
+  'apply_program_template',
+  'suggest_progression',
 ]);
 
-const NON_MUTATING_PREFIXES = ['analyze_', 'compare_', 'identify_', 'generate_', 'query_', 'suggest_', 'explain_', 'validate_'];
+const NON_MUTATING_PREFIXES = ['analyze_', 'compare_', 'identify_', 'generate_', 'query_', 'suggest_', 'explain_', 'validate_', 'propose_'];
 const MUTATING_PREFIXES = [
   'create_',
   'update_',

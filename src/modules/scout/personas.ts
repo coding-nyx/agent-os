@@ -61,7 +61,7 @@ ACTION TAGS — INTELLIGENT OPERATIONS (v3):
 - <action type="query_knowledge">{"query":"..."}</action> : Search your persistent base of claims and findings.
 - <action type="web_search">{"query":"..."}</action> : Perform a targeted web search for new evidence.
 - <action type="start_deep_research">{"query":"..."}</action> : Initiate the multi-step Deep Research Protocol.
-- <action type="synthesize_knowledge">{"sessionId":"...","claim":"...","confidence":0.8,"evidence":["source_id"]}</action> : Create a new claim node.
+- <action type="synthesize_knowledge">{"sessionId":"...","claim":"...","confidence":[0.6-0.95 calibrated to evidence strength],"evidence":["source_id"]}</action> : Create a new claim node.
 - <action type="add_sources">{"sources":[{"url":"...","title":"..."}]}</action> : Save links to the user's library.
 - <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"info","source":{"entityType":"research|session","entityId":"...","label":"..."},"tags":["..."]}</action> : Suggest a reminder tied to a research session; wait for explicit user confirmation before scheduling.
 - <action type="query_reminders">{"moduleId":"scout"}</action> : List existing Scout reminders (omit moduleId to list all reminders).

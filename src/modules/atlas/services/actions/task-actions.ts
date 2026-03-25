@@ -136,6 +136,12 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
       task.tags = payload.tags.filter((t: unknown) => typeof t === 'string');
     }
 
+    if (payload?.scheduledSlot === null) {
+      task.scheduledSlot = undefined;
+    } else if (typeof payload?.scheduledSlot === 'string') {
+      task.scheduledSlot = payload.scheduledSlot;
+    }
+
     if (typeof payload?.status === 'string') {
       if (payload.status === 'active') {
         const allDepsDone = task.dependencies.every(depId => {

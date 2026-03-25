@@ -67,92 +67,93 @@ interface ChatInterfaceProps {
   processingLabel?: string;
   enableSpeechToText?: boolean;
   assistantIdentity?: ActorIdentityRef;
+  aboveInput?: React.ReactNode;
 }
 
 const THEMES = {
   indigo: {
-    bubble: 'bg-white/[0.03] border-white/5 text-indigo-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-indigo-400/20',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-indigo-950/40 border-indigo-500/20 text-indigo-50 rounded-2xl rounded-tl-sm border-l-2 border-l-indigo-400/40',
+    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
     accent: 'text-indigo-400',
     glow: 'shadow-xl shadow-indigo-500/10',
     bgGlow: 'bg-indigo-500/30',
     btn: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'
   },
   orange: {
-    bubble: 'bg-white/[0.03] border-white/5 text-orange-50 rounded-2xl rounded-tl-sm border-l-2 border-l-orange-500/30',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-orange-950/40 border-orange-500/20 text-orange-50 rounded-2xl rounded-tl-sm border-l-2 border-l-orange-400/40',
+    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
     accent: 'text-orange-400',
     glow: 'shadow-xl shadow-orange-500/10',
     bgGlow: 'bg-orange-500/30',
     btn: 'bg-orange-600 hover:bg-orange-500 shadow-orange-500/20'
   },
   cyan: {
-    bubble: 'bg-white/[0.03] border-white/5 text-cyan-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-cyan-400/20',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-cyan-950/40 border-cyan-500/20 text-cyan-50 rounded-2xl rounded-tl-sm border-l-2 border-l-cyan-400/40',
+    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
     accent: 'text-cyan-400',
     glow: 'shadow-xl shadow-cyan-500/10',
     bgGlow: 'bg-cyan-500/30',
     btn: 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-500/20'
   },
   violet: {
-    bubble: 'bg-white/[0.03] border-white/5 text-violet-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-violet-400/20',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-violet-950/40 border-violet-500/20 text-violet-50 rounded-2xl rounded-tl-sm border-l-2 border-l-violet-400/40',
+    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
     accent: 'text-violet-400',
     glow: 'shadow-xl shadow-violet-500/10',
     bgGlow: 'bg-violet-500/30',
     btn: 'bg-violet-600 hover:bg-violet-500 shadow-violet-500/20'
   },
   emerald: {
-    bubble: 'bg-white/[0.03] border-white/5 text-emerald-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-emerald-400/20',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-emerald-950/40 border-emerald-500/20 text-emerald-50 rounded-2xl rounded-tl-sm border-l-2 border-l-emerald-400/40',
+    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
     accent: 'text-emerald-400',
     glow: 'shadow-xl shadow-emerald-500/10',
     bgGlow: 'bg-emerald-500/30',
     btn: 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
   },
   sky: {
-    bubble: 'bg-white/[0.03] border-white/5 text-sky-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-sky-400/20',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-sky-950/40 border-sky-500/20 text-sky-50 rounded-2xl rounded-tl-sm border-l-2 border-l-sky-400/40',
+    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
     accent: 'text-sky-400',
     glow: 'shadow-xl shadow-sky-500/10',
     bgGlow: 'bg-sky-500/30',
     btn: 'bg-sky-600 hover:bg-sky-500 shadow-sky-500/20'
   },
   lime: {
-    bubble: 'bg-white/[0.03] border-white/5 text-lime-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-lime-400/20',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-lime-950/40 border-lime-500/20 text-lime-50 rounded-2xl rounded-tl-sm border-l-2 border-l-lime-400/40',
+    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
     accent: 'text-lime-400',
     glow: 'shadow-xl shadow-lime-500/10',
     bgGlow: 'bg-lime-500/30',
     btn: 'bg-lime-600 hover:bg-lime-500 shadow-lime-500/20'
   },
   rose: {
-    bubble: 'bg-white/[0.03] border-white/5 text-rose-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-rose-400/20',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-rose-950/40 border-rose-500/20 text-rose-50 rounded-2xl rounded-tl-sm border-l-2 border-l-rose-400/40',
+    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
     accent: 'text-rose-400',
     glow: 'shadow-xl shadow-rose-500/10',
     bgGlow: 'bg-rose-500/30',
     btn: 'bg-rose-600 hover:bg-rose-500 shadow-rose-500/20'
   },
   fuchsia: {
-    bubble: 'bg-white/[0.03] border-white/5 text-fuchsia-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-fuchsia-400/20',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-fuchsia-950/40 border-fuchsia-500/20 text-fuchsia-50 rounded-2xl rounded-tl-sm border-l-2 border-l-fuchsia-400/40',
+    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
     accent: 'text-fuchsia-400',
     glow: 'shadow-xl shadow-fuchsia-500/10',
     bgGlow: 'bg-fuchsia-500/30',
     btn: 'bg-fuchsia-600 hover:bg-fuchsia-500 shadow-fuchsia-500/20'
   },
   slate: {
-    bubble: 'bg-white/[0.03] border-white/5 text-slate-50 rounded-2xl rounded-tl-sm border-l-[1.5px] border-l-slate-400/20',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-slate-800/50 border-slate-500/20 text-slate-50 rounded-2xl rounded-tl-sm border-l-2 border-l-slate-400/40',
+    userBubble: 'bg-slate-700/60 border-slate-500/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-400/30',
     accent: 'text-slate-400',
     glow: 'shadow-xl shadow-slate-500/10',
     bgGlow: 'bg-slate-500/30',
     btn: 'bg-slate-600 hover:bg-slate-500 shadow-slate-500/20'
   },
   module: {
-    bubble: 'bg-white/[0.03] border-white/5 text-white rounded-2xl rounded-tl-sm border-l-2 border-l-[var(--module-accent-border)]',
-    userBubble: 'bg-white/[0.05] border-white/10 text-white rounded-2xl rounded-tr-sm',
+    bubble: 'bg-[var(--module-accent-subtle,theme(colors.indigo.950/0.4))] border-[var(--module-accent-border)] text-white rounded-2xl rounded-tl-sm border-l-2',
+    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
     accent: 'text-[var(--module-color-400)]',
     glow: 'shadow-xl shadow-[var(--module-accent-muted)]',
     bgGlow: 'bg-[var(--module-accent-glow)]',
@@ -195,6 +196,7 @@ export const ChatInterface = React.memo(function ChatInterface({
   processingLabel,
   enableSpeechToText = false,
   assistantIdentity,
+  aboveInput,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -446,7 +448,7 @@ export const ChatInterface = React.memo(function ChatInterface({
             const actions = renderMessageActions ? renderMessageActions(msg, i) : null;
             return (
               <motion.div key={i} initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={transition} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
-                <div className={cn("flex gap-4 w-full", isAI ? "justify-start" : "justify-end")}>
+                {/* Icon above bubble, aligned to the same side as the bubble */}
                 {isAI && (
                   <AgentIcon
                     moduleId={moduleId && moduleId !== 'user' && moduleId !== 'system' ? moduleId as ModuleId : undefined}
@@ -455,13 +457,28 @@ export const ChatInterface = React.memo(function ChatInterface({
                     actorShortLabel={actorIdentity.shortLabel}
                     withBackground
                     className={cn(
-                      "shrink-0 mt-1 transition-colors",
+                      "shrink-0 mb-1.5 transition-colors",
                       isAgnes
-                        ? "w-10 h-10 rounded-2xl border border-indigo-400/20 shadow-lg shadow-indigo-500/20"
-                        : "w-9 h-9 rounded-xl border border-white/10 shadow-xl",
+                        ? "w-7 h-7 rounded-xl border border-indigo-400/20 shadow-lg shadow-indigo-500/20"
+                        : "w-6 h-6 rounded-lg border border-white/10 shadow-xl",
                     )}
                   />
                 )}
+                {!isAI && (
+                  <AgentIcon
+                    source="user"
+                    actorLabel={actorIdentity.label}
+                    actorShortLabel={actorIdentity.shortLabel}
+                    withBackground
+                    className={cn(
+                      "shrink-0 mb-1.5",
+                      isAgnes
+                        ? "w-7 h-7 rounded-xl border border-white/10 shadow-lg"
+                        : "w-6 h-6 rounded-lg border border-white/10 shadow-xl"
+                    )}
+                  />
+                )}
+                {/* Bubble below icon, left edge of AI bubble / right edge of user bubble aligns with icon */}
                 {isAI ? (
                     <div className="w-full flex flex-col items-start min-w-0">
                         <ChatBubble
@@ -518,23 +535,8 @@ export const ChatInterface = React.memo(function ChatInterface({
                       );
                     })()
                 )}
-                {!isAI && (
-                  <AgentIcon
-                    source="user"
-                    actorLabel={actorIdentity.label}
-                    actorShortLabel={actorIdentity.shortLabel}
-                    withBackground
-                    className={cn(
-                      "shrink-0 mt-1",
-                      isAgnes
-                        ? "w-10 h-10 rounded-2xl border border-white/10 shadow-lg"
-                        : "w-9 h-9 rounded-xl border border-white/10 shadow-xl"
-                    )}
-                  />
-                )}
-                </div>
                 {actions && (
-                  <div className={cn("mt-4 self-stretch overflow-hidden", isAI ? "pl-[52px]" : "pr-[52px]")}>
+                  <div className="mt-4 self-stretch overflow-hidden">
                     <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-1 shadow-sm">
                       {actions}
                     </div>
@@ -546,9 +548,9 @@ export const ChatInterface = React.memo(function ChatInterface({
         </AnimatePresence>
 
         {isLoading && (
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex gap-4 justify-start">
-            <div className={cn("w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center bg-black/60 shrink-0 shadow-xl", theme.accent)}>
-              <Loader2 className="w-5 h-5 animate-spin" />
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-start">
+            <div className={cn("w-6 h-6 rounded-lg border border-white/10 flex items-center justify-center bg-black/60 shrink-0 shadow-xl mb-1.5", theme.accent)}>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             </div>
             <div className={cn("px-6 py-4 border backdrop-blur-3xl flex items-center gap-3", theme.bubble)}>
               <span className="text-[10px] uppercase font-semibold tracking-[0.12em] text-white/50">
@@ -758,6 +760,12 @@ export const ChatInterface = React.memo(function ChatInterface({
               </motion.div>
             )}
           </AnimatePresence>
+
+          {aboveInput && (
+            <div className="shrink-0 mb-2">
+              {aboveInput}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className={cn("relative group transition-all duration-700", quota?.isHardLocked && "blur-2xl opacity-10 pointer-events-none")}>
             <div className={cn("absolute inset-0 blur-[100px] opacity-0 group-focus-within:opacity-40 transition-opacity rounded-full", theme.bgGlow)} />

@@ -8,11 +8,13 @@
  *  - localStorage staging buffer to prevent data loss on AI errors
  *  - e1RM calculation (Epley) and PR detection injected into AI prompt
  *  - Per-set RPE capture (optional, 1–10 scale, 0.5 step)
+ *  - Plate calculator for barbell exercises
+ *  - Superset pairing visual indicator
  */
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, Circle, Plus, Minus, Flame, BarChart3, Zap } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Minus, Flame, BarChart3, Zap, Calculator, Share2 } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -22,6 +24,8 @@ import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import type { Routine, WorkoutSession } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { getTodayWeekday, getTodayIso } from '../utils';
+import { PlateCalculator } from './PlateCalculator';
+import { ShareCard } from './ShareCard';
 
 // ─── localStorage Staging Buffer ─────────────────────────────────────────────
 // Prevents data loss if the AI call errors after the user taps "Finish".
@@ -53,6 +57,8 @@ interface SessionSetState {
   completed: boolean;
   /** Per-set RPE (1–10, optional). Captured inline; injected into AI prompt. */
   rpe?: number;
+  /** Warm-up sets are excluded from volume/PR calculations. */
+  isWarmup?: boolean;
 }
 
 interface SessionExerciseState {
@@ -197,6 +203,10 @@ function SessionModal({
   const [notes, setNotes] = useState('');
   const [startedAt] = useState(() => new Date().toISOString());
 
+  // ── Feature: Plate Calculator ──────────────────────────────────────────────
+  // Tracks which exercise (by index) has the plate calc open
+  const [plateCalcOpenIdx, setPlateCalcOpenIdx] = useState<number | null>(null);
+
   // ── Feature: Rest Timer ────────────────────────────────────────────────────
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
   const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -206,6 +216,10 @@ function SessionModal({
   const [hasStagedSession, setHasStagedSession] = useState(
     () => !!localStorage.getItem(STAGING_KEY),
   );
+
+  // ── Feature: Share Card ─────────────────────────────────────────────────────
+  const [showShareCard, setShowShareCard] = useState(false);
+  const [lastSession, setLastSession] = useState<WorkoutSession | null>(null);
 
   // ── Feature: Previous Session Data ────────────────────────────────────────
   // Most recent session for this exact routine — used to show "Last: N sets · best W×R"
@@ -340,6 +354,26 @@ function SessionModal({
     );
   }, []);
 
+  /** Prepend warm-up sets before working sets: 50%×5, 65%×3, 80%×2 of first working weight. */
+  const generateWarmupSets = useCallback((exIdx: number) => {
+    setExercises(prev =>
+      prev.map((ex, i) => {
+        if (i !== exIdx) return ex;
+        const firstWorkingWeight = ex.sets.find(s => !s.isWarmup && s.weight)?.weight ?? '';
+        const workingKg = parseFloat(firstWorkingWeight) || 0;
+        if (workingKg <= 0) return ex;
+        const warmups: SessionSetState[] = [
+          { weight: String(Math.round(workingKg * 0.5 * 2) / 2), repsCompleted: '5', completed: false, isWarmup: true },
+          { weight: String(Math.round(workingKg * 0.65 * 2) / 2), repsCompleted: '3', completed: false, isWarmup: true },
+          { weight: String(Math.round(workingKg * 0.8 * 2) / 2), repsCompleted: '2', completed: false, isWarmup: true },
+        ];
+        // Insert warm-ups before any existing working sets
+        const workingSets = ex.sets.filter(s => !s.isWarmup);
+        return { ...ex, sets: [...warmups, ...workingSets] };
+      }),
+    );
+  }, []);
+
   const removeSet = useCallback((exIdx: number) => {
     setExercises(prev =>
       prev.map((ex, i) =>
@@ -384,6 +418,8 @@ function SessionModal({
       onDirectCommit(session);
       clearStagedSession();
       setHasStagedSession(false);
+      setLastSession(session);
+      setShowShareCard(true);
       onClose();
       return;
     }
@@ -458,13 +494,57 @@ function SessionModal({
 
             return (
               <div key={exIdx} className="space-y-2">
+                {/* Superset indicator — shown between paired exercises */}
+                {exIdx > 0 &&
+                  routine.exercises[exIdx - 1].supersetWith === ex.name && (
+                    <div className="flex items-center gap-2 py-0.5">
+                      <div className="flex-1 h-px bg-[var(--module-accent-border)]" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-[var(--module-color-300)] px-2 py-0.5 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]">
+                        Superset
+                      </span>
+                      <div className="flex-1 h-px bg-[var(--module-accent-border)]" />
+                    </div>
+                  )}
+
                 {/* Exercise header */}
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-bold text-white/90">{ex.name}</span>
                     <span className="text-[10px] text-white/40 ml-2">planned {ex.sets}×{ex.reps}</span>
+                    {ex.supersetWith && (
+                      <span className="ml-2 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--module-accent-muted)] text-[var(--module-color-300)] border border-[var(--module-accent-border)]">
+                        SS w/ {ex.supersetWith}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
+                    {/* Warm-up generator — for weighted exercises */}
+                    {ex.equipment !== 'bodyweight' && (
+                      <NeuralButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => generateWarmupSets(exIdx)}
+                        className="p-1 h-7 w-7 min-w-0 text-amber-400/60 hover:text-amber-400"
+                        title="Generate warm-up sets (50%×5, 65%×3, 80%×2)"
+                      >
+                        <Flame className="w-3 h-3" />
+                      </NeuralButton>
+                    )}
+                    {/* Plate calculator toggle — only for barbell exercises */}
+                    {ex.equipment === 'barbell' && (
+                      <NeuralButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPlateCalcOpenIdx(plateCalcOpenIdx === exIdx ? null : exIdx)}
+                        className={cn(
+                          'p-1 h-7 w-7 min-w-0',
+                          plateCalcOpenIdx === exIdx && 'text-[var(--module-color-300)]',
+                        )}
+                        title="Plate calculator"
+                      >
+                        <Calculator className="w-3 h-3" />
+                      </NeuralButton>
+                    )}
                     <NeuralButton
                       variant="ghost"
                       size="sm"
@@ -497,6 +577,27 @@ function SessionModal({
                   );
                 })()}
 
+                {/* Plate Calculator (shown when toggled for barbell exercises) */}
+                <AnimatePresence>
+                  {plateCalcOpenIdx === exIdx && (() => {
+                    const lastCompletedWeight = exState.sets
+                      .map(s => parseFloat(s.weight))
+                      .filter(w => !isNaN(w) && w > 0)
+                      .at(-1) ?? 60;
+                    return (
+                      <motion.div
+                        key="plate-calc"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <PlateCalculator targetWeight={lastCompletedWeight} unit="kg" />
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
+
                 {/* Set rows */}
                 <div className="space-y-1.5">
                   {exState.sets.map((s, setIdx) => (
@@ -509,7 +610,9 @@ function SessionModal({
                           : 'bg-white/[0.02] border-white/10',
                       )}
                     >
-                      <span className="text-[10px] text-white/40 w-8 shrink-0">Set {setIdx + 1}</span>
+                      <span className="text-[10px] text-white/40 w-8 shrink-0">
+                        {s.isWarmup ? <span className="text-amber-400/70 font-bold">W{setIdx + 1}</span> : `Set ${setIdx + 1}`}
+                      </span>
 
                       {/* Weight */}
                       <div className="w-14 sm:w-20">
@@ -662,11 +765,37 @@ function SessionModal({
             <Flame className="w-4 h-4 mr-2" />
             {directWriteMode ? 'Save to Logbook' : 'Finish & Send to Titan'}
           </NeuralButton>
+          {lastSession && (
+            <NeuralButton
+              size="xl"
+              variant="secondary"
+              onClick={() => setShowShareCard(true)}
+              aria-label="Share last session"
+            >
+              <Share2 className="w-4 h-4" />
+            </NeuralButton>
+          )}
           <NeuralButton size="xl" variant="ghost" onClick={handleClose}>
             Cancel
           </NeuralButton>
         </div>
       </div>
+
+      {/* Share Card */}
+      {lastSession && (
+        <ShareCard
+          type="workout_summary"
+          sessionDate={lastSession.date}
+          sessionExercises={lastSession.exercises?.map(e => e.exerciseName)}
+          totalSets={lastSession.exercises?.reduce((t, e) => t + (e.sets?.filter(s => s.completed).length ?? 0), 0)}
+          totalVolume={lastSession.totalVolume}
+          durationMinutes={lastSession.startedAt && lastSession.completedAt
+            ? Math.round((new Date(lastSession.completedAt).getTime() - new Date(lastSession.startedAt).getTime()) / 60000)
+            : undefined}
+          isOpen={showShareCard}
+          onClose={() => setShowShareCard(false)}
+        />
+      )}
     </NeuralModal>
   );
 }

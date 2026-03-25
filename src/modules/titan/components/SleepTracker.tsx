@@ -51,6 +51,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
   const [deepSleepPct, setDeepSleepPct] = useState<number | ''>('');
   const [remSleepPct, setRemSleepPct] = useState<number | ''>('');
   const [awakenings, setAwakenings] = useState<number | ''>('');
+  const [hrv, setHrv] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -87,14 +88,15 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
         deepSleepPct: deepSleepPct || undefined,
         remSleepPct: remSleepPct || undefined,
         awakenings: awakenings || undefined,
+        hrv: hrv || undefined,
         notes: notes.trim() || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         recordedAt: new Date().toISOString(),
       };
-      const analyzePrompt = `Log sleep: ${dur}h, quality ${quality}/10 on ${date}. ` + (notes ? `Notes: ${notes}` : '');
+      const analyzePrompt = `Log sleep: ${dur}h, quality ${quality}/10 on ${date}${hrv ? `, HRV ${hrv}ms` : ''}. ` + (notes ? `Notes: ${notes}` : '');
       return { entry, analyzePrompt };
     });
-  }, [handleSave, date, bedtime, wakeTime, durationHours, quality, deepSleepPct, remSleepPct, awakenings, notes, selectedTags, setFormError]);
+  }, [handleSave, date, bedtime, wakeTime, durationHours, quality, deepSleepPct, remSleepPct, awakenings, hrv, notes, selectedTags, setFormError]);
 
   const recent = useMemo(() => [...sleepLog].sort((a, b) => b.date.localeCompare(a.date)), [sleepLog]);
   const avgQuality = sleepLog.length ? sleepLog.reduce((s, e) => s + e.quality, 0) / sleepLog.length : null;
@@ -232,6 +234,14 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
                       </div>
                       <div className="text-[9px] text-white/40 uppercase">duration</div>
                     </div>
+                    {entry.hrv && (
+                      <div className="text-right">
+                        <div className="text-xs font-black tabular-nums text-emerald-400">
+                          {entry.hrv}
+                        </div>
+                        <div className="text-[9px] text-white/40 uppercase">hrv ms</div>
+                      </div>
+                    )}
                     <div className="text-right">
                       <div className={cn('text-sm font-black tabular-nums', qualityColor(entry.quality))}>
                         {entry.quality}<span className="text-[9px] text-white/40">/10</span>
@@ -309,7 +319,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
             />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <NeuralInput
               label="Deep Sleep %"
               type="number"
@@ -337,6 +347,16 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
               placeholder="—"
               value={awakenings}
               onChange={e => setAwakenings(e.target.value ? Number(e.target.value) : '')}
+              className="placeholder:text-white/20 focus:border-[var(--module-accent)] tabular-nums px-3 py-2 h-auto min-h-0"
+            />
+            <NeuralInput
+              label="HRV (ms)"
+              type="number"
+              min={1}
+              max={300}
+              placeholder="—"
+              value={hrv}
+              onChange={e => setHrv(e.target.value ? Number(e.target.value) : '')}
               className="placeholder:text-white/20 focus:border-[var(--module-accent)] tabular-nums px-3 py-2 h-auto min-h-0"
             />
           </div>

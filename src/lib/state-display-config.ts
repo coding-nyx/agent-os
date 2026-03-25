@@ -180,6 +180,7 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   // Titan Workout / Body Composition Events
   WORKOUT_COMPLETED: 'Workout session logged',
   TITAN_BODY_WEIGHT_LOGGED: 'Body weight logged',
+  TITAN_MEAL_LOGGED: 'Meal logged',
   TITAN_RECOVERY_NEEDED: 'Recovery needed',
   TITAN_TRAINING_STREAK: 'Training streak milestone',
   SOMA_VETO_OVERRIDDEN: 'Soma veto overridden',

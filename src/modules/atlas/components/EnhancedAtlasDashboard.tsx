@@ -47,6 +47,8 @@ import { TaskManager } from './TaskManager';
 import { GoalTracker } from './GoalTracker';
 import { HabitBuilder } from './HabitBuilder';
 import { RoutineEditor } from './RoutineEditor';
+import { ProjectManager } from './ProjectManager';
+import { RecoveryWindowManager } from './RecoveryWindowManager';
 
 // Original dashboard components
 import { EnergyWaveChart } from './EnergyWaveChart';
@@ -61,11 +63,11 @@ import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup'
 import { TodaysPlanCard } from './TodaysPlanCard';
 import { FocusView } from './FocusView';
 import { MonthPlanner } from './MonthPlanner';
-import { DayTaskPanel } from './DayTaskPanel';
 import { QuickCaptureBar } from './QuickCaptureBar';
 import { JournalTab } from './journal/JournalTab';
 import { AtlasAnalytics } from './AtlasAnalytics';
 import { WeeklyReviewCard } from './WeeklyReviewModal';
+import { DayScheduleModal } from './DayScheduleModal';
 import { PortalledModal } from './shared/PortalledModal';
 import { useAtlasActions } from '../context/AtlasActionsContext';
 import { motion } from 'framer-motion';
@@ -195,7 +197,7 @@ export function EnhancedAtlasDashboard({
   // New Phase-1 state — must live before any early returns (Rules of Hooks)
   const { user } = useAuth();
   const [morningDismissed, setMorningDismissed] = useState(false);
-  const [selectedWeekDate, setSelectedWeekDate] = useState<string | undefined>(undefined);
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState<string | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isFieldsModalOpen, setIsFieldsModalOpen] = useState(false);
   const [focusTaskId, setFocusTaskId] = useState<string | undefined>(undefined);
@@ -404,8 +406,8 @@ export function EnhancedAtlasDashboard({
                 tasks={profile?.tasks ?? []}
                 scheduledTasks={profile?.scheduledTasks ?? []}
                 habits={profile?.habits ?? []}
-                onDaySelect={setSelectedWeekDate}
-                selectedDate={selectedWeekDate}
+                onDaySelect={(date) => setSelectedScheduleDate(date)}
+                selectedDate={selectedScheduleDate ?? undefined}
               />
             )}
 
@@ -415,18 +417,8 @@ export function EnhancedAtlasDashboard({
                 tasks={profile?.tasks ?? []}
                 scheduledTasks={profile?.scheduledTasks ?? []}
                 habits={profile?.habits ?? []}
-                onDaySelect={setSelectedWeekDate}
-                selectedDate={selectedWeekDate}
-              />
-            )}
-
-            {/* ── Day task panel — shown when a day is selected from week or month view ── */}
-            {(activeView === 'week' || activeView === 'month') && selectedWeekDate && (
-              <DayTaskPanel
-                date={selectedWeekDate}
-                tasks={profile?.tasks ?? []}
-                scheduledTasks={profile?.scheduledTasks ?? []}
-                onClose={() => setSelectedWeekDate(undefined)}
+                onDaySelect={(date) => setSelectedScheduleDate(date)}
+                selectedDate={selectedScheduleDate ?? undefined}
               />
             )}
 
@@ -709,6 +701,19 @@ export function EnhancedAtlasDashboard({
                     onPauseHabit={actions.onPauseHabit}
                   />
               </section>
+
+              <section className="space-y-3">
+                 <div className="flex flex-col gap-1">
+                    <h3 className="text-lg font-bold font-display text-white/90">Recovery Windows</h3>
+                    <p className="text-xs text-white/40">Protect time for rest, recovery, and restoration.</p>
+                 </div>
+                 <RecoveryWindowManager
+                   windows={profile?.recoveryWindows ?? []}
+                   onCreateWindow={actions.onCreateRecoveryWindow}
+                   onUpdateWindow={actions.onUpdateRecoveryWindow}
+                   onDeleteWindow={actions.onDeleteRecoveryWindow}
+                 />
+              </section>
            </div>
         )}
 
@@ -844,66 +849,14 @@ export function EnhancedAtlasDashboard({
         )}
       {/* ══════════════ PROJECTS TAB ══════════════ */}
         {activeTab === 'projects' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold font-display text-white/90">Projects</h2>
-                <p className="text-xs text-white/40 mt-0.5">
-                  {(profile?.projects ?? []).length} project{(profile?.projects ?? []).length !== 1 ? 's' : ''} total
-                </p>
-              </div>
-            </div>
-
-            {(profile?.projects ?? []).length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <FolderOpen className="w-10 h-10 text-white/10 mb-3" />
-                <p className="text-sm font-semibold text-white/40">No projects yet</p>
-                <p className="text-xs text-white/25 mt-1">Projects will appear here once created</p>
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {(profile?.projects ?? []).map((project) => {
-                  const projectTasks = tasks.filter(t => t.projectId === project.id);
-                  const doneTasks = projectTasks.filter(t => t.status === 'done').length;
-                  return (
-                    <div
-                      key={project.id}
-                      className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2 hover:bg-white/[0.05] transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-sm font-bold text-white/85 leading-tight">{project.title}</h3>
-                        <FolderOpen className="w-4 h-4 text-white/20 shrink-0 mt-0.5" />
-                      </div>
-                      {project.description && (
-                        <p className="text-xs text-white/40 line-clamp-2">{project.description}</p>
-                      )}
-                      <div className="flex items-center gap-3 text-[10px] text-white/30">
-                        <span>{projectTasks.length} task{projectTasks.length !== 1 ? 's' : ''}</span>
-                        {projectTasks.length > 0 && (
-                          <span className="text-emerald-400/60">{doneTasks}/{projectTasks.length} done</span>
-                        )}
-                        {project.goalId && (
-                          <span className="text-[var(--module-color-400)]/60">Goal linked</span>
-                        )}
-                      </div>
-                      {projectTasks.length > 0 && (
-                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-400/50 rounded-full transition-all"
-                            style={{ width: `${Math.round((doneTasks / projectTasks.length) * 100)}%` }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center">
-              <p className="text-xs text-white/25 italic">Full project board coming soon</p>
-            </div>
-          </div>
+          <ProjectManager
+            projects={profile?.projects ?? []}
+            goals={goals}
+            tasks={tasks}
+            onCreateProject={actions.onCreateProject}
+            onUpdateProject={actions.onUpdateProject}
+            onDeleteProject={actions.onDeleteProject}
+          />
         )}
       </div>
         )}
@@ -917,6 +870,17 @@ export function EnhancedAtlasDashboard({
         soul={soul}
         predictiveDisplay={predictiveDisplay}
         onCompleteReview={actions.onSaveWeeklyReview}
+      />
+
+      {/* ── Day Schedule Modal ── */}
+      <DayScheduleModal
+        isOpen={!!selectedScheduleDate}
+        onClose={() => setSelectedScheduleDate(null)}
+        selectedDate={selectedScheduleDate ?? ''}
+        tasks={tasks}
+        scheduledTasks={profile?.scheduledTasks ?? []}
+        onScheduleTask={actions.onScheduleTask}
+        onUnscheduleTask={actions.onUnscheduleTask}
       />
 
       {/* ── Fields/Settings Modal ── */}

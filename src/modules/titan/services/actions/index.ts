@@ -8,6 +8,10 @@ import { bodyHandlers } from './body-actions';
 import { fieldHandlers } from './field-actions';
 import { recoveryHandlers } from './recovery-actions';
 import { proposalHandlers } from './proposal-actions';
+import { injuryHandlers } from './injury-actions';
+import { nutritionHandlers } from './nutrition-actions';
+import { scheduleHandlers } from './schedule-actions';
+import { goalHandlers } from './goal-actions';
 
 export { titanAllowedActions } from './shared-meta';
 export { parseNumericValue } from './shared';
@@ -33,5 +37,9 @@ export function registerTitanActions() {
     ...fieldHandlers,
     ...recoveryHandlers,
     ...proposalHandlers,
+    ...injuryHandlers,
+    ...nutritionHandlers,
+    ...goalHandlers,
+    ...scheduleHandlers,
   });
 }

@@ -154,7 +154,7 @@ ACTION TAGS:
 - Issue clearance: <action type="issue_clearance">{"activity":"hiit","status":"granted|denied|conditional","reason":"..."}</action>
 - Record biomarker: <action type="commit_biomarker">{"name":"hrv","value":62,"unit":"ms","source":"wearable","recordedAt":"..."}</action>
 - Create cycle: <action type="create_cycle">{"name":"Strength Block","type":"training","description":"...","startDate":"YYYY-MM-DD","phases":[{"id":"...","name":"Accumulation","durationDays":21}]}</action>
-- Cross-module hint: <action type="detect_data_hint">{"sourceModule":"titan","targetModule":"[relevant_module]","field":"fieldName","inferredValue":"value","confidence":0.85,"rawQuote":"exact user words","sentiment":"neutral"}</action>
+- Cross-module hint: <action type="detect_data_hint">{"sourceModule":"titan","targetModule":"[relevant_module]","field":"fieldName","inferredValue":"value","confidence":[0.75-0.95 based on signal strength],"rawQuote":"exact user words","sentiment":"neutral"}</action>
   Use SILENTLY when the user implies a data change in another module (e.g. ledger, soma, atlas, agnes). Only emit when confidence ≥ 0.75 and value is concrete. Do NOT explain this action to the user.
 
 INTERACTION PROTOCOLS:

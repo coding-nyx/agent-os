@@ -16,6 +16,10 @@
  */
 
 import type { FieldDefinition } from '@/lib/field-system/types';
+import type { Account, RecurringRule, NetWorthSnapshot, CashFlowForecast } from '../services/ledger-intake-service';
+import { computeUpcomingBills } from '../services/recurring-engine';
+import { computeCurrentNetWorth } from '../services/aggregation/networth-aggregation';
+import type { DebtItem } from '../services/ledger-intake-service';
 
 // ============================================================================
 // Type Definitions
@@ -98,6 +102,74 @@ export const LEDGER_SCOPE_ACTIONS: Record<
     'run_debt_simulation',
     'financial_health_check',
     'detect_risk',
+    // Multi-account
+    'create_account',
+    'update_account',
+    'delete_account',
+    'transfer_funds',
+    'reconcile_account',
+    // Net worth
+    'record_net_worth_snapshot',
+    // Recurring
+    'create_recurring_rule',
+    'update_recurring_rule',
+    'delete_recurring_rule',
+    'post_recurring_now',
+    'skip_next_occurrence',
+    // Forecast
+    'generate_cash_flow_forecast',
+    // Bank sync
+    'sync_bank_account',
+    // Subscriptions
+    'create_subscription',
+    'update_subscription',
+    'delete_subscription',
+    'cancel_subscription',
+    // Investments
+    'add_investment',
+    'update_investment',
+    'delete_investment',
+    'record_portfolio_snapshot',
+    'add_dividend',
+    // Alerts
+    'create_alert_rule',
+    'delete_alert_rule',
+    'toggle_alert_rule',
+    'dismiss_notification',
+    // Tax depth
+    'set_tax_category',
+    'add_tax_deduction',
+    'delete_tax_deduction',
+    'generate_tax_summary',
+    // Export
+    'export_transactions_csv',
+    'export_tax_summary',
+    'export_net_worth_report',
+    // Credit score
+    'add_credit_score_entry',
+    'delete_credit_score_entry',
+    'analyze_credit_score_trend',
+    // Insurance
+    'create_insurance_policy',
+    'update_insurance_policy',
+    'delete_insurance_policy',
+    'analyze_insurance_coverage',
+    // Retirement
+    'create_retirement_plan',
+    'update_retirement_plan',
+    'delete_retirement_plan',
+    'project_retirement',
+    // Automation suggestions
+    'create_automation_rule',
+    'update_automation_rule',
+    'delete_automation_rule',
+    'dismiss_suggestion',
+    'add_default_automation_rules',
+    // Receipts
+    'add_receipt',
+    'delete_receipt',
+    'link_receipt_to_transaction',
+    'analyze_receipts_by_tax_year',
   ],
   'budget-review': [
     'update_budget_snapshot',
@@ -174,7 +246,7 @@ function buildGeneralMode(): PromptModeResult {
   const systemPrompt = `${LEDGER_BASE_IDENTITY}
 
 AVAILABLE ACTIONS:
-- <action type="create_financial_plan">{"title":"Short title","summary":"One sentence.","monthlyTarget":0,"allocation":{"essentials":60,"growth":25,"buffer":15},"tasks":["Task one","Task two","Task three"]}</action>
+- <action type="create_financial_plan">{"title":"Short title","summary":"One sentence.","monthlyTarget":0,"allocation":{"essentials":[% based on user situation],"growth":[% based on user goals],"buffer":[remaining %]},"tasks":["Task one","Task two","Task three"]}</action>
   IMPORTANT: Keep each task string under 60 characters. Use at most 4 tasks. No commas inside task strings.
 
 - <action type="update_budget_snapshot">{"monthlyIncome":0,"fixedExpenses":[],"variableExpenses":[],"debtItems":[],"savingsGoals":[]}</action>
@@ -541,6 +613,152 @@ When computing, emit:
 // ============================================================================
 // Context Injection: Serialize Extension Fields
 // ============================================================================
+
+/**
+ * Serialize the new financial context (accounts, net worth, upcoming bills, forecast)
+ * for injection into the general mode system prompt.
+ */
+export function serializeLedgerFinancialContext(opts: {
+  accounts?: Account[];
+  debtItems?: DebtItem[];
+  netWorthHistory?: NetWorthSnapshot[];
+  recurringRules?: RecurringRule[];
+  lastCashFlowForecast?: CashFlowForecast;
+  currency?: string;
+  subscriptions?: import('../services/ledger-intake-service').Subscription[];
+  investments?: import('../services/ledger-intake-service').Investment[];
+  alertRules?: import('../services/ledger-intake-service').AlertRule[];
+  creditScoreHistory?: import('../services/ledger-intake-service').CreditScoreEntry[];
+  insurancePolicies?: import('../services/ledger-intake-service').InsurancePolicy[];
+  lastRetirementProjection?: import('../services/ledger-intake-service').RetirementProjection;
+}): string {
+  const { accounts = [], debtItems = [], netWorthHistory = [], recurringRules = [], lastCashFlowForecast, currency = 'USD', subscriptions = [], investments = [], alertRules = [] } = opts;
+  const blocks: string[] = [];
+
+  const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
+  const fmtCompact = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
+
+  if (accounts.length > 0) {
+    const accountLines = accounts.map((a) =>
+      `  - ${a.name} (${a.type}${a.institutionName ? ` @ ${a.institutionName}` : ''}${a.lastFour ? ` ···${a.lastFour}` : ''}): ${fmt(a.balance)}${a.isDefault ? ' [default]' : ''}`
+    );
+    const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
+    blocks.push(`[ACCOUNTS — ${accounts.length} linked]\n${accountLines.join('\n')}\n  Total net balance: ${fmt(totalBalance)}`);
+  }
+
+  if (accounts.length > 0 || debtItems.length > 0) {
+    const { assets, liabilities, netWorth } = computeCurrentNetWorth(accounts, debtItems);
+    const trend = netWorthHistory.length >= 2
+      ? (() => {
+          const sorted = [...netWorthHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          const delta = sorted[0].netWorth - sorted[1].netWorth;
+          return delta >= 0 ? `↑ ${fmtCompact(Math.abs(delta))} since last snapshot` : `↓ ${fmtCompact(Math.abs(delta))} since last snapshot`;
+        })()
+      : 'no prior snapshot';
+    blocks.push(`[NET WORTH]\n  Assets: ${fmtCompact(assets)} | Liabilities: ${fmtCompact(liabilities)} | Net Worth: ${fmtCompact(netWorth)} (${trend})`);
+  }
+
+  const activeRules = recurringRules.filter((r) => r.isActive);
+  if (activeRules.length > 0) {
+    const upcoming = computeUpcomingBills(activeRules, 14);
+    if (upcoming.length > 0) {
+      const billLines = upcoming.map((r) =>
+        `  - ${r.dueDateFormatted}: ${r.description} ${fmt(r.amount)} (${r.type}, ${r.frequency})`
+      );
+      blocks.push(`[UPCOMING BILLS — NEXT 14 DAYS]\n${billLines.join('\n')}`);
+    }
+  }
+
+  if (lastCashFlowForecast) {
+    const { lowestPoint, endBalance, horizon } = lastCashFlowForecast;
+    const warnings: string[] = [];
+    if (lowestPoint.balance < 0) {
+      warnings.push(`⚠ Negative balance projected on ${lowestPoint.date}: ${fmtCompact(lowestPoint.balance)}`);
+    } else if (lowestPoint.balance < 500) {
+      warnings.push(`⚠ Cash low point: ${fmtCompact(lowestPoint.balance)} on ${lowestPoint.date}`);
+    }
+    blocks.push(`[CASH FLOW FORECAST — ${horizon}d]\n  End balance: ${fmtCompact(endBalance)} | Lowest: ${fmtCompact(lowestPoint.balance)} on ${lowestPoint.date}${warnings.length > 0 ? '\n' + warnings.join('\n') : ''}`);
+  }
+
+  // ─── P2: Subscriptions ───────────────────────────────────────────────────
+  const activeSubs = subscriptions.filter(s => s.status === 'active' || s.status === 'trial');
+  if (activeSubs.length > 0) {
+    const totalMonthly = activeSubs.reduce((sum, s) => sum + s.monthlyEquivalent, 0);
+    const trialEnding = activeSubs.filter(s => {
+      if (s.status !== 'trial' || !s.trialEndsAt) return false;
+      const days = (new Date(s.trialEndsAt).getTime() - Date.now()) / 86_400_000;
+      return days <= 7;
+    });
+    const subLines = activeSubs.slice(0, 8).map(s =>
+      `  - ${s.name} (${s.billingCycle}): ${fmt(s.amount)}${s.status === 'trial' ? ' [TRIAL]' : ''}`
+    );
+    if (activeSubs.length > 8) subLines.push(`  ... and ${activeSubs.length - 8} more`);
+    let subsBlock = `[SUBSCRIPTIONS — ${activeSubs.length} active, ${fmtCompact(totalMonthly)}/mo]\n${subLines.join('\n')}`;
+    if (trialEnding.length > 0) {
+      subsBlock += `\n  ⚠ Trials ending within 7 days: ${trialEnding.map(s => s.name).join(', ')}`;
+    }
+    blocks.push(subsBlock);
+  }
+
+  // ─── P2: Investments ─────────────────────────────────────────────────────
+  if (investments.length > 0) {
+    const totalValue = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
+    const totalCost = investments.reduce((sum, inv) => sum + inv.totalCost, 0);
+    const unrealizedGain = totalValue - totalCost;
+    const gainPct = totalCost > 0 ? (unrealizedGain / totalCost) * 100 : 0;
+    const sign = unrealizedGain >= 0 ? '+' : '';
+    blocks.push(
+      `[PORTFOLIO — ${investments.length} holdings]\n  Total value: ${fmtCompact(totalValue)} | Cost basis: ${fmtCompact(totalCost)} | Unrealized P&L: ${sign}${fmtCompact(unrealizedGain)} (${sign}${gainPct.toFixed(1)}%)`
+    );
+  }
+
+  // ─── P2: Active alerts ────────────────────────────────────────────────────
+  const enabledAlerts = alertRules.filter(r => r.isEnabled);
+  if (enabledAlerts.length > 0) {
+    const alertSummary = enabledAlerts.map(r => `${r.label}${r.threshold !== undefined ? ` (threshold: ${r.threshold})` : ''}`).join(', ');
+    blocks.push(`[ACTIVE ALERT RULES — ${enabledAlerts.length}]\n  ${alertSummary}`);
+  }
+
+  // ─── P3: Credit score ────────────────────────────────────────────────────
+  const creditHistory = opts.creditScoreHistory ?? [];
+  if (creditHistory.length > 0) {
+    const sorted = [...creditHistory].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime());
+    const latest = sorted[0];
+    const tier = latest.score >= 800 ? 'Exceptional' : latest.score >= 740 ? 'Very Good' : latest.score >= 670 ? 'Good' : latest.score >= 580 ? 'Fair' : 'Poor';
+    const trend = sorted.length >= 2
+      ? (latest.score > sorted[1].score ? `↑ ${latest.score - sorted[1].score} pts` : latest.score < sorted[1].score ? `↓ ${sorted[1].score - latest.score} pts` : 'stable')
+      : 'first entry';
+    blocks.push(`[CREDIT SCORE]\n  Latest: ${latest.score} (${tier}) from ${latest.bureau} on ${latest.recordedAt.split('T')[0]} — ${trend}`);
+  }
+
+  // ─── P3: Insurance ───────────────────────────────────────────────────────
+  const activePolicies = (opts.insurancePolicies ?? []).filter(p => p.isActive);
+  if (activePolicies.length > 0) {
+    const totalMonthly = activePolicies.reduce((sum, p) => sum + p.monthlyPremium, 0);
+    const soon = activePolicies.filter(p => {
+      const days = (new Date(p.nextRenewalDate).getTime() - Date.now()) / 86_400_000;
+      return days >= 0 && days <= 30;
+    });
+    const policyLines = activePolicies.map(p => `  - ${p.name} (${p.type}): ${fmt(p.monthlyPremium)}/mo`);
+    let insBlock = `[INSURANCE — ${activePolicies.length} active, ${fmtCompact(totalMonthly)}/mo]\n${policyLines.join('\n')}`;
+    if (soon.length > 0) {
+      insBlock += `\n  ⚠ Renewing within 30 days: ${soon.map(p => p.name).join(', ')}`;
+    }
+    blocks.push(insBlock);
+  }
+
+  // ─── P3: Retirement ──────────────────────────────────────────────────────
+  const projection = opts.lastRetirementProjection;
+  if (projection) {
+    const onTrackLabel = projection.onTrack ? '✅ On track' : '⚠ Behind';
+    const shortfall = projection.shortfallOrSurplus < 0 ? ` | Shortfall: ${fmtCompact(Math.abs(projection.shortfallOrSurplus))}` : ` | Surplus: ${fmtCompact(projection.shortfallOrSurplus)}`;
+    blocks.push(
+      `[RETIREMENT]\n  ${onTrackLabel} | Projected nest egg: ${fmtCompact(projection.projectedNestEgg)} | 4%-rule income: ${fmtCompact(projection.fourPercentRuleMonthly)}/mo${shortfall}`
+    );
+  }
+
+  return blocks.length > 0 ? blocks.join('\n\n') : '';
+}
 
 /**
  * Serialize extension field definitions and values into a text block

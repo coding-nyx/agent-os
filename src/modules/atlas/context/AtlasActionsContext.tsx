@@ -1,7 +1,7 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import type { AtlasTask, AtlasGoal, AtlasHabit, AtlasRoutine, DailyIntention } from '../services/atlas-profile-service';
+import type { AtlasTask, AtlasGoal, AtlasHabit, AtlasRoutine, DailyIntention, AtlasProject } from '../services/atlas-profile-service';
 import type { FieldDefinition } from '@/lib/field-system/types';
-import type { AtlasReviewBlueprint } from '@/lib/types';
+import type { AtlasReviewBlueprint, RecoveryWindow } from '@/lib/types';
 
 export interface AtlasActionsContextValue {
   onCompleteTask: (taskId: string) => void;
@@ -18,7 +18,14 @@ export interface AtlasActionsContextValue {
   onUncompleteTask: (taskId: string) => void;
   onDeleteHabit: (habitId: string) => void;
   onDeleteGoal: (goalId: string) => void;
-  onScheduleTask?: (task: AtlasTask) => void;
+  onCreateRecoveryWindow: (window: Partial<RecoveryWindow>) => void;
+  onUpdateRecoveryWindow: (windowId: string, updates: Partial<RecoveryWindow>) => void;
+  onDeleteRecoveryWindow: (windowId: string) => void;
+  onCreateProject: (project: Partial<AtlasProject>) => void;
+  onUpdateProject: (projectId: string, updates: Partial<AtlasProject>) => void;
+  onDeleteProject: (projectId: string) => void;
+  onScheduleTask: (taskId: string, date: string) => void;
+  onUnscheduleTask: (taskId: string) => void;
   onUpdateRoutine: (updates: Partial<AtlasRoutine>) => void;
   onUpdateIntention: (updates: Partial<DailyIntention>) => void;
   onSaveFieldValue: (fieldId: string, value: any) => void;

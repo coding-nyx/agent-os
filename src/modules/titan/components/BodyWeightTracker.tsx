@@ -8,13 +8,15 @@
  *  - Supports both direct-write and AI (coach) mode
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   Scale, Plus, TrendingUp, TrendingDown, Minus,
-  ChevronDown, ChevronUp, MessageSquare,
+  ChevronDown, ChevronUp, MessageSquare, Camera,
 } from 'lucide-react';
 import type { BodyWeightEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { getFirebase } from '@/lib/firebase';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -36,6 +38,7 @@ export interface BodyWeightTrackerProps {
   onAnalyze?: (prompt: string) => void;
   directWriteMode?: boolean;
   onDirectSave?: (entry: BodyWeightEntry) => Promise<void>;
+  userId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -165,6 +168,11 @@ function EntryRow({ entry, unit }: { entry: BodyWeightEntry; unit: 'kg' | 'lbs' 
           {entry.notes && (
             <span className="text-[10px] text-white/30 italic truncate max-w-[120px]">{entry.notes}</span>
           )}
+          {entry.photoUrl && (
+            <a href={entry.photoUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+              <Camera className="w-3 h-3 text-[var(--module-color-400)]/60 hover:text-[var(--module-color-400)]" />
+            </a>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm font-black text-[var(--module-color-400)] tabular-nums">
@@ -200,6 +208,7 @@ export function BodyWeightTracker({
   onAnalyze,
   directWriteMode = false,
   onDirectSave,
+  userId,
 }: BodyWeightTrackerProps) {
   const [unit, setUnit] = useState<'kg' | 'lbs'>('kg');
   const [showMeasurements, setShowMeasurements] = useState(false);
@@ -210,6 +219,9 @@ export function BodyWeightTracker({
   const [bodyFat, setBodyFat] = useState('');
   const [measurements, setMeasurements] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { showModal, openModal, closeModal, formError, setFormError, saving, handleSave } =
     useDataLogger<BodyWeightEntry>({ directWriteMode, onDirectSave, onAnalyze });
@@ -226,9 +238,26 @@ export function BodyWeightTracker({
     { key: 'rightArm', label: 'R. Arm' },
     { key: 'leftLeg', label: 'L. Leg' },
     { key: 'rightLeg', label: 'R. Leg' },
+    { key: 'neck', label: 'Neck' },
+    { key: 'calves', label: 'Calves' },
   ];
 
   const onSave = useCallback(async () => {
+    // Upload photo first if provided
+    let photoUrl: string | undefined;
+    if (photoFile && userId) {
+      try {
+        const { storage } = getFirebase();
+        if (storage) {
+          const path = `titan/${userId}/progress-photos/${date}-${Date.now()}.${photoFile.name.split('.').pop()}`;
+          const fileRef = storageRef(storage, path);
+          await uploadBytes(fileRef, photoFile);
+          photoUrl = await getDownloadURL(fileRef);
+        }
+      } catch {
+        // Non-fatal — proceed without photo
+      }
+    }
     await handleSave(() => {
       const rawWeight = parseFloat(weightInput);
       if (!weightInput || isNaN(rawWeight) || rawWeight <= 0) {
@@ -259,6 +288,7 @@ export function BodyWeightTracker({
         bodyFatPct: parsedBF != null && !isNaN(parsedBF) ? parsedBF : undefined,
         measurements: hasMeasurements ? parsedMeasurements : undefined,
         notes: notes.trim() || undefined,
+        photoUrl,
         recordedAt: new Date().toISOString(),
       };
 
@@ -274,7 +304,9 @@ export function BodyWeightTracker({
     setBodyFat('');
     setMeasurements({});
     setNotes('');
-  }, [handleSave, weightInput, unit, date, bodyFat, measurements, notes, setFormError]);
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  }, [handleSave, weightInput, unit, date, bodyFat, measurements, notes, photoFile, userId, setFormError]);
 
   // Derived stats
   const latest = bodyWeightLog?.[0] ?? null;
@@ -485,6 +517,45 @@ export function BodyWeightTracker({
                   />
                 ))}
               </div>
+            )}
+          </div>
+
+{/* Progress Photo */}
+          <div className="space-y-2">
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
+              Progress Photo (optional)
+            </label>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setPhotoFile(file);
+                  setPhotoPreview(URL.createObjectURL(file));
+                }
+              }}
+            />
+            {photoPreview ? (
+              <div className="relative w-full max-w-[160px]">
+                <img src={photoPreview} alt="preview" className="w-full rounded-xl object-cover max-h-40 border border-white/10" />
+                <button
+                  onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                  className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5 text-white/60 hover:text-white"
+                >✕</button>
+              </div>
+            ) : (
+              <NeuralButton
+                variant="ghost"
+                size="sm"
+                onClick={() => photoInputRef.current?.click()}
+                className="flex items-center gap-2 text-white/40 hover:text-white/70 border border-dashed border-white/10 hover:border-white/20 px-4 py-2 rounded-xl"
+              >
+                <Camera className="w-4 h-4" />
+                Add photo
+              </NeuralButton>
             )}
           </div>
 

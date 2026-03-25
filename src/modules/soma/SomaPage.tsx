@@ -12,6 +12,8 @@ import { SomaDashboard } from './components/SomaDashboard';
 import type { VitalReading as UIVitalReading, PhysicalAssessment as UIPhysicalAssessment } from './components/SomaDashboard';
 import type { PhysicalAssessment as StoredPhysicalAssessment } from '@/lib/types';
 import type { MessageContent } from '@/llm-engine/types';
+import { ActionHub } from '@/lib/actions/action-hub';
+import type { SpineEventType } from '@/lib/types';
 import {
   loadSomaProfile,
   saveSomaProfile,
@@ -135,6 +137,7 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
 
   // All hooks must be above any conditional returns (React rules of hooks)
   const { readinessScore } = useSomaHealth(user?.uid, encryptionKey);
+  const [chatCollapsed, setChatCollapsed] = React.useState(true);
 
   const handleUpdateProfile = useCallback(async (updates: Partial<SomaProfile>) => {
     if (!profile || !user?.uid || !encryptionKey) return;
@@ -206,6 +209,61 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
     }
   }, [user?.uid, encryptionKey]);
 
+  /**
+   * Dedicated clearance request flow — bypasses CommandIntelligenceService routing
+   * so the request stays in Soma and doesn't get misrouted to another module.
+   */
+  const handleClearanceRequest = useCallback(async (prompt: string) => {
+    setChatCollapsed(false);
+
+    const timestamp = new Date().toISOString();
+    const userMsg = { role: 'user' as const, content: prompt, timestamp };
+    ai.setMessages([...ai.messages, userMsg]);
+
+    try {
+      const { response } = await sendMessage(prompt, {
+        systemPrompt,
+        memoryContext: [],
+        summary: 'Medical activity clearance evaluation.',
+        history: ai.messages.slice(-10),
+      });
+
+      const assistantMsg = { role: 'assistant' as const, content: response.publicText, timestamp: new Date().toISOString() };
+      ai.setMessages(prev => [...prev, assistantMsg]);
+
+      // Find the issue_clearance action from the LLM engine's parsed actions
+      const clearanceAction = response.actions.find(a => a.type === 'issue_clearance');
+      if (clearanceAction) {
+        try {
+          await ActionHub.execute('soma', 'issue_clearance', {
+            userId: user?.uid,
+            isGuest: !user?.uid,
+            moduleId: 'soma',
+            payload: clearanceAction.payload,
+            encryptionKey,
+            emitSpineEvent: (type: SpineEventType, data: Record<string, unknown>) => {
+              Spine.emit({ type, source: 'soma', domain: 'B', data, cascadeDepth: 0, priority: 'info' });
+            },
+            updateGlobalSoul: async () => {},
+            delegateToModule: () => {},
+            pushAssistantMessage: (msg: string) => {
+              ai.setMessages(prev => [...prev, { role: 'assistant' as const, content: msg, timestamp: new Date().toISOString() }]);
+            },
+          });
+        } catch (err) {
+          console.error('[SomaPage] Failed to execute issue_clearance directly:', err);
+        }
+      }
+    } catch (err) {
+      console.error('[SomaPage] Clearance evaluation failed:', err);
+      ai.setMessages(prev => [...prev, {
+        role: 'assistant' as const,
+        content: 'Medical clearance evaluation failed. Please try again or ask Soma directly in the chat.',
+        timestamp: new Date().toISOString(),
+      }]);
+    }
+  }, [user?.uid, encryptionKey, sendMessage, systemPrompt, ai, setChatCollapsed]);
+
   // Show onboarding if profile not set up — must be after all hooks
   if (user?.uid && encryptionKey && !profile?.medicalOnboardingComplete) {
     return (
@@ -238,6 +296,8 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
       authMode="soma"
       placeholder="Ask about biomarkers, labs, or recovery..."
       onUploadDocuments={handleChatDocumentUploads}
+      isChatCollapsed={chatCollapsed}
+      onToggleChat={(collapsed) => setChatCollapsed(collapsed)}
     >
       <div className="h-full overflow-y-auto no-scrollbar pb-20">
         <div className="flex items-center justify-end px-4 pt-3 pb-1">
@@ -258,6 +318,7 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
           onAddAssessment={handleAddAssessment}
           queuedUpload={queuedUpload}
           onQueuedUploadHandled={() => setQueuedUpload(null)}
+          onAnalyze={handleClearanceRequest}
         />
       </div>
     </SingleAgentLayout>

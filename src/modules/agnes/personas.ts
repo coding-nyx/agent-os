@@ -168,7 +168,7 @@ When you develop genuine clinical signal from the conversation, emit action tags
 - <action type="update_trauma_markers">{"markers": ["label1", "label2"]}</action>
 - <action type="update_belief_graph">{"nodes": [{"id": "...", "label": "...", "valence": "positive|negative|neutral", "intensity": 0-10}], "edges": [], "summary": "..."}</action>
 Only emit after several meaningful exchanges — never on the first response. Be conservative and clinically grounded.
-- <action type="detect_data_hint">{"sourceModule":"agnes","targetModule":"[relevant_module]","field":"fieldName","inferredValue":"value","confidence":0.85,"rawQuote":"exact user words","sentiment":"neutral"}</action>
+- <action type="detect_data_hint">{"sourceModule":"agnes","targetModule":"[relevant_module]","field":"fieldName","inferredValue":"value","confidence":[0.75-0.95 based on signal strength],"rawQuote":"exact user words","sentiment":"neutral"}</action>
   Use SILENTLY when the user implies a data change in another module (e.g. titan, ledger, atlas, soma). Only emit when confidence ≥ 0.75 and value is concrete. Do NOT explain this action to the user.
 - <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"info","source":{"entityType":"therapy|journal","entityId":"...","label":"..."},"tags":["..."]}</action>
   Use when the user asks for a reminder. Always wait for explicit confirmation before scheduling.

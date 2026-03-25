@@ -307,4 +307,64 @@ export const workoutHandlers: Record<string, ActionHandler> = {
     }
   },
 
+  // ── suggest_progression ────────────────────────────────────────────────────
+  // Emitted by the AI to surface per-exercise overload recommendations.
+  // Does NOT mutate any stored data — purely pushes an advisory message.
+  suggest_progression: async ({ payload, pushAssistantMessage }) => {
+    if (!pushAssistantMessage) return;
+    const exercises = Array.isArray(payload?.exercises) ? payload.exercises as string[] : [];
+    const strategy = typeof payload?.strategy === 'string' ? payload.strategy : 'double_progression';
+    const message = typeof payload?.message === 'string' ? payload.message : '';
+
+    const strategyLabel: Record<string, string> = {
+      linear: '📈 Linear Progression',
+      double_progression: '🔁 Double Progression',
+      deload: '🔽 Deload Week',
+    };
+
+    const lines: string[] = [
+      `**${strategyLabel[strategy] ?? 'Progression Plan'}**`,
+      ...(message ? [message] : []),
+      ...(exercises.length > 0 ? [`Exercises: ${exercises.join(', ')}`] : []),
+    ];
+
+    if (strategy === 'linear') {
+      lines.push('Add **2.5 kg** to each barbell lift each session. Reset to 3×5 if you miss a rep.');
+    } else if (strategy === 'double_progression') {
+      lines.push('Work up to the **top of your rep range** across all sets, then add weight and restart at the bottom of the range.');
+    } else if (strategy === 'deload') {
+      lines.push('Reduce weight by **40–50%** and volume by **40%** for the next 7 days to allow full recovery.');
+    }
+
+    pushAssistantMessage(lines.join('\n\n'));
+  },
+
+  // ── apply_program_template ─────────────────────────────────────────────────
+  // Emitted by the AI to apply a complete workout program.
+  // The actual routine merge happens client-side via the ProgramTemplateSelector UI;
+  // this handler pushes a confirmatory message and a prompt to open the Programs tab.
+  apply_program_template: async ({ payload, pushAssistantMessage }) => {
+    if (!pushAssistantMessage) return;
+    const programId = typeof payload?.programId === 'string' ? payload.programId : '';
+    const message = typeof payload?.message === 'string' ? payload.message : '';
+
+    const programLabels: Record<string, string> = {
+      ppl: 'Push Pull Legs (PPL)',
+      '531': '5/3/1',
+      starting_strength: 'Starting Strength',
+      upper_lower: 'Upper/Lower Split',
+      phul: 'PHUL',
+      full_body_3x: 'Full Body 3×/week',
+    };
+
+    const label = programLabels[programId] ?? programId;
+    const lines = [
+      `**Program Selected: ${label}**`,
+      ...(message ? [message] : []),
+      '👉 Head to the **Plan** tab → **Quick-Start Programs** and click **Apply** to load all routines.',
+    ];
+
+    pushAssistantMessage(lines.join('\n\n'));
+  },
+
 };

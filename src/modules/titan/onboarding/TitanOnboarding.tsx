@@ -220,7 +220,7 @@ export function TitanOnboarding({ onComplete, onGlobalBaseContextFinalize, initi
       onboardingComplete: true, privacyLevel: 'basic', trackingLevel: 'standard',
       nutrition: { supplements },
       activity: { workoutsPerWeek: daysPerWeek, ...(equipment.length > 0 ? { equipment } : {}), ...(weightKg != null ? { baselineWeight: weightKg } : {}), ...(heightCm != null ? { baselineHeight: heightCm } : {}) },
-      history: { goals: [goal], pastTraining: experience, ...(injuries.length > 0 ? { injuries } : {}) },
+      history: { goals: [goal], pastTraining: experience, ...(injuries.length > 0 ? { legacyInjuryStrings: injuries } : {}) },
       summary: `Express onboarding: ${goal}, ${experience}, ${daysPerWeek}d/wk.`,
       routines: [], ...(firstBodyWeightEntry ? { bodyWeightLog: [firstBodyWeightEntry] } : {}),
       createdAt: now, updatedAt: now,

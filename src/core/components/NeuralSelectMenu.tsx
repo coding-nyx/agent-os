@@ -22,6 +22,12 @@ export interface NeuralSelectMenuProps<T extends string | number = string> {
   ariaLabel?: string;
 }
 
+// Radix UI forbids empty-string values on <Select.Item> because '' is reserved
+// for clearing the selection. We map '' ↔ this sentinel internally.
+const EMPTY_SENTINEL = '__NEURAL_SELECT_NONE__';
+const toRadix = (v: string) => (v === '' ? EMPTY_SENTINEL : v);
+const fromRadix = (v: string) => (v === EMPTY_SENTINEL ? '' : v);
+
 export function NeuralSelectMenu<T extends string | number = string>({
   value,
   options,
@@ -37,10 +43,11 @@ export function NeuralSelectMenu<T extends string | number = string>({
 }: NeuralSelectMenuProps<T>) {
   return (
     <Select.Root
-      value={String(value)}
+      value={toRadix(String(value))}
       onValueChange={(next) => {
-        const match = options.find((option) => String(option.value) === next);
-        onChange((match ? match.value : (next as T)) as T);
+        const actual = fromRadix(next);
+        const match = options.find((option) => String(option.value) === actual);
+        onChange((match ? match.value : (actual as T)) as T);
       }}
       disabled={disabled}
     >
@@ -77,7 +84,7 @@ export function NeuralSelectMenu<T extends string | number = string>({
             {options.map((option) => (
               <Select.Item
                 key={String(option.value)}
-                value={String(option.value)}
+                value={toRadix(String(option.value))}
                 className={cn(
                   'relative flex items-center gap-2 px-4 py-2.5 rounded-xl',
                   'text-[11px] text-white/80 cursor-pointer font-semibold',

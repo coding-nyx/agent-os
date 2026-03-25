@@ -132,12 +132,14 @@ export const ATLAS_ALLOWED_ACTIONS: Record<AtlasContextMode['kind'], string[]> =
     'set_task_recurrence',
     // Goal management
     'create_goal', 'update_goal', 'update_goal_progress', 'set_deadline', 'delete_goal',
+    // Project management
+    'create_project', 'update_project', 'delete_project',
     // Habit management
     'create_habit', 'update_habit', 'update_habit_streak', 'pause_habit', 'delete_habit',
     // Schedule management
     'daily_plan', 'weekly_review', 'schedule_block', 'generate_daily_schedule', 'suggest_daily_plan',
     // Energy & recovery
-    'update_energy_wave', 'create_recovery_window', 'flatten_schedule',
+    'update_energy_wave', 'create_recovery_window', 'update_recovery_window', 'delete_recovery_window', 'flatten_schedule',
     // NSV sync (Atlas-owned fields only)
     'sync_vitals', 'request_nsv_calibration',
     // Cross-module delegation
@@ -538,9 +540,9 @@ HABIT RULES:
 ALLOWED ACTIONS:
 - <action type="update_habit_streak">{"id":"habit_id","currentStreak":N,"lastCompleted":"ISO8601"}</action>
 - <action type="pause_habit">{"id":"habit_id","reason":"...","resumeDate":"ISO8601"}</action>
-- <action type="create_habit">{"title":"...","frequency":"daily","targetStreak":21,"energyCost":2,"minimumViableVersion":"..."}</action>
+- <action type="create_habit">{"title":"...","frequency":"[daily|weekly|custom]","targetStreak":[derive from user context],"energyCost":[0-10 based on user capacity],"minimumViableVersion":"..."}</action>
 - <action type="update_habit">{"id":"habit_id",...changes}</action>
-- <action type="propose_reminder">{"title":"Habit check-in: ...","note":"...","dueAt":"ISO8601","recurrence":{"kind":"weekly_by_days","daysOfWeek":[1,2,3,4,5],"timeOfDay":"08:00"},"priority":"info","source":{"entityType":"habit","entityId":"habit_id","label":"..."}}</action>
+- <action type="propose_reminder">{"title":"Habit check-in: ...","note":"...","dueAt":"ISO8601","recurrence":{"kind":"weekly_by_days","daysOfWeek":[user's habit days],"timeOfDay":"[user's preferred time]"},"priority":"info","source":{"entityType":"habit","entityId":"habit_id","label":"..."}}</action>
 - <action type="query_reminders">{"moduleId":"atlas"}</action>
 
 RULES:
@@ -587,7 +589,7 @@ ALLOWED ACTIONS:
 - <action type="create_task">{...task linked to goal via "goalId":"${goal.id}"}</action>
 - <action type="update_goal">{"id":"${goal.id}", ...changes}</action>
 - <action type="create_goal">{...new goal}</action>
-- <action type="propose_reminder">{"title":"Goal check-in: ${goal.title}","note":"...","dueAt":"ISO8601","recurrence":{"kind":"every_n_days","intervalDays":7},"priority":"info","source":{"entityType":"goal","entityId":"${goal.id}","label":"${goal.title}"}}</action>
+- <action type="propose_reminder">{"title":"Goal check-in: ${goal.title}","note":"...","dueAt":"ISO8601","recurrence":{"kind":"every_n_days","intervalDays":[derive from goal timeline]},"priority":"info","source":{"entityType":"goal","entityId":"${goal.id}","label":"${goal.title}"}}</action>
 - <action type="query_reminders">{"moduleId":"atlas"}</action>
 
 RULES:

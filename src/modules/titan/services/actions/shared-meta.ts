@@ -34,4 +34,10 @@ export const titanAllowedActions = [
   'propose_routine',
   'propose_sleep_log',
   'propose_workout_log',
+  // Goal tracking
+  'log_goal',
+  'update_goal',
+  // Scheduling actions
+  'schedule_workout',
+  'update_planned_workout',
 ] as const;

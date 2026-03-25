@@ -32,8 +32,8 @@ export const NeuralInput = React.forwardRef<HTMLInputElement, NeuralInputProps>(
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-[var(--module-accent)] transition-colors">
               {React.isValidElement(icon)
                 ? icon
-                : typeof icon === 'function'
-                  ? React.createElement(icon, { className: 'w-4 h-4' })
+                : typeof icon === 'function' || (typeof icon === 'object' && icon !== null && '$$typeof' in (icon as object))
+                  ? React.createElement(icon as React.ComponentType<{ className?: string }>, { className: 'w-4 h-4' })
                   : icon}
             </div>
           )}

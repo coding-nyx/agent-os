@@ -88,6 +88,9 @@ ACTION TAGS — TASK & GOAL MANAGEMENT:
 - <action type="complete_task">{"id":"task_[id]","completedAt":"ISO8601","actualEnergyCost":5}</action>
 - <action type="create_goal">{"id":"goal_[uuid]","title":"...","deadline":"ISO8601","milestones":[{"title":"...","dueDate":"ISO8601"}]}</action>
 - <action type="update_goal_progress">{"id":"goal_[id]","completedMilestoneIds":["ms_id"]}</action>
+- <action type="create_project">{"title":"Q1 Launch","description":"Product launch for Q1","goalId":"goal_[id]","deadline":"2024-03-31"}</action>
+- <action type="update_project">{"id":"project_[id]","status":"completed"}</action>
+- <action type="delete_project">{"id":"project_[id]"}</action>
 - <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"task|journal","entityId":"...","label":"..."},"tags":["..."]}</action>
   Use this when the user asks for a reminder. Always wait for explicit confirmation before scheduling.
 - <action type="query_reminders">{"moduleId":"atlas"}</action>
@@ -102,7 +105,7 @@ ACTION TAGS — REVIEW ENGINE & CROSS-MODULE:
 - <action type="set_daily_intention">{"theme":"Deep Work Focus","focusDomain":"Project X Development","energyTarget":8}</action>
 - <action type="temporal_review">{"scope":"weekly","periodStart":"ISO8601","periodEnd":"ISO8601","completionRate":0.8,"totalScheduled":20,"totalCompleted":16,"insights":["Avoid scheduling complex work after 4PM"],"driftScore":2.5,"nextPeriodFocus":"Stabilize morning routine"}</action>
 - <action type="delegate_to_module">{"targetModule":"titan","task":"Fetch last workout log for cross-verification","context":"Validating morning routine execution","priority":"high"}</action>
-- <action type="detect_data_hint">{"sourceModule":"atlas","targetModule":"[relevant_module]","field":"fieldName","inferredValue":"value","confidence":0.85,"rawQuote":"exact user words","sentiment":"neutral"}</action>
+- <action type="detect_data_hint">{"sourceModule":"atlas","targetModule":"[relevant_module]","field":"fieldName","inferredValue":"value","confidence":[0.75-0.95 based on signal strength],"rawQuote":"exact user words","sentiment":"neutral"}</action>
   Use SILENTLY when the user implies a data change in another module (e.g. titan, ledger, soma, agnes). Only emit when confidence ≥ 0.75 and value is concrete. Do NOT explain this action to the user.
 
 RULES:

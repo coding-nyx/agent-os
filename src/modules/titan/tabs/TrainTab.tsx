@@ -6,7 +6,7 @@ import { WorkoutSessionLogger } from '../components/WorkoutSessionLogger';
 import { ClearanceWidget } from '../components/ClearanceWidget';
 import TrainingCalendar from '../components/TrainingCalendar';
 import { NeuralButton } from '@/core/components/NeuralButton';
-import type { GlobalProjection, TitanProfile, SomaProfile, Routine, WorkoutSession } from '@/lib/types';
+import type { GlobalProjection, TitanProfile, SomaProfile, Routine, WorkoutSession, PlannedWorkout } from '@/lib/types';
 
 const SECTION_X = 'px-4 sm:px-6 md:px-8';
 
@@ -25,6 +25,7 @@ export interface TrainTabProps {
   onDismissAdvisory: () => void;
   calendarSelectedRoutine: Routine | null;
   onCalendarRoutineSelect: (routine: Routine | null) => void;
+  plannedWorkouts?: PlannedWorkout[];
   onOpenQuickLog: (date: Date, isRecovery: boolean) => void;
   onRemindDate: (isoDate: string) => void;
   onCalibrate: (metricKey: string) => void;
@@ -49,6 +50,7 @@ export function TrainTab({
   onDismissAdvisory,
   calendarSelectedRoutine,
   onCalendarRoutineSelect,
+  plannedWorkouts,
   onOpenQuickLog,
   onRemindDate,
   onCalibrate,
@@ -93,10 +95,13 @@ export function TrainTab({
         <TrainingCalendar
           workoutLogs={profile?.workoutLogs ?? []}
           sessions={profile?.workoutSessions}
+          plannedWorkouts={plannedWorkouts}
+          routines={profile?.routines ?? []}
           onQuickLog={(isoDate) => {
             onOpenQuickLog(new Date(`${isoDate}T12:00:00`), isRecoveryActive);
           }}
           onRemind={(isoDate) => onRemindDate(isoDate)}
+          onStartPlannedSession={(routine) => onCalendarRoutineSelect(routine)}
         />
       </section>
 

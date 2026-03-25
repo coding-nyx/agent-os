@@ -1,21 +1,31 @@
-import React, { useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, Lock, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
-import type { TitanProfile, GlobalProjection } from '@/lib/types';
+import React, { useMemo, useState } from 'react';
+import { AlertTriangle, CheckCircle2, Circle, Clock, Loader2, Lock, RefreshCw, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
+import type { GlobalProjection } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
+import { NeuralButton } from '@/core/components/NeuralButton';
 
 // ---------------------------------------------------------------------------
 // ClearancePanel — Recovery tab for the merged Titan dashboard
 // Shows recovery score, hormonal context, clearance status & history.
 // ---------------------------------------------------------------------------
 
+type ClearanceProfileShape = {
+  medicalOnboardingComplete?: boolean;
+  biomarkers?: readonly { id?: string }[] | { id?: string }[];
+  vitalReadings?: readonly unknown[] | unknown[];
+  knownConditions?: readonly string[] | string[];
+  clearances?: Array<{ id: string; status: string; issuedAt: string; activity?: string; notes?: string; reason?: string }>;
+} | null;
+
 interface ClearancePanelProps {
-  profile: TitanProfile | null;
+  profile: ClearanceProfileShape;
   soul: GlobalProjection | null;
   isLocked?: boolean;
+  onAnalyze?: (prompt: string) => Promise<void> | void;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,10 +85,147 @@ const STATUS_CONFIG: Record<string, { icon: React.ComponentType<{ className?: st
 };
 
 // ---------------------------------------------------------------------------
+// ClearanceChecklist — shown when no clearance record exists
+// ---------------------------------------------------------------------------
+
+const CLEARANCE_PROMPT =
+  'Please review my complete medical profile — conditions, medications, biomarkers, vital readings, and history — ' +
+  'then issue an activity clearance decision for "high_intensity" training using the issue_clearance action. ' +
+  'Base your decision on available data. If I have no known conditions, confirm that and issue clearance accordingly.';
+
+function ClearanceChecklist({
+  profile,
+  onAnalyze,
+}: {
+  profile: ClearanceProfileShape;
+  onAnalyze?: (prompt: string) => Promise<void> | void;
+}) {
+  const [noConditionsConfirmed, setNoConditionsConfirmed] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
+
+  const hasVitals = (profile?.vitalReadings?.length ?? 0) > 0 || (profile?.biomarkers?.length ?? 0) > 0;
+  const hasConditions = (profile?.knownConditions?.length ?? 0) > 0;
+
+  const steps = [
+    {
+      label: 'Complete medical intake',
+      done: !!profile?.medicalOnboardingComplete,
+      hint: 'Answer the health history questions in your Soma profile.',
+      action: null,
+    },
+    {
+      label: 'Log at least one vital or biomarker',
+      done: hasVitals,
+      hint: 'Go to Vitals and log blood pressure, resting HR, weight, or any biomarker.',
+      action: null,
+    },
+    {
+      label: 'Declare conditions (or confirm none)',
+      done: hasConditions || noConditionsConfirmed,
+      hint: 'Tell Soma about any medical conditions, injuries, or medications.',
+      action: !hasConditions && !noConditionsConfirmed ? (
+        <button
+          className="text-[10px] text-[var(--module-color-400)] hover:text-[var(--module-color-300)] underline underline-offset-2 mt-1"
+          onClick={() => setNoConditionsConfirmed(true)}
+        >
+          I have no known conditions →
+        </button>
+      ) : null,
+    },
+  ];
+
+  const completedCount = steps.filter(s => s.done).length;
+  const allDone = completedCount === steps.length;
+
+  const handleRequest = async () => {
+    if (!onAnalyze) return;
+    setIsRequesting(true);
+    try {
+      await onAnalyze(CLEARANCE_PROMPT);
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
+  if (isRequesting) {
+    return (
+      <SurfaceCard className="p-6 space-y-3">
+        <div className="flex items-center gap-3">
+          <Loader2 className="w-5 h-5 text-[var(--module-color-400)] animate-spin shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-white/80">Soma AI is evaluating your profile…</p>
+            <p className="text-[11px] text-white/40 mt-0.5 leading-relaxed">
+              Review the AI chat panel to see the evaluation and result.
+            </p>
+          </div>
+        </div>
+        <button
+          className="text-[11px] text-white/30 hover:text-white/50 underline underline-offset-2"
+          onClick={() => setIsRequesting(false)}
+        >
+          Cancel
+        </button>
+      </SurfaceCard>
+    );
+  }
+
+  return (
+    <SurfaceCard className="p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-bold text-white/80 uppercase tracking-wider">Get Cleared for Training</p>
+          <p className="text-[11px] text-white/40 mt-0.5">{completedCount} of {steps.length} steps complete</p>
+        </div>
+        <ShieldCheck className="w-7 h-7 text-white/10" />
+      </div>
+
+      <div className="space-y-3">
+        {steps.map((step, i) => (
+          <div key={i} className={cn(
+            'flex items-start gap-3 p-3 rounded-xl border transition-colors',
+            step.done
+              ? 'bg-[var(--module-accent-faint,rgba(255,255,255,0.04))] border-[var(--module-accent-border)]'
+              : 'bg-white/[0.02] border-white/5',
+          )}>
+            {step.done
+              ? <CheckCircle2 className="w-4 h-4 text-[var(--module-color-400)] mt-0.5 shrink-0" />
+              : <Circle className="w-4 h-4 text-white/20 mt-0.5 shrink-0" />
+            }
+            <div className="min-w-0">
+              <p className={cn('text-[12px] font-semibold', step.done ? 'text-white/80' : 'text-white/50')}>
+                {step.label}
+              </p>
+              {!step.done && (
+                <>
+                  <p className="text-[10px] text-white/30 mt-0.5 leading-relaxed">{step.hint}</p>
+                  {step.action}
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {onAnalyze && (
+        <NeuralButton
+          onClick={handleRequest}
+          disabled={!allDone}
+          className="w-full"
+          title={!allDone ? `Complete all ${steps.length} steps first` : undefined}
+        >
+          <ShieldCheck className="w-4 h-4 mr-2" />
+          {allDone ? 'Request Clearance from Soma AI' : `${steps.length - completedCount} step${steps.length - completedCount !== 1 ? 's' : ''} remaining`}
+        </NeuralButton>
+      )}
+    </SurfaceCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePanelProps) {
+export function ClearancePanel({ profile, soul, isLocked = false, onAnalyze }: ClearancePanelProps) {
   const bio = soul?.crossFunctionalState.biological;
   const recoveryScore = bio?.recoveryScore ?? null;
   const hormonalContext = bio?.hormonalContext ?? null;
@@ -173,13 +320,7 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
           Current Clearance
         </h4>
         {!latestClearance ? (
-          <EmptyState
-            size="sm"
-            icon={ShieldCheck}
-            title="No clearance records"
-            description="Clearance decisions will appear here after Titan evaluates activity readiness."
-            className="bg-transparent border-white/10"
-          />
+          <ClearanceChecklist profile={profile} onAnalyze={onAnalyze} />
         ) : (() => {
           const cfg = STATUS_CONFIG[latestClearance.status] ?? STATUS_CONFIG.denied;
           const StatusIcon = cfg.icon;
@@ -220,6 +361,23 @@ export function ClearancePanel({ profile, soul, isLocked = false }: ClearancePan
                   <span className="text-[10px] text-white/30">{formatRelativeTime(latestClearance.issuedAt)}</span>
                 </div>
               </div>
+              {onAnalyze && (latestClearance.status === 'denied' || latestClearance.status === 'conditional') && (
+                <div className="mt-4 pt-4 border-t border-white/5">
+                  <NeuralButton
+                    onClick={() => onAnalyze(
+                      `My previous ${latestClearance.activity} clearance was "${latestClearance.status}"` +
+                      (latestClearance.reason ? ` with reason: "${latestClearance.reason}".` : '.') +
+                      ' Please re-evaluate my current medical profile and biomarkers and issue an updated clearance decision using the issue_clearance action.'
+                    )}
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 mr-2" />
+                    Request Re-evaluation
+                  </NeuralButton>
+                </div>
+              )}
             </SurfaceCard>
           );
         })()}

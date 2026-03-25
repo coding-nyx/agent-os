@@ -274,7 +274,7 @@ function AiBubble({
           className={cn(
             'border backdrop-blur-3xl transition-all min-w-0 overflow-hidden',
             isAgnes
-              ? 'p-5 sm:p-6 bg-gradient-to-br from-white/[0.04] to-indigo-500/[0.03] border-indigo-400/10 rounded-2xl rounded-tl-sm shadow-xl shadow-indigo-500/10'
+              ? 'p-5 sm:p-6 bg-gradient-to-br from-indigo-950/50 to-indigo-900/30 border-indigo-400/20 rounded-2xl rounded-tl-sm shadow-xl shadow-indigo-500/15'
               : cn('p-3.5 sm:p-5', theme.bubble, theme.glow),
           )}
         >
@@ -366,7 +366,7 @@ function UserBubble({ content, theme, isAgnes, timestamp }: UserBubbleProps) {
           className={cn(
             'border backdrop-blur-3xl transition-all min-w-0 overflow-hidden',
             isAgnes
-              ? 'p-3 sm:p-4 md:p-5 bg-gradient-to-br from-indigo-500/[0.12] to-violet-500/[0.08] border-indigo-400/20 rounded-2xl rounded-tr-sm shadow-lg shadow-indigo-500/10'
+              ? 'p-3 sm:p-4 md:p-5 bg-gradient-to-br from-slate-800/70 to-slate-700/50 border-slate-600/30 rounded-2xl rounded-tr-sm shadow-lg shadow-black/20 border-r-2 border-r-slate-500/40'
               : cn('p-3 sm:p-3.5 md:p-5', theme.userBubble, theme.glow),
           )}
         >

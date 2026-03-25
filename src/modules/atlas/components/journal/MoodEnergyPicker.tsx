@@ -1,9 +1,11 @@
 /**
- * MoodEnergyPicker — Compact merged mood + energy level selector.
+ * MoodEnergyPicker — Single-row compact vibe check widget.
  *
- * Replaces two separate tall pill-button rows with a single compact widget:
- *  - Top row: 5 emoji mood buttons
- *  - Bottom row: 5 clickable energy segments (filled/empty bar)
+ * Layout (one row, mobile-first, min 320 px):
+ *   [😔][😕][😐][🙂][😊]  │  [⚡][▪][▪][▪][▪][▪]
+ *
+ * Both button groups share the available width via flex-1 so the row
+ * never overflows — even on 320 px screens.
  */
 
 import React from 'react';
@@ -18,6 +20,14 @@ const MOOD_OPTIONS = [
   { value: 4, emoji: '🙂', label: 'Good' },
   { value: 5, emoji: '😊', label: 'Great' },
 ] as const;
+
+const ENERGY_LABELS: Record<number, string> = {
+  1: 'Drained',
+  2: 'Low',
+  3: 'Moderate',
+  4: 'High',
+  5: 'Peak',
+};
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -36,110 +46,80 @@ export function MoodEnergyPicker({
   onMoodChange,
   onEnergyChange,
 }: MoodEnergyPickerProps) {
-  const selectedMood = MOOD_OPTIONS.find((m) => m.value === mood) ?? MOOD_OPTIONS[2];
-
   return (
     <div
-      className="rounded-xl border border-white/10 bg-black/30 p-3 space-y-3"
+      className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-black/30 px-2.5 py-2 min-w-0 overflow-hidden"
       role="group"
       aria-label="Mood and energy selector"
     >
-      {/* ── Mood row ─────────────────────────────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest font-display">
-            Mood
-          </p>
-          <p className="text-[11px] text-white/50 font-medium">
-            {selectedMood.label}
-          </p>
-        </div>
-
-        <div
-          className="flex gap-1.5"
-          role="radiogroup"
-          aria-label="Mood selection"
-        >
-          {MOOD_OPTIONS.map(({ value, emoji, label }) => {
-            const isSelected = mood === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={isSelected}
-                aria-label={label}
-                onClick={() => onMoodChange(value)}
-                className={cn(
-                  'flex-1 flex items-center justify-center h-10 rounded-lg text-lg transition-all duration-150',
-                  isSelected
-                    ? 'bg-violet-500/20 border border-violet-500/40 scale-105 shadow-sm'
-                    : 'bg-white/5 border border-white/8 hover:bg-white/10 hover:scale-105',
-                )}
-              >
-                <span role="img" aria-label={label}>
-                  {emoji}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+      {/* ── Mood buttons (flex-1 — grows to fill half the row) ───────────── */}
+      <div
+        className="flex gap-0.5 flex-1 min-w-0"
+        role="radiogroup"
+        aria-label="Mood selection"
+      >
+        {MOOD_OPTIONS.map(({ value, emoji, label }) => {
+          const isSelected = mood === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              aria-label={`Mood: ${label}`}
+              onClick={() => onMoodChange(value)}
+              className={cn(
+                'flex-1 min-w-0 flex items-center justify-center h-9 rounded-lg text-base transition-all duration-150 touch-manipulation',
+                isSelected
+                  ? 'bg-violet-500/20 border border-violet-500/40 scale-110'
+                  : 'bg-white/5 border border-transparent hover:bg-white/10 hover:scale-105',
+              )}
+            >
+              <span role="img" aria-hidden>{emoji}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* ── Divider ──────────────────────────────────────────────────────── */}
-      <div className="border-t border-white/6" aria-hidden />
+      {/* ── Vertical divider ─────────────────────────────────────────────── */}
+      <div className="w-px self-stretch bg-white/10 shrink-0" aria-hidden />
 
-      {/* ── Energy row ───────────────────────────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest font-display">
-            ⚡ Energy
-          </p>
-          <p className="text-[11px] text-white/40">
-            {energyLevel === 1
-              ? 'Drained'
-              : energyLevel === 2
-                ? 'Low'
-                : energyLevel === 3
-                  ? 'Moderate'
-                  : energyLevel === 4
-                    ? 'High'
-                    : 'Peak'}
-          </p>
-        </div>
+      {/* ── Lightning label ───────────────────────────────────────────────── */}
+      <span
+        className="shrink-0 text-sm leading-none select-none"
+        aria-hidden
+        title={`Energy: ${ENERGY_LABELS[energyLevel]}`}
+      >
+        ⚡
+      </span>
 
-        <div
-          className="flex gap-1.5"
-          role="radiogroup"
-          aria-label="Energy level selection"
-        >
-          {[1, 2, 3, 4, 5].map((val) => {
-            const isFilled = val <= energyLevel;
-            const isSelected = val === energyLevel;
-            return (
-              <button
-                key={val}
-                type="button"
-                role="radio"
-                aria-checked={isSelected}
-                aria-label={`Energy level ${val}`}
-                onClick={() => onEnergyChange(val)}
-                className={cn(
-                  'flex-1 h-7 rounded-md transition-all duration-150 border',
-                  isFilled
-                    ? 'bg-emerald-500/30 border-emerald-500/40 hover:bg-emerald-500/40'
-                    : 'bg-white/5 border-white/8 hover:bg-white/10',
-                  isSelected && 'ring-1 ring-emerald-400/40 scale-y-110',
-                )}
-              />
-            );
-          })}
-        </div>
-
-        <div className="flex justify-between mt-1 px-0.5">
-          <span className="text-[9px] text-white/20 uppercase tracking-wider">Low</span>
-          <span className="text-[9px] text-white/20 uppercase tracking-wider">High</span>
-        </div>
+      {/* ── Energy bars (flex-1 — grows to fill other half) ──────────────── */}
+      <div
+        className="flex gap-0.5 flex-1 min-w-0"
+        role="radiogroup"
+        aria-label={`Energy level — ${ENERGY_LABELS[energyLevel] ?? ''}`}
+      >
+        {[1, 2, 3, 4, 5].map((val) => {
+          const isFilled = val <= energyLevel;
+          const isSelected = val === energyLevel;
+          return (
+            <button
+              key={val}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              aria-label={`Energy: ${ENERGY_LABELS[val] ?? val}`}
+              onClick={() => onEnergyChange(val)}
+              className={cn(
+                'flex-1 min-w-0 h-6 rounded-md transition-all duration-150 border touch-manipulation',
+                isFilled
+                  ? 'bg-emerald-500/30 border-emerald-500/40 hover:bg-emerald-500/40'
+                  : 'bg-white/5 border-white/8 hover:bg-white/10',
+                isSelected && 'ring-1 ring-emerald-400/50 scale-y-110',
+              )}
+            />
+          );
+        })}
       </div>
     </div>
   );
