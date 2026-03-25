@@ -22,6 +22,22 @@ interface BuildActionPlanAnalysis {
 
 const ACTION_PLAN_START_MARKER = '[NEXUS_ACTION_PLAN]';
 const ACTION_PLAN_END_MARKER = '[/NEXUS_ACTION_PLAN]';
+
+/**
+ * Intent types where Scout's knowledge base can meaningfully enrich the response.
+ * When any of these intents appear, Scout is added as a supporting module.
+ */
+const KNOWLEDGE_ADJACENT_INTENTS = new Set([
+  'create_workout_plan',
+  'create_medical_review',
+  'create_financial_plan_request',
+  'create_research_request',
+  'create_general_request',
+  'fitness',
+  'medical',
+  'research',
+]);
+
 const DRAFT_ACTION_TYPES = new Set([
   'create_emotional_support_session',
   'create_workout_plan',
@@ -153,11 +169,23 @@ function resolveIntentModules(intent: ParsedCommandIntent): {
     providers[0]?.moduleId ??
     intent.candidateModules[0] ??
     'nexus';
-  const supportingModuleIds = dedupeModules([
+
+  const baseSupportingModuleIds = dedupeModules([
     ...providers.slice(1).map((provider) => provider.moduleId).filter((moduleId): moduleId is ModuleId => moduleId !== 'nexus'),
     ...intent.candidateModules.filter((moduleId) => moduleId !== targetModuleId),
   ]);
-  const temporalSummary = summarizeTemporal(intent);
+
+  // Add Scout as a supporting module for knowledge-adjacent intents when it
+  // isn't already the primary target. Scout enriches answers with its KB + web.
+  const shouldEnrichWithScout =
+    KNOWLEDGE_ADJACENT_INTENTS.has(intent.intentType) &&
+    targetModuleId !== 'scout' &&
+    !baseSupportingModuleIds.includes('scout');
+
+  const supportingModuleIds = shouldEnrichWithScout
+    ? dedupeModules([...baseSupportingModuleIds, 'scout'])
+    : baseSupportingModuleIds;
+
   return { targetModuleId, supportingModuleIds };
 }
 

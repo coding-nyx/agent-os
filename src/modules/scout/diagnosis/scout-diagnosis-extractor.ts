@@ -1,8 +1,11 @@
 import type { ExtractedDataBag, ExtractedDataItem } from '@/core/diagnosis/types';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 /**
  * Maps Scout AI action payloads → ExtractedDataItems.
- * Scout is read-only — items are for display/export only, never merged.
+ * Scout is read-only for profiles — items are for display/export — but
+ * `extract_finding` payloads also fire a Spine event so the Scout projection
+ * listener can queue them as pending knowledge nodes.
  */
 export function extractScoutData(
   actionType: string,
@@ -23,6 +26,26 @@ export function extractScoutData(
         source: 'diagnosis',
         extractedAt: now,
       };
+
+      // Publish so scout-projection-listener can queue this as a pending KB node
+      Spine.publish({
+        type: 'KNOWLEDGE_SYNTHESIZED',
+        source: 'scout',
+        domain: 'C',
+        priority: 'info',
+        data: {
+          node: {
+            id: item.id,
+            claim: finding,
+            confidence: confidence === 'high' ? 0.8 : confidence === 'medium' ? 0.6 : 0.4,
+            evidence: [],
+            status: 'pending',
+            updatedAt: now,
+            provenance: { source: 'scout', sourceEntityId: item.id, sourceIds: [], synthesizedAt: now },
+          },
+        },
+      });
+
       return { ...current, items: [...current.items, item] };
     }
 

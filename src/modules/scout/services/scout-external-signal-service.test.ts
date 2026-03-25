@@ -110,20 +110,19 @@ describe('ScoutExternalSignalService', () => {
     });
   });
 
-  it('honors the scout external signal loop feature flag', async () => {
-    AutonomyFeatureFlags.setTestOverrides({ scoutExternalSignalLoop: false });
+  it('does not sync pending nodes with confidence below 0.6', async () => {
     const dataLayer = new InMemoryDataLayer();
 
     const changed = await ScoutExternalSignalService.syncKnowledgeNode(dataLayer, 'user-1', {
-      id: 'node-1',
-      claim: 'A fact that should not sync.',
-      confidence: 0.9,
+      id: 'node-low',
+      claim: 'A low-confidence fact that should not sync.',
+      confidence: 0.4,
       evidence: [],
-      status: 'verified',
+      status: 'pending',
       updatedAt: '2026-03-24T12:00:00.000Z',
     });
 
     expect(changed).toBe(false);
-    expect(await dataLayer.getDocument('semantic_memory/user-1/facts', 'scout-knowledge:node-1')).toBeNull();
+    expect(await dataLayer.getDocument('semantic_memory/user-1/facts', 'scout-knowledge:node-low')).toBeNull();
   });
 });

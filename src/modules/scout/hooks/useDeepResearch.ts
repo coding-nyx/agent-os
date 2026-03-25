@@ -16,6 +16,7 @@ import { useAI } from '@/llm-engine/ai-context';
 import { WebCrawlerService as WebSearchService, type WebCrawlerResponse as WebSearchResponse } from '@/lib/services/web-crawler-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { ScoutKnowledgeNode } from '../services/scout-knowledge-service';
+import { queryKnowledgeNodes } from '../services/scout-knowledge-service';
 import type { AddSourceInput } from '../services/scout-sources-service';
 
 // ---------------------------------------------------------------------------
@@ -118,6 +119,8 @@ If the finding is solid, return an empty array.
 Respond with a JSON array: [{"id":"r1","question":"...","rationale":"..."}]`;
 
 export function useDeepResearch({
+  userId,
+  encryptionKey,
   onComplete,
   onProgress,
 }: UseDeepResearchOptions = {}): UseDeepResearchReturn {
@@ -256,16 +259,48 @@ export function useDeepResearch({
       const queries = edited.map((q) => q.question);
       let searchResults: WebSearchResponse[] = [];
 
+      // KB-first: check local knowledge base for each sub-question.
+      // Skip web search for questions already covered with high confidence.
+      const kbCache = new Map<string, WebSearchResponse>();
+      if (userId && encryptionKey) {
+        await Promise.allSettled(
+          edited.map(async (q) => {
+            const kbNodes = await queryKnowledgeNodes(q.question, { userId, encryptionKey }, { limit: 3, threshold: 0.75 });
+            if (kbNodes.length > 0) {
+              kbCache.set(q.question, {
+                query: q.question,
+                results: kbNodes.map(n => ({
+                  title: n.claim.slice(0, 80),
+                  url: n.source ?? `scout://knowledge/${n.id}`,
+                  content: n.claim,
+                  score: n.similarity,
+                })),
+              });
+            }
+          }),
+        );
+      }
+
+      // Only search the web for sub-questions NOT covered by the local KB
+      const questionsNeedingSearch = edited.filter(q => !kbCache.has(q.question));
+      const queriesForSearch = questionsNeedingSearch.map(q => q.question);
+
       try {
         // Use batch search for efficiency
-        searchResults = await WebSearchService.searchBatch(queries, {
+        const webResponses = await WebSearchService.searchBatch(queriesForSearch, {
           maxResults: state.depth === 'deep' ? 8 : 5,
           signal: controller.signal,
         });
+        // Merge KB hits and web results back into the full ordered array
+        searchResults = edited.map(q =>
+          kbCache.get(q.question) ?? webResponses[questionsNeedingSearch.findIndex(sq => sq.question === q.question)] ?? { query: q.question, results: [] }
+        );
       } catch (err) {
         if ((err as DOMException)?.name === 'AbortError') return;
-        // Fall back to empty results array — synthesis can still run with partial data
-        searchResults = queries.map((q) => ({ query: q, results: [] }));
+        // Fall back to empty results for any failed searches
+        searchResults = edited.map(q =>
+          kbCache.get(q.question) ?? { query: q.question, results: [] }
+        );
       }
 
       if (controller.signal.aborted) return;

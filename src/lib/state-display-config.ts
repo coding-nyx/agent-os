@@ -198,6 +198,9 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   ATLAS_TASK_CREATED: 'Task created',
   ATLAS_TASK_BLOCKED: 'Task blocked',
   ATLAS_TASK_UNBLOCKED: 'Task unblocked',
+  ATLAS_ROUTINE_CONFLICT: 'Routine conflict detected',
+  ATLAS_ADAPTIVE_SUGGESTION: 'Adaptive suggestion generated',
+  ATLAS_RESCHEDULE_SUGGESTED: 'Reschedule suggested',
   ATLAS_HABIT_MILESTONE: 'Habit milestone',
   MORNING_BRIEF: 'Morning brief',
   GOAL_MISSING_PROGRESS: 'Goal stalled',
@@ -232,11 +235,18 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   SOMATIC_SESSION_COMPLETE: 'Somatic session complete',
   KNOWLEDGE_SYNTHESIZED: 'New research insight synthesized',
   SCOUT_PROFILE_UPDATED: 'Research profile updated',
+  SCOUT_KNOWLEDGE_ENRICHED: 'Knowledge base enriched',
+  SCOUT_QUERY_RESULT_READY: 'Scout query result ready',
+  SCOUT_CROSS_MODULE_QUERY: 'Cross-module knowledge query dispatched',
   HABIT_SUGGESTED: 'New habit suggested by Scout',
   RESEARCH_SEARCHING: 'Web research in progress',
   RESEARCH_RESULTS: 'Research results gathered',
   LEDGER_FIELD_SUGGESTION: 'New tracking suggestion',
   FINANCIAL_STREAK_MILESTONE: 'Financial discipline milestone',
+  BURNOUT_TRAJECTORY_WARNING: 'Burnout trajectory detected',
+  ATLAS_NSV_SYNC_DISCREPANCY: 'NSV sync discrepancy detected',
+  ATLAS_DELEGATE_RESPONSE: 'Atlas delegation response',
+  ATLAS_TASK_UNCOMPLETED: 'Task marked incomplete',
 };
 
 // ---------------------------------------------------------------------------

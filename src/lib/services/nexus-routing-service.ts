@@ -68,11 +68,17 @@ const KEYWORD_ROUTES: Array<{ moduleId: ModuleId; keywords: Array<{ term: string
   {
     moduleId: 'scout',
     keywords: [
+      { term: 'what does research say', weight: 3 }, { term: 'scientific consensus', weight: 3 },
+      { term: 'evidence-based', weight: 3 }, { term: 'studies show', weight: 3 },
       { term: 'topic map', weight: 2 }, { term: 'fact-check', weight: 2 },
+      { term: 'meta-analysis', weight: 2 }, { term: 'peer reviewed', weight: 2 },
+      { term: 'clinical trial', weight: 2 }, { term: 'systematic review', weight: 2 },
       { term: 'scout', weight: 2 }, { term: 'research', weight: 2 }, { term: 'search', weight: 2 },
       { term: 'verify', weight: 1 }, { term: 'evidence', weight: 1 },
       { term: 'sources', weight: 1 }, { term: 'trend', weight: 1 }, { term: 'news', weight: 1 },
-      { term: 'interest', weight: 1 }, { term: 'discover', weight: 1 }
+      { term: 'interest', weight: 1 }, { term: 'discover', weight: 1 },
+      { term: 'literature', weight: 1 }, { term: 'cite', weight: 1 }, { term: 'citation', weight: 1 },
+      { term: 'findings', weight: 1 }, { term: 'study', weight: 1 }
     ]
   },
   {

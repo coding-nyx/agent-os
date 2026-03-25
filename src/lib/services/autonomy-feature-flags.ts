@@ -5,7 +5,8 @@ export type AutonomyFeatureFlag =
   | 'chatActorIdentity'
   | 'reminderOutcomeFeedback'
   | 'routineProposals'
-  | 'scoutExternalSignalLoop';
+  | 'scoutExternalSignalLoop'
+  | 'scoutCrossModuleQuery';
 
 const STORAGE_KEY = 'nexus_autonomy_feature_flags';
 
@@ -17,6 +18,7 @@ const DEFAULT_FLAGS: Record<AutonomyFeatureFlag, boolean> = {
   reminderOutcomeFeedback: true,
   routineProposals: true,
   scoutExternalSignalLoop: true,
+  scoutCrossModuleQuery: true,
 };
 
 let testOverrides: Partial<Record<AutonomyFeatureFlag, boolean>> | null = null;

@@ -280,6 +280,9 @@ export type SpineEventType =
   | 'ATLAS_FIELD_DELETED'
   | 'ATLAS_FIELD_VALUE_UPDATED'
   | 'ATLAS_GOAL_UPDATED'
+  | 'ATLAS_ROUTINE_CONFLICT'
+  | 'ATLAS_ADAPTIVE_SUGGESTION'
+  | 'ATLAS_RESCHEDULE_SUGGESTED'
   | 'DEADLINE_PRESSURE_CHANGED'
   | 'PLANNING_STATE_UPDATED'
   // Ledger Spine Events
@@ -395,6 +398,9 @@ export type SpineEventType =
   | 'SOURCE_ADDED'
   | 'KNOWLEDGE_SYNTHESIZED'
   | 'SCOUT_PROFILE_UPDATED'
+  | 'SCOUT_KNOWLEDGE_ENRICHED'
+  | 'SCOUT_QUERY_RESULT_READY'
+  | 'SCOUT_CROSS_MODULE_QUERY'
   | 'SESSION_STARTED'
   | 'HABIT_SUGGESTED'
   | 'RESEARCH_SEARCHING'
@@ -406,7 +412,14 @@ export type SpineEventType =
   /** Emitted when a user reaches a financial goal milestone. */
   | 'FINANCIAL_STREAK_MILESTONE'
   /** Emitted when high financial friction is detected. */
-  | 'FINANCIAL_STRESS';
+  | 'FINANCIAL_STRESS'
+  // Atlas Predictive Intelligence Events
+  /** Emitted when trajectory analysis detects a high burnout risk across history. */
+  | 'BURNOUT_TRAJECTORY_WARNING'
+  // Atlas NSV sync and delegation response events
+  | 'ATLAS_NSV_SYNC_DISCREPANCY'
+  | 'ATLAS_DELEGATE_RESPONSE'
+  | 'ATLAS_TASK_UNCOMPLETED';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'alert' | 'critical';
@@ -419,6 +432,7 @@ export interface SpineEventPayload {
   data: Record<string, unknown>;
   cascadeDepth?: number;
   priority: SpineEventPriority;
+  idempotencyKey?: string;
 }
 
 export interface SpineEvent {
@@ -431,6 +445,8 @@ export interface SpineEvent {
   timestamp: number;
   cascadeDepth: number;
   priority: SpineEventPriority;
+  sequence: number;
+  idempotencyKey: string;
 }
 
 // --- Soul Write Protocol (S10-002) ---

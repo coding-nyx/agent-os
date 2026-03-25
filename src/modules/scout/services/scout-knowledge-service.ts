@@ -167,6 +167,18 @@ export async function addKnowledgeNode(
   return newNode;
 }
 
+/**
+ * Computes a BM25-inspired keyword score between 0 and 1.
+ * Splits query into tokens and counts how many appear in the claim text.
+ */
+function computeKeywordScore(claim: string, query: string): number {
+  const claimLower = claim.toLowerCase();
+  const tokens = query.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+  if (tokens.length === 0) return 0;
+  const hits = tokens.filter(token => claimLower.includes(token)).length;
+  return hits / tokens.length;
+}
+
 export async function queryKnowledgeNodes(
   query: string,
   { userId, encryptionKey }: LoadContext,
@@ -177,13 +189,17 @@ export async function queryKnowledgeNodes(
   const nodes = await loadKnowledgeNodes({ userId, encryptionKey });
   if (nodes.length === 0) return [];
 
+  const threshold = options.threshold ?? 0.7;
+
   try {
     const queryVector = await EmbeddingService.embed(query);
-    const threshold = options.threshold ?? 0.7;
 
     const results = nodes
       .map(node => {
-        const similarity = node.embedding ? cosineSimilarity(queryVector, node.embedding) : 0;
+        const semanticScore = node.embedding ? cosineSimilarity(queryVector, node.embedding) : 0;
+        const keywordScore = computeKeywordScore(node.claim, query);
+        // Hybrid score: semantic dominates, keyword boosts borderline matches
+        const similarity = 0.7 * semanticScore + 0.3 * keywordScore;
         return { ...node, similarity };
       })
       .filter(node => node.similarity >= threshold)
@@ -191,11 +207,11 @@ export async function queryKnowledgeNodes(
 
     return options.limit ? results.slice(0, options.limit) : results;
   } catch (err) {
-    console.error('[ScoutKnowledgeService] Semantic query failed:', err);
-    // Fallback to simple keyword match
+    console.error('[ScoutKnowledgeService] Semantic query failed, falling back to keyword:', err);
     return nodes
-      .filter(n => n.claim.toLowerCase().includes(query.toLowerCase()))
-      .map(n => ({ ...n, similarity: 0.5 }))
+      .map(n => ({ ...n, similarity: computeKeywordScore(n.claim, query) }))
+      .filter(n => n.similarity > 0)
+      .sort((a, b) => b.similarity - a.similarity)
       .slice(0, options.limit);
   }
 }

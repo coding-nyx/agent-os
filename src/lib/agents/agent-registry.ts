@@ -100,7 +100,7 @@ const DEFAULT_AGENT_PROVIDERS: AgentProviderDescriptor[] = [
     id: 'scout-research',
     moduleId: 'scout',
     title: MODULE_MANIFEST.scout.title,
-    capabilities: ['research'],
+    capabilities: ['research', 'research-enrichment'],
     precedence: 60,
     latencyTier: 'heavy',
   },

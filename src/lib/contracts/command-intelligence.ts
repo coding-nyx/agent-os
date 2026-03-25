@@ -10,6 +10,7 @@ export type CommandCapability =
   | 'medical-review'
   | 'financial-planning'
   | 'research'
+  | 'research-enrichment'
   | 'technical-work'
   | 'general-orchestration';
 

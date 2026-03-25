@@ -1,6 +1,5 @@
 import type { NexusDataLayer } from '@/lib/data-layer';
 import { upsertAliveEntity, adaptScoutDigestToAliveEntity, adaptScoutKnowledgeNodeToAliveEntity } from '@/lib/services/alive-entity-service';
-import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
 import { SemanticMemoryService } from '@/lib/services/semantic-memory-service';
 import type { ScoutDigest, ScoutKnowledgeNode } from '../types';
 
@@ -27,7 +26,11 @@ export const ScoutExternalSignalService = {
     uid: string,
     node: ScoutKnowledgeNode,
   ): Promise<boolean> {
-    if (!uid || !AutonomyFeatureFlags.isEnabled('scoutExternalSignalLoop')) {
+    if (!uid) return false;
+
+    // Only sync verified nodes or those with sufficient confidence to shared semantic memory.
+    // Pending nodes are stored locally in Scout's KB but not pushed cross-module until verified.
+    if (node.status !== 'verified' && normalizeConfidence(node.confidence) < 0.6) {
       return false;
     }
 
@@ -61,9 +64,7 @@ export const ScoutExternalSignalService = {
     uid: string,
     digest: Pick<ScoutDigest, 'id' | 'generatedAt' | 'generationType' | 'summary' | 'topClaims' | 'trendingInterests' | 'synthesizedContent'>,
   ): Promise<boolean> {
-    if (!uid || !AutonomyFeatureFlags.isEnabled('scoutExternalSignalLoop')) {
-      return false;
-    }
+    if (!uid) return false;
 
     await SemanticMemoryService.upsertFact(uid, {
       id: `scout-digest:${digest.id}`,
