@@ -9,6 +9,8 @@ import {
   GoalWeekProgress,
   AtlasTask,
   AtlasReviewBlueprint,
+  EnergyWavePoint,
+  AtlasRoutine,
 } from '../atlas-profile-service';
 import {
   loadProfile,
@@ -16,6 +18,48 @@ import {
   parseBoundedScore,
   overlapsRecoveryWindow
 } from './shared';
+
+// ─── Pure helpers ────────────────────────────────────────────────────────────
+
+function sortBlocksByEnergyMatch(
+  blocks: any[],
+  energyWave: EnergyWavePoint[]
+): any[] {
+  if (energyWave.length === 0) return blocks;
+  const avgEnergy = energyWave.reduce((s, p) => s + p.energy, 0) / energyWave.length;
+  return [...blocks].sort((a, b) => {
+    const aCost = typeof a.energyLevel === 'number' ? a.energyLevel :
+                  typeof a.energyCost === 'number' ? a.energyCost : avgEnergy;
+    const bCost = typeof b.energyLevel === 'number' ? b.energyLevel :
+                  typeof b.energyCost === 'number' ? b.energyCost : avgEnergy;
+    return bCost - aCost; // descending energy cost
+  });
+}
+
+function overlapsRoutineBlock(
+  scheduledAt: string,
+  durationMin: number,
+  routine: AtlasRoutine | undefined
+): { overlaps: boolean; blockTitle?: string } {
+  if (!routine?.isActive || !routine.blocks?.length) return { overlaps: false };
+
+  const startMs = new Date(scheduledAt).getTime();
+  const endMs = startMs + durationMin * 60 * 1000;
+  const dayOfWeek = new Date(scheduledAt).getDay();
+
+  for (const block of routine.blocks) {
+    if (!block.daysOfWeek.includes(dayOfWeek)) continue;
+
+    const datePart = scheduledAt.slice(0, 10);
+    const blockStart = new Date(`${datePart}T${block.startTime}:00`).getTime();
+    const blockEnd = new Date(`${datePart}T${block.endTime}:00`).getTime();
+
+    if (startMs < blockEnd && endMs > blockStart) {
+      return { overlaps: true, blockTitle: block.title };
+    }
+  }
+  return { overlaps: false };
+}
 
 export const routineActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
   flatten_schedule: async ({ userId, encryptionKey, payload, updateGlobalSoul, emitSpineEvent }) => {
@@ -55,10 +99,12 @@ export const routineActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
     const blocks = Array.isArray(payload?.blocks) ? payload.blocks : [];
     if (blocks.length === 0) return;
 
+    const sortedBlocks = sortBlocksByEnergyMatch(blocks, profile.energyWave ?? []);
+
     const now = new Date().toISOString();
     const newScheduled: ScheduledTask[] = [];
 
-    for (const block of blocks) {
+    for (const block of sortedBlocks) {
       const time = typeof block?.time === 'string' ? block.time : now;
       const scheduledAt = time.includes('T') ? time : `${date}T${time}`;
       const duration = typeof block?.duration === 'number' ? block.duration : 60;
@@ -194,6 +240,29 @@ export const routineActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
     const duration = typeof payload?.duration === 'number' ? payload.duration : 60;
 
     if (overlapsRecoveryWindow(scheduledAt, duration, profile.recoveryWindows)) return;
+
+    // Reject if the new block's time window overlaps an existing scheduled task.
+    const newStart = new Date(scheduledAt).getTime();
+    const newEnd = newStart + duration * 60 * 1000;
+    const hasSlotOverlap = profile.scheduledTasks.some(existing => {
+      const existStart = new Date(existing.scheduledAt).getTime();
+      const existEnd = existStart + existing.duration * 60 * 1000;
+      return newStart < existEnd && newEnd > existStart;
+    });
+    if (hasSlotOverlap) {
+      console.warn('[Atlas] schedule_block: Slot overlap detected — block not scheduled:', scheduledAt);
+      return;
+    }
+
+    const routineCheck = overlapsRoutineBlock(scheduledAt, duration, profile.routine);
+    if (routineCheck.overlaps) {
+      emitSpineEvent('ATLAS_ROUTINE_CONFLICT', {
+        scheduledAt,
+        duration,
+        routineBlockTitle: routineCheck.blockTitle,
+        note: 'Task time overlaps an active routine block. User should confirm.',
+      });
+    }
 
     const entry: ScheduledTask = {
       id: `sched_${crypto.randomUUID()}`,

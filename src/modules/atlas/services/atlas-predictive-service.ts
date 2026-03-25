@@ -25,6 +25,7 @@ export interface AtlasStateDisplay {
   /** Hex value for inline styles where Tailwind tokens are not enough. */
   hex: string;
   description: string;
+  burnoutTrajectoryScore?: number;
 }
 
 export interface DeferralAction {
@@ -110,6 +111,11 @@ export class AtlasPredictiveService {
     return this._state;
   }
 
+  /** Returns the current burnout trajectory score (0–10). */
+  getBurnoutTrajectoryScore(): number {
+    return this.computeBurnoutTrajectoryScore();
+  }
+
   /**
    * Calculates the probability of a state transition based on metric velocity.
    * Returns a risk score from 0.0 to 1.0.
@@ -136,7 +142,11 @@ export class AtlasPredictiveService {
   }
 
   getStateForDisplay(): AtlasStateDisplay {
-    return { state: this._state, ...STATE_DISPLAY[this._state] };
+    return {
+      state: this._state,
+      ...STATE_DISPLAY[this._state],
+      burnoutTrajectoryScore: this.computeBurnoutTrajectoryScore(),
+    };
   }
 
   /**
@@ -146,6 +156,22 @@ export class AtlasPredictiveService {
   evaluate(nsv: NeuralStateVector): void {
     // Update history
     this._history = [nsv, ...this._history].slice(0, 5);
+
+    // Check burnout trajectory after updating history
+    const trajectoryScore = this.computeBurnoutTrajectoryScore();
+    if (trajectoryScore >= 7 && this._state !== 'Recovery') {
+      Spine.emit({
+        type: 'BURNOUT_TRAJECTORY_WARNING',
+        source: 'atlas-predictive-service',
+        domain: 'C',
+        priority: 'alert',
+        target: 'atlas',
+        data: {
+          trajectoryScore,
+          note: 'Rising burnout trajectory detected. Proactive intervention recommended.',
+        },
+      });
+    }
 
     // Guard against NaN: treat non-finite values as 0 so they never block transitions.
     const rawPlanningLoad = nsv.cognitive?.planningLoad ?? nsv.planning?.deadlinePressure ?? 0;
@@ -329,6 +355,49 @@ export class AtlasPredictiveService {
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
+
+  /**
+   * Compute a 0–10 burnout trajectory score from historical NSV snapshots.
+   * Signals with rising trends (fatigue, stress, load) or falling resilience
+   * contribute weighted scores that sum to the trajectory risk.
+   */
+  private computeBurnoutTrajectoryScore(): number {
+    if (this._history.length < 2) return 0;
+
+    const newest = this._history[0];
+    const oldest = this._history[this._history.length - 1];
+
+    const get = (nsv: NeuralStateVector, domain: 'cnsFatigue' | 'stressLoad' | 'planningLoad' | 'deadlinePressure' | 'emotionalResilience' | 'streakHealth'): number => {
+      switch (domain) {
+        case 'cnsFatigue': return nsv.biological?.cnsFatigue ?? nsv.cnsFatigue ?? 0;
+        case 'stressLoad': return nsv.emotional?.stressLoad ?? 0;
+        case 'planningLoad': return nsv.cognitive?.planningLoad ?? 0;
+        case 'deadlinePressure': return nsv.planning?.deadlinePressure ?? 0;
+        case 'emotionalResilience': return nsv.emotional?.emotionalResilience ?? nsv.emotionalResilience ?? 0;
+        case 'streakHealth': return nsv.planning?.streakHealth ?? 0;
+      }
+    };
+
+    // Rising signals (bad when increasing): contribution = Math.max(0, delta) / 10 * weight
+    const cnsFatigueDelta = get(newest, 'cnsFatigue') - get(oldest, 'cnsFatigue');
+    const stressLoadDelta = get(newest, 'stressLoad') - get(oldest, 'stressLoad');
+    const planningLoadDelta = get(newest, 'planningLoad') - get(oldest, 'planningLoad');
+    const deadlinePressureDelta = get(newest, 'deadlinePressure') - get(oldest, 'deadlinePressure');
+
+    // Falling signals (bad when decreasing): contribution = Math.max(0, -delta) / 10 * weight
+    const resilienceDelta = get(newest, 'emotionalResilience') - get(oldest, 'emotionalResilience');
+    const streakHealthDelta = get(newest, 'streakHealth') - get(oldest, 'streakHealth');
+
+    const score =
+      Math.max(0, cnsFatigueDelta) / 10 * 2 +
+      Math.max(0, stressLoadDelta) / 10 * 2 +
+      Math.max(0, planningLoadDelta) / 10 * 1.5 +
+      Math.max(0, deadlinePressureDelta) / 10 * 1.5 +
+      Math.max(0, -resilienceDelta) / 10 * 2 +
+      Math.max(0, -streakHealthDelta) / 10 * 1;
+
+    return Math.round(Math.min(10, score) * 10) / 10;
+  }
 
   private _subscribeToSpine(): void {
     // VITAL_UPDATED: run the evaluation on fresh NSV snapshots

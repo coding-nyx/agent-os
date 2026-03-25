@@ -1,19 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Send, Loader2, Sparkles, Shield,
-  Activity as ActivityIcon, Terminal, ChevronDown, Lock, Zap,
-  ArrowRight, Plus, FileText, BarChart3, Image as ImageIcon, X,
+  Send, Loader2,
+  ChevronDown, Lock, Zap,
+  ArrowRight, Plus, FileText, BarChart3, X,
   Mic, MicOff,
-  Search, Calculator, BrainCircuit, Trash2, RefreshCw, AlertTriangle, MoreVertical
+  Search, Trash2, RefreshCw, AlertTriangle, MoreVertical
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
 import { cn } from '@/lib/utils';
 import { Message, GuestQuota, MessageContent } from '@/lib/types';
 import type { ModuleId } from '@/lib/module-manifest';
 import { NeuralLinkAlert } from './NeuralLinkAlert';
-import { stripInternalTags } from '@/lib/ai-adapters/sanitize';
 import { NeuralButton, NeuralIconButton } from './NeuralButton';
 import { NeuralTextarea } from './NeuralTextarea';
 import { EmptyState } from '@/core/components/EmptyState';
@@ -29,14 +26,11 @@ import { resolveConversationalActorIdentity } from '@/lib/agent-identity';
 import { AgentIcon } from './AgentIcon';
 import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
 import { useMotionConfig } from '@/lib/hooks/use-motion-config';
+import { ChatBubble, contentToString } from './chat/ChatBubble';
 
-// Helper to convert MessageContent to string for display
+// Helper to convert MessageContent to string for display (kept for non-bubble usages below)
 function messageContentToString(content: MessageContent): string {
-  if (typeof content === 'string') return content;
-  return content
-    .filter(p => p.type === 'text')
-    .map(p => (p as { type: 'text'; text: string }).text)
-    .join(' ');
+  return contentToString(content);
 }
 
 interface ChatInterfaceProps {
@@ -167,154 +161,6 @@ const THEMES = {
 };
 
 type ThemeConfig = typeof THEMES[keyof typeof THEMES];
-
-const SILENT_INTERNAL_ACTIONS = ['query_module', 'query_module_data', 'search_memory', 'delegate_to_module'];
-
-function ActionStatusMessage({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5 text-[10px] font-semibold uppercase tracking-widest text-white/30 my-2">
-      <div className="w-1 h-1 rounded-full bg-cyan-500 animate-pulse" />
-      {label}
-    </div>
-  );
-}
-
-const AIMessage = React.memo(function AIMessage({ content, theme, actorLabel, isLast, isLoading, isAgnes, debugMode, debugMeta, isStreaming, showInternalSignals }: { content: string, theme: ThemeConfig, actorLabel: string, isLast?: boolean, isLoading?: boolean, isAgnes?: boolean, debugMode?: boolean, debugMeta?: import('@/lib/types').MessageDebugMeta, isStreaming?: boolean, showInternalSignals?: boolean }) {
-    // Run the stripping logic even during streaming so internal tags like <thought>
-    // are filtered out in real-time. The stripInternalTags function handles 
-    // unclosed/partial tags at the end of the stream.
-    const stripped = stripInternalTags(content, { retainSpacings: true });
-    const { publicText, internalText, isThinking, isActing, currentActionType } = stripped;
-    const [showInternal, setShowInternal] = useState(false);
-    const hasPublicContent = publicText.length > 0;
-    const hasInternalContent = !!internalText && internalText.length > 0;
-
-    // Only show internal signal UI if showInternalSignals is allowed
-    const effectiveIsThinking = showInternalSignals ? isThinking : false;
-    const effectiveIsActing = showInternalSignals ? isActing : false;
-    const effectiveInternalText = showInternalSignals ? internalText : '';
-
-    const showProcessingPulse = effectiveIsThinking || effectiveIsActing;
-    const showCompletedThought = debugMode && !!effectiveInternalText && !showProcessingPulse;
-    // When a model emits only internal/action tags, `publicText` becomes empty.
-    // In that case, show a minimal assistant bubble so the user never sees a "blank response".
-    const hasInternalOnlyCompletion = hasInternalContent && !hasPublicContent && !showProcessingPulse;
-    const actionTagMatch = !hasPublicContent
-      ? content.match(/<action\s+type="([^"]+)">/i)
-      : null;
-    
-    const isInternalSilentAction = actionTagMatch && SILENT_INTERNAL_ACTIONS.includes(actionTagMatch[1]);
-
-    const hasBareActionTag = !hasPublicContent && /<action\b/i.test(content);
-    const actionFallback = actionTagMatch
-      ? `${getActionLabel(actionTagMatch[1])}.`
-      : (hasBareActionTag ? 'Action processed.' : '');
-    const bubbleText = hasPublicContent
-      ? publicText
-      : (hasInternalOnlyCompletion ? 'Processed.' : actionFallback);
-
-    if (isInternalSilentAction && !hasPublicContent && !showInternalSignals) {
-      return <ActionStatusMessage label={actionFallback} />;
-    }
-
-    // Debug chips — actions and spine events
-    const actionChips = debugMode ? (debugMeta?.actionTagsExtracted ?? []) : [];
-    const spineChips = debugMode ? (debugMeta?.spineEvents ?? []) : [];
-    const hasDebugChips = actionChips.length > 0 || spineChips.length > 0;
-
-    return (
-        <div className="flex flex-col w-full max-w-[98%] sm:max-w-[95%] md:max-w-[85%] items-start">
-            {(showProcessingPulse || showCompletedThought) && (
-                <div className="mb-3 w-full">
-                    <NeuralButton 
-                        variant="ghost"
-                        onClick={() => !showProcessingPulse && setShowInternal(!showInternal)}
-                        disabled={showProcessingPulse}
-                        className={cn(
-                            "flex items-center gap-3 px-4 py-2 rounded-2xl transition-all group border h-auto",
-                            showProcessingPulse ? "bg-white/[0.03] border-white/10 animate-pulse" : "bg-white/5 border-white/5 hover:bg-white/10"
-                        )}
-                    >
-                        {showProcessingPulse ? (
-                            <BrainCircuit className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-                        ) : (
-                            <Terminal className="w-3.5 h-3.5 text-white/20 group-hover:text-white/40" />
-                        )}
-                        <span className={cn(
-                            "text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em]",
-                            showProcessingPulse ? "text-indigo-400" : "text-white/20 group-hover:text-white/40"
-                        )}>
-                            {effectiveIsThinking ? 'Processing Neural Signals...' : (effectiveIsActing ? `${getActionLabel(currentActionType || 'action')}...` : 'View Internal Signals')}
-                        </span>
-                    </NeuralButton>
-                    
-                    <AnimatePresence>
-                        {showInternal && !showProcessingPulse && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                <div className="mt-2 p-3 sm:p-4 bg-black/60 border border-white/5 rounded-xl sm:rounded-2xl font-mono text-[10px] sm:text-[11px] text-white/40 leading-relaxed whitespace-pre-wrap shadow-xl">
-                                    {effectiveInternalText}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            )}
-
-            {hasDebugChips && (
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                    {actionChips.map((a, idx) => (
-                        <div key={`a-${idx}`} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                            <ActivityIcon className="w-2.5 h-2.5" />
-                            <span className="text-[9px] font-semibold uppercase tracking-wider">{getActionLabel(a.type)}</span>
-                        </div>
-                    ))}
-                    {spineChips.map((evt, idx) => (
-                        <div key={`s-${idx}`} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400">
-                            <Zap className="w-2.5 h-2.5" />
-                            <span className="text-[9px] font-semibold uppercase tracking-wider">{evt}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {(hasPublicContent || hasInternalOnlyCompletion) && (
-                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className={cn(
-                  "border backdrop-blur-3xl transition-all",
-                  isAgnes
-                    ? "p-5 sm:p-6 bg-gradient-to-br from-white/[0.04] to-indigo-500/[0.03] border-indigo-400/10 rounded-2xl rounded-tl-sm shadow-xl shadow-indigo-500/10"
-                    : cn("p-3.5 sm:p-5", theme.bubble, theme.glow)
-                )}>
-                    <div className={cn(
-                      "max-w-none break-words prose-a:break-all",
-                      isAgnes
-                        ? "prose prose-invert prose-base agnes-prose prose-p:leading-[1.85] prose-p:text-white/90 prose-strong:text-white prose-strong:font-semibold prose-li:text-white/85 prose-li:leading-relaxed prose-blockquote:border-indigo-400/40 prose-blockquote:text-white/70 prose-blockquote:italic"
-                        : "prose prose-invert prose-sm prose-p:leading-relaxed prose-strong:text-white prose-strong:font-black prose-p:text-white/90"
-                    )}>
-                        {isStreaming ? (
-                          // Plain text during streaming — no markdown parsing overhead
-                          <p className="whitespace-pre-wrap">{bubbleText}</p>
-                        ) : (
-                          <ReactMarkdown
-                            rehypePlugins={[rehypeSanitize]}
-                            components={{
-                              a: ({ href, children, ...props }) => (
-                                <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
-                              )
-                            }}
-                          >{bubbleText}</ReactMarkdown>
-                        )}
-                    </div>
-                    {!isStreaming && (
-                      <div className="mt-3 flex items-center justify-between opacity-30 border-t border-white/5 pt-3">
-                          <span className="text-[9px] font-semibold uppercase tracking-[0.12em]">{actorLabel}</span>
-                          <span className="text-[9px] font-mono uppercase tracking-wider">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                    )}
-                </motion.div>
-            )}
-        </div>
-    );
-});
 
 // ⚡ Bolt Performance Optimization:
 // Wrapped ChatInterface in React.memo to prevent unnecessary re-renders when parent components update.
@@ -617,9 +463,10 @@ export const ChatInterface = React.memo(function ChatInterface({
                   />
                 )}
                 {isAI ? (
-                    <div className="w-full flex flex-col items-start">
-                        <AIMessage
-                          content={messageContentToString(msg.content)}
+                    <div className="w-full flex flex-col items-start min-w-0">
+                        <ChatBubble
+                          role="assistant"
+                          content={msg.content}
                           theme={theme}
                           actorLabel={actorIdentity.label}
                           isLast={isLast}
@@ -629,18 +476,22 @@ export const ChatInterface = React.memo(function ChatInterface({
                           debugMeta={msg.debugMeta}
                           isStreaming={isLast && effectiveIsProcessing}
                           showInternalSignals={showInternalSignals}
+                          timestamp={msg.timestamp}
                         />
                     </div>
                 ) : (
                     (() => {
                       const textContent = messageContentToString(msg.content);
                       const uploadParsed = parseDocumentUploadMessage(textContent);
+                      const timeLabel = msg.timestamp
+                        ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                       if (uploadParsed) {
                         return (
                           <div className="flex flex-col max-w-[95%] sm:max-w-[85%] w-fit items-end">
                             <DocumentMessageCard upload={uploadParsed} themeAccent={theme.accent} />
                             <div className="mt-1.5 opacity-30 px-1">
-                              <span className="text-[9px] font-mono uppercase tracking-wider text-white">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="text-[9px] font-mono uppercase tracking-wider text-white">{timeLabel}</span>
                             </div>
                           </div>
                         );
@@ -651,30 +502,19 @@ export const ChatInterface = React.memo(function ChatInterface({
                           <div className="flex flex-col max-w-[95%] sm:max-w-[85%] w-fit items-end">
                             <DocumentMessageCard doc={docParsed} themeAccent={theme.accent} />
                             <div className="mt-1.5 opacity-30 px-1">
-                              <span className="text-[9px] font-mono uppercase tracking-wider text-white">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="text-[9px] font-mono uppercase tracking-wider text-white">{timeLabel}</span>
                             </div>
                           </div>
                         );
                       }
                       return (
-                        <div className="flex flex-col max-w-[90%] sm:max-w-[80%] md:max-w-[75%] w-fit items-end">
-                            <div className={cn(
-                              "border backdrop-blur-3xl transition-all min-w-0 break-words break-all sm:break-normal",
-                              isAgnes
-                                ? "p-3 sm:p-4 md:p-5 bg-gradient-to-br from-indigo-500/[0.12] to-violet-500/[0.08] border-indigo-400/20 rounded-2xl rounded-tr-sm shadow-lg shadow-indigo-500/10"
-                                : cn("p-3 sm:p-3.5 md:p-5", theme.userBubble, theme.glow)
-                            )}>
-                                <div className={cn(
-                                  "leading-relaxed break-words overflow-hidden min-w-0 break-all sm:break-normal",
-                                  isAgnes
-                                    ? "agnes-user-text text-white/95 whitespace-pre-wrap"
-                                    : "text-sm text-white/90 font-medium whitespace-pre-wrap"
-                                )}>{textContent}</div>
-                                <div className="mt-2 sm:mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-1.5 sm:pt-2">
-                                    <span className="text-[9px] font-mono uppercase tracking-wider">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                            </div>
-                        </div>
+                        <ChatBubble
+                          role="user"
+                          content={msg.content}
+                          theme={theme}
+                          isAgnes={isAgnes}
+                          timestamp={msg.timestamp}
+                        />
                       );
                     })()
                 )}

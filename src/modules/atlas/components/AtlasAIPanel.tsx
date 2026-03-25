@@ -29,7 +29,42 @@ interface AtlasAIPanelProps {
   energyBudget: number;
   focusScore: number;
   activeLoad: number;
+  onSendMessage?: (message: string) => void;
 }
+
+interface PlanningIntent {
+  pattern: RegExp;
+  label: string;
+  prompt: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const PLANNING_INTENTS: PlanningIntent[] = [
+  {
+    pattern: /plan\s+(my\s+)?(day|today)/i,
+    label: 'Plan my day',
+    prompt: 'Plan my day using my energy wave and top-priority tasks',
+    icon: Calendar,
+  },
+  {
+    pattern: /what.*(tackle|work on|do)\s*(first|next|today)/i,
+    label: 'What should I tackle first?',
+    prompt: 'Given my current energy and priorities, what should I tackle first?',
+    icon: Target,
+  },
+  {
+    pattern: /move.*(non.critical|low.priority).*(week|out)/i,
+    label: 'Defer non-critical tasks',
+    prompt: 'Move all non-critical (priority 3-5) tasks out of this week',
+    icon: Clock,
+  },
+  {
+    pattern: /realistically.*(get done|complete|finish)/i,
+    label: "Realistic today's list",
+    prompt: 'What can I realistically get done today given my energy budget?',
+    icon: TrendingUp,
+  },
+];
 
 interface Suggestion {
   type: 'optimization' | 'prioritization' | 'recovery' | 'insight';
@@ -47,6 +82,7 @@ export function AtlasAIPanel({
   energyBudget,
   focusScore,
   activeLoad,
+  onSendMessage,
 }: AtlasAIPanelProps) {
   const reducedMotion = useReducedMotion();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -270,8 +306,7 @@ export function AtlasAIPanel({
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 space-y-3 border-t border-white/10 pt-4">
-              {suggestions.length === 0 ? (
-                <div className="text-center py-8">
+              {suggestions.length === 0 ? (                <div className="text-center py-8">
                   <Sparkles className="w-8 h-8 text-white/10 mx-auto mb-2" />
                   <p className="text-xs text-white/40 italic">
                     All systems optimal. Keep up the great work!
@@ -332,6 +367,29 @@ export function AtlasAIPanel({
                   );
                 })
               )}
+
+              {/* ── Quick Planning Prompts ── */}
+              <div className="pt-2 border-t border-white/10">
+                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Quick Planning</p>
+                <div className="space-y-1.5">
+                  {PLANNING_INTENTS.map((intent) => {
+                    const Icon = intent.icon;
+                    return (
+                      <button
+                        key={intent.label}
+                        type="button"
+                        onClick={() => onSendMessage?.(intent.prompt)}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-left group"
+                      >
+                        <Icon className="w-3 h-3 text-[var(--module-color-400)] shrink-0" />
+                        <span className="text-xs text-white/60 group-hover:text-white/80 transition-colors truncate">
+                          {intent.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </motion.div>
         )}

@@ -11,6 +11,8 @@
  */
 
 import type { TitanProfile, SomaProfile, BiomarkerRecord, WorkoutSession } from '@/lib/types';
+import { SomaTitanDelegationService } from '@/lib/services/soma-titan-delegation-service';
+import { saveTitanProfile } from './titan-profile-service';
 
 // ---------------------------------------------------------------------------
 // Migration Status
@@ -162,4 +164,61 @@ export function getWorkoutSessions(titanProfile: TitanProfile): WorkoutSession[]
   return titanProfile.workoutSessions ?? [];
   // Note: workoutLogs contains different structure (per-exercise, not per-session)
   // Full migration requires schema normalization — deferred to dedicated sprint
+}
+
+// ---------------------------------------------------------------------------
+// Activation — run at profile load time
+// ---------------------------------------------------------------------------
+
+/**
+ * Migrates biomarkers from TitanProfile → SomaProfile, then removes them from
+ * TitanProfile so the migration is idempotent across loads.
+ *
+ * Safe to call multiple times: `findUnmigratedBiomarkers` skips records already
+ * present in Soma. Failures on individual records are isolated via allSettled.
+ */
+export async function activateBiomarkerMigration(params: {
+  titanProfile: TitanProfile;
+  somaProfile: SomaProfile | null;
+  userId: string;
+  encryptionKey: CryptoKey;
+}): Promise<MigrationStatus> {
+  const { titanProfile, somaProfile, userId, encryptionKey } = params;
+  const status: MigrationStatus = { biomarkersMigrated: 0, clearancesMigrated: 0, workoutLogsMigrated: 0, errors: [] };
+
+  const unmigrated = findUnmigratedBiomarkers(titanProfile, somaProfile);
+  if (unmigrated.length === 0) return status;
+
+  const results = await Promise.allSettled(
+    unmigrated.map((b) =>
+      SomaTitanDelegationService.commitBiomarker({
+        userId,
+        encryptionKey,
+        payload: b as unknown as Record<string, unknown>,
+        source: 'titan_diagnosis',
+      }),
+    ),
+  );
+
+  const migratedIds = new Set<string>();
+  for (const [i, result] of results.entries()) {
+    if (result.status === 'fulfilled' && result.value) {
+      migratedIds.add(unmigrated[i].id);
+      status.biomarkersMigrated++;
+    } else if (result.status === 'rejected') {
+      status.errors.push(`biomarker[${unmigrated[i].id}]: ${String(result.reason)}`);
+    }
+  }
+
+  if (migratedIds.size === 0) return status;
+
+  // Remove successfully migrated biomarkers from TitanProfile so this migration
+  // doesn't run again on the next load.
+  const remaining = (titanProfile.biomarkers ?? []).filter((b) => !migratedIds.has(b.id));
+  await saveTitanProfile(
+    { ...titanProfile, biomarkers: remaining, updatedAt: new Date().toISOString() },
+    { userId, encryptionKey },
+  );
+
+  return status;
 }

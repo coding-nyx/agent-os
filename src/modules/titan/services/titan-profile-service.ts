@@ -45,12 +45,41 @@ export function createEmptyTitanProfile(): TitanProfile {
   };
 }
 
+// Warn when normalizer truncates a large array — helps surface the need for an
+// archival strategy before data silently disappears. Only fires in development.
+function warnIfTruncated(fieldName: string, before: number, limit: number): void {
+  if (import.meta.env.DEV && before > limit) {
+    console.warn(
+      `[TitanProfileService] normalizeTitanProfile: "${fieldName}" truncated from ${before} → ${limit} entries. ` +
+      'Consider archiving older records to avoid silent data loss.',
+    );
+  }
+}
+
+// Pending P3-7 (Titan → Soma migration): medical fields (biomarkers, clearances,
+// labSummaries, medicalImageAnalyses, knownConditions, medications, allergies) are
+// kept in TitanProfile as a read fallback until the Soma delegation pipeline completes
+// the full migration. Once Sprint 8 migration is activated via the SomaTitanDelegationService,
+// remove these fields from the normalizer and the createEmptyTitanProfile defaults.
+// workoutLogs → workoutSessions migration is deferred: the schemas differ structurally.
+// Activate via titan-migration-service.ts once schema normalization is complete.
+
 export function normalizeTitanProfile(raw: unknown): TitanProfile {
   const base = createEmptyTitanProfile();
   if (!raw || typeof raw !== 'object') return base;
   const data = raw as Partial<TitanProfile>;
   const now = new Date().toISOString();
   const toStringArray = (value: unknown) => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : []);
+
+  const rawSleepLog: NonNullable<TitanProfile['sleepLog']> = Array.isArray(data.sleepLog) ? (data.sleepLog as NonNullable<TitanProfile['sleepLog']>) : (base.sleepLog ?? []);
+  const rawWorkoutSessions: NonNullable<TitanProfile['workoutSessions']> = Array.isArray(data.workoutSessions) ? (data.workoutSessions as NonNullable<TitanProfile['workoutSessions']>) : (base.workoutSessions ?? []);
+  const rawBodyWeightLog: NonNullable<TitanProfile['bodyWeightLog']> = Array.isArray(data.bodyWeightLog) ? (data.bodyWeightLog as NonNullable<TitanProfile['bodyWeightLog']>) : (base.bodyWeightLog ?? []);
+  const rawCardioLog: NonNullable<TitanProfile['cardioLog']> = Array.isArray(data.cardioLog) ? (data.cardioLog as NonNullable<TitanProfile['cardioLog']>) : (base.cardioLog ?? []);
+  warnIfTruncated('sleepLog', rawSleepLog.length, 730);
+  warnIfTruncated('workoutSessions', rawWorkoutSessions.length, 500);
+  warnIfTruncated('bodyWeightLog', rawBodyWeightLog.length, 1000);
+  warnIfTruncated('cardioLog', rawCardioLog.length, 1000);
+
   return {
     onboardingComplete: data.onboardingComplete === true,
     privacyLevel: data.privacyLevel === 'complete' ? 'complete' : 'basic',
@@ -60,9 +89,9 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
     history: data.history && typeof data.history === 'object' ? (data.history as TitanProfile['history']) : base.history,
     summary: typeof data.summary === 'string' ? data.summary : '',
     routines: Array.isArray(data.routines) ? normalizeRoutines(data.routines as TitanProfile['routines']) : base.routines,
-    sleepLog: Array.isArray(data.sleepLog) ? (data.sleepLog as NonNullable<TitanProfile['sleepLog']>).slice(0, 730) : base.sleepLog,
+    sleepLog: rawSleepLog.slice(0, 730),
     cycles: Array.isArray(data.cycles) ? (data.cycles as TitanProfile['cycles']) : base.cycles,
-    workoutSessions: Array.isArray(data.workoutSessions) ? (data.workoutSessions as NonNullable<TitanProfile['workoutSessions']>).slice(0, 500) : base.workoutSessions,
+    workoutSessions: rawWorkoutSessions.slice(0, 500),
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : base.createdAt,
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : now,
     traits: Array.isArray(data.traits) ? data.traits.filter((entry): entry is string => typeof entry === 'string') : base.traits,
@@ -94,13 +123,8 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
     systemDebts: Array.isArray(data.systemDebts)
       ? (data.systemDebts as NonNullable<TitanProfile['systemDebts']>).slice(0, 100)
       : base.systemDebts,
-    // Body logs — must survive the normalizer or logs are always empty
-    bodyWeightLog: Array.isArray(data.bodyWeightLog)
-      ? (data.bodyWeightLog as NonNullable<TitanProfile['bodyWeightLog']>).slice(0, 1000)
-      : base.bodyWeightLog,
-    cardioLog: Array.isArray(data.cardioLog)
-      ? (data.cardioLog as NonNullable<TitanProfile['cardioLog']>).slice(0, 1000)
-      : base.cardioLog,
+    bodyWeightLog: rawBodyWeightLog.slice(0, 1000),
+    cardioLog: rawCardioLog.slice(0, 1000),
   };
 }
 

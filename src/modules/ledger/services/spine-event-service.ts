@@ -28,11 +28,13 @@ export interface LedgerEvent extends SpineEvent {
  * Partial create-input for LedgerEvent — callers may omit system-managed fields
  * (id, timestamp, cascadeDepth, priority) that are filled in by logLedgerEvent.
  */
-export type LedgerEventInput = Omit<LedgerEvent, 'id' | 'timestamp' | 'cascadeDepth' | 'priority'> & {
+export type LedgerEventInput = Omit<LedgerEvent, 'id' | 'timestamp' | 'cascadeDepth' | 'priority' | 'sequence' | 'idempotencyKey'> & {
   id?: string;
   timestamp?: number;
   cascadeDepth?: number;
   priority?: SpineEventPriority;
+  sequence?: number;
+  idempotencyKey?: string;
 };
 
 export class SpineEventService {

@@ -338,15 +338,15 @@ ${recoveryBlock}${clearanceNote}${activeCycleBlock}
 [AVAILABLE ACTIONS]
 - Update profile: <action type="update_titan_profile">{...partialProfile}</action>
 - Routine creation/update: use the proposal format (see [INLINE PROPOSALS]) — update_routine action tags are blocked in this mode
-- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","deepSleepPct":20,"remSleepPct":25,"awakenings":1,"tags":["stress"],"notes":"..."}</action>
-- Propose reminder: <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"session|workout","entityId":"...","label":"..."}}</action>
+- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","tags":["stress"]}</action>
+- Propose reminder: <action type="propose_reminder">{"title","note","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"session|workout","entityId","label"}}</action>
 - Query reminders: <action type="query_reminders">{"moduleId":"titan"}</action>
-- Create cycle: <action type="create_cycle">{"name":"Creatine Loading","type":"supplement","description":"...","startDate":"YYYY-MM-DD","phases":[{"id":"...","name":"Loading","durationDays":5,"dosage":"20g/day"},{"id":"...","name":"Maintenance","durationDays":30,"dosage":"5g/day"}]}</action>
+- Create cycle: <action type="create_cycle">{"name","type":"supplement|workout|hormonal|nutrition|recovery|custom","startDate":"YYYY-MM-DD","phases":[{"id","name","durationDays","dosage"}]}</action>
 - Advance cycle phase: <action type="advance_cycle_phase">{"cycleId":"..."}</action>
 - Complete cycle: <action type="complete_cycle">{"cycleId":"..."}</action>
-- Log workout session: <action type="log_workout_session">{"routineId":"...","routineName":"...","date":"YYYY-MM-DD","startedAt":"...","completedAt":"...","rpe":7,"notes":"...","status":"completed","exercises":[{"exerciseName":"Squat","plannedSets":4,"plannedReps":"8","sets":[{"setNumber":1,"weight":100,"repsCompleted":8,"completed":true}]}]}</action>
+- Log workout session: <action type="log_workout_session">{"routineId","routineName","date":"YYYY-MM-DD","rpe":7,"status":"completed","exercises":[{"exerciseName","plannedSets","plannedReps","sets":[{"setNumber","weight","repsCompleted","completed"}]}]}</action>
 - Recovery clearance check: <action type="self_clearance_check">{"activity":"...","recoveryScore":...}</action>
-- Start recovery plan: <action type="start_recovery_plan">{"type":"rest|active|rehab|deload","reasons":["injury"|"stress"|"overtraining"|"illness"|"travel"|"deload"|"other"],"durationDays":7,"severity":"low|medium|high","bodyRegion":"knee|shoulder|back|hip|ankle|wrist|neck|other","notes":"..."}</action>
+- Start recovery plan: <action type="start_recovery_plan">{"type":"rest|active|rehab|deload","reasons":[...],"durationDays":7,"severity":"low|medium|high","bodyRegion":"...","notes":"..."}</action>
 - End recovery plan: <action type="end_recovery_plan">{"reason":"completed|cancelled|early_return","notes":"..."}</action>
 - Log recovery check-in: <action type="log_recovery_checkin">{"pain":5,"fatigue":5,"sleepQuality":7,"mood":6,"notes":"..."}</action>
 - Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
@@ -365,26 +365,10 @@ When you have sufficient data to fulfill the intent, write a brief 1-sentence co
 
 Payload schemas:
 - propose_routine: {"routines":[{weekday,timeframe,status,rationale,exercises}], "message":"..."}
-- propose_sleep_log: {"date":"...","durationHours":0,"quality":0,"bedtime":"...","wakeTime":"...","notes":"...","message":"..."}
+- propose_sleep_log: {"date","durationHours":0,"quality":0,"bedtime","wakeTime","notes","message":"..."}
 - propose_workout_log: use the log_workout_session schema, plus "message":"..."
 
-Example for sleep:
-User: "Slept 7.5 hours last night, quality was decent, went to bed around 11"
-Response:
-Here's your sleep log — confirm to save it.
-<action type="propose_sleep_log">
-{"date":"2024-01-15","durationHours":7.5,"quality":7,"bedtime":"23:00","message":"7.5h sleep · quality 7/10"}
-</action>
-
-Example for routine:
-User: "Create me a push/pull/legs routine"
-Response:
-Here's a Push/Pull/Legs split — confirm to save it to your profile.
-<action type="propose_routine">
-{"routines":[{"weekday":"monday","timeframe":"daily","status":"active","rationale":"Push day","exercises":[{"name":"Bench Press","sets":4,"reps":"8","notes":""}]},{"weekday":"wednesday","timeframe":"daily","status":"active","rationale":"Pull day","exercises":[{"name":"Pull-ups","sets":4,"reps":"8","notes":""}]},{"weekday":"friday","timeframe":"daily","status":"active","rationale":"Legs day","exercises":[{"name":"Squat","sets":4,"reps":"8","notes":""}]}], "message":"Push/Pull/Legs · 3 days/week"}
-</action>
-
-IMPORTANT: Only emit proposals when you have enough data. If essential fields are missing, ask clarifying questions first. Never emit a proposal with placeholder or incomplete generatedData.
+IMPORTANT: Only emit proposals when you have enough data. If essential fields are missing, ask clarifying questions first. Never emit a proposal with placeholder or incomplete data.
 
 [ROUTINE INSTRUCTIONS]
 - If the user wants a new weekly routine, propose a 7-day plan as daily entries for each weekday.
@@ -413,10 +397,10 @@ ${planLine}
 
 [AVAILABLE ACTIONS]
 - Update profile: <action type="update_titan_profile">{...partialProfile}</action>
-- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","deepSleepPct":20,"remSleepPct":25,"awakenings":1,"tags":["stress"],"notes":"..."}</action>
-- Propose reminder: <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"session|workout","entityId":"...","label":"..."}}</action>
+- Log sleep: <action type="log_sleep">{"date":"YYYY-MM-DD","durationHours":7.5,"quality":8,"bedtime":"23:00","wakeTime":"06:30","tags":["stress"]}</action>
+- Propose reminder: <action type="propose_reminder">{"title","note","dueAt":"ISO8601","recurrence":{...},"priority":"alert","source":{"entityType":"session|workout","entityId","label"}}</action>
 - Query reminders: <action type="query_reminders">{"moduleId":"titan"}</action>
-- Log workout session: <action type="log_workout_session">{"routineId":"...","routineName":"...","date":"YYYY-MM-DD","startedAt":"...","completedAt":"...","rpe":5,"notes":"recovery session","status":"completed","exercises":[{"exerciseName":"Walk","plannedSets":1,"plannedReps":"20min","sets":[{"setNumber":1,"completed":true}]}]}</action>
+- Log workout session: <action type="log_workout_session">{"routineId","routineName","date":"YYYY-MM-DD","rpe":5,"status":"completed","exercises":[{"exerciseName","plannedSets","plannedReps","sets":[{"setNumber","completed"}]}]}</action>
 - Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
 - Keep <thought> strictly internal. Do NOT place user-facing text inside it.
 - Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.`;
@@ -464,8 +448,7 @@ Allergies: ${profile.allergies?.length ? profile.allergies.join(', ') : 'None re
 - Record biomarker: <action type="commit_biomarker">{"name":"hrv","value":62,"unit":"ms","source":"wearable","recordedAt":"..."}</action>
 - Parse lab report: <action type="parse_lab_report">{"panel":"cbc","findings":["..."],"flags":["..."]}</action>
 - Issue clearance: <action type="issue_clearance">{"activity":"hiit","status":"granted|denied|conditional","reason":"..."}</action>
-- Analyze medical image: <action type="analyze_medical_image">{"reportType":"lab_report","sourceLabel":"patient_upload","biomarkers":[...],"labSummaries":[...],"medications":[...],"allergies":[...],"clinicalFlags":[...]}</action>
-  Only emit AFTER DRAFT_APPROVED Spine event. User must review and confirm before this action fires.
+- Analyze medical image: <action type="analyze_medical_image">{"reportType":"lab_report","sourceLabel":"patient_upload","biomarkers":[...],"labSummaries":[...],"clinicalFlags":[...]}</action> (only after DRAFT_APPROVED; user must confirm first)
 - Recovery clearance check: <action type="self_clearance_check">{"activity":"...","recoveryScore":...}</action>
 - Compute readiness: <action type="compute_readiness">{"restingHeartRate":...,"sleepQuality":...,"energyLevel":...,"stressPhysical":...}</action>
 - Create custom biomarker field: <action type="create_field">{"id":"...","name":"...","type":"number","description":"...","validation":{"minimum":0,"maximum":100},"metadata":{"category":"metabolic","unit":"mg/dL"}}</action>
@@ -670,15 +653,6 @@ function buildGeneralModePrompt(
     hormonalContext?: string | null;
   }
 ): string {
-  const formatProtocol = `[FORMAT PROTOCOL - MANDATORY]
-1. Start EVERY response with <thought>...</thought> (or <think> if reasoning)
-2. ANY state change (routine update, biomarker log, sleep entry) MUST be wrapped in <action type="...">...</action>.
-3. If you do not emit an <action> tag, no data will be saved.
-4. Even when acting, provide a concise public summary after the action tag.
-5. CRITICAL — action tags MUST include a valid JSON payload: <action type="update_routine">{"routines":[...]}</action>
-   An action tag with no JSON body (e.g. <action type="update_routine"></action>) is INVALID and will be silently discarded.
-   Never emit a bare opening tag without its JSON payload and closing </action> tag.`;
-
   const recoveryBlock =
     options?.recoveryScore != null
       ? `\nRECOVERY SCORE: ${options.recoveryScore}/10${
@@ -737,19 +711,11 @@ and ask for confirmation before creating.
 - Even when emitting an action, you MUST provide a concise public response summarizing your decision or the action taken for the user.
 - Do NOT output raw tool call envelopes.
 - Factor in recovery score, injuries, and clearance restrictions when prescribing workouts.`.trim();
-
-  return `${formatProtocol}\n\n${prompt}`.trim();
 }
 
 // ── Routine Edit Mode ────────────────────────────────────────────────────────
 
 function buildRoutineEditModePrompt(alias: string, routine: Routine): string {
-  const formatProtocol = `[FORMAT PROTOCOL - MANDATORY]
-1. Start EVERY response with <thought>...</thought> (or <think> if reasoning)
-2. ANY state change (routine update) MUST be wrapped in <action type="...">...</action>.
-3. If you do not emit an <action> tag, no data will be saved.
-4. Even when acting, provide a concise public summary after the action tag.`;
-
   const exerciseList = routine.exercises
     .map(
       (ex, i) =>
@@ -786,8 +752,6 @@ not just the changed fields. The payload replaces the entire routine.
 - Maintain volume balance across the routine.
 - Do NOT suggest actions outside of routine editing.
 - Start every response with <thought>.`.trim();
-
-  return `${formatProtocol}\n\n${prompt}`.trim();
 }
 
 // ── Field CRUD Mode ──────────────────────────────────────────────────────────
@@ -796,12 +760,6 @@ function buildFieldCrudModePrompt(
   alias: string,
   currentExtensions: FieldDefinition[]
 ): string {
-  const formatProtocol = `[FORMAT PROTOCOL - MANDATORY]
-1. Start EVERY response with <thought>...</thought> (or <think> if reasoning)
-2. ANY state change (field creation/deletion) MUST be wrapped in <action type="...">...</action>.
-3. If you do not emit an <action> tag, no data will be saved.
-4. Even when acting, provide a concise public summary after the action tag.`;
-
   const extensionList =
     currentExtensions.length > 0
       ? currentExtensions
@@ -833,15 +791,7 @@ ${extensionList}
 
 [AVAILABLE ACTIONS]
 - Suggest field: <action type="suggest_field">{"description":"...","purpose":"..."}</action>
-- Create field: <action type="create_field">{
-    "id": "kebab-case-id",
-    "name": "Human Readable Name",
-    "type": "text|number|select|multiSelect|date|textarea|boolean|range",
-    "description": "What this field tracks",
-    "validation": { ... },
-    "options": [ ... ],
-    "metadata": { "category": "...", "icon": "...", "helpText": "..." }
-  }</action>
+- Create field: <action type="create_field">{"id":"kebab-case-id","name":"Human Readable Name","type":"text|number|select|multiSelect|date|textarea|boolean|range","description":"...","validation":{...},"options":[...],"metadata":{"category":"...","icon":"...","helpText":"..."}}</action>
 - Delete field: <action type="delete_field">{"fieldId":"..."}</action>
 
 [DOMAIN VALIDATION RULES]
@@ -876,8 +826,6 @@ You are the semantic domain validator. When the user requests a new field:
 - Start every response with <thought>.
 - Even when emitting an action, you MUST provide a concise public response summarizing your decision or the action taken for the user.
 - Do NOT discuss workout programming, nutrition advice, or recovery. Only field management.`.trim();
-
-  return `${formatProtocol}\n\n${prompt}`.trim();
 }
 
 // ── Biomarker Review Mode ────────────────────────────────────────────────────
@@ -886,12 +834,6 @@ function buildBiomarkerReviewModePrompt(
   alias: string,
   biomarkers: Record<string, unknown>
 ): string {
-  const formatProtocol = `[FORMAT PROTOCOL - MANDATORY]
-1. Start EVERY response with <thought>...</thought> (or <think> if reasoning)
-2. ANY state change (biomarker update) MUST be wrapped in <action type="...">...</action>.
-3. If you do not emit an <action> tag, no data will be saved.
-4. Even when acting, provide a concise public summary after the action tag.`;
-
   const biomarkerEntries = Object.entries(biomarkers);
   const biomarkerList =
     biomarkerEntries.length > 0
@@ -933,8 +875,6 @@ ${biomarkerList}
 - Start every response with <thought>.
 - Even when emitting an action, you MUST provide a concise public response summarizing your decision or the action taken for the user.
 - Do NOT suggest workout changes, routine modifications, or field creation.`.trim();
-
-  return `${formatProtocol}\n\n${prompt}`.trim();
 }
 
 // ============================================================================

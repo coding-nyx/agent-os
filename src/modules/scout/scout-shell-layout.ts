@@ -49,7 +49,7 @@ export function resolveScoutShellState({
   const viewport = getScoutShellViewport(viewportWidth);
   const hasActiveResearchSession = selectedView === 'research' && Boolean(activeSessionId);
   const isDesktop = viewport === 'desktop';
-  const isSessionRailDocked = false;
+  const isSessionRailDocked = isDesktop && selectedView === 'research';
 
   let artifactsVisibility: ScoutArtifactsVisibility = 'hidden';
 

@@ -413,3 +413,68 @@ export const AtlasBlueprintService = {
   projectAtCapacityPct: projectAtlasCapacityBlueprint,
   inferDocumentIngestionMode: inferAtlasDocumentIngestionMode,
 };
+
+// ─── Deadline Pressure Score ──────────────────────────────────────────────────
+
+/**
+ * Compute a 0–10 deadline pressure score from active tasks and goals.
+ * Factors in urgency, energy weight, priority, milestone velocity, and proximity.
+ */
+export function computeDeadlinePressureScore(
+  tasks: AtlasTask[],
+  goals: AtlasGoal[],
+  taskCompletionRate?: number
+): number {
+  const now = Date.now();
+
+  // ── Task scores ─────────────────────────────────────────────────────────────
+  const taskScores: number[] = tasks
+    .filter(t => t.status !== 'done' && t.deadline)
+    .map(t => {
+      const daysRemaining = (new Date(t.deadline!).getTime() - now) / (1000 * 60 * 60 * 24);
+      const urgency =
+        daysRemaining <= 0 ? 10 :
+        daysRemaining <= 1 ? 9 :
+        daysRemaining <= 3 ? 7 :
+        daysRemaining <= 7 ? 5 : 2;
+      const energyWeight = (t.energyCost ?? 5) / 10;
+      const priorityMultiplier = (t.priority ?? 3) <= 2 ? 1.5 : 1.0;
+      return urgency * energyWeight * priorityMultiplier;
+    })
+    .sort((a, b) => b - a);
+
+  const top5Tasks = taskScores.slice(0, 5);
+  const taskAvg = top5Tasks.length > 0
+    ? top5Tasks.reduce((s, v) => s + v, 0) / top5Tasks.length
+    : 0;
+
+  // ── Goal scores ──────────────────────────────────────────────────────────────
+  const goalScores: number[] = goals
+    .filter(g => g.status === 'active' && g.deadline)
+    .map(g => {
+      const daysRemaining = (new Date(g.deadline!).getTime() - now) / (1000 * 60 * 60 * 24);
+
+      const totalMilestones = g.milestones.length;
+      const completedMilestones = g.milestones.filter(m => m.completed).length;
+
+      const milestoneRatio = totalMilestones > 0
+        ? completedMilestones / totalMilestones
+        : (g.progressPercent ?? 0) / 100;
+
+      const velocityNeeded = (1 - milestoneRatio) / Math.max(1, daysRemaining / 7);
+      const velocityHave = taskCompletionRate ?? 0.5;
+      const goalRisk = Math.max(0, velocityNeeded - velocityHave) * 10;
+
+      const proximityMultiplier = daysRemaining <= 14 ? 1.5 : 1.0;
+      return Math.min(10, goalRisk) * proximityMultiplier;
+    })
+    .sort((a, b) => b - a);
+
+  const top3Goals = goalScores.slice(0, 3);
+  const goalAvg = top3Goals.length > 0
+    ? top3Goals.reduce((s, v) => s + v, 0) / top3Goals.length
+    : 0;
+
+  const rawScore = taskAvg * 0.6 + goalAvg * 0.4;
+  return Math.round(Math.min(10, Math.max(0, rawScore)) * 10) / 10;
+}

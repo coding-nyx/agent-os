@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Circle, AlertTriangle, Clock, Zap, ChevronDown, Link2, RotateCcw, CalendarPlus, Pencil, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, AlertTriangle, Clock, Zap, ChevronDown, Link2, RotateCcw, RotateCw, CalendarPlus, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasTask } from '../services/atlas-profile-service';
@@ -188,13 +188,12 @@ export const TaskCard = React.memo(function TaskCard({
                   </span>
 
                   {task.recurrenceRule && (
-                    <span
-                      className="inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-0.5 font-semibold text-white/45"
-                      title={`Recurring: ${task.recurrenceRule}`}
-                      aria-label={`Recurring task, ${task.recurrenceRule}`}
-                    >
-                      <RotateCcw className="h-2.5 w-2.5" aria-hidden="true" />
-                      {task.recurrenceRule}
+                    <span className="inline-flex items-center gap-1 text-[10px] text-[var(--module-color-400)] bg-[var(--module-accent-faint)] border border-[var(--module-accent-border)] px-1.5 py-0.5 rounded-full">
+                      <RotateCw className="w-2.5 h-2.5" aria-hidden="true" />
+                      {task.recurrenceRule === 'daily' ? 'Daily' :
+                       task.recurrenceRule === 'weekdays' ? 'Weekdays' :
+                       task.recurrenceRule === 'weekly' ? 'Weekly' :
+                       task.recurrenceRule === 'monthly' ? 'Monthly' : task.recurrenceRule}
                     </span>
                   )}
 

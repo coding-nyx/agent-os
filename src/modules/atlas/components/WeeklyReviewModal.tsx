@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ArrowRight, Shield, Sparkles } from 'lucide-react';
+import { CalendarDays, ArrowRight, Shield, Sparkles, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -11,6 +11,7 @@ import type {
   AtlasReviewAction,
   AtlasReviewBlueprint,
   GlobalProjection,
+  AtlasTask,
 } from '@/lib/types';
 import {
   AtlasBlueprintService,
@@ -25,6 +26,7 @@ interface WeeklyReviewModalProps {
   soul: GlobalProjection | null;
   predictiveDisplay: AtlasStateDisplay;
   onCompleteReview?: (blueprint?: AtlasReviewBlueprint) => void;
+  tasks?: AtlasTask[];
 }
 
 export interface WeeklyReviewCardProps {
@@ -230,6 +232,7 @@ export function WeeklyReviewModal({
   soul,
   predictiveDisplay,
   onCompleteReview,
+  tasks = [],
 }: WeeklyReviewModalProps) {
   const [capacityPct, setCapacityPct] = useState(100);
   const [recoveryScheduled, setRecoveryScheduled] = useState(false);
@@ -427,8 +430,7 @@ export function WeeklyReviewModal({
         </section>
 
         <section className="space-y-3">
-          {onCompleteReview && (
-            <NeuralButton
+          {onCompleteReview && (<NeuralButton
               onClick={() => {
                 onCompleteReview(adjustedBlueprint);
                 onClose();
@@ -455,6 +457,42 @@ export function WeeklyReviewModal({
             </NeuralButton>
           )}
         </section>
+
+        {/* ── Plan Next Week ── */}
+        {(() => {
+          const overdueTasks = tasks.filter(t =>
+            t.deadline &&
+            t.status !== 'done' &&
+            new Date(t.deadline).getTime() < Date.now()
+          ).sort((a, b) => a.priority - b.priority);
+          return (
+            <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+              <h3 className="text-xs font-bold text-white/70 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <Calendar className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
+                Plan Next Week
+              </h3>
+              <p className="text-xs text-white/50 mb-3 leading-relaxed">
+                Based on this week's review, these items are recommended for next week:
+              </p>
+              {overdueTasks.length > 0 ? (
+                <ul className="space-y-2 mb-3">
+                  {overdueTasks.slice(0, 5).map(task => (
+                    <li key={task.id} className="flex items-center gap-2 text-xs text-white/60">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                      <span className="truncate">{task.title}</span>
+                      <span className="ml-auto text-[10px] text-white/30 shrink-0">P{task.priority}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-white/30 italic mb-3">No overdue tasks — great week!</p>
+              )}
+              <p className="text-[10px] text-white/30">
+                Use Atlas to schedule these when planning next week's energy blocks.
+              </p>
+            </div>
+          );
+        })()}
       </div>
     </NeuralModal>
   );

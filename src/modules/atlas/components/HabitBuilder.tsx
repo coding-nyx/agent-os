@@ -41,71 +41,19 @@ type HabitFilter = 'all' | 'active' | 'paused' | 'archived';
 
 // Habit templates for common patterns
 const HABIT_TEMPLATES = [
-  {
-    id: 'exercise',
-    title: 'Daily Exercise',
-    frequency: 'daily' as const,
-    energyCost: 4,
-    minimumViableVersion: '10 minutes of movement',
-    targetStreak: 30,
-  },
-  {
-    id: 'meditation',
-    title: 'Meditation',
-    frequency: 'daily' as const,
-    energyCost: 2,
-    minimumViableVersion: '5 minutes of mindfulness',
-    targetStreak: 21,
-  },
-  {
-    id: 'journaling',
-    title: 'Journaling',
-    frequency: 'daily' as const,
-    energyCost: 3,
-    minimumViableVersion: 'Write 3 sentences',
-    targetStreak: 30,
-  },
-  {
-    id: 'reading',
-    title: 'Reading',
-    frequency: 'daily' as const,
-    energyCost: 3,
-    minimumViableVersion: 'Read 10 pages',
-    targetStreak: 30,
-  },
-  {
-    id: 'water',
-    title: 'Drink Water',
-    frequency: 'daily' as const,
-    energyCost: 1,
-    minimumViableVersion: '8 glasses throughout the day',
-    targetStreak: 60,
-  },
-  {
-    id: 'deep_work',
-    title: 'Deep Work Session',
-    frequency: 'weekdays' as const,
-    energyCost: 7,
-    minimumViableVersion: '1 hour of focused work',
-    targetStreak: 20,
-  },
-  {
-    id: 'learning',
-    title: 'Learn Something New',
-    frequency: 'daily' as const,
-    energyCost: 4,
-    minimumViableVersion: '30 minutes of learning',
-    targetStreak: 30,
-  },
-  {
-    id: 'sleep',
-    title: 'Consistent Sleep Schedule',
-    frequency: 'daily' as const,
-    energyCost: 2,
-    minimumViableVersion: 'Sleep by 11 PM',
-    targetStreak: 14,
-  },
-];
+  // Physical
+  { id: 'morning-walk', title: 'Morning Walk', frequency: 'daily' as const, energyCost: 2, category: 'physical', icon: '🚶', description: 'Start the day with 20–30 min of light movement.' },
+  { id: 'hydration', title: 'Drink 8 Glasses', frequency: 'daily' as const, energyCost: 1, category: 'physical', icon: '💧', description: 'Track daily hydration to support focus and recovery.' },
+  { id: 'stretching', title: 'Evening Stretch', frequency: 'daily' as const, energyCost: 2, category: 'physical', icon: '🧘', description: '10 min of stretching before bed to aid recovery.' },
+  // Mental
+  { id: 'meditation', title: 'Meditation', frequency: 'daily' as const, energyCost: 2, category: 'mental', icon: '🧠', description: '10 min of mindfulness or breathwork each morning.' },
+  { id: 'journaling', title: 'Daily Journal', frequency: 'daily' as const, energyCost: 3, category: 'mental', icon: '📓', description: 'Write 3 sentences about today — what happened, what you felt, what you learned.' },
+  { id: 'reading', title: 'Read 20 Pages', frequency: 'daily' as const, energyCost: 3, category: 'mental', icon: '📚', description: 'Read non-work material every day to expand perspective.' },
+  // Professional
+  { id: 'deep-work', title: 'Deep Work Block', frequency: 'weekdays' as const, energyCost: 8, category: 'professional', icon: '💻', description: '2+ hour focused work session with no interruptions.' },
+  { id: 'inbox-zero', title: 'Inbox Zero', frequency: 'weekdays' as const, energyCost: 3, category: 'professional', icon: '📬', description: 'Process and archive all emails once per day.' },
+  { id: 'weekly-review', title: 'Weekly Review', frequency: 'weekly' as const, energyCost: 4, category: 'professional', icon: '📊', description: 'Review goals, tasks, and habits every Sunday.' },
+] as const;
 
 const FREQUENCY_OPTIONS = [
   { value: 'daily', label: 'Daily' },
@@ -218,14 +166,13 @@ export function HabitBuilder({
     });
   };
 
-  const handleSelectTemplate = (template: typeof HABIT_TEMPLATES[0]) => {
+  const handleSelectTemplate = (template: typeof HABIT_TEMPLATES[number]) => {
     setFormData({
       ...formData,
       title: template.title,
       frequency: template.frequency,
       energyCost: template.energyCost,
-      minimumViableVersion: template.minimumViableVersion,
-      targetStreak: template.targetStreak,
+      minimumViableVersion: template.description,
     });
     setShowTemplates(false);
   };
@@ -342,34 +289,37 @@ export function HabitBuilder({
           </NeuralButton>
         </div>
 
-        {/* ── Templates section ── */}
-        {showTemplates && !editingHabit && (
-          <div className="mb-6 pb-6 border-b border-white/10">
-            <h3 className="text-sm font-bold text-white/70 mb-3 flex items-center gap-2">
-              <Sparkles className="w-4 h-4" />
-              Habit Templates
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {HABIT_TEMPLATES.map((template) => (
-                <NeuralButton
-                  key={template.id}
-                  onClick={() => handleSelectTemplate(template)}
-                  variant="ghost"
-                  className="p-3 !h-auto rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-left transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] !justify-start !items-start !flex-col"
-                >
-                  <div className="text-sm font-semibold text-white/90 mb-1 group-hover:text-emerald-400 transition-colors">
-                    {template.title}
-                  </div>
-                  <div className="text-[10px] text-white/40">
-                    {template.frequency} • {template.energyCost} energy
-                  </div>
-                </NeuralButton>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div className="space-y-4">
+          {/* ── Template starter ── */}
+          {!editingHabit && (
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => setShowTemplates(!showTemplates)}
+                className="text-xs text-[var(--module-color-400)] hover:text-[var(--module-color-300)] flex items-center gap-1.5 transition-colors"
+              >
+                <Sparkles className="w-3 h-3" />
+                {showTemplates ? 'Hide templates' : 'Start from a template'}
+              </button>
+              {showTemplates && (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {HABIT_TEMPLATES.map(tpl => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => handleSelectTemplate(tpl)}
+                      className="text-left p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[var(--module-accent-border)] transition-all"
+                    >
+                      <div className="text-base mb-1">{tpl.icon}</div>
+                      <div className="text-[11px] font-semibold text-white/80 leading-tight">{tpl.title}</div>
+                      <div className="text-[10px] text-white/40 mt-0.5 capitalize">{tpl.category}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Title */}
           <NeuralInput
             label="Habit Name *"

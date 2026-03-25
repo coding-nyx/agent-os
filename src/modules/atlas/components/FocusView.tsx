@@ -5,6 +5,7 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/core/components/EmptyState';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+import { Spine } from '@/lib/spine/spine-event-bus';
 import type { AtlasTask } from '../services/atlas-profile-service';
 
 // ---------------------------------------------------------------------------
@@ -31,13 +32,15 @@ export function FocusView({
   const reducedMotion = useReducedMotion();
 
   // ---- Timer state ----
-  const [timerSeconds, setTimerSeconds] = useState(DEFAULT_FOCUS_MINUTES * 60);
+  const [pomodoroMinutes, setPomodoroMinutes] = useState(25);
+  const [timerSeconds, setTimerSeconds] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [sessionsCompleted, setSessionsCompleted] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const minutes = Math.floor(timerSeconds / 60);
   const seconds = timerSeconds % 60;
-  const timerProgress = 1 - timerSeconds / (DEFAULT_FOCUS_MINUTES * 60);
+  const timerProgress = 1 - timerSeconds / (pomodoroMinutes * 60);
 
   // ---- Energy gauge calculations ----
   const energyPercent = Math.max(0, Math.min(100, (energyLevel / 10) * 100));
@@ -65,6 +68,20 @@ export function FocusView({
         setTimerSeconds((prev) => {
           if (prev <= 1) {
             setIsTimerRunning(false);
+            setSessionsCompleted(c => c + 1);
+            Spine.emit({
+              type: 'ATLAS_STATE_CHANGED',
+              source: 'focus-view-pomodoro',
+              domain: 'C',
+              priority: 'info',
+              target: 'atlas',
+              data: {
+                reason: 'focus_session_completed',
+                durationMinutes: pomodoroMinutes,
+                taskId: activeTask?.id ?? null,
+                taskTitle: activeTask?.title ?? null,
+              },
+            });
             return 0;
           }
           return prev - 1;
@@ -75,27 +92,27 @@ export function FocusView({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isTimerRunning, timerSeconds]);
+  }, [isTimerRunning, timerSeconds, pomodoroMinutes, activeTask]);
 
   // Reset timer when the active task changes
   useEffect(() => {
-    setTimerSeconds(DEFAULT_FOCUS_MINUTES * 60);
+    setTimerSeconds(pomodoroMinutes * 60);
     setIsTimerRunning(false);
   }, [activeTask?.id]);
 
   const toggleTimer = useCallback(() => {
     if (timerSeconds === 0) {
-      setTimerSeconds(DEFAULT_FOCUS_MINUTES * 60);
+      setTimerSeconds(pomodoroMinutes * 60);
       setIsTimerRunning(true);
     } else {
       setIsTimerRunning((prev) => !prev);
     }
-  }, [timerSeconds]);
+  }, [timerSeconds, pomodoroMinutes]);
 
   const resetTimer = useCallback(() => {
     setIsTimerRunning(false);
-    setTimerSeconds(DEFAULT_FOCUS_MINUTES * 60);
-  }, []);
+    setTimerSeconds(pomodoroMinutes * 60);
+  }, [pomodoroMinutes]);
 
   // ---- Empty state ----
   if (!activeTask) {
@@ -224,6 +241,29 @@ export function FocusView({
 
         {/* ── Pomodoro timer ── */}
         <div className="flex flex-col items-center gap-4">
+          {/* Duration picker */}
+          <div className="flex items-center gap-1.5">
+            {[15, 25, 50].map(mins => (
+              <button
+                key={mins}
+                type="button"
+                onClick={() => {
+                  setPomodoroMinutes(mins);
+                  setTimerSeconds(mins * 60);
+                  setIsTimerRunning(false);
+                }}
+                className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full border transition-colors',
+                  pomodoroMinutes === mins
+                    ? 'border-emerald-400/60 text-emerald-400'
+                    : 'border-white/10 text-white/30 hover:border-white/20'
+                )}
+              >
+                {mins}m
+              </button>
+            ))}
+          </div>
+
           <div
             className="text-4xl md:text-5xl font-black tabular-nums text-white/80 tracking-tight"
             role="timer"
@@ -233,6 +273,12 @@ export function FocusView({
             {String(minutes).padStart(2, '0')}:
             {String(seconds).padStart(2, '0')}
           </div>
+
+          {sessionsCompleted > 0 && (
+            <div className="text-[10px] text-white/40">
+              {sessionsCompleted} session{sessionsCompleted !== 1 ? 's' : ''} completed today
+            </div>
+          )}
 
           {/* Timer controls */}
           <div className="flex items-center gap-3">

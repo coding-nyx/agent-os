@@ -65,6 +65,7 @@ export interface ScoutKnowledgeNode {
   evidence: string[]; // Array of SourceEntry IDs
   highlights?: string[]; // Array of EvidenceHighlight IDs
   embedding?: number[]; // Vector embedding for semantic search
+  tags?: string[]; // User-assigned topic tags for filtering/clustering
   // Optional aliases used by export/UI layers.
   // Some views treat these as either a single source URL/domain or a list.
   source?: string;

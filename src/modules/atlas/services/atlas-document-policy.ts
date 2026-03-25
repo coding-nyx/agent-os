@@ -53,6 +53,9 @@ export interface AtlasDocumentProposal {
   ingestionMode: 'structured' | 'unstructured';
   reviewGuidance: string;
   rawTextPreview: string;
+  autoImportEligible: boolean;   // true when confidence >= 0.9
+  needsCarefulReview: boolean;   // true when confidence < 0.6
+  undoWindowHours: number;       // 24 for auto-imports, 0 for manual
 }
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
@@ -205,14 +208,26 @@ export const atlasDocumentPolicy: DocumentPipelinePolicy<AtlasDocumentAnalysis, 
 
   buildProposal: (analysis, parsed) => {
     const ingestionMode = AtlasBlueprintService.inferDocumentIngestionMode(analysis.confidence);
+    const autoImportEligible = analysis.confidence >= 0.9;
+    const needsCarefulReview = analysis.confidence < 0.6;
+
+    let reviewGuidance: string;
+    if (analysis.confidence >= 0.9) {
+      reviewGuidance = 'High confidence import. Auto-import eligible — changes can be undone within 24 hours.';
+    } else if (analysis.confidence >= 0.6) {
+      reviewGuidance = 'Source looks structured. Atlas can import most entities directly after review.';
+    } else {
+      reviewGuidance = 'Low confidence. Items appear in the Needs Review inbox. Review all titles, dates, and costs carefully before accepting.';
+    }
+
     return {
       ...analysis,
       ingestionMode,
-      reviewGuidance:
-        ingestionMode === 'structured'
-          ? 'Source looks structured. Atlas can import most entities directly after review.'
-          : 'Source looks unstructured. Review titles, dates, and energy costs carefully before import.',
+      reviewGuidance,
       rawTextPreview: (parsed.rawText ?? '').slice(0, 300),
+      autoImportEligible,
+      needsCarefulReview,
+      undoWindowHours: autoImportEligible ? 24 : 0,
     };
   },
 
@@ -221,8 +236,19 @@ export const atlasDocumentPolicy: DocumentPipelinePolicy<AtlasDocumentAnalysis, 
     if (proposal.tasks.length > 0) parts.push(`${proposal.tasks.length} task(s)`);
     if (proposal.habits.length > 0) parts.push(`${proposal.habits.length} habit(s)`);
     if (proposal.goals.length > 0) parts.push(`${proposal.goals.length} goal(s)`);
-    return parts.length > 0
-      ? `Detected ${parts.join(', ')} from a ${proposal.ingestionMode} planning source.`
-      : 'No structured planning data found in this document.';
+
+    if (parts.length === 0) {
+      return 'No structured planning data found in this document.';
+    }
+
+    let summary = `Detected ${parts.join(', ')} from a ${proposal.ingestionMode} planning source.`;
+
+    if (proposal.autoImportEligible) {
+      summary += ' (auto-import eligible — 24hr undo)';
+    } else if (proposal.needsCarefulReview) {
+      summary += ' (needs careful review)';
+    }
+
+    return summary;
   },
 };

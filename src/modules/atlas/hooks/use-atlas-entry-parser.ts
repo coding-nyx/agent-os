@@ -74,9 +74,12 @@ const DATE_RULES: DateRule[] = [
       const day = WEEKDAY_NAMES.indexOf(match[1].toLowerCase());
       const now = new Date();
       const todayDay = now.getDay();
-      const daysUntil = ((day - todayDay + 7) % 7) || 7;
+      // "next X" always means the occurrence in the following calendar week —
+      // not the nearest upcoming X. Wednesday + "next friday" = 9 days (not 2).
+      const rawDaysUntil = (day - todayDay + 7) % 7;
+      const daysUntil = rawDaysUntil === 0 ? 7 : rawDaysUntil + 7;
       const result = new Date(now);
-      result.setDate(now.getDate() + daysUntil + (daysUntil === 0 ? 7 : 0));
+      result.setDate(now.getDate() + daysUntil);
       return isoLocal(result);
     },
   },

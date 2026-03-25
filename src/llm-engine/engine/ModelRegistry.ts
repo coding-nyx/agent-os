@@ -90,38 +90,6 @@ export class ModelRegistry {
     return fromRegistry.length > 0 ? fromRegistry : [...fallback];
   }
 
-  // TODO: getModelsByTier is currently unused outside ModelRegistry — consider removing if auto-scaling is not implemented
-  static getModelsByTier(tier: ModelTier): ModelMetadata[] {
-    return this.models.filter(m => m.tier === tier);
-  }
-
-  // TODO: getBestModel is currently unused — consider removing if auto-scaling is not implemented
-  static getBestModel(tier: ModelTier): ModelMetadata | null {
-    const tierModels = this.getModelsByTier(tier);
-    if (tierModels.length === 0) return null;
-
-    // Rank by context length then reasoning — spread to avoid mutating shared array
-    return [...tierModels].sort((a, b) => {
-      if (a.isReasoning !== b.isReasoning) return a.isReasoning ? -1 : 1;
-      return b.context_length - a.context_length;
-    })[0];
-  }
-
-  // TODO: getBestFreeModel is currently unused — consider removing if auto-scaling is not implemented
-  static getBestFreeModel(): ModelMetadata | null {
-    const freeModels = this.models.filter(m => m.isFree && m.context_length >= 16000);
-    if (freeModels.length === 0) {
-      const anyFree = this.models.filter(m => m.isFree);
-      if (anyFree.length === 0) return null;
-      return [...anyFree].sort((a, b) => b.context_length - a.context_length)[0];
-    }
-    return [...freeModels].sort((a, b) => {
-      if (a.isReasoning !== b.isReasoning) return a.isReasoning ? -1 : 1;
-      return b.context_length - a.context_length;
-    })[0];
-  }
-
-  // TODO: getAllModels is currently unused — consider removing if auto-scaling is not implemented
   static getAllModels(): ModelMetadata[] {
     return this.models;
   }

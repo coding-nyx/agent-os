@@ -19,12 +19,12 @@ import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import type { AtlasTask } from '../services/atlas-profile-service';
 import { TaskCard } from './TaskCard';
+import { DependencyGraphView } from './DependencyGraphView';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
-import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { EmptyState } from '@/core/components/EmptyState';
 
 // Shared primitives
@@ -44,7 +44,23 @@ interface TaskManagerProps {
 }
 
 type TaskFilter = 'all' | 'active' | 'blocked' | 'done' | 'deferred';
-type TaskSort = 'priority' | 'deadline' | 'energy' | 'created';
+type TaskSort = 'priority' | 'deadline' | 'energy' | 'created' | 'smart';
+
+function computeUrgencyScore(task: AtlasTask): number {
+  const nowMs = Date.now();
+  const priorityScore = (6 - task.priority) * 2; // priority 1 → 10, priority 5 → 2
+
+  let deadlineScore = 0;
+  if (task.deadline) {
+    const daysLeft = (new Date(task.deadline).getTime() - nowMs) / (1000 * 60 * 60 * 24);
+    deadlineScore = daysLeft <= 0 ? 10 : daysLeft <= 1 ? 8 : daysLeft <= 3 ? 6 : daysLeft <= 7 ? 4 : 1;
+  }
+
+  const depUnblockScore = task.status === 'blocked' ? 0 : (Array.isArray(task.dependencies) && task.dependencies.length > 0 ? 2 : 0);
+  const energyPenalty = Math.max(0, (task.energyCost - 5) * 0.5);
+
+  return priorityScore + deadlineScore + depUnblockScore - energyPenalty;
+}
 
 export function TaskManager({
   tasks,
@@ -59,12 +75,13 @@ export function TaskManager({
 
   // ── State ──
   const [filter, setFilter] = useState<TaskFilter>('all');
-  const [sortBy, setSortBy] = useState<TaskSort>('priority');
+  const [sortBy, setSortBy] = useState<TaskSort>('smart');
   const [searchQuery, setSearchQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<AtlasTask | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showDependencyGraph, setShowDependencyGraph] = useState(false);
+  const [showAllTasks, setShowAllTasks] = useState(false);
 
   const { promptDelete, ConfirmationDialog } = useDeleteConfirmation<AtlasTask>(onDeleteTask);
 
@@ -97,6 +114,8 @@ export function TaskManager({
       (t.tags?.some((tag) => tag.toLowerCase().includes(q)) ?? false),
     sortFn: (a, b, s) => {
       switch (s) {
+        case 'smart':
+          return computeUrgencyScore(b) - computeUrgencyScore(a);
         case 'priority':
           return a.priority - b.priority;
         case 'deadline':
@@ -283,6 +302,7 @@ export function TaskManager({
                 value={sortBy}
                 onChange={(next) => setSortBy(next as TaskSort)}
                 options={[
+                  { value: 'smart', label: '✦ Smart' },
                   { value: 'priority', label: 'Priority' },
                   { value: 'deadline', label: 'Deadline' },
                   { value: 'energy', label: 'Energy Cost' },
@@ -327,43 +347,7 @@ export function TaskManager({
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <SurfaceCard className="p-4">
-              <h3 className="text-sm font-bold text-white/90 mb-4 flex items-center gap-2">
-                <GitBranch className="w-4 h-4" />
-                Task Dependency Graph
-              </h3>
-              <div className="space-y-2">
-                {dependencyGraph.edges.length === 0 ? (
-                  <p className="text-xs text-white/40 italic">
-                    No task dependencies defined yet
-                  </p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {dependencyGraph.edges.map((edge, idx) => {
-                      const fromTask = tasks.find((t) => t.id === edge.from);
-                      const toTask = tasks.find((t) => t.id === edge.to);
-                      return (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-2 text-xs text-white/60 p-2 rounded-lg bg-white/[0.02] border border-white/5"
-                        >
-                          <span
-                            className={cn(
-                              'truncate flex-1',
-                              fromTask?.status === 'done' && 'line-through text-emerald-400/50'
-                            )}
-                          >
-                            {fromTask?.title || edge.from}
-                          </span>
-                          <Link2 className="w-3 h-3 text-white/20 shrink-0" />
-                          <span className="truncate flex-1">{toTask?.title || edge.to}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </SurfaceCard>
+            <DependencyGraphView tasks={tasks} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -382,20 +366,31 @@ export function TaskManager({
             size="lg"
           />
         ) : (
-          filteredTasks.map((task) => (
-            <div key={task.id}>
-              <TaskCard
-                task={task}
-                onComplete={onCompleteTask}
-                onUncomplete={onUncompleteTask}
-                isExpanded={expandedTaskId === task.id}
-                onToggleExpand={() => handleToggleExpand(task.id)}
-                allTasks={tasks}
-                onEdit={(currentTask) => handleOpenForm(currentTask)}
-                onDelete={(currentTask) => promptDelete(currentTask)}
-              />
-            </div>
-          ))
+          <>
+            {(showAllTasks ? filteredTasks : filteredTasks.slice(0, 30)).map((task) => (
+              <div key={task.id}>
+                <TaskCard
+                  task={task}
+                  onComplete={onCompleteTask}
+                  onUncomplete={onUncompleteTask}
+                  isExpanded={expandedTaskId === task.id}
+                  onToggleExpand={() => handleToggleExpand(task.id)}
+                  allTasks={tasks}
+                  onEdit={(currentTask) => handleOpenForm(currentTask)}
+                  onDelete={(currentTask) => promptDelete(currentTask)}
+                />
+              </div>
+            ))}
+            {!showAllTasks && filteredTasks.length > 30 && (
+              <button
+                type="button"
+                onClick={() => setShowAllTasks(true)}
+                className="w-full py-2 text-xs text-white/40 hover:text-white/60 transition-colors border border-white/10 rounded-xl hover:border-white/20"
+              >
+                Show {filteredTasks.length - 30} more tasks
+              </button>
+            )}
+          </>
         )}
       </div>
 

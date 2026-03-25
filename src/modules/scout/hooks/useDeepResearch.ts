@@ -18,6 +18,7 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import type { ScoutKnowledgeNode } from '../services/scout-knowledge-service';
 import { queryKnowledgeNodes } from '../services/scout-knowledge-service';
 import type { AddSourceInput } from '../services/scout-sources-service';
+import { updateSession } from '../services/scout-session-service';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -87,6 +88,7 @@ export type UseDeepResearchReturn = DeepResearchState & {
 interface UseDeepResearchOptions {
   userId?: string | null;
   encryptionKey?: CryptoKey | null;
+  sessionId?: string | null;
   onComplete?: (result: DeepResearchResult) => void;
   onProgress?: (state: DeepResearchState) => void;
 }
@@ -121,6 +123,7 @@ Respond with a JSON array: [{"id":"r1","question":"...","rationale":"..."}]`;
 export function useDeepResearch({
   userId,
   encryptionKey,
+  sessionId,
   onComplete,
   onProgress,
 }: UseDeepResearchOptions = {}): UseDeepResearchReturn {
@@ -440,6 +443,14 @@ Base confidence on source quality and consensus. Respond with JSON only.`;
         };
 
         updateState({ status: 'complete', result: finalResult });
+
+        // Auto-save the parent session to 'complete' without requiring manual Accept click
+        if (userId && sessionId) {
+          updateSession(sessionId, {
+            status: 'complete',
+            resultNodeId: finalResult.synthesisNode.id,
+          }, { userId }).catch(() => {/* non-fatal */});
+        }
 
         Spine.publish({
           type: 'DEEP_RESEARCH_COMPLETED',

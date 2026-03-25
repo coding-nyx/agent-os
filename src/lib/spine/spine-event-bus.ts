@@ -32,6 +32,7 @@ class SpineEventBus {
   private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private uid: string | null = null;
   private dataLayer: NexusDataLayer | null = null;
+  private _sequenceCounter = 0;
 
   private readonly validDomains: SpineDomain[] = ['B', 'E', 'C', 'R', 'system'];
   private readonly validPriorities: SpineEventPriority[] = ['info', 'alert', 'critical'];
@@ -70,10 +71,12 @@ class SpineEventBus {
     const event: SpineEvent = {
       ...normalized,
       id: crypto.randomUUID(),
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      sequence: ++this._sequenceCounter,
+      idempotencyKey: normalized.idempotencyKey ?? `${normalized.type}:${normalized.source}:${Date.now()}`,
     };
 
-    const debounceKey = `${event.type}:${event.source}:${event.target ?? ''}`;
+    const debounceKey = event.idempotencyKey ?? `${event.type}:${event.source}:${event.target ?? ''}`;
     if (this.debounceTimers.has(debounceKey)) return event;
 
     const timer = globalThis.setTimeout(() => {

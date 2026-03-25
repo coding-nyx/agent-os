@@ -894,3 +894,92 @@ textarea {
   color: rgba(255, 255, 255, 0.55);
   font-style: italic;
 }
+
+/* ── Chat UI ─────────────────────────────────────────────────────────── */
+
+/* Streaming cursor blink */
+@keyframes chat-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.chat-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  vertical-align: text-bottom;
+  background-color: currentColor;
+  margin-left: 1px;
+  border-radius: 1px;
+  animation: chat-cursor-blink 0.9s step-start infinite;
+  opacity: 0.55;
+}
+
+/* Code block host — resets prose interference */
+.chat-code-block {
+  /* Ensure block code never bleeds through the bubble's overflow-hidden */
+  contain: layout;
+}
+
+/* Inline code chip inside prose */
+.chat-markdown .inline-code,
+.chat-markdown code:not(.chat-code-block code) {
+  display: inline;
+  padding: 0.1em 0.4em;
+  border-radius: 0.3em;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  color: rgba(255, 255, 255, 0.85);
+  /* Hard-break long tokens (URLs, hashes) inside inline code */
+  word-break: break-all;
+  white-space: normal;
+}
+
+/* Table scroll wrapper */
+.chat-table-wrapper {
+  /* Ensures the table can scroll horizontally without expanding the bubble */
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Markdown wrapper: sensible word-break for prose */
+.chat-markdown {
+  /* Prefer breaking at word boundaries; only break mid-word when truly needed */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
+/* Links inside chat bubbles always break long URLs */
+.chat-markdown a {
+  word-break: break-all;
+}
+
+/* Suppress default prose pre/code backgrounds that clash with CodeBlock */
+.chat-markdown pre {
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+/* Remove prose default inline-code ring that Tailwind Typography adds */
+.chat-markdown :not(pre) > code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-weight: inherit;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Agnes chat — Lora prose spacing tweaks for chat bubbles */
+.chat-markdown.agnes-prose p {
+  margin-top: 0.6em;
+  margin-bottom: 0.6em;
+}

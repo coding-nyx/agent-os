@@ -7,24 +7,46 @@ import { SpineEvent } from '@/lib/types';
  */
 
 export class WeeklyReviewService {
+  // ── In-memory cache ────────────────────────────────────────────────────
+  private static _cache: {
+    result: { work: string; mental: string; physical: string; goalProjection: { confidence: number; forecast: string } };
+    lastAggregatedAt: number;
+    eventCount: number;
+  } | null = null;
+
   /**
    * Generates the Surgical Weekly Review.
    * Fetches events, groups them, and synthesizes into Work, Mental, Physical paragraphs.
+   * Results are cached and only recomputed when new events are available.
    */
-  public static async generateReview(events: SpineEvent[]) {
-    const last7Days = Date.now() - (7 * 24 * 60 * 60 * 1000);
+  public static async generateReview(events: SpineEvent[], forceRefresh = false) {
+    const nowMs = Date.now();
+    const last7Days = nowMs - (7 * 24 * 60 * 60 * 1000);
     const recentEvents = events.filter(e => e.timestamp > last7Days);
+
+    // Return cached result if events haven't changed since last aggregation
+    if (!forceRefresh && WeeklyReviewService._cache) {
+      const newEventsCount = recentEvents.filter(
+        e => e.timestamp > WeeklyReviewService._cache!.lastAggregatedAt
+      ).length;
+      if (newEventsCount === 0) {
+        return WeeklyReviewService._cache.result;
+      }
+    }
 
     const workEvents = recentEvents.filter(e => e.domain === 'C' || e.source.toLowerCase() === 'atlas');
     const mentalEvents = recentEvents.filter(e => e.domain === 'E' || e.source.toLowerCase() === 'agnes');
     const physicalEvents = recentEvents.filter(e => e.domain === 'B' || ['soma', 'titan'].includes(e.source.toLowerCase()));
 
-    return {
+    const result = {
       work: this.synthesizeDomain('Work', workEvents),
       mental: this.synthesizeDomain('Mental', mentalEvents),
       physical: this.synthesizeDomain('Physical', physicalEvents),
       goalProjection: this.runGoalProjection(workEvents)
     };
+
+    WeeklyReviewService._cache = { result, lastAggregatedAt: nowMs, eventCount: recentEvents.length };
+    return result;
   }
 
   private static synthesizeDomain(label: string, events: SpineEvent[]): string {

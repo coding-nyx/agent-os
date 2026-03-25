@@ -134,19 +134,25 @@ export async function mergeTitanDiagnosisData(
     }
   }
 
-  // Wait for all external delegation calls to complete in parallel.
-  // This eliminates sequential I/O wait time for biomarker and clearance commits,
-  // reducing total merge duration from O(N * latency) to O(latency).
-  if (delegationPromises.length > 0) {
-    try {
-      await Promise.all(delegationPromises);
-    } catch (delegationError) {
-      console.error('[TitanDiagnosisMerge] One or more delegations failed:', delegationError);
-      // Don't save TitanProfile if delegations failed — prevents data divergence
-      throw new Error(`Diagnosis merge aborted: delegation failed (${(delegationError as Error).message})`);
-    }
-  }
-
+  // Phase 1: Save non-delegated items (lab summaries, conditions, medications,
+  // allergies, medical image analyses) immediately. These belong to TitanProfile
+  // and must not be lost even if Soma delegation fails later.
   next.updatedAt = new Date().toISOString();
   await saveTitanProfile(next, { userId, encryptionKey: encryptionKey ?? null });
+
+  // Phase 2: Attempt Soma delegations (biomarkers, clearances) in parallel.
+  // Uses Promise.allSettled so a partial failure does not lose already-saved items.
+  // Failed delegations are logged as warnings; the user can retry via the diagnosis panel.
+  if (delegationPromises.length > 0) {
+    const results = await Promise.allSettled(delegationPromises);
+    const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+    if (failures.length > 0) {
+      const messages = failures.map((r) => (r.reason as Error)?.message ?? String(r.reason));
+      console.warn(
+        `[TitanDiagnosisMerge] ${failures.length}/${delegationPromises.length} Soma delegation(s) failed — ` +
+        'profile items already saved; retry delegation from the diagnosis panel.\n' +
+        messages.join('\n'),
+      );
+    }
+  }
 }

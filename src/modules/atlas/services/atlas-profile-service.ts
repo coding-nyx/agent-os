@@ -198,7 +198,31 @@ export function subscribeAtlasProfile(
   return () => {};
 }
 
-export async function saveAtlasProfile(profile: AtlasProfile, { userId, encryptionKey }: LoadContext): Promise<void> {
+// ── Debounced write queue ─────────────────────────────────────────────────
+// Batches rapid profile saves within a 500ms window into a single Firestore write.
+// Keyed by userId so multiple users in the same session are isolated.
+const _pendingWrites = new Map<string, {
+  profile: AtlasProfile;
+  context: { userId: string; encryptionKey: CryptoKey | null };
+  resolve: (v: void) => void;
+  reject: (e: unknown) => void;
+  timer: ReturnType<typeof setTimeout>;
+}>();
+
+async function flushWrite(userId: string): Promise<void> {
+  const pending = _pendingWrites.get(userId);
+  if (!pending) return;
+  _pendingWrites.delete(userId);
+  clearTimeout(pending.timer);
+  try {
+    await _doSaveAtlasProfile(pending.profile, pending.context);
+    pending.resolve();
+  } catch (e) {
+    pending.reject(e);
+  }
+}
+
+async function _doSaveAtlasProfile(profile: AtlasProfile, { userId, encryptionKey }: { userId: string | null; encryptionKey: CryptoKey | null }): Promise<void> {
   const normalized = normalizeAtlasProfile(profile);
 
   if (userId && encryptionKey) {
@@ -241,6 +265,34 @@ export async function saveAtlasProfile(profile: AtlasProfile, { userId, encrypti
   }
 
   saveGuestAtlasProfile(normalized);
+}
+
+export async function saveAtlasProfile(
+  profile: AtlasProfile,
+  context: { userId?: string | null; encryptionKey?: CryptoKey | null }
+): Promise<void> {
+  const userId = context.userId;
+  if (!userId) {
+    // Guest mode — write immediately (localStorage, no batching needed)
+    return _doSaveAtlasProfile(profile, { userId: null, encryptionKey: context.encryptionKey ?? null });
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    const existing = _pendingWrites.get(userId);
+    if (existing) {
+      clearTimeout(existing.timer);
+      existing.resolve(); // resolve the previous caller immediately (they'll get the next flush)
+    }
+
+    const timer = setTimeout(() => flushWrite(userId), 500);
+    _pendingWrites.set(userId, {
+      profile,
+      context: { userId, encryptionKey: context.encryptionKey ?? null },
+      resolve,
+      reject,
+      timer,
+    });
+  });
 }
 
 export async function syncGuestAtlasProfileToUser({ userId, encryptionKey }: LoadContext): Promise<boolean> {

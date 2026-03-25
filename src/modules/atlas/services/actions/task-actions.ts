@@ -224,7 +224,7 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
       }
     });
 
-    emitSpineEvent('ATLAS_TASK_UNCOMPLETED' as any, {
+    emitSpineEvent('ATLAS_TASK_UNCOMPLETED', {
       taskId: task.id,
       title: task.title
     });
@@ -424,6 +424,18 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     const deadline = typeof payload?.deadline === 'string' ? payload.deadline : null;
     if (!targetId || !targetType || !deadline) return;
 
+    // Reject past deadlines — a deadline in the past is misleading and can corrupt
+    // deadline pressure calculations. Allow a 60-second grace window for clock skew.
+    if (isNaN(Date.parse(deadline))) {
+      console.warn('[Atlas] set_deadline: Invalid date format:', deadline);
+      return;
+    }
+    const msUntilDeadline = new Date(deadline).getTime() - Date.now();
+    if (msUntilDeadline < -60 * 1000) {
+      console.warn('[Atlas] set_deadline: Rejecting past deadline:', deadline);
+      return;
+    }
+
     const now = new Date().toISOString();
     if (targetType === 'task') {
       const task = profile.tasks.find(t => t.id === targetId);
@@ -440,7 +452,7 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     }
 
     const isHard = payload?.hardDeadline === true;
-    const msUntil = new Date(deadline).getTime() - Date.now();
+    const msUntil = msUntilDeadline;
     if (isHard && msUntil > 0 && msUntil < 24 * 60 * 60 * 1000) {
       emitSpineEvent('DEADLINE_APPROACHING', {
         targetId,
@@ -470,11 +482,66 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
   },
 
   delegate_to_module: async ({ emitSpineEvent, payload }) => {
-    emitSpineEvent('DELEGATION_REQUEST', {
-      targetModule: typeof payload?.targetModule === 'string' ? payload.targetModule : '',
-      task: typeof payload?.task === 'string' ? payload.task : '',
-      context: typeof payload?.context === 'string' ? payload.context : '',
-      priority: typeof payload?.priority === 'string' ? payload.priority : 'info'
-    });
+    const targetModule = typeof payload?.targetModule === 'string' ? payload.targetModule : '';
+    const task = typeof payload?.task === 'string' ? payload.task : '';
+    const context = typeof payload?.context === 'string' ? payload.context : '';
+    const priority = typeof payload?.priority === 'string' ? payload.priority : 'info';
+
+    if (!targetModule || !task) return;
+
+    // Build a structured verification request with a correlation ID so the
+    // response can be matched back to this delegation call.
+    const correlationId = crypto.randomUUID();
+
+    if (targetModule === 'titan') {
+      // Request workout verification from Titan for weekly review cross-check
+      emitSpineEvent('DELEGATION_REQUEST', {
+        correlationId,
+        targetModule: 'titan',
+        task,
+        context,
+        priority,
+        requestType: 'workout_verification',
+        expectedResponseType: 'WORKOUT_COMPLETED',
+        timeoutMs: 5000,
+      });
+
+      // Also emit the specific Titan query event so Titan's listener can respond
+      emitSpineEvent('ATLAS_STATE_CHANGED', {
+        reason: 'titan_verification_requested',
+        correlationId,
+        query: task,
+      });
+    } else if (targetModule === 'agnes') {
+      // Request therapy/session verification from Agnes
+      emitSpineEvent('DELEGATION_REQUEST', {
+        correlationId,
+        targetModule: 'agnes',
+        task,
+        context,
+        priority,
+        requestType: 'session_verification',
+        expectedResponseType: 'SOMATIC_SESSION_COMPLETE',
+        timeoutMs: 5000,
+      });
+
+      emitSpineEvent('SOMATIC_SUPPORT_REQUESTED', {
+        reason: 'atlas_cross_verification',
+        correlationId,
+        query: task,
+        context,
+      });
+    } else {
+      // Generic delegation for other modules
+      emitSpineEvent('DELEGATION_REQUEST', {
+        correlationId,
+        targetModule,
+        task,
+        context,
+        priority,
+        requestType: 'generic',
+        timeoutMs: 5000,
+      });
+    }
   },
 };

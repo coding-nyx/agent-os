@@ -21,7 +21,7 @@ import type {
   AtlasHabit,
   AtlasGoal,
 } from '../services/atlas-profile-service';
-import type { AtlasRoutine } from '@/lib/types';
+import type { AtlasRoutine, NeuralStateVector } from '@/lib/types';
 import { ATLAS_PERSONA } from '../personas';
 
 // ============================================================================
@@ -135,7 +135,7 @@ export const ATLAS_ALLOWED_ACTIONS: Record<AtlasContextMode['kind'], string[]> =
     // Habit management
     'create_habit', 'update_habit', 'update_habit_streak', 'pause_habit', 'delete_habit',
     // Schedule management
-    'daily_plan', 'weekly_review', 'schedule_block', 'generate_daily_schedule',
+    'daily_plan', 'weekly_review', 'schedule_block', 'generate_daily_schedule', 'suggest_daily_plan',
     // Energy & recovery
     'update_energy_wave', 'create_recovery_window', 'flatten_schedule',
     // NSV sync (Atlas-owned fields only)
@@ -205,6 +205,65 @@ ENERGY BUDGET COMPUTATION:
 8. If total scheduled energyCost > threshold, flag overload BEFORE proceeding.
 `.trim();
 
+const SUGGEST_DAILY_PLAN_ACTION_PROMPT = `
+SUGGEST_DAILY_PLAN ACTION:
+When the user asks you to plan their day, use:
+<action type="suggest_daily_plan">{"date":"YYYY-MM-DD","proposal":{"blocks":[{"time":"HH:MM","taskId":"...","title":"...","energyCost":N,"duration":60}],"totalEnergy":N,"note":"..."}}</action>
+This returns a proposal for user review — nothing is committed until they confirm.
+Respect the energy wave: high-energy tasks in peak slots, low-energy tasks in valleys.
+`.trim();
+
+// ============================================================================
+// NSV-Reactive Tone Override
+// ============================================================================
+
+/**
+ * Returns a tone calibration directive block based on the current NSV state.
+ * Returns an empty string when no override is warranted.
+ */
+export function buildToneOverrideBlock(nsv?: NeuralStateVector | null): string {
+  if (!nsv) return '';
+
+  const stressLoad = nsv.emotional?.stressLoad ?? null;
+  const emotionalResilience = nsv.emotional?.emotionalResilience ?? nsv.emotionalResilience ?? null;
+  const cnsFatigue = nsv.biological?.cnsFatigue ?? nsv.cnsFatigue ?? null;
+  const energyBudget = nsv.cognitive?.energyBudget ?? null;
+  const focusScore = nsv.cognitive?.focusScore ?? null;
+  const activeLoad = nsv.cognitive?.activeLoad ?? null;
+  const planningLoad = nsv.cognitive?.planningLoad ?? null;
+
+  const stressHigh = stressLoad !== null && stressLoad > 7;
+  const resilienceLow = emotionalResilience !== null && emotionalResilience < 4;
+  const fatigueHigh = cnsFatigue !== null && cnsFatigue > 7;
+  const energyLow = energyBudget !== null && energyBudget < 3;
+  const focusHigh = focusScore !== null && focusScore > 7;
+  const activeLoadLow = activeLoad !== null && activeLoad < 4;
+  const planningLoadLow = planningLoad !== null && planningLoad < 5;
+
+  if (stressHigh || resilienceLow) {
+    return `TONE CALIBRATION [GENTLE_CARE]:
+The user's current biometric + emotional signals indicate elevated stress or low resilience.
+Adjust your tone accordingly: be warm, validating, and patient. Offer fewer options.
+Avoid ambitious scheduling. Prioritize acknowledgement over optimization.`;
+  }
+
+  if (fatigueHigh || energyLow) {
+    return `TONE CALIBRATION [MINIMAL_ASKS]:
+The user's current signals indicate high CNS fatigue or critically low energy reserves.
+Be compassionate and keep asks to an absolute minimum. Prioritize rest over any planning goal.
+Do not propose multi-step plans. Offer one small, restoring action at most.`;
+  }
+
+  if (focusHigh && activeLoadLow && planningLoadLow) {
+    return `TONE CALIBRATION [DIRECT_STRUCTURED]:
+The user's current signals indicate high focus and available cognitive headroom.
+Be concise and ambitious. Prefer structured output (lists, schedules, milestones).
+This is a good window for deep work planning and goal advancement.`;
+  }
+
+  return '';
+}
+
 // ============================================================================
 // System Prompt Builders
 // ============================================================================
@@ -216,17 +275,19 @@ ENERGY BUDGET COMPUTATION:
  * @param nsvBlock - Pre-formatted NSV context from formatNSVForAtlasPlanner()
  * @param extensionFieldsBlock - Serialized extension field values
  * @param dataContext - All Atlas entity data for general-mode context injection
+ * @param nsvData - Raw NSV for tone calibration (general mode only)
  * @returns Complete system prompt string
  */
 export function buildAtlasPrompt(
   mode: AtlasContextMode,
   nsvBlock?: string,
   extensionFieldsBlock?: string,
-  dataContext?: AtlasDataContext
+  dataContext?: AtlasDataContext,
+  nsvData?: NeuralStateVector | null
 ): string {
   switch (mode.kind) {
     case 'general':
-      return buildGeneralPrompt(nsvBlock, extensionFieldsBlock, dataContext);
+      return buildGeneralPrompt(nsvBlock, extensionFieldsBlock, dataContext, nsvData);
     case 'task-focus':
       return buildTaskFocusPrompt(mode.task, nsvBlock);
     case 'habit-review':
@@ -243,7 +304,8 @@ export function buildAtlasPrompt(
 function buildGeneralPrompt(
   nsvBlock?: string,
   extensionFieldsBlock?: string,
-  data?: AtlasDataContext
+  data?: AtlasDataContext,
+  nsvData?: NeuralStateVector | null
 ): string {
   // Full ATLAS_PERSONA already contains identity, philosophy, mission,
   // all 13 rules, action tags, cross-module intelligence, and planning methodology.
@@ -264,7 +326,14 @@ function buildGeneralPrompt(
     if (dataBlock) parts.push(dataBlock);
   }
 
+  const toneBlock = buildToneOverrideBlock(nsvData);
+  if (toneBlock) {
+    parts.push(toneBlock);
+  }
+
   parts.push(ENERGY_BUDGET_COMPUTATION_PROMPT);
+
+  parts.push(SUGGEST_DAILY_PLAN_ACTION_PROMPT);
 
   return parts.join('\n\n');
 }

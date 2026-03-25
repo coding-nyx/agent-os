@@ -1,14 +1,15 @@
 /**
  * KnowledgeGraph.tsx
- * 
+ *
  * A visual cartography of the research landscape.
  * Renders Knowledge Nodes (findings) and Source Entries as a linked graph.
+ * Supports filtering by status, confidence tier, and tags.
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Search, BookMarked, Zap, ShieldCheck, AlertCircle, ExternalLink } from 'lucide-react';
+import { BookMarked, Zap, ShieldCheck, AlertCircle, ExternalLink, SlidersHorizontal, X } from 'lucide-react';
 import type { ScoutKnowledgeNode, SourceEntry } from '../../types';
 
 interface GraphNode {
@@ -38,28 +39,57 @@ interface KnowledgeGraphProps {
   className?: string;
 }
 
+type StatusFilter = 'all' | 'verified' | 'pending' | 'contested';
+
 const SVG_W = 800;
 const SVG_H = 500;
 const CENTER_X = SVG_W / 2;
 const CENTER_Y = SVG_H / 2;
 
+/** Confidence-tiered radius: high confidence nodes orbit close to center. */
+function confidenceRadius(confidence: number, index: number, total: number): number {
+  const tier = confidence >= 0.7 ? 0 : confidence >= 0.5 ? 1 : 2;
+  const baseRadius = 80 + tier * 70;
+  // Spread within tier using angle-based offset
+  return baseRadius + (index % 3) * 20;
+}
+
 export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: KnowledgeGraphProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [minConfidence, setMinConfidence] = useState(0);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
-  // ─── Layout Logic ─────────────────────────────────────────────────────────
-  
+  // Collect all unique tags across nodes
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    nodes.forEach(n => n.tags?.forEach(t => tags.add(t)));
+    return Array.from(tags).sort();
+  }, [nodes]);
+
+  // Apply filters
+  const filteredNodes = useMemo(() => {
+    return nodes.filter(n => {
+      if (statusFilter !== 'all' && n.status !== statusFilter) return false;
+      if (n.confidence < minConfidence / 100) return false;
+      if (tagFilter && !(n.tags ?? []).includes(tagFilter)) return false;
+      return true;
+    });
+  }, [nodes, statusFilter, minConfidence, tagFilter]);
+
+  // ─── Layout Logic ──────────────────────────────────────────────────────────
   const graphData = useMemo(() => {
     const graphNodes: GraphNode[] = [];
     const graphEdges: GraphEdge[] = [];
-    
-    // 1. Place findings in a central orbit or grid
-    nodes.forEach((node, i) => {
-      const angle = (i / nodes.length) * Math.PI * 2;
-      const radius = 120 + (i % 2) * 40;
+
+    filteredNodes.forEach((node, i) => {
+      const angle = (i / Math.max(filteredNodes.length, 1)) * Math.PI * 2;
+      const radius = confidenceRadius(node.confidence, i, filteredNodes.length);
       const x = CENTER_X + Math.cos(angle) * radius;
       const y = CENTER_Y + Math.sin(angle) * radius;
-      
+
       graphNodes.push({
         id: node.id,
         type: 'finding',
@@ -68,48 +98,36 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
         confidence: node.confidence,
         x,
         y,
-        r: 18 + (node.confidence * 10),
+        r: 16 + node.confidence * 10,
         data: node
       });
-      
-      // 2. Link sources to this finding
+
       (node.evidence || []).forEach((sourceId, j) => {
         const source = sources.find(s => s.id === sourceId);
         if (source) {
-          // Check if source already placed
           let existingSource = graphNodes.find(gn => gn.id === source.id);
           if (!existingSource) {
-            // Place source near the finding
-            const sAngle = angle + (j + 1) * (0.4);
+            const sAngle = angle + (j + 1) * 0.4;
             const sRadius = radius + 80;
-            const sx = CENTER_X + Math.cos(sAngle) * sRadius;
-            const sy = CENTER_Y + Math.sin(sAngle) * sRadius;
-            
             existingSource = {
               id: source.id,
               type: 'source',
               label: source.title,
               domain: source.domain,
-              x: sx,
-              y: sy,
+              x: CENTER_X + Math.cos(sAngle) * sRadius,
+              y: CENTER_Y + Math.sin(sAngle) * sRadius,
               r: 12,
               data: source
             };
             graphNodes.push(existingSource);
           }
-          
-          graphEdges.push({
-            id: `edge-${node.id}-${source.id}`,
-            source: node.id,
-            target: source.id,
-            type: 'citation'
-          });
+          graphEdges.push({ id: `edge-${node.id}-${source.id}`, source: node.id, target: source.id, type: 'citation' });
         }
       });
     });
 
     return { nodes: graphNodes, edges: graphEdges };
-  }, [nodes, sources]);
+  }, [filteredNodes, sources]);
 
   const handleNodeClick = (gn: GraphNode) => {
     setSelectedId(prev => prev === gn.id ? null : gn.id);
@@ -117,15 +135,118 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
   };
 
   const selectedNode = graphData.nodes.find(n => n.id === selectedId);
+  const verifiedCount = nodes.filter(n => n.status === 'verified').length;
+  const pendingCount = nodes.filter(n => n.status === 'pending').length;
+  const contestedCount = nodes.filter(n => n.status === 'contested').length;
 
   return (
     <div className={cn("relative w-full h-full flex flex-col", className)}>
-      <div className="absolute top-4 left-4 z-10 space-y-2">
+      {/* Header bar */}
+      <div className="absolute top-3 left-3 right-3 z-10 flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
           <div className="w-2 h-2 rounded-full bg-lime-400" />
           <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider">Knowledge Graph</span>
+          <span className="text-[10px] text-white/30">·</span>
+          <span className="text-[10px] text-white/50">{filteredNodes.length}/{nodes.length} nodes</span>
         </div>
+
+        {/* Status count badges */}
+        <div className="flex items-center gap-1.5">
+          {verifiedCount > 0 && <span className="text-[9px] px-2 py-0.5 rounded-full bg-lime-500/20 text-lime-400 border border-lime-500/20 font-bold">✅ {verifiedCount}</span>}
+          {pendingCount > 0 && <span className="text-[9px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 font-bold">⏳ {pendingCount}</span>}
+          {contestedCount > 0 && <span className="text-[9px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/20 font-bold">⚠️ {contestedCount}</span>}
+        </div>
+
+        <button
+          onClick={() => setShowFilters(f => !f)}
+          className={cn("ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wider transition-all",
+            showFilters ? "bg-lime-500/20 border-lime-500/30 text-lime-400" : "bg-white/5 border-white/10 text-white/50 hover:text-white/80"
+          )}
+        >
+          <SlidersHorizontal className="w-3 h-3" />
+          Filter
+        </button>
       </div>
+
+      {/* Filter panel */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="absolute top-12 right-3 z-20 p-4 rounded-2xl bg-[#0a0a12] border border-white/10 shadow-2xl w-64 space-y-4"
+          >
+            {/* Status filter */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2">Status</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(['all', 'verified', 'pending', 'contested'] as StatusFilter[]).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={cn("px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all capitalize",
+                      statusFilter === s
+                        ? "bg-lime-500/30 border-lime-500/40 text-lime-400"
+                        : "bg-white/5 border-white/10 text-white/50 hover:text-white/80"
+                    )}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Confidence slider */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2">
+                Min Confidence: <span className="text-lime-400">{minConfidence}%</span>
+              </p>
+              <input
+                type="range"
+                min={0}
+                max={90}
+                step={10}
+                value={minConfidence}
+                onChange={e => setMinConfidence(Number(e.target.value))}
+                className="w-full accent-lime-500 h-1 rounded-full"
+              />
+            </div>
+
+            {/* Tag filter */}
+            {allTags.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2">Tag</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {allTags.map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => setTagFilter(prev => prev === tag ? null : tag)}
+                      className={cn("px-2 py-0.5 rounded-full text-[10px] border transition-all",
+                        tagFilter === tag
+                          ? "bg-violet-500/30 border-violet-500/40 text-violet-300"
+                          : "bg-white/5 border-white/10 text-white/40 hover:text-white/70"
+                      )}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Reset */}
+            {(statusFilter !== 'all' || minConfidence > 0 || tagFilter) && (
+              <button
+                onClick={() => { setStatusFilter('all'); setMinConfidence(0); setTagFilter(null); }}
+                className="w-full text-[10px] text-white/40 hover:text-white/70 flex items-center justify-center gap-1 py-1 transition-colors"
+              >
+                <X className="w-3 h-3" /> Reset filters
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 min-h-0 overflow-hidden cursor-grab active:cursor-grabbing">
         <svg 
@@ -262,7 +383,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
                   onClick={() => setSelectedId(null)}
                   className="p-2 rounded-xl hover:bg-white/5 text-white/30 transition-colors"
                 >
-                  <Search className="w-4 h-4" />
+                  <X className="w-4 h-4" />
                 </button>
                 {selectedNode.type === 'source' && (
                   <a 

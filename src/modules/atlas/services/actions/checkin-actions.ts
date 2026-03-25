@@ -12,6 +12,7 @@ import {
 } from './shared';
 
 export const checkinActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
+
   complete_check_in: async ({ userId, encryptionKey, payload, emitSpineEvent, updateGlobalSoul }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;
@@ -55,6 +56,112 @@ export const checkinActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
     }
 
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+    // Dynamic priority recalculation: run after morning check-in
+    if (type === 'morning') {
+      const nowMs = Date.now();
+      let dirty = false;
+
+      for (const task of profile.tasks) {
+        if (task.status === 'done' || task.status === 'deferred') continue;
+        let newPriority: number = task.priority;
+
+        // Elevate to P1 if deadline within 48 hours
+        if (task.deadline) {
+          const hoursLeft = (new Date(task.deadline).getTime() - nowMs) / (1000 * 60 * 60);
+          if (hoursLeft >= 0 && hoursLeft < 48 && newPriority > 1) {
+            newPriority = 1;
+          }
+        }
+
+        // Elevate by 1 if task is blocked and all blocking deps are resolved
+        if (task.status === 'blocked' && Array.isArray(task.dependencies)) {
+          const allDepsResolved = task.dependencies.every(depId => {
+            const dep = profile.tasks.find(t => t.id === depId);
+            return dep?.status === 'done';
+          });
+          if (allDepsResolved && newPriority > 1) {
+            newPriority = Math.max(1, newPriority - 1);
+            task.status = 'queued';
+          }
+        }
+
+        if (newPriority !== task.priority) {
+          task.priority = newPriority as 1 | 2 | 3 | 4 | 5;
+          task.updatedAt = now;
+          dirty = true;
+        }
+      }
+
+      if (dirty) {
+        await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+      }
+    }
+
+    // Emit adaptive suggestion based on reported energy vs. wave baseline
+    if (type === 'morning' && energyRating !== undefined) {
+      const waveAvg = profile.energyWave && profile.energyWave.length > 0
+        ? profile.energyWave.reduce((s, p) => s + p.energy, 0) / profile.energyWave.length
+        : 5;
+      const reportedEnergy = (energyRating / 5) * 10; // scale 1-5 → 0-10
+
+      if (reportedEnergy < waveAvg - 2) {
+        const highestEnergyTask = profile.tasks
+          .filter(t => t.status === 'active' || t.status === 'queued')
+          .sort((a, b) => b.energyCost - a.energyCost)[0];
+
+        emitSpineEvent('ATLAS_ADAPTIVE_SUGGESTION', {
+          suggestionType: 'defer_high_energy',
+          reason: 'morning_energy_below_baseline',
+          taskId: highestEnergyTask?.id ?? null,
+          taskTitle: highestEnergyTask?.title ?? null,
+          reportedEnergy,
+          waveBaseline: waveAvg,
+        });
+      } else if (reportedEnergy > waveAvg + 2) {
+        const stretchTask = profile.tasks
+          .filter(t => t.status === 'queued' && t.priority <= 2)
+          .sort((a, b) => b.energyCost - a.energyCost)[0];
+
+        if (stretchTask) {
+          emitSpineEvent('ATLAS_ADAPTIVE_SUGGESTION', {
+            suggestionType: 'stretch_task',
+            reason: 'morning_energy_above_baseline',
+            taskId: stretchTask.id,
+            taskTitle: stretchTask.title,
+            reportedEnergy,
+            waveBaseline: waveAvg,
+          });
+        }
+      }
+    }
+
+    // Evening: suggest rescheduling for tasks that were scheduled today but remain incomplete
+    if (type === 'evening') {
+      const todayScheduled = profile.scheduledTasks?.filter(st =>
+        st.scheduledAt.startsWith(dateOnly) && st.status === 'scheduled'
+      ) ?? [];
+
+      const missedTaskIds = todayScheduled
+        .flatMap(st => st.dependencies ?? [])
+        .filter(taskId => {
+          const task = profile.tasks.find(t => t.id === taskId);
+          return task && task.status !== 'done' && task.status !== 'deferred';
+        });
+
+      if (missedTaskIds.length > 0) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+        emitSpineEvent('ATLAS_RESCHEDULE_SUGGESTED', {
+          date: dateOnly,
+          missedTaskIds,
+          suggestedDate: tomorrowStr,
+          missedCount: missedTaskIds.length,
+        });
+      }
+    }
 
     try {
       if (type === 'morning') {

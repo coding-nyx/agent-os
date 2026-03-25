@@ -12,12 +12,13 @@
 
 import React, { useMemo } from 'react';
 import { TrendingUp } from 'lucide-react';
-import type { AtlasTask } from '../services/atlas-profile-service';
+import type { AtlasTask, AtlasGoal } from '../services/atlas-profile-service';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface GoalVelocityChartProps {
   tasks: AtlasTask[];
+  goals?: AtlasGoal[];
 }
 
 interface ChartData {
@@ -135,6 +136,47 @@ function buildPaths(
   return { pathD, fillD };
 }
 
+// ─── Projection ──────────────────────────────────────────────────────────────
+
+interface ProjectionResult {
+  daysToCompletion: number | null;
+  nearestDeadline: string | null;
+  onTrack: boolean;
+  projectedDate: string | null;
+  velocity: number;
+}
+
+function computeProjection(tasks: AtlasTask[], goals: AtlasGoal[]): ProjectionResult {
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recentCompletions = tasks.filter(t =>
+    t.completedAt && new Date(t.completedAt).getTime() > sevenDaysAgo
+  ).length;
+  const velocity = recentCompletions / 7;
+
+  const activeGoalsWithDeadlines = goals
+    .filter(g => g.status === 'active' && g.deadline)
+    .sort((a, b) => (a.deadline! < b.deadline! ? -1 : 1));
+
+  if (activeGoalsWithDeadlines.length === 0 || velocity === 0) {
+    return { daysToCompletion: null, nearestDeadline: null, onTrack: false, projectedDate: null, velocity };
+  }
+
+  const nearestGoal = activeGoalsWithDeadlines[0];
+  const nearestDeadline = nearestGoal.deadline!;
+  const remaining = 100 - nearestGoal.progressPercent;
+  const tasksRemaining = Math.ceil((remaining / 100) * Math.max(1, tasks.filter(t => t.goalId === nearestGoal.id && t.status !== 'done').length));
+  const daysToCompletion = velocity > 0 ? Math.ceil(tasksRemaining / velocity) : null;
+
+  const deadlineDays = (new Date(nearestDeadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+  const onTrack = daysToCompletion !== null && daysToCompletion <= deadlineDays;
+
+  const projectedDate = daysToCompletion !== null
+    ? new Date(Date.now() + daysToCompletion * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    : null;
+
+  return { daysToCompletion, nearestDeadline, onTrack, projectedDate, velocity };
+}
+
 // ─── Derived chart data ───────────────────────────────────────────────────────
 
 function deriveChartData(tasks: AtlasTask[]): ChartData {
@@ -166,8 +208,9 @@ function deriveChartData(tasks: AtlasTask[]): ChartData {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function GoalVelocityChart({ tasks }: GoalVelocityChartProps) {
+export function GoalVelocityChart({ tasks, goals = [] }: GoalVelocityChartProps) {
   const chart = useMemo(() => deriveChartData(tasks), [tasks]);
+  const projection = useMemo(() => computeProjection(tasks, goals), [tasks, goals]);
 
   return (
     <div className="w-full max-w-3xl rounded-xl border border-white/10 bg-white/5 p-4">
@@ -246,6 +289,19 @@ export function GoalVelocityChart({ tasks }: GoalVelocityChartProps) {
               </text>
             ))}
           </svg>
+        </div>
+      )}
+
+      {!chart.isEmpty && projection.velocity > 0 && (
+        <div className="flex items-center justify-between mt-2 text-[10px] text-white/50">
+          <span>
+            Velocity: <span className="text-white/70 font-semibold">{projection.velocity.toFixed(1)} tasks/day</span>
+          </span>
+          {projection.projectedDate && (
+            <span className={projection.onTrack ? 'text-emerald-400' : 'text-amber-400'}>
+              {projection.onTrack ? '✓ On track' : '⚠ At risk'} — projected {fmtShortDate(projection.projectedDate)}
+            </span>
+          )}
         </div>
       )}
     </div>

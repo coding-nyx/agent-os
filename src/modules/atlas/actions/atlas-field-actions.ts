@@ -20,6 +20,7 @@ import { FieldType } from '@/lib/field-system/types';
 import type { SpineEventType } from '@/lib/types';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { encryptWithKey, decryptWithKey } from '@/lib/encryption';
+import { loadProfile, persistProfile } from '../services/actions/shared';
 
 // ============================================================================
 // Atlas Spine Event Constants
@@ -348,6 +349,23 @@ export function registerAtlasFieldActions(): void {
         console.warn('[Atlas] delete_field: Failed to clean up orphaned field value:', cleanupErr);
       }
 
+      // Also prune the fieldId from the AtlasProfile's own fieldValues dictionary.
+      // Without this, the encrypted profile retains the orphaned value indefinitely.
+      try {
+        const profile = await loadProfile(userId, encryptionKey ?? null);
+        if (profile?.fieldValues && fieldId in profile.fieldValues) {
+          const updatedFieldValues = { ...profile.fieldValues };
+          delete updatedFieldValues[fieldId];
+          await persistProfile(
+            { ...profile, fieldValues: updatedFieldValues, updatedAt: new Date().toISOString() },
+            userId,
+            encryptionKey ?? null
+          );
+        }
+      } catch (profileCleanupErr) {
+        console.warn('[Atlas] delete_field: Failed to prune profile.fieldValues:', profileCleanupErr);
+      }
+
       emitSpineEvent('ATLAS_FIELD_DELETED', {
         moduleId: 'atlas',
         fieldId,
@@ -392,21 +410,30 @@ export function registerAtlasFieldActions(): void {
       }
 
       if (payload.value !== undefined) {
-        if (field.type === FieldType.NUMBER && typeof payload.value !== 'number') {
-          console.warn(`[Atlas] update_field_value: Field ${fieldId} expects a number, got ${typeof payload.value}`);
+        // Null is only accepted when explicitly flagged as a clear operation.
+        // Silently accepting null corrupts typed field values (e.g. a null number
+        // breaks arithmetic in analytics). Use clearValue:true to reset a field.
+        if (payload.value === null && payload.clearValue !== true) {
+          console.warn(`[Atlas] update_field_value: Null value rejected for field ${fieldId}. Pass clearValue:true to explicitly clear.`);
           return;
         }
-        if (field.type === FieldType.BOOLEAN && typeof payload.value !== 'boolean') {
-          console.warn(`[Atlas] update_field_value: Field ${fieldId} expects a boolean, got ${typeof payload.value}`);
-          return;
-        }
-        if (
-          field.type === FieldType.DATE &&
-          typeof payload.value === 'string' &&
-          isNaN(Date.parse(payload.value))
-        ) {
-          console.warn(`[Atlas] update_field_value: Field ${fieldId} expects a valid date string`);
-          return;
+        if (payload.value !== null) {
+          if (field.type === FieldType.NUMBER && typeof payload.value !== 'number') {
+            console.warn(`[Atlas] update_field_value: Field ${fieldId} expects a number, got ${typeof payload.value}`);
+            return;
+          }
+          if (field.type === FieldType.BOOLEAN && typeof payload.value !== 'boolean') {
+            console.warn(`[Atlas] update_field_value: Field ${fieldId} expects a boolean, got ${typeof payload.value}`);
+            return;
+          }
+          if (
+            field.type === FieldType.DATE &&
+            typeof payload.value === 'string' &&
+            isNaN(Date.parse(payload.value))
+          ) {
+            console.warn(`[Atlas] update_field_value: Field ${fieldId} expects a valid date string`);
+            return;
+          }
         }
       }
 
