@@ -34,6 +34,7 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import { OrchestrationStatusChip } from '@/core/components/OrchestrationStatusChip';
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
 import { useNexusCoordination } from '../hooks/useNexusCoordination';
+import { ProposalCoordinatorService } from '@/lib/services/proposal-coordinator-service';
 
 interface NexusDashboardProps {
   ai: {
@@ -114,6 +115,32 @@ function upsertThreadParticipant(
   return [...participants, nextParticipant];
 }
 
+function ClarificationHintBanner({
+  hint,
+  onDismiss,
+}: {
+  hint: { reasons: string[] } | null;
+  onDismiss: () => void;
+}) {
+  if (!hint || hint.reasons.length === 0) return null;
+  return (
+    <div className="mx-3 mb-2 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+      <span className="mt-0.5 text-amber-400 text-xs shrink-0">⚠</span>
+      <p className="flex-1 text-xs text-amber-300/80 leading-snug">
+        {hint.reasons[0]}
+      </p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="shrink-0 text-amber-400/60 hover:text-amber-300 text-xs leading-none"
+        aria-label="Dismiss clarification hint"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDashboardProps) {
   const { user, isGuest, profile } = useAuth();
   const dataLayer = useDataLayer();
@@ -167,6 +194,16 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
   const [silentHistoryEntries, setSilentHistoryEntries] = useState<SilentHistoryEntry[]>([]);
   const routineProposals = useRoutineProposals('any');
   const aliveEntityState = useAliveEntityRetrieval(dataLayer, isGuest ? undefined : user?.uid);
+
+  // Sync high-priority proposal surfaces to the global ProposalCoordinatorService so
+  // NeuralDraftPanel (mounted at App root) defers while routing/routine/conflict UI is visible.
+  const isHighPriorityProposalActive = Boolean(routingSuggestion || routineProposals.activeProposal || isConflictBlocking);
+  useEffect(() => {
+    if (isHighPriorityProposalActive) {
+      ProposalCoordinatorService.markHighPriorityActive();
+      return () => ProposalCoordinatorService.markHighPriorityIdle();
+    }
+  }, [isHighPriorityProposalActive]);
   const conversationDepth = ai.messages.filter(m => m.role === 'user').length;
   const anticipatoryPlanningProposal = useMemo(() => AnticipatoryPlanningService.buildProposal({
     threadId: currentThreadId,
@@ -188,6 +225,8 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
     handleInjectChat,
     handleMemoryResultClick,
     handleMemorySearch,
+    clarificationHint,
+    dismissClarificationHint,
     handleSendWithRouting,
     presentRoutingSuggestion,
   } = useNexusCoordination({
@@ -675,6 +714,8 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
           handleRouteDismiss={handleRouteDismiss}
           handleThreadProposalEdit={handleThreadProposalEdit}
           handleExecutionRetry={handleExecutionRetry}
+          clarificationHint={clarificationHint}
+          onDismissClarificationHint={dismissClarificationHint}
         />
         {commandPalette}
       </>
@@ -719,6 +760,7 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
 
       {/* Chat area — fills remaining space */}
       <div className="flex-1 min-h-0 flex flex-col relative pt-2">
+        <ClarificationHintBanner hint={clarificationHint} onDismiss={dismissClarificationHint} />
         <NexusChat
           ai={{
             ...ai,

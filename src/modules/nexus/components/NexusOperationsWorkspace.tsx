@@ -116,6 +116,8 @@ interface NexusOperationsWorkspaceProps {
   handleRouteDismiss: (proposalKind?: string, proposalId?: string) => void;
   handleThreadProposalEdit: (draft: { targetModuleId?: ModuleId; reason?: string }) => void;
   handleExecutionRetry: (artifact: ThreadExecutionArtifact) => void;
+  clarificationHint?: { reasons: string[] } | null;
+  onDismissClarificationHint?: () => void;
 }
 
 export function NexusOperationsWorkspace({
@@ -147,6 +149,8 @@ export function NexusOperationsWorkspace({
   handleRouteDismiss,
   handleThreadProposalEdit,
   handleExecutionRetry,
+  clarificationHint = null,
+  onDismissClarificationHint,
 }: NexusOperationsWorkspaceProps) {
   const navigate = useNavigate();
   const participantCount = masterThreadSnapshot.thread.participants.length;

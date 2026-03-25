@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Pencil, X } from 'lucide-react';
 import { Spine } from '@/lib/spine/spine-event-bus';
+import { ProposalCoordinatorService } from '@/lib/services/proposal-coordinator-service';
 
 type DraftProposal = {
   id: string;
@@ -28,6 +29,13 @@ function normalizeDraftPayload(raw: Record<string, unknown>, source: string, tar
 
 export function NeuralDraftPanel() {
   const [drafts, setDrafts] = useState<DraftProposal[]>([]);
+  const [isBlocked, setIsBlocked] = useState(() => ProposalCoordinatorService.isBlocked());
+
+  useEffect(() => {
+    return ProposalCoordinatorService.subscribe(() => {
+      setIsBlocked(ProposalCoordinatorService.isBlocked());
+    });
+  }, []);
 
   useEffect(() => {
     return Spine.on('DRAFT_PROPOSED', (event) => {
@@ -68,7 +76,7 @@ export function NeuralDraftPanel() {
     setDrafts((prev) => prev.filter((item) => item.id !== id));
   };
 
-  if (drafts.length === 0) return null;
+  if (drafts.length === 0 || isBlocked) return null;
 
   const draft = drafts[0];
 

@@ -85,6 +85,7 @@ export function useNexusCoordination(input: UseNexusCoordinationInput) {
   } = input;
   const [memorySearchState, setMemorySearchState] = useState<NexusMemorySearchState | null>(null);
   const [suggestionCount, setSuggestionCount] = useState(0);
+  const [clarificationHint, setClarificationHint] = useState<{ reasons: string[] } | null>(null);
   const paletteMemoryQueryRef = useRef<string | null>(null);
   const suggestionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -219,6 +220,14 @@ export function useNexusCoordination(input: UseNexusCoordinationInput) {
       const parsedCommand = CommandIntelligenceService.parse(contentText, {
         sourceModuleId: 'nexus',
       });
+
+      // Surface ambiguity hint when the parser cannot confidently determine intent.
+      if (parsedCommand.requiresClarification && parsedCommand.ambiguityReasons.length > 0) {
+        setClarificationHint({ reasons: parsedCommand.ambiguityReasons });
+      } else {
+        setClarificationHint(null);
+      }
+
       const shouldPreferFusion = NexusActionPlannerService.shouldPreferPlanningFusion({
         threadId: currentThreadId,
         parsedCommand,
@@ -233,9 +242,13 @@ export function useNexusCoordination(input: UseNexusCoordinationInput) {
       ) {
         presentRoutingSuggestion(decision.target, decision.reason, decision.confidence);
       }
+    } else {
+      setClarificationHint(null);
     }
 
     await ai.handleSendMessage(content, onActionParsed, { threadId: currentThreadId });
+    // Clear hint once the LLM has taken the message — it will handle disambiguation itself.
+    setClarificationHint(null);
   }, [ai, currentThreadId, presentRoutingSuggestion, suggestionCount]);
 
   const handleInjectChat = useCallback((text: string) => {
@@ -275,6 +288,8 @@ export function useNexusCoordination(input: UseNexusCoordinationInput) {
   }, [ai, currentThreadId]);
 
   return {
+    clarificationHint,
+    dismissClarificationHint: () => setClarificationHint(null),
     memorySearchState,
     handleActionParsed,
     handleAskAboutDomain,
