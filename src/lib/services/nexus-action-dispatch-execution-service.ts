@@ -60,6 +60,42 @@ function getRetryParentPlanId(packet: NexusActionPlanExecutionPacket): string | 
   return `${rootPlanId}.retry.${packet.retryAttempt - 1}`;
 }
 
+/**
+ * DFS cycle detection over the dispatchPlan dependency graph.
+ * Returns the set of nodeIds involved in at least one cycle.
+ */
+function detectDependencyCycles(dispatchPlan: NexusActionPlanDispatchNode[]): Set<string> {
+  const adjList = new Map<string, string[]>();
+  for (const node of dispatchPlan) {
+    adjList.set(node.nodeId, node.dependsOn);
+  }
+
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+  const cycleNodes = new Set<string>();
+
+  function dfs(nodeId: string): boolean {
+    if (inStack.has(nodeId)) {
+      cycleNodes.add(nodeId);
+      return true;
+    }
+    if (visited.has(nodeId)) return false;
+    visited.add(nodeId);
+    inStack.add(nodeId);
+    for (const dep of adjList.get(nodeId) ?? []) {
+      if (dfs(dep)) cycleNodes.add(nodeId);
+    }
+    inStack.delete(nodeId);
+    return false;
+  }
+
+  for (const node of dispatchPlan) {
+    if (!visited.has(node.nodeId)) dfs(node.nodeId);
+  }
+
+  return cycleNodes;
+}
+
 export class NexusActionDispatchExecutionService {
   static canExecutePacketDeterministically(packet: NexusActionPlanExecutionPacket): boolean {
     return packet.dispatchPlan.length > 0 && packet.dispatchPlan.every((node) => node.status === 'resolved');
@@ -201,6 +237,25 @@ export class NexusActionDispatchExecutionService {
   ): Promise<NexusDispatchExecutionNodeResult[]> {
     const parsedCommand = buildParsedCommand(packet);
     const results = new Map<string, NexusDispatchExecutionNodeResult>();
+
+    // Detect dependency cycles before executing — a cycle causes infinite blocking.
+    const cycleNodeIds = detectDependencyCycles(packet.dispatchPlan);
+    if (cycleNodeIds.size > 0) {
+      console.error(
+        `[NexusActionDispatchExecutionService] Circular dependency detected in action plan "${packet.planId}". Affected nodes: ${[...cycleNodeIds].join(', ')}. Aborting execution.`,
+      );
+      return packet.dispatchPlan.map((dispatch) => ({
+        nodeId: dispatch.nodeId,
+        status: 'failed',
+        targetModuleId: dispatch.targetModuleId,
+        sourceActionType: dispatch.sourceActionType,
+        resolvedActionType: dispatch.resolvedActionType,
+        dependsOn: dispatch.dependsOn,
+        reason: cycleNodeIds.has(dispatch.nodeId)
+          ? 'Circular dependency detected — execution aborted.'
+          : 'Execution aborted due to circular dependency in plan.',
+      }));
+    }
 
     for (const dispatch of packet.dispatchPlan) {
       if (dispatch.status === 'requires_followup' || !dispatch.resolvedActionType) {

@@ -43,8 +43,15 @@ export const NexusHandoffService = {
     const store = readStore();
     const handoff = store[moduleId];
     if (!handoff) return null;
+    // Always prune the entry regardless of freshness
     delete store[moduleId];
     writeStore(store);
+    // Reject stale handoffs — only hasPending() was previously checking TTL
+    const tenMinAgo = Date.now() - 10 * 60 * 1000;
+    if (new Date(handoff.createdAt).getTime() < tenMinAgo) {
+      console.warn(`[NexusHandoffService] Discarding stale handoff for "${moduleId}" (age > 10 min)`);
+      return null;
+    }
     return handoff;
   },
 

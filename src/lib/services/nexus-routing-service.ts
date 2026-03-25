@@ -9,6 +9,15 @@ import { AutonomyFeatureFlags } from './autonomy-feature-flags';
 import { OrchestrationRolloutService } from './orchestration-rollout-service';
 
 type SendMessageFn = (content: string, context: { systemPrompt: string; insights: string[]; summary: string; history: Message[] }) => Promise<{ response: StructuredResponse }>;
+
+/**
+ * Minimum confidence required for any non-nexus routing decision.
+ * Prevents low-confidence parsed-command routes from auto-executing at high autopilot levels.
+ * Keyword-based scoring always produces ≥ 0.72 for a match, so this only protects
+ * against low-confidence LLM-derived parsedCommand.confidence values.
+ */
+const MIN_ROUTE_CONFIDENCE = 0.55;
+
 // Each entry has a `weight` per keyword. Compound phrases (multi-word) score higher and
 // are checked first so that "workout plan" (weight 2) beats a lone "plan" (weight 1).
 const KEYWORD_ROUTES: Array<{ moduleId: ModuleId; keywords: Array<{ term: string; weight: number }> }> = [
@@ -181,6 +190,7 @@ export const NexusRoutingService = {
 
     const best = parsedCommand?.sharedRouteHints?.[0];
     if (best) {
+      if (best.confidence < MIN_ROUTE_CONFIDENCE) return null;
       return {
         target: best.moduleId,
         confidence: best.confidence,
@@ -196,9 +206,12 @@ export const NexusRoutingService = {
     );
     if (!primaryProvider || primaryProvider.moduleId === 'nexus') return null;
 
+    const confidence = parsedCommand?.confidence ?? 0.62;
+    if (confidence < MIN_ROUTE_CONFIDENCE) return null;
+
     return {
       target: primaryProvider.moduleId,
-      confidence: parsedCommand?.confidence ?? 0.62,
+      confidence,
       reason: `capability:${primaryProvider.id}`,
     };
   },

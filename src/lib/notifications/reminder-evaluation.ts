@@ -160,6 +160,12 @@ export function computeDueOccurrencesInRange(
   if (rec.kind === 'hourly') return computeDueHourly(rec, rangeStartMs, rangeEndMs);
   if (rec.kind === 'weekly_by_days') return computeDueWeeklyByDays(rec, rangeStartMs, rangeEndMs);
   if (rec.kind === 'daily_window') return computeDueDailyWindow(rec, rangeStartMs, rangeEndMs);
-  // Phase 1: RRULE parsing is a later phase.
+  // Phase 1: RRULE parsing is a later phase — warn explicitly so schedules don't silently fire nothing.
+  if (rec.kind === 'rrule') {
+    console.warn(
+      '[reminder-evaluation] rrule recurrence is not yet implemented — this schedule will not fire.',
+      { rrule: (rec as Record<string, unknown>).rrule ?? '(none)' },
+    );
+  }
   return [];
 }

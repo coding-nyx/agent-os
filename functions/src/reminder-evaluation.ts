@@ -115,8 +115,15 @@ function computeInRange(rec: Recurrence, startMs: number, endMs: number): number
       return due;
     }
 
-    default:
+    default: {
+      const exhaustiveRec = rec as { kind: string };
+      if (exhaustiveRec.kind === 'rrule') {
+        console.warn('[reminder-evaluation] rrule recurrence is not yet implemented — schedule will not fire.', {
+          rrule: (rec as Record<string, unknown>).rrule ?? '(none)',
+        });
+      }
       return [];
+    }
   }
 }
 

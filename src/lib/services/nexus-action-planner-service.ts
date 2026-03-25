@@ -203,6 +203,9 @@ function buildNode(intent: ParsedCommandIntent): NexusActionPlanNode {
       action.actionType === mappedActionType && action.moduleId === targetModuleId,
     );
     if (!actionSpec || actionSpec.status === 'planned') {
+      console.warn(
+        `[NexusActionPlannerService] Intent "${intent.intentType}" maps to action "${mappedActionType}" on module "${targetModuleId}" which is not yet implemented (status: ${actionSpec?.status ?? 'not found'}). Falling back to propose_draft.`,
+      );
       mappedActionType = 'propose_draft';
     }
   }
