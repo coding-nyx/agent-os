@@ -8,7 +8,8 @@ import { EpisodicMemoryService } from '../services/episodic-memory-service';
 import { SemanticMemoryService } from '../services/semantic-memory-service';
 import { WebCrawlerService } from '../services/web-crawler-service';
 import type { ModuleId } from '../module-manifest';
-import { createReminderSchedule } from '@/lib/notifications/reminder-create';
+import { ReminderLifecycleService } from '@/lib/notifications/reminder-lifecycle-service';
+import { ReminderLifecycleError } from '@/lib/notifications/errors';
 import type { NotificationChannelPrefs, NotificationDeepLink, NotificationPriority, Recurrence, ReminderProposal } from '@/lib/notifications/types';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { NotificationScheduleConfig } from '@/lib/notifications/types';
@@ -18,7 +19,6 @@ import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
 import { OrchestrationInteractionGateService } from '@/lib/services/orchestration-interaction-gate-service';
 import { SpecialistConsultationService } from '@/lib/services/specialist-consultation-service';
 
-const REMINDER_PROPOSALS = new Map<string, ReminderProposal>();
 const ROUTINE_PROPOSALS = new Map<string, RoutineProposal>();
 
 function stableHash(input: string): string {
@@ -482,25 +482,35 @@ export function registerCoreActions() {
       markProfileDirty?.();
     },
 
-    propose_reminder: ({ moduleId, payload, pushAssistantMessage }) => {
+    propose_reminder: async ({ moduleId, payload, userId, isGuest, pushAssistantMessage }) => {
+      if (!userId || isGuest) {
+        pushAssistantMessage?.('Sign in to set reminders.');
+        return;
+      }
+
       const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
         ? payload.moduleId as ModuleId
         : (moduleId as ModuleId);
 
-      const proposal = normalizeReminderPayload(scopedModule, payload || {});
-      if (REMINDER_PROPOSALS.has(proposal.id)) return;
-      REMINDER_PROPOSALS.set(proposal.id, proposal);
+      const draft = normalizeReminderPayload(scopedModule, payload || {});
 
-      Spine.emit({
-        type: 'REMINDER_PROPOSED',
-        source: moduleId,
-        domain: 'system',
-        data: { proposal },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
-
-      pushAssistantMessage?.(`Reminder proposed for ${proposal.title}.`);
+      try {
+        await ReminderLifecycleService.propose(userId, {
+          moduleId: draft.moduleId,
+          title: draft.title,
+          note: draft.note,
+          recurrence: draft.recurrence,
+          timezone: draft.timezone,
+          channelPrefs: draft.channelPrefs,
+          priority: draft.priority,
+          deepLink: draft.deepLink,
+          source: draft.source,
+          tags: draft.tags,
+        });
+        pushAssistantMessage?.(`Reminder proposed for ${draft.title}.`);
+      } catch {
+        pushAssistantMessage?.('Could not propose reminder — please try again.');
+      }
     },
 
     propose_routine: async ({ moduleId, payload, pushAssistantMessage, userId, isGuest, orchestration }) => {
@@ -612,52 +622,58 @@ export function registerCoreActions() {
       }
 
       const proposalId = typeof payload?.proposalId === 'string' ? payload.proposalId : undefined;
-      let proposal = proposalId ? REMINDER_PROPOSALS.get(proposalId) : undefined;
 
-      if (!proposal) {
-        const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
-          ? payload.moduleId as ModuleId
-          : (moduleId as ModuleId);
-        proposal = normalizeReminderPayload(scopedModule, payload || {});
+      try {
+        if (proposalId) {
+          await ReminderLifecycleService.confirm(userId, proposalId);
+        } else {
+          // Inline confirmation without a prior proposal (direct agent dispatch)
+          const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
+            ? payload.moduleId as ModuleId
+            : (moduleId as ModuleId);
+          const draft = normalizeReminderPayload(scopedModule, payload || {});
+          const proposal = await ReminderLifecycleService.propose(userId, {
+            moduleId: draft.moduleId,
+            title: draft.title,
+            note: draft.note,
+            recurrence: draft.recurrence,
+            timezone: draft.timezone,
+            channelPrefs: draft.channelPrefs,
+            priority: draft.priority,
+            deepLink: draft.deepLink,
+            source: draft.source,
+            tags: draft.tags,
+          });
+          await ReminderLifecycleService.confirm(userId, proposal.id);
+        }
+      } catch (err) {
+        if (err instanceof ReminderLifecycleError && err.code === 'proposal_not_found') {
+          pushAssistantMessage?.('Could not find the reminder to confirm. Please try proposing it again.');
+        } else {
+          pushAssistantMessage?.('Could not schedule reminder — please try again.');
+        }
       }
-
-      const scheduleId = await createReminderSchedule(userId, {
-        moduleId: proposal.moduleId,
-        title: proposal.title,
-        note: proposal.note,
-        recurrence: proposal.recurrence,
-        timezone: proposal.timezone,
-        channelPrefs: proposal.channelPrefs,
-        priority: proposal.priority,
-        deepLink: proposal.deepLink,
-        source: proposal.source,
-        tags: proposal.tags,
-        createdBy: 'agent',
-      });
-
-      if (proposalId) REMINDER_PROPOSALS.delete(proposalId);
-
-      Spine.emit({
-        type: 'REMINDER_CONFIRMED',
-        source: moduleId,
-        domain: 'system',
-        data: { scheduleId, proposalId, moduleId: proposal.moduleId },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
     },
 
-    dismiss_reminder: ({ moduleId, payload }) => {
+    dismiss_reminder: async ({ payload, userId, isGuest }) => {
+      if (!userId || isGuest) return;
       const proposalId = typeof payload?.proposalId === 'string' ? payload.proposalId : undefined;
-      if (proposalId) REMINDER_PROPOSALS.delete(proposalId);
-      Spine.emit({
-        type: 'REMINDER_DISMISSED',
-        source: moduleId,
-        domain: 'system',
-        data: { proposalId },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
+      if (proposalId) {
+        try {
+          await ReminderLifecycleService.dismiss(userId, proposalId);
+        } catch {
+          // Best-effort dismiss — Spine event already emitted by service
+        }
+      } else {
+        Spine.emit({
+          type: 'REMINDER_DISMISSED',
+          source: 'core-handlers',
+          domain: 'system',
+          data: { proposalId },
+          cascadeDepth: 0,
+          priority: 'info',
+        });
+      }
     },
 
     query_reminders: async ({ moduleId, payload, userId, isGuest, pushAssistantMessage }) => {

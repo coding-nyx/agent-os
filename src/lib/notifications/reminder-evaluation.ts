@@ -1,3 +1,11 @@
+/**
+ * Client-side recurrence evaluation engine.
+ *
+ * CANONICAL SOURCE — server copy at functions/src/reminder-evaluation.ts must
+ * stay in parity. Verified by src/lib/notifications/__tests__/recurrence-parity.test.ts.
+ */
+
+import { RRule } from 'rrule';
 import type { Recurrence } from './types';
 
 function parseHHmm(value: unknown): { h: number; m: number } | null {
@@ -142,6 +150,45 @@ function computeDueDailyWindow(rec: Extract<Recurrence, { kind: 'daily_window' }
   return due;
 }
 
+function formatRRuleDtStart(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `${d.getUTCFullYear()}` +
+    `${pad(d.getUTCMonth() + 1)}` +
+    `${pad(d.getUTCDate())}` +
+    `T${pad(d.getUTCHours())}` +
+    `${pad(d.getUTCMinutes())}` +
+    `${pad(d.getUTCSeconds())}Z`
+  );
+}
+
+function computeDueRrule(
+  rec: Extract<Recurrence, { kind: 'rrule' }>,
+  rangeStartMs: number,
+  rangeEndMs: number,
+): number[] {
+  if (typeof rec.rrule !== 'string' || !rec.rrule) return [];
+  const dtStartMs = toDateMs(rec.dtStart);
+  if (dtStartMs === null) return [];
+
+  try {
+    const rruleStr = rec.rrule.startsWith('RRULE:') ? rec.rrule : `RRULE:${rec.rrule}`;
+    // Embed DTSTART with Z-suffix so rrule treats all dates as UTC.
+    const fullRRule = `DTSTART:${formatRRuleDtStart(dtStartMs)}\n${rruleStr}`;
+    const rule = RRule.fromString(fullRRule);
+    const occurrences = rule.between(
+      new Date(rangeStartMs),
+      new Date(rangeEndMs),
+      true,
+    );
+    return occurrences.map((d) => d.getTime());
+  } catch {
+    console.warn('[reminder-evaluation] Failed to parse rrule string', { rrule: rec.rrule });
+    return [];
+  }
+}
+
 export function computeDueOccurrencesInRange(
   recurrence: unknown,
   rangeStartMs: number,
@@ -162,10 +209,8 @@ export function computeDueOccurrencesInRange(
   if (rec.kind === 'daily_window') return computeDueDailyWindow(rec, rangeStartMs, rangeEndMs);
   // Phase 1: RRULE parsing is a later phase — warn explicitly so schedules don't silently fire nothing.
   if (rec.kind === 'rrule') {
-    console.warn(
-      '[reminder-evaluation] rrule recurrence is not yet implemented — this schedule will not fire.',
-      { rrule: (rec as Record<string, unknown>).rrule ?? '(none)' },
-    );
+    const rruleRec = rec as Extract<Recurrence, { kind: 'rrule' }>;
+    return computeDueRrule(rruleRec, rangeStartMs, rangeEndMs);
   }
   return [];
 }

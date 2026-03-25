@@ -42,13 +42,37 @@ const COLLAPSED_W = 60;
 const EXPANDED_W = 180;
 const EMPTY_THREAD_PARTICIPANTS: ThreadParticipant[] = [];
 
+// Slim visibility gate — only 4 hooks, returns null fast when overlay is not needed.
+// All heavy hooks (useModuleAI, useOrchestrationStore ×13, useNexusCoordination, …) live in
+// NexusOverlayContent below and only run while the overlay is actually rendered.
 export function NexusOverlay() {
-  const { user, profile, isGuest } = useAuth();
-  const { refreshGlobalSoul } = useGlobalSoul();
+  const { user, profile } = useAuth();
   const { hasVault, isUnlocked } = useVault();
   const location = useLocation();
+  const isVisible = useMemo(() => {
+    if (!user || !profile?.onboardingComplete) return false;
+    if (hasVault && !isUnlocked) return false;
+    return (
+      location.pathname !== '/' &&
+      !location.pathname.startsWith('/nexus') &&
+      location.pathname !== '/vault-gate'
+    );
+  }, [user, profile?.onboardingComplete, location.pathname, hasVault, isUnlocked]);
+
+  if (!isVisible) return null;
+  return <NexusOverlayContent />;
+}
+
+function NexusOverlayContent() {
+  const { user, profile, isGuest } = useAuth();
+  const { refreshGlobalSoul } = useGlobalSoul();
   const navigate = useNavigate();
   const { sendMessage, analyzeImage } = useAI();
+  // Resolve active thread id early so handleUploadDocuments can capture the
+  // current value in its deps and avoid a stale-closure bug.
+  const activeThreadId = useOrchestrationStore((s) => s.activeThreadId);
+  const lastTurnRuntime = useOrchestrationStore((s) => s.lastTurnRuntime);
+  const currentThreadId = activeThreadId ?? lastTurnRuntime?.activeThreadId ?? 'nexus.dashboard';
   const { isCrossModuleBusy, pendingTargets } = useNexusCrossModuleBlocker();
   const { isConflictBlocking } = useNexusConflictBlocker();
   const [open, setOpen] = useState(false);
@@ -132,7 +156,7 @@ export function NexusOverlay() {
     } finally {
       setDocUploadBusy(false);
     }
-  }, [ai, analyzeImage, sendMessage]);
+  }, [ai, analyzeImage, sendMessage, currentThreadId]);
 
   const handleNavigateToModule = useCallback((path: string) => {
     setSubModule(null);
@@ -156,16 +180,6 @@ export function NexusOverlay() {
     void ai.clearSession();
   }, [ai]);
 
-  const isVisible = useMemo(() => {
-    if (!user || !profile?.onboardingComplete) return false;
-    if (hasVault && !isUnlocked) return false;
-      return (
-        location.pathname !== '/' &&
-        !location.pathname.startsWith('/nexus') &&
-        location.pathname !== '/vault-gate'
-      );
-  }, [user, profile?.onboardingComplete, location.pathname, hasVault, isUnlocked]);
-
   const isNexusBusy = isCrossModuleBusy || docUploadBusy || isConflictBlocking;
   const busyLabel = (() => {
     if (docUploadBusy) return docStage?.label ?? 'Uploading…';
@@ -180,10 +194,7 @@ export function NexusOverlay() {
 
   const isChatOverlayOpen = useUIStore((s) => s.isChatOverlayOpen);
   const hideGlobalFAB = useUIStore((s) => s.hideGlobalFAB);
-  const activeThreadId = useOrchestrationStore((s) => s.activeThreadId);
   const autopilotLevel = useOrchestrationStore((s) => s.autopilotLevel);
-  const lastTurnRuntime = useOrchestrationStore((s) => s.lastTurnRuntime);
-  const currentThreadId = activeThreadId ?? lastTurnRuntime?.activeThreadId ?? 'nexus.dashboard';
   const applyThreadSnapshot = useOrchestrationStore((s) => s.applyThreadSnapshot);
   const threadParticipantsByThreadId = useOrchestrationStore((s) => s.threadParticipantsByThreadId);
   const threadMessagesByThreadId = useOrchestrationStore((s) => s.threadMessagesByThreadId);
@@ -213,10 +224,8 @@ export function NexusOverlay() {
   });
 
   useEffect(() => {
-    if (!isVisible) return;
     setSnapshotNow(new Date().toISOString());
   }, [
-    isVisible,
     currentThreadId,
     pendingTargetsKey,
     routingSuggestion?.target,
@@ -261,7 +270,6 @@ export function NexusOverlay() {
   }, [currentThreadId, persistedThreadParticipants, persistedThreadMessages, persistedThreadTurns, ai.messages, ai.streamingText, ai.lastParsedCommand?.mentionedModuleIds, pendingTargets, routingSuggestion, routineProposals.activeProposal, planningSuggestion, docUploadBusy, docStage?.label, isConflictBlocking, lastTurnRuntime, snapshotNow]);
 
   useEffect(() => {
-    if (!isVisible) return;
     applyThreadSnapshot(masterThreadSnapshot.thread.threadId, {
       participants: masterThreadSnapshot.thread.participants,
       messages: masterThreadSnapshot.thread.messages,
@@ -269,14 +277,11 @@ export function NexusOverlay() {
     });
   }, [
     applyThreadSnapshot,
-    isVisible,
     masterThreadSnapshot.thread.messages,
     masterThreadSnapshot.thread.participants,
     masterThreadSnapshot.thread.threadId,
     masterThreadSnapshot.thread.turns,
   ]);
-
-  if (!isVisible) return null;
 
   // Mobile = bottom sheet (y-axis), Desktop = right panel (x-axis)
   const panelVariants = isMobile

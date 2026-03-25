@@ -79,6 +79,8 @@ export interface ParsedCommandEnvelope {
   rawInput: string;
   normalizedInput: string;
   parserVersion: 'phase1-v1' | 'llm-v1';
+  /** Which parser stage produced this envelope. 'llm-fallback' means LLM failed and phase1 was used. */
+  parserMode: 'phase1' | 'llm' | 'llm-fallback';
   sourceModuleId: string;
   generatedAt: string;
   timezone: string;

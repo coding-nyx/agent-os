@@ -1,11 +1,12 @@
 /**
- * Recurrence evaluation for the Cloud Functions runtime.
+ * Server-side recurrence evaluation engine (Cloud Functions runtime).
  *
  * Mirrors the type contract in src/lib/notifications/types.ts.
- * Keep these two files in sync — types must not diverge.
- *
- * The client-side equivalent lives in src/lib/notifications/reminder-evaluation.ts.
+ * PARITY REQUIRED with src/lib/notifications/reminder-evaluation.ts (canonical client copy).
+ * Verified by src/lib/notifications/__tests__/recurrence-parity.test.ts.
  */
+
+import { RRule } from "rrule";
 
 // ---------------------------------------------------------------------------
 // Recurrence types (mirrors src/lib/notifications/types.ts)
@@ -81,10 +82,10 @@ function computeInRange(rec: Recurrence, startMs: number, endMs: number): number
       const due: number[] = [];
       const dayMs = 86400000;
       let d = new Date(startMs);
-      d.setHours(0, 0, 0, 0);
+      d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
       while (d.getTime() <= endMs + dayMs) {
-        if (rec.daysOfWeek.includes(d.getDay())) {
-          const t = new Date(d).setHours(tod.h, tod.m, 0, 0);
+        if (rec.daysOfWeek.includes(d.getUTCDay())) {
+          const t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), tod.h, tod.m, 0, 0);
           if (t >= startMs && t <= endMs) due.push(t);
         }
         d = new Date(d.getTime() + dayMs);
@@ -101,10 +102,10 @@ function computeInRange(rec: Recurrence, startMs: number, endMs: number): number
       const due: number[] = [];
       const dayMs = 86400000;
       let d = new Date(startMs);
-      d.setHours(0, 0, 0, 0);
+      d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
       while (d.getTime() <= endMs + dayMs) {
-        const wStartMs = new Date(d).setHours(ws.h, ws.m, 0, 0);
-        const wEndMs = new Date(d).setHours(we.h, we.m, 0, 0);
+        const wStartMs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), ws.h, ws.m, 0, 0);
+        const wEndMs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), we.h, we.m, 0, 0);
         let t = wStartMs;
         while (t <= wEndMs) {
           if (t >= startMs && t <= endMs) due.push(t);
@@ -115,14 +116,28 @@ function computeInRange(rec: Recurrence, startMs: number, endMs: number): number
       return due;
     }
 
-    default: {
-      const exhaustiveRec = rec as { kind: string };
-      if (exhaustiveRec.kind === 'rrule') {
-        console.warn('[reminder-evaluation] rrule recurrence is not yet implemented — schedule will not fire.', {
-          rrule: (rec as Record<string, unknown>).rrule ?? '(none)',
-        });
+    case "rrule": {
+      if (typeof rec.rrule !== "string" || !rec.rrule) return [];
+      const dtStartMs = toMs(rec.dtStart);
+      if (dtStartMs === null) return [];
+      try {
+        const d = new Date(dtStartMs);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const dtStartStr =
+          `${d.getUTCFullYear()}` +
+          `${pad(d.getUTCMonth() + 1)}` +
+          `${pad(d.getUTCDate())}` +
+          `T${pad(d.getUTCHours())}` +
+          `${pad(d.getUTCMinutes())}` +
+          `${pad(d.getUTCSeconds())}Z`;
+        const rruleStr = rec.rrule.startsWith("RRULE:") ? rec.rrule : `RRULE:${rec.rrule}`;
+        const rule = RRule.fromString(`DTSTART:${dtStartStr}\n${rruleStr}`);
+        return rule
+          .between(new Date(startMs), new Date(endMs), true)
+          .map((d) => d.getTime());
+      } catch {
+        return [];
       }
-      return [];
     }
   }
 }

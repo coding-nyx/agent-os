@@ -30,6 +30,8 @@ interface NotificationContextValue {
   unreadCount: number;
   toasts: NotificationToast[];
   loading: boolean;
+  /** Set when the Firestore inbox subscription encounters an error. */
+  error: Error | null;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   dismissToast: (id: string) => void;
@@ -47,6 +49,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [unreadCount, setUnreadCount] = useState(0);
   const [toasts, setToasts] = useState<NotificationToast[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   // 1. Sync Inbox from Firestore
   useEffect(() => {
@@ -57,6 +60,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       return;
     }
 
+    setError(null);
     const inboxPath = `users/${user.uid}/notification_inbox`;
     
     // Subscribe to the inbox collection, sorted by createdAt desc
@@ -67,9 +71,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         limit: 50
       },
       (records: InboxRecord[]) => {
-        setInbox(records);
-        setUnreadCount(records.filter(r => !r.read).length);
-        setLoading(false);
+        try {
+          setInbox(records);
+          setUnreadCount(records.filter(r => !r.read).length);
+          setLoading(false);
+          setError(null);
+        } catch (err) {
+          setError(err instanceof Error ? err : new Error('Notification inbox update failed'));
+          setLoading(false);
+        }
       }
     );
 
@@ -170,11 +180,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     unreadCount,
     toasts,
     loading,
+    error,
     markAsRead,
     markAllAsRead,
     dismissToast,
     performAction,
-  }), [inbox, unreadCount, toasts, loading, markAsRead, markAllAsRead, dismissToast, performAction]);
+  }), [inbox, unreadCount, toasts, loading, error, markAsRead, markAllAsRead, dismissToast, performAction]);
 
   return (
     <NotificationContext.Provider value={value}>

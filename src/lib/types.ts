@@ -335,6 +335,7 @@ export type SpineEventType =
   | 'REMINDER_PROPOSED'
   | 'REMINDER_CONFIRMED'
   | 'REMINDER_DISMISSED'
+  | 'REMINDER_CANCELLED'
   // Routine proposal lifecycle (Phase 4 registry foundation)
   | 'ROUTINE_PROPOSED'
   | 'ROUTINE_CONFIRMED'

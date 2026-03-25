@@ -190,7 +190,17 @@ export interface ReminderProposal {
 export const NOTIFICATION_COLLECTIONS = {
   schedules: 'notification_schedules',
   occurrences: 'notification_occurrences',
+  proposals: 'notification_proposals',
 } as const;
+
+export type ReminderProposalStatus = 'pending' | 'confirmed' | 'dismissed';
+
+export interface PersistedReminderProposal extends ReminderProposal {
+  status: ReminderProposalStatus;
+  scheduleId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 /**
  * Firestore paths:

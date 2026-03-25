@@ -121,6 +121,7 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   REMINDER_PROPOSED: 'Reminder proposed',
   REMINDER_CONFIRMED: 'Reminder confirmed',
   REMINDER_DISMISSED: 'Reminder dismissed',
+  REMINDER_CANCELLED: 'Reminder cancelled',
   ROUTINE_PROPOSED: 'Routine proposed',
   ROUTINE_CONFIRMED: 'Routine confirmed',
   ROUTINE_DISMISSED: 'Routine dismissed',

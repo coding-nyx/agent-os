@@ -11,6 +11,8 @@ import type {
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import { OrchestrationCacheService } from './orchestration-cache-service';
 import { OrchestrationRolloutService } from './orchestration-rollout-service';
+import { buildLLMSystemPrompt, buildLLMUserPrompt } from './intent-prompt-builder';
+import { IntentParseError } from './intent-parse-error';
 
 type GenerateJSONFn = <T = unknown>(
   prompt: string,
@@ -710,6 +712,7 @@ export const CommandIntelligenceService = {
         rawInput,
         normalizedInput,
         parserVersion: 'phase1-v1',
+        parserMode: 'phase1',
         sourceModuleId: options.sourceModuleId,
         generatedAt: now.toISOString(),
         timezone,
@@ -737,60 +740,31 @@ export const CommandIntelligenceService = {
     const normalizedInput = normalizeWhitespace(rawInput);
     const now = options.now ?? new Date();
     const timezone = options.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const todayKey = buildLocalDateKey(now);
-    const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    const tomorrowKey = buildLocalDateKey(tomorrow);
 
-    const systemPrompt = [
-      'You are a command-intelligence parser.',
-      'Return ONLY valid JSON. No markdown, no commentary.',
-      'Parse the user input into intents using the provided enums.',
-      'Interpret times like \"1200\" as \"12:00\" even without the word \"at\".',
-      'If the user says \"tomorrow\", use the provided date.',
-    ].join(' ');
+    const systemPrompt = buildLLMSystemPrompt();
+    const prompt = buildLLMUserPrompt({ rawInput, timezone, now });
 
-    const prompt = [
-      `Input: \"${rawInput}\"`,
-      `Timezone: ${timezone}`,
-      `Today: ${todayKey}`,
-      `Tomorrow: ${tomorrowKey}`,
-      'Output JSON shape:',
-      '{',
-      '  \"intents\": [',
-      '    {',
-      '      \"rawSegment\": \"string\",',
-      '      \"intentType\": \"one of: plan_day|schedule_item|update_schedule|recovery_day|emotional_support|fitness|medical|financial|research|technical|general\",',
-      '      \"verb\": \"string\",',
-      '      \"confidence\": 0.0,',
-      '      \"mutatesState\": true,',
-      '      \"capabilities\": [\"daily-planning\"],',
-      '      \"candidateModules\": [\"atlas\"],',
-      '      \"routeHints\": [{\"moduleId\":\"atlas\",\"confidence\":0.8,\"reason\":\"...\",\"source\":\"command_intelligence\"}],',
-      '      \"entities\": {\"title\":\"...\", \"status\":\"...\", \"dateText\":\"YYYY-MM-DD\", \"timeText\":\"HH:mm\"}',
-      '    }',
-      '  ],',
-      '  \"mentions\": [{\"moduleId\":\"atlas\",\"raw\":\"Atlas\",\"confidence\":0.8,\"disposition\":\"vocative\"}],',
-      '  \"confidence\": 0.0,',
-      '  \"ambiguityReasons\": [\"...\"]',
-      '}',
-    ].join('\n');
+    let llm: {
+      intents?: Array<Record<string, unknown>>;
+      mentions?: Array<Record<string, unknown>>;
+      confidence?: number;
+      ambiguityReasons?: string[];
+    };
 
     try {
-      const llm = await options.generateJSON<{
-        intents?: Array<Record<string, unknown>>;
-        mentions?: Array<Record<string, unknown>>;
-        confidence?: number;
-        ambiguityReasons?: string[];
-      }>(prompt, {
+      llm = await options.generateJSON<typeof llm>(prompt, {
         systemPrompt,
         temperature: 0.1,
         maxTokens: 600,
         signal: options.signal,
       });
+    } catch (error) {
+      throw new IntentParseError('llm', 'LLM call failed', error);
+    }
 
+    try {
       const intentsRaw = Array.isArray(llm?.intents) ? llm.intents : [];
-      if (intentsRaw.length === 0) return fallback;
+      if (intentsRaw.length === 0) return { ...fallback, parserMode: 'llm-fallback' as const };
 
       const intents: ParsedCommandIntent[] = intentsRaw.map((raw, index) => {
         const base = fallback.intents[index];
@@ -868,6 +842,7 @@ export const CommandIntelligenceService = {
         rawInput,
         normalizedInput,
         parserVersion: 'llm-v1',
+        parserMode: 'llm',
         sourceModuleId: options.sourceModuleId,
         generatedAt: now.toISOString(),
         timezone,
@@ -884,8 +859,10 @@ export const CommandIntelligenceService = {
       OrchestrationRolloutService.recordParsedCommand(envelope);
       return envelope;
     } catch (error) {
-      console.warn('[CommandIntelligenceService] LLM parse failed, using fallback.', error);
-      return fallback;
+      if (error instanceof IntentParseError) {
+        return { ...fallback, parserMode: 'llm-fallback' as const };
+      }
+      throw new IntentParseError('normalization', 'Intent normalization failed after LLM response', error);
     }
   },
 };
