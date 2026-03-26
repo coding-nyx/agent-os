@@ -40,6 +40,51 @@ function toMs(iso: unknown): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
+/**
+ * Convert a wall-clock HH:MM in a named IANA timezone on the UTC calendar day
+ * represented by (year, month0, day) to a UTC millisecond timestamp.
+ *
+ * Uses two-pass Intl.DateTimeFormat iteration to converge on the correct UTC
+ * value, handling DST boundaries without any external timezone library.
+ * Node.js 12+ supports Intl with full ICU data in Cloud Functions.
+ * Falls back to treating the time as UTC if the timezone is absent or invalid.
+ */
+function wallClockToUtcMs(
+  year: number,
+  month0: number,
+  day: number,
+  h: number,
+  m: number,
+  timezone: string | undefined,
+): number {
+  if (!timezone) return Date.UTC(year, month0, day, h, m, 0, 0);
+  try {
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      hourCycle: "h23",
+    });
+
+    let estimate = Date.UTC(year, month0, day, h, m, 0, 0);
+
+    for (let i = 0; i < 2; i++) {
+      const parts = fmt.formatToParts(new Date(estimate));
+      const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+      const lH = get("hour");
+      const lM = get("minute");
+      const diffMs = (h * 60 + m - (lH * 60 + lM)) * 60_000;
+      estimate += diffMs;
+    }
+    return estimate;
+  } catch {
+    return Date.UTC(year, month0, day, h, m, 0, 0);
+  }
+}
+
 function computeInRange(rec: Recurrence, startMs: number, endMs: number): number[] {
   switch (rec.kind) {
     case "once": {
@@ -85,7 +130,8 @@ function computeInRange(rec: Recurrence, startMs: number, endMs: number): number
       d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
       while (d.getTime() <= endMs + dayMs) {
         if (rec.daysOfWeek.includes(d.getUTCDay())) {
-          const t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), tod.h, tod.m, 0, 0);
+          // Apply timezone: convert the user's intended local wall-clock time to UTC.
+          const t = wallClockToUtcMs(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), tod.h, tod.m, rec.timezone);
           if (t >= startMs && t <= endMs) due.push(t);
         }
         d = new Date(d.getTime() + dayMs);
@@ -104,8 +150,9 @@ function computeInRange(rec: Recurrence, startMs: number, endMs: number): number
       let d = new Date(startMs);
       d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
       while (d.getTime() <= endMs + dayMs) {
-        const wStartMs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), ws.h, ws.m, 0, 0);
-        const wEndMs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), we.h, we.m, 0, 0);
+        // Apply timezone: convert the user's intended local wall-clock window to UTC.
+        const wStartMs = wallClockToUtcMs(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), ws.h, ws.m, rec.timezone);
+        const wEndMs = wallClockToUtcMs(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), we.h, we.m, rec.timezone);
         let t = wStartMs;
         while (t <= wEndMs) {
           if (t >= startMs && t <= endMs) due.push(t);

@@ -386,9 +386,13 @@ export const deliverReminder = onRequest(async (req, res) => {
     const recurrenceKind = (schedule?.recurrence as any)?.kind;
 
     // Re-enqueue next occurrence for recurring schedules (self-sustaining chain).
+    // Anchor to the original dueAt (not Date.now()) so delivery latency from Cloud Tasks
+    // processing or retries does not drift the schedule forward on every cycle.
     if (recurrenceKind && recurrenceKind !== "once") {
+      const dueAtMs = dueAt ? new Date(dueAt).getTime() : Date.now();
+      const anchorMs = Number.isFinite(dueAtMs) ? dueAtMs : Date.now();
       try {
-        await scheduleNextOccurrence(db, uid, scheduleId, schedule, Date.now());
+        await scheduleNextOccurrence(db, uid, scheduleId, schedule, anchorMs);
       } catch (reenqueueErr) {
         // Non-fatal: log but don't fail the delivery response.
         logger.warn("[deliverReminder] Re-enqueue failed", {

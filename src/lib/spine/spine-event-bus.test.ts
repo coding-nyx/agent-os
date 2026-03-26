@@ -300,5 +300,62 @@ describe('SpineEventBus', () => {
 
       expect(handler).not.toHaveBeenCalled();
     });
+
+    it('suppresses duplicate system alert cascades within the cooldown window', () => {
+      const burnoutHandler = vi.fn();
+      Spine.on('BURNOUT_WARNING', burnoutHandler);
+
+      const rule: CascadeRule = {
+        id: 'burnout-cooldown-test',
+        trigger: 'VITAL_UPDATED',
+        condition: () => true,
+        transform: () => ({
+          type: 'BURNOUT_WARNING' as const,
+          source: 'cascade:test',
+          domain: 'system' as const,
+          priority: 'critical' as const,
+          data: { reason: 'high_fatigue_low_resilience' },
+          cascadeDepth: 0,
+        }),
+      };
+      Spine.registerCascadeRules([rule]);
+
+      // Emit VITAL_UPDATED twice in quick succession.
+      Spine.emit(makeTestEvent());
+      Spine.emit(makeTestEvent());
+
+      // Only the first cascade should fire; the second is suppressed by the cooldown.
+      expect(burnoutHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('allows a system alert to re-fire after resetAlertCooldowns()', () => {
+      const burnoutHandler = vi.fn();
+      Spine.on('BURNOUT_WARNING', burnoutHandler);
+
+      const rule: CascadeRule = {
+        id: 'burnout-reset-test',
+        trigger: 'VITAL_UPDATED',
+        condition: () => true,
+        transform: () => ({
+          type: 'BURNOUT_WARNING' as const,
+          source: 'cascade:test',
+          domain: 'system' as const,
+          priority: 'critical' as const,
+          data: { reason: 'high_fatigue_low_resilience' },
+          cascadeDepth: 0,
+        }),
+      };
+      Spine.registerCascadeRules([rule]);
+
+      Spine.emit(makeTestEvent());
+      expect(burnoutHandler).toHaveBeenCalledTimes(1);
+
+      // Advance past the 500ms debounce window and reset the alert cooldown.
+      vi.advanceTimersByTime(600);
+      Spine.resetAlertCooldowns();
+
+      Spine.emit(makeTestEvent());
+      expect(burnoutHandler).toHaveBeenCalledTimes(2);
+    });
   });
 });

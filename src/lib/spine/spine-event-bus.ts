@@ -19,6 +19,30 @@ const PRIORITY_LEVELS = { info: 0, alert: 1, critical: 2 };
 const SPINE_EVENTS_SUBCOLLECTION = 'events';
 const SPINE_SPEC_EVENTS_SUBCOLLECTION = 'spec_events';
 
+/**
+ * System alert event types that must be rate-limited in the client process.
+ * These are the same types rate-limited server-side in bridgeSpineEvents.
+ * This prevents the cascade rules from flooding the Spine bus (and Firestore)
+ * with duplicate alerts within a short window.
+ */
+const CASCADE_ALERT_RATE_LIMITED_TYPES = new Set<string>([
+  'BURNOUT_WARNING',
+  'BLOCK_HIGH_INTENSITY',
+  'FINANCIAL_STRESS',
+  'COGNITIVE_OVERLOAD',
+  'CRISIS_MODE',
+  'PLANNING_OVERLOAD',
+  'STREAK_BROKEN',
+  'MEDICAL_ALERT',
+  'DEADLINE_CRUNCH',
+  'CRISIS_DETECTED',
+  'ATLAS_ENERGY_OVERLOAD',
+  'ATLAS_OVERLOAD_DETECTED',
+]);
+
+/** Minimum ms between cascade emissions of the same system alert type. Default: 60 minutes. */
+const CASCADE_ALERT_COOLDOWN_MS = 60 * 60 * 1000;
+
 type Listener = (event: SpineEvent) => void;
 interface ListenerRegistration {
   handler: Listener;
@@ -30,6 +54,8 @@ class SpineEventBus {
   private recentEvents: SpineEvent[] = [];
   private cascadeRules: CascadeRule[] = [];
   private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Tracks the last emission timestamp (ms) for rate-limited cascade alert types. */
+  private _alertCooldowns = new Map<string, number>();
   private uid: string | null = null;
   private dataLayer: NexusDataLayer | null = null;
   private _sequenceCounter = 0;
@@ -105,6 +131,18 @@ class SpineEventBus {
       const matchingRules = this.cascadeRules.filter((rule) => rule.trigger === event.type && rule.condition(event));
       matchingRules.forEach((rule) => {
         const cascaded = rule.transform(event);
+
+        // Rate-limit cascade emissions for system alert types to prevent a
+        // single VITAL_UPDATED in a critical state from flooding the bus and
+        // Firestore with repeated push notifications.
+        if (CASCADE_ALERT_RATE_LIMITED_TYPES.has(cascaded.type as string)) {
+          const lastEmittedMs = this._alertCooldowns.get(cascaded.type as string) ?? 0;
+          if (Date.now() - lastEmittedMs < CASCADE_ALERT_COOLDOWN_MS) {
+            return; // suppress — same alert type already emitted within cooldown window
+          }
+          this._alertCooldowns.set(cascaded.type as string, Date.now());
+        }
+
         this.emit({
           ...cascaded,
           source: `cascade:${event.source}`,
@@ -147,6 +185,12 @@ class SpineEventBus {
     this.cascadeRules = [];
     this.debounceTimers.forEach((timer) => globalThis.clearTimeout(timer));
     this.debounceTimers.clear();
+    this._alertCooldowns.clear();
+  }
+
+  /** Exposed for testing: reset the alert cooldown registry without a full clear(). */
+  resetAlertCooldowns(): void {
+    this._alertCooldowns.clear();
   }
 
   private async logEvent(event: SpineEvent): Promise<void> {

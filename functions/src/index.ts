@@ -6,6 +6,64 @@ import { getFirestore } from "firebase-admin/firestore";
 
 import { NotificationEngine, type NotificationPriority } from "./notification-engine";
 
+// ---------------------------------------------------------------------------
+// Alert cooldown — prevent push spam for the same system alert type
+// ---------------------------------------------------------------------------
+
+/**
+ * System alert event types that should be rate-limited per user.
+ * Reminder-type events (MODULE_REMINDER_DUE) are excluded — they must always
+ * fire because they represent user-created schedules.
+ */
+const RATE_LIMITED_ALERT_TYPES = new Set([
+  "BURNOUT_WARNING",
+  "BLOCK_HIGH_INTENSITY",
+  "FINANCIAL_STRESS",
+  "COGNITIVE_OVERLOAD",
+  "CRISIS_MODE",
+  "PLANNING_OVERLOAD",
+  "STREAK_BROKEN",
+  "MEDICAL_ALERT",
+  "DEADLINE_CRUNCH",
+  "CRISIS_DETECTED",
+  "ATLAS_ENERGY_OVERLOAD",
+  "ATLAS_OVERLOAD_DETECTED",
+]);
+
+/** Minimum milliseconds between push notifications for the same alert type per user. */
+const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Returns true if a push notification for `eventType` can be sent to `uid`.
+ * If allowed, atomically writes the new timestamp to prevent concurrent Function
+ * invocations from both passing the check simultaneously.
+ */
+async function checkAndAcquireAlertCooldown(uid: string, eventType: string): Promise<boolean> {
+  const db = getFirestore();
+  const cooldownRef = db.doc(`notification_alert_cooldowns/${uid}`);
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(cooldownRef);
+    const data = snap.exists ? (snap.data() as Record<string, number>) : {};
+    const lastSentMs = data[eventType] ?? 0;
+    const nowMs = Date.now();
+
+    if (nowMs - lastSentMs < ALERT_COOLDOWN_MS) {
+      logger.info("[bridgeSpineEvents] Alert suppressed by cooldown", {
+        uid,
+        eventType,
+        lastSentMs,
+        msSinceLast: nowMs - lastSentMs,
+        cooldownMs: ALERT_COOLDOWN_MS,
+      });
+      return false;
+    }
+
+    tx.set(cooldownRef, { [eventType]: nowMs, updatedAt: nowMs }, { merge: true });
+    return true;
+  });
+}
+
 setGlobalOptions({ maxInstances: 10 });
 
 initializeApp();
@@ -117,7 +175,14 @@ export const bridgeSpineEvents = onDocumentCreated(
 
     try {
       const eventPriority = (payload.priority as NotificationPriority) || "info";
-      
+
+      // Rate-limit system alerts so the same alert type cannot spam the user
+      // more than once per hour. Reminder events are always delivered.
+      if (RATE_LIMITED_ALERT_TYPES.has(payload.type)) {
+        const allowed = await checkAndAcquireAlertCooldown(uid, payload.type);
+        if (!allowed) return;
+      }
+
       const { title: notificationTitle, body: bodySource } = deriveNotificationContent(payload.type, payload.data);
 
       const rawDeepLink = (payload.data as { deepLink?: unknown } | undefined)?.deepLink;

@@ -26,13 +26,41 @@ export interface NotificationSchedulerConfig {
   onError?: (err: unknown) => void;
 }
 
+const SESSION_STORAGE_KEY = 'atlas_scheduler_emitted';
+
+/** Maximum age of a sessionStorage emitted entry before it's considered stale and pruned. */
+const EMITTED_ENTRY_MAX_AGE_MS = 28 * 60 * 60 * 1000; // 28 hours matches the habit check cap
+
+function loadEmittedFromSession(): Map<string, number> {
+  try {
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return new Map();
+    const entries = JSON.parse(raw) as [string, number][];
+    const cutoff = Date.now() - EMITTED_ENTRY_MAX_AGE_MS;
+    return new Map(entries.filter(([, ts]) => ts > cutoff));
+  } catch {
+    return new Map();
+  }
+}
+
+function saveEmittedToSession(emitted: Map<string, number>): void {
+  try {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(Array.from(emitted.entries())));
+  } catch {
+    // Ignore — sessionStorage may be unavailable (e.g., private browsing with strict settings).
+  }
+}
+
 export class AtlasNotificationScheduler {
   private _intervalId: ReturnType<typeof setInterval> | null = null;
   private _config: Required<Omit<NotificationSchedulerConfig, 'onError'>> & { onError: NotificationSchedulerConfig['onError'] };
   private _getHabits: (() => AtlasHabit[]) | null = null;
   private _getTasks: (() => AtlasTask[]) | null = null;
-  /** Tracks which habit/task ids have already been emitted this session. */
-  private _emitted = new Set<string>();
+  /**
+   * Tracks which habit/task ids have already been emitted, with their emission
+   * timestamp. Persisted to sessionStorage so remounts don't re-emit alerts.
+   */
+  private _emitted: Map<string, number> = new Map();
 
   constructor(config: NotificationSchedulerConfig = {}) {
     this._config = {
@@ -53,6 +81,9 @@ export class AtlasNotificationScheduler {
     this._getHabits = getHabits;
     this._getTasks = getTasks;
 
+    // Restore emitted set from sessionStorage so remounts don't re-emit.
+    this._emitted = loadEmittedFromSession();
+
     // Run immediately then on interval
     this._checkAndEmit();
     this._intervalId = setInterval(() => this._checkAndEmit(), this._config.checkIntervalMs);
@@ -65,13 +96,14 @@ export class AtlasNotificationScheduler {
     }
     this._getHabits = null;
     this._getTasks = null;
-    // Clear deduplication set so the next start() session emits fresh.
-    this._emitted.clear();
+    // Persist emitted state before stopping so it survives remounts.
+    saveEmittedToSession(this._emitted);
   }
 
   /** Exposed for tests: clear the emitted set without stopping the scheduler. */
   clearEmitted(): void {
     this._emitted.clear();
+    saveEmittedToSession(this._emitted);
   }
 
   private _checkAndEmit(): void {
@@ -101,7 +133,8 @@ export class AtlasNotificationScheduler {
       if (hoursSinceLast >= this._config.habitReminderHours && hoursSinceLast < 28) {
         const key = `habit:${habit.id}`;
         if (this._emitted.has(key)) continue;
-        this._emitted.add(key);
+        this._emitted.set(key, nowMs);
+        saveEmittedToSession(this._emitted);
 
         Spine.emit({
           type: 'HABIT_STREAK_BROKEN',
@@ -136,7 +169,8 @@ export class AtlasNotificationScheduler {
       if (msUntil > 0 && msUntil <= thresholdMs) {
         const key = `task:${task.id}`;
         if (this._emitted.has(key)) continue;
-        this._emitted.add(key);
+        this._emitted.set(key, nowMs);
+        saveEmittedToSession(this._emitted);
 
         Spine.emit({
           type: 'DEADLINE_APPROACHING',

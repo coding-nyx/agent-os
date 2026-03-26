@@ -25,6 +25,54 @@ function toDateMs(iso: unknown): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
+/**
+ * Convert a wall-clock HH:MM in a named IANA timezone on the UTC calendar day
+ * represented by (year, month0, day) to a UTC millisecond timestamp.
+ *
+ * Uses two-pass Intl.DateTimeFormat iteration to converge on the correct UTC
+ * value, handling DST "spring forward" / "fall back" boundaries without any
+ * external timezone library. Falls back to treating the time as UTC if the
+ * timezone identifier is absent or Intl is unavailable.
+ */
+function wallClockToUtcMs(
+  year: number,
+  month0: number,
+  day: number,
+  h: number,
+  m: number,
+  timezone: string | undefined,
+): number {
+  if (!timezone) return Date.UTC(year, month0, day, h, m, 0, 0);
+  try {
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      hourCycle: 'h23',
+    });
+
+    // Start from the naive UTC interpretation as an initial estimate.
+    let estimate = Date.UTC(year, month0, day, h, m, 0, 0);
+
+    // Two iterations converge the estimate: measure how far the resulting local
+    // representation is from the desired h:m, then correct.
+    for (let i = 0; i < 2; i++) {
+      const parts = fmt.formatToParts(new Date(estimate));
+      const get = (type: string) => Number(parts.find(p => p.type === type)?.value ?? '0');
+      const lH = get('hour');
+      const lM = get('minute');
+      const diffMs = (h * 60 + m - (lH * 60 + lM)) * 60_000;
+      estimate += diffMs;
+    }
+    return estimate;
+  } catch {
+    return Date.UTC(year, month0, day, h, m, 0, 0);
+  }
+}
+
 // Deterministic, pure-JS hash for stable occurrence ids (no crypto dependencies).
 // (FNV-1a 32-bit)
 export function hashOccurrenceId(input: string): string {
@@ -104,7 +152,11 @@ function computeDueWeeklyByDays(
     const dayIdx = date.getUTCDay();
     if (!days.includes(dayIdx)) continue;
 
-    const candidate = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), time.h, time.m, 0, 0);
+    // Apply timezone: convert the user's intended local wall-clock time to UTC.
+    const candidate = wallClockToUtcMs(
+      date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(),
+      time.h, time.m, rec.timezone,
+    );
     if (candidate < startAtMs) continue;
     if (candidate < rangeStartMs || candidate > rangeEndMs) continue;
 
@@ -127,6 +179,7 @@ function computeDueDailyWindow(rec: Extract<Recurrence, { kind: 'daily_window' }
   if (!startTime || !endTime) return [];
   if (!rec.intervalMinutes || rec.intervalMinutes <= 0) return [];
 
+  const intervalMs = rec.intervalMinutes * 60_000;
   const due: number[] = [];
 
   const startDay = new Date(rangeStartMs);
@@ -139,12 +192,21 @@ function computeDueDailyWindow(rec: Extract<Recurrence, { kind: 'daily_window' }
 
   for (let t = startUTC; t <= endUTC; t += 86400 * 1000) {
     const date = new Date(t);
-    const candidate = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), startTime.h, startTime.m, 0, 0);
-    if (candidate < startAtMs) continue;
-    if (candidate < rangeStartMs || candidate > rangeEndMs) continue;
+    // Apply timezone: convert the user's intended local wall-clock times to UTC.
+    const windowStartMs = wallClockToUtcMs(
+      date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(),
+      startTime.h, startTime.m, rec.timezone,
+    );
+    const windowEndMs = wallClockToUtcMs(
+      date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(),
+      endTime.h, endTime.m, rec.timezone,
+    );
 
-    const candidateEnd = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), endTime.h, endTime.m, 0, 0);
-    if (candidate <= candidateEnd) due.push(candidate);
+    // Iterate through every intervalMinutes slot within the window.
+    for (let slot = windowStartMs; slot <= windowEndMs; slot += intervalMs) {
+      if (slot < startAtMs) continue;
+      if (slot >= rangeStartMs && slot <= rangeEndMs) due.push(slot);
+    }
   }
 
   return due;

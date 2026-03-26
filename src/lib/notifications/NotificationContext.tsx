@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
 import { useNavigate } from 'react-router-dom';
@@ -51,12 +51,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Tracks notification IDs that have already been toasted in this session.
+  // Using a ref (not state) so updates are synchronous and don't trigger re-renders.
+  const toastedIds = useRef<Set<string>>(new Set());
+
   // 1. Sync Inbox from Firestore
   useEffect(() => {
     if (!user) {
       setInbox([]);
       setUnreadCount(0);
       setLoading(false);
+      // Clear toasted IDs so the next user session starts fresh.
+      toastedIds.current.clear();
       return;
     }
 
@@ -117,16 +123,24 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [user, dataLayer, navigate, inbox]);
 
   // 3. Foreground Toast Logic (triggered by new unread items in inbox)
-  // We only show toasts for items that arrived VERY recently (e.g. within the last 30 seconds)
-  // to avoid showing old notifications on page load.
+  // Use a ref-based set of already-toasted IDs instead of a time window.
+  // The time-window approach (e.g. < 30 seconds old) has a race condition where
+  // items arriving near the boundary are silently dropped, and items present on
+  // initial page load (which are old) are never suppressed if 30 seconds pass
+  // between loads. The Set approach is deterministic: each ID is toasted once.
   useEffect(() => {
-    const now = Date.now();
-    const newItems = inbox.filter(r => !r.read && (now - new Date(r.createdAt).getTime()) < 30000);
+    const freshItems = inbox.filter(r => !r.read && !toastedIds.current.has(r.id));
+    if (freshItems.length === 0) return;
+
+    // Mark as toasted before updating state to prevent double-fire if the
+    // effect runs again before the state update settles.
+    for (const item of freshItems) {
+      toastedIds.current.add(item.id);
+    }
 
     setToasts(prev => {
       const existingIds = new Set(prev.map(t => t.id));
-      const filteredNew = newItems.filter(item => !existingIds.has(item.id));
-      
+      const filteredNew = freshItems.filter(item => !existingIds.has(item.id));
       if (filteredNew.length === 0) return prev;
 
       const dueItems = filteredNew.filter(item => item.type === 'MODULE_REMINDER_DUE');
