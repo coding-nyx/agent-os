@@ -62,6 +62,15 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
 
+          // React core — MUST be prioritized and specific to avoid duplicate instances
+          // which cause "Cannot read properties of undefined (reading 'useLayoutEffect')"
+          if (
+            id.includes('/node_modules/react/') ||
+            id.includes('/node_modules/react-dom/') ||
+            id.includes('/node_modules/scheduler/') ||
+            id.includes('/node_modules/react-is/')
+          ) return 'vendor-core';
+
           // Large data processors — keep isolated to avoid bloating main bundle
           if (id.includes('/gpt-tokenizer/')) return 'vendor-gpt';
           if (id.includes('/pdfjs-dist/')) return 'vendor-pdf';
@@ -70,7 +79,18 @@ export default defineConfig({
           if (id.includes('/framer-motion/')) return 'vendor-animation';
 
           // 3D / WebGL — only loaded when 3D view is active
-          if (id.includes('/three/') || id.includes('/@react-three/')) return 'vendor-three';
+          if (
+            id.includes('/three/') ||
+            id.includes('/@react-three/') ||
+            id.includes('/three-stdlib/') ||
+            id.includes('/postprocessing/') ||
+            id.includes('/maath/') ||
+            id.includes('/camera-controls/') ||
+            id.includes('/n8ao/') ||
+            id.includes('/meshline/') ||
+            id.includes('/stats-gl/') ||
+            id.includes('/its-fine/')
+          ) return 'vendor-three';
 
           // Firebase — auth + storage always needed; keep in one chunk for init ordering
           if (id.includes('/firebase/')) return 'vendor-firebase';
@@ -78,16 +98,14 @@ export default defineConfig({
           // Rich text editor — only loaded in specific modules
           if (id.includes('/@tiptap/') || id.includes('/tiptap-')) return 'vendor-editor';
 
-          // UI primitives — Radix, Recharts; cached across deploys
-          if (id.includes('/@radix-ui/') || id.includes('/recharts/')) return 'vendor-ui';
-
-          // React core — very stable, maximize cache lifetime
+          // UI primitives & Navigation — Radix, Recharts, React Router
           if (
-            id.includes('/react/') ||
-            id.includes('/react-dom/') ||
-            id.includes('/react-router') ||
-            id.includes('/scheduler/')
-          ) return 'vendor-core';
+            id.includes('/@radix-ui/') ||
+            id.includes('/recharts/') ||
+            id.includes('/react-router/') ||
+            id.includes('/react-router-dom/') ||
+            id.includes('/lucide-react/')
+          ) return 'vendor-ui';
 
           // Everything else consolidated to avoid too many small chunks
           return 'vendor-other';
