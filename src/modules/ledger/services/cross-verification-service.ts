@@ -250,7 +250,7 @@ export function buildLedgerSpineEvents(
       type: 'FINANCIAL_FRICTION_UPDATED',
       source: 'ledger',
       domain: 'R',
-      priority: 'alert',
+      priority: 'info',
       data: { dti, frictionScore },
     });
   }

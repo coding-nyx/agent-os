@@ -68,7 +68,7 @@ export const LEDGER_CASCADE_RULES: CascadeRule[] = [
       type: 'SOMATIC_SUPPORT_REQUESTED' as SpineEventType,
       domain: 'E' as const,
       source: 'spine-cascade:ledger',
-      priority: 'alert' as const,
+      priority: 'info' as const,
       data: {
         triggeredBy: 'FINANCIAL_FRICTION_CHANGED',
         context: 'financial_stress',
@@ -133,7 +133,7 @@ export const LEDGER_CASCADE_RULES: CascadeRule[] = [
       type: 'RISK_DETECTED' as LedgerSpineEventType,
       domain: 'R' as const,
       source: 'spine-cascade:agnes',
-      priority: 'alert' as const,
+      priority: 'info' as const,
       data: {
         triggeredBy: 'BURNOUT_WARNING',
         riskType: 'financial_overcommitment',
@@ -191,7 +191,7 @@ const CORE_ENERGY_WAVE_CASCADE_RULES: CascadeRule[] = [
       type: 'FLATTEN_ENERGY_WAVE' as SpineEventType,
       domain: 'system' as const,
       source: 'spine-cascade:core',
-      priority: 'alert' as const,
+      priority: 'info' as const,
       target: 'atlas',
       data: { reason: 'burnout_warning' },
     }),
@@ -204,7 +204,7 @@ const CORE_ENERGY_WAVE_CASCADE_RULES: CascadeRule[] = [
       type: 'FLATTEN_ENERGY_WAVE' as SpineEventType,
       domain: 'system' as const,
       source: 'spine-cascade:core',
-      priority: 'alert' as const,
+      priority: 'info' as const,
       target: 'atlas',
       data: { reason: typeof (event.data as any)?.reason === 'string' ? (event.data as any).reason : undefined },
     }),
@@ -282,7 +282,7 @@ export const AGNES_CASCADE_RULES: CascadeRule[] = [
       type: 'SOMATIC_SUPPORT_REQUESTED' as SpineEventType,
       domain: 'E' as const,
       source: 'spine-cascade',
-      priority: 'alert' as const,
+      priority: 'info' as const,
       data: {
         triggeredBy: 'BURNOUT_WARNING',
         cnsFatigue: event.data.cnsFatigue,
@@ -411,7 +411,7 @@ export const ATLAS_FAILURE_RULES: CascadeRule[] = [
       type: 'ROUTINE_UPDATED' as SpineEventType,
       domain: 'C' as const,
       source: event.source,
-      priority: 'alert' as const,
+      priority: 'info' as const,
       data: {
         triggeredBy: 'COMMITMENT_MISSED',
         overdueCount: event.data.overdueCount,
@@ -431,7 +431,7 @@ export const ATLAS_FAILURE_RULES: CascadeRule[] = [
       type: 'SOMATIC_SUPPORT_REQUESTED' as SpineEventType,
       domain: 'E' as const,
       source: 'spine-cascade',
-      priority: 'alert' as const,
+      priority: 'info' as const,
       data: {
         triggeredBy: 'HABIT_STREAK_BROKEN',
         streakDays: event.data.streakDays,
@@ -562,7 +562,7 @@ export const ATLAS_PLANNING_CASCADE_RULES: CascadeRule[] = [
       type: 'FLATTEN_ENERGY_WAVE' as SpineEventType,
       domain: 'C' as const,
       source: 'spine-cascade',
-      priority: 'alert' as const,
+      priority: 'info' as const,
       data: {
         triggeredBy: 'ATLAS_PREDICTIVE_ALERT',
         reason: 'proactive_velocity_risk',
@@ -604,7 +604,7 @@ export const ATLAS_PLANNING_CASCADE_RULES: CascadeRule[] = [
       type: 'REDUCE_TRAINING_LOAD' as SpineEventType,
       domain: 'B' as const,
       source: 'spine-cascade',
-      priority: 'alert' as const,
+      priority: 'info' as const,
       data: {
         triggeredBy: 'ATLAS_RECOVERY_SCHEDULED',
         reason: 'atlas_recovery_day',
@@ -703,7 +703,7 @@ export const TITAN_CASCADE_RULES: CascadeRule[] = [
       type: 'REDUCE_TRAINING_LOAD' as SpineEventType,
       domain: 'B' as const,
       source: 'spine-cascade',
-      priority: 'alert' as const,
+      priority: 'info' as const,
       data: {
         triggeredBy: 'WORKOUT_COMPLETED',
         reason: 'high_rpe_session',
@@ -727,7 +727,7 @@ export const TITAN_CASCADE_RULES: CascadeRule[] = [
       type: 'SOMATIC_SUPPORT_REQUESTED' as SpineEventType,
       domain: 'E' as const,
       source: 'spine-cascade',
-      priority: event.priority ?? ('alert' as const),
+      priority: 'info' as const,
       data: {
         triggeredBy: 'TITAN_RECOVERY_NEEDED',
         context: 'physical_fatigue',
@@ -750,7 +750,7 @@ export const TITAN_CASCADE_RULES: CascadeRule[] = [
       type: 'COMPOUND_STRESS' as SpineEventType,
       domain: 'B' as const,
       source: 'spine-cascade',
-      priority: 'alert' as const,
+      priority: 'info' as const,
       data: {
         triggeredBy: 'TITAN_BODY_WEIGHT_LOGGED',
         reason: 'aggressive_caloric_deficit',

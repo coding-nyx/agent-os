@@ -356,7 +356,7 @@ export class MigrationService {
         type: 'SCHEMA_MIGRATED',
         source: 'migration-service',
         domain: 'system',
-        priority: 'alert',
+        priority: 'info',
         data: {
           userId,
           migrationId,

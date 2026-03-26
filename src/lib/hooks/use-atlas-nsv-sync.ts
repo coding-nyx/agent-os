@@ -91,7 +91,7 @@ export function useAtlasNSVSync(): UseAtlasNSVSyncReturn {
           type: 'NSV_CALIBRATION_REQUEST',
           source: 'use-atlas-nsv-sync',
           domain: 'C',
-          priority: 'alert',
+          priority: 'info',
           target: 'atlas',
           data: {
             discrepancies,
