@@ -7,6 +7,50 @@ import { getFirestore } from "firebase-admin/firestore";
 import { NotificationEngine, type NotificationPriority } from "./notification-engine";
 
 // ---------------------------------------------------------------------------
+// Notification allowlist — only user-facing events reach the inbox
+// ---------------------------------------------------------------------------
+
+/**
+ * Explicit set of Spine event types that should be delivered to the user's
+ * notification inbox. Internal routing/system signals (SOMATIC_SUPPORT_REQUESTED,
+ * FLATTEN_ENERGY_WAVE, REDUCE_TRAINING_LOAD, ROUTINE_UPDATED, COMPOUND_STRESS,
+ * RISK_DETECTED, NSV_CALIBRATION_REQUEST, SCHEMA_MIGRATED, etc.) are deliberately
+ * excluded — they are consumed by other services and should never appear as
+ * user-visible notifications.
+ */
+const NOTIFICATION_ALLOWLIST = new Set([
+  // Reminders — always delivered (user-created schedules)
+  "MODULE_REMINDER_DUE",
+  // Health & body alerts
+  "BURNOUT_WARNING",
+  "BLOCK_HIGH_INTENSITY",
+  "MEDICAL_ALERT",
+  "BURNOUT_TRAJECTORY_WARNING",
+  // Financial alerts
+  "FINANCIAL_STRESS",
+  "BUDGET_ALERT",
+  "OVERSPEND_DETECTED",
+  "EXPENSE_SPIKE",
+  "CASHFLOW_NEGATIVE",
+  // Cognitive & planning alerts
+  "COGNITIVE_OVERLOAD",
+  "PLANNING_OVERLOAD",
+  "DEADLINE_CRUNCH",
+  "DEADLINE_APPROACHING",
+  // System-wide critical states
+  "CRISIS_MODE",
+  "CRISIS_DETECTED",
+  "ATLAS_ENERGY_OVERLOAD",
+  "ATLAS_OVERLOAD_DETECTED",
+  "ATLAS_PREDICTIVE_ALERT",
+  // Goal & habit alerts
+  "STREAK_BROKEN",
+  "COMMITMENT_MISSED",
+  // AI & system errors the user should know about
+  "AI_LINK_FAILURE",
+]);
+
+// ---------------------------------------------------------------------------
 // Alert cooldown — prevent push spam for the same system alert type
 // ---------------------------------------------------------------------------
 
@@ -176,6 +220,19 @@ export const bridgeSpineEvents = onDocumentCreated(
 
     try {
       const eventPriority = (payload.priority as NotificationPriority) || "info";
+
+      // Allowlist gate: only user-facing event types reach the inbox.
+      // Internal routing signals (SOMATIC_SUPPORT_REQUESTED, FLATTEN_ENERGY_WAVE,
+      // REDUCE_TRAINING_LOAD, ROUTINE_UPDATED, COMPOUND_STRESS, RISK_DETECTED, etc.)
+      // are silently dropped here — they are consumed by other services.
+      if (!NOTIFICATION_ALLOWLIST.has(payload.type)) {
+        logger.info("[bridgeSpineEvents] Event not in notification allowlist, skipping", {
+          uid,
+          type: payload.type,
+          priority: eventPriority,
+        });
+        return;
+      }
 
       // Rate-limit system alerts so the same alert type cannot spam the user
       // more than once per hour. Reminder events are always delivered.
