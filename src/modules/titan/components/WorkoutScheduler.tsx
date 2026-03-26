@@ -17,7 +17,7 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarPlus, ChevronLeft, ChevronRight, X, Calendar, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight, X, Calendar, CheckCircle2, XCircle, Clock, Play } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralModal } from '@/core/components/NeuralModal';
@@ -25,7 +25,7 @@ import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { PanelLabel } from '@/core/components/PanelLabel';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
-import type { PlannedWorkout, WorkoutSession, Routine } from '@/lib/types';
+import type { PlannedWorkout, WorkoutSession, Routine, Weekday } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ─────────────────────────────────────────────────────────────
@@ -68,6 +68,11 @@ function formatDisplayDate(iso: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+/** Map JS getDay() (0=Sun…6=Sat) → Weekday string */
+const JS_DAY_TO_WEEKDAY: Weekday[] = [
+  'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
+];
+
 // ─── Sub-component: Status dot ─────────────────────────────────────────────
 
 const STATUS_COLORS: Record<PlannedWorkout['status'], string> = {
@@ -91,27 +96,32 @@ interface DayCellProps {
   date: Date;
   isToday: boolean;
   planned: PlannedWorkout | undefined;
-  onClick: (date: Date, planned: PlannedWorkout | undefined) => void;
+  routineForDay: Routine | undefined;
+  isSelected: boolean;
+  onClick: (date: Date, planned: PlannedWorkout | undefined, routine: Routine | undefined) => void;
 }
 
-function DayCell({ date, isToday, planned, onClick }: DayCellProps) {
+function DayCell({ date, isToday, planned, routineForDay, isSelected, onClick }: DayCellProps) {
   const dayNum = date.getDate();
   const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
+  const hasRoutine = Boolean(routineForDay) && !planned;
 
   return (
     <button
       type="button"
-      onClick={() => onClick(date, planned)}
+      onClick={() => onClick(date, planned, routineForDay)}
       className={cn(
         'relative flex flex-col items-center justify-start gap-0.5 p-1 pt-1.5 rounded-xl transition-all duration-150',
         'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--module-accent-ring)]',
         'min-h-[3.2rem] w-full',
         isToday
           ? 'border border-[var(--module-accent)] bg-[var(--module-accent-muted)]'
-          : 'border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.12]',
-        isPast && !planned && 'opacity-40',
+          : isSelected
+            ? 'border border-[var(--module-accent)] bg-white/[0.08]'
+            : 'border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.12]',
+        isPast && !planned && !hasRoutine && 'opacity-40',
       )}
-      aria-label={`${toIsoDate(date)}${planned ? ` — ${planned.routineName}` : ''}`}
+      aria-label={`${toIsoDate(date)}${planned ? ` — ${planned.routineName}` : routineForDay ? ` — ${routineForDay.name}` : ''}`}
     >
       <span
         className={cn(
@@ -123,6 +133,9 @@ function DayCell({ date, isToday, planned, onClick }: DayCellProps) {
       </span>
       {planned ? (
         <StatusDot status={planned.status} />
+      ) : hasRoutine ? (
+        // Routine-derived dot — dimmer to distinguish from explicit planned workouts
+        <span className="w-1.5 h-1.5 rounded-full bg-white/25 inline-block shrink-0" aria-label="routine" />
       ) : (
         <span className="text-[8px] text-white/15 leading-none">+</span>
       )}
@@ -133,20 +146,27 @@ function DayCell({ date, isToday, planned, onClick }: DayCellProps) {
 // ─── Sub-component: Day Detail Popover ─────────────────────────────────────
 
 interface DayDetailProps {
-  planned: PlannedWorkout;
+  planned?: PlannedWorkout;
+  routine?: Routine;
   onClose: () => void;
   onMarkSkipped: (pw: PlannedWorkout) => void;
+  onStartSession?: (routine: Routine) => void;
+  onSchedule?: () => void;
   anchorLabel: string;
 }
 
-function DayDetail({ planned, onClose, onMarkSkipped, anchorLabel }: DayDetailProps) {
+function DayDetail({ planned, routine, onClose, onMarkSkipped, onStartSession, onSchedule, anchorLabel }: DayDetailProps) {
+  const name = planned?.routineName ?? routine?.name ?? '';
+  const exercises = planned?.exerciseNames ?? routine?.exercises.map(e => e.name) ?? [];
+  const notes = planned?.notes;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95, y: -4 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: -4 }}
       transition={{ duration: 0.15 }}
-      className="absolute z-20 top-full mt-1 left-1/2 -translate-x-1/2 w-52 rounded-2xl border border-[var(--module-accent-border)] bg-[#0c0c12]/95 backdrop-blur-md shadow-2xl p-3"
+      className="absolute z-20 top-full mt-1 left-1/2 -translate-x-1/2 w-56 rounded-2xl border border-[var(--module-accent-border)] bg-[#0c0c12]/95 backdrop-blur-md shadow-2xl p-3"
       role="dialog"
       aria-label={`Workout on ${anchorLabel}`}
     >
@@ -155,7 +175,10 @@ function DayDetail({ planned, onClose, onMarkSkipped, anchorLabel }: DayDetailPr
           <p className="text-[10px] font-black uppercase tracking-widest text-[var(--module-color-300)]">
             {anchorLabel}
           </p>
-          <p className="text-xs font-semibold text-white/90 mt-0.5">{planned.routineName}</p>
+          <p className="text-xs font-semibold text-white/90 mt-0.5">{name}</p>
+          {!planned && routine && (
+            <p className="text-[9px] text-white/30 mt-0.5 capitalize">{routine.weekday} routine</p>
+          )}
         </div>
         <button
           type="button"
@@ -167,32 +190,62 @@ function DayDetail({ planned, onClose, onMarkSkipped, anchorLabel }: DayDetailPr
         </button>
       </div>
 
-      {planned.exerciseNames && planned.exerciseNames.length > 0 && (
+      {exercises.length > 0 && (
         <p className="text-[10px] text-white/50 mb-2 leading-relaxed">
-          {planned.exerciseNames.slice(0, 4).join(' · ')}
-          {planned.exerciseNames.length > 4 && ` +${planned.exerciseNames.length - 4}`}
+          {exercises.slice(0, 4).join(' · ')}
+          {exercises.length > 4 && ` +${exercises.length - 4}`}
         </p>
       )}
 
-      {planned.notes && (
-        <p className="text-[10px] text-white/40 italic mb-2">{planned.notes}</p>
+      {notes && (
+        <p className="text-[10px] text-white/40 italic mb-2">{notes}</p>
+      )}
+
+      {planned && (
+        <div className="flex items-center gap-1.5 mb-2">
+          <StatusDot status={planned.status} />
+          <span className="text-[10px] text-white/50 capitalize">{planned.status}</span>
+        </div>
       )}
 
       <div className="flex items-center gap-1.5">
-        <StatusDot status={planned.status} />
-        <span className="text-[10px] text-white/50 capitalize">{planned.status}</span>
+        {/* Start Session button — shown for routine or planned (non-skipped) */}
+        {onStartSession && routine && (!planned || planned.status === 'planned') && (
+          <NeuralButton
+            size="sm"
+            className="flex-1 text-[10px]"
+            onClick={() => { onStartSession(routine); onClose(); }}
+          >
+            <Play className="w-3 h-3 mr-1" />
+            Start Session
+          </NeuralButton>
+        )}
+        {planned?.status === 'planned' && (
+          <NeuralButton
+            size="sm"
+            variant="ghost"
+            className="flex-1 text-[10px]"
+            onClick={() => { onMarkSkipped(planned); onClose(); }}
+          >
+            <XCircle className="w-3 h-3 mr-1" />
+            Skip
+          </NeuralButton>
+        )}
       </div>
 
-      {planned.status === 'planned' && (
-        <NeuralButton
-          size="sm"
-          variant="ghost"
-          className="w-full mt-2 text-[10px]"
-          onClick={() => { onMarkSkipped(planned); onClose(); }}
-        >
-          <XCircle className="w-3 h-3 mr-1" />
-          Mark Skipped
-        </NeuralButton>
+      {/* Explicit schedule action for empty/routine days */}
+      {onSchedule && (
+        <div className="mt-2 pt-2 border-t border-white/10">
+          <NeuralButton
+            size="sm"
+            variant="ghost"
+            className="w-full h-7 text-[10px] text-[var(--module-color-300)] hover:bg-[var(--module-accent-muted)]"
+            onClick={() => { onSchedule(); onClose(); }}
+          >
+            <CalendarPlus className="w-3 h-3 mr-1.5" />
+            Schedule Workout
+          </NeuralButton>
+        </div>
       )}
     </motion.div>
   );
@@ -465,6 +518,7 @@ export interface WorkoutSchedulerProps {
   directWriteMode?: boolean;
   onDirectSave?: (plan: PlannedWorkout) => Promise<void>;
   onDirectUpdate?: (plan: PlannedWorkout) => Promise<void>;
+  onStartSession?: (routine: Routine) => void;
 }
 
 // ─── Root Component ─────────────────────────────────────────────────────────
@@ -477,6 +531,7 @@ export function WorkoutScheduler({
   directWriteMode = false,
   onDirectSave,
   onDirectUpdate,
+  onStartSession,
 }: WorkoutSchedulerProps) {
   const todayDate = new Date();
   todayDate.setHours(0, 0, 0, 0);
@@ -486,6 +541,7 @@ export function WorkoutScheduler({
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDayDate, setSelectedDayDate] = useState<Date | null>(null);
   const [selectedPlanned, setSelectedPlanned] = useState<PlannedWorkout | undefined>(undefined);
+  const [selectedRoutineForDay, setSelectedRoutineForDay] = useState<Routine | undefined>(undefined);
   const [planModalDate, setPlanModalDate] = useState<string>(todayIso);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
 
@@ -505,6 +561,15 @@ export function WorkoutScheduler({
     return map;
   }, [plannedWorkouts]);
 
+  // Map weekday → Routine for O(1) lookup by day-of-week
+  const routineByWeekday = useMemo(() => {
+    const map = new Map<Weekday, Routine>();
+    for (const r of routines) {
+      if (r.weekday) map.set(r.weekday, r);
+    }
+    return map;
+  }, [routines]);
+
   // Set of completed session dates for cross-reference
   const completedDates = useMemo(
     () => new Set(completedSessions.map(s => s.date)),
@@ -521,22 +586,27 @@ export function WorkoutScheduler({
   }, [calendarDates]);
 
   // Handle day cell click
-  const handleDayClick = useCallback((date: Date, planned: PlannedWorkout | undefined) => {
+  const handleDayClick = useCallback((date: Date, planned: PlannedWorkout | undefined, routineForDay: Routine | undefined) => {
     const dateIso = toIsoDate(date);
-    if (planned) {
+    // Always track the last clicked date so the Schedule button defaults to it
+    setPlanModalDate(dateIso);
+
+    if (planned || routineForDay) {
       // Toggle detail popover
       if (selectedDayDate && toIsoDate(selectedDayDate) === dateIso) {
         setSelectedDayDate(null);
         setSelectedPlanned(undefined);
+        setSelectedRoutineForDay(undefined);
       } else {
         setSelectedDayDate(date);
         setSelectedPlanned(planned);
+        setSelectedRoutineForDay(routineForDay);
       }
     } else {
-      // Open plan modal for this date
+      // Empty day — open plan modal immediately
       setSelectedDayDate(null);
       setSelectedPlanned(undefined);
-      setPlanModalDate(dateIso);
+      setSelectedRoutineForDay(undefined);
       setIsPlanModalOpen(true);
     }
   }, [selectedDayDate]);
@@ -577,6 +647,15 @@ export function WorkoutScheduler({
           metadata={`${plannedWorkouts.length} planned`}
         />
         <div className="flex items-center gap-1.5">
+          <NeuralButton
+            size="sm"
+            variant="ghost"
+            onClick={() => setIsPlanModalOpen(true)}
+            className="h-7 px-2.5 text-[10px] font-bold text-[var(--module-color-300)] hover:bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]"
+          >
+            <CalendarPlus className="w-3.5 h-3.5 mr-1.5" />
+            {planModalDate === todayIso ? 'Schedule' : `Schedule (${formatDisplayDate(planModalDate)})`}
+          </NeuralButton>
           <button
             type="button"
             onClick={() => setWeekOffset(o => o - 1)}
@@ -618,7 +697,10 @@ export function WorkoutScheduler({
               const effectivePw: PlannedWorkout | undefined = pw
                 ? completedDates.has(iso) ? { ...pw, status: 'completed' } : pw
                 : undefined;
-              const isSelected = selectedDayDate !== null && toIsoDate(selectedDayDate) === iso;
+              // Derive routine for this weekday (only shown when no explicit planned workout)
+              const weekdayKey = JS_DAY_TO_WEEKDAY[date.getDay()];
+              const routineForDay = !effectivePw ? routineByWeekday.get(weekdayKey) : undefined;
+              const isSelected = planModalDate === iso;
 
               return (
                 <div key={iso} className="relative">
@@ -626,14 +708,25 @@ export function WorkoutScheduler({
                     date={date}
                     isToday={isToday}
                     planned={effectivePw}
+                    routineForDay={routineForDay}
+                    isSelected={isSelected}
                     onClick={handleDayClick}
                   />
                   <AnimatePresence>
-                    {isSelected && selectedPlanned && (
+                    {selectedDayDate && toIsoDate(selectedDayDate) === iso && (selectedPlanned ?? selectedRoutineForDay) && (
                       <DayDetail
                         planned={selectedPlanned}
-                        onClose={() => { setSelectedDayDate(null); setSelectedPlanned(undefined); }}
+                        routine={selectedPlanned
+                          ? routines.find(r => r.name === selectedPlanned.routineName)
+                          : selectedRoutineForDay}
+                        onClose={() => { setSelectedDayDate(null); setSelectedPlanned(undefined); setSelectedRoutineForDay(undefined); }}
                         onMarkSkipped={handleMarkSkipped}
+                        onStartSession={onStartSession}
+                        onSchedule={() => {
+                          // Ensure modal date is set to the selected day
+                          setPlanModalDate(iso);
+                          setIsPlanModalOpen(true);
+                        }}
                         anchorLabel={formatDisplayDate(iso)}
                       />
                     )}
@@ -653,6 +746,12 @@ export function WorkoutScheduler({
             <span className="text-[9px] text-white/30 capitalize">{status}</span>
           </div>
         ))}
+        {routineByWeekday.size > 0 && (
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-white/25 inline-block shrink-0" />
+            <span className="text-[9px] text-white/30">routine</span>
+          </div>
+        )}
       </div>
 
       {/* Upcoming sessions list */}

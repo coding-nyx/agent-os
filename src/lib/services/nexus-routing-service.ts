@@ -47,10 +47,12 @@ const KEYWORD_ROUTES: Array<{ moduleId: ModuleId; keywords: Array<{ term: string
     keywords: [
       { term: 'workout plan', weight: 3 }, { term: 'training plan', weight: 3 },
       { term: 'fitness plan', weight: 3 }, { term: 'exercise plan', weight: 3 },
+      { term: 'workout schedule', weight: 3 }, { term: 'schedule workout', weight: 3 },
+      { term: 'training calendar', weight: 3 },
       { term: 'personal record', weight: 2 }, { term: 'titan', weight: 2 },
       { term: 'workout', weight: 2 }, { term: 'training', weight: 2 }, { term: 'gym', weight: 2 },
       { term: 'fitness', weight: 2 }, { term: 'strength', weight: 1 }, { term: 'routine', weight: 1 }, 
-      { term: 'fatigue', weight: 1 }
+      { term: 'fatigue', weight: 1 }, { term: 'schedule', weight: 1 }
     ]
   },
   {

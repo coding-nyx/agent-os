@@ -32,6 +32,7 @@ import {
   Injury,
   WorkoutGoal,
   PlannedWorkout,
+  Weekday,
 } from '@/lib/types';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { Spine } from '@/lib/spine/spine-event-bus';
@@ -95,6 +96,8 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   const [calendarSelectedRoutine, setCalendarSelectedRoutine] = useState<Parameters<typeof TrainTab>[0]['calendarSelectedRoutine']>(null);
   const [activeProposal, setActiveProposal] = useState<TitanProposal | null>(null);
   const [showAdvisory, setShowAdvisory] = useState(false);
+  const [isClearProgramModalOpen, setIsClearProgramModalOpen] = useState(false);
+  const [planResetVersion, setPlanResetVersion] = useState(0);
 
   const directWrite = profile?.directWriteMode ?? false;
   const recoveryPlan = profile?.recoveryPlan ?? null;
@@ -601,21 +604,109 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     ].filter(Boolean).join('\n'));
   }, [profile?.routines, openChatAndSend]);
 
-  const handleApplyProgram = useCallback(async (routines: Routine[], programName: string) => {
+  const handleApplyProgram = useCallback(async (routines: Routine[], programName: string, programId?: string, durationWeeks: number = 12, phases?: { name: string; weeks: [number, number] }[]) => {
     if (!profile || !encryptionKey || !user) return;
 
     // Always apply program templates as direct writes — they're static trusted data.
-    // Sending the full routine dump as a chat message breaks parseWithLLM on free LLMs
-    // (embedded quotes + multi-line text causes JSON parse failures in CognitiveAgent.generateJSON).
     const existingNames = new Set((profile.routines ?? []).map((r) => r.name));
     const incoming = routines.filter((r) => !existingNames.has(r.name));
     const merged = [...incoming, ...(profile.routines ?? [])];
+
+    // Generate planned workouts for the next 4 weeks based on the applied routines
+    const today = new Date();
+    const plannedWorkouts: PlannedWorkout[] = [...(profile.plannedWorkouts ?? [])];
+    const generatedIds = new Set(plannedWorkouts.map(pw => `${pw.date}:${pw.routineName}`));
+
+    // Only generate for incoming routines (so we don't double-schedule existing ones)
+    // Actually, we should generate for ALL routines in the program to be safe
+    const routinesToSchedule = routines;
+
+    for (let i = 0; i < 28; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        // "monday", "tuesday", etc.
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as Weekday;
+        
+        // Find routines that run on this day
+        const dayRoutines = routinesToSchedule.filter(r => r.weekday === dayName);
+        
+        for (const routine of dayRoutines) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const dayStr = String(d.getDate()).padStart(2, '0');
+            const isoDate = `${y}-${m}-${dayStr}`;
+
+            const uniqueKey = `${isoDate}:${routine.name}`;
+            if (generatedIds.has(uniqueKey)) continue;
+
+            plannedWorkouts.push({
+                id: crypto.randomUUID(),
+                date: isoDate,
+                routineName: routine.name,
+                exerciseNames: routine.exercises.map(e => e.name),
+                status: 'planned',
+                createdAt: new Date().toISOString()
+            });
+            generatedIds.add(uniqueKey);
+        }
+    }
+
+    const activeProgram = {
+      id: programId ?? programName.toLowerCase().replace(/\s+/g, '-'),
+      name: programName,
+      startDate: new Date().toISOString(),
+      durationWeeks,
+      phases,
+    };
+
     await saveTitanProfile(
-      { ...profile, routines: merged, updatedAt: new Date().toISOString() },
+      { 
+        ...profile, 
+        routines: merged, 
+        plannedWorkouts: plannedWorkouts.slice(0, 200),
+        activeProgram,
+        updatedAt: new Date().toISOString() 
+      },
       { userId: user.uid, encryptionKey },
     );
-    // No AI notification needed — routines are saved, user sees them in Plan tab immediately.
-  }, [profile, directWrite, encryptionKey, user, openChatAndSend]);
+  }, [profile, directWrite, encryptionKey, user]);
+
+  const handleClearProgram = useCallback(() => {
+    setIsClearProgramModalOpen(true);
+  }, []);
+
+  const handleConfirmClearProgram = useCallback(async () => {
+    if (!profile || !encryptionKey || !user) {
+      setIsClearProgramModalOpen(false);
+      return;
+    }
+    
+    await saveTitanProfile(
+      { 
+        ...profile, 
+        routines: [], 
+        activeProgram: undefined,
+        plannedWorkouts: [],
+        updatedAt: new Date().toISOString() 
+      },
+      { userId: user.uid, encryptionKey },
+    );
+    setPlanResetVersion((prev) => prev + 1);
+    setIsClearProgramModalOpen(false);
+  }, [profile, encryptionKey, user]);
+
+  const handleUpdateProgram = useCallback(async (updates: Partial<NonNullable<TitanProfile['activeProgram']>>) => {
+    if (!profile || !encryptionKey || !user || !profile.activeProgram) return;
+    
+    await saveTitanProfile(
+      { 
+        ...profile, 
+        activeProgram: { ...profile.activeProgram, ...updates },
+        updatedAt: new Date().toISOString() 
+      },
+      { userId: user.uid, encryptionKey },
+    );
+  }, [profile, encryptionKey, user]);
 
   const handleSubmitCustomFieldsForApproval = useCallback((values: Record<string, unknown>, categoryLabel: string) => {
     const nonEmpty = Object.entries(values).filter(([, v]) => v !== '' && v !== null && v !== undefined);
@@ -699,6 +790,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       case 'plan':
         return (
           <PlanTab
+            key={`plan-${planResetVersion}`}
             profile={profile}
             directWriteMode={directWrite}
             onAnalyzeRoutine={handleAnalyzeRoutine}
@@ -712,6 +804,8 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             onSubmitCustomFieldsForApproval={handleSubmitCustomFieldsForApproval}
             onDirectCreateMacros={handleDirectCreateMacros}
             onApplyProgram={handleApplyProgram}
+            onClearProgram={handleClearProgram}
+            onUpdateProgram={handleUpdateProgram}
             plannedWorkouts={profile?.plannedWorkouts}
             completedSessions={profile?.workoutSessions}
             onDirectSavePlan={handleDirectSavePlan}
@@ -719,7 +813,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             onAnalyzePlan={ai.handleSendMessage}
           />
         );
-      default: // train
+      case 'train':
         return (
           <TrainTab
             profile={profile}
@@ -813,40 +907,38 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                 />
               </div>
 
-              <div className="flex flex-col gap-2 sm:gap-3 xl:items-end">
-                <div className="flex flex-wrap items-center gap-2">
-                  <ModuleReminderEntry
-                    title="Titan"
-                    themeColor="orange"
-                    panel={<TitanNotificationSettingsPanel />}
-                    compact
-                    iconOnly
-                  />
-                  {!isRecoveryActive && (
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 xl:justify-end">
+                <ModuleReminderEntry
+                  title="Titan"
+                  themeColor="orange"
+                  panel={<TitanNotificationSettingsPanel />}
+                  compact
+                  iconOnly
+                />
+                {!isRecoveryActive && (
+                  <>
                     <NeuralButton
                       variant="secondary"
                       size="sm"
                       onClick={() => recovery.openRecoveryModal(null)}
-                      className="min-h-10 rounded-xl px-3.5 text-[11px] font-semibold tracking-[0.02em] sm:min-h-9"
+                      className="min-h-9 rounded-xl px-3.5 text-[11px] font-semibold tracking-[0.02em]"
                     >
                       Start Recovery
                     </NeuralButton>
-                  )}
-                </div>
 
-                {!isRecoveryActive && (
-                  <div className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] sm:w-auto sm:justify-end sm:gap-2.5 sm:py-1.5 sm:text-xs">
-                    <span className="font-medium text-white/45">
-                      {directWrite ? 'Direct Logbook' : 'Coach Review'}
-                    </span>
-                    <NeuralToggle
-                      checked={directWrite}
-                      onChange={handleToggleDirectWrite}
-                      color="orange"
-                      label={directWrite ? 'Direct Logbook Mode: sessions save instantly' : 'Coach Review Mode: Titan reviews session updates before commit'}
-                    />
-                    <Zap className={cn('h-3.5 w-3.5 transition-colors', directWrite ? 'text-[var(--module-color-400)]' : 'text-white/30')} />
-                  </div>
+                    <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] sm:text-xs">
+                      <span className="font-medium text-white/45">
+                        {directWrite ? 'Direct Logbook' : 'Coach Review'}
+                      </span>
+                      <NeuralToggle
+                        checked={directWrite}
+                        onChange={handleToggleDirectWrite}
+                        color="orange"
+                        label={directWrite ? 'Direct Logbook Mode: sessions save instantly' : 'Coach Review Mode: Titan reviews session updates before commit'}
+                      />
+                      <Zap className={cn('h-3.5 w-3.5 transition-colors', directWrite ? 'text-[var(--module-color-400)]' : 'text-white/30')} />
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -1000,6 +1092,35 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             )}
             <NeuralButton variant="ghost" onClick={() => clearanceGate.setRecoveryGate(null)}>
               Cancel
+            </NeuralButton>
+          </div>
+        </div>
+      </NeuralModal>
+
+      <NeuralModal
+        isOpen={isClearProgramModalOpen}
+        onClose={() => setIsClearProgramModalOpen(false)}
+        title="Clear Program"
+        subtitle="Remove all planned routines and scheduled workouts"
+        themeColor="module"
+        maxWidth="sm"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-white/70">
+            This action cannot be undone. Your weekly routines, active program, and planned workouts will be deleted.
+          </p>
+          <div className="flex items-center justify-end gap-3">
+            <NeuralButton
+              variant="ghost"
+              onClick={() => setIsClearProgramModalOpen(false)}
+            >
+              Cancel
+            </NeuralButton>
+            <NeuralButton
+              variant="danger"
+              onClick={() => void handleConfirmClearProgram()}
+            >
+              Clear Program
             </NeuralButton>
           </div>
         </div>

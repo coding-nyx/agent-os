@@ -380,6 +380,41 @@ export function adaptTitanWorkoutSessionToAliveEntity(
   });
 }
 
+export function adaptTitanProgramToAliveEntity(
+  program: { id: string; name: string; startDate: string; durationWeeks: number; description?: string; phases?: { name: string; weeks: [number, number] }[] },
+  sourceModule: ModuleId = 'titan',
+): AliveEntity {
+  const startDate = new Date(program.startDate);
+  const now = new Date();
+  const weeksElapsed = Math.max(0, Math.floor((now.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+  const progress = Math.min(1, weeksElapsed / program.durationWeeks);
+  const currentWeek = weeksElapsed + 1;
+  const currentPhase = program.phases?.find(p => currentWeek >= p.weeks[0] && currentWeek <= p.weeks[1]);
+
+  return normalizeAliveEntity({
+    id: `alive.titan.program.${program.id}`,
+    type: 'ACTION', // Treated as a long-running action/project
+    label: program.name,
+    semantic_tags: ['titan', 'program', 'training', 'active', ...(currentPhase ? [currentPhase.name.toLowerCase()] : [])],
+    attributes: {
+      startDate: program.startDate,
+      durationWeeks: program.durationWeeks,
+      currentWeek,
+      currentPhase: currentPhase?.name ?? null,
+      description: program.description ?? null,
+    },
+    soul_impact_preset: {
+      vitality: 0.3, // Active training contributes to vitality
+      bandwidth: 0.1, // Consumes some bandwidth
+    },
+    sourceModule,
+    sourceEntityId: program.id,
+    provenance: 'adapter',
+    createdAt: program.startDate,
+    updatedAt: now.toISOString(),
+  });
+}
+
 export function adaptTitanSleepEntryToAliveEntity(entry: SleepEntry, sourceModule: ModuleId = 'titan'): AliveEntity {
   return normalizeAliveEntity({
     id: `alive.titan.sleep.${entry.id}`,
@@ -555,6 +590,7 @@ export function bootstrapAliveEntities(input: {
   ledgerTransactions?: LedgerTransaction[];
   titanWorkoutSessions?: WorkoutSession[];
   titanSleepEntries?: SleepEntry[];
+  titanActiveProgram?: { id: string; name: string; startDate: string; durationWeeks: number; description?: string };
   scoutKnowledgeNodes?: ScoutKnowledgeNode[];
   scoutDigests?: ScoutDigest[];
 }): AliveEntity[] {
@@ -568,6 +604,7 @@ export function bootstrapAliveEntities(input: {
     ...(input.ledgerTransactions ?? []).map((transaction) => adaptLedgerTransactionToAliveEntity(transaction)),
     ...(input.titanWorkoutSessions ?? []).map((session) => adaptTitanWorkoutSessionToAliveEntity(session)),
     ...(input.titanSleepEntries ?? []).map((entry) => adaptTitanSleepEntryToAliveEntity(entry)),
+    ...(input.titanActiveProgram ? [adaptTitanProgramToAliveEntity(input.titanActiveProgram)] : []),
     ...(input.scoutKnowledgeNodes ?? []).map((node) => adaptScoutKnowledgeNodeToAliveEntity(node)),
     ...(input.scoutDigests ?? []).map((digest) => adaptScoutDigestToAliveEntity(digest)),
   ]);

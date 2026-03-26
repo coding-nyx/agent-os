@@ -53,6 +53,7 @@ interface DayData {
   workoutLog?: TitanWorkoutLog;
   session?: WorkoutSession;
   plannedWorkout?: PlannedWorkout;
+  routine?: Routine;
 }
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
@@ -133,12 +134,13 @@ function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onSta
   const log     = data.workoutLog;
   const session = data.session;
   const planned = data.plannedWorkout;
+  const routine = data.routine;
   const hasActivity = Boolean(log ?? session);
 
   // Find the matching routine for a planned workout
   const plannedRoutine = planned && routines
     ? routines.find((r) => r.name === planned.routineName) ?? null
-    : null;
+    : routine;
 
   let exercises: string[] = [];
   let totalSets = 0;
@@ -153,6 +155,12 @@ function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onSta
     exercises    = session.exercises.map((ex) => ex.exerciseName);
     totalSets    = countSessionSets(session);
     muscleGroups = inferMuscleGroups(session.exercises.map((ex) => ex.exerciseName).join(' '));
+  } else if (routine && !planned) {
+    // Show routine details if no planned override
+    exercises = routine.exercises.map(e => e.name);
+    totalSets = routine.exercises.reduce((acc, e) => acc + e.sets, 0);
+    // Rough heuristic for muscles
+    muscleGroups = inferMuscleGroups(routine.exercises.map(e => e.name).join(' '));
   }
 
   return (
@@ -212,6 +220,22 @@ function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onSta
               <p className="text-[10px] text-white/25 italic truncate">{planned.notes}</p>
             )}
           </div>
+        ) : routine ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-[var(--module-color-400)] shrink-0 opacity-50" />
+              <p className="text-sm font-semibold text-white/70 leading-snug truncate">
+                {routine.name}
+              </p>
+            </div>
+            {routine.exercises.length > 0 && (
+              <p className="text-[10px] text-white/35 truncate">
+                {routine.exercises.slice(0, 3).map(e => e.name).join(' · ')}
+                {routine.exercises.length > 3 && ` +${routine.exercises.length - 3}`}
+              </p>
+            )}
+            <p className="text-[10px] text-white/25 italic truncate">Recurring {routine.weekday} routine</p>
+          </div>
         ) : (
           <p className="text-sm text-white/20 font-medium">Rest day</p>
         )}
@@ -219,7 +243,7 @@ function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onSta
 
       {/* Right: actions */}
       <div className="flex flex-col items-center gap-1.5 shrink-0">
-        {planned && plannedRoutine && onStartPlannedSession && !hasActivity && (
+        {(planned || routine) && plannedRoutine && onStartPlannedSession && !hasActivity && (
           <NeuralButton
             variant="ghost"
             size="sm"
@@ -352,11 +376,32 @@ export function TrainingCalendar({
     return map;
   }, [workoutLogs, sessions, plannedWorkouts]);
 
+  // Merge recurring routines into dayMap for the current week view
+  // (Derived state based on weekOffset, not stored in dayMap)
+  const daysWithRoutines = useMemo(() => {
+    const enriched = new Map(dayMap);
+    for (const date of weekDays) {
+      const iso = toIsoDate(date);
+      const data = enriched.get(iso);
+      
+      // If we already have a log, session, or specific plan, don't overlay the generic routine
+      if (data?.workoutLog || data?.session || data?.plannedWorkout) continue;
+      
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      const routine = routines.find(r => r.weekday === dayName);
+      
+      if (routine) {
+        enriched.set(iso, { ...data, routine });
+      }
+    }
+    return enriched;
+  }, [dayMap, weekDays, routines]);
+
   const weekISOs     = weekDays.map(toIsoDate);
   const effectiveISO = weekISOs.includes(selectedISO) ? selectedISO : weekISOs[0];
   const selectedIdx  = weekISOs.indexOf(effectiveISO);
   const selectedDate = weekDays[selectedIdx];
-  const selectedData = dayMap.get(effectiveISO) ?? {};
+  const selectedData = daysWithRoutines.get(effectiveISO) ?? {};
 
   return (
     <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 space-y-3">
@@ -402,9 +447,10 @@ export function TrainingCalendar({
           const iso        = toIsoDate(date);
           const isToday    = iso === todayISO;
           const isSelected = iso === effectiveISO;
-          const dayData    = dayMap.get(iso);
+          const dayData    = daysWithRoutines.get(iso);
           const hasCompleted = Boolean(dayData?.workoutLog ?? dayData?.session);
           const hasPlanned   = Boolean(dayData?.plannedWorkout) && !hasCompleted;
+          const hasRoutine   = Boolean(dayData?.routine) && !hasPlanned && !hasCompleted;
 
           return (
             <button
@@ -439,6 +485,7 @@ export function TrainingCalendar({
                 'w-1.5 h-1.5 rounded-full transition-opacity',
                 hasCompleted ? 'bg-[var(--module-color-400)] opacity-80'
                   : hasPlanned ? 'bg-white/25 opacity-80 border border-white/30'
+                  : hasRoutine ? 'bg-white/10 opacity-60' // Dim dot for recurring routine
                   : 'opacity-0',
               )} aria-hidden="true" />
             </button>

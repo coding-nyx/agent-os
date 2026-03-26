@@ -65,6 +65,30 @@ export const coreHandlers: Record<string, ActionHandler> = {
     await persistProfile(nextProfile, userId ?? null, encryptionKey ?? null);
   },
 
+  /**
+   * clear_workout_program — Clears all current routines from the profile.
+   * Use this when the user wants to "stop" or "reset" their current program.
+   */
+  clear_workout_program: async ({ userId, encryptionKey, pushAssistantMessage }) => {
+    const current = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!current) return;
+
+    // We clear routines, active program metadata, and planned workouts (future schedule)
+    const nextProfile: TitanProfile = {
+      ...current,
+      routines: [],
+      activeProgram: undefined,
+      plannedWorkouts: [], // Reset the calendar too
+      updatedAt: new Date().toISOString()
+    };
+    
+    await persistProfile(nextProfile, userId ?? null, encryptionKey ?? null);
+    
+    if (pushAssistantMessage) {
+      pushAssistantMessage(`🗑️ **Current program cleared.** Your weekly routine schedule has been reset.`);
+    }
+  },
+
   sync_vitals: async ({ userId, payload, pushAssistantMessage }) => {
     if (!userId) return;
     const biological = payload?.biological as Record<string, unknown> | undefined;

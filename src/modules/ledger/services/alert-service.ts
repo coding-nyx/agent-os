@@ -116,6 +116,61 @@ export function evaluateAlerts(profile: LedgerIntakeProfile): AlertEvaluationRes
       }
     }
 
+    if (rule.type === 'payment_upcoming') {
+      const windowDays = rule.threshold ?? 5;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const currency = profile.currency ?? '$';
+
+      // Helper: compute next occurrence of a day-of-month relative to today
+      const nextOccurrence = (dueDay: number): Date => {
+        const d = new Date(today);
+        d.setDate(dueDay);
+        if (d <= today) d.setMonth(d.getMonth() + 1);
+        return d;
+      };
+
+      const daysUntil = (target: Date) =>
+        Math.round((target.getTime() - today.getTime()) / 86_400_000);
+
+      // Check DebtItem.dueDay
+      for (const debt of profile.debtItems ?? []) {
+        if (!debt.dueDay) continue;
+        const due = nextOccurrence(debt.dueDay);
+        const days = daysUntil(due);
+        if (days >= 0 && days <= windowDays) {
+          const minAmt = debt.minPayment > 0 ? `Min. payment ${currency}${debt.minPayment.toFixed(2)}. ` : '';
+          notifications.push(makeNotification(
+            'payment_upcoming',
+            'warning',
+            `Payment Due: ${debt.name}`,
+            `${minAmt}${debt.name} payment due on ${due.toISOString().split('T')[0]} (${days === 0 ? 'today' : `in ${days} day${days === 1 ? '' : 's'}`}).`,
+            rule.id,
+            'overview',
+          ));
+        }
+      }
+
+      // Check credit card Account.paymentDueDay
+      for (const acct of profile.accounts ?? []) {
+        if (acct.type !== 'credit_card' || !acct.paymentDueDay) continue;
+        const due = nextOccurrence(acct.paymentDueDay);
+        const days = daysUntil(due);
+        if (days >= 0 && days <= windowDays) {
+          const owed = Math.abs(acct.balance);
+          const amtStr = owed > 0 ? `Balance ${currency}${owed.toFixed(2)}. ` : '';
+          notifications.push(makeNotification(
+            'payment_upcoming',
+            'warning',
+            `Card Payment Due: ${acct.name}`,
+            `${amtStr}${acct.name}${acct.lastFour ? ` (···· ${acct.lastFour})` : ''} payment due on ${due.toISOString().split('T')[0]} (${days === 0 ? 'today' : `in ${days} day${days === 1 ? '' : 's'}`}).`,
+            rule.id,
+            'accounts',
+          ));
+        }
+      }
+    }
+
     if (rule.type === 'goal_behind') {
       const goals = profile.financialGoals ?? [];
       for (const goal of goals) {
@@ -216,6 +271,7 @@ export function getDefaultAlertRules(): AlertRule[] {
     { id: crypto.randomUUID(), type: 'trial_ending', label: 'Trial Ending Soon', severity: 'info', isEnabled: true, threshold: 7, createdAt: now },
     { id: crypto.randomUUID(), type: 'subscription_renewal', label: 'Subscription Renewal', severity: 'info', isEnabled: true, threshold: 3, createdAt: now },
     { id: crypto.randomUUID(), type: 'bill_overdue', label: 'Overdue Bill', severity: 'critical', isEnabled: true, createdAt: now },
+    { id: crypto.randomUUID(), type: 'payment_upcoming', label: 'Upcoming Payment Due', severity: 'warning', isEnabled: true, threshold: 5, createdAt: now },
     { id: crypto.randomUUID(), type: 'goal_behind', label: 'Goal Behind Schedule', severity: 'warning', isEnabled: true, createdAt: now },
     { id: crypto.randomUUID(), type: 'net_worth_drop', label: 'Net Worth Drop', severity: 'warning', isEnabled: true, threshold: 0.05, createdAt: now },
   ];

@@ -9,16 +9,24 @@ import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton, NeuralIconButton } from '@/core/components/NeuralButton';
 import { RoutineBuilder } from './RoutineBuilder';
 import { RestPeriodCalculator } from './RestPeriodCalculator';
-import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus, Pencil, MoreVertical, Play, ChevronDown, ChevronUp, LayoutTemplate } from 'lucide-react';
+import { Dumbbell, ChevronRight, MessageSquare, Clock, FileText, Plus, Pencil, MoreVertical, Play, ChevronDown, ChevronUp, LayoutTemplate, Trash2 } from 'lucide-react';
+
+import { ActiveProgramDashboard } from './ActiveProgramDashboard';
+import { ProgramBuilderModal } from './ProgramBuilderModal';
+import { TitanProfile, PlannedWorkout } from '@/lib/types';
 
 interface TitanRoutinePanelProps {
   routines: Routine[];
+  activeProgram?: TitanProfile['activeProgram'];
+  plannedWorkouts?: PlannedWorkout[];
   onAnalyzeRoutine?: (routine: Routine) => void;
   onGeneratePlan?: () => void;
   onImportRoutine?: () => void;
   onSubmitForApproval?: (routine: Routine) => void;
   onStartSession?: (routine: Routine) => void;
-  onApplyProgram?: (routines: Routine[], programName: string) => void;
+  onApplyProgram?: (routines: Routine[], programName: string, programId?: string, durationWeeks?: number, phases?: { name: string; weeks: [number, number] }[]) => void;
+  onClearProgram?: () => void;
+  onUpdateProgram?: (updates: Partial<NonNullable<TitanProfile['activeProgram']>>) => void;
 }
 
 const WEEKDAY_ORDER: Weekday[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -30,17 +38,22 @@ const SHORT_DAY: Record<string, string> = {
 
 export function TitanRoutinePanel({
   routines,
+  activeProgram,
+  plannedWorkouts,
   onAnalyzeRoutine,
   onGeneratePlan,
   onImportRoutine,
   onSubmitForApproval,
   onStartSession,
   onApplyProgram,
+  onClearProgram,
+  onUpdateProgram,
 }: TitanRoutinePanelProps) {
   const today = getTodayWeekday();
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<Routine | undefined>(undefined);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [showProgramBuilder, setShowProgramBuilder] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showQuickStart, setShowQuickStart] = useState(false);
 
@@ -75,6 +88,11 @@ export function TitanRoutinePanel({
     setEditingRoutine(undefined);
   };
 
+  const handleProgramSave = (newRoutines: Routine[], name: string, duration: number, phases: { name: string; weeks: [number, number] }[]) => {
+    setShowProgramBuilder(false);
+    onApplyProgram?.(newRoutines, name, crypto.randomUUID(), duration, phases);
+  };
+
   // ── Empty state ──
   if (sorted.length === 0) {
     return (
@@ -88,8 +106,14 @@ export function TitanRoutinePanel({
               <div className="flex flex-row flex-wrap items-center justify-center gap-3 pt-1 relative">
                 <NeuralButton onClick={handleOpenCreate} variant="outline">
                   <Plus className="w-4 h-4 mr-2" />
-                  Build Manually
+                  Build Routine
                 </NeuralButton>
+                {onApplyProgram && (
+                  <NeuralButton onClick={() => setShowProgramBuilder(true)} variant="outline">
+                    <LayoutTemplate className="w-4 h-4 mr-2" />
+                    Build Program
+                  </NeuralButton>
+                )}
                 {onGeneratePlan && (
                   <NeuralButton onClick={onGeneratePlan} variant="ghost">
                     <MessageSquare className="w-4 h-4 mr-2" />
@@ -142,6 +166,14 @@ export function TitanRoutinePanel({
           onSave={handleBuilderSave}
           onClose={handleBuilderClose}
         />
+        {onApplyProgram && (
+          <ProgramBuilderModal
+            isOpen={showProgramBuilder}
+            onClose={() => setShowProgramBuilder(false)}
+            onSave={(r, n, d, p) => handleProgramSave(r, n, d, p ?? [])}
+            existingRoutines={routines}
+          />
+        )}
       </>
     );
   }
@@ -150,12 +182,25 @@ export function TitanRoutinePanel({
   return (
     <>
       {/* ── Quick-Start Programs (populated state) ── */}
-      {onApplyProgram && (
+      {onApplyProgram && !activeProgram && (
         <QuickStartSection
           show={showQuickStart}
           onToggle={() => setShowQuickStart((v) => !v)}
           onApplyProgram={onApplyProgram}
         />
+      )}
+
+      {/* ── Active Program Dashboard ── */}
+      {activeProgram && (
+        <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-5 pb-2">
+          <ActiveProgramDashboard
+            activeProgram={activeProgram}
+            plannedWorkouts={plannedWorkouts ?? []}
+            routines={routines}
+            onClearProgram={onClearProgram!}
+            onUpdateProgram={onUpdateProgram!}
+          />
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 md:gap-6 px-4 sm:px-6 md:px-8 pt-4 sm:pt-5 pb-5 sm:pb-6 md:pb-8 bg-black/40 border-b border-white/5 backdrop-blur-xl">
@@ -168,13 +213,34 @@ export function TitanRoutinePanel({
               <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40">Weekly Plan</span>
               <span className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[9px] font-bold text-white/30 tabular-nums tracking-[0.1em]">{sorted.length} DAYS</span>
             </div>
-            <NeuralIconButton
-              size="sm"
-              onClick={handleOpenCreate}
-              title="Add Day"
-              aria-label="Add Day"
-              icon={<Plus className="w-4 h-4" />}
-            />
+            <div className="flex items-center gap-1">
+              {onClearProgram && (
+                <NeuralIconButton
+                  size="sm"
+                  variant="ghost"
+                  onClick={onClearProgram}
+                  title="Clear Program"
+                  aria-label="Clear Program"
+                  icon={<Trash2 className="w-3.5 h-3.5 text-red-500/70" />}
+                />
+              )}
+              <NeuralIconButton
+                size="sm"
+                onClick={handleOpenCreate}
+                title="Add Day"
+                aria-label="Add Day"
+                icon={<Plus className="w-4 h-4" />}
+              />
+              {onApplyProgram && (
+                <NeuralIconButton
+                  size="sm"
+                  onClick={() => setShowProgramBuilder(true)}
+                  title="Create Full Program"
+                  aria-label="Create Full Program"
+                  icon={<LayoutTemplate className="w-4 h-4" />}
+                />
+              )}
+            </div>
           </div>
 
           <div className="flex-1 flex flex-col p-3 gap-1.5">
@@ -474,6 +540,14 @@ export function TitanRoutinePanel({
         onSave={handleBuilderSave}
         onClose={handleBuilderClose}
       />
+      {onApplyProgram && (
+        <ProgramBuilderModal
+          isOpen={showProgramBuilder}
+          onClose={() => setShowProgramBuilder(false)}
+          onSave={(r, n, d, p) => handleProgramSave(r, n, d, p ?? [])}
+          existingRoutines={routines}
+        />
+      )}
     </>
   );
 }

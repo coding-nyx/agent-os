@@ -427,6 +427,52 @@ export function AccountManager({
                   )}
                 </div>
 
+                {/* ── Credit card utilization bar ── */}
+                {isLiability && account.creditLimit && account.creditLimit > 0 && (
+                  <div className="space-y-1">
+                    {(() => {
+                      const utilized = Math.abs(account.balance);
+                      const pct = Math.min(1, utilized / account.creditLimit);
+                      const pctDisplay = Math.round(pct * 100);
+                      const barColor = pct >= 0.7 ? 'bg-rose-500' : pct >= 0.3 ? 'bg-amber-400' : 'bg-emerald-400';
+                      const textColor = pct >= 0.7 ? 'text-rose-400' : pct >= 0.3 ? 'text-amber-400' : 'text-emerald-400';
+                      return (
+                        <>
+                          <div className="flex items-center justify-between text-[9px]">
+                            <span className="text-white/35">Utilization</span>
+                            <span className={`font-bold tabular-nums ${textColor}`}>{pctDisplay}%</span>
+                          </div>
+                          <div className="h-1 w-full rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${barColor}`}
+                              style={{ width: `${pctDisplay}%` }}
+                            />
+                          </div>
+                          <div className="text-[9px] text-white/25 tabular-nums">
+                            {formatCurrency(utilized, account.currency ?? currency)} of {formatCurrency(account.creditLimit, account.currency ?? currency)} limit
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* ── Credit card due / statement badges ── */}
+                {isLiability && (account.paymentDueDay || account.statementDay) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {account.paymentDueDay && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-[9px] font-semibold text-rose-400">
+                        Due {account.paymentDueDay}{['st','nd','rd'][account.paymentDueDay <= 3 ? account.paymentDueDay - 1 : 3] ?? 'th'}
+                      </span>
+                    )}
+                    {account.statementDay && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-semibold text-white/35">
+                        Closes {account.statementDay}{['st','nd','rd'][account.statementDay <= 3 ? account.statementDay - 1 : 3] ?? 'th'}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* ── Delete confirmation overlay ── */}
                 {isConfirmingDelete && (
                   <div className="absolute inset-0 rounded-xl bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center gap-3 p-4 z-10">
@@ -525,6 +571,68 @@ export function AccountManager({
               </p>
             )}
           </div>
+
+          {/* Credit card–specific fields */}
+          {formData.type === 'credit_card' && (
+            <div className="space-y-3 pt-1 border-t border-white/[0.06]">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Credit Card Details</p>
+
+              {/* Credit Limit */}
+              <div>
+                <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+                  Credit Limit <span className="text-white/20 normal-case tracking-normal">(optional)</span>
+                </label>
+                <NeuralInput
+                  type="number"
+                  value={formData.creditLimit ?? ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setField('creditLimit', parseFloat(e.target.value) || undefined)
+                  }
+                  placeholder="e.g., 5000"
+                  step="100"
+                  min="0"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Payment Due Day */}
+                <div>
+                  <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+                    Payment Due Day
+                  </label>
+                  <NeuralInput
+                    type="number"
+                    value={formData.paymentDueDay ?? ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const v = parseInt(e.target.value, 10);
+                      setField('paymentDueDay', v >= 1 && v <= 31 ? v : undefined);
+                    }}
+                    placeholder="e.g., 18"
+                    min="1"
+                    max="31"
+                  />
+                </div>
+
+                {/* Statement Closing Day */}
+                <div>
+                  <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+                    Statement Close Day
+                  </label>
+                  <NeuralInput
+                    type="number"
+                    value={formData.statementDay ?? ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const v = parseInt(e.target.value, 10);
+                      setField('statementDay', v >= 1 && v <= 31 ? v : undefined);
+                    }}
+                    placeholder="e.g., 5"
+                    min="1"
+                    max="31"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Institution Name */}
           <div>

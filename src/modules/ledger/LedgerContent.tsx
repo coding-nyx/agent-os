@@ -158,11 +158,6 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
   const [recentEvents, setRecentEvents] = useState<SpineEvent[]>([]);
   const [isFieldsModalOpen, setIsFieldsModalOpen] = useState(false);
 
-  // ─── Recurring engine — auto-posts due rules on profile load ──────────────
-  const { pendingRules } = useRecurringEngine(profile, (updated) => {
-    persistUpdate(updated);
-  });
-
   // ─── Dynamic system prompt enriched with live financial context ────────────
   const enrichedSystemPrompt = useMemo(() => {
     if (!profile) return LEDGER_PERSONA;
@@ -369,6 +364,13 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
        console.error('Failed to save ledger profile:', saveError);
      });
   }, [user?.uid, encryptionKey]);
+
+  // ─── Recurring engine — auto-posts due rules on profile load ──────────────
+  const handleRecurringEngineUpdate = useCallback(
+    (updated: LedgerIntakeProfile) => persistUpdate(updated),
+    [persistUpdate],
+  );
+  const { pendingRules } = useRecurringEngine(profile, handleRecurringEngineUpdate);
 
   // ─── Derived data ────────────────────────────────────────────────────────
 

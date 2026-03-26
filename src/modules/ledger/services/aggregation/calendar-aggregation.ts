@@ -83,6 +83,45 @@ export function buildCalendarEvents(profile: LedgerIntakeProfile, year: number, 
     }
   }
 
+  // Debt payment due dates (from DebtItem.dueDay)
+  for (const debt of profile.debtItems ?? []) {
+    if (!debt.dueDay) continue;
+    const day = Math.min(debt.dueDay, new Date(year, month, 0).getDate()); // clamp to month length
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const minLabel = debt.minPayment > 0 ? ` — Min $${debt.minPayment.toFixed(0)}` : '';
+    events.push({
+      id: `debt_due_${debt.id}_${target}`,
+      type: 'bill',
+      title: `${debt.name}${minLabel}`,
+      date: dateStr,
+      amount: debt.minPayment > 0 ? debt.minPayment : undefined,
+      isIncome: false,
+      color: '#f43f5e',
+      entityId: debt.id,
+      notes: 'Debt payment due',
+    });
+  }
+
+  // Credit card payment due dates (from Account.paymentDueDay)
+  for (const acct of profile.accounts ?? []) {
+    if (acct.type !== 'credit_card' || !acct.paymentDueDay) continue;
+    const day = Math.min(acct.paymentDueDay, new Date(year, month, 0).getDate());
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const cardLabel = acct.lastFour ? ` ···· ${acct.lastFour}` : '';
+    const balanceLabel = acct.balance !== 0 ? ` — $${Math.abs(acct.balance).toFixed(0)} owed` : '';
+    events.push({
+      id: `card_due_${acct.id}_${target}`,
+      type: 'bill',
+      title: `${acct.name}${cardLabel} payment${balanceLabel}`,
+      date: dateStr,
+      amount: Math.abs(acct.balance) > 0 ? Math.abs(acct.balance) : undefined,
+      isIncome: false,
+      color: '#f43f5e',
+      entityId: acct.id,
+      notes: 'Credit card payment due',
+    });
+  }
+
   // Paid quarters (tax events)
   const quarters: Record<number, string> = { 0: '04-15', 1: '06-15', 2: '09-15', 3: '01-15' };
   for (const [qIdx, mmdd] of Object.entries(quarters)) {

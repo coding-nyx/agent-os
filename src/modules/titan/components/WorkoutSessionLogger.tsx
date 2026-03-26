@@ -14,7 +14,7 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, Circle, Plus, Minus, Flame, BarChart3, Zap, Calculator, Share2 } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Minus, Flame, BarChart3, Zap, Calculator, Share2, Brain, Clock } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -25,6 +25,7 @@ import type { Routine, WorkoutSession } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { getTodayWeekday, getTodayIso } from '../utils';
 import { PlateCalculator } from './PlateCalculator';
+import { RestPeriodCalculator } from './RestPeriodCalculator';
 import { ShareCard } from './ShareCard';
 
 // ─── localStorage Staging Buffer ─────────────────────────────────────────────
@@ -209,6 +210,7 @@ function SessionModal({
 
   // ── Feature: Rest Timer ────────────────────────────────────────────────────
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
+  const [showRestCalc, setShowRestCalc] = useState(false);
   const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Feature: Staging Buffer indicator ─────────────────────────────────────
@@ -510,6 +512,12 @@ function SessionModal({
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-bold text-white/90">{ex.name}</span>
+                    {ex.tempoScheme && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-white/50 font-mono tracking-wider inline-flex items-center gap-1" title="Tempo Scheme">
+                        <Clock className="w-2.5 h-2.5" />
+                        {ex.tempoScheme}
+                      </span>
+                    )}
                     <span className="text-[10px] text-white/40 ml-2">planned {ex.sets}×{ex.reps}</span>
                     {ex.supersetWith && (
                       <span className="ml-2 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--module-accent-muted)] text-[var(--module-color-300)] border border-[var(--module-accent-border)]">
@@ -726,22 +734,59 @@ function SessionModal({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex items-center justify-between p-3 rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]"
+              className="rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] overflow-hidden"
             >
-              <span className="text-xs font-bold text-[var(--module-color-300)]">Rest Timer</span>
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-black text-[var(--module-color-400)] tabular-nums">
-                  {Math.floor(restTimer.seconds / 60)}:{String(restTimer.seconds % 60).padStart(2, '0')}
-                </span>
-                <NeuralButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { clearInterval(restTimerRef.current!); setRestTimer(null); }}
-                  className="text-white/40 hover:text-white/70"
-                >
-                  Skip
-                </NeuralButton>
+              <div className="flex items-center justify-between p-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-[var(--module-color-300)]">Rest Timer</span>
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowRestCalc(!showRestCalc)}
+                    className={cn(
+                      "h-6 w-6 p-0 rounded-full transition-colors",
+                      showRestCalc ? "bg-[var(--module-color-400)] text-black" : "text-[var(--module-color-300)] hover:bg-[var(--module-accent-glow)]"
+                    )}
+                    title="Smart Rest Calculator"
+                  >
+                    <Brain className="w-3.5 h-3.5" />
+                  </NeuralButton>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-black text-[var(--module-color-400)] tabular-nums">
+                    {Math.floor(restTimer.seconds / 60)}:{String(restTimer.seconds % 60).padStart(2, '0')}
+                  </span>
+                  <NeuralButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { clearInterval(restTimerRef.current!); setRestTimer(null); setShowRestCalc(false); }}
+                    className="text-white/40 hover:text-white/70"
+                  >
+                    Skip
+                  </NeuralButton>
+                </div>
               </div>
+
+              <AnimatePresence>
+                {showRestCalc && routine && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="border-t border-[var(--module-accent-border)] bg-[#09090b]"
+                  >
+                    <RestPeriodCalculator
+                      className="border-0 bg-transparent"
+                      exerciseType={
+                        routine.exercises[restTimer.exerciseIdx]?.equipment === 'barbell' ? 'compound' :
+                        routine.exercises[restTimer.exerciseIdx]?.equipment === 'bodyweight' ? 'mobility' :
+                        'isolation'
+                      }
+                      intensity="moderate"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
         </AnimatePresence>

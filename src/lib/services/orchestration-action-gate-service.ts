@@ -79,6 +79,7 @@ const MUTATING_PREFIXES = [
   'advance_',
   'archive_',
   'issue_',
+  'schedule_',
 ];
 const HIGH_RISK_KEYWORDS = ['delete', 'discard', 'archive', 'clearance', 'transaction', 'budget', 'goal', 'diagnosis'];
 
@@ -134,8 +135,12 @@ function inferProposalConfidence(
     confidence -= 0.18;
   }
 
+  if (actionType.startsWith('schedule_') || actionType.startsWith('log_') || actionType.startsWith('clear_')) {
+    confidence += 0.15;
+  }
+
   if (actionType.startsWith('update_') || actionType.startsWith('record_') || actionType.startsWith('confirm_')) {
-    confidence += 0.02;
+    confidence += 0.12;
   }
 
   return clampConfidence(confidence);

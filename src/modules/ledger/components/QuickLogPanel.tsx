@@ -11,8 +11,6 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Plus, Minus, RotateCcw, Zap, ChevronDown, Check, Pencil } from 'lucide-react';
-import { NeuralButton } from '@/core/components/NeuralButton';
-import { NeuralInput } from '@/core/components/NeuralInput';
 import { cn } from '@/lib/utils';
 import type { Transaction } from '../services/ledger-intake-service';
 
@@ -206,27 +204,45 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
   };
 
   return (
-    <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-white/10 rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+    <div className="bg-zinc-900/90 border border-white/[0.08] rounded-2xl overflow-visible">
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
           <Zap className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/60">Quick Log</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/50">Quick Log</span>
         </div>
-        <NeuralButton
-          variant="ghost"
-          size="sm"
-          onClick={() => { setManualMode(m => !m); setSubmitted(false); }}
-          className="text-[10px] font-semibold text-white/40 hover:text-white/70 h-auto min-h-[44px]"
-        >
-          {manualMode ? 'Natural Input' : 'Manual Form'}
-        </NeuralButton>
+
+        {/* Segmented mode toggle pill */}
+        <div className="flex items-center bg-white/5 rounded-lg p-0.5 border border-white/[0.07]">
+          <button
+            onClick={() => { setManualMode(false); setSubmitted(false); }}
+            className={cn(
+              'px-3 py-1 rounded-md text-[10px] font-bold transition-all',
+              !manualMode ? 'bg-white/[0.12] text-white' : 'text-white/35 hover:text-white/60'
+            )}
+          >
+            Natural
+          </button>
+          <button
+            onClick={() => { setManualMode(true); setSubmitted(false); }}
+            className={cn(
+              'px-3 py-1 rounded-md text-[10px] font-bold transition-all',
+              manualMode ? 'bg-white/[0.12] text-white' : 'text-white/35 hover:text-white/60'
+            )}
+          >
+            Manual
+          </button>
+        </div>
       </div>
 
-      <div className="p-4 space-y-3 flex flex-col sm:flex-row sm:flex-wrap sm:gap-3">
+      {/* ── Body ───────────────────────────────────────────────────────────── */}
+      <div className="p-4 space-y-2.5">
         {!manualMode ? (
-          /* Natural language mode */
+
+          /* ── Natural language mode ── */
           <div className="space-y-2">
+            {/* Input */}
             <div className="relative">
               <input
                 ref={inputRef}
@@ -235,104 +251,106 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                 onKeyDown={handleKeyDown}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
-                placeholder={`Type naturally: "${TX_PLACEHOLDERS[placeholderIdx]}"`}
+                placeholder={`e.g. "${TX_PLACEHOLDERS[placeholderIdx]}"`}
                 className={cn(
-                  'w-full bg-black/30 border rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30',
+                  'w-full bg-black/30 border rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/25',
                   'focus:outline-none focus:ring-1 transition-all',
-                  parsed ? 'border-[var(--module-accent-border)] focus-visible:ring-[var(--module-accent-ring)]' : 'border-white/10 focus:ring-white/10'
+                  parsed
+                    ? 'border-[var(--module-accent-border)] focus:ring-[var(--module-accent-ring)]'
+                    : 'border-white/[0.08] focus:ring-white/10'
                 )}
               />
               {submitted && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none">
                   <Check className="w-4 h-4" />
                 </span>
               )}
             </div>
 
+            {/* Parsed preview — single row, never stacks */}
             {parsed && (
-              <div className="space-y-2">
-                <div className="relative overflow-hidden rounded-xl" aria-label="Quick log swipe guidance">
-                  <div className="absolute inset-0 flex items-center justify-between px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35 pointer-events-none">
-                    <span>Swipe left to edit</span>
-                    <span>Swipe right to log</span>
-                  </div>
-                  <div
-                    role="group"
-                    aria-label="Quick log preview"
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={resetSwipe}
-                    onPointerLeave={() => {
-                      if (swipeStartX.current !== null) {
-                        completeSwipe();
-                      }
-                    }}
-                    className={cn(
-                      'relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-3 py-2.5 rounded-xl border transition-transform duration-150 ease-out cursor-grab active:cursor-grabbing',
-                      swipeIntent === 'log'
-                        ? 'bg-emerald-500/10 border-emerald-500/30'
-                        : swipeIntent === 'edit'
-                          ? 'bg-sky-500/10 border-sky-500/30'
-                          : 'bg-black/20 border-white/[0.06]',
-                    )}
-                    style={{
-                      transform: `translateX(${swipeOffsetX}px)`,
-                      touchAction: 'pan-y',
-                    }}
-                  >
-                    <div className="flex items-center gap-3 text-xs min-w-0">
-                      <span className={cn(
-                        'font-bold tabular-nums shrink-0',
-                        parsed.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
-                      )}>
-                        {parsed.type === 'income' ? '+' : '−'}{currency} {parsed.amount.toFixed(2)}
-                      </span>
-                      <span className="text-white/60 truncate max-w-[120px]">{parsed.description}</span>
-                      <span className="px-1.5 py-0.5 rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] text-[10px] font-bold uppercase tracking-wide shrink-0">
-                        {parsed.category}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <NeuralButton
-                        variant="ghost"
-                        onClick={() => seedManualFromParsed(parsed)}
-                        size="sm"
-                        className="px-3 py-1.5 min-h-[44px] text-white/60 hover:text-white"
-                      >
-                        <Pencil className="w-3 h-3" />
-                        Edit
-                      </NeuralButton>
-                      <NeuralButton
-                        onClick={handleNaturalSubmit}
-                        themeColor="module"
-                        size="sm"
-                        className="px-3 py-1.5 shrink-0 min-h-[44px]"
-                      >
-                        Log
-                      </NeuralButton>
-                    </div>
+              <>
+                <div
+                  role="group"
+                  aria-label="Parsed transaction — swipe right to log, left to edit"
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerCancel={resetSwipe}
+                  onPointerLeave={() => { if (swipeStartX.current !== null) completeSwipe(); }}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-150 select-none',
+                    parsed ? 'cursor-grab active:cursor-grabbing' : '',
+                    swipeIntent === 'log'
+                      ? 'bg-emerald-500/10 border-emerald-500/25'
+                      : swipeIntent === 'edit'
+                        ? 'bg-sky-500/10 border-sky-500/25'
+                        : 'bg-black/20 border-white/[0.06]'
+                  )}
+                  style={{ transform: `translateX(${swipeOffsetX}px)`, touchAction: 'pan-y' }}
+                >
+                  {/* Amount */}
+                  <span className={cn(
+                    'text-sm font-black tabular-nums shrink-0',
+                    parsed.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
+                  )}>
+                    {parsed.type === 'income' ? '+' : '−'}{currency}{parsed.amount.toFixed(2)}
+                  </span>
+
+                  {/* Description */}
+                  <span className="text-xs text-white/55 truncate flex-1 min-w-0">{parsed.description}</span>
+
+                  {/* Category chip */}
+                  <span className="shrink-0 px-2 py-0.5 rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] text-[10px] font-bold uppercase tracking-wide">
+                    {parsed.category}
+                  </span>
+
+                  {/* Action buttons — native, no NeuralButton height fights */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => seedManualFromParsed(parsed)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white/45 hover:text-white hover:bg-white/8 transition-colors"
+                      aria-label="Edit transaction"
+                    >
+                      <Pencil className="w-3 h-3 shrink-0" />
+                      <span className="hidden sm:inline">Edit</span>
+                    </button>
+                    <button
+                      onClick={handleNaturalSubmit}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-[var(--module-accent)] text-[var(--module-accent-text,#fff)] hover:bg-[var(--module-accent-hover)] transition-colors"
+                      aria-label="Log transaction"
+                    >
+                      Log
+                    </button>
                   </div>
                 </div>
-                <p className="text-[11px] text-white/45 px-1" aria-live="polite">
-                  Swipe for mobile speed, or use the Edit and Log buttons for an accessible fallback.
+
+                {/* Swipe hint — mobile only */}
+                <p className="text-[10px] text-white/25 px-0.5 sm:hidden" aria-live="polite">
+                  Swipe right to log · left to edit
                 </p>
-              </div>
+              </>
             )}
           </div>
+
         ) : (
-          /* Manual form mode */
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
+
+          /* ── Manual form mode ── */
+          <div className="space-y-2.5">
+
+            {/* Description + Amount */}
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 value={manualDesc}
                 onChange={e => setManualDesc(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Description"
-                className="bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--module-accent-border)] focus:ring-1 focus-visible:ring-[var(--module-accent-ring)] transition-all"
+                className="flex-1 bg-black/30 border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--module-accent-border)] focus:ring-1 focus:ring-[var(--module-accent-ring)] transition-all"
               />
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">{currency}</span>
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35 text-sm font-medium pointer-events-none select-none">
+                  {currency}
+                </span>
                 <input
                   type="number"
                   value={manualAmount}
@@ -341,98 +359,101 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                   placeholder="0.00"
                   step="0.01"
                   min="0"
-                  className="w-full bg-black/30 border border-white/10 rounded-xl pl-10 pr-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--module-accent-border)] focus:ring-1 focus-visible:ring-[var(--module-accent-ring)] transition-all"
+                  inputMode="decimal"
+                  className="w-full sm:w-32 bg-black/30 border border-white/[0.08] rounded-xl pl-9 pr-3 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--module-accent-border)] focus:ring-1 focus:ring-[var(--module-accent-ring)] transition-all"
                 />
               </div>
             </div>
 
-            {/* Type toggle */}
-            <div className="flex gap-2">
-              <NeuralButton
-                variant="outline"
+            {/* Expense / Income segmented control */}
+            <div className="flex rounded-xl border border-white/[0.08] overflow-hidden bg-black/20">
+              <button
                 onClick={() => setManualType('expense')}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold min-h-[44px] h-auto',
-                  manualType === 'expense'
-                    ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
-                    : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
-                )}
                 aria-pressed={manualType === 'expense'}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition-colors',
+                  manualType === 'expense'
+                    ? 'bg-rose-500/20 text-rose-300'
+                    : 'text-white/35 hover:text-white/60 hover:bg-white/5'
+                )}
               >
                 <Minus className="w-3 h-3" /> Expense
-              </NeuralButton>
-              <NeuralButton
-                variant="outline"
+              </button>
+              <div className="w-px bg-white/[0.08] shrink-0" />
+              <button
                 onClick={() => setManualType('income')}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold min-h-[44px] h-auto',
-                  manualType === 'income'
-                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                    : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
-                )}
                 aria-pressed={manualType === 'income'}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition-colors',
+                  manualType === 'income'
+                    ? 'bg-emerald-500/20 text-emerald-300'
+                    : 'text-white/35 hover:text-white/60 hover:bg-white/5'
+                )}
               >
                 <Plus className="w-3 h-3" /> Income
-              </NeuralButton>
+              </button>
             </div>
 
-            {/* Category select */}
+            {/* Category picker */}
             <div className="relative">
-              <NeuralButton
-                variant="outline"
+              <button
                 onClick={() => setShowCategories(v => !v)}
-                className="w-full flex items-center justify-between px-3 py-2.5 min-h-[44px] text-sm text-white/70 h-auto"
+                className="w-full flex items-center justify-between px-4 py-3 bg-black/30 border border-white/[0.08] rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-black/40 focus:outline-none focus:ring-1 focus:ring-[var(--module-accent-ring)] transition-colors"
               >
                 <span>{manualCategory}</span>
-                <ChevronDown className={cn('w-3.5 h-3.5 text-white/40 transition-transform', showCategories && 'rotate-180')} />
-              </NeuralButton>
+                <ChevronDown className={cn('w-3.5 h-3.5 text-white/30 transition-transform', showCategories && 'rotate-180')} />
+              </button>
               {showCategories && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-20 p-2 flex flex-wrap gap-1">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-20 p-2 flex flex-wrap gap-1 max-h-44 overflow-y-auto">
                   {allCategories.slice(0, 16).map(cat => (
-                    <NeuralButton
+                    <button
                       key={cat}
-                      variant={manualCategory === cat ? 'module' : 'ghost'}
-                      size="sm"
                       onClick={() => { setManualCategory(cat); setShowCategories(false); }}
-                      themeColor={manualCategory === cat ? 'module' : undefined}
                       className={cn(
-                        'px-2.5 py-1.5 text-[11px] font-bold h-auto min-h-[36px]',
-                        manualCategory !== cat && 'bg-white/5 text-white/60 hover:bg-white/10'
+                        'px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors',
+                        manualCategory === cat
+                          ? 'bg-[var(--module-accent)] text-[var(--module-accent-text,#fff)]'
+                          : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white'
                       )}
                     >
                       {cat}
-                    </NeuralButton>
+                    </button>
                   ))}
                 </div>
               )}
             </div>
 
-            <NeuralButton
+            {/* Submit */}
+            <button
               onClick={handleManualSubmit}
               disabled={!manualAmount || !manualDesc.trim() || submitted}
-              themeColor={submitted ? 'emerald' : 'module'}
-              className="w-full min-h-[44px]"
+              className={cn(
+                'w-full py-3 rounded-xl text-sm font-bold transition-all',
+                submitted
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 cursor-default'
+                  : 'bg-[var(--module-accent)] text-[var(--module-accent-text,#fff)] hover:bg-[var(--module-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed'
+              )}
             >
               {submitted ? '✓ Logged' : 'Log Transaction'}
-            </NeuralButton>
+            </button>
           </div>
         )}
+      </div>
 
-        {/* Recurring toggle */}
-        <NeuralButton
-          variant="ghost"
-          size="sm"
+      {/* ── Footer — recurring toggle ───────────────────────────────────────── */}
+      <div className="px-4 py-2.5 border-t border-white/[0.05]">
+        <button
           onClick={() => setIsRecurring(r => !r)}
-          className={cn(
-            'flex items-center gap-2 text-[11px] font-semibold h-auto min-h-[44px]',
-            isRecurring ? 'text-violet-400' : 'text-white/30 hover:text-white/60'
-          )}
           aria-pressed={isRecurring}
-          aria-label={isRecurring ? 'Recurring (monthly)' : 'Mark as recurring'}
+          aria-label={isRecurring ? 'Recurring monthly — click to disable' : 'Mark as recurring'}
+          className={cn(
+            'flex items-center gap-2 text-[11px] font-semibold transition-colors rounded-lg px-2 py-1.5 -mx-2',
+            isRecurring ? 'text-violet-400 hover:text-violet-300' : 'text-white/25 hover:text-white/55'
+          )}
         >
-          <RotateCcw className="w-3 h-3" />
+          <RotateCcw className="w-3 h-3 shrink-0" />
           {isRecurring ? 'Recurring (monthly)' : 'Mark as recurring'}
-        </NeuralButton>
+        </button>
       </div>
     </div>
   );

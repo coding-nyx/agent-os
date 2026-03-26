@@ -1,6 +1,11 @@
 import { Routine, TitanProfile, BiomarkerRecord, ClearanceRecord, LabSummaryRecord, SleepEntry, CycleEntry, WorkoutSession, SomaProfile, TitanRecoveryCheckin } from '@/lib/types';
 import type { ContextPolicy } from '@/lib/types';
 import { SchemaRegistry } from '@/lib/schema-registry';
+import {
+  computeACWR,
+  computeWeeklyVolumeByMuscle,
+  generateProgressionRecommendations,
+} from '../utils/progressive-overload';
 import { serializeSomaExtensionFields, SOMA_MEDICAL_DISCLAIMER } from '@/modules/soma/prompts/soma-prompt-builder';
 import type { FieldDefinition, FieldValue } from '@/lib/field-system/types';
 
@@ -364,10 +369,31 @@ You MUST respect these clearance restrictions when programming workouts.`;
     }
   }
 
+  // ── Progressive Overload Engine ───────────────────────────────────────
+  const acwr = computeACWR(profile.workoutSessions || []);
+  const volume = computeWeeklyVolumeByMuscle(profile.workoutSessions || []);
+  const recs = generateProgressionRecommendations(
+    profile.workoutSessions || [],
+    profile.personalRecords || {}
+  );
+  
+  const overloadBlock = `
+PROGRESSIVE OVERLOAD ANALYSIS:
+ACWR: ${acwr.acwr} (${acwr.status.toUpperCase()} - ${acwr.recommendation})
+Acute Load (7d): ${Math.round(acwr.acuteLoad)} kg
+Chronic Load (4w): ${Math.round(acwr.chronicLoad)} kg/wk
+
+WEEKLY VOLUME (Sets vs Landmarks):
+${volume.filter(v => v.sets > 0).map(v => `- ${v.muscleGroup}: ${v.sets.toFixed(1)} sets (${v.status.toUpperCase()})`).join('\n') || 'No volume recorded this week.'}
+
+RECOMMENDATIONS (Top 5):
+${recs.slice(0, 5).map(r => `- ${r.exerciseName}: ${r.recommendation.toUpperCase()} (${r.reasoning})`).join('\n') || 'No recommendations yet (need more data).'}
+`;
+
   return `
 [MODE: TRAINING]
 You are in fitness coaching mode. Focus on workout planning, exercise guidance, nutrition optimization, and recovery management.
-${recoveryBlock}${clearanceNote}${activeCycleBlock}
+${recoveryBlock}${clearanceNote}${activeCycleBlock}${overloadBlock}
 
 [AVAILABLE ACTIONS]
 - Update profile: <action type="update_titan_profile">{...partialProfile}</action>
@@ -387,6 +413,7 @@ ${recoveryBlock}${clearanceNote}${activeCycleBlock}
 - **Suggest progression**: <action type="suggest_progression">{"exercises":["back squat","bench press"],"strategy":"linear"|"double_progression"|"deload","message":"..."}</action>
 - **Schedule workout**: <action type="schedule_workout">{"date":"YYYY-MM-DD","routineName":"[exact routine name]","exerciseNames":["optional","list"],"notes":"optional note"}</action>
 - **Update planned workout**: <action type="update_planned_workout">{"id":"[workout-id]","status":"planned|completed|skipped","notes":"optional"}</action>
+- **Clear program**: <action type="clear_workout_program">{"reason":"user_request"}</action>
 - Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
 - Keep <thought> strictly internal. Do NOT place user-facing text inside it.
 - Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.
@@ -455,6 +482,7 @@ ${planLine}
 - Log workout session: <action type="log_workout_session">{"routineId","routineName","date":"YYYY-MM-DD","rpe":5,"status":"completed","exercises":[{"exerciseName","plannedSets","plannedReps","sets":[{"setNumber","completed"}]}]}</action>
 - **Schedule workout**: <action type="schedule_workout">{"date":"YYYY-MM-DD","routineName":"[exact routine name]","exerciseNames":["optional","list"],"notes":"optional note"}</action>
 - **Update planned workout**: <action type="update_planned_workout">{"id":"[workout-id]","status":"planned|completed|skipped","notes":"optional"}</action>
+- **Clear program**: <action type="clear_workout_program">{"reason":"user_request"}</action>
 - Do NOT emit raw <tool_call>...</tool_call> wrappers. Use action tags only.
 - Keep <thought> strictly internal. Do NOT place user-facing text inside it.
 - Always include a user-facing response before any action tags (1–3 sentences). Never respond with only action tags.`;

@@ -19,7 +19,7 @@ export interface PlanTabProps {
   onStartSession: (routine: Routine) => void;
   onSubmitCustomFieldsForApproval: (values: Record<string, unknown>, categoryLabel: string) => void;
   onDirectCreateMacros: (fields: CustomField[]) => Promise<void>;
-  onApplyProgram?: (routines: Routine[], programName: string) => void;
+  onApplyProgram?: (routines: Routine[], programName: string, programId?: string, durationWeeks?: number, phases?: { name: string; weeks: [number, number] }[]) => void;
   /** Planned workouts from profile.plannedWorkouts */
   plannedWorkouts?: PlannedWorkout[];
   /** Completed sessions from profile.workoutSessions */
@@ -30,6 +30,10 @@ export interface PlanTabProps {
   onDirectUpdatePlan?: (plan: PlannedWorkout) => Promise<void>;
   /** AI path: send a scheduling prompt */
   onAnalyzePlan?: (prompt: string) => void;
+  /** Clear current program */
+  onClearProgram?: () => void;
+  /** Update active program metadata (e.g. shift schedule) */
+  onUpdateProgram?: (updates: Partial<NonNullable<TitanProfile['activeProgram']>>) => void;
 }
 
 export function PlanTab({
@@ -47,6 +51,8 @@ export function PlanTab({
   onDirectSavePlan,
   onDirectUpdatePlan,
   onAnalyzePlan,
+  onClearProgram,
+  onUpdateProgram,
 }: PlanTabProps) {
   /** Controls the collapsible Exercise Library panel. */
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -63,18 +69,23 @@ export function PlanTab({
           directWriteMode={profile?.directWriteMode ?? false}
           onDirectSave={onDirectSavePlan}
           onDirectUpdate={onDirectUpdatePlan}
+          onStartSession={onStartSession}
         />
       </div>
 
       {/* Routine management with manual builder */}
       <TitanRoutinePanel
         routines={profile?.routines || []}
+        activeProgram={profile?.activeProgram}
+        plannedWorkouts={plannedWorkouts}
         onAnalyzeRoutine={onAnalyzeRoutine}
         onGeneratePlan={onGeneratePlan}
         onImportRoutine={onImportRoutine}
         onSubmitForApproval={onSubmitRoutineForApproval}
         onStartSession={onStartSession}
         onApplyProgram={onApplyProgram}
+        onClearProgram={onClearProgram}
+        onUpdateProgram={onUpdateProgram}
       />
 
       {/* Volume analytics */}
@@ -83,6 +94,7 @@ export function PlanTab({
           <RoutineProgress
             routines={profile.routines}
             workoutSessions={profile.workoutSessions ?? []}
+            exerciseLibrary={profile.exerciseLibrary}
           />
         </div>
       )}

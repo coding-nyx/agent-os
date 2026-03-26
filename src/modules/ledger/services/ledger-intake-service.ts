@@ -103,6 +103,13 @@ export interface Account {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  // ─── Credit card–specific fields ─────────────────────────────────────────
+  /** Maximum credit limit (credit_card accounts only). Used to compute utilization. */
+  creditLimit?: number;
+  /** Day of month (1–31) the payment is due (credit_card accounts only). */
+  paymentDueDay?: number;
+  /** Day of month (1–31) the billing statement closes (credit_card accounts only). */
+  statementDay?: number;
 }
 
 export interface AccountTransfer {
@@ -270,6 +277,7 @@ export type AlertType =
   | 'budget_breach'
   | 'large_transaction'
   | 'bill_overdue'
+  | 'payment_upcoming'
   | 'goal_behind'
   | 'low_balance'
   | 'trial_ending'
@@ -746,6 +754,9 @@ function normalizeLedgerProfile(raw: unknown): LedgerIntakeProfile {
       notes: typeof entry?.notes === 'string' ? entry.notes : undefined,
       createdAt: typeof entry?.createdAt === 'string' ? entry.createdAt : now,
       updatedAt: typeof entry?.updatedAt === 'string' ? entry.updatedAt : now,
+      creditLimit: typeof entry?.creditLimit === 'number' && entry.creditLimit > 0 ? entry.creditLimit : undefined,
+      paymentDueDay: typeof entry?.paymentDueDay === 'number' && entry.paymentDueDay >= 1 && entry.paymentDueDay <= 31 ? entry.paymentDueDay : undefined,
+      statementDay: typeof entry?.statementDay === 'number' && entry.statementDay >= 1 && entry.statementDay <= 31 ? entry.statementDay : undefined,
     })),
     transferHistory: parseArray(candidate.transferHistory, (entry, index) => ({
       id: typeof entry?.id === 'string' ? entry.id : `transfer_${index}`,

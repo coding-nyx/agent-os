@@ -34,7 +34,7 @@ import type { Routine } from '@/lib/types';
 
 export interface ProgramTemplateSelectorProps {
   /** Called with the full routines array when the user confirms a program */
-  onApplyProgram: (routines: Routine[], programName: string) => void;
+  onApplyProgram: (routines: Routine[], programName: string, programId?: string, durationWeeks?: number) => void;
   className?: string;
 }
 
@@ -242,7 +242,7 @@ export function ProgramTemplateSelector({ onApplyProgram, className }: ProgramTe
 
   const handleApply = useCallback(
     (program: WorkoutProgram) => {
-      onApplyProgram(program.routines, program.name);
+      onApplyProgram(program.routines, program.name, program.id, program.durationWeeks);
       setAppliedId(program.id);
     },
     [onApplyProgram],

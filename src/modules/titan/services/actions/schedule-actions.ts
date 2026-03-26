@@ -181,4 +181,106 @@ export const scheduleHandlers: Record<string, ActionHandler> = {
       );
     }
   },
+
+  /**
+   * clear_workout_program — End the currently active program.
+   *
+   * Payload: {}
+   */
+  clear_workout_program: async ({ userId, encryptionKey, pushAssistantMessage }) => {
+    const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!profile) return;
+
+    if (!profile.activeProgram) {
+      if (pushAssistantMessage) {
+        pushAssistantMessage('You don\'t have an active program running.');
+      }
+      return;
+    }
+
+    const oldName = profile.activeProgram.name;
+    const now = new Date().toISOString();
+
+    await persistProfile(
+      {
+        ...profile,
+        activeProgram: undefined,
+        // Optional: clear routines if they belong to the program?
+        // For now, keep routines so user doesn't lose data, but they become "custom routines"
+        updatedAt: now,
+      },
+      userId ?? null,
+      encryptionKey ?? null,
+    );
+
+    if (pushAssistantMessage) {
+      pushAssistantMessage(
+        `🗑️ Ended **${oldName}**. Your routines are still saved, but you are no longer tracking a specific program schedule.`
+      );
+    }
+  },
+
+  /**
+   * update_active_program — Modify the active program (e.g. change current week).
+   *
+   * Payload:
+   * {
+   *   currentWeek?: number; // Jump to specific week (1-based)
+   *   startDate?: string;   // Manually set start date (ISO)
+   * }
+   */
+  update_active_program: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+    const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!profile) return;
+
+    if (!profile.activeProgram) {
+      if (pushAssistantMessage) {
+        pushAssistantMessage('No active program to update.');
+      }
+      return;
+    }
+
+    let newStartDate = profile.activeProgram.startDate;
+    const updates: string[] = [];
+
+    // Handle "jump to week X" logic
+    if (typeof payload?.currentWeek === 'number') {
+      const targetWeek = payload.currentWeek;
+      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      // Calculate start date such that (now - start) / week = targetWeek - 1
+      const newStartMs = now - ((targetWeek - 1) * msPerWeek);
+      newStartDate = new Date(newStartMs).toISOString();
+      updates.push(`jumped to week ${targetWeek}`);
+    } 
+    // Handle explicit start date
+    else if (isIsoDate(payload?.startDate)) {
+      newStartDate = payload.startDate;
+      updates.push(`start date changed to ${newStartDate}`);
+    }
+
+    if (updates.length === 0) {
+      return; // No valid updates
+    }
+
+    const now = new Date().toISOString();
+    await persistProfile(
+      {
+        ...profile,
+        activeProgram: {
+          ...profile.activeProgram,
+          startDate: newStartDate,
+        },
+        updatedAt: now,
+      },
+      userId ?? null,
+      encryptionKey ?? null,
+    );
+
+    if (pushAssistantMessage) {
+      pushAssistantMessage(
+        `🔄 Program updated: **${profile.activeProgram.name}** ${updates.join(', ')}.`
+      );
+    }
+  },
 };

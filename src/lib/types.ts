@@ -1034,6 +1034,19 @@ export interface TitanProfile {
   clearanceOverrides?: TitanClearanceOverrideRecord[];
   /** System-debt ledger tracking downstream consequences of override decisions. */
   systemDebts?: TitanSystemDebtRecord[];
+  /** Active long-term training program (e.g. "Starting Strength", 12 weeks). */
+  activeProgram?: {
+    id: string;
+    name: string;
+    startDate: string; // ISO date
+    durationWeeks: number;
+    description?: string;
+    phases?: {
+      name: string;
+      weeks: [number, number]; // [start, end] 1-based
+      description?: string;
+    }[];
+  };
   createdAt: string;
   updatedAt: string;
   traits?: string[];

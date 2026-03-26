@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import type { LedgerIntakeProfile, RecurringRule, Transaction } from '../services/ledger-intake-service';
 import { computeDueRules, postDueTransactions, postSingleRule } from '../services/recurring-engine';
 
@@ -28,16 +28,19 @@ export function useRecurringEngine(
 ): RecurringEngineState {
   const [pendingRules, setPendingRules] = useState<RecurringRule[]>([]);
   const [autoPosted, setAutoPosted] = useState<Transaction[]>([]);
-  const [processedProfileId, setProcessedProfileId] = useState<string | null>(null);
   const [didAutoPost, setDidAutoPost] = useState(false);
 
-  useEffect(() => {
-    if (!profile) return;
+  // Keep the callback ref up-to-date without making it a reactive dependency.
+  const onProfileUpdateRef = useRef(onProfileUpdate);
+  useLayoutEffect(() => { onProfileUpdateRef.current = onProfileUpdate; });
 
-    // Use updatedAt as a stable profile identity to avoid re-running on every render
-    const profileId = profile.updatedAt;
-    if (processedProfileId === profileId) return;
-    setProcessedProfileId(profileId);
+  // Run at most once per mount — prevents the infinite loop caused by
+  // persistUpdate always writing a new updatedAt timestamp.
+  const hasRunRef = useRef(false);
+
+  useEffect(() => {
+    if (!profile || hasRunRef.current) return;
+    hasRunRef.current = true;
 
     const rules = profile.recurringRules ?? [];
     const dueRules = computeDueRules(rules);
@@ -48,13 +51,13 @@ export function useRecurringEngine(
     if (posted.length > 0) {
       setAutoPosted(posted);
       setDidAutoPost(true);
-      onProfileUpdate(updatedProfile);
+      onProfileUpdateRef.current(updatedProfile);
     }
 
     if (pending.length > 0) {
       setPendingRules(pending);
     }
-  }, [profile, processedProfileId, onProfileUpdate]);
+  }, [profile]);
 
   const confirmRule = useCallback(
     (ruleId: string): LedgerIntakeProfile => {

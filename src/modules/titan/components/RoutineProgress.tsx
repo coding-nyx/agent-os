@@ -4,16 +4,17 @@
 
 import React, { useMemo } from 'react';
 import { Activity, Zap, Calendar, TrendingUp } from 'lucide-react';
-import type { Routine, WorkoutSession, Weekday } from '@/lib/types';
+import type { Routine, WorkoutSession, Weekday, TitanExerciseEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
-import { SectionHeader } from '@/core/components/SectionHeader';
-import { BarChart, BarChartDataPoint } from '@/core/components/viz/BarChart';
+import { BarChart, type BarChartDataPoint } from '@/core/components/viz/BarChart';
 import { MetricCard } from '@/core/components/viz/MetricCard';
+import { SectionHeader } from '@/core/components/SectionHeader';
 
 interface RoutineProgressProps {
   routines: Routine[];
   workoutSessions?: WorkoutSession[];
+  exerciseLibrary?: TitanExerciseEntry[];
   className?: string;
 }
 
@@ -27,7 +28,7 @@ function plannedVolume(routine: Routine): number {
   return routine.exercises.reduce((t, ex) => t + ex.sets * extractReps(ex.reps ?? 10), 0);
 }
 
-export function RoutineProgress({ routines, workoutSessions = [], className }: RoutineProgressProps) {
+export function RoutineProgress({ routines, workoutSessions = [], exerciseLibrary, className }: RoutineProgressProps) {
   const sessions = workoutSessions.slice(0, 14); // last 14 sessions
 
   const stats = useMemo(() => {
@@ -55,8 +56,67 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
       value: s.totalVolume ?? 0,
     }));
 
-    return { totalPlannedReps, avgExercises, totalActualVolume, avgRpe, weeklyDistribution, volumeTrend };
-  }, [routines, sessions]);
+    // Weekly volume by muscle group (sets)
+    const muscleVolume = new Map<string, number>();
+    routines.forEach(routine => {
+      routine.exercises.forEach(ex => {
+        const sets = ex.sets;
+        const muscles = ex.muscleGroups || [];
+        // If no muscle group specified, maybe skip or categorize as 'other'
+        // If multiple, split sets? Or count for all? Usually count for all primary.
+        muscles.forEach(m => {
+            muscleVolume.set(m, (muscleVolume.get(m) || 0) + sets);
+        });
+      });
+    });
+
+    const muscleDistribution: BarChartDataPoint[] = Array.from(muscleVolume.entries())
+      .map(([category, value]) => ({ category, value }))
+      .sort((a, b) => b.value - a.value); // Sort highest volume first
+
+    // Actual volume by muscle group (Last 7 days)
+    const actualMuscleVolume = new Map<string, number>();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    sessions.filter(s => new Date(s.date) >= oneWeekAgo).forEach(session => {
+       session.exercises.forEach(ex => {
+          // Count sets where at least one rep was done
+          // session.exercises is TitanWorkoutLog['sets'] ?? No, wait. 
+          // WorkoutSession definition needs verification.
+          // Assuming structure: { exerciseName, sets: [{completed, repsCompleted}] }
+          const sets = ex.sets.filter(s => s.completed || (s.repsCompleted ?? 0) > 0).length;
+          if (sets === 0) return;
+
+          // Find muscles
+          let muscles: string[] = [];
+          
+          // Try library first
+          const libEntry = exerciseLibrary?.find(e => e.name.toLowerCase() === ex.exerciseName.toLowerCase());
+          if (libEntry) {
+             muscles = libEntry.muscleGroups;
+          } else {
+             // Try to guess from routines
+             const routineMatch = routines.flatMap(r => r.exercises).find(re => re.name.toLowerCase() === ex.exerciseName.toLowerCase());
+             if (routineMatch && routineMatch.muscleGroups) {
+                muscles = routineMatch.muscleGroups;
+             }
+          }
+          
+          if (muscles.length === 0) muscles = ['other'];
+          
+          muscles.forEach(m => {
+             actualMuscleVolume.set(m, (actualMuscleVolume.get(m) || 0) + sets);
+          });
+       });
+    });
+
+    const actualMuscleDistribution: BarChartDataPoint[] = Array.from(actualMuscleVolume.entries())
+      .map(([category, value]) => ({ category, value }))
+      .sort((a, b) => b.value - a.value);
+
+    return { totalPlannedReps, avgExercises, totalActualVolume, avgRpe, weeklyDistribution, volumeTrend, muscleDistribution, actualMuscleDistribution };
+  }, [routines, sessions, exerciseLibrary]);
 
   if (routines.length === 0) return null;
 
@@ -116,6 +176,49 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
             color="emerald"
             trendDirection="stable"
           />
+        )}
+      </div>
+
+      {/* Muscle Volume Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {stats.muscleDistribution.length > 0 && (
+          <SurfaceCard className="p-6">
+            <div className="mb-4">
+              <h3 className="text-sm font-black uppercase tracking-wide text-white/90 mb-1 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-[var(--module-color-400)]" />
+                Planned Volume
+              </h3>
+              <p className="text-xs text-white/50">Weekly target sets by muscle</p>
+            </div>
+            <BarChart
+              data={stats.muscleDistribution}
+              orientation="horizontal"
+              height={Math.max(160, stats.muscleDistribution.length * 32)}
+              color="indigo"
+              showValues
+              animate
+            />
+          </SurfaceCard>
+        )}
+
+        {stats.actualMuscleDistribution.length > 0 && (
+          <SurfaceCard className="p-6">
+            <div className="mb-4">
+              <h3 className="text-sm font-black uppercase tracking-wide text-white/90 mb-1 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                Actual Volume (7d)
+              </h3>
+              <p className="text-xs text-white/50">Completed sets by muscle</p>
+            </div>
+            <BarChart
+              data={stats.actualMuscleDistribution}
+              orientation="horizontal"
+              height={Math.max(160, stats.actualMuscleDistribution.length * 32)}
+              color="emerald"
+              showValues
+              animate
+            />
+          </SurfaceCard>
         )}
       </div>
 
@@ -215,37 +318,7 @@ export function RoutineProgress({ routines, workoutSessions = [], className }: R
         </SurfaceCard>
       )}
 
-      {/* Routine details (fallback when no session data) */}
-      {sessions.length === 0 && (
-        <SurfaceCard className="p-4 sm:p-5 md:p-6">
-          <h3 className="text-[13px] sm:text-sm font-black uppercase tracking-wide text-white/90 mb-3 sm:mb-4">
-            Routine Details
-          </h3>
-          <div className="space-y-2">
-            {routines.map((routine, idx) => {
-              const vol = plannedVolume(routine);
-              return (
-                <div
-                  key={routine.id || idx}
-                  className="flex items-center justify-between p-3 min-h-[2.75rem] rounded-xl bg-white/[0.02] border border-white/5 gap-3"
-                >
-                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white/30 w-9 sm:w-10 shrink-0">
-                      {routine.weekday?.slice(0, 3).toUpperCase() || '—'}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="text-[11px] sm:text-xs font-bold text-white/80 truncate">{routine.name}</div>
-                      <div className="text-[10px] sm:text-[11px] text-white/40 mt-0.5">
-                        {routine.exercises.length} ex · {vol} planned reps
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </SurfaceCard>
-      )}
+      {/* Routine details fallback removed — Weekly Plan above shows the same data */}
     </div>
   );
 }

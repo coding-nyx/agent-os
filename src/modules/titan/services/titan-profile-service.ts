@@ -30,6 +30,9 @@ export function createEmptyTitanProfile(): TitanProfile {
     clearances: [],
     medicalImageAnalyses: [],
     medicalSummary: '',
+    // Active program tracking
+    activeProgram: undefined,
+    plannedWorkouts: [],
     // Exercise identity / workout log fields
     workoutLogs: [],
     exerciseLibrary: [],
@@ -125,6 +128,10 @@ export function normalizeTitanProfile(raw: unknown): TitanProfile {
       : base.systemDebts,
     bodyWeightLog: rawBodyWeightLog.slice(0, 1000),
     cardioLog: rawCardioLog.slice(0, 1000),
+    plannedWorkouts: Array.isArray(data.plannedWorkouts) ? (data.plannedWorkouts as NonNullable<TitanProfile['plannedWorkouts']>).slice(0, 200) : [],
+    activeProgram: data.activeProgram && typeof data.activeProgram === 'object'
+      ? (data.activeProgram as NonNullable<TitanProfile['activeProgram']>)
+      : undefined,
   };
 }
 
@@ -162,6 +169,7 @@ export async function saveTitanProfile(profile: TitanProfile, ctx: LoadContext):
       bootstrapAliveEntities({
         titanWorkoutSessions: normalized.workoutSessions,
         titanSleepEntries: normalized.sleepLog,
+        titanActiveProgram: normalized.activeProgram,
       }),
       { uid: ctx.userId },
     );

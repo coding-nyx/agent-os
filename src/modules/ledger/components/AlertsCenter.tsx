@@ -75,6 +75,7 @@ const ALERT_TYPE_LABELS: Record<AlertType, string> = {
   budget_breach: 'Budget Breach',
   large_transaction: 'Large Transaction',
   bill_overdue: 'Overdue Bill',
+  payment_upcoming: 'Upcoming Payment',
   goal_behind: 'Goal Behind',
   low_balance: 'Low Balance',
   trial_ending: 'Trial Ending',
