@@ -171,7 +171,7 @@ export function ActiveResearchWorkspace({
   return (
     <section className="surface-foundation-raised flex h-full min-h-[32rem] min-w-0 flex-col overflow-hidden">
       <header className="shrink-0 border-b border-white/8 bg-white/[0.02] px-4 py-4 sm:px-5 lg:px-6">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 space-y-3">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)] shadow-[0_0_30px_var(--module-accent-faint)]">
@@ -249,7 +249,7 @@ export function ActiveResearchWorkspace({
         <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0">
           <article
             className={cn(
-              'min-w-[16rem] snap-start rounded-3xl border p-4 lg:min-w-0',
+              'min-w-[min(16rem,80vw)] snap-start rounded-3xl border p-4 lg:min-w-0',
               activityToneClasses[activity.tone],
             )}
           >

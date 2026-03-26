@@ -268,7 +268,7 @@ export function SourceLibraryPane({
             size="md"
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 pb-8">
+          <div className="grid grid-cols-1 gap-6 pb-8 lg:grid-cols-2 xl:grid-cols-3">
             <AnimatePresence mode="popLayout">
               {filtered.map((source) => (
                 <SourceCard

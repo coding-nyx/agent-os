@@ -143,7 +143,7 @@ export function ScoutSessionList({ sessions, onSelect, onDelete, activeSessionId
                 variant="ghost"
                 onClick={() => onDelete(session.id)}
                 aria-label={`Delete research session ${session.topic}`}
-                className="h-8 w-8 shrink-0 p-0 text-white/30 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 hover:bg-rose-500/10 hover:text-rose-300"
+                className="h-11 w-11 shrink-0 p-0 text-white/30 opacity-100 sm:h-8 sm:w-8 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 hover:bg-rose-500/10 hover:text-rose-300"
               >
                 <Trash2 size={13} />
                 <span className="sr-only">Delete</span>

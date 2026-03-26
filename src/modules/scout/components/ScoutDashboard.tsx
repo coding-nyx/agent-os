@@ -186,7 +186,8 @@ export function ScoutDashboard({
       </section>
 
       {/* Compact inline stats strip */}
-      <div className="flex items-stretch divide-x divide-white/8 overflow-x-auto scrollbar-none rounded-2xl border border-white/8 bg-white/[0.02]">
+      <div className="relative">
+        <div className="flex items-stretch divide-x divide-white/8 overflow-x-auto scrollbar-none rounded-2xl border border-white/8 bg-white/[0.02]">
         <InlineStat label="Nodes"    value={nodes.length} accent />
         <InlineStat label="Sources"  value={sources.length} />
         <InlineStat label="Verified" value={verified} />
@@ -212,6 +213,8 @@ export function ScoutDashboard({
             </NeuralButton>
           </div>
         )}
+        </div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-2xl bg-gradient-to-l from-[#020205] to-transparent" aria-hidden="true" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.95fr)] xl:items-start">

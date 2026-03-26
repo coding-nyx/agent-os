@@ -179,7 +179,7 @@ export function DeepResearchPanel({
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: '100%' }}
         transition={{ type: 'spring', stiffness: 320, damping: 32, mass: 0.8 }}
-        className="relative ml-auto flex h-full w-full flex-col overflow-hidden border-l border-white/10 bg-[#0a0c11] shadow-2xl md:w-[600px] lg:w-[680px]"
+        className="relative ml-auto flex h-full w-full flex-col overflow-hidden border-l border-white/10 bg-[#0a0c11] shadow-2xl lg:w-[600px] xl:w-[680px]"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.08] flex-shrink-0">

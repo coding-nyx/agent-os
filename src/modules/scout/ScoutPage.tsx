@@ -742,12 +742,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       contentClassName="min-h-0"
     >
       <div className="mx-auto flex w-full min-w-0 max-w-[var(--shell-content-max)] flex-col">
-        <div className="sticky top-0 z-[var(--z-header)] border-b border-white/5 bg-[#020205]/85 backdrop-blur-xl">
+        <div className="sticky top-0 z-[var(--z-header)] border-b border-white/5 bg-[#020205]/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
           <div className="px-[var(--shell-page-gutter)] py-4 sm:py-5">
             <SectionHeader
               label="Intelligence domain"
               title="Scout protocol"
               subtitle="Research, evidence review, and synthesis with explicit workspace, session, and overlay ownership."
+              subtitleClassName="hidden lg:block"
               accentClassName="text-[var(--module-color-400)]"
               action={
                 <div className="flex flex-wrap items-center justify-end gap-2">
@@ -786,7 +787,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               </div>
             )}
 
-            <div className="mt-4 min-w-0 flex-1">
+            <div className="mt-3 min-w-0 flex-1 lg:mt-4">
               <NeuralTabGroup
                 tabs={tabs}
                 activeTab={selectedView}
@@ -831,7 +832,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 role="dialog"
                 aria-modal="true"
                 aria-label="Research sessions"
-                className="flex h-full w-full max-w-[24rem] flex-col overflow-hidden border-r border-white/10 bg-[#05050a]/95 shadow-2xl"
+                className="flex h-full w-full max-w-[min(24rem,88vw)] flex-col overflow-hidden border-r border-white/10 bg-[#05050a]/95 shadow-2xl"
               >
                 <div className="flex items-center justify-between border-b border-white/8 px-4 py-4 sm:px-5">
                   <div>

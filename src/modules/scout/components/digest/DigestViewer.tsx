@@ -132,7 +132,7 @@ function DigestCard({
                   <TrendingUp size={12} />
                   Core Insights
                 </h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   {digest.topClaims.map((claim, idx) => (
                     <div key={idx} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2">
                       <p className="text-xs font-bold text-white/80 leading-snug">{claim.claim}</p>
