@@ -309,6 +309,14 @@ export async function loadDigests(
       docs.map((d) => decryptDigest(d.id, userId, d.encryptedData, d.iv, encryptionKey)),
     );
 
+    const failed = decrypted.filter(r => r.status === 'rejected').length;
+    if (failed > 0) {
+      console.warn(
+        `[Scout] ${failed}/${docs.length} digest(s) could not be decrypted — ` +
+        `possible key mismatch or data corruption. Digests will be skipped.`
+      );
+    }
+
     return decrypted
       .filter((r): r is PromiseFulfilledResult<ScoutDigestDecrypted> => r.status === 'fulfilled')
       .map((r) => r.value)

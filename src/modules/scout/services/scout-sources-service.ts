@@ -227,6 +227,14 @@ export async function loadSources(
         .map((d) => decryptSource(d, encryptionKey)),
     );
 
+    const failed = decrypted.filter(r => r.status === 'rejected').length;
+    if (failed > 0) {
+      console.warn(
+        `[Scout] ${failed}/${docs.length} source(s) could not be decrypted — ` +
+        `possible key mismatch or data corruption. Sources will be skipped.`
+      );
+    }
+
     return decrypted
       .filter((r): r is PromiseFulfilledResult<SourceEntryDecrypted> => r.status === 'fulfilled')
       .map((r) => r.value)
