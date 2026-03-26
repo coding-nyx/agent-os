@@ -78,6 +78,7 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
     const bodySource = typeof payloadData?.note === "string" ? payloadData.note
                      : typeof payloadData?.body === "string" ? payloadData.body
                      : typeof payloadData?.reason === "string" ? payloadData.reason
+                     : typeof payloadData?.message === "string" ? payloadData.message
                      : "";
     return { title: payloadData.title, body: bodySource };
   }
@@ -158,7 +159,7 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
       // Generic fallback
       return {
         title: 'Nexus Alert',
-        body: payloadData?.note || payloadData?.body || payloadData?.reason || 'A system event occurred.'
+        body: payloadData?.note || payloadData?.body || payloadData?.message || payloadData?.reason || 'A system event occurred.'
       };
   }
 }

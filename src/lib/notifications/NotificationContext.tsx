@@ -7,6 +7,11 @@ import { ActionRegistry } from './action-registry';
 import { ReminderOutcomeService } from './reminder-outcome-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
 
+// Module-level set — persists across NotificationProvider remounts (e.g. navigation).
+// Cleared only when the user changes so the next session starts fresh.
+let _toastedIdsGlobal = new Set<string>();
+let _toastedIdsUid: string | null = null;
+
 export interface InboxRecord {
   id: string;
   type: string;
@@ -52,8 +57,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [error, setError] = useState<Error | null>(null);
 
   // Tracks notification IDs that have already been toasted in this session.
-  // Using a ref (not state) so updates are synchronous and don't trigger re-renders.
-  const toastedIds = useRef<Set<string>>(new Set());
+  // Module-level set (not a ref) so it survives provider remounts on navigation.
+  // Cleared when the user changes to prevent cross-user leakage.
+  const toastedIds = useRef<Set<string>>(_toastedIdsGlobal);
 
   // 1. Sync Inbox from Firestore
   useEffect(() => {
@@ -61,9 +67,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setInbox([]);
       setUnreadCount(0);
       setLoading(false);
-      // Clear toasted IDs so the next user session starts fresh.
-      toastedIds.current.clear();
+      // Clear toasted IDs and reset the global set for the next user session.
+      _toastedIdsGlobal = new Set();
+      _toastedIdsUid = null;
+      toastedIds.current = _toastedIdsGlobal;
       return;
+    }
+
+    // If the user changed, reset the global set for the new session.
+    if (_toastedIdsUid !== user.uid) {
+      _toastedIdsGlobal = new Set();
+      _toastedIdsUid = user.uid;
+      toastedIds.current = _toastedIdsGlobal;
     }
 
     setError(null);

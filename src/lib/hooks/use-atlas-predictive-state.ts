@@ -19,6 +19,11 @@ export interface UseAtlasPredictiveStateResult {
   service: AtlasPredictiveService | null;
 }
 
+// Module-level guard — the Spine singleton's in-memory cooldown resets on page
+// reload, so we keep a stable timestamp here that survives React remounts.
+let _lastAtlasOverloadEmitMs = 0;
+const ATLAS_OVERLOAD_CLIENT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+
 export function useAtlasPredictiveState(
   nsv: NeuralStateVector | null | undefined
 ): UseAtlasPredictiveStateResult {
@@ -33,15 +38,20 @@ export function useAtlasPredictiveState(
   useEffect(() => {
     const svc = new AtlasPredictiveService((nextState: AtlasState) => {
       setDisplay(svc.getStateForDisplay());
-      // S19-atlas-01: Emit ATLAS_OVERLOAD_DETECTED on Overloaded / Recovery transitions
+      // S19-atlas-01: Emit ATLAS_OVERLOAD_DETECTED on Overloaded / Recovery transitions.
+      // Guard with a module-level timestamp so page reloads don't re-fire within the cooldown.
       if (nextState === 'Overloaded' || nextState === 'Recovery') {
-        Spine.publish({
-          type: 'ATLAS_OVERLOAD_DETECTED',
-          source: 'atlas-predictive-service',
-          domain: 'C',
-          priority: 'alert',
-          data: { state: nextState, timestamp: new Date().toISOString() },
-        });
+        const nowMs = Date.now();
+        if (nowMs - _lastAtlasOverloadEmitMs >= ATLAS_OVERLOAD_CLIENT_COOLDOWN_MS) {
+          _lastAtlasOverloadEmitMs = nowMs;
+          Spine.publish({
+            type: 'ATLAS_OVERLOAD_DETECTED',
+            source: 'atlas-predictive-service',
+            domain: 'C',
+            priority: 'alert',
+            data: { state: nextState, timestamp: new Date().toISOString() },
+          });
+        }
       }
     });
     serviceRef.current = svc;

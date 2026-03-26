@@ -328,7 +328,7 @@ class SchemaRegistryService {
       type: 'SCHEMA_EXTENDED',
       source: 'schema-registry',
       domain: 'system',
-      priority: 'alert',
+      priority: 'info',
       data: {
         moduleId,
         fields: fields.map(f => f.id),
@@ -359,7 +359,7 @@ class SchemaRegistryService {
       type: 'SCHEMA_MODIFIED',
       source: 'schema-registry',
       domain: 'system',
-      priority: 'alert',
+      priority: 'info',
       data: {
         moduleId,
         action: 'remove_extension',
