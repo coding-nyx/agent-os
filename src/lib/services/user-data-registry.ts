@@ -17,6 +17,8 @@ const DIRECT_USER_COLLECTIONS = [
   'atlas_journals',
   'soma_diagnoses',
   'scout_knowledge',
+  'scout_sources',
+  'scout_digests',
   'forge_sessions',
   'semantic_memory',
   'spine_events',

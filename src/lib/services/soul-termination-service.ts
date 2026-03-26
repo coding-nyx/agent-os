@@ -30,6 +30,8 @@ const KNOWN_SUBCOLLECTIONS: Record<string, string[]> = {
   atlas_journals: ['entries'],
   soma_diagnoses: ['sessions'],
   scout_knowledge: ['nodes'],
+  scout_sources: ['sources'],
+  scout_digests: ['digests'],
 };
 
 function shouldRemoveLocalStorageKey(key: string): boolean {
