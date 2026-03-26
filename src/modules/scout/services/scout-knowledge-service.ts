@@ -227,6 +227,13 @@ export async function loadKnowledgeNodes({ userId, encryptionKey }: LoadContext)
         return JSON.parse(json) as ScoutKnowledgeNode;
       })
     );
+    const failed = decrypted.filter(r => r.status === 'rejected').length;
+    if (failed > 0) {
+      console.warn(
+        `[Scout] ${failed}/${docs.length} knowledge node(s) could not be decrypted — ` +
+        `possible key mismatch or data corruption. Nodes will be skipped.`
+      );
+    }
     return decrypted
       .filter((r): r is PromiseFulfilledResult<ScoutKnowledgeNode> => r.status === 'fulfilled')
       .map(r => r.value)

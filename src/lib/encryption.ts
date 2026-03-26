@@ -174,7 +174,9 @@ export async function decryptWithKey(data: { ciphertext: string; iv: string }, k
     const ivBytes = base64ToUint8Array(data.iv).length;
     const ctBytes = base64ToUint8Array(data.ciphertext).length;
 
-    console.error(
+    // Emit as debug (not error) so individual bulk failures don't pollute the console.
+    // Callers using Promise.allSettled (e.g. loadKnowledgeNodes) log a single summary instead.
+    console.debug(
       `[Encryption] Decryption failed (${errorMsg}). ` +
       `Algo: ${keyAlgo}, Usages: [${keyUsages}], ` +
       `Data: ${ctSnippet}... (${ctBytes} bytes), ` +

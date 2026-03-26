@@ -28,7 +28,7 @@ export function useKnowledgeNodes({ userId, encryptionKey }: KnowledgeContext) {
     } finally {
       setIsLoading(false);
     }
-  }, [ctx, userId, encryptionKey]);
+  }, [ctx]); // ctx already contains userId + encryptionKey
 
   useEffect(() => {
     load();
