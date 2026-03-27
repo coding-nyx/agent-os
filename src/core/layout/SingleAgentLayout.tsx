@@ -175,7 +175,7 @@ export function SingleAgentLayout({
     amber: { btnBg: 'bg-amber-600/20', btnBorder: 'border-amber-500/20', btnText: 'text-amber-400', sidebarBorder: 'border-amber-500/10', indicatorBg: 'bg-amber-400' },
     indigo: { btnBg: 'bg-indigo-600/20', btnBorder: 'border-indigo-500/20', btnText: 'text-indigo-400', sidebarBorder: 'border-indigo-500/10', indicatorBg: 'bg-indigo-400' },
     emerald: { btnBg: 'bg-emerald-600/20', btnBorder: 'border-emerald-500/20', btnText: 'text-emerald-400', sidebarBorder: 'border-emerald-500/10', indicatorBg: 'bg-emerald-400' },
-    white: { btnBg: 'bg-white/10', btnBorder: 'border-white/20', btnText: 'text-white/60', sidebarBorder: 'border-white/10', indicatorBg: 'bg-white' },
+    white: { btnBg: 'bg-white/10', btnBorder: 'border-white/20', btnText: 'text-white/60', sidebarBorder: 'border-white/[0.12]', indicatorBg: 'bg-white' },
     module: { btnBg: 'bg-[var(--module-accent-muted)]', btnBorder: 'border-[var(--module-accent-border)]', btnText: 'text-[var(--module-accent)]', sidebarBorder: 'border-[var(--module-accent-border)]', indicatorBg: 'bg-[var(--module-accent)]' }
   };
 
@@ -362,7 +362,7 @@ export function SingleAgentLayout({
                   }
                 }}
                 className={cn(
-                  "relative flex flex-col h-[85dvh] w-full bg-[#09090b] rounded-t-3xl overflow-hidden shadow-2xl border-t",
+                  "relative flex flex-col h-[85dvh] w-full bg-slate-900 rounded-t-3xl overflow-hidden shadow-2xl border-t",
                   currentTheme.sidebarBorder
                 )}
               >

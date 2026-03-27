@@ -371,7 +371,7 @@ export function CustomFieldManager({
                 if (!field) return null;
 
                 return (
-                  <div key={key} className="px-3 py-2 rounded-lg bg-white/[0.045] border border-white/10">
+                  <div key={key} className="px-3 py-2 rounded-lg bg-white/[0.045] border border-white/[0.12]">
                     <div className="text-[11px] text-white/40 uppercase tracking-wider mb-0.5">
                       {field.name}
                     </div>
@@ -412,7 +412,7 @@ export function CustomFieldManager({
                   'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all',
                   activeCategory === cat.id
                     ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                    : 'bg-white/[0.045] border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                    : 'bg-white/[0.045] border border-white/[0.12] text-white/50 hover:bg-white/10 hover:text-white/70'
                 )}
               >
                 <span>{cat.icon}</span>

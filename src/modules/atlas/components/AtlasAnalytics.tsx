@@ -80,7 +80,7 @@ interface SummaryCardProps {
 
 function SummaryCard({ label, value, delta, unit, icon: Icon, accentClass }: SummaryCardProps) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 flex flex-col gap-2">
+    <div className="rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4 flex flex-col gap-2">
       <div className="flex items-center gap-1.5">
         <Icon className={cn('w-3.5 h-3.5', accentClass)} aria-hidden="true" />
         <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{label}</span>
@@ -208,7 +208,7 @@ function HabitAnalyticsRow({ habit, completionRates, avgRate }: HabitAnalyticsRo
   const textClass = avgRate >= 0.8 ? 'text-emerald-400' : avgRate >= 0.5 ? 'text-amber-400' : 'text-red-400';
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3 grid grid-cols-[1fr_auto_80px] items-center gap-4">
+    <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-3 grid grid-cols-[1fr_auto_80px] items-center gap-4">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-white/80 truncate">{habit.title}</p>
         <p className="text-[11px] text-white/30 capitalize">{habit.frequency} · streak {habit.currentStreak}d</p>
@@ -433,7 +433,7 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
         <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
           Task Velocity — Last 8 Weeks
         </h4>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4">
           {taskVelocity.every(w => w.value === 0) ? (
             <p className="text-xs text-white/30 italic">No completed tasks in the last 8 weeks.</p>
           ) : (
@@ -474,7 +474,7 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
           <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
             Energy Trend — 14-Day Rolling Average
           </h4>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+          <div className="rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4">
             <Sparkline values={energyTrend} color="#0ea5e9" height={64} showArea />
             <div className="flex justify-between mt-2">
               <span className="text-[11px] text-white/25">14 days ago</span>
@@ -494,7 +494,7 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
             {profile.goals.filter(g => g.status === 'active' || g.status === 'completed').map(goal => (
               <div
                 key={goal.id}
-                className="rounded-xl border border-white/10 bg-white/[0.045] p-3 flex items-center gap-4"
+                className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-3 flex items-center gap-4"
               >
                 <Target
                   className={cn(

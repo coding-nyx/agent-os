@@ -118,7 +118,7 @@ export function MobileExtractedDataSheet({
         className={cn(
           'w-full flex items-center justify-between gap-3 px-4 py-3',
           'min-h-[48px]', // WCAG touch target
-          'rounded-xl border border-white/10 bg-white/[0.045] backdrop-blur-md',
+          'rounded-xl border border-white/[0.12] bg-white/[0.045] backdrop-blur-md',
           'text-sm font-medium text-white/70 hover:text-white hover:bg-white/[0.05]',
           'transition-colors duration-200',
           'outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]'
@@ -194,12 +194,12 @@ export function MobileExtractedDataSheet({
               className={cn(
                 'fixed inset-x-0 bottom-0 z-[var(--z-modal)]',
                 'max-h-[70vh] min-h-[200px]',
-                'rounded-t-3xl border-t border-white/10 bg-[#0a0a0f]/95 backdrop-blur-xl',
+                'rounded-t-3xl border-t border-white/[0.12] bg-[#0a0a0f]/95 backdrop-blur-xl',
                 'flex flex-col overflow-hidden',
                 'pb-[env(safe-area-inset-bottom,0px)]'
               )}
             >
-              <div className="border-b border-white/10">
+              <div className="border-b border-white/[0.12]">
                 {/* Drag handle */}
                 <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
                   <div className="w-10 h-1 rounded-full bg-white/20" />

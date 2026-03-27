@@ -55,7 +55,7 @@ function TimeField({ label, value, onChange }: TimeFieldProps) {
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
         className={cn(
           'w-full px-3 py-2.5 rounded-xl text-sm font-medium',
-          'bg-white/[0.06] border border-white/10 text-white/90',
+          'bg-white/[0.06] border border-white/[0.12] text-white/90',
           'focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.08]',
           'transition-colors [color-scheme:dark]',
         )}
@@ -85,7 +85,7 @@ function ModulePill({ moduleId, isExempt, onToggle }: ModulePillProps) {
         'px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all select-none',
         isExempt
           ? 'bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 shadow-sm shadow-indigo-500/10'
-          : 'bg-white/[0.05] border border-white/10 text-white/40 hover:text-white/70 hover:bg-white/[0.08]',
+          : 'bg-white/[0.05] border border-white/[0.12] text-white/40 hover:text-white/70 hover:bg-white/[0.08]',
       )}
     >
       {moduleId}
@@ -134,7 +134,7 @@ export default function QuietHoursPanel({ config, onChange }: QuietHoursPanelPro
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="rounded-2xl bg-white/[0.045] border border-white/10 overflow-hidden">
+    <div className="rounded-2xl bg-white/[0.045] border border-white/[0.12] overflow-hidden">
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-4 px-5 py-4">
         <div className="flex items-center gap-3 min-w-0">

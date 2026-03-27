@@ -375,7 +375,7 @@ export function GoalTracker({
               {(formData.milestones || []).map((milestone) => (
                 <div
                   key={milestone.id}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.045] border border-white/10"
+                  className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.045] border border-white/[0.12]"
                 >
                   <CheckCircle2
                     className={cn(
@@ -476,7 +476,7 @@ export function GoalTracker({
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/[0.12]">
           <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
             Cancel
           </NeuralButton>

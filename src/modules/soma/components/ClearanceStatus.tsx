@@ -259,7 +259,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                 <span>Requirements Met</span>
                 <span className="tabular-nums">{metRequirements.length}/{requirements.length}</span>
               </div>
-              <div className="h-2 bg-white/[0.045] rounded-full overflow-hidden border border-white/10">
+              <div className="h-2 bg-white/[0.045] rounded-full overflow-hidden border border-white/[0.12]">
                 <div
                   className={cn(
                     'h-full transition-all duration-700',
@@ -296,7 +296,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                 'p-4 transition-all',
                 isMet 
                   ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]' 
-                  : 'border-white/10 bg-white/[0.045]'
+                  : 'border-white/[0.12] bg-white/[0.045]'
               )}
             >
               <div className="flex items-start gap-3">
@@ -304,7 +304,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                   'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
                   isMet 
                     ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]' 
-                    : 'bg-white/[0.045] border border-white/10'
+                    : 'bg-white/[0.045] border border-white/[0.12]'
                 )}>
                   <ReqIcon className={cn(
                     'w-5 h-5',

@@ -100,7 +100,7 @@ export function SilentAuditDetailModal({ entry, open, onClose }: SilentAuditDeta
             <Dialog.Content
               className={cn(
                 'fixed left-1/2 top-1/2 z-[var(--z-modal)] w-[min(92vw,44rem)] -translate-x-1/2 -translate-y-1/2',
-                'max-h-[85vh] overflow-y-auto rounded-2xl border border-amber-500/20 bg-[#0a0a0f]/95 p-5 shadow-2xl shadow-black/60 backdrop-blur-xl',
+                'max-h-[85vh] overflow-y-auto rounded-2xl border border-amber-500/20 bg-slate-900/95 p-5 shadow-2xl shadow-black/60 backdrop-blur-xl',
               )}
               aria-describedby="silent-audit-detail-description"
               data-testid="silent-audit-detail-modal"
@@ -140,16 +140,16 @@ export function SilentAuditDetailModal({ entry, open, onClose }: SilentAuditDeta
                 </div>
                 <p className="mt-2 text-sm leading-relaxed text-white/80">{entry.summary}</p>
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/60">
-                  <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1">
+                  <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1">
                     Execution: {entry.executionId}
                   </span>
-                  <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1">
+                  <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1">
                     Proposal: {entry.proposalId}
                   </span>
                   {detailBadges.map((badge) => (
                     <span
                       key={badge}
-                      className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1"
+                      className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1"
                     >
                       {badge}
                     </span>
@@ -158,7 +158,7 @@ export function SilentAuditDetailModal({ entry, open, onClose }: SilentAuditDeta
               </div>
 
               <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-                <section className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                <section className="space-y-2 rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4">
                   {autonomyExplanation ? (
                     <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.05] px-3 py-3">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-200/70">
@@ -167,12 +167,12 @@ export function SilentAuditDetailModal({ entry, open, onClose }: SilentAuditDeta
                       <p className="mt-2 text-sm leading-relaxed text-white/80">{autonomyExplanation}</p>
                       <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/60">
                         {executionMode ? (
-                          <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1">
+                          <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1">
                             Autonomy: {EXECUTION_MODE_LABELS[executionMode] ?? titleCaseStatus(executionMode)}
                           </span>
                         ) : null}
                         {runtimeDisposition ? (
-                          <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1">
+                          <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1">
                             Disposition: {DISPOSITION_LABELS[runtimeDisposition] ?? titleCaseStatus(runtimeDisposition)}
                           </span>
                         ) : null}
@@ -200,7 +200,7 @@ export function SilentAuditDetailModal({ entry, open, onClose }: SilentAuditDeta
                   )}
                 </section>
 
-                <section className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                <section className="space-y-2 rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">Audit context</div>
                   <dl className="space-y-2 text-sm">
                     {[
@@ -227,7 +227,7 @@ export function SilentAuditDetailModal({ entry, open, onClose }: SilentAuditDeta
                     ]
                       .filter(([, value]) => Boolean(value))
                       .map(([label, value]) => (
-                        <div key={label} className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2">
+                        <div key={label} className="rounded-xl border border-white/[0.12] bg-slate-900/50 px-3 py-2">
                           <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">{label}</dt>
                           <dd className="mt-1 text-white/75">{value}</dd>
                         </div>

@@ -174,11 +174,11 @@ function ConnectionCard({
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
   return (
-    <SurfaceCard className="p-4 sm:p-5 border border-white/10 rounded-xl">
+    <SurfaceCard className="p-4 sm:p-5 border border-white/[0.12] rounded-xl">
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 shrink-0 rounded-xl bg-white/[0.045] border border-white/10 flex items-center justify-center">
+          <div className="w-10 h-10 shrink-0 rounded-xl bg-white/[0.045] border border-white/[0.12] flex items-center justify-center">
             <Building2 className="w-5 h-5 text-white/60" />
           </div>
           <div className="min-w-0">
@@ -309,7 +309,7 @@ function BankPickerModal({
             <button
               key={bank.id}
               className={cn(
-                'w-full flex items-center gap-3 p-4 rounded-xl border border-white/10',
+                'w-full flex items-center gap-3 p-4 rounded-xl border border-white/[0.12]',
                 'bg-white/[0.045] hover:bg-white/[0.07] transition-colors text-left',
                 'disabled:opacity-40 disabled:cursor-not-allowed',
               )}
@@ -318,7 +318,7 @@ function BankPickerModal({
             >
               <div
                 className={cn(
-                  'w-10 h-10 shrink-0 rounded-xl border border-white/10 flex items-center justify-center',
+                  'w-10 h-10 shrink-0 rounded-xl border border-white/[0.12] flex items-center justify-center',
                   bank.bg,
                 )}
               >
@@ -421,7 +421,7 @@ function TransactionReviewRow({
           value={txn.category}
           onChange={(e) => onCategoryChange(txn.id, e.target.value)}
           className={cn(
-            'text-[11px] bg-white/[0.045] border border-white/10 rounded-lg px-2 py-1',
+            'text-[11px] bg-white/[0.045] border border-white/[0.12] rounded-lg px-2 py-1',
             'text-white/70 focus:outline-none focus:border-cyan-500/50',
             'appearance-none cursor-pointer',
           )}
@@ -549,7 +549,7 @@ function ImportReviewModal({
           <div className="overflow-x-auto rounded-xl border border-white/[0.09]">
             <table className="w-full text-left min-w-[560px]">
               <thead>
-                <tr className="border-b border-white/[0.08] bg-white/[0.045]">
+                <tr className="border-b border-white/[0.09] bg-white/[0.045]">
                   <th className="py-2.5 pl-1 pr-2 w-8" />
                   <th className="py-2.5 pr-3 text-[11px] uppercase tracking-widest font-semibold text-white/30">
                     Date

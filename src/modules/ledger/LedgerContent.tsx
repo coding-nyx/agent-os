@@ -1326,7 +1326,7 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                 <p className="text-sm text-white/68 italic">Extracted document data is ready for profile commitment.</p>
               </div>
             )}
-            <div className="flex gap-3 pt-4 border-t border-white/10">
+            <div className="flex gap-3 pt-4 border-t border-white/[0.12]">
               <NeuralButton onClick={handleDocReviewCommit} themeColor="cyan" className="flex-1 font-bold text-xs">Commit</NeuralButton>
               <NeuralButton onClick={() => setIsReviewModalOpen(false)} variant="secondary" className="flex-1 font-bold text-xs">Discard</NeuralButton>
             </div>
@@ -1348,7 +1348,7 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
             {docProposal && (
               <div className="space-y-4">
                 <p className="text-sm text-white/70">{docProposalSummary ?? 'Document analysis ready for review.'}</p>
-                <div className="bg-white/[0.045] border border-white/10 rounded-xl p-3">
+                <div className="bg-white/[0.045] border border-white/[0.12] rounded-xl p-3">
                   <h4 className="text-[11px] font-semibold uppercase tracking-wider text-white/60 mb-2">Extracted Fields</h4>
                   {Object.entries(docProposal.fields).filter(([, v]) => v.length > 0).length === 0 ? (
                     <p className="text-sm text-white/50 italic">No structured fields detected.</p>
@@ -1365,7 +1365,7 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                     </div>
                   )}
                 </div>
-                <div className="bg-slate-900/60 border border-white/10 rounded-xl p-3">
+                <div className="bg-slate-900/60 border border-white/[0.12] rounded-xl p-3">
                   <h4 className="text-[11px] font-semibold uppercase tracking-wider text-white/60 mb-2">Text Preview</h4>
                   <pre className="text-[11px] text-white/50 whitespace-pre-wrap max-h-48 overflow-y-auto">
                     {docProposal.rawTextPreview}
@@ -1374,7 +1374,7 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                 </div>
               </div>
             )}
-            <div className="flex gap-3 pt-4 border-t border-white/10">
+            <div className="flex gap-3 pt-4 border-t border-white/[0.12]">
               <NeuralButton onClick={handleStructuredDocCommit} themeColor="cyan" className="flex-1 font-bold text-xs">Apply</NeuralButton>
               <NeuralButton onClick={() => setIsDocReviewOpen(false)} variant="secondary" className="flex-1 font-bold text-xs">Discard</NeuralButton>
             </div>
@@ -1408,7 +1408,7 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
             />
           </div>
 
-          <div className="flex items-center justify-between border-b border-white/10 px-4 md:px-8 pb-2">
+          <div className="flex items-center justify-between border-b border-white/[0.12] px-4 md:px-8 pb-2">
             <div className="min-w-0 flex-1">
               <NeuralTabGroup
                 tabs={LEDGER_TABS}
@@ -1438,21 +1438,21 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
               <NeuralButton 
                 onClick={() => setIsFieldsModalOpen(true)} 
                 variant="secondary" 
-                className="p-1.5 md:p-2 h-auto rounded-xl text-white/50 hover:text-white"
+                className="p-1.5 md:p-2 min-h-[44px] h-auto rounded-xl text-white/50 hover:text-white"
               >
                 <Settings size={14} className="md:w-4 md:h-4" />
               </NeuralButton>
               <NeuralButton
                 onClick={() => setIsCurrencySettingsOpen(true)}
                 variant="secondary"
-                className="p-1.5 md:p-2 h-auto rounded-xl text-cyan-400/70 hover:text-cyan-300 bg-cyan-500/5 border-cyan-500/20"
+                className="p-1.5 md:p-2 min-h-[44px] h-auto rounded-xl text-cyan-400/70 hover:text-cyan-300 bg-cyan-500/5 border-cyan-500/20"
                 title="Currency settings"
               >
                 <Globe size={14} className="md:w-4 md:h-4" />
               </NeuralButton>
-              <NeuralButton onClick={() => setIsCaptureModalOpen(true)} variant="secondary" className="p-1.5 md:p-2 bg-violet-500/10 border-violet-500/20 text-violet-400 h-auto rounded-xl"><Camera size={14} className="md:w-4 md:h-4" /></NeuralButton>
-              <NeuralButton onClick={openDocumentPicker} variant="secondary" className="p-1.5 md:p-2 bg-cyan-500/10 border-cyan-500/20 text-cyan-400 h-auto rounded-xl"><FileUp size={14} className="md:w-4 md:h-4" /></NeuralButton>
-              <NeuralButton onClick={handleOpenDocuments} variant="secondary" className="p-1.5 md:p-2 h-auto rounded-xl"><FolderOpen size={14} className="md:w-4 md:h-4" /></NeuralButton>
+              <NeuralButton onClick={() => setIsCaptureModalOpen(true)} variant="secondary" className="p-1.5 md:p-2 min-h-[44px] bg-violet-500/10 border-violet-500/20 text-violet-400 h-auto rounded-xl"><Camera size={14} className="md:w-4 md:h-4" /></NeuralButton>
+              <NeuralButton onClick={openDocumentPicker} variant="secondary" className="p-1.5 md:p-2 min-h-[44px] bg-cyan-500/10 border-cyan-500/20 text-cyan-400 h-auto rounded-xl"><FileUp size={14} className="md:w-4 md:h-4" /></NeuralButton>
+              <NeuralButton onClick={handleOpenDocuments} variant="secondary" className="p-1.5 md:p-2 min-h-[44px] min-h-[44px] h-auto rounded-xl"><FolderOpen size={14} className="md:w-4 md:h-4" /></NeuralButton>
             </div>
           </div>
 

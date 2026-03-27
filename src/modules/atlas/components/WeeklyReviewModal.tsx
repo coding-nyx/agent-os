@@ -163,7 +163,7 @@ export function WeeklyReviewCard({
         'group relative flex flex-col gap-4 rounded-2xl border bg-white/[0.045] p-4 transition-all duration-300',
         weeklyReviewPending
           ? 'border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
-          : 'border-white/10 hover:border-white/20',
+          : 'border-white/[0.12] hover:border-white/20',
       )}
     >
       <div className="flex items-center justify-between">
@@ -319,7 +319,7 @@ export function WeeklyReviewModal({
     >
       <div className="space-y-6">
         <section className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-3">
+          <div className="rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">Projection</p>
@@ -339,7 +339,7 @@ export function WeeklyReviewModal({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-3">
+          <div className="rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4 space-y-3">
             <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">Current state</p>
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -372,7 +372,7 @@ export function WeeklyReviewModal({
           />
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-3">
+        <section className="rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-[11px] font-black text-white/30 uppercase tracking-[0.3em]">Blueprint vectors</h3>
             <span className="text-[11px] text-white/25">Grounded in vitality, friction, resilience, and alignment</span>
@@ -392,7 +392,7 @@ export function WeeklyReviewModal({
           )}
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-3">
+        <section className="rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-[11px] font-black text-white/30 uppercase tracking-[0.3em]">Projection control</h3>
             <span className="text-sm font-black text-[var(--module-color-400)]">{capacityPct}%</span>
@@ -466,7 +466,7 @@ export function WeeklyReviewModal({
             new Date(t.deadline).getTime() < Date.now()
           ).sort((a, b) => a.priority - b.priority);
           return (
-            <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.045] p-4">
+            <div className="mt-6 rounded-xl border border-white/[0.12] bg-white/[0.045] p-4">
               <h3 className="text-xs font-bold text-white/70 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <Calendar className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
                 Plan Next Week

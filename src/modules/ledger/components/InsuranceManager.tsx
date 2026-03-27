@@ -176,7 +176,7 @@ function parseOptionalFloat(raw: string): number | undefined {
  */
 function StatCard({ icon, label, value, sub }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.045] px-5 py-4">
+    <div className="flex items-center gap-4 rounded-xl border border-white/[0.12] bg-white/[0.045] px-5 py-4">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
         {icon}
       </div>
@@ -227,7 +227,7 @@ function PolicyCard({ policy, currency, onEdit, onDelete }: PolicyCardProps) {
   };
 
   return (
-    <div className="group relative flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.045] p-5 transition-colors hover:bg-white/[0.05]">
+    <div className="group relative flex flex-col gap-4 rounded-2xl border border-white/[0.12] bg-white/[0.045] p-5 transition-colors hover:bg-white/[0.05]">
       {/* Header row — icon + name + badges */}
       <div className="flex items-start gap-4">
         {/* Type icon */}
@@ -675,7 +675,7 @@ export default function InsuranceManager({
           />
 
           {/* Active toggle */}
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.045] px-4 py-3">
+          <div className="flex items-center justify-between rounded-xl border border-white/[0.12] bg-white/[0.045] px-4 py-3">
             <div>
               <p className="text-sm font-medium text-white">Active Policy</p>
               <p className="text-[11px] text-white/40">

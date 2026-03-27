@@ -210,7 +210,7 @@ function PRCard({ pr, workoutLogs }: PRCardProps) {
     <>
     <div
       className={cn(
-        'bg-white/[0.045] border border-white/10 rounded-2xl p-4',
+        'bg-white/[0.045] border border-white/[0.12] rounded-2xl p-4',
         'hover:bg-white/[0.08] transition-colors flex flex-col gap-1',
       )}
     >

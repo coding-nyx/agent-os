@@ -60,7 +60,7 @@ function recoveryColor(score: number | null | undefined): string {
 }
 
 function recoveryBg(score: number | null | undefined): string {
-  if (typeof score !== 'number') return 'border-white/10 bg-white/[0.045]';
+  if (typeof score !== 'number') return 'border-white/[0.12] bg-white/[0.045]';
   if (score >= 7) return 'border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]';
   if (score >= 4) return 'border-amber-500/20 bg-amber-500/5';
   return 'border-rose-500/20 bg-rose-500/5';
@@ -394,7 +394,7 @@ export function ClearancePanel({ profile, soul, isLocked = false, onAnalyze }: C
             icon={Clock}
             title="No clearance history"
             description="Past clearance decisions will populate this timeline."
-            className="bg-transparent border-white/10"
+            className="bg-transparent border-white/[0.12]"
           />
         ) : (
           <div className="relative pl-6">

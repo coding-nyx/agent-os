@@ -149,7 +149,7 @@ export function ValidationPreview({ field, className }: ValidationPreviewProps) 
       </div>
 
       {/* Field Preview */}
-      <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
+      <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-4">
         <DynamicFormBuilder
           schema={previewSchema}
           values={{ [field.id]: testValue }}
@@ -193,7 +193,7 @@ export function ValidationPreview({ field, className }: ValidationPreviewProps) 
 
       {/* Validation Rules Summary */}
       {field.validation && Object.keys(field.validation).length > 0 && (
-        <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+        <div className="rounded-xl border border-white/[0.12] bg-slate-900/50 p-4">
           <p className="text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2">
             Active Validation Rules
           </p>

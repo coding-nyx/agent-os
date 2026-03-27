@@ -341,7 +341,7 @@ export function AccountManager({
             return (
               <div
                 key={account.id}
-                className="group relative bg-white/[0.045] border border-white/10 rounded-xl p-4 flex flex-col gap-3 transition-all hover:bg-white/[0.07] hover:border-white/20"
+                className="group relative bg-white/[0.045] border border-white/[0.12] rounded-xl p-4 flex flex-col gap-3 transition-all hover:bg-white/[0.07] hover:border-white/20"
               >
                 {/* ── Top Row: color dot + name + action buttons ── */}
                 <div className="flex items-start gap-3">
@@ -466,7 +466,7 @@ export function AccountManager({
                       </span>
                     )}
                     {account.statementDay && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/10 text-[11px] font-semibold text-white/35">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/[0.12] text-[11px] font-semibold text-white/35">
                         Closes {account.statementDay}{['st','nd','rd'][account.statementDay <= 3 ? account.statementDay - 1 : 3] ?? 'th'}
                       </span>
                     )}
@@ -711,7 +711,7 @@ export function AccountManager({
               onChange={(e) => setField('notes', e.target.value)}
               placeholder="Any additional notes…"
               rows={2}
-              className="w-full bg-white/[0.045] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+              className="w-full bg-white/[0.045] border border-white/[0.12] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
             />
           </div>
 

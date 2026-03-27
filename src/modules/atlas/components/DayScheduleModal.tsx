@@ -246,7 +246,7 @@ export function DayScheduleModal({
                     'w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border text-left transition-all duration-150',
                     isSelected
                       ? 'border-[var(--module-color-400)]/60 bg-[var(--module-accent-faint)]'
-                      : 'border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.045] hover:border-white/10',
+                      : 'border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.045] hover:border-white/[0.12]',
                   )}
                   aria-pressed={isSelected}
                 >

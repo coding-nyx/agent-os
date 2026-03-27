@@ -71,7 +71,7 @@ function DeadlineBadge({ deadline }: { deadline: string }) {
         'text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border',
         isUrgent
           ? 'text-amber-300 border-amber-400/30 bg-amber-400/10'
-          : 'text-white/40 border-white/10 bg-white/[0.045]',
+          : 'text-white/40 border-white/[0.12] bg-white/[0.045]',
       )}
     >
       Due {formatted}
@@ -226,7 +226,7 @@ export function PriorityInbox({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-3"
+      className="rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4 space-y-3"
       aria-label="Priority Inbox"
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}

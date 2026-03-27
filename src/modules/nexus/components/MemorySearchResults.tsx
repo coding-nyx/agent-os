@@ -102,7 +102,7 @@ export function MemorySearchResults({
           <button
             type="button"
             onClick={onDismiss}
-            className="rounded-full border border-white/10 p-1 text-white/35 transition hover:border-white/20 hover:text-white/60"
+            className="rounded-full border border-white/[0.12] p-1 text-white/35 transition hover:border-white/20 hover:text-white/60"
             aria-label="Dismiss memory results"
           >
             <X className="h-3 w-3" />
@@ -127,7 +127,7 @@ export function MemorySearchResults({
                 <span className={cn('text-[11px] font-bold uppercase', MODULE_COLORS[result.moduleId] || 'text-white/40')}>
                   [{result.moduleId}]
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.045] px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
                   {result.type}
                 </span>
                 <span className="text-[11px] text-white/25">

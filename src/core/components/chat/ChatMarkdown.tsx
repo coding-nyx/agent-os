@@ -33,7 +33,7 @@ const PROSE_BASE =
   'prose-h3:text-white/90 prose-h3:font-semibold ' +
   'prose-blockquote:border-l-2 prose-blockquote:border-white/20 ' +
   'prose-blockquote:text-white/60 prose-blockquote:not-italic ' +
-  'prose-hr:border-white/10 ' +
+  'prose-hr:border-white/[0.12] ' +
   'prose-thead:text-white/70 prose-th:text-left ' +
   'prose-td:text-white/80 ' +
   // Suppress prose default styling for pre/code — CodeBlock handles it
@@ -136,7 +136,7 @@ export function ChatMarkdown({ content, className, isStreaming = false, proseSiz
                   alt={alt ?? ''}
                   loading="lazy"
                   decoding="async"
-                  className="max-h-80 max-w-full w-auto rounded-xl border border-white/10 object-contain shadow-lg"
+                  className="max-h-80 max-w-full w-auto rounded-xl border border-white/[0.12] object-contain shadow-lg"
                 />
               </span>
             );
@@ -153,7 +153,7 @@ export function ChatMarkdown({ content, className, isStreaming = false, proseSiz
 
           // ── Horizontal rule ──────────────────────────────────────────────
           hr() {
-            return <hr className="border-white/10 my-4" />;
+            return <hr className="border-white/[0.12] my-4" />;
           },
 
           // ── Task list items (GFM) ────────────────────────────────────────

@@ -62,7 +62,7 @@ function SourceCard({
         "group flex flex-col rounded-3xl border transition-all overflow-hidden h-full",
         isRead
           ? 'border-white/[0.09] bg-white/[0.045]'
-          : 'border-white/10 bg-white/[0.045] hover:border-white/20 hover:bg-white/[0.06]'
+          : 'border-white/[0.12] bg-white/[0.045] hover:border-white/20 hover:bg-white/[0.06]'
       )}
     >
       {source.imageUrl && (

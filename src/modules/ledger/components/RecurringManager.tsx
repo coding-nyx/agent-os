@@ -132,7 +132,7 @@ interface StatCardProps {
 
 function StatCard({ icon, label, value, sub }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.045] px-5 py-4">
+    <div className="flex items-center gap-4 rounded-xl border border-white/[0.12] bg-white/[0.045] px-5 py-4">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
         {icon}
       </div>
@@ -365,7 +365,7 @@ export function RecurringManager({
       {/* Upcoming bills strip                                                */}
       {/* ------------------------------------------------------------------ */}
       {upcomingBills.length > 0 && (
-        <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-4">
           <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-white/40">
             Upcoming — Next 30 Days
           </p>
@@ -373,7 +373,7 @@ export function RecurringManager({
             {upcomingBills.map((bill, idx) => (
               <div
                 key={`${bill.id}-${idx}`}
-                className="flex shrink-0 flex-col gap-1.5 rounded-lg border border-white/10 bg-white/[0.045] p-3 min-w-[130px]"
+                className="flex shrink-0 flex-col gap-1.5 rounded-lg border border-white/[0.12] bg-white/[0.045] p-3 min-w-[130px]"
               >
                 <div className="flex items-center gap-1.5">
                   <span
@@ -413,7 +413,7 @@ export function RecurringManager({
           description="Set up automatic tracking for your regular income and bills."
         />
       ) : (
-        <div className="flex flex-col divide-y divide-white/5 rounded-xl border border-white/10 bg-white/[0.045]">
+        <div className="flex flex-col divide-y divide-white/5 rounded-xl border border-white/[0.12] bg-white/[0.045]">
           {sortedRules.map((rule) => {
             const badge = FREQUENCY_BADGE[rule.frequency];
             const accountName = rule.accountId ? accountMap[rule.accountId] : undefined;
@@ -601,7 +601,7 @@ export function RecurringManager({
               value={form.notes}
               onChange={(e) => handleFieldChange('notes', e.target.value)}
               className={[
-                'w-full resize-none rounded-lg border border-white/10 bg-white/[0.045] px-3 py-2',
+                'w-full resize-none rounded-lg border border-white/[0.12] bg-white/[0.045] px-3 py-2',
                 'text-sm text-white placeholder:text-white/30 outline-none',
                 'focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-colors',
               ].join(' ')}

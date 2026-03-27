@@ -131,7 +131,7 @@ export function CodeBlock({ children, className }: CodeBlockProps) {
             'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all duration-200 select-none',
             copied
               ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-              : 'bg-white/[0.045] hover:bg-white/[0.08] text-white/30 hover:text-white/60 border border-white/[0.09] hover:border-white/10'
+              : 'bg-white/[0.045] hover:bg-white/[0.08] text-white/30 hover:text-white/60 border border-white/[0.09] hover:border-white/[0.12]'
           )}
         >
           {copied ? (

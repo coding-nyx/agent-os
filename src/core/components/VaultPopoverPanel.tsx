@@ -191,7 +191,7 @@ function PersistencePill({
         'transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-indigo-500/50',
         active
           ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-          : 'bg-white/[0.045] text-white/40 border border-white/10 hover:bg-white/10',
+          : 'bg-white/[0.045] text-white/40 border border-white/[0.12] hover:bg-white/10',
       ].join(' ')}
     >
       {icon}

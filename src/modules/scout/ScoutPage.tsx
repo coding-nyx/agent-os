@@ -568,7 +568,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           <h3 className="mt-1 text-panel-heading text-white">Research history</h3>
           <p className="mt-1 text-body-secondary">Open a session to continue an inquiry or review the latest status.</p>
         </div>
-        <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-white/60">
+        <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-white/60">
           {sessions.length}
         </span>
       </div>
@@ -832,7 +832,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 role="dialog"
                 aria-modal="true"
                 aria-label="Research sessions"
-                className="flex h-full w-full max-w-[min(24rem,88vw)] flex-col overflow-hidden border-r border-white/10 bg-[#05050a]/95 shadow-2xl"
+                className="flex h-full w-full max-w-[min(24rem,88vw)] flex-col overflow-hidden border-r border-white/[0.12] bg-[#05050a]/95 shadow-2xl"
               >
                 <div className="flex items-center justify-between border-b border-white/[0.09] px-4 py-4 sm:px-5">
                   <div>
@@ -877,7 +877,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 role="dialog"
                 aria-modal="true"
                 aria-label={`${activeSession.topic} artifacts`}
-                className="absolute inset-x-0 bottom-0 flex max-h-[var(--shell-overlay-max-height)] min-h-[22rem] flex-col overflow-hidden rounded-t-[2rem] border-t border-white/10 bg-[#05050a]/95 shadow-2xl"
+                className="absolute inset-x-0 bottom-0 flex max-h-[var(--shell-overlay-max-height)] min-h-[22rem] flex-col overflow-hidden rounded-t-[2rem] border-t border-white/[0.12] bg-[#05050a]/95 shadow-2xl"
               >
                 <div className="flex items-center justify-between border-b border-white/[0.09] px-4 py-4 sm:px-5">
                   <div>
@@ -952,7 +952,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 </div>
               </div>
             )}
-            <div className="flex gap-3 border-t border-white/10 pt-4">
+            <div className="flex gap-3 border-t border-white/[0.12] pt-4">
               <NeuralButton
                 onClick={handleDocProposalCommit}
                 themeColor="lime"
@@ -986,7 +986,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#05050a] p-6 shadow-2xl"
+                className="w-full max-w-lg rounded-3xl border border-white/[0.12] bg-[#05050a] p-6 shadow-2xl"
               >
                 <div className="mb-6 flex items-center justify-between">
                   <div>

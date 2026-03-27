@@ -215,7 +215,7 @@ export function DiagnosisSidebar({
         <div className="shrink-0 p-3 border-t border-white/[0.09]">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.12] bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors"
           >
             <FileUp className="w-3 h-3" />
             Upload Document

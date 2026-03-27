@@ -229,7 +229,7 @@ export function HabitBuilder({
             }}
             size="sm"
             variant="ghost"
-            className="border border-white/10"
+            className="border border-white/[0.12]"
           >
             <Sparkles className="w-4 h-4 mr-2" />
             Templates
@@ -308,7 +308,7 @@ export function HabitBuilder({
                       key={tpl.id}
                       type="button"
                       onClick={() => handleSelectTemplate(tpl)}
-                      className="text-left p-2.5 rounded-xl border border-white/10 bg-white/[0.045] hover:bg-white/10 hover:border-[var(--module-accent-border)] transition-all"
+                      className="text-left p-2.5 rounded-xl border border-white/[0.12] bg-white/[0.045] hover:bg-white/10 hover:border-[var(--module-accent-border)] transition-all"
                     >
                       <div className="text-base mb-1">{tpl.icon}</div>
                       <div className="text-[11px] font-semibold text-white/80 leading-tight">{tpl.title}</div>
@@ -448,7 +448,7 @@ export function HabitBuilder({
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/[0.12]">
           <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
             Cancel
           </NeuralButton>

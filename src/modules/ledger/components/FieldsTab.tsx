@@ -84,7 +84,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   assets: 'text-[var(--module-color-400)] border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]',
   expenses: 'text-amber-400 border-amber-500/20 bg-amber-500/5',
   liabilities: 'text-red-400 border-red-500/20 bg-red-500/5',
-  custom: 'text-slate-400 border-white/10 bg-white/[0.045]',
+  custom: 'text-slate-400 border-white/[0.12] bg-white/[0.045]',
 };
 
 const CATEGORY_ACCENT: Record<string, string> = {
@@ -471,7 +471,7 @@ export function FieldsTab({
           variant="outline"
           onClick={onAddField}
           className={cn(
-            'w-full p-4 border-2 border-dashed border-white/10 min-h-[44px] h-auto',
+            'w-full p-4 border-2 border-dashed border-white/[0.12] min-h-[44px] h-auto',
             'hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)]',
             'flex items-center justify-center gap-2 text-white/40 hover:text-[var(--module-color-400)]',
           )}

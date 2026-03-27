@@ -402,7 +402,7 @@ export const ChatInterface = React.memo(function ChatInterface({
             <summary className="list-none p-2.5 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/10 cursor-pointer transition-all focus:outline-none [&::-webkit-details-marker]:hidden min-w-[44px] min-h-[44px] flex items-center justify-center" title="Chat Options">
               <MoreVertical className="w-4 h-4" />
             </summary>
-            <div className="absolute right-0 top-full mt-1 w-40 p-1 bg-[#0a0a0f] border border-white/[0.12] rounded-xl shadow-2xl">
+            <div className="absolute right-0 top-full mt-1 w-40 p-1 bg-slate-900 border border-white/[0.12] rounded-xl shadow-2xl">
               <NeuralButton
                 variant="ghost"
                 onClick={(e) => {

@@ -29,7 +29,7 @@ export function PortalledModal({ isOpen, onClose, children }: PortalledModalProp
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col"
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border border-white/[0.12] rounded-2xl p-6 shadow-2xl flex flex-col"
           >
             {children}
           </motion.div>

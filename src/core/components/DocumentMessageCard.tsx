@@ -116,7 +116,7 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
   if (upload) {
     return (
       <div className="w-full max-w-sm">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-xl overflow-hidden">
+        <div className="rounded-2xl border border-white/[0.12] bg-white/[0.045] backdrop-blur-xl overflow-hidden">
           <div className="p-3.5">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">Uploaded documents</p>
             {upload.caption && (
@@ -128,7 +128,7 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
                 return (
                   <div
                     key={`${file.name}-${index}`}
-                    className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2"
+                    className="flex items-center gap-3 rounded-xl border border-white/[0.12] bg-slate-900/50 px-3 py-2"
                   >
                     {file.previewDataUrl ? (
                       <img
@@ -137,7 +137,7 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
                         className="h-12 w-12 rounded-lg object-cover"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-lg border border-white/10 bg-white/[0.045] flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-lg border border-white/[0.12] bg-white/[0.045] flex items-center justify-center">
                         <Icon className={cn("w-5 h-5", themeAccent)} />
                       </div>
                     )}
@@ -172,11 +172,11 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
   return (
     <div className="w-full max-w-sm">
       {/* Card */}
-      <div className="rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-xl overflow-hidden">
+      <div className="rounded-2xl border border-white/[0.12] bg-white/[0.045] backdrop-blur-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-start gap-3 p-3.5">
           <div className={cn(
-            "w-10 h-10 rounded-xl border border-white/10 bg-white/[0.045] flex items-center justify-center shrink-0",
+            "w-10 h-10 rounded-xl border border-white/[0.12] bg-white/[0.045] flex items-center justify-center shrink-0",
           )}>
             <Icon className={cn("w-5 h-5", themeAccent)} />
           </div>

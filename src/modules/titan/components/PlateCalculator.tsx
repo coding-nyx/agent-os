@@ -102,7 +102,7 @@ export function PlateCalculator({ targetWeight, unit: initialUnit = 'kg' }: Plat
   const hasRemainder = remainder > 0.01;
 
   return (
-    <div className="rounded-xl bg-white/[0.045] border border-white/10 p-3 space-y-2.5">
+    <div className="rounded-xl bg-white/[0.045] border border-white/[0.12] p-3 space-y-2.5">
       {/* Header row */}
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-black uppercase tracking-wider text-white/40">

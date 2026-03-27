@@ -204,7 +204,7 @@ function ToggleSwitch({ enabled, onChange, label }: ToggleSwitchProps): React.Re
         'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black',
         enabled
           ? 'bg-emerald-500 border-emerald-400/40 focus-visible:ring-emerald-400'
-          : 'bg-white/10 border-white/10 focus-visible:ring-white/30',
+          : 'bg-white/10 border-white/[0.12] focus-visible:ring-white/30',
       )}
     >
       <span
@@ -295,7 +295,7 @@ interface PanelTabBarProps {
 
 function PanelTabBar({ active, onChangeTab, notificationCount }: PanelTabBarProps): React.ReactElement {
   return (
-    <div className="flex border-b border-white/[0.08] shrink-0">
+    <div className="flex border-b border-white/[0.09] shrink-0">
       {(['notifications', 'settings'] as const).map((tab) => (
         <button
           key={tab}
@@ -465,7 +465,7 @@ export default function AlertsCenter({
           )}
         >
           {/* Panel header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08] shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.09] shrink-0">
             <div className="flex items-center gap-2">
               <BellRing size={14} className="text-white/50" strokeWidth={2} />
               <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/70">
@@ -599,7 +599,7 @@ function SettingsTab({ alertRules, onToggle, onDelete, onAddDefaults }: Settings
   if (!hasRules) {
     return (
       <div className="flex flex-col items-center justify-center py-10 px-4 gap-4 text-center">
-        <div className="w-10 h-10 rounded-full bg-white/[0.045] border border-white/10 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full bg-white/[0.045] border border-white/[0.12] flex items-center justify-center">
           <Settings size={16} className="text-white/30" strokeWidth={2} />
         </div>
         <div>

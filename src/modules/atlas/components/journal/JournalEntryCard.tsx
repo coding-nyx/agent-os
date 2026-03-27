@@ -95,7 +95,7 @@ export function JournalEntryCard({ entry, onClick }: JournalEntryCardProps) {
               </span>
             ))}
             {entry.tags.length > 4 && (
-              <span className="px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/10 text-[11px] text-white/30">
+              <span className="px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/[0.12] text-[11px] text-white/30">
                 +{entry.tags.length - 4}
               </span>
             )}

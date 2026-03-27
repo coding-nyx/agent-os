@@ -232,7 +232,7 @@ function InjuryCard({ injury, onMarkResolved, saving }: InjuryCardProps) {
           </p>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             {/* Body region */}
-            <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white/[0.045] border border-white/10 text-white/60">
+            <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white/[0.045] border border-white/[0.12] text-white/60">
               {formatBodyRegion(injury.bodyRegion)}
             </span>
             {/* Severity */}

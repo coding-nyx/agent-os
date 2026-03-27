@@ -257,7 +257,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                   'focus:outline-none focus:ring-1 transition-all',
                   parsed
                     ? 'border-[var(--module-accent-border)] focus:ring-[var(--module-accent-ring)]'
-                    : 'border-white/[0.08] focus:ring-white/10'
+                    : 'border-white/[0.09] focus:ring-white/10'
                 )}
               />
               {submitted && (
@@ -366,7 +366,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
             </div>
 
             {/* Expense / Income segmented control */}
-            <div className="flex rounded-xl border border-white/[0.08] overflow-hidden bg-slate-900/50">
+            <div className="flex rounded-xl border border-white/[0.09] overflow-hidden bg-slate-900/50">
               <button
                 onClick={() => setManualType('expense')}
                 aria-pressed={manualType === 'expense'}
@@ -404,7 +404,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                 <ChevronDown className={cn('w-3.5 h-3.5 text-white/30 transition-transform', showCategories && 'rotate-180')} />
               </button>
               {showCategories && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-20 p-2 flex flex-wrap gap-1 max-h-44 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/[0.12] rounded-xl shadow-2xl z-20 p-2 flex flex-wrap gap-1 max-h-44 overflow-y-auto">
                   {allCategories.slice(0, 16).map(cat => (
                     <button
                       key={cat}

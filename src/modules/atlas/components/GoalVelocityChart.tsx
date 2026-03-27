@@ -213,7 +213,7 @@ export function GoalVelocityChart({ tasks, goals = [] }: GoalVelocityChartProps)
   const projection = useMemo(() => computeProjection(tasks, goals), [tasks, goals]);
 
   return (
-    <div className="w-full max-w-3xl rounded-xl border border-white/10 bg-white/[0.045] p-4">
+    <div className="w-full max-w-3xl rounded-xl border border-white/[0.12] bg-white/[0.045] p-4">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp className="w-4 h-4 text-[var(--module-color-400)]" aria-hidden="true" />

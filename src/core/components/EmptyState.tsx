@@ -25,7 +25,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'surface-card border border-dashed border-white/10 text-white/60 flex flex-col items-center text-center',
+        'surface-card border border-dashed border-white/[0.12] text-white/60 flex flex-col items-center text-center',
         sizeClass,
         className
       )}

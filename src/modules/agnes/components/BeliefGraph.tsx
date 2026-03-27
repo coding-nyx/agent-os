@@ -279,7 +279,7 @@ export function BeliefGraph({ profile }: BeliefGraphProps): React.ReactElement {
 
       {/* ── Detail panel ── */}
       {selectedNode && (
-        <div className="bg-white/[0.045] border border-white/10 rounded-xl p-3 mt-2">
+        <div className="bg-white/[0.045] border border-white/[0.12] rounded-xl p-3 mt-2">
           <div className="flex items-center gap-2">
             {/* Sentiment dot */}
             <div

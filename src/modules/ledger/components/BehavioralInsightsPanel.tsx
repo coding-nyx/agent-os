@@ -319,7 +319,7 @@ export function BehavioralInsightsPanel({
             size="sm"
             title="No expenses tracked"
             description="Add expenses to see ROI analysis."
-            className="bg-transparent border-white/10"
+            className="bg-transparent border-white/[0.12]"
           />
         ) : (
           <div className="space-y-5">
@@ -387,7 +387,7 @@ export function BehavioralInsightsPanel({
             title="No debts tracked"
             description="Great! Add any outstanding debts to see payoff projection."
             icon={Target}
-            className="bg-transparent border-white/10"
+            className="bg-transparent border-white/[0.12]"
           />
         ) : (
           <div className="space-y-4">
@@ -424,7 +424,7 @@ export function BehavioralInsightsPanel({
             size="sm"
             title="No savings goals"
             description="Set a savings target in your profile to track progress."
-            className="bg-transparent border-white/10"
+            className="bg-transparent border-white/[0.12]"
           />
         ) : (
           <div className="flex flex-wrap gap-6 justify-center pt-2">

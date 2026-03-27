@@ -540,7 +540,7 @@ export function BodyWeightTracker({
             />
             {photoPreview ? (
               <div className="relative w-full max-w-[160px]">
-                <img src={photoPreview} alt="preview" className="w-full rounded-xl object-cover max-h-40 border border-white/10" />
+                <img src={photoPreview} alt="preview" className="w-full rounded-xl object-cover max-h-40 border border-white/[0.12]" />
                 <button
                   onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
                   className="absolute top-1 right-1 bg-slate-900/85 rounded-full p-0.5 text-white/60 hover:text-white"
@@ -551,7 +551,7 @@ export function BodyWeightTracker({
                 variant="ghost"
                 size="sm"
                 onClick={() => photoInputRef.current?.click()}
-                className="flex items-center gap-2 text-white/40 hover:text-white/70 border border-dashed border-white/10 hover:border-white/20 px-4 py-2 rounded-xl"
+                className="flex items-center gap-2 text-white/40 hover:text-white/70 border border-dashed border-white/[0.12] hover:border-white/20 px-4 py-2 rounded-xl"
               >
                 <Camera className="w-4 h-4" />
                 Add photo

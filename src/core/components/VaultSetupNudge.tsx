@@ -108,7 +108,7 @@ export function VaultSetupNudge({ onClose }: VaultSetupNudgeProps) {
         className={[
           'fixed bottom-0 inset-x-0',
           'md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-sm',
-          'w-full bg-[#0a0a12] border border-white/10',
+          'w-full bg-[#0a0a12] border border-white/[0.12]',
           'rounded-t-2xl md:rounded-2xl p-6 z-[var(--z-modal)]',
         ].join(' ')}
         variants={cardVariants}

@@ -926,7 +926,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                       Start Recovery
                     </NeuralButton>
 
-                    <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[11px] sm:text-xs">
+                    <div className="flex items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.045] px-3 py-1.5 text-[11px] sm:text-xs">
                       <span className="font-medium text-white/45">
                         {directWrite ? 'Direct Logbook' : 'Coach Review'}
                       </span>

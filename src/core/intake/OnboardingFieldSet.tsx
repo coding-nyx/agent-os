@@ -133,7 +133,7 @@ export function OnboardingFieldSet({
                   idx === currentSection
                     ? cn(accentClass, 'opacity-100')
                     : idx < currentSection
-                    ? 'text-white/50 border-white/10 bg-white/[0.045]'
+                    ? 'text-white/50 border-white/[0.12] bg-white/[0.045]'
                     : 'text-white/25 border-white/[0.09] bg-transparent',
                 )}
               >

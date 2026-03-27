@@ -27,9 +27,10 @@ export function GlassCard({
     ? 'bg-white/[0.072] border-white/[0.13]'
     : 'bg-white/[0.045] border-white/[0.09]';
 
-  return (
-    <Tag
-      className={cn(
+  return React.createElement(
+    Tag,
+    {
+      className: cn(
         'relative backdrop-blur-2xl border rounded-card overflow-hidden',
         'shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]',
         bgBorder,
@@ -41,18 +42,15 @@ export function GlassCard({
         ],
         glow && 'shadow-2xl',
         className
-      )}
-      style={
-        glow
-          ? {
-              boxShadow: `0 0 40px ${glowColor}, 0 2px 8px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.10)`,
-            }
-          : undefined
-      }
-    >
-      <div className="relative z-10 h-full">
-        {children}
-      </div>
-    </Tag>
+      ),
+      style: glow
+        ? {
+            boxShadow: `0 0 40px ${glowColor}, 0 2px 8px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.10)`,
+          }
+        : undefined,
+    },
+    <div className="relative z-10 h-full">
+      {children}
+    </div>
   );
 }

@@ -330,7 +330,7 @@ export default function FinancialCalendar({ profile, currency }: FinancialCalend
     <section className="flex flex-col gap-5" aria-label="Financial Calendar">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-5 py-4">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.12] bg-white/[0.045] px-5 py-4">
         {/* Month navigation – previous */}
         <NeuralButton
           variant="ghost"
@@ -433,7 +433,7 @@ export default function FinancialCalendar({ profile, currency }: FinancialCalend
       {/* ── Day Detail Panel ────────────────────────────────────────────── */}
       {selectedDay !== null && (
         <div
-          className="rounded-2xl border border-white/10 bg-white/4 p-4"
+          className="rounded-2xl border border-white/[0.12] bg-white/4 p-4"
           aria-live="polite"
           aria-label="Events for selected day"
         >

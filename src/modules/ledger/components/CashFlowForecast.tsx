@@ -133,7 +133,7 @@ interface SummaryCardProps {
 
 function SummaryCard({ label, value, subLabel, colorClass = 'text-white' }: SummaryCardProps) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl bg-white/[0.045] border border-white/10 px-4 py-3 flex-1 min-w-0">
+    <div className="flex flex-col gap-1 rounded-xl bg-white/[0.045] border border-white/[0.12] px-4 py-3 flex-1 min-w-0">
       <span className="text-xs text-white/60 uppercase tracking-wide truncate">{label}</span>
       <span className={`text-lg font-semibold leading-tight truncate ${colorClass}`}>{value}</span>
       {subLabel && <span className="text-xs text-white/40 truncate">{subLabel}</span>}
@@ -157,7 +157,7 @@ function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps)
   const balance = payload[0].value;
 
   return (
-    <div className="rounded-xl bg-gray-900/90 border border-white/10 p-3 shadow-xl backdrop-blur-sm min-w-[180px] max-w-[260px]">
+    <div className="rounded-xl bg-gray-900/90 border border-white/[0.12] p-3 shadow-xl backdrop-blur-sm min-w-[180px] max-w-[260px]">
       <p className="text-xs text-white/60 mb-1">{label}</p>
       <p className="text-sm font-semibold text-white mb-2">
         {formatCurrency(balance, currency)}
@@ -199,7 +199,7 @@ function MonthlyTable({ forecast, currency }: MonthlyTableProps) {
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-white/10">
+          <tr className="border-b border-white/[0.12]">
             {['Month', 'Income', 'Expenses', 'Net'].map((col) => (
               <th
                 key={col}
@@ -579,7 +579,7 @@ export function CashFlowForecast({
             </div>
 
             {/* ── Monthly summary table ─────────────────────────────────────── */}
-            <div className="rounded-xl bg-white/[0.045] border border-white/10 p-4">
+            <div className="rounded-xl bg-white/[0.045] border border-white/[0.12] p-4">
               <p className="text-xs font-medium text-white/50 uppercase tracking-wide mb-3">
                 Monthly Summary
               </p>
@@ -587,7 +587,7 @@ export function CashFlowForecast({
             </div>
 
             {/* ── What-if panel ─────────────────────────────────────────────── */}
-            <div className="rounded-xl bg-white/[0.045] border border-white/10 overflow-hidden">
+            <div className="rounded-xl bg-white/[0.045] border border-white/[0.12] overflow-hidden">
               <button
                 onClick={() => setWhatIfOpen((o) => !o)}
                 className={[
@@ -607,7 +607,7 @@ export function CashFlowForecast({
               </button>
 
               {whatIfOpen && (
-                <div className="px-4 pb-4 border-t border-white/10 pt-3">
+                <div className="px-4 pb-4 border-t border-white/[0.12] pt-3">
                   <WhatIfPanel
                     recurringRules={recurringRules}
                     startingBalance={startingBalance}

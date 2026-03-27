@@ -339,7 +339,7 @@ export const CollapsibleAIPanel = forwardRef<CollapsibleAIPanelRef, CollapsibleA
                 exit="hidden"
                 className={cn(
                   'fixed top-0 right-0 bottom-0 z-[80] flex flex-col',
-                  'bg-[#0a0a0f]/95 backdrop-blur-2xl border-l border-white/10',
+                  'bg-slate-900/95 backdrop-blur-2xl border-l border-white/[0.12]',
                   isMobile ? 'w-full' : 'w-[400px]',
                 )}
               >

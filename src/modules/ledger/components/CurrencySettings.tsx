@@ -104,7 +104,7 @@ export default function CurrencySettings({
           )}
 
           {storedRates.length > 0 && (
-            <div className="divide-y divide-white/5 rounded-xl border border-white/10 overflow-hidden">
+            <div className="divide-y divide-white/5 rounded-xl border border-white/[0.12] overflow-hidden">
               {storedRates.map(r => (
                 <div key={`${r.from}-${r.to}`} className="flex items-center justify-between px-4 py-2.5 bg-white/[0.045]">
                   <div className="flex items-center gap-3">
@@ -178,7 +178,7 @@ export default function CurrencySettings({
           )}
         </div>
 
-        <div className="pt-2 border-t border-white/10">
+        <div className="pt-2 border-t border-white/[0.12]">
           <NeuralButton variant="ghost" size="sm" onClick={onClose} className="w-full">
             Done
           </NeuralButton>

@@ -223,7 +223,7 @@ function SummaryHeroBar({
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className="rounded-xl border border-white/10 bg-white/[0.045] px-4 py-3 backdrop-blur-sm"
+          className="rounded-xl border border-white/[0.12] bg-white/[0.045] px-4 py-3 backdrop-blur-sm"
         >
           <div className="mb-1 flex items-center gap-1.5">
             {stat.icon}
@@ -329,7 +329,7 @@ function HoldingsTable({
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-sm">
         <thead>
-          <tr className="border-b border-white/10 text-left text-[11px] uppercase tracking-wide text-white/40">
+          <tr className="border-b border-white/[0.12] text-left text-[11px] uppercase tracking-wide text-white/40">
             <th className="pb-2 pr-3">Name / Ticker</th>
             <th className="pb-2 pr-3">Type</th>
             <th className="pb-2 pr-3 text-right">Qty</th>
@@ -557,7 +557,7 @@ function CRUDModal({
           {/* Live computed current value — read-only */}
           <div>
             <p className="mb-1 text-xs font-medium text-white/60">Current Value (computed)</p>
-            <div className="flex h-10 items-center rounded-lg border border-white/10 bg-white/[0.045] px-3 text-sm font-semibold text-emerald-400">
+            <div className="flex h-10 items-center rounded-lg border border-white/[0.12] bg-white/[0.045] px-3 text-sm font-semibold text-emerald-400">
               {formatCurrency(computedValue, currency)}
             </div>
           </div>
@@ -876,7 +876,7 @@ export default function InvestmentPortfolio({
       <div className="grid gap-6 md:grid-cols-[280px_1fr]">
 
         {/* Left: Allocation chart */}
-        <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4 backdrop-blur-sm">
+        <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-4 backdrop-blur-sm">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">
             Allocation by Type
           </p>
@@ -887,7 +887,7 @@ export default function InvestmentPortfolio({
         </div>
 
         {/* Right: Holdings table */}
-        <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4 backdrop-blur-sm">
+        <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-4 backdrop-blur-sm">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">
             Holdings
           </p>

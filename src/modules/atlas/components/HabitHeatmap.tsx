@@ -192,7 +192,7 @@ export function HabitHeatmap({ habit }: HabitHeatmapProps) {
   const gutterWidth = 18;
 
   return (
-    <div className="bg-white/[0.045] border border-white/10 rounded-xl p-4">
+    <div className="bg-white/[0.045] border border-white/[0.12] rounded-xl p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] truncate max-w-[180px]">

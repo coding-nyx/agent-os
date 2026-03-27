@@ -19,7 +19,7 @@ const PRIORITY_CONFIG: Record<NotificationPriority, {
   duration: number;
 }> = {
   info: {
-    border: 'border-white/10',
+    border: 'border-white/[0.12]',
     bg: 'bg-[#05050a]/95',
     icon: Bell,
     iconColor: 'text-white/50',

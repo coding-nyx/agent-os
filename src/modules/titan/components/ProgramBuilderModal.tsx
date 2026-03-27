@@ -165,7 +165,7 @@ export function ProgramBuilderModal({ isOpen, onClose, onSave, existingRoutines 
                </NeuralButton>
             </div>
 
-            <div className="flex justify-between pt-4 border-t border-white/10">
+            <div className="flex justify-between pt-4 border-t border-white/[0.12]">
                <NeuralButton variant="ghost" onClick={() => setStep('meta')}>Back</NeuralButton>
                <NeuralButton size="xl" onClick={() => setStep('schedule')}>Next: Schedule</NeuralButton>
             </div>
@@ -224,7 +224,7 @@ export function ProgramBuilderModal({ isOpen, onClose, onSave, existingRoutines 
              })}
            </div>
 
-           <div className="flex justify-between pt-4 border-t border-white/10">
+           <div className="flex justify-between pt-4 border-t border-white/[0.12]">
               <NeuralButton variant="ghost" onClick={() => setStep('phases')}>Back</NeuralButton>
               <NeuralButton 
                 size="xl" 
@@ -241,7 +241,7 @@ export function ProgramBuilderModal({ isOpen, onClose, onSave, existingRoutines 
       {/* Routine Builder Sub-View */}
       {editingDay && (
         <div className="absolute inset-0 z-50 bg-[#0c0c12] flex flex-col">
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+            <div className="p-4 border-b border-white/[0.12] flex items-center justify-between">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-white/60">Editing {editingDay}</h3>
                 <NeuralButton variant="ghost" size="sm" onClick={() => setEditingDay(null)}>Cancel</NeuralButton>
             </div>

@@ -91,7 +91,7 @@ const TAX_CATEGORY_ROW: Record<TaxCategory, string> = {
   investment: 'bg-indigo-500/10 border-indigo-500/20',
   'non-deductible': 'bg-red-500/10 border-red-500/20',
   partial: 'bg-amber-500/10 border-amber-500/20',
-  unknown: 'bg-white/[0.045] border-white/10',
+  unknown: 'bg-white/[0.045] border-white/[0.12]',
 };
 
 const ALL_TAX_CATEGORIES: TaxCategory[] = [
@@ -237,7 +237,7 @@ function CollapsiblePanel({
           {title}
         </span>
         {badge !== undefined && badge > 0 && (
-          <span className="text-[11px] font-semibold text-white/40 bg-white/[0.045] border border-white/10 rounded-full px-2 py-0.5">
+          <span className="text-[11px] font-semibold text-white/40 bg-white/[0.045] border border-white/[0.12] rounded-full px-2 py-0.5">
             {badge}
           </span>
         )}
@@ -263,7 +263,7 @@ interface SummaryHeroProps {
 
 function SummaryHero({ summary, currency, isPrefilled }: SummaryHeroProps) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-5 sm:p-6 space-y-4">
+    <div className="rounded-2xl border border-white/[0.12] bg-white/[0.045] p-5 sm:p-6 space-y-4">
       {isPrefilled && (
         <p className="text-[11px] text-white/35 uppercase tracking-widest font-semibold">
           Last Generated:{' '}
@@ -411,7 +411,7 @@ function DeductionsPanel({ deductions, currency, onDelete, onAdd }: DeductionsPa
       {deductions.map((ded) => (
         <div
           key={ded.id}
-          className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.045] p-3"
+          className="flex items-start justify-between gap-3 rounded-xl border border-white/[0.12] bg-white/[0.045] p-3"
         >
           <div className="flex flex-col gap-1.5 min-w-0 flex-1">
             <p className="text-sm font-semibold text-white truncate">{ded.label}</p>
@@ -482,7 +482,7 @@ function RecentDeductibleTransactions({
         <button
           key={tx.id}
           onClick={() => onSelectTransaction(tx.id)}
-          className="w-full flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.045] hover:bg-white/[0.07] hover:border-white/20 transition-colors p-3 text-left group"
+          className="w-full flex items-start justify-between gap-3 rounded-xl border border-white/[0.12] bg-white/[0.045] hover:bg-white/[0.07] hover:border-white/20 transition-colors p-3 text-left group"
         >
           <div className="flex flex-col gap-1.5 min-w-0 flex-1">
             <p className="text-sm font-medium text-white truncate group-hover:text-white/90 transition-colors">
@@ -649,7 +649,7 @@ function CategoryAssignModal({
     >
       <div className="flex flex-col gap-4">
         {/* Selected transaction preview */}
-        <div className="rounded-xl border border-white/10 bg-white/[0.045] divide-y divide-white/5 overflow-hidden">
+        <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] divide-y divide-white/5 overflow-hidden">
           {transactions.map((tx) => (
             <div
               key={tx.id}

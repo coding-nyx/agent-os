@@ -38,10 +38,10 @@ export function moduleSurfaceTone(source: string): string {
     scout: 'border-lime-500/20 bg-lime-500/10 text-lime-100',
     forge: 'border-rose-500/20 bg-rose-500/10 text-rose-100',
     bridge: 'border-indigo-500/20 bg-indigo-500/10 text-indigo-100',
-    user: 'border-white/10 bg-white/[0.06] text-white/80',
+    user: 'border-white/[0.12] bg-white/[0.06] text-white/80',
     system: 'border-slate-500/20 bg-slate-500/10 text-slate-100',
   };
-  return map[source.replace(/^cascade:/, '').toLowerCase()] ?? 'border-white/10 bg-white/[0.045] text-white/70';
+  return map[source.replace(/^cascade:/, '').toLowerCase()] ?? 'border-white/[0.12] bg-white/[0.045] text-white/70';
 }
 
 function getModuleIcon(source: string) {

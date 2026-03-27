@@ -103,7 +103,7 @@ export function SpendingTrendsChart({
   const tooltipFormatter = useMemo(() => makeTooltipFormatter(currency), [currency]);
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-sm p-6 space-y-4">
+    <div className="rounded-2xl border border-white/[0.12] bg-white/[0.045] backdrop-blur-sm p-6 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -121,7 +121,7 @@ export function SpendingTrendsChart({
           title="No spending data yet"
           description="Add transactions to see trends."
           size="sm"
-          className="bg-transparent border-white/10"
+          className="bg-transparent border-white/[0.12]"
         />
       ) : (
         <ResponsiveContainer width="100%" height={280}>

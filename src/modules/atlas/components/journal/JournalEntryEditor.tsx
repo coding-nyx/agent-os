@@ -131,7 +131,7 @@ export function JournalEntryEditor({
       className="space-y-5 pb-24"
     >
       {/* ══ Unified writing card ═══════════════════════════════════ */}
-      <section className="rounded-xl border border-white/10 bg-slate-900/60 overflow-hidden">
+      <section className="rounded-xl border border-white/[0.12] bg-slate-900/60 overflow-hidden">
 
         {/* ── Header: Morning Intent (collapsible) ─────────────────── */}
         <button
@@ -246,7 +246,7 @@ export function JournalEntryEditor({
             Today's Prompt
           </p>
           {isLoadingPrompt ? (
-            <div className="space-y-2 p-4 rounded-lg border border-white/10 bg-slate-900/50">
+            <div className="space-y-2 p-4 rounded-lg border border-white/[0.12] bg-slate-900/50">
               <Skeleton className="h-3 w-3/4 rounded" />
               <Skeleton className="h-3 w-1/2 rounded" />
             </div>

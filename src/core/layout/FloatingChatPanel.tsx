@@ -230,7 +230,7 @@ export function FloatingChatPanel({
           exit={{ opacity: 0, scale: 0.92 }}
           transition={transition}
           className={cn(
-            'fixed flex flex-col overflow-hidden rounded-2xl border bg-[#09090b]/95 backdrop-blur-xl shadow-[0_16px_60px_rgba(0,0,0,0.7)]',
+            'fixed flex flex-col overflow-hidden rounded-2xl border bg-slate-900/95 backdrop-blur-xl shadow-[0_16px_60px_rgba(0,0,0,0.7)]',
             themeClasses.sidebarBorder
           )}
           style={{

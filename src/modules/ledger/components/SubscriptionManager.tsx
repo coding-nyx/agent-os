@@ -172,7 +172,7 @@ function formatDate(iso: string): string {
 
 function StatCard({ icon, label, value, sub }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.045] px-5 py-4">
+    <div className="flex items-center gap-4 rounded-xl border border-white/[0.12] bg-white/[0.045] px-5 py-4">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
         {icon}
       </div>
@@ -375,7 +375,7 @@ export default function SubscriptionManager({
       )}
 
       {/* ── Filter Tabs ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-white/10 bg-white/[0.045] p-1 scrollbar-none">
+      <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-white/[0.12] bg-white/[0.045] p-1 scrollbar-none">
         {FILTER_TABS.map(tab => (
           <button
             key={tab.key}
@@ -437,7 +437,7 @@ export default function SubscriptionManager({
             return (
               <div
                 key={sub.id}
-                className="relative flex overflow-hidden rounded-xl border border-white/10 bg-white/[0.045] transition-colors hover:bg-white/[0.07]"
+                className="relative flex overflow-hidden rounded-xl border border-white/[0.12] bg-white/[0.045] transition-colors hover:bg-white/[0.07]"
               >
                 {/* Colored left accent bar */}
                 <div
@@ -663,7 +663,7 @@ export default function SubscriptionManager({
               placeholder="Optional notes…"
               rows={3}
               className={[
-                'w-full resize-none rounded-lg border border-white/10 bg-white/[0.045] px-3 py-2',
+                'w-full resize-none rounded-lg border border-white/[0.12] bg-white/[0.045] px-3 py-2',
                 'text-sm text-white placeholder-white/20 outline-none transition-colors',
                 'focus:border-white/20 focus:bg-white/[0.07]',
               ].join(' ')}

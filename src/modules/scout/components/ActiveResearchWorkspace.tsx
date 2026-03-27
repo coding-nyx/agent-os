@@ -282,7 +282,7 @@ export function ActiveResearchWorkspace({
                 <p className="text-[24px] font-semibold tracking-tight text-white">{session.subQuestions.length}</p>
                 <p className="text-[12px] text-white/55">Tracked paths in this session</p>
               </div>
-              <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-white/70">
+              <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-white/70">
                 {completedSubQuestions} complete
               </span>
             </div>
@@ -306,16 +306,16 @@ export function ActiveResearchWorkspace({
                 <p className="text-chip-soft text-white/45">Artifacts</p>
                 <h3 className="mt-1 text-[14px] font-semibold text-white">{artifactsCount} linked items</h3>
               </div>
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-slate-900/50 text-white/65">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/[0.12] bg-slate-900/50 text-white/65">
                 <FileText className="h-4 w-4" aria-hidden="true" />
               </div>
             </div>
             <p className="mt-3 text-[12px] leading-relaxed text-white/60">{artifactsModeLabel}</p>
             <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-white/50">
-              <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1">
+              <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2.5 py-1">
                 {sessionNodes.length} findings
               </span>
-              <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1">
+              <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2.5 py-1">
                 {sessionSources.length} sources
               </span>
             </div>

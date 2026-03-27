@@ -101,7 +101,7 @@ function ModeCard({ icon, title, description, badge, themeClass, cardHover, onCl
       type="button"
       onClick={onClick}
       className={cn(
-        'flex-1 text-left p-4 rounded-2xl border border-white/[0.08] bg-white/[0.045]',
+        'flex-1 text-left p-4 rounded-2xl border border-white/[0.09] bg-white/[0.045]',
         'transition-all duration-200 active:scale-[0.98]',
         cardHover,
       )}

@@ -513,7 +513,7 @@ function SessionModal({
                   <div>
                     <span className="text-xs font-bold text-white/90">{ex.name}</span>
                     {ex.tempoScheme && (
-                      <span className="ml-2 px-1.5 py-0.5 rounded-md bg-white/[0.045] border border-white/10 text-[11px] text-white/50 font-mono tracking-wider inline-flex items-center gap-1" title="Tempo Scheme">
+                      <span className="ml-2 px-1.5 py-0.5 rounded-md bg-white/[0.045] border border-white/[0.12] text-[11px] text-white/50 font-mono tracking-wider inline-flex items-center gap-1" title="Tempo Scheme">
                         <Clock className="w-2.5 h-2.5" />
                         {ex.tempoScheme}
                       </span>
@@ -615,7 +615,7 @@ function SessionModal({
                         'flex items-center gap-2 px-3 py-2 rounded-lg border transition-all',
                         s.completed
                           ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)]'
-                          : 'bg-white/[0.045] border-white/10',
+                          : 'bg-white/[0.045] border-white/[0.12]',
                       )}
                     >
                       <span className="text-[11px] text-white/40 w-8 shrink-0">
@@ -907,7 +907,7 @@ export function WorkoutSessionLogger({ routines, recentSessions, onSubmitSession
               as="div"
               variant="secondary"
               onClick={() => handleStartSession(r)}
-              className="w-full flex items-center justify-between px-3 py-2.5 h-auto bg-white/[0.045] border-white/10 hover:border-white/20 hover:bg-white/[0.05] transition-all text-left"
+              className="w-full flex items-center justify-between px-3 py-2.5 h-auto bg-white/[0.045] border-white/[0.12] hover:border-white/20 hover:bg-white/[0.05] transition-all text-left"
             >
               <div className="flex-1">
                 <span className="text-[11px] uppercase tracking-wider text-white/40 mr-2">{r.weekday}</span>

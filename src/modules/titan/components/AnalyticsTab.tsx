@@ -736,7 +736,7 @@ function ExportPanel({ profile }: { profile: TitanProfile }) {
         ))}
       </div>
       <div className="flex items-center gap-3">
-        <div className="flex rounded-xl overflow-hidden border border-white/10">
+        <div className="flex rounded-xl overflow-hidden border border-white/[0.12]">
           {(['json', 'csv'] as const).map(f => (
             <button
               key={f}

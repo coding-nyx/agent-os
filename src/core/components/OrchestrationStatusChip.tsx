@@ -28,7 +28,7 @@ export function OrchestrationStatusChip({
         'inline-flex items-center gap-1 border text-[11px] text-white/70',
         isMinimal
           ? 'rounded-md border-cyan-400/20 bg-cyan-400/[0.08] px-1.5 py-0.5'
-          : 'rounded-xl border-white/10 bg-white/[0.045] p-1',
+          : 'rounded-xl border-white/[0.12] bg-white/[0.045] p-1',
         compact && !isMinimal && 'gap-1 rounded-lg',
       )}
       role="status"
@@ -39,7 +39,7 @@ export function OrchestrationStatusChip({
         'inline-flex items-center gap-1',
         isMinimal
           ? 'rounded border border-cyan-400/20 bg-slate-900/50 px-1 py-0.5'
-          : 'rounded-lg border border-white/10 bg-slate-900/50 px-1.5 py-1',
+          : 'rounded-lg border border-white/[0.12] bg-slate-900/50 px-1.5 py-1',
       )}>
         <Layers3 className="h-3 w-3 text-cyan-300/70" aria-hidden />
         <button
@@ -47,7 +47,7 @@ export function OrchestrationStatusChip({
           onClick={() => void lowerAutopilotLevel()}
           className={cn(
             'rounded border px-1 py-0.5 text-[11px] font-bold transition hover:text-white/80 min-h-[20px] min-w-[16px]',
-            isMinimal ? 'border-cyan-400/20 text-cyan-100/70' : 'border-white/10 text-white/45',
+            isMinimal ? 'border-cyan-400/20 text-cyan-100/70' : 'border-white/[0.12] text-white/45',
           )}
           aria-label="Lower autopilot level"
           disabled={isPersisting}
@@ -62,7 +62,7 @@ export function OrchestrationStatusChip({
           onClick={() => void raiseAutopilotLevel()}
           className={cn(
             'rounded border px-1 py-0.5 text-[11px] font-bold transition hover:text-white/80 min-h-[20px] min-w-[16px]',
-            isMinimal ? 'border-cyan-400/20 text-cyan-100/70' : 'border-white/10 text-white/45',
+            isMinimal ? 'border-cyan-400/20 text-cyan-100/70' : 'border-white/[0.12] text-white/45',
           )}
           aria-label="Raise autopilot level"
           disabled={isPersisting}
@@ -80,7 +80,7 @@ export function OrchestrationStatusChip({
             ? 'border-violet-500/20 bg-violet-500/15 text-violet-300'
             : isMinimal
               ? 'border-cyan-400/20 bg-cyan-400/[0.06] text-cyan-100/70'
-              : 'border-white/10 bg-white/[0.05] text-white/55',
+              : 'border-white/[0.12] bg-white/[0.05] text-white/55',
         )}
         title={isGhost ? 'Ghost mode' : 'Visible mode'}
       >
@@ -97,7 +97,7 @@ export function OrchestrationStatusChip({
             ? 'border-amber-500/20 bg-amber-500/15 text-amber-300'
             : isMinimal
               ? 'border-cyan-400/20 bg-cyan-400/[0.06] text-cyan-100/70'
-              : 'border-white/10 bg-white/[0.05] text-white/55',
+              : 'border-white/[0.12] bg-white/[0.05] text-white/55',
         )}
         title={historyMode === 'silent' ? 'Silent mode' : 'Standard mode'}
       >

@@ -108,7 +108,7 @@ export function NexusChat({
         }
         if (proposalStatus === 'dismissed') {
           return (
-            <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-white/[0.045] border border-white/10 text-white/40 w-fit">
+            <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-white/[0.045] border border-white/[0.12] text-white/40 w-fit">
               <span className="text-[11px] font-black uppercase tracking-widest">Proposal Dismissed</span>
             </div>
           );
@@ -222,7 +222,7 @@ export function NexusChat({
     return (
         <div className="flex-1 flex flex-col min-h-0 relative h-full">
             {activeProposal && (
-                <div className="shrink-0 p-3 sm:p-4 bg-[#0a0a0f] border-b border-white/10 z-10 relative">
+                <div className="shrink-0 p-3 sm:p-4 bg-slate-900 border-b border-white/[0.12] z-10 relative">
                     <ReminderProposalCard
                         proposal={activeProposal}
                         onConfirm={confirm}

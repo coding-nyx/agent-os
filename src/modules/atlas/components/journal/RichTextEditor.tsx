@@ -326,7 +326,7 @@ export function RichTextEditor({
     <>
       <div
         className={cn(
-          'rounded-xl border border-white/10 bg-slate-900/60 overflow-hidden',
+          'rounded-xl border border-white/[0.12] bg-slate-900/60 overflow-hidden',
           'transition-colors focus-within:border-violet-500/40 focus-within:ring-1 focus-within:ring-violet-500/20',
           className,
         )}

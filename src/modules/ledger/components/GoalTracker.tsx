@@ -371,7 +371,7 @@ export function GoalTracker({
                         variant="ghost"
                         size="sm"
                         disabled={disabled}
-                        className="w-full h-9 text-xs border border-white/10 hover:border-[var(--module-accent)]"
+                        className="w-full h-9 text-xs border border-white/[0.12] hover:border-[var(--module-accent)]"
                       >
                         <Plus className="w-3 h-3 mr-2" />
                         Quick Add
@@ -464,7 +464,7 @@ export function GoalTracker({
                     "flex-1 py-2 text-xs font-bold rounded-lg border transition-all uppercase tracking-widest",
                     formData.priority === p 
                       ? "bg-[var(--module-accent)] border-[var(--module-accent)] text-white" 
-                      : "bg-white/[0.045] border-white/10 text-white/40 hover:bg-white/10"
+                      : "bg-white/[0.045] border-white/[0.12] text-white/40 hover:bg-white/10"
                   )}
                 >
                   {p}

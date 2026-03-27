@@ -96,14 +96,14 @@ export function NeuralDraftPanel() {
           </div>
           <button
             onClick={() => dismiss(draft.id)}
-            className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.045] hover:bg-white/10 flex items-center justify-center"
+            className="w-8 h-8 rounded-lg border border-white/[0.12] bg-white/[0.045] hover:bg-white/10 flex items-center justify-center"
             aria-label="Dismiss draft"
           >
             <X className="w-4 h-4 text-white/60" />
           </button>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-2">
+        <div className="mt-4 rounded-2xl border border-white/[0.12] bg-white/[0.045] p-4 space-y-2">
           <h4 className="text-sm font-bold text-white">{draft.title}</h4>
           <p className="text-xs text-white/60 whitespace-pre-wrap">{draft.summary}</p>
         </div>
@@ -117,7 +117,7 @@ export function NeuralDraftPanel() {
           </button>
           <button
             onClick={() => dismiss(draft.id)}
-            className="py-2 rounded-xl border border-white/10 bg-white/[0.045] hover:bg-white/10 text-white/70 text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1"
+            className="py-2 rounded-xl border border-white/[0.12] bg-white/[0.045] hover:bg-white/10 text-white/70 text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1"
           >
             <Pencil className="w-3 h-3" /> Edit
           </button>

@@ -39,7 +39,7 @@ export function SomaSnapshotWidget({
       onClick={() => navigate('/soma')}
       className={cn(
         'w-full flex items-center justify-between px-3 sm:px-4 py-3 min-h-[2.75rem] sm:min-h-[3rem] rounded-xl border text-left transition-all hover:brightness-110',
-        displayConfig ? displayConfig.bg : 'bg-white/[0.045] border-white/10',
+        displayConfig ? displayConfig.bg : 'bg-white/[0.045] border-white/[0.12]',
         className
       )}
     >

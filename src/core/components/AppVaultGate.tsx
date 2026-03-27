@@ -89,7 +89,7 @@ export function AppVaultGate() {
         {/* Lock icon with ping ring */}
         <div className="relative w-16 h-16 flex items-center justify-center">
           <span className="absolute inset-0 rounded-2xl border border-indigo-500/30 animate-ping" />
-          <div className="w-16 h-16 rounded-2xl bg-white/[0.045] border border-white/10 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-white/[0.045] border border-white/[0.12] flex items-center justify-center">
             <Lock className="w-7 h-7 text-white/40" aria-hidden="true" />
           </div>
         </div>
@@ -158,7 +158,7 @@ export function AppVaultGate() {
                 'text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border transition-colors',
                 persistenceMode === mode
                   ? 'bg-white/10 border-white/20 text-white/70'
-                  : 'bg-transparent border-white/10 text-white/25 hover:border-white/20 hover:text-white/40'
+                  : 'bg-transparent border-white/[0.12] text-white/25 hover:border-white/20 hover:text-white/40'
               )}
             >
               {mode === 'STRICT' ? '🛡 STRICT' : '⏱ SESSION'}

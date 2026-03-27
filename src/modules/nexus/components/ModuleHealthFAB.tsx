@@ -139,7 +139,7 @@ export function ModuleHealthFAB() {
               'absolute bottom-16 left-0',
               'w-[280px] max-w-[calc(100vw-2rem)] p-2.5 rounded-2xl',
               'bg-slate-900/90 backdrop-blur-2xl',
-              'border border-white/[0.08]',
+              'border border-white/[0.09]',
               'shadow-xl shadow-black/60'
             )}
           >
@@ -230,7 +230,7 @@ export function ModuleHealthFAB() {
         whileHover={shouldReduceMotion ? undefined : { scale: 1.06 }}
         whileTap={shouldReduceMotion ? undefined : { scale: 0.94 }}
         className={cn(
-          'relative w-[60px] h-[60px] rounded-2xl border-white/[0.08]',
+          'relative w-[60px] h-[60px] rounded-2xl border-white/[0.09]',
           'bg-white/[0.045] backdrop-blur-xl',
           'flex items-center justify-center min-w-0',
           'transition-all duration-200',

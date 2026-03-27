@@ -90,7 +90,7 @@ export function DiagnosisToolbar({
       {/* Context toggle */}
       <button
         onClick={togglePolicy}
-        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-white/10 bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors shrink-0"
+        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-white/[0.12] bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors shrink-0"
         title={
           contextPolicy === 'isolated'
             ? 'AI cannot see your base profile. Click to enable.'
@@ -105,7 +105,7 @@ export function DiagnosisToolbar({
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={isParsing}
-        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-white/10 bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors disabled:opacity-40 shrink-0"
+        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-white/[0.12] bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors disabled:opacity-40 shrink-0"
       >
         <FileUp className="w-3.5 h-3.5" />
         <span className="hidden xs:inline">Upload</span>
@@ -122,7 +122,7 @@ export function DiagnosisToolbar({
       {/* New */}
       <button
         onClick={onNew}
-        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-white/10 bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors shrink-0"
+        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-white/[0.12] bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors shrink-0"
       >
         <Plus className="w-3.5 h-3.5" />
         <span className="hidden xs:inline">New</span>

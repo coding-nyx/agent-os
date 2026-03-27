@@ -759,6 +759,7 @@ export function useModuleAI({
 
         // --- Action processing ---
         const silentHistoryBuffers = new Map<string, string[]>();
+        const assistantMessageBuffer: Message[] = [];
         const {
           analysisOnlyLabels,
           dispatchedActionTypes,
@@ -808,14 +809,12 @@ export function useModuleAI({
               silentHistoryBuffers.set(metadata.execution.id, [...existingMessages, assistantContent]);
               return;
             }
-            localHistory = [...localHistory, {
+            assistantMessageBuffer.push({
               role: 'assistant',
               content: assistantContent,
               timestamp: new Date().toISOString(),
               threadId: threadIdRef.current,
-            } as Message].slice(-MAX_MESSAGES);
-            messagesRef.current = localHistory;
-            setMessages(localHistory);
+            } as Message);
           },
         });
 
@@ -1020,6 +1019,13 @@ export function useModuleAI({
           }
 
           localHistory = [...localHistory, assistantMessage].slice(-MAX_MESSAGES);
+          messagesRef.current = localHistory;
+          setMessages(localHistory);
+        }
+
+        // Commit buffered assistant messages emitted during action execution (e.g. search results)
+        if (assistantMessageBuffer.length > 0) {
+          localHistory = [...localHistory, ...assistantMessageBuffer].slice(-MAX_MESSAGES);
           messagesRef.current = localHistory;
           setMessages(localHistory);
         }

@@ -6,6 +6,7 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { History, Heart, Activity, Calendar, Filter } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
+import { EmptyState } from '@/core/components/EmptyState';
 import { cn } from '@/lib/utils';
 import type { VitalReading, PhysicalAssessment } from './SomaDashboard';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -223,9 +224,12 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
         </div>
 
         {allEntries.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-white/40 text-sm">No entries found for the selected filters</p>
-          </div>
+          <EmptyState
+            icon={History}
+            title="No entries found"
+            description="No biometric data matches the selected filters."
+            size="md"
+          />
         ) : (
           <div className="space-y-4">
             {allEntries.map((entry, index) => (

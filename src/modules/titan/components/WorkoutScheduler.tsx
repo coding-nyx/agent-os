@@ -235,7 +235,7 @@ function DayDetail({ planned, routine, onClose, onMarkSkipped, onStartSession, o
 
       {/* Explicit schedule action for empty/routine days */}
       {onSchedule && (
-        <div className="mt-2 pt-2 border-t border-white/10">
+        <div className="mt-2 pt-2 border-t border-white/[0.12]">
           <NeuralButton
             size="sm"
             variant="ghost"
@@ -660,7 +660,7 @@ export function WorkoutScheduler({
             type="button"
             onClick={() => setWeekOffset(o => o - 1)}
             aria-label="Previous 4 weeks"
-            className="w-7 h-7 rounded-xl flex items-center justify-center border border-white/10 bg-white/[0.045] hover:bg-white/[0.07] transition-colors text-white/50 hover:text-white/80"
+            className="w-7 h-7 rounded-xl flex items-center justify-center border border-white/[0.12] bg-white/[0.045] hover:bg-white/[0.07] transition-colors text-white/50 hover:text-white/80"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
@@ -669,7 +669,7 @@ export function WorkoutScheduler({
             type="button"
             onClick={() => setWeekOffset(o => o + 1)}
             aria-label="Next 4 weeks"
-            className="w-7 h-7 rounded-xl flex items-center justify-center border border-white/10 bg-white/[0.045] hover:bg-white/[0.07] transition-colors text-white/50 hover:text-white/80"
+            className="w-7 h-7 rounded-xl flex items-center justify-center border border-white/[0.12] bg-white/[0.045] hover:bg-white/[0.07] transition-colors text-white/50 hover:text-white/80"
           >
             <ChevronRight className="w-3.5 h-3.5" />
           </button>

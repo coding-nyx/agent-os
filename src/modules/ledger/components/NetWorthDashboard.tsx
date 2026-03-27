@@ -103,7 +103,7 @@ interface StatCardProps {
 
 function StatCard({ label, amount, currency, accentColor, dotColor }: StatCardProps) {
   return (
-    <SurfaceCard className="flex-1 min-w-0 p-4 bg-white/[0.045] border border-white/10 rounded-2xl">
+    <SurfaceCard className="flex-1 min-w-0 p-4 bg-white/[0.045] border border-white/[0.12] rounded-2xl">
       <div className="flex items-center gap-2 mb-2">
         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
         <span
@@ -171,12 +171,12 @@ function SnapshotForm({ onConfirm, onCancel, disabled }: SnapshotFormProps) {
   }
 
   return (
-    <div className="mt-3 p-4 bg-white/[0.045] border border-white/10 rounded-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+    <div className="mt-3 p-4 bg-white/[0.045] border border-white/[0.12] rounded-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
       <p className="text-[11px] uppercase tracking-[0.25em] font-bold text-white/40">
         Add a note (optional)
       </p>
       <textarea
-        className="w-full bg-white/[0.045] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 p-3 resize-none focus:outline-none focus:border-[#06b6d4]/60 transition-colors"
+        className="w-full bg-white/[0.045] border border-white/[0.12] rounded-xl text-sm text-white placeholder:text-white/30 p-3 resize-none focus:outline-none focus:border-[#06b6d4]/60 transition-colors"
         rows={2}
         placeholder="e.g. After year-end bonus…"
         value={note}
@@ -262,7 +262,7 @@ export function NetWorthDashboard({
       style={{ '--module-accent': '#06b6d4' } as React.CSSProperties}
     >
       {/* ── Hero section ──────────────────────────────────────────────────── */}
-      <SurfaceCard className="p-5 bg-white/[0.045] border border-white/10 rounded-2xl">
+      <SurfaceCard className="p-5 bg-white/[0.045] border border-white/[0.12] rounded-2xl">
         <div className="flex items-start justify-between gap-4">
           {/* Left: label + value + trend */}
           <div className="flex flex-col gap-1.5 min-w-0">
@@ -332,7 +332,7 @@ export function NetWorthDashboard({
       </div>
 
       {/* ── Chart / Empty state ───────────────────────────────────────────── */}
-      <SurfaceCard className="p-5 bg-white/[0.045] border border-white/10 rounded-2xl">
+      <SurfaceCard className="p-5 bg-white/[0.045] border border-white/[0.12] rounded-2xl">
         {hasHistory ? (
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/40 mb-4">

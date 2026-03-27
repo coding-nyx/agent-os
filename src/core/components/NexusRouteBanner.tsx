@@ -69,7 +69,7 @@ export function NexusRouteBanner() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
         transition={transition}
-        className="fixed bottom-6 left-1/2 z-[var(--z-toast)] w-[92vw] max-w-xl -translate-x-1/2 rounded-3xl border border-white/10 bg-[#05050a]/95 px-5 py-4 backdrop-blur-xl shadow-[0_0_40px_rgba(139,92,246,0.18)]"
+        className="fixed bottom-6 left-1/2 z-[var(--z-toast)] w-[92vw] max-w-xl -translate-x-1/2 rounded-3xl border border-white/[0.12] bg-[#05050a]/95 px-5 py-4 backdrop-blur-xl shadow-[0_0_40px_rgba(139,92,246,0.18)]"
         role="alert"
       >
         <div className="flex items-start justify-between gap-4">
@@ -84,7 +84,7 @@ export function NexusRouteBanner() {
           </div>
           <button
             onClick={() => setPrompt(null)}
-            className="w-11 h-11 rounded-lg border border-white/10 bg-white/[0.045] hover:bg-white/10 active:bg-white/15 flex items-center justify-center"
+            className="w-11 h-11 rounded-lg border border-white/[0.12] bg-white/[0.045] hover:bg-white/10 active:bg-white/15 flex items-center justify-center"
             aria-label="Dismiss routing prompt"
           >
             <X className="w-4 h-4 text-white/60" />
@@ -104,7 +104,7 @@ export function NexusRouteBanner() {
           </button>
           <button
             onClick={() => setPrompt(null)}
-            className="rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white/70"
+            className="rounded-2xl border border-white/[0.12] bg-white/[0.045] px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white/70"
           >
             Stay Here
           </button>

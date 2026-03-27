@@ -152,12 +152,12 @@ export function PostOnboardingWelcome({
             </span>
           )}
           {firstTask && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/10 text-[11px] text-white/50 font-medium max-w-[200px] truncate">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/[0.12] text-[11px] text-white/50 font-medium max-w-[200px] truncate">
               First task: {firstTask.title}
             </span>
           )}
           {profile.summary && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/10 text-[11px] text-white/40 font-medium max-w-xs truncate">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/[0.12] text-[11px] text-white/40 font-medium max-w-xs truncate">
               {profile.summary}
             </span>
           )}

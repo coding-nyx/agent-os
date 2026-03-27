@@ -163,7 +163,7 @@ function ProjectGanttView({ projects, taskCountsByProject }: ProjectGanttViewPro
 
   if (projectsWithDeadlines.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.045] p-8 text-center text-sm text-white/40">
+      <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-8 text-center text-sm text-white/40">
         No project deadlines set — add deadlines to see the timeline.
       </div>
     );
@@ -219,7 +219,7 @@ function ProjectGanttView({ projects, taskCountsByProject }: ProjectGanttViewPro
   const todayX = dateToX(today);
 
   return (
-    <div ref={containerRef} className="rounded-xl border border-white/10 bg-white/[0.045] p-4 overflow-x-auto">
+    <div ref={containerRef} className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-4 overflow-x-auto">
       <div style={{ minWidth: LABEL_COL + 400 }}>
         <svg
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -502,7 +502,7 @@ export function ProjectManager({
         </NeuralButton>
 
         {/* View mode toggle */}
-        <div className="flex rounded-lg overflow-hidden border border-white/10">
+        <div className="flex rounded-lg overflow-hidden border border-white/[0.12]">
           <button
             onClick={() => setViewMode('grid')}
             className={cn(
@@ -559,7 +559,7 @@ export function ProjectManager({
 
               return (
                 <div key={project.id} className="relative group">
-                  <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4 space-y-3 hover:bg-white/[0.05] transition-colors h-full">
+                  <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-4 space-y-3 hover:bg-white/[0.05] transition-colors h-full">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2 pr-16">
                       <h3 className="text-sm font-bold text-white/85 leading-tight">
@@ -741,7 +741,7 @@ export function ProjectManager({
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/[0.12]">
           <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
             Cancel
           </NeuralButton>

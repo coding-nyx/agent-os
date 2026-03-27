@@ -187,7 +187,7 @@ function FieldCard({ field, value, isSelected, onSelect, onDelete, isExtension }
         'bg-white/[0.045] backdrop-blur-sm hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]',
         isSelected
           ? `${colors.border} ring-2 ring-[var(--module-accent-ring)]`
-          : 'border-white/10 hover:border-white/15'
+          : 'border-white/[0.12] hover:border-white/15'
       )}
       style={isSelected ? { boxShadow: `0 0 30px ${colors.glow}` } : undefined}
       aria-label={`${field.name}: ${displayValue}`}

@@ -305,7 +305,7 @@ export function AtlasAIPanel({
             transition={{ duration: reducedMotion ? 0 : 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-3 border-t border-white/10 pt-4">
+            <div className="px-4 pb-4 space-y-3 border-t border-white/[0.12] pt-4">
               {suggestions.length === 0 ? (                <div className="text-center py-8">
                   <Sparkles className="w-8 h-8 text-white/10 mx-auto mb-2" />
                   <p className="text-xs text-white/40 italic">
@@ -369,7 +369,7 @@ export function AtlasAIPanel({
               )}
 
               {/* ── Quick Planning Prompts ── */}
-              <div className="pt-2 border-t border-white/10">
+              <div className="pt-2 border-t border-white/[0.12]">
                 <p className="text-[11px] text-white/30 uppercase tracking-widest mb-2">Quick Planning</p>
                 <div className="space-y-1.5">
                   {PLANNING_INTENTS.map((intent) => {

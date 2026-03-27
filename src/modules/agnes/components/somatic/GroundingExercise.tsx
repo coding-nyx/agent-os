@@ -311,7 +311,7 @@ export function GroundingExercise({ onComplete, onExit, agnesAI }: Props) {
                   onChange={e => handleInput(e.target.value)}
                   placeholder={`What do you ${currentStep.sense.toLowerCase()}…`}
                   rows={3}
-                  className="w-full bg-white/[0.045] border border-white/10 rounded-2xl px-4 py-3 text-sm text-white/80 placeholder:text-white/20 resize-none focus:outline-none focus:border-indigo-500/40 transition-colors"
+                  className="w-full bg-white/[0.045] border border-white/[0.12] rounded-2xl px-4 py-3 text-sm text-white/80 placeholder:text-white/20 resize-none focus:outline-none focus:border-indigo-500/40 transition-colors"
                 />
 
                 {/* Suggestion chips */}
@@ -322,7 +322,7 @@ export function GroundingExercise({ onComplete, onExit, agnesAI }: Props) {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleChip(chip)}
-                      className="px-3 h-auto py-1.5 rounded-full bg-white/[0.045] border border-white/[0.08] text-white/40 text-[11px] font-medium hover:bg-white/[0.08] hover:text-white/60 hover:border-white/15 border-none transition-all"
+                      className="px-3 h-auto py-1.5 rounded-full bg-white/[0.045] border border-white/[0.09] text-white/40 text-[11px] font-medium hover:bg-white/[0.08] hover:text-white/60 hover:border-white/15 border-none transition-all"
                     >
                       {chip}
                     </NeuralButton>

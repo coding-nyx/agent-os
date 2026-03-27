@@ -76,10 +76,10 @@ function CycleCard({
     <NeuralButton
       variant="secondary"
       onClick={() => onSelect(cycle)}
-      className="w-full text-left p-3 rounded-xl bg-white/[0.045] border border-white/10 hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-muted)] transition-all group h-auto justify-start"
+      className="w-full text-left p-3 rounded-xl bg-white/[0.045] border border-white/[0.12] hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-muted)] transition-all group h-auto justify-start"
     >
       <div className="flex items-start gap-3 w-full">
-        <div className="w-8 h-8 rounded-lg bg-white/[0.045] border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+        <div className="w-8 h-8 rounded-lg bg-white/[0.045] border border-white/[0.12] flex items-center justify-center shrink-0 mt-0.5">
           <TypeIcon className={cn('w-4 h-4', typeMeta.color)} />
         </div>
         <div className="flex-1 min-w-0">
@@ -403,7 +403,7 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
                     'flex-1 py-2 rounded-xl text-xs font-bold transition-all h-auto',
                     cycleType === t
                       ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                      : 'bg-white/[0.045] border-white/10 text-white/50 hover:border-white/20'
+                      : 'bg-white/[0.045] border-white/[0.12] text-white/50 hover:border-white/20'
                   )}
                 >
                   {t.charAt(0).toUpperCase() + t.slice(1)}

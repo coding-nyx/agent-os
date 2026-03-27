@@ -188,7 +188,7 @@ export function WeekGrid({
                 'bg-white/[0.045] backdrop-blur-sm',
                 isSelected &&
                   'border-emerald-500/30 bg-emerald-500/[0.06] ring-1 ring-emerald-500/20',
-                !isSelected && 'border-white/[0.09] hover:border-white/10'
+                !isSelected && 'border-white/[0.09] hover:border-white/[0.12]'
               )}
             >
               {/* Day initial — mobile only (1 char) */}

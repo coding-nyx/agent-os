@@ -269,10 +269,10 @@ function RuleRow({ rule, onToggle, onEdit, onDelete }: RuleRowProps) {
         aria-label={rule.isEnabled ? `Disable rule "${rule.name}"` : `Enable rule "${rule.name}"`}
         aria-pressed={rule.isEnabled}
         className={cn(
-          'flex-shrink-0 rounded-lg p-2 transition-colors',
+          'flex-shrink-0 rounded-lg p-2 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors',
           rule.isEnabled
             ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25'
-            : 'bg-white/8 text-white/30 hover:bg-white/12',
+            : 'bg-white/[0.09] text-white/30 hover:bg-white/[0.12]',
         )}
       >
         {rule.isEnabled
@@ -448,8 +448,8 @@ function RuleModal({ isOpen, editingRule, onClose, onSave }: RuleModalProps) {
               'outline-none resize-none transition',
               'focus:ring-1',
               form.suggestionMessage.trim()
-                ? 'border-white/10 focus:border-amber-500/40 focus:ring-amber-500/20'
-                : 'border-white/10 focus:border-amber-500/40 focus:ring-amber-500/20',
+                ? 'border-white/[0.12] focus:border-amber-500/40 focus:ring-amber-500/20'
+                : 'border-white/[0.12] focus:border-amber-500/40 focus:ring-amber-500/20',
             )}
           />
         </div>
@@ -614,7 +614,7 @@ export default function AutomationRules({
             aria-selected={activeTab === tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium transition-colors',
               activeTab === tab
                 ? 'bg-amber-500/20 text-amber-300'
                 : 'text-white/40 hover:text-white/60 hover:bg-white/[0.045]',

@@ -46,7 +46,7 @@ export function NeuralDropdown({ trigger, items, align = 'start', className }: N
         <div
           role="menu"
           className={cn(
-            'absolute z-50 mt-1 min-w-[160px] rounded-xl border border-white/10 bg-[#05050a]/95 backdrop-blur-xl shadow-[0_0_40px_rgba(0,0,0,0.5)] py-1 overflow-hidden',
+            'absolute z-50 mt-1 min-w-[160px] rounded-xl border border-white/[0.12] bg-[#05050a]/95 backdrop-blur-xl shadow-[0_0_40px_rgba(0,0,0,0.5)] py-1 overflow-hidden',
             align === 'end' ? 'right-0' : 'left-0'
           )}
         >

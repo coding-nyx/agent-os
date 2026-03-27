@@ -46,7 +46,7 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-lg bg-[#05050a] border border-white/10 rounded-3xl p-6 shadow-2xl"
+            className="w-full max-w-lg bg-[#05050a] border border-white/[0.12] rounded-3xl p-6 shadow-2xl"
           >
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -70,7 +70,7 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
                   placeholder="e.g., Quantum Computing Trends"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  className="bg-white/[0.045] border-white/10 focus:border-[var(--module-accent-ring)]"
+                  className="bg-white/[0.045] border-white/[0.12] focus:border-[var(--module-accent-ring)]"
                 />
               </div>
 
@@ -86,7 +86,7 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
                       "flex flex-col items-center gap-2 p-4 rounded-xl transition-all text-center h-auto",
                       mode === 'standard'
                         ? "bg-[var(--module-accent-muted)] border-[var(--module-accent-ring)] text-[var(--module-color-300)]"
-                        : "bg-white/[0.045] border-white/10 text-white/40 hover:bg-white/10 hover:text-white/80"
+                        : "bg-white/[0.045] border-white/[0.12] text-white/40 hover:bg-white/10 hover:text-white/80"
                     )}
                   >
                     <BookOpen size={24} />
@@ -105,7 +105,7 @@ export function NewSessionDialog({ isOpen, onClose, onSubmit }: NewSessionDialog
                       "flex flex-col items-center gap-2 p-4 rounded-xl transition-all text-center h-auto",
                       mode === 'deep'
                         ? "bg-violet-500/10 border-violet-500/30 text-violet-300"
-                        : "bg-white/[0.045] border-white/10 text-white/40 hover:bg-white/10 hover:text-white/80"
+                        : "bg-white/[0.045] border-white/[0.12] text-white/40 hover:bg-white/10 hover:text-white/80"
                     )}
                   >
                     <Zap size={24} />

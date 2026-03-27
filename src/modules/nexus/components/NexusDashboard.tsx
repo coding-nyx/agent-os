@@ -578,7 +578,7 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
       type="button"
       data-testid="nexus-clear-chat"
       onClick={handleClearChat}
-      className="inline-flex items-center rounded-lg border border-white/[0.08] bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.10em] text-white/50 transition-all hover:border-white/15 hover:bg-white/[0.07] hover:text-white/80 active:scale-95 min-h-[32px]"
+      className="inline-flex items-center rounded-lg border border-white/[0.09] bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.10em] text-white/50 transition-all hover:border-white/15 hover:bg-white/[0.07] hover:text-white/80 active:scale-95 min-h-[32px]"
     >
       Clear
     </button>

@@ -73,7 +73,7 @@ export function VaultLockedShell({
     >
       <div className="flex flex-col items-center gap-6 text-center max-w-xs">
         {/* Lock badge */}
-        <div className="w-16 h-16 rounded-3xl bg-white/[0.045] border border-white/10 flex items-center justify-center">
+        <div className="w-16 h-16 rounded-3xl bg-white/[0.045] border border-white/[0.12] flex items-center justify-center">
           <Lock className="w-7 h-7 text-white/30" aria-hidden="true" />
         </div>
 

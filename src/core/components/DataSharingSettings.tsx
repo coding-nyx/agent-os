@@ -199,7 +199,7 @@ function ToggleSwitch({ checked, onChange, label, disabled = false }: ToggleSwit
         disabled && 'opacity-40 cursor-not-allowed',
         checked
           ? 'bg-emerald-500/30 border-emerald-500/40'
-          : 'bg-white/[0.045] border-white/10'
+          : 'bg-white/[0.045] border-white/[0.12]'
       )}
     >
       <span
@@ -232,7 +232,7 @@ function DataCategoryCard({ category, moduleNames, onChange }: DataCategoryCardP
   const isProtected = category.sensitivity === 'protected';
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.045] overflow-hidden">
+    <div className="rounded-2xl border border-white/[0.12] bg-white/[0.045] overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.045] transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white/20"

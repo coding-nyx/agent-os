@@ -132,13 +132,13 @@ export function DiagnosisChatPanel({ summary, sessionId: _sessionId, ai }: Diagn
 
   return (
     <div className={cn(
-      "flex flex-col rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-xl overflow-hidden",
+      "flex flex-col rounded-2xl border border-white/[0.12] bg-white/[0.045] backdrop-blur-xl overflow-hidden",
       // Mobile: fill available space, let parent control bounds
       "h-[calc(100dvh-280px)] min-h-[300px]",
       // Desktop: fill parent height
       "lg:h-full lg:min-h-0"
     )}>
-      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/10 flex items-center justify-between gap-2 sm:gap-3 shrink-0 bg-white/[0.045]">
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/[0.12] flex items-center justify-between gap-2 sm:gap-3 shrink-0 bg-white/[0.045]">
         <div className="min-w-0">
           <p className="text-[11px] sm:text-xs uppercase tracking-widest text-[var(--module-color-300)] font-semibold truncate">Clinical Analysis</p>
           <p className="text-[11px] sm:text-[11px] text-white/40 mt-0.5 sm:mt-1 truncate">Ask Soma about this report.</p>

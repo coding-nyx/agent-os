@@ -172,7 +172,7 @@ export function AIFinancialAdvisor({
 
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-6 border-t border-white/10">
+        <div className="px-4 pb-4 space-y-6 border-t border-white/[0.12]">
           {/* Financial Health Score */}
           <div className="pt-4">
             <div className="flex items-center justify-between mb-3">
@@ -251,7 +251,7 @@ export function AIFinancialAdvisor({
                     onClick={() => handleQuestionClick(question)}
                     disabled={disabled}
                     className={cn(
-                      "p-3 rounded-lg text-left text-xs text-white/70 hover:text-white transition-colors border border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5 disabled:opacity-50 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]",
+                      "p-3 rounded-lg text-left text-xs text-white/70 hover:text-white transition-colors border border-white/[0.12] hover:border-violet-500/30 hover:bg-violet-500/5 disabled:opacity-50 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]",
                       selectedQuestion === question && "border-violet-500/50 bg-violet-500/10"
                     )}
                   >

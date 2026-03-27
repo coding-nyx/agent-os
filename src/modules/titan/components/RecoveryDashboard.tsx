@@ -76,7 +76,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
         {(plan.aiSummary || plan.somaSummary || plan.agnesSummary) && (
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {plan.somaSummary && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3">
+              <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Stethoscope className="w-4 h-4 text-emerald-300" />
                   <span className="text-[11px] uppercase tracking-wider text-white/50">Soma</span>
@@ -85,7 +85,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
               </div>
             )}
             {plan.agnesSummary && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3">
+              <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="w-4 h-4 text-indigo-300" />
                   <span className="text-[11px] uppercase tracking-wider text-white/50">Agnes</span>
@@ -94,7 +94,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
               </div>
             )}
             {plan.aiSummary && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3 sm:col-span-2 xl:col-span-1">
+              <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-3 sm:col-span-2 xl:col-span-1">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="w-4 h-4 text-[var(--module-color-300)]" />
                   <span className="text-[11px] uppercase tracking-wider text-white/50">Titan Overlay</span>

@@ -77,7 +77,7 @@ export function ActiveProgramDashboard({
             <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
               Active Program
             </span>
-            <div className="flex items-center gap-1.5 text-[11px] text-white/40 font-mono bg-white/[0.045] rounded px-1.5 py-0.5 border border-white/[0.09] hover:border-white/10 transition-colors">
+            <div className="flex items-center gap-1.5 text-[11px] text-white/40 font-mono bg-white/[0.045] rounded px-1.5 py-0.5 border border-white/[0.09] hover:border-white/[0.12] transition-colors">
               <span>Week</span>
               <select
                 value={currentWeek}

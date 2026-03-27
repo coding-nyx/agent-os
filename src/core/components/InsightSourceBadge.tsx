@@ -66,7 +66,7 @@ export function InsightSourceBadge({
     <Tag
       className={cn(
         'inline-flex items-center gap-2 px-3 py-1.5 rounded-xl',
-        'border border-white/10 bg-white/[0.045]',
+        'border border-white/[0.12] bg-white/[0.045]',
         'text-[11px] font-bold uppercase tracking-[0.15em]',
         'transition-colors',
         onClick && 'hover:bg-white/[0.06] hover:border-white/15 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/20',

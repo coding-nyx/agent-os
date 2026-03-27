@@ -191,7 +191,7 @@ function CategoryChip({ label, selected, onClick }: CategoryChipProps) {
         'px-3 py-1.5 rounded-xl text-[11px] font-semibold tracking-wide border transition-all duration-200',
         selected
           ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-          : 'bg-white/[0.045] border-white/[0.08] text-white/40 hover:text-white/60 hover:bg-white/[0.07]',
+          : 'bg-white/[0.045] border-white/[0.09] text-white/40 hover:text-white/60 hover:bg-white/[0.07]',
       )}
     >
       {label}
@@ -257,7 +257,7 @@ function ExerciseCard({
     [exercise, allExercises],
   );
 
-  const badgeStyle = CATEGORY_BADGE[exercise.category] ?? 'bg-white/10 text-white/60 border-white/10';
+  const badgeStyle = CATEGORY_BADGE[exercise.category] ?? 'bg-white/10 text-white/60 border-white/[0.12]';
 
   return (
     <motion.div
@@ -544,7 +544,7 @@ export function ExerciseLibraryBrowser({
                   'px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all whitespace-nowrap',
                   matchMyEquipment
                     ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                    : 'bg-white/[0.045] border-white/10 text-white/40 hover:bg-white/10 hover:text-white/60',
+                    : 'bg-white/[0.045] border-white/[0.12] text-white/40 hover:bg-white/10 hover:text-white/60',
                 )}
                 title={`Filter to your equipment: ${profileEquipment.join(', ')}`}
               >

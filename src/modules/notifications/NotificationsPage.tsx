@@ -86,7 +86,7 @@ function moduleColor(source: string): string {
     bridge: 'from-indigo-500/20 to-blue-500/10 border-indigo-500/20',
     system: 'from-slate-500/20 to-zinc-500/10 border-slate-500/20',
   };
-  return map[source.toLowerCase()] ?? 'from-white/5 to-white/[0.02] border-white/10';
+  return map[source.toLowerCase()] ?? 'from-white/5 to-white/[0.02] border-white/[0.12]';
 }
 
 function priorityIcon(priority: InboxRecord['priority']) {
@@ -328,7 +328,7 @@ function SnoozeButton({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 top-full mt-1 z-50 w-52 bg-[#0e0e16] border border-white/10 rounded-xl shadow-xl overflow-hidden"
+            className="absolute right-0 top-full mt-1 z-50 w-52 bg-[#0e0e16] border border-white/[0.12] rounded-xl shadow-xl overflow-hidden"
           >
             <div className="px-3 py-2 border-b border-white/[0.09]">
               <p className="text-[11px] uppercase tracking-widest text-indigo-400/70 font-black mb-1">Suggested</p>
@@ -722,7 +722,7 @@ export default function NotificationsPage() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="flex items-center gap-2 mb-3 px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 backdrop-blur-xl"
+              className="flex items-center gap-2 mb-3 px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl"
             >
               <span className="text-sm text-white/68 font-medium flex-1">
                 {selectedIds.size} selected
@@ -859,7 +859,7 @@ export default function NotificationsPage() {
                           type="time"
                           value={quietHours.from}
                           onChange={e => setQuietHours(q => ({ ...q, from: e.target.value, updatedAt: new Date().toISOString() }))}
-                          className="w-full bg-white/[0.045] border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white/70 focus:outline-none focus:border-indigo-500/40 min-h-[44px]"
+                          className="w-full bg-white/[0.045] border border-white/[0.12] rounded-lg px-2 py-1.5 text-sm text-white/70 focus:outline-none focus:border-indigo-500/40 min-h-[44px]"
                         />
                       </div>
                       <div>
@@ -868,7 +868,7 @@ export default function NotificationsPage() {
                           type="time"
                           value={quietHours.to}
                           onChange={e => setQuietHours(q => ({ ...q, to: e.target.value, updatedAt: new Date().toISOString() }))}
-                          className="w-full bg-white/[0.045] border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white/70 focus:outline-none focus:border-indigo-500/40 min-h-[44px]"
+                          className="w-full bg-white/[0.045] border border-white/[0.12] rounded-lg px-2 py-1.5 text-sm text-white/70 focus:outline-none focus:border-indigo-500/40 min-h-[44px]"
                         />
                       </div>
                     </div>

@@ -215,7 +215,7 @@ export function FocusView({
         </div>
 
         {/* ── Active task card ── */}
-        <div className="w-full rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-sm p-6 space-y-4">
+        <div className="w-full rounded-2xl border border-white/[0.12] bg-white/[0.045] backdrop-blur-sm p-6 space-y-4">
           <div className="text-center space-y-2">
             <span className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400/60">
               Now Focusing
@@ -256,7 +256,7 @@ export function FocusView({
                   'text-[11px] px-2 py-0.5 rounded-full border transition-colors',
                   pomodoroMinutes === mins
                     ? 'border-emerald-400/60 text-emerald-400'
-                    : 'border-white/10 text-white/30 hover:border-white/20'
+                    : 'border-white/[0.12] text-white/30 hover:border-white/20'
                 )}
               >
                 {mins}m
@@ -313,7 +313,7 @@ export function FocusView({
               aria-label="Reset timer"
               variant="ghost"
               className={cn(
-                'flex items-center justify-center w-10 h-10 rounded-full border border-white/10 min-h-[44px]',
+                'flex items-center justify-center w-10 h-10 rounded-full border border-white/[0.12] min-h-[44px]',
                 'text-white/30 hover:text-white/50 hover:bg-white/[0.045] transition-all',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50'
               )}
@@ -351,7 +351,7 @@ export function FocusView({
             onClick={() => onDefer(activeTask.id)}
             aria-label={`Defer task: ${activeTask.title}`}
             variant="secondary"
-            className="flex-1 !h-12 !rounded-xl font-bold border-white/10 text-white/50 hover:text-white/70"
+            className="flex-1 !h-12 !rounded-xl font-bold border-white/[0.12] text-white/50 hover:text-white/70"
           >
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
             Defer

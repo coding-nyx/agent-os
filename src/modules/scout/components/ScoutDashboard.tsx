@@ -230,7 +230,7 @@ export function ScoutDashboard({
                 <Clock size={13} className="text-[var(--module-color-300)]" aria-hidden="true" />
                 <h2 className="text-panel-heading text-white">Research sessions</h2>
               </div>
-              <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-white/60">
+              <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-white/60">
                 {formatSessionCountLabel(sessions.length)}
               </span>
             </div>
@@ -265,7 +265,7 @@ export function ScoutDashboard({
               ))}
 
               {newsBriefs.length === 0 && (
-                <div className="rounded-3xl border border-dashed border-white/10 px-4 py-6 text-center">
+                <div className="rounded-3xl border border-dashed border-white/[0.12] px-4 py-6 text-center">
                   <p className="text-item-title text-white/65">No trend briefings yet</p>
                   <p className="mt-1 text-body-secondary text-white/45">
                     Start researching topics and refresh briefs when you want Scout to surface new developments.

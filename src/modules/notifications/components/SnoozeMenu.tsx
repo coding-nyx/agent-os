@@ -197,7 +197,7 @@ export default function SnoozeMenu({
           aria-label="Snooze options"
           className={cn(
             'absolute right-0 top-full mt-1 z-50 w-56',
-            'bg-[#0e0e16] border border-white/10 rounded-xl shadow-xl overflow-hidden',
+            'bg-[#0e0e16] border border-white/[0.12] rounded-xl shadow-xl overflow-hidden',
           )}
         >
           {/* AI suggestion section */}

@@ -205,7 +205,7 @@ export function RestPeriodCalculator({
                 'text-[11px] font-bold uppercase tracking-wider transition-all h-auto py-2',
                 selectedType === type
                   ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                  : 'bg-white/[0.045] border-white/10 text-white/50 hover:bg-white/10'
+                  : 'bg-white/[0.045] border-white/[0.12] text-white/50 hover:bg-white/10'
               )}
             >
               {type}
@@ -230,7 +230,7 @@ export function RestPeriodCalculator({
                 'text-[11px] font-bold uppercase tracking-wider transition-all h-auto py-2',
                 selectedIntensity === level
                   ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                  : 'bg-white/[0.045] border-white/10 text-white/50 hover:bg-white/10'
+                  : 'bg-white/[0.045] border-white/[0.12] text-white/50 hover:bg-white/10'
               )}
             >
               {level}
@@ -288,7 +288,7 @@ export function RestPeriodCalculator({
         <NeuralButton 
           variant="secondary"
           size="sm"
-          className="bg-white/[0.045] border-white/10 text-[11px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
+          className="bg-white/[0.045] border-white/[0.12] text-[11px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
         >
           <Clock className="w-3 h-3 mb-1" />
           Copy Rest
@@ -296,7 +296,7 @@ export function RestPeriodCalculator({
         <NeuralButton 
           variant="secondary"
           size="sm"
-          className="bg-white/[0.045] border-white/10 text-[11px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
+          className="bg-white/[0.045] border-white/[0.12] text-[11px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
         >
           <Activity className="w-3 h-3 mb-1" />
           Apply All
@@ -304,7 +304,7 @@ export function RestPeriodCalculator({
         <NeuralButton 
           variant="secondary"
           size="sm"
-          className="bg-white/[0.045] border-white/10 text-[11px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
+          className="bg-white/[0.045] border-white/[0.12] text-[11px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
         >
           <Zap className="w-3 h-3 mb-1" />
           Auto-Fill

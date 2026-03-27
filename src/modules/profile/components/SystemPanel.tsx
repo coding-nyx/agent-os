@@ -137,7 +137,7 @@ export function SystemPanel() {
                 variants={cardVariants}
                 initial="hidden"
                 animate="visible"
-                className="rounded-2xl bg-slate-900/60 border border-white/[0.09] p-4 space-y-3 hover:border-white/10 transition-colors"
+                className="rounded-2xl bg-slate-900/60 border border-white/[0.09] p-4 space-y-3 hover:border-white/[0.12] transition-colors"
               >
                 <div className="flex items-center gap-2">
                   {Icon ? (
@@ -340,7 +340,7 @@ export function SystemPanel() {
                 </h3>
               </div>
               <ModelSelector />
-              <div className="mt-6 pt-5 border-t border-white/10">
+              <div className="mt-6 pt-5 border-t border-white/[0.12]">
                 <VisionModelSelector />
               </div>
             </GlassCard>

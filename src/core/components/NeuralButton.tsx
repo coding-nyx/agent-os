@@ -91,7 +91,7 @@ const NeuralButtonImpl = React.forwardRef<any, NeuralButtonProps>(function Neura
 }: NeuralButtonProps, ref) {
   const variants: Record<NeuralButtonVariant, string> = {
     primary: THEME_STYLES[themeColor],
-    secondary: 'bg-white/[0.045] text-white hover:bg-white/10 border-white/10 focus-visible:ring-white',
+    secondary: 'bg-white/[0.045] text-white hover:bg-white/10 border-white/[0.12] focus-visible:ring-white',
     ghost: 'bg-transparent text-white/60 hover:bg-white/[0.045] border-transparent',
     danger: THEME_STYLES.rose,
     outline: OUTLINE_THEME_STYLES[themeColor],

@@ -35,7 +35,7 @@ const statusBadgeClasses: Record<ResearchSessionStatus, string> = {
   synthesizing: 'border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-300',
   complete: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
   error: 'border-rose-500/20 bg-rose-500/10 text-rose-300',
-  cancelled: 'border-white/10 bg-white/[0.045] text-white/40',
+  cancelled: 'border-white/[0.12] bg-white/[0.045] text-white/40',
 };
 
 const statusDotClasses: Record<ResearchSessionStatus, string> = {

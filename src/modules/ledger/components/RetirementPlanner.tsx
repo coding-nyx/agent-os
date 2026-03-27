@@ -168,7 +168,7 @@ function ProjectionTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-zinc-900/95 border border-white/10 rounded-lg px-3 py-2 shadow-xl text-xs">
+    <div className="bg-slate-900/95 border border-white/[0.12] rounded-lg px-3 py-2 shadow-xl text-xs">
       <p className="text-white/50 mb-1">{label}</p>
       <p className="text-white font-bold">{formatCurrency(payload[0].value, currency)}</p>
     </div>
@@ -416,7 +416,7 @@ export default function RetirementPlanner({
                   'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150',
                   plan.id === selectedPlan?.id
                     ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
-                    : 'bg-white/[0.045] border-white/10 text-white/50 hover:text-white/80 hover:border-white/20',
+                    : 'bg-white/[0.045] border-white/[0.12] text-white/50 hover:text-white/80 hover:border-white/20',
                 )}
               >
                 {plan.name}

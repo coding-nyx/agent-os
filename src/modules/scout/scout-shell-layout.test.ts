@@ -40,8 +40,8 @@ describe('scout shell layout helpers', () => {
       })
     ).toMatchObject({
       viewport: 'desktop',
-      isSessionRailDocked: false,
-      isSessionSheetVisible: true,
+      isSessionRailDocked: true,
+      isSessionSheetVisible: false,
       artifactsVisibility: 'docked',
       shouldCollapseChat: true,
       canToggleArtifacts: true,
@@ -80,6 +80,7 @@ describe('scout shell layout helpers', () => {
       })
     ).toMatchObject({
       viewport: 'tablet',
+      isSessionRailDocked: false,
       isSessionSheetVisible: true,
       artifactsVisibility: 'hidden',
       shouldCollapseChat: false,

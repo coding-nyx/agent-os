@@ -220,7 +220,7 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
                   ? 'border-[var(--module-color-400)] bg-[var(--module-accent-glow)] text-[var(--module-color-300)] animate-pulse'
                   : hasValue
                   ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)] hover:bg-[var(--module-accent-glow)]'
-                  : 'border-white/10 bg-white/[0.045] text-white/60 hover:bg-white/10 hover:text-white/80',
+                  : 'border-white/[0.12] bg-white/[0.045] text-white/60 hover:bg-white/10 hover:text-white/80',
                 isExpanded && !isFlashing && 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
               )}
             >

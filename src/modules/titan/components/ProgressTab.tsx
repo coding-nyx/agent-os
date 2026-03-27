@@ -120,7 +120,7 @@ function PersonalRecordsPanel({
         {sorted.map(([exercise, pr]) => (
           <div
             key={exercise}
-            className="flex items-center justify-between p-3 rounded-xl bg-white/[0.045] border border-white/10"
+            className="flex items-center justify-between p-3 rounded-xl bg-white/[0.045] border border-white/[0.12]"
           >
             <div>
               {/* Capitalise first letter of each word for display */}
@@ -253,7 +253,7 @@ function SessionHistoryList({
           return (
             <div
               key={session.id}
-              className="rounded-xl border border-white/10 bg-white/[0.045] overflow-hidden"
+              className="rounded-xl border border-white/[0.12] bg-white/[0.045] overflow-hidden"
             >
               <button
                 type="button"

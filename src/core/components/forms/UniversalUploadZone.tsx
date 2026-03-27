@@ -99,7 +99,7 @@ export function UniversalUploadZone({
         onClick={() => !disabled && fileInputRef.current?.click()}
         className={cn(
           "relative group cursor-pointer rounded-[2rem] border-2 border-dashed transition-all duration-500 overflow-hidden",
-          phase === 'drag_over' ? cn("scale-[1.02] border-solid shadow-2xl", activeColorClass) : "border-white/10 hover:border-white/20 bg-white/[0.045]",
+          phase === 'drag_over' ? cn("scale-[1.02] border-solid shadow-2xl", activeColorClass) : "border-white/[0.12] hover:border-white/20 bg-white/[0.045]",
           disabled && "opacity-50 cursor-not-allowed",
           compact ? "p-6" : "p-12"
         )}

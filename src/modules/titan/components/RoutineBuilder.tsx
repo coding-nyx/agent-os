@@ -458,7 +458,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="border border-white/10 rounded-xl bg-white/[0.045] p-4 space-y-3">
+            <div className="border border-white/[0.12] rounded-xl bg-white/[0.045] p-4 space-y-3">
               {/* Category Filter */}
               <div className="flex flex-wrap gap-2">
                 {categories.map((cat) => (
@@ -469,7 +469,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                       'px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all',
                       selectedCategory === cat
                         ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                        : 'bg-white/[0.045] border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                        : 'bg-white/[0.045] border border-white/[0.12] text-white/50 hover:bg-white/10 hover:text-white/70'
                     )}
                   >
                     {cat}
@@ -483,7 +483,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                   <button
                     key={idx}
                     onClick={() => addExerciseFromTemplate(template)}
-                    className="p-3 rounded-xl border border-white/10 bg-white/[0.045] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all text-left group"
+                    className="p-3 rounded-xl border border-white/[0.12] bg-white/[0.045] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all text-left group"
                   >
                     <div className="flex items-start justify-between mb-2">
                       <span className="text-sm font-bold text-white/90 group-hover:text-[var(--module-color-300)] transition-colors">
@@ -492,7 +492,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                       <Plus className="w-3.5 h-3.5 text-white/30 group-hover:text-[var(--module-color-400)] transition-colors" />
                     </div>
                     <div className="flex items-center gap-3 text-[11px] text-white/50">
-                      <span className="px-2 py-0.5 rounded bg-white/[0.045] border border-white/10 uppercase tracking-wider">
+                      <span className="px-2 py-0.5 rounded bg-white/[0.045] border border-white/[0.12] uppercase tracking-wider">
                         {template.category}
                       </span>
                       <span className="font-black tabular-nums">

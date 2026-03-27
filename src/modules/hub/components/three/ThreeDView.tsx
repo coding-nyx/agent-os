@@ -284,7 +284,7 @@ export const FloatingPod = React.memo(function FloatingPod({
           isPlugin && !hovered ? 'opacity-40' : 'opacity-100'
         )}>
           <div className={cn(
-            "backdrop-blur-md border border-white/10 flex items-center gap-2 whitespace-nowrap shadow-2xl transition-all",
+            "backdrop-blur-md border border-white/[0.12] flex items-center gap-2 whitespace-nowrap shadow-2xl transition-all",
             isPlugin ? "px-2 py-1 rounded-lg bg-slate-900/70" : "px-6 py-3 rounded-full bg-slate-900/90 border-white/20",
             hovered && isPlugin && "bg-slate-900/90 px-4 py-2 rounded-full"
           )}>

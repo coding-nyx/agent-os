@@ -39,7 +39,7 @@ export function DiagnosisEmptyState({
 
   // Use neutral white-based colors to stay theme-agnostic
   const borderDrag = 'border-white/40 bg-white/10 scale-[1.005]';
-  const borderIdle = 'border-white/10 bg-white/[0.045]';
+  const borderIdle = 'border-white/[0.12] bg-white/[0.045]';
 
   return (
     <motion.div

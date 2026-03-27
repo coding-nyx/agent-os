@@ -23,7 +23,7 @@ const STATUS_BADGES: Record<
 > = {
   active: {
     label: 'Active',
-    className: 'bg-white/[0.045] text-white/70 border-white/10',
+    className: 'bg-white/[0.045] text-white/70 border-white/[0.12]',
   },
   paused: {
     label: 'Paused',
@@ -31,7 +31,7 @@ const STATUS_BADGES: Record<
   },
   completed: {
     label: 'Completed',
-    className: 'bg-white/[0.045] text-white/50 border-white/10',
+    className: 'bg-white/[0.045] text-white/50 border-white/[0.12]',
   },
   abandoned: {
     label: 'Abandoned',
@@ -100,7 +100,7 @@ export function GoalProgress({
                 ? { duration: 0 }
                 : { duration: 0.3, delay: index * 0.05 }
             }
-            className="rounded-xl border border-white/[0.09] bg-gradient-to-r from-white/[0.02] to-transparent hover:from-white/[0.04] hover:border-white/[0.08] transition-all overflow-hidden"
+            className="rounded-xl border border-white/[0.09] bg-gradient-to-r from-white/[0.02] to-transparent hover:from-white/[0.04] hover:border-white/[0.09] transition-all overflow-hidden"
           >
             {/* ── Goal header (click to expand) ── */}
             <NeuralButton

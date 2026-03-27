@@ -53,7 +53,7 @@ const NodeCard = React.memo(function NodeCard({
           : (isPlugin ? "p-2 rounded-xl w-[140px] bg-[#05050a]/70 backdrop-blur-xl border" : "p-3 rounded-2xl w-[185px] bg-[#05050a]/70 backdrop-blur-xl border"),
         isHovered 
           ? "border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.1)] bg-white/[0.05]" 
-          : "border-white/10 shadow-xl",
+          : "border-white/[0.12] shadow-xl",
         !canEnter && "opacity-60 grayscale-[0.5]",
         isPlugin && !isHovered && !isMobile && "opacity-40"
       )}>
@@ -72,7 +72,7 @@ const NodeCard = React.memo(function NodeCard({
             <div className={cn(
               "rounded-xl flex items-center justify-center shrink-0 border transition-colors",
               isPlugin ? "w-7 h-7" : "w-8 h-8",
-              isHovered ? "bg-white/10 border-white/20" : "bg-white/[0.045] border-white/10"
+              isHovered ? "bg-white/10 border-white/20" : "bg-white/[0.045] border-white/[0.12]"
             )}>
               <Icon className={isPlugin ? "w-3.5 h-3.5" : "w-4 h-4"} style={{ color: node.color }} />
             </div>

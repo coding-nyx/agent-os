@@ -39,7 +39,7 @@ export function GuestModePanel({
     <div className="flex-1 flex items-center justify-center p-8 pb-[12vh]">
       <SurfaceCard variant="strong" className="max-w-2xl w-full p-12 text-center space-y-12">
         <div className="flex items-center justify-center gap-3">
-          <div className="w-14 h-14 rounded-2xl border border-white/10 flex items-center justify-center" style={{ backgroundColor: `${module.colorHex}22` }}>
+          <div className="w-14 h-14 rounded-2xl border border-white/[0.12] flex items-center justify-center" style={{ backgroundColor: `${module.colorHex}22` }}>
             <Icon className="w-7 h-7" style={{ color: module.colorHex }} />
           </div>
           <div className="text-left">
@@ -56,7 +56,7 @@ export function GuestModePanel({
 
         <div className="grid gap-4 text-left pb-4">
           {limitations.map((item) => (
-            <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3">
+            <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/[0.12] bg-white/[0.045] px-4 py-3">
               <Lock className="w-4 h-4 text-white/40 mt-0.5" />
               <span className="text-[11px] text-white/60 uppercase tracking-[0.12em] font-semibold break-words">{item}</span>
             </div>

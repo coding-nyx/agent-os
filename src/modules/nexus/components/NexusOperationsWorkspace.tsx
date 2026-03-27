@@ -39,7 +39,7 @@ function OpsSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <section className="rounded-[24px] border border-white/10 bg-[#0b0f16]/88 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
+    <section className="rounded-[24px] border border-white/[0.12] bg-slate-900/85 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
       <button
         type="button"
         onClick={() => setIsOpen((value) => !value)}
@@ -50,14 +50,14 @@ function OpsSection({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/82">{title}</p>
             {badge ? (
-              <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/52">
+              <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/52">
                 {badge}
               </span>
             ) : null}
           </div>
           <p className="mt-1 text-sm text-white/45">{description}</p>
         </div>
-        <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-white/55">
+        <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.045] text-white/55">
           {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </span>
       </button>
@@ -177,7 +177,7 @@ export function NexusOperationsWorkspace({
         data-testid="nexus-ops-scroll-region"
       >
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-          <div className="rounded-[24px] border border-white/10 bg-[#0b0f16]/92 px-4 py-4 shadow-[0_18px_44px_rgba(0,0,0,0.2)] sm:px-5">
+          <div className="rounded-[24px] border border-white/[0.12] bg-slate-900/90 px-4 py-4 shadow-[0_18px_44px_rgba(0,0,0,0.2)] sm:px-5">
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -191,7 +191,7 @@ export function NexusOperationsWorkspace({
                     type="button"
                     variant="ghost"
                     onClick={() => navigate('/nexus')}
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-[11px] text-white/78 hover:bg-white/[0.08] h-auto"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.045] px-3 py-2 text-[11px] text-white/78 hover:bg-white/[0.08] h-auto"
                     aria-label="Return to Nexus chat"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -211,7 +211,7 @@ export function NexusOperationsWorkspace({
                     type="button"
                     variant="ghost"
                     onClick={() => ai.clearSession()}
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-[11px] text-white/70 hover:bg-white/[0.08] h-auto"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.045] px-3 py-2 text-[11px] text-white/70 hover:bg-white/[0.08] h-auto"
                     aria-label="Clear Nexus chat"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -221,7 +221,7 @@ export function NexusOperationsWorkspace({
               </div>
 
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-                <div className="rounded-2xl border border-white/10 bg-slate-900/50 px-3 py-3">
+                <div className="rounded-2xl border border-white/[0.12] bg-slate-900/50 px-3 py-3">
                   <NexusAgentPresenceStack participants={masterThreadSnapshot.thread.participants} />
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -236,7 +236,7 @@ export function NexusOperationsWorkspace({
                   {topStats.map((item) => (
                     <span
                       key={item.label}
-                      className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60"
+                      className="rounded-full border border-white/[0.12] bg-white/[0.045] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60"
                     >
                       {item.label}: {item.value}
                     </span>
@@ -256,7 +256,7 @@ export function NexusOperationsWorkspace({
                 type="button"
                 variant="ghost"
                 onClick={() => setThreadMonitorVisible((visible) => !visible)}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-[11px] text-white/68 hover:bg-white/[0.08] h-auto"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.045] px-3 py-2 text-[11px] text-white/68 hover:bg-white/[0.08] h-auto"
               >
                 <Workflow className="h-4 w-4" />
                 <span className="font-semibold uppercase tracking-[0.16em]">
@@ -281,7 +281,7 @@ export function NexusOperationsWorkspace({
                 onRetryExecution={handleExecutionRetry}
               />
             ) : (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.045] px-4 py-5 text-sm text-white/45">
+              <div className="rounded-2xl border border-dashed border-white/[0.12] bg-white/[0.045] px-4 py-5 text-sm text-white/45">
                 Thread review is currently hidden in the shell state. Re-open it from command if you need the full thread monitor.
               </div>
             )}
@@ -297,7 +297,7 @@ export function NexusOperationsWorkspace({
                 type="button"
                 variant="ghost"
                 onClick={() => refreshGlobalSoul()}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.05] text-[11px] text-white/68 hover:text-cyan-200 hover:bg-cyan-500/10 transition-colors h-auto"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/[0.12] bg-white/[0.045] text-[11px] text-white/68 hover:text-cyan-200 hover:bg-cyan-500/10 transition-colors h-auto"
                 aria-label="Refresh synthesis"
               >
                 <Sparkles className="w-4 h-4 shrink-0" />
@@ -332,7 +332,7 @@ export function NexusOperationsWorkspace({
               <button
                 type="button"
                 onClick={() => openNexusCommandPalette('Search my memory: ')}
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.045] px-4 py-4 text-left transition-colors hover:border-cyan-400/20 hover:bg-cyan-400/[0.04]"
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-dashed border-white/[0.12] bg-white/[0.045] px-4 py-4 text-left transition-colors hover:border-cyan-400/20 hover:bg-cyan-400/[0.04]"
               >
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65">No memory search active</p>

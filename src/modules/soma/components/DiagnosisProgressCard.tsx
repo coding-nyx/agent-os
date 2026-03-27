@@ -136,7 +136,7 @@ export function DiagnosisProgressCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
       transition={{ type: 'spring', stiffness: 280, damping: 28 }}
-      className="bg-slate-900/50 backdrop-blur border border-white/10 rounded-2xl p-6 space-y-5"
+      className="bg-slate-900/50 backdrop-blur border border-white/[0.12] rounded-2xl p-6 space-y-5"
       role="status"
       aria-live="polite"
     >

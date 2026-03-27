@@ -81,7 +81,7 @@ function isoToLocal(iso: string): string {
 const STATUS_BADGE: Record<RecoveryWindow['status'], string> = {
   planned: 'bg-sky-500/15 text-sky-300 border border-sky-500/30',
   active: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
-  completed: 'bg-white/[0.045] text-white/40 border border-white/10',
+  completed: 'bg-white/[0.045] text-white/40 border border-white/[0.12]',
 };
 
 const STATUS_LABEL: Record<RecoveryWindow['status'], string> = {
@@ -226,7 +226,7 @@ export function RecoveryWindowManager({
             return (
               <div
                 key={w.id}
-                className="relative group rounded-xl border border-white/10 bg-white/[0.045] p-4 hover:border-white/20 transition-colors"
+                className="relative group rounded-xl border border-white/[0.12] bg-white/[0.045] p-4 hover:border-white/20 transition-colors"
               >
                 {/* Action buttons — revealed on hover */}
                 <ItemActionButtons
@@ -352,7 +352,7 @@ export function RecoveryWindowManager({
         </div>
 
         {/* Footer actions */}
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/[0.12]">
           <NeuralButton onClick={closeForm} variant="ghost" className="w-full sm:w-auto">
             Cancel
           </NeuralButton>

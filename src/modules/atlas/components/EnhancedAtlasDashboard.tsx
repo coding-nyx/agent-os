@@ -147,7 +147,7 @@ function ViewDropdown({
 
       {isOpen && createPortal(
         <div 
-          className="fixed w-32 bg-zinc-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] py-1 z-[1000] overflow-hidden"
+          className="fixed w-32 bg-zinc-950/95 backdrop-blur-xl border border-white/[0.12] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] py-1 z-[1000] overflow-hidden"
           style={{ top: coords.top, left: coords.left }}
         >
           {options.map((v) => (
@@ -284,7 +284,7 @@ export function EnhancedAtlasDashboard({
           />
           <span
             className={cn(
-              'self-start inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[length:var(--atlas-type-label)] font-semibold border border-white/10 bg-white/[0.045]',
+              'self-start inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[length:var(--atlas-type-label)] font-semibold border border-white/[0.12] bg-white/[0.045]',
               predictiveDisplay.color
             )}
             title={predictiveDisplay.description}
@@ -456,21 +456,21 @@ export function EnhancedAtlasDashboard({
                           label="Theme"
                           value={intentionForm.theme}
                           onChange={(e) => setIntentionForm({ ...intentionForm, theme: e.target.value })}
-                          className="bg-white/[0.045] border-white/10"
+                          className="bg-white/[0.045] border-white/[0.12]"
                         />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <NeuralInput 
                             label="Focus Domain"
                             value={intentionForm.focusDomain}
                             onChange={(e) => setIntentionForm({ ...intentionForm, focusDomain: e.target.value })}
-                            className="bg-white/[0.045] border-white/10"
+                            className="bg-white/[0.045] border-white/[0.12]"
                           />
                           <NeuralInput 
                             type="number"
                             label="Energy Target"
                             value={intentionForm.energyTarget}
                             onChange={(e) => setIntentionForm({ ...intentionForm, energyTarget: parseInt(e.target.value) })}
-                            className="bg-white/[0.045] border-white/10"
+                            className="bg-white/[0.045] border-white/[0.12]"
                           />
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
@@ -510,7 +510,7 @@ export function EnhancedAtlasDashboard({
                           {profile.dailyIntentions[0].theme}
                       </h3>
                       <div className="mt-4 flex items-center gap-4">
-                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.045] border border-white/10">
+                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.045] border border-white/[0.12]">
                             <div className="w-1.5 h-1.5 rounded-full bg-[var(--module-color-400)]" />
                             <span className="text-[11px] font-bold text-white/60 uppercase">{profile.dailyIntentions[0].focusDomain}</span>
                           </div>
@@ -579,7 +579,7 @@ export function EnhancedAtlasDashboard({
                   size="sm"
                   title="No energy wave points yet"
                   description="Your 48-hour energy forecast will populate here. Log energy data during onboarding or check-ins."
-                  className="bg-transparent border-white/10"
+                  className="bg-transparent border-white/[0.12]"
                 />
               )}
             </section>
@@ -756,7 +756,7 @@ export function EnhancedAtlasDashboard({
                   {profile.reviews.map((review: any) => (
                     <div
                       key={review.id}
-                      className="rounded-2xl border border-white/10 bg-white/[0.045] p-6"
+                      className="rounded-2xl border border-white/[0.12] bg-white/[0.045] p-6"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="text-sm font-bold text-white/90 capitalize">
@@ -817,7 +817,7 @@ export function EnhancedAtlasDashboard({
                       )}
                       
                       {review.insights && review.insights.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-white/10">
+                          <div className="mt-4 pt-4 border-t border-white/[0.12]">
                               <span className="text-[11px] text-white/40 uppercase tracking-wider">Generated Insights</span>
                               <ul className="list-disc pl-4 mt-2 space-y-1">
                                   {review.insights.map((ins: string, i: number) => (
@@ -828,7 +828,7 @@ export function EnhancedAtlasDashboard({
                       )}
 
                       {review.blueprint?.projection?.recommendedActions?.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-white/10">
+                        <div className="mt-4 pt-4 border-t border-white/[0.12]">
                           <span className="text-[11px] text-white/40 uppercase tracking-wider">Recommended Actions</span>
                           <ul className="mt-2 space-y-2">
                             {review.blueprint.projection.recommendedActions.slice(0, 3).map((action: any) => (

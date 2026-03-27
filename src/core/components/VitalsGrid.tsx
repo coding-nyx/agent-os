@@ -77,7 +77,7 @@ export function VitalsGrid({ metrics, columns = 4, isLocked = false, onCalibrate
                                 ) : showCalibrate ? (
                                     <button
                                         onClick={() => metric.metricKey && onCalibrate?.(metric.metricKey)}
-                                        className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.045] text-[11px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-white/90 transition inline-flex items-center gap-2 animate-pulse"
+                                        className="px-3 py-1 rounded-full border border-white/[0.12] bg-white/[0.045] text-[11px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-white/90 transition inline-flex items-center gap-2 animate-pulse"
                                     >
                                         <Handshake className="w-3 h-3" />
                                         Calibrate

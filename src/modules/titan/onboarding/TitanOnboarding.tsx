@@ -154,7 +154,7 @@ function TitanGuidedContent({ state, setState, messages, isProcessing, streaming
           <NeuralButton
             variant="secondary"
             onClick={() => setState((prev) => ({ ...prev, privacyLevel: 'basic' }))}
-            className="p-5 h-auto flex-col items-start justify-start text-left group rounded-2xl border-white/10"
+            className="p-5 h-auto flex-col items-start justify-start text-left group rounded-2xl border-white/[0.12]"
           >
             <Shield className="w-6 h-6 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
             <h3 className="text-sm font-black uppercase tracking-wider mb-2">Basic Data</h3>
@@ -163,7 +163,7 @@ function TitanGuidedContent({ state, setState, messages, isProcessing, streaming
           <NeuralButton
             variant="secondary"
             onClick={() => setState((prev) => ({ ...prev, privacyLevel: 'complete' }))}
-            className="p-5 h-auto flex-col items-start justify-start text-left group rounded-2xl border-white/10"
+            className="p-5 h-auto flex-col items-start justify-start text-left group rounded-2xl border-white/[0.12]"
           >
             <Sparkles className="w-6 h-6 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
             <h3 className="text-sm font-black uppercase tracking-wider mb-2">Complete Data</h3>

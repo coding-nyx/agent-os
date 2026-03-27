@@ -143,7 +143,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
     <div className={cn("relative w-full h-full flex flex-col", className)}>
       {/* Header bar */}
       <div className="absolute top-3 left-3 right-3 z-10 flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.045] border border-white/10 backdrop-blur-md">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.045] border border-white/[0.12] backdrop-blur-md">
           <div className="w-2 h-2 rounded-full bg-lime-400" />
           <span className="text-[11px] font-bold text-white/60 uppercase tracking-wider">Knowledge Graph</span>
           <span className="text-[11px] text-white/30">·</span>
@@ -160,7 +160,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
         <button
           onClick={() => setShowFilters(f => !f)}
           className={cn("ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-bold uppercase tracking-wider transition-all",
-            showFilters ? "bg-lime-500/20 border-lime-500/30 text-lime-400" : "bg-white/[0.045] border-white/10 text-white/50 hover:text-white/80"
+            showFilters ? "bg-lime-500/20 border-lime-500/30 text-lime-400" : "bg-white/[0.045] border-white/[0.12] text-white/50 hover:text-white/80"
           )}
         >
           <SlidersHorizontal className="w-3 h-3" />
@@ -175,7 +175,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="absolute top-12 right-3 z-20 p-4 rounded-2xl bg-[#0a0a12] border border-white/10 shadow-2xl w-64 space-y-4"
+            className="absolute top-12 right-3 z-20 p-4 rounded-2xl bg-[#0a0a12] border border-white/[0.12] shadow-2xl w-64 space-y-4"
           >
             {/* Status filter */}
             <div>
@@ -188,7 +188,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
                     className={cn("px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all capitalize",
                       statusFilter === s
                         ? "bg-lime-500/30 border-lime-500/40 text-lime-400"
-                        : "bg-white/[0.045] border-white/10 text-white/50 hover:text-white/80"
+                        : "bg-white/[0.045] border-white/[0.12] text-white/50 hover:text-white/80"
                     )}
                   >
                     {s}
@@ -225,7 +225,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
                       className={cn("px-2 py-0.5 rounded-full text-[11px] border transition-all",
                         tagFilter === tag
                           ? "bg-violet-500/30 border-violet-500/40 text-violet-300"
-                          : "bg-white/[0.045] border-white/10 text-white/40 hover:text-white/70"
+                          : "bg-white/[0.045] border-white/[0.12] text-white/40 hover:text-white/70"
                       )}
                     >
                       #{tag}
@@ -345,7 +345,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="absolute bottom-6 left-6 right-6 p-4 rounded-2xl border border-white/10 bg-[#0a0c11]/90 backdrop-blur-xl shadow-2xl"
+            className="absolute bottom-6 left-6 right-6 p-4 rounded-2xl border border-white/[0.12] bg-[#0a0c11]/90 backdrop-blur-xl shadow-2xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">

@@ -179,10 +179,10 @@ export function DeepResearchPanel({
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: '100%' }}
         transition={{ type: 'spring', stiffness: 320, damping: 32, mass: 0.8 }}
-        className="relative ml-auto flex h-full w-full flex-col overflow-hidden border-l border-white/10 bg-[#0a0c11] shadow-2xl lg:w-[600px] xl:w-[680px]"
+        className="relative ml-auto flex h-full w-full flex-col overflow-hidden border-l border-white/[0.12] bg-[#0a0c11] shadow-2xl lg:w-[600px] xl:w-[680px]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.08] flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.09] flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
               <Brain className="w-4 h-4 text-violet-400" />
@@ -211,7 +211,7 @@ export function DeepResearchPanel({
               <div className="space-y-2">
                 <NeuralInput
                   label="Research Query"
-                  className="flex-1 bg-white/[0.045] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/40 focus:bg-white/[0.07] transition-all"
+                  className="flex-1 bg-white/[0.045] border border-white/[0.12] rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/40 focus:bg-white/[0.07] transition-all"
                   placeholder="What do you want to research deeply?"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -383,7 +383,7 @@ export function DeepResearchPanel({
                 <p className="text-sm font-semibold text-emerald-300/80">Research complete</p>
               </div>
 
-              <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.045] space-y-4">
+              <div className="p-5 rounded-2xl border border-white/[0.12] bg-white/[0.045] space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-sm font-semibold text-white/90 leading-snug">{deepResearch.result.synthesisNode.title}</h3>
                   <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${
@@ -406,7 +406,7 @@ export function DeepResearchPanel({
         </div>
 
         {/* Footer actions */}
-        <div className="border-t border-white/[0.08] bg-[#0a0c11]/95 px-6 py-4 pb-[calc(var(--space-4)+env(safe-area-inset-bottom,0px))] backdrop-blur-xl">
+        <div className="border-t border-white/[0.09] bg-slate-900/95 px-6 py-4 pb-[calc(var(--space-4)+env(safe-area-inset-bottom,0px))] backdrop-blur-xl">
           {deepResearch.status === 'reviewing' && (
             <div className="flex w-full flex-col-reverse items-stretch justify-end gap-2 sm:flex-row sm:items-center">
               <NeuralButton

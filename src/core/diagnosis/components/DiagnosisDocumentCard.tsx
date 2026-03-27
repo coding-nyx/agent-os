@@ -61,12 +61,12 @@ export function DiagnosisDocumentCard({
         'rounded-[16px] border p-3 cursor-pointer transition-all text-left',
         isActive
           ? 'border-white/25 bg-white/8'
-          : 'border-white/10 bg-white/[0.045] hover:border-white/15 hover:bg-white/[0.045]',
+          : 'border-white/[0.12] bg-white/[0.045] hover:border-white/15 hover:bg-white/[0.045]',
       ].join(' ')}
     >
       {/* Header */}
       <div className="flex items-start gap-2">
-        <div className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-lg bg-white/[0.045] border border-white/10 flex items-center justify-center">
+        <div className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-lg bg-white/[0.045] border border-white/[0.12] flex items-center justify-center">
           <Icon className="w-3 h-3 text-white/50" />
         </div>
         <div className="flex-1 min-w-0">

@@ -217,7 +217,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-white/80">{entry.date}</span>
                         {entry.tags?.map(t => (
-                          <span key={t} className="px-1.5 py-0.5 rounded text-[11px] font-black uppercase tracking-wider bg-white/[0.045] border border-white/10 text-white/40">
+                          <span key={t} className="px-1.5 py-0.5 rounded text-[11px] font-black uppercase tracking-wider bg-white/[0.045] border border-white/[0.12] text-white/40">
                             {t.replace('_', ' ')}
                           </span>
                         ))}
@@ -374,7 +374,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
                     'px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all h-auto',
                     selectedTags.includes(tag)
                       ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                      : 'bg-white/[0.045] border border-white/10 text-white/40 hover:bg-white/10 hover:text-white/60'
+                      : 'bg-white/[0.045] border border-white/[0.12] text-white/40 hover:bg-white/10 hover:text-white/60'
                   )}
                 >
                   {tag.replace('_', ' ')}

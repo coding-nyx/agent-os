@@ -74,8 +74,8 @@ const SEVERITY_COLORS: Record<string, string> = {
   high: 'bg-rose-500/20 border-rose-500/30 text-rose-300',
   warning: 'bg-amber-500/20 border-amber-500/30 text-amber-300',
   moderate: 'bg-amber-500/20 border-amber-500/30 text-amber-300',
-  info: 'bg-white/[0.045] border-white/10 text-white/60',
-  low: 'bg-white/[0.045] border-white/10 text-white/60',
+  info: 'bg-white/[0.045] border-white/[0.12] text-white/60',
+  low: 'bg-white/[0.045] border-white/[0.12] text-white/60',
 };
 
 // ---------------------------------------------------------------------------
@@ -240,7 +240,7 @@ export function BiomarkerDashboard({
             icon={TestTube2}
             title="No biomarker entries yet"
             description="Import lab results or add biomarkers via the Titan chat."
-            className="bg-transparent border-white/10"
+            className="bg-transparent border-white/[0.12]"
             action={
               <div className="flex gap-2">
                 <NeuralButton size="sm" themeColor={themeColor} onClick={onImportLab}>
@@ -294,7 +294,7 @@ export function BiomarkerDashboard({
             icon={FileText}
             title="No lab reports yet"
             description="Import a lab report to populate this section."
-            className="bg-transparent border-white/10"
+            className="bg-transparent border-white/[0.12]"
           />
         ) : (
           sortedLabs.map((lab) => {
@@ -395,7 +395,7 @@ export function BiomarkerDashboard({
                   ? 'border-rose-500/20 bg-rose-500/5'
                   : f.severity === 'warning' || f.severity === 'moderate'
                     ? 'border-amber-500/20 bg-amber-500/5'
-                    : 'border-white/10 bg-white/[0.045]'
+                    : 'border-white/[0.12] bg-white/[0.045]'
               )}
             >
               <AlertTriangle
@@ -454,7 +454,7 @@ const STATUS_STYLE: Record<string, { border: string; bg: string; text: string; d
     dot: 'bg-rose-400',
   },
   unknown: {
-    border: 'border-white/10',
+    border: 'border-white/[0.12]',
     bg: 'bg-white/[0.045]',
     text: 'text-white/60',
     dot: 'bg-white/30',
@@ -518,7 +518,7 @@ function CustomBiomarkersSection({
           icon={TestTube2}
           title="No custom biomarkers"
           description="Add custom biomarkers to track lab values, hormones, and health metrics beyond core vitals."
-          className="bg-transparent border-white/10"
+          className="bg-transparent border-white/[0.12]"
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

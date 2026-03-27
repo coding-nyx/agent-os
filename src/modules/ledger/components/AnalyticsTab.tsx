@@ -110,7 +110,7 @@ const CATEGORY_COLORS = [
 
 function DonutChart({ slices }: { slices: { value: number; color: string; label: string }[] }) {
   const total = slices.reduce((s, sl) => s + sl.value, 0);
-  if (total === 0) return <div className="w-36 h-36 rounded-full bg-white/[0.045] border border-white/10 mx-auto" />;
+  if (total === 0) return <div className="w-36 h-36 rounded-full bg-white/[0.045] border border-white/[0.12] mx-auto" />;
 
   const size = 144;
   const r = 52;
@@ -387,7 +387,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
             description="Add expense transactions to see category breakdown."
             icon={BarChart3}
             size="sm"
-            className="bg-transparent border-white/10"
+            className="bg-transparent border-white/[0.12]"
           />
         ) : (
           <div className="flex flex-col md:flex-row items-start gap-6">
@@ -498,7 +498,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
               description="Log expenses to see your top spends."
               icon={DollarSign}
               size="sm"
-              className="bg-transparent border-white/10"
+              className="bg-transparent border-white/[0.12]"
             />
           ) : (
             <div className="space-y-2">

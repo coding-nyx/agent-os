@@ -80,7 +80,7 @@ export function ExportDialog({ isOpen, onClose, target }: ExportDialogProps) {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-2xl bg-[#0a0c11] border border-white/10 rounded-2xl flex flex-col max-h-[80vh] overflow-hidden"
+        className="w-full max-w-2xl bg-[#0a0c11] border border-white/[0.12] rounded-2xl flex flex-col max-h-[80vh] overflow-hidden"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-white/[0.09]">

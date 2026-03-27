@@ -97,7 +97,7 @@ export function MobileDiagnosisTabs({
                     'inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold tabular-nums',
                     isActive
                       ? 'bg-[var(--module-accent-glow)] text-[var(--module-color-300)] border border-[var(--module-accent-border)]'
-                      : 'bg-white/10 text-white/50 border border-white/10'
+                      : 'bg-white/10 text-white/50 border border-white/[0.12]'
                   )}
                 >
                   {tab.badge > 99 ? '99+' : tab.badge}

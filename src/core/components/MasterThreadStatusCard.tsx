@@ -38,7 +38,7 @@ const PROPOSAL_STYLES: Record<MasterThreadProposalLifecycle, string> = {
 const PARTICIPANT_ROLE_STYLES = {
   primary: 'border-violet-500/30 bg-violet-500/10 text-violet-200',
   secondary: 'border-cyan-500/25 bg-cyan-500/10 text-cyan-100',
-  observer: 'border-white/10 bg-white/[0.045] text-white/70',
+  observer: 'border-white/[0.12] bg-white/[0.045] text-white/70',
 } as const;
 
 const PARTICIPANT_STATE_LABELS = {
@@ -56,9 +56,9 @@ const PARTICIPANT_STATE_STYLES = {
   joined: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100',
   active: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200',
   waiting: 'border-sky-500/20 bg-sky-500/10 text-sky-200',
-  resolved: 'border-white/10 bg-white/[0.06] text-white/70',
+  resolved: 'border-white/[0.12] bg-white/[0.06] text-white/70',
   dismissed: 'border-rose-500/20 bg-rose-500/10 text-rose-200',
-  left: 'border-white/10 bg-white/[0.045] text-white/55',
+  left: 'border-white/[0.12] bg-white/[0.045] text-white/55',
 } as const;
 
 const PARTICIPANT_PRESENCE_LABELS = {
@@ -415,7 +415,7 @@ export function MasterThreadStatusCard({
   return (
     <section
       className={cn(
-        'rounded-2xl border border-white/10 bg-white/[0.035] text-white/80',
+        'rounded-2xl border border-white/[0.12] bg-white/[0.035] text-white/80',
         compact ? 'space-y-3 p-3' : 'space-y-4 p-4',
         className,
       )}
@@ -435,13 +435,13 @@ export function MasterThreadStatusCard({
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5 text-[11px] text-white/55">
-            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1">
+            <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1">
               {threadTurns.length} turn{threadTurns.length === 1 ? '' : 's'}
             </span>
-            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1">
+            <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1">
               {threadMessages.length} message{threadMessages.length === 1 ? '' : 's'}
             </span>
-            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1">
+            <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1">
               {threadParticipants.length} participant{threadParticipants.length === 1 ? '' : 's'}
             </span>
             {selectedProposal ? (
@@ -464,10 +464,10 @@ export function MasterThreadStatusCard({
 
       {runtimeSummary ? (
         <div
-          className="grid gap-2 rounded-xl border border-white/10 bg-slate-900/50 p-3 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid gap-2 rounded-xl border border-white/[0.12] bg-slate-900/50 p-3 sm:grid-cols-2 xl:grid-cols-4"
           data-testid="master-thread-runtime-summary"
         >
-          <div className="rounded-xl border border-white/10 bg-white/[0.045] p-2.5">
+          <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-2.5">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/42">
               <Layers3 className="h-3.5 w-3.5 text-cyan-300/80" aria-hidden />
               Runtime
@@ -489,7 +489,7 @@ export function MasterThreadStatusCard({
               {runtimeSummary.counts.silentExecutions} ghost/silent
             </p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.045] p-2.5">
+          <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-2.5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/42">Exceptions</p>
             <p className="mt-2 text-sm font-semibold text-white/88">
               {(runtimeSummary.counts.analysisOnly ?? 0) + (runtimeSummary.counts.blocked ?? 0) + (runtimeSummary.counts.failed ?? 0)}
@@ -510,7 +510,7 @@ export function MasterThreadStatusCard({
                 <MessagesSquare className="h-3.5 w-3.5 text-cyan-300/80" aria-hidden />
                 Thread activity
               </div>
-              <div className="rounded-xl border border-white/10 bg-slate-900/50 p-3">
+              <div className="rounded-xl border border-white/[0.12] bg-slate-900/50 p-3">
                 <div className="space-y-3">
                   {recentThreadMessages.map((message, index) => {
                     const replyLabel = describeReplyTarget(message, threadMessageMap, chatActorIdentityEnabled);
@@ -547,7 +547,7 @@ export function MasterThreadStatusCard({
                             'min-w-0 flex-1 rounded-xl border px-3 py-2.5',
                             isReply
                               ? 'border-cyan-500/15 bg-cyan-500/[0.04]'
-                              : 'border-white/10 bg-white/[0.045]',
+                              : 'border-white/[0.12] bg-white/[0.045]',
                           )}
                         >
                           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -568,11 +568,11 @@ export function MasterThreadStatusCard({
                                 </span>
                               ) : null}
                               {typeof message.turnSequence === 'number' ? (
-                                <span className="rounded-full border border-white/10 bg-white/[0.045] px-1.5 py-0.5">
+                                <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-1.5 py-0.5">
                                   T{message.turnSequence}
                                 </span>
                               ) : null}
-                              <span className="rounded-full border border-white/10 bg-white/[0.045] px-1.5 py-0.5">
+                              <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-1.5 py-0.5">
                                 {formatCompactTimestamp(message.createdAt)}
                               </span>
                             </div>
@@ -611,7 +611,7 @@ export function MasterThreadStatusCard({
                 <ScrollText className="h-3.5 w-3.5 text-cyan-300/80" aria-hidden />
                 Review surfaces
               </div>
-              <div className="grid gap-2 rounded-xl border border-white/10 bg-slate-900/50 p-3">
+              <div className="grid gap-2 rounded-xl border border-white/[0.12] bg-slate-900/50 p-3">
                 {recentSilentHistoryEntries.length > 0 ? (
                   <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.05] p-2.5">
                     <div className="mb-2 flex items-center justify-between gap-2">
@@ -671,7 +671,7 @@ export function MasterThreadStatusCard({
                 ) : null}
 
                 {recentTurns.length > 0 ? (
-                  <div className="rounded-xl border border-white/10 bg-white/[0.045] p-2.5">
+                  <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-2.5">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/42">Playback timeline</p>
                       <span className="text-[11px] text-white/42">
@@ -680,7 +680,7 @@ export function MasterThreadStatusCard({
                     </div>
                     <div className="space-y-2">
                       {recentTurns.map((turn) => (
-                        <div key={turn.id} className="rounded-lg border border-white/10 bg-slate-900/50 px-2.5 py-2">
+                        <div key={turn.id} className="rounded-lg border border-white/[0.12] bg-slate-900/50 px-2.5 py-2">
                           <div className="flex items-center justify-between gap-2">
                             <AgentIdentity
                               source={turn.startedBy}
@@ -710,7 +710,7 @@ export function MasterThreadStatusCard({
               <Users className="h-3.5 w-3.5 text-cyan-300/80" aria-hidden />
               Participants
             </div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/50 p-3">
+            <div className="rounded-xl border border-white/[0.12] bg-slate-900/50 p-3">
               <div className="mb-3 flex flex-wrap gap-1.5 text-[11px] text-white/55">
                 <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-emerald-200">
                   {activeParticipantCount} active
@@ -719,7 +719,7 @@ export function MasterThreadStatusCard({
                   {waitingParticipantCount} pending
                 </span>
                 {inactiveParticipantCount > 0 ? (
-                  <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1">
+                  <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1">
                     {inactiveParticipantCount} inactive
                   </span>
                 ) : null}
@@ -747,7 +747,7 @@ export function MasterThreadStatusCard({
                     <div className="flex flex-wrap items-center justify-end gap-1.5 text-[11px]">
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1 rounded-full border border-white/10 bg-slate-900/50 px-2 py-1 font-semibold uppercase tracking-[0.14em] opacity-80',
+                          'inline-flex items-center gap-1 rounded-full border border-white/[0.12] bg-slate-900/50 px-2 py-1 font-semibold uppercase tracking-[0.14em] opacity-80',
                         )}
                       >
                         <span
@@ -790,7 +790,7 @@ export function MasterThreadStatusCard({
                 Proposal focus
               </div>
               {proposals.length > 1 ? (
-                <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[11px] text-white/45">
+                <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1 text-[11px] text-white/45">
                   {proposals.length} lifecycle items
                 </span>
               ) : null}
@@ -798,7 +798,7 @@ export function MasterThreadStatusCard({
 
             {selectedProposal ? (
               <div className="space-y-2">
-                <div className="rounded-xl border border-white/10 bg-slate-900/50 p-3" data-testid="master-thread-proposal">
+                <div className="rounded-xl border border-white/[0.12] bg-slate-900/50 p-3" data-testid="master-thread-proposal">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -827,15 +827,15 @@ export function MasterThreadStatusCard({
                   </div>
 
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-xl border border-white/10 bg-white/[0.045] px-2.5 py-2">
+                    <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] px-2.5 py-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">Execution</p>
                       <p className="mt-1 text-xs text-white/70">{titleCaseStatus(selectedProposal.executionMode)}</p>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-white/[0.045] px-2.5 py-2">
+                    <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] px-2.5 py-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">History</p>
                       <p className="mt-1 text-xs text-white/70">{titleCaseStatus(selectedProposal.historyMode)}</p>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-white/[0.045] px-2.5 py-2">
+                    <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] px-2.5 py-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">Disposition</p>
                       <p className="mt-1 text-xs text-white/70">{DISPOSITION_LABELS[selectedProposal.runtimeDisposition]}</p>
                     </div>
@@ -844,7 +844,7 @@ export function MasterThreadStatusCard({
                         'rounded-xl border px-2.5 py-2',
                         selectedProposal.approvalRequirement.required
                           ? 'border-amber-500/20 bg-amber-500/[0.06]'
-                          : 'border-white/10 bg-white/[0.045]',
+                          : 'border-white/[0.12] bg-white/[0.045]',
                       )}
                     >
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">Approval</p>
@@ -869,7 +869,7 @@ export function MasterThreadStatusCard({
                         <label className="block space-y-1 text-[11px] text-white/65">
                           <span className="font-semibold uppercase tracking-[0.14em] text-white/45">Target module</span>
                           <select
-                            className="w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/40"
+                            className="w-full rounded-lg border border-white/[0.12] bg-slate-900/60 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/40"
                             value={editTargetModuleId}
                             onChange={(event) => setEditTargetModuleId(event.target.value as ModuleId)}
                             aria-label="Target module"
@@ -889,7 +889,7 @@ export function MasterThreadStatusCard({
                         <label className="block space-y-1 text-[11px] text-white/65">
                           <span className="font-semibold uppercase tracking-[0.14em] text-white/45">Routing reason</span>
                           <textarea
-                            className="min-h-[76px] w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/40"
+                            className="min-h-[76px] w-full rounded-lg border border-white/[0.12] bg-slate-900/60 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/40"
                             value={editReason}
                             onChange={(event) => setEditReason(event.target.value)}
                             aria-label="Routing reason"
@@ -899,7 +899,7 @@ export function MasterThreadStatusCard({
                       <div className="flex flex-wrap justify-end gap-2">
                         <button
                           type="button"
-                          className="rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70 transition hover:bg-white/[0.08]"
+                          className="rounded-lg border border-white/[0.12] bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70 transition hover:bg-white/[0.08]"
                           onClick={() => {
                             setIsEditingSelectedProposal(false);
                             setEditTargetModuleId(selectedProposal.targetModuleId ?? '');
@@ -951,7 +951,7 @@ export function MasterThreadStatusCard({
                         {canMutateSelectedProposal && selectedProposal ? (
                           <button
                             type="button"
-                            className="rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75 transition hover:bg-white/[0.08]"
+                            className="rounded-lg border border-white/[0.12] bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75 transition hover:bg-white/[0.08]"
                             onClick={() =>
                               onProposalLifecycleChange?.(
                                 selectedProposal.proposalId,
@@ -974,7 +974,7 @@ export function MasterThreadStatusCard({
                         {canEditSelectedProposal ? (
                           <button
                             type="button"
-                            className="rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75 transition hover:bg-white/[0.08]"
+                            className="rounded-lg border border-white/[0.12] bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75 transition hover:bg-white/[0.08]"
                             onClick={() => setIsEditingSelectedProposal(true)}
                           >
                             Edit
@@ -1011,7 +1011,7 @@ export function MasterThreadStatusCard({
                               'flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition',
                               isSelected
                                 ? 'border-cyan-500/30 bg-cyan-500/10'
-                                : 'border-white/10 bg-white/[0.045] hover:bg-white/[0.05]',
+                                : 'border-white/[0.12] bg-white/[0.045] hover:bg-white/[0.05]',
                             )}
                             onClick={() => setSelectedProposalId(proposal.id)}
                           >
@@ -1047,7 +1047,7 @@ export function MasterThreadStatusCard({
               </div>
             ) : (
               <div
-                className="rounded-xl border border-dashed border-white/10 bg-white/[0.045] px-3 py-3 text-xs text-white/45"
+                className="rounded-xl border border-dashed border-white/[0.12] bg-white/[0.045] px-3 py-3 text-xs text-white/45"
                 data-testid="master-thread-no-proposal"
               >
                 No active proposal in the thread.

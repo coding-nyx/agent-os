@@ -80,7 +80,7 @@ export function ConfirmDialog({
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   className={cn(
                     'fixed left-1/2 top-1/2 z-[var(--z-modal)] w-full max-w-sm -translate-x-1/2 -translate-y-1/2',
-                    'rounded-2xl border bg-[#0a0a0f]/95 backdrop-blur-xl shadow-2xl shadow-black/60 p-6',
+                    'rounded-2xl border bg-slate-900/95 backdrop-blur-xl shadow-2xl shadow-black/60 p-6',
                     theme.border
                   )}
                 >

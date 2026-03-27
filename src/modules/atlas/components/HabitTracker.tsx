@@ -125,7 +125,7 @@ export function HabitTracker({
                     'bg-white/[0.045] backdrop-blur-sm',
                     atRisk && !doneToday && 'border-amber-500/20',
                     doneToday && 'border-emerald-500/15 bg-emerald-500/[0.03]',
-                    !atRisk && !doneToday && 'border-white/10'
+                    !atRisk && !doneToday && 'border-white/[0.12]'
                   )}
                 >
                   <div className="flex items-center gap-3">

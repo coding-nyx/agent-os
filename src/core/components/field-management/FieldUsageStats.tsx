@@ -137,7 +137,7 @@ export function FieldUsageStats({ moduleId, fieldId, className }: FieldUsageStat
 
         <div className="space-y-3">
           {/* Total Records */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.045] border border-white/10">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.045] border border-white/[0.12]">
             <div className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-indigo-400" />
               <span className="text-sm text-white/60">Total Records</span>
@@ -146,7 +146,7 @@ export function FieldUsageStats({ moduleId, fieldId, className }: FieldUsageStat
           </div>
 
           {/* Records with Value */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.045] border border-white/10">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.045] border border-white/[0.12]">
             <div className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-cyan-400" />
               <span className="text-sm text-white/60">Records with Value</span>
@@ -158,7 +158,7 @@ export function FieldUsageStats({ moduleId, fieldId, className }: FieldUsageStat
           </div>
 
           {/* Last Used */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.045] border border-white/10">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.045] border border-white/[0.12]">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-orange-400" />
               <span className="text-sm text-white/60">Last Used</span>

@@ -189,7 +189,7 @@ export function LedgerDashboard({
       ? alerts.slice(0, ALERT_COLLAPSE_THRESHOLD)
       : alerts;
   const runwayToneByStatus = {
-    needs_data: 'border-white/10 bg-white/[0.045] text-white/70',
+    needs_data: 'border-white/[0.12] bg-white/[0.045] text-white/70',
     stable: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-300',
     healthy: 'border-sky-500/20 bg-sky-500/5 text-sky-300',
     watch: 'border-amber-500/20 bg-amber-500/5 text-amber-300',
@@ -298,7 +298,7 @@ export function LedgerDashboard({
             "px-3 py-2 rounded-lg text-xs font-semibold transition-colors border",
             behavioralEnabled
               ? "bg-violet-500/20 border-violet-500/30 text-violet-300"
-              : "bg-white/[0.045] border-white/10 text-white/50 hover:bg-white/10"
+              : "bg-white/[0.045] border-white/[0.12] text-white/50 hover:bg-white/10"
           )}
         >
           {behavioralEnabled ? '✦ Behavioral Insights On' : 'Enable Behavioral Insights'}
@@ -381,7 +381,7 @@ export function LedgerDashboard({
                 {alerts.length > ALERT_COLLAPSE_THRESHOLD && (
                   <button
                     onClick={() => setAlertsExpanded((prev) => !prev)}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.045] border border-white/10 hover:bg-white/10 transition-colors text-[11px] font-bold text-white/60 uppercase tracking-wider"
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.045] border border-white/[0.12] hover:bg-white/10 transition-colors text-[11px] font-bold text-white/60 uppercase tracking-wider"
                     aria-expanded={alertsExpanded}
                     aria-label={
                       alertsExpanded
@@ -559,7 +559,7 @@ export function LedgerDashboard({
                 description="Add transactions to see recent activity here."
                 icon={Upload}
                 size="sm"
-                className="bg-transparent border-white/10"
+                className="bg-transparent border-white/[0.12]"
               />
             ) : (
               <div className="space-y-3">
@@ -593,7 +593,7 @@ export function LedgerDashboard({
                   title="No spending data yet"
                   description="Log expenses or upload transactions to populate this view."
                   icon={CreditCard}
-                  className="bg-transparent border-white/10"
+                  className="bg-transparent border-white/[0.12]"
                 />
               ) : (
                 <div className="space-y-3">
@@ -638,7 +638,7 @@ export function LedgerDashboard({
                   size="sm"
                   title="No active plan"
                   description="Ask Ledger to generate a financial plan."
-                  className="bg-transparent border-white/10"
+                  className="bg-transparent border-white/[0.12]"
                 />
               )}
             </SurfaceCard>
@@ -672,12 +672,12 @@ export function LedgerDashboard({
                 description="Transaction activity will appear here."
                 icon={FileText}
                 size="sm"
-                className="bg-transparent border-white/10"
+                className="bg-transparent border-white/[0.12]"
               />
             ) : (
               <div className="space-y-2">
                 {recentEvents.slice(0, 8).map((evt) => (
-                  <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/[0.045] border border-white/10">
+                  <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/[0.045] border border-white/[0.12]">
                     <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--module-color-400)]" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-white/80 truncate">
@@ -711,7 +711,7 @@ export function LedgerDashboard({
               <div className="mt-6 space-y-3">
                 <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">Debt Items</h4>
                 {profile?.debtItems.map((debt) => (
-                  <div key={debt.id} className="p-3 rounded-lg bg-white/[0.045] border border-white/10">
+                  <div key={debt.id} className="p-3 rounded-lg bg-white/[0.045] border border-white/[0.12]">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-white">{debt.name}</span>
                       <span className="text-sm font-bold text-[var(--module-color-400)]">
@@ -733,12 +733,12 @@ export function LedgerDashboard({
                     description="Transaction activity will appear here."
                     icon={FileText}
                     size="sm"
-                    className="bg-transparent border-white/10"
+                    className="bg-transparent border-white/[0.12]"
                   />
                 ) : (
                   <div className="space-y-2">
                     {recentEvents.slice(0, 8).map((evt) => (
-                      <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/[0.045] border border-white/10">
+                      <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/[0.045] border border-white/[0.12]">
                         <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--module-color-400)]" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-white/80 truncate">
@@ -810,7 +810,7 @@ export function LedgerDashboard({
               </button>
 
               {profile?.lastDocumentAnalysis && (
-                <div className="text-[11px] text-white/60 p-2 rounded border border-white/10">
+                <div className="text-[11px] text-white/60 p-2 rounded border border-white/[0.12]">
                   <p>Last analysis: {new Date(profile.lastDocumentAnalysis.analyzedAt).toLocaleDateString()}</p>
                   <p>Period: {profile.lastDocumentAnalysis.periodLabel}</p>
                   <p>Transactions: {profile.lastDocumentAnalysis.transactionCount}</p>

@@ -147,7 +147,7 @@ interface StatCardProps {
 
 function StatCard({ icon, label, value, accent = 'text-[var(--module-color-400)]', sub }: StatCardProps) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl bg-white/[0.045] border border-white/10 backdrop-blur-sm p-4">
+    <div className="flex flex-col gap-1 rounded-xl bg-white/[0.045] border border-white/[0.12] backdrop-blur-sm p-4">
       <div className={cn('flex items-center gap-2 text-xs font-semibold uppercase tracking-wider', accent)}>
         {icon}
         {label}
@@ -285,7 +285,7 @@ function DeductibleExpenses({ transactions, currency }: DeductibleExpensesProps)
         <h2 className="text-sm font-bold uppercase tracking-wider text-white/60 mb-3">
           Deductible Expense Categories
         </h2>
-        <div className="rounded-xl bg-white/[0.045] border border-white/10 backdrop-blur-sm p-6 flex items-center gap-3 text-white/40">
+        <div className="rounded-xl bg-white/[0.045] border border-white/[0.12] backdrop-blur-sm p-6 flex items-center gap-3 text-white/40">
           <AlertCircle size={16} />
           <p className="text-sm">No deductible expenses found for {year}. Add transactions with categories like Healthcare, Charity, or Education.</p>
         </div>
@@ -373,7 +373,7 @@ function QuarterlyEstimates({ annualTaxEstimate, currency, paidQuarters: externa
     paid:     'border-emerald-500/30 bg-emerald-500/5',
     upcoming: 'border-amber-500/30 bg-amber-500/5',
     overdue:  'border-rose-500/30 bg-rose-500/10',
-    future:   'border-white/10 bg-white/[0.045]',
+    future:   'border-white/[0.12] bg-white/[0.045]',
   };
 
   const statusLabel: Record<string, string> = {

@@ -110,7 +110,7 @@ export function DiagnosisCloseModal({
               'fixed inset-x-4 bottom-safe-bottom top-1/2 -translate-y-1/2',
               'max-w-md mx-auto z-50',
               'bg-[#0d1117]/95 backdrop-blur-xl',
-              'border border-white/10 rounded-2xl shadow-2xl',
+              'border border-white/[0.12] rounded-2xl shadow-2xl',
               'p-6 flex flex-col gap-5',
               'max-h-[90vh]',
             )}

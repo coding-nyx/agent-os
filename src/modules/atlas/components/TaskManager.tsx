@@ -178,7 +178,7 @@ export function TaskManager({
     [tasks, expandedTaskId]
   );
   const controlSelectTriggerClassName =
-    'h-11 rounded-xl border-white/10 bg-white/[0.045] px-3.5 text-[11px] sm:h-10';
+    'h-11 rounded-xl border-white/[0.12] bg-white/[0.045] px-3.5 text-[11px] sm:h-10';
   const controlButtonClassName =
     'w-full justify-center rounded-xl px-3.5 sm:w-auto';
 
@@ -284,7 +284,7 @@ export function TaskManager({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tasks..."
               icon={<Search className="w-4 h-4" />}
-              className="h-11 rounded-xl border-white/10 bg-white/[0.045] text-[13px] sm:h-10"
+              className="h-11 rounded-xl border-white/[0.12] bg-white/[0.045] text-[13px] sm:h-10"
             />
           </div>
 
@@ -332,7 +332,7 @@ export function TaskManager({
               onClick={() => setShowDependencyGraph(!showDependencyGraph)}
               size="sm"
               variant="ghost"
-              className={cn(controlButtonClassName, 'border border-white/10 bg-white/[0.045]')}
+              className={cn(controlButtonClassName, 'border border-white/[0.12] bg-white/[0.045]')}
             >
               <GitBranch className="w-4 h-4 mr-1.5" />
               Graph
@@ -562,7 +562,7 @@ export function TaskManager({
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-white/[0.12]">
           <NeuralButton onClick={handleCloseForm} variant="ghost" className="w-full sm:w-auto">
             Cancel
           </NeuralButton>

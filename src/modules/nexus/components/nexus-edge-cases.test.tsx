@@ -112,7 +112,10 @@ vi.mock('@/lib/services/module-memory-service', () => ({
 }));
 
 vi.mock('@/lib/services/nexus-handoff-service', () => ({
-  NexusHandoffService: { hasPending: vi.fn().mockReturnValue(false) },
+  NexusHandoffService: {
+    hasPending: vi.fn().mockReturnValue(false),
+    store: vi.fn(),
+  },
 }));
 
 vi.mock('@/lib/services/nexus-routing-service', () => ({

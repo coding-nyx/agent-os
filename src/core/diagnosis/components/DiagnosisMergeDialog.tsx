@@ -73,11 +73,11 @@ export function DiagnosisMergeDialog({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg rounded-[20px] border border-white/10 bg-[#0a0a0f]/95 backdrop-blur-xl shadow-2xl"
+            className="w-full max-w-lg rounded-[20px] border border-white/[0.12] bg-[#0a0a0f]/95 backdrop-blur-xl shadow-2xl"
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-5 pt-5 pb-3">
-              <div className="w-8 h-8 rounded-xl bg-white/[0.045] border border-white/10 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-white/[0.045] border border-white/[0.12] flex items-center justify-center">
                 <Package className="w-4 h-4 text-white/50" />
               </div>
               <div>
@@ -147,7 +147,7 @@ export function DiagnosisMergeDialog({
                   </p>
                   <button
                     onClick={onDiscard}
-                    className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/60 hover:text-white/80 transition-colors"
+                    className="px-4 py-2 rounded-xl border border-white/[0.12] bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/60 hover:text-white/80 transition-colors"
                   >
                     Done
                   </button>

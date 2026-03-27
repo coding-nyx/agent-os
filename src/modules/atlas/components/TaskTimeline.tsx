@@ -359,7 +359,7 @@ export function TaskTimeline({
                         return (
                           <div
                             key={st.id}
-                            className="rounded-xl border border-white/10 bg-white/[0.045] backdrop-blur-sm p-2.5"
+                            className="rounded-xl border border-white/[0.12] bg-white/[0.045] backdrop-blur-sm p-2.5"
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-white/70 font-medium truncate">

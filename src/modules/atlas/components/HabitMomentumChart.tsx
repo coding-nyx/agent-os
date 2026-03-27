@@ -433,7 +433,7 @@ export function HabitMomentumChart({ habits, habitRecords }: HabitMomentumChartP
   if (entries.length === 0) return null;
 
   return (
-    <div className="bg-white/[0.045] border border-white/10 rounded-xl p-4 space-y-1">
+    <div className="bg-white/[0.045] border border-white/[0.12] rounded-xl p-4 space-y-1">
       {/* Section header */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">
@@ -510,7 +510,7 @@ export function HabitMomentumChart({ habits, habitRecords }: HabitMomentumChartP
                   transition={{ duration: 0.2, ease: 'easeInOut' }}
                   style={{ overflow: 'hidden' }}
                 >
-                  <div className="border-l border-white/10 ml-2 pl-2 space-y-1 pb-2">
+                  <div className="border-l border-white/[0.12] ml-2 pl-2 space-y-1 pb-2">
                     <DetailRow
                       label="Best week"
                       value={`${best.label} · ${Math.round(best.rate * 100)}%`}

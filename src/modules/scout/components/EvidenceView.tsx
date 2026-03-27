@@ -26,9 +26,9 @@ export function EvidenceView({ node, sources, className }: EvidenceViewProps) {
   const activeSource = nodeSources.find(s => s.id === selectedSourceId) || nodeSources[0];
 
   return (
-    <div className={cn("flex flex-col h-full bg-[#05050a] rounded-2xl overflow-hidden border border-white/10", className)}>
+    <div className={cn("flex flex-col h-full bg-[#05050a] rounded-2xl overflow-hidden border border-white/[0.12]", className)}>
       {/* Node Header */}
-      <div className="p-4 border-b border-white/10 bg-white/[0.045]">
+      <div className="p-4 border-b border-white/[0.12] bg-white/[0.045]">
         <div className="flex items-center gap-2 mb-2">
           <div className="p-1.5 rounded-lg bg-lime-500/20 border border-lime-500/30">
             <Zap className="w-4 h-4 text-lime-400" />
@@ -113,7 +113,7 @@ export function EvidenceView({ node, sources, className }: EvidenceViewProps) {
                       key={highlight.id}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="p-4 rounded-2xl bg-white/[0.045] border border-white/10 relative overflow-hidden group"
+                      className="p-4 rounded-2xl bg-white/[0.045] border border-white/[0.12] relative overflow-hidden group"
                     >
                       <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500/40" />
                       <p className="text-sm text-white/80 leading-relaxed italic">
@@ -128,7 +128,7 @@ export function EvidenceView({ node, sources, className }: EvidenceViewProps) {
                     </motion.div>
                   ))
                 ) : (
-                  <div className="p-6 rounded-2xl border border-dashed border-white/10 text-center">
+                  <div className="p-6 rounded-2xl border border-dashed border-white/[0.12] text-center">
                     <p className="text-sm text-white/30 italic">
                       "{activeSource.snippet}"
                     </p>

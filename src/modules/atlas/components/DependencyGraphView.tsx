@@ -124,7 +124,7 @@ export function DependencyGraphView({ tasks }: DependencyGraphViewProps) {
   const svgH = Math.max(...nodes.map(n => n.y + NODE_H)) + 20;
 
   return (
-    <div className="w-full overflow-x-auto rounded-xl border border-white/10 bg-white/[0.045] p-3">
+    <div className="w-full overflow-x-auto rounded-xl border border-white/[0.12] bg-white/[0.045] p-3">
       <h4 className="text-[11px] font-bold text-white/50 uppercase tracking-widest mb-3">Task Dependencies</h4>
       <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
         <defs>

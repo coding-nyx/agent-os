@@ -241,7 +241,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
               'relative w-full min-h-[200px] rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-4 p-8 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05050a]',
               phase === 'drag_over'
                 ? 'border-[var(--module-accent-ring)] bg-[var(--module-accent-muted)] scale-[1.01]'
-                : 'border-white/10 bg-white/[0.045] hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)]'
+                : 'border-white/[0.12] bg-white/[0.045] hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)]'
             )}
           >
             {/* Animated upload icon */}
@@ -256,7 +256,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
                 'w-16 h-16 rounded-2xl flex items-center justify-center border transition-colors duration-300',
                 phase === 'drag_over'
                   ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-glow)]'
-                  : 'border-white/10 bg-white/[0.045] group-hover:border-[var(--module-accent-border)] group-hover:bg-[var(--module-accent-muted)]'
+                  : 'border-white/[0.12] bg-white/[0.045] group-hover:border-[var(--module-accent-border)] group-hover:bg-[var(--module-accent-muted)]'
               )}
             >
               <Upload
@@ -409,7 +409,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
               <NeuralButton
                 variant="secondary"
                 onClick={handleReset}
-                className="w-8 h-8 p-0 flex items-center justify-center shrink-0 border-white/10 bg-white/[0.045] hover:bg-white/10"
+                className="w-8 h-8 p-0 flex items-center justify-center shrink-0 border-white/[0.12] bg-white/[0.045] hover:bg-white/10"
                 aria-label="Remove file and select a different one"
               >
                 <X className="w-4 h-4 text-white/50" />

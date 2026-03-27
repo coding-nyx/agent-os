@@ -65,7 +65,7 @@ export function ScoutDocumentCard({
           : { type: 'spring', stiffness: 280, damping: 22, delay: animationDelay }
       }
       className={cn(
-        'rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-xl p-4 space-y-3 group hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)] transition-colors duration-300',
+        'rounded-2xl border border-white/[0.12] bg-white/[0.045] backdrop-blur-xl p-4 space-y-3 group hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)] transition-colors duration-300',
         className
       )}
       aria-label={`Document: ${metadata.filename}`}

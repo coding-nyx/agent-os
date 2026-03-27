@@ -122,7 +122,7 @@ export const TaskCard = React.memo(function TaskCard({
         isBlocked && 'opacity-60 border-white/[0.09]',
         isDone && 'border-white/[0.09] bg-slate-900/30',
         isDeferred && 'border-white/[0.09] bg-slate-900/30',
-        !isBlocked && !isDone && !isDeferred && !isEntitySelected && 'border-white/[0.08] hover:border-white/[0.14]'
+        !isBlocked && !isDone && !isDeferred && !isEntitySelected && 'border-white/[0.09] hover:border-white/[0.14]'
       )}
     >
       {/* Left priority bar */}

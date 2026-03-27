@@ -48,7 +48,7 @@ export function MoodEnergyPicker({
 }: MoodEnergyPickerProps) {
   return (
     <div
-      className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-slate-900/60 px-2.5 py-2 min-w-0 overflow-hidden"
+      className="flex items-center gap-1.5 rounded-xl border border-white/[0.12] bg-slate-900/60 px-2.5 py-2 min-w-0 overflow-hidden"
       role="group"
       aria-label="Mood and energy selector"
     >

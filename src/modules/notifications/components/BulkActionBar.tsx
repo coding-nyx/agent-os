@@ -63,7 +63,7 @@ export default function BulkActionBar({
           transition={SPRING}
           className={cn(
             'flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl',
-            'bg-white/[0.06] border border-white/10 backdrop-blur-xl',
+            'bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl',
           )}
           role="toolbar"
           aria-label="Bulk actions"

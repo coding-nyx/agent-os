@@ -106,7 +106,7 @@ function QueueColumn({
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.045] px-3 py-4 text-[11px] text-white/38">
+        <div className="rounded-xl border border-dashed border-white/[0.12] bg-white/[0.045] px-3 py-4 text-[11px] text-white/38">
           {config.empty}
         </div>
       )}
@@ -191,7 +191,7 @@ export function OperationalCommandCenterCard({
   return (
     <section
       className={cn(
-        'rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_28%),linear-gradient(180deg,rgba(7,10,18,0.95),rgba(2,4,8,0.92))] p-3 shadow-[0_18px_48px_rgba(0,0,0,0.32)]',
+        'rounded-[24px] border border-white/[0.12] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_28%),linear-gradient(180deg,rgba(7,10,18,0.95),rgba(2,4,8,0.92))] p-3 shadow-[0_18px_48px_rgba(0,0,0,0.32)]',
         className,
       )}
       aria-label="Operational command center"
@@ -212,7 +212,7 @@ export function OperationalCommandCenterCard({
         <button
           type="button"
           onClick={() => setIsExpanded((current) => !current)}
-          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.07]"
+          className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.12] bg-white/[0.045] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.07]"
           aria-label={isExpanded ? 'Collapse command center queues' : 'Expand command center queues'}
           aria-expanded={isExpanded}
         >
@@ -222,7 +222,7 @@ export function OperationalCommandCenterCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[11px] text-white/70">
+        <span className="rounded-full border border-white/[0.12] bg-white/[0.045] px-2 py-1 text-[11px] text-white/70">
           {modeSemantics.levelLabel}
         </span>
         {modeSemantics.chips.slice(1).map((chip) => (

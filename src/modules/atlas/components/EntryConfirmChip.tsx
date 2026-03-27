@@ -61,7 +61,7 @@ function Badge({ icon, label, className }: BadgeProps) {
       className={cn(
         'inline-flex items-center gap-1 rounded-full px-2 py-0.5',
         'text-[11px] font-semibold tracking-wide',
-        'bg-white/[0.06] text-white/60 border border-white/10',
+        'bg-white/[0.06] text-white/60 border border-white/[0.12]',
         className
       )}
     >
@@ -111,7 +111,7 @@ export function EntryConfirmChip({
           exit={{ opacity: 0, y: -8, scale: 0.95 }}
           transition={{ type: 'spring', damping: 22, stiffness: 280 }}
           className={cn(
-            'relative rounded-xl border border-white/10 bg-white/[0.045]',
+            'relative rounded-xl border border-white/[0.12] bg-white/[0.045]',
             'backdrop-blur-md px-4 py-3 flex flex-col gap-3',
             'shadow-[0_4px_24px_rgba(0,0,0,0.35)]'
           )}

@@ -90,7 +90,7 @@ export function ScoutEvidenceSources({ knowledgeNodes, className }: ScoutEvidenc
           size="sm"
           title="No document sources"
           description="Upload evidence documents in chat to build source-attributed knowledge nodes."
-          className="bg-transparent border-white/10"
+          className="bg-transparent border-white/[0.12]"
           icon={FileText}
         />
       </section>

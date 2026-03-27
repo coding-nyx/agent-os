@@ -257,7 +257,7 @@ export function QuickAddForm({
               className={cn(
                 'fixed z-[var(--z-modal)] w-[calc(100%-2rem)] max-w-md',
                 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
-                'rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-xl p-6',
+                'rounded-2xl border border-white/[0.12] bg-zinc-900/95 backdrop-blur-xl p-6',
                 'shadow-2xl shadow-black/40'
               )}
             >

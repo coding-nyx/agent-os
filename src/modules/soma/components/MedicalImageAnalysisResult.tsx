@@ -29,7 +29,7 @@ export function MedicalImageAnalysisResult({
         'relative overflow-hidden rounded-xl border p-4 transition-all',
         selected 
           ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]' 
-          : 'border-white/10 bg-white/[0.045] hover:bg-white/10'
+          : 'border-white/[0.12] bg-white/[0.045] hover:bg-white/10'
       )}
     >
       {/* Header */}
@@ -55,7 +55,7 @@ export function MedicalImageAnalysisResult({
               'flex h-6 w-6 items-center justify-center rounded-md border transition-all',
               selected
                 ? 'border-[var(--module-accent-border)] bg-[var(--module-accent)] text-white'
-                : 'border-white/10 bg-white/[0.045] text-white/20'
+                : 'border-white/[0.12] bg-white/[0.045] text-white/20'
             )}
           >
             {selected && <div className="w-2 h-2 rounded-full bg-white" />}
