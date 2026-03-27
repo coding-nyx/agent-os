@@ -86,12 +86,16 @@ export async function loadScoutProfile({ userId, encryptionKey }: LoadContext): 
   }
 }
 
-export async function saveScoutProfile(profile: ScoutProfile, { userId, encryptionKey }: LoadContext): Promise<void> {
+export async function saveScoutProfile(
+  profile: ScoutProfile,
+  { userId, encryptionKey }: LoadContext,
+  options?: { suppressEvent?: boolean }
+): Promise<void> {
   if (!userId || !encryptionKey) return;
   const dataLayer = getNexusDataLayer();
   profile.updatedAt = new Date().toISOString();
   const encrypted = await encryptWithKey(JSON.stringify(profile), encryptionKey);
-  
+
   await dataLayer.setDocument('scout_knowledge', userId, {
     encryptedData: encrypted.ciphertext,
     iv: encrypted.iv,
@@ -101,29 +105,29 @@ export async function saveScoutProfile(profile: ScoutProfile, { userId, encrypti
     }
   });
 
-  // Calculate and update NSV metrics
-  const nodes = await loadKnowledgeNodes({ userId, encryptionKey });
-  const researchLoad = Math.min(1, nodes.filter(n => n.status === 'pending').length / 20);
-  const verifiedCount = nodes.filter(n => n.status === 'verified').length;
-  const researchDepth = nodes.length > 0 ? verifiedCount / nodes.length : 0;
-  const interestDiversity = Math.min(1, profile.interests.length / 10);
+  if (!options?.suppressEvent) {
+    const nodes = await loadKnowledgeNodes({ userId, encryptionKey });
+    const researchLoad = Math.min(1, nodes.filter(n => n.status === 'pending').length / 20);
+    const verifiedCount = nodes.filter(n => n.status === 'verified').length;
+    const researchDepth = nodes.length > 0 ? verifiedCount / nodes.length : 0;
+    const interestDiversity = Math.min(1, profile.interests.length / 10);
 
-  // Notify Spine for asynchronous processing (metrics, RAG indexing, etc.)
-  Spine.publish({
-    type: 'SCOUT_PROFILE_UPDATED',
-    source: 'scout',
-    domain: 'C',
-    priority: 'info',
-    data: { 
-      userId, 
-      onboardingComplete: profile.onboardingComplete,
-      metrics: {
-        researchLoad,
-        researchDepth,
-        interestDiversity
+    Spine.publish({
+      type: 'SCOUT_PROFILE_UPDATED',
+      source: 'scout',
+      domain: 'C',
+      priority: 'info',
+      data: {
+        userId,
+        onboardingComplete: profile.onboardingComplete,
+        metrics: {
+          researchLoad,
+          researchDepth,
+          interestDiversity
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -329,6 +333,7 @@ export function subscribeScoutProfile(
     return () => {};
   }
 
+  let lastUpdatedAt: string | null = null;
   const dataLayer = getNexusDataLayer();
   return dataLayer.subscribeToDocument<any>('scout_knowledge', userId, async (data) => {
     if (!data?.encryptedData || !data?.iv) {
@@ -337,7 +342,10 @@ export function subscribeScoutProfile(
     }
     try {
       const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-      onUpdate(JSON.parse(decrypted));
+      const nextProfile: ScoutProfile = JSON.parse(decrypted);
+      if (nextProfile.updatedAt === lastUpdatedAt) return;
+      lastUpdatedAt = nextProfile.updatedAt;
+      onUpdate(nextProfile);
     } catch {
       onUpdate(createEmptyScoutProfile());
     }

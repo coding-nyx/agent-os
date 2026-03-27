@@ -670,7 +670,7 @@ async function updateInterestTrends(
       });
     }
 
-    await saveScoutProfile({ ...profile, interests: updated }, { userId, encryptionKey });
+    await saveScoutProfile({ ...profile, interests: updated }, { userId, encryptionKey }, { suppressEvent: true });
   } catch (err) {
     console.warn('[Scout] Failed to update interest trends:', err);
   }
