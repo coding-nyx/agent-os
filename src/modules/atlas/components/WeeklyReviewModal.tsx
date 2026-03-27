@@ -107,10 +107,10 @@ function MetricCard({
   accentClass?: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-1">
-      <p className="text-[10px] text-white/30 uppercase tracking-widest">{label}</p>
+    <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-4 space-y-1">
+      <p className="text-[11px] text-white/30 uppercase tracking-widest">{label}</p>
       <p className={cn('text-xl font-black', accentClass)}>{value}</p>
-      <p className="text-[10px] text-white/25 leading-relaxed">{hint}</p>
+      <p className="text-[11px] text-white/25 leading-relaxed">{hint}</p>
     </div>
   );
 }
@@ -125,7 +125,7 @@ function VectorBar({ label, value, invert = false }: { label: string; value: num
         <span className="text-white/55">{label}</span>
         <span className="font-bold text-white/75">{value.toFixed(1)}/10</span>
       </div>
-      <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+      <div className="h-1.5 rounded-full bg-white/[0.045] overflow-hidden">
         <motion.div
           className={cn('h-full rounded-full', barClass)}
           initial={{ width: 0 }}
@@ -160,7 +160,7 @@ export function WeeklyReviewCard({
   return (
     <div
       className={cn(
-        'group relative flex flex-col gap-4 rounded-2xl border bg-white/[0.02] p-4 transition-all duration-300',
+        'group relative flex flex-col gap-4 rounded-2xl border bg-white/[0.045] p-4 transition-all duration-300',
         weeklyReviewPending
           ? 'border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
           : 'border-white/10 hover:border-white/20',
@@ -171,7 +171,7 @@ export function WeeklyReviewCard({
           <CalendarDays className="w-4 h-4 text-[var(--module-color-400)]" />
           <h3 className="text-xs font-black text-white/90 uppercase tracking-widest">Weekly Review</h3>
         </div>
-        <span className={cn('rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em]', stateTone(blueprint.capacity.state))}>
+        <span className={cn('rounded-full border px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.2em]', stateTone(blueprint.capacity.state))}>
           {blueprint.capacity.state}
         </span>
       </div>
@@ -192,16 +192,16 @@ export function WeeklyReviewCard({
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
-          <p className="text-[10px] uppercase tracking-widest text-white/25">State</p>
+        <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2">
+          <p className="text-[11px] uppercase tracking-widest text-white/25">State</p>
           <p className={cn('mt-1 text-xs font-black', predictiveDisplay.color)}>{predictiveDisplay.label}</p>
         </div>
-        <div className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
-          <p className="text-[10px] uppercase tracking-widest text-white/25">Risk</p>
+        <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2">
+          <p className="text-[11px] uppercase tracking-widest text-white/25">Risk</p>
           <p className="mt-1 text-xs font-black text-amber-300">{burnoutRisk}%</p>
         </div>
-        <div className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
-          <p className="text-[10px] uppercase tracking-widest text-white/25">Done</p>
+        <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2">
+          <p className="text-[11px] uppercase tracking-widest text-white/25">Done</p>
           <p className="mt-1 text-xs font-black text-emerald-400">{completion.done}/{completion.total || 0}</p>
         </div>
       </div>
@@ -215,7 +215,7 @@ export function WeeklyReviewCard({
         themeColor="module"
         variant="outline"
         className={cn(
-          'w-full text-[10px] font-black uppercase tracking-[0.2em] h-10',
+          'w-full text-[11px] font-black uppercase tracking-[0.2em] h-10',
           weeklyReviewPending && 'border-amber-500/50 text-amber-500 hover:bg-amber-500/10',
         )}
       >
@@ -319,28 +319,28 @@ export function WeeklyReviewModal({
     >
       <div className="space-y-6">
         <section className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Projection</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">Projection</p>
                 <h3 className="mt-1 text-lg font-black text-white/90">Next week blueprint</h3>
               </div>
-              <span className={cn('rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em]', stateTone(adjustedBlueprint.capacity.state))}>
+              <span className={cn('rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em]', stateTone(adjustedBlueprint.capacity.state))}>
                 {adjustedBlueprint.capacity.state}
               </span>
             </div>
             <p className="text-sm leading-relaxed text-white/55">{adjustedBlueprint.projection.summary}</p>
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+            <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[var(--module-color-400)]" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Focus for next period</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/35">Focus for next period</span>
               </div>
               <p className="mt-2 text-sm font-bold text-white/85">{adjustedBlueprint.projection.nextPeriodFocus}</p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Current state</p>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">Current state</p>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className={cn('text-sm font-black', predictiveDisplay.color)}>{predictiveDisplay.label}</p>
@@ -372,10 +372,10 @@ export function WeeklyReviewModal({
           />
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+        <section className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Blueprint vectors</h3>
-            <span className="text-[10px] text-white/25">Grounded in vitality, friction, resilience, and alignment</span>
+            <h3 className="text-[11px] font-black text-white/30 uppercase tracking-[0.3em]">Blueprint vectors</h3>
+            <span className="text-[11px] text-white/25">Grounded in vitality, friction, resilience, and alignment</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <VectorBar label="Vitality" value={blueprint.capacity.vectors.vitality} />
@@ -392,9 +392,9 @@ export function WeeklyReviewModal({
           )}
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+        <section className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Projection control</h3>
+            <h3 className="text-[11px] font-black text-white/30 uppercase tracking-[0.3em]">Projection control</h3>
             <span className="text-sm font-black text-[var(--module-color-400)]">{capacityPct}%</span>
           </div>
           <input
@@ -407,7 +407,7 @@ export function WeeklyReviewModal({
             aria-label="Adjust next week's capacity percentage"
             className="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-[var(--module-color-400)] cursor-pointer"
           />
-          <div className="flex justify-between text-[10px] text-white/20">
+          <div className="flex justify-between text-[11px] text-white/20">
             <span>60% recovery</span>
             <span>{blueprint.capacity.recommendedCapacityPct}% recommended</span>
             <span>120% surge</span>
@@ -421,7 +421,7 @@ export function WeeklyReviewModal({
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Recommended actions</h3>
+          <h3 className="text-[11px] font-black text-white/30 uppercase tracking-[0.3em]">Recommended actions</h3>
           <div className="grid gap-3">
             {blueprint.projection.recommendedActions.map((action) => (
               <ActionRow key={action.id} action={action} />
@@ -445,7 +445,7 @@ export function WeeklyReviewModal({
           {recoveryScheduled ? (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
               <p className="text-sm font-black text-emerald-400">✓ Recovery day scheduled</p>
-              <p className="text-[10px] text-white/30 mt-1">Atlas will protect this window from new commitments.</p>
+              <p className="text-[11px] text-white/30 mt-1">Atlas will protect this window from new commitments.</p>
             </div>
           ) : (
             <NeuralButton
@@ -466,7 +466,7 @@ export function WeeklyReviewModal({
             new Date(t.deadline).getTime() < Date.now()
           ).sort((a, b) => a.priority - b.priority);
           return (
-            <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.045] p-4">
               <h3 className="text-xs font-bold text-white/70 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <Calendar className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
                 Plan Next Week
@@ -480,14 +480,14 @@ export function WeeklyReviewModal({
                     <li key={task.id} className="flex items-center gap-2 text-xs text-white/60">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
                       <span className="truncate">{task.title}</span>
-                      <span className="ml-auto text-[10px] text-white/30 shrink-0">P{task.priority}</span>
+                      <span className="ml-auto text-[11px] text-white/30 shrink-0">P{task.priority}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p className="text-xs text-white/30 italic mb-3">No overdue tasks — great week!</p>
               )}
-              <p className="text-[10px] text-white/30">
+              <p className="text-[11px] text-white/30">
                 Use Atlas to schedule these when planning next week's energy blocks.
               </p>
             </div>

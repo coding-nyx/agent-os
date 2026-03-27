@@ -215,9 +215,9 @@ export function FocusView({
         </div>
 
         {/* ── Active task card ── */}
-        <div className="w-full rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-6 space-y-4">
+        <div className="w-full rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-sm p-6 space-y-4">
           <div className="text-center space-y-2">
-            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400/60">
+            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400/60">
               Now Focusing
             </span>
             <h2 className="text-xl md:text-2xl font-black text-white/90 leading-tight">
@@ -253,7 +253,7 @@ export function FocusView({
                   setIsTimerRunning(false);
                 }}
                 className={cn(
-                  'text-[10px] px-2 py-0.5 rounded-full border transition-colors',
+                  'text-[11px] px-2 py-0.5 rounded-full border transition-colors',
                   pomodoroMinutes === mins
                     ? 'border-emerald-400/60 text-emerald-400'
                     : 'border-white/10 text-white/30 hover:border-white/20'
@@ -275,7 +275,7 @@ export function FocusView({
           </div>
 
           {sessionsCompleted > 0 && (
-            <div className="text-[10px] text-white/40">
+            <div className="text-[11px] text-white/40">
               {sessionsCompleted} session{sessionsCompleted !== 1 ? 's' : ''} completed today
             </div>
           )}
@@ -314,7 +314,7 @@ export function FocusView({
               variant="ghost"
               className={cn(
                 'flex items-center justify-center w-10 h-10 rounded-full border border-white/10 min-h-[44px]',
-                'text-white/30 hover:text-white/50 hover:bg-white/5 transition-all',
+                'text-white/30 hover:text-white/50 hover:bg-white/[0.045] transition-all',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50'
               )}
             >
@@ -324,7 +324,7 @@ export function FocusView({
 
           {/* Timer progress bar */}
           <div
-            className="w-48 h-1 bg-white/5 rounded-full overflow-hidden"
+            className="w-48 h-1 bg-white/[0.045] rounded-full overflow-hidden"
             aria-hidden="true"
           >
             <motion.div

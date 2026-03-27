@@ -384,7 +384,7 @@ export function SingleAgentLayout({
                     <button
                       onClick={() => toggleChat(true)}
                       className={cn(
-                        "p-2 rounded-full hover:bg-white/5 transition-colors"
+                        "p-2 rounded-full hover:bg-white/[0.045] transition-colors"
                       )}
                     >
                       <X size={18} className="text-white/50" />

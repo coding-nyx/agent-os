@@ -192,7 +192,7 @@ export function BreathworkExercise({ exercise = '4-7-8', onComplete, onExit }: P
       <div className="mb-12 text-center space-y-1">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20">
           <Wind className="w-3 h-3 text-violet-400" />
-          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-violet-400/80">
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-violet-400/80">
             {config.label}
           </span>
         </div>
@@ -265,7 +265,7 @@ export function BreathworkExercise({ exercise = '4-7-8', onComplete, onExit }: P
             <span className="text-6xl font-black text-white/80 tabular-nums leading-none">
               {countdown}
             </span>
-            <span className="text-[10px] font-medium text-white/20 uppercase tracking-widest">
+            <span className="text-[11px] font-medium text-white/20 uppercase tracking-widest">
               seconds
             </span>
           </motion.div>

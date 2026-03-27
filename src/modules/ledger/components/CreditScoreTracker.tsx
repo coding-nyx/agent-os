@@ -123,7 +123,7 @@ function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
   const { score, bureau } = payload[0].payload;
   return (
-    <div className="bg-black/80 border border-white/10 rounded-xl p-3 text-xs shadow-xl backdrop-blur-xl">
+    <div className="bg-slate-900/90 border border-white/[0.12] rounded-xl p-3 text-xs shadow-xl backdrop-blur-xl">
       <p className="text-white/50 mb-1">{label}</p>
       <p className="text-white font-bold text-sm">{score}</p>
       <p className="text-white/60 mt-0.5">{bureau}</p>
@@ -334,7 +334,7 @@ export default function CreditScoreTracker({
         <div className="space-y-4">
 
           {/* ── Hero score card + gauge ──────────────────────────────────── */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-5 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
               {/* Score display */}
@@ -402,7 +402,7 @@ export default function CreditScoreTracker({
             {/* Score gauge ─────────────────────────────────────────────── */}
             <div className="mt-5">
               {/* Tier labels */}
-              <div className="flex justify-between text-[10px] text-white/30 mb-1.5 px-0.5">
+              <div className="flex justify-between text-[11px] text-white/30 mb-1.5 px-0.5">
                 <span>Poor</span>
                 <span>Fair</span>
                 <span>Good</span>
@@ -431,7 +431,7 @@ export default function CreditScoreTracker({
               </div>
 
               {/* Range labels */}
-              <div className="flex justify-between text-[10px] text-white/20 mt-1.5 px-0.5">
+              <div className="flex justify-between text-[11px] text-white/20 mt-1.5 px-0.5">
                 <span>300</span>
                 <span>580</span>
                 <span>670</span>
@@ -444,7 +444,7 @@ export default function CreditScoreTracker({
 
           {/* ── History chart ────────────────────────────────────────────── */}
           {chartData.length > 1 && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 sm:p-5">
               <p className="text-[11px] uppercase tracking-[0.12em] text-white/40 mb-4">
                 Score History
               </p>
@@ -492,7 +492,7 @@ export default function CreditScoreTracker({
 
           {/* ── Credit factors ───────────────────────────────────────────── */}
           {creditFactors.length > 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 sm:p-5">
               <p className="text-[11px] uppercase tracking-[0.12em] text-white/40 mb-3">
                 Credit Factors
               </p>
@@ -520,7 +520,7 @@ export default function CreditScoreTracker({
 
           {/* ── Improvement tips ─────────────────────────────────────────── */}
           {tips.length > 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 sm:p-5">
               <button
                 type="button"
                 onClick={() => setTipsExpanded((p) => !p)}
@@ -558,7 +558,7 @@ export default function CreditScoreTracker({
           )}
 
           {/* ── History table ────────────────────────────────────────────── */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 sm:p-5">
             <p className="text-[11px] uppercase tracking-[0.12em] text-white/40 mb-3">
               Recent Entries
             </p>
@@ -568,8 +568,8 @@ export default function CreditScoreTracker({
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03]
-                               border border-white/[0.06] px-3.5 py-2.5 group"
+                    className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.045]
+                               border border-white/[0.09] px-3.5 py-2.5 group"
                   >
                     {/* Date */}
                     <span className="text-xs text-white/40 tabular-nums w-20 flex-shrink-0">
@@ -577,7 +577,7 @@ export default function CreditScoreTracker({
                     </span>
 
                     {/* Bureau badge */}
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full
                                      bg-white/[0.06] border border-white/10 text-white/50
                                      tracking-wide flex-shrink-0">
                       {BUREAU_LABEL[entry.bureau] ?? entry.bureau}

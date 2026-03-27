@@ -1348,7 +1348,7 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
             {docProposal && (
               <div className="space-y-4">
                 <p className="text-sm text-white/70">{docProposalSummary ?? 'Document analysis ready for review.'}</p>
-                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                <div className="bg-white/[0.045] border border-white/10 rounded-xl p-3">
                   <h4 className="text-[11px] font-semibold uppercase tracking-wider text-white/60 mb-2">Extracted Fields</h4>
                   {Object.entries(docProposal.fields).filter(([, v]) => v.length > 0).length === 0 ? (
                     <p className="text-sm text-white/50 italic">No structured fields detected.</p>
@@ -1365,7 +1365,7 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                     </div>
                   )}
                 </div>
-                <div className="bg-black/30 border border-white/10 rounded-xl p-3">
+                <div className="bg-slate-900/60 border border-white/10 rounded-xl p-3">
                   <h4 className="text-[11px] font-semibold uppercase tracking-wider text-white/60 mb-2">Text Preview</h4>
                   <pre className="text-[11px] text-white/50 whitespace-pre-wrap max-h-48 overflow-y-auto">
                     {docProposal.rawTextPreview}

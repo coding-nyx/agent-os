@@ -39,7 +39,7 @@ export function TextAreaFieldRenderer({
       aria-invalid={Boolean(error)}
       aria-describedby={error ? `${field.id}-error` : undefined}
       className={cn(
-        'w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white placeholder:text-white/40',
+        'w-full bg-slate-900/70 border border-white/[0.12] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-white/40',
         'focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20',
         'transition-all duration-300 resize-y',
         'disabled:opacity-50 disabled:cursor-not-allowed',

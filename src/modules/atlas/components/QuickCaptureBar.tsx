@@ -199,12 +199,12 @@ export function QuickCaptureBar({
         className={cn(
           // Container: dark glass surface with module-accent left accent
           'flex items-center gap-2 rounded-xl',
-          'bg-white/[0.04] border border-white/10',
+          'bg-slate-900/60 border border-white/[0.10]',
           'border-l-[3px] border-l-[var(--module-color-500)]',
           'px-3 py-1.5',
           'backdrop-blur-sm',
           'transition-colors',
-          !disabled && 'focus-within:border-white/20 focus-within:bg-white/[0.06]',
+          !disabled && 'focus-within:border-white/25 focus-within:bg-slate-900/80',
           disabled && 'opacity-50 cursor-not-allowed',
           isShaking && 'animate-[quicklog-shake_0.4s_ease-in-out]'
         )}
@@ -259,7 +259,7 @@ export function QuickCaptureBar({
         onDismiss={handleDismiss}
       />
 
-      <p className="px-1 text-[10px] leading-relaxed text-white/30">
+      <p className="px-1 text-[11px] leading-relaxed text-white/30">
         {preferenceMode === 'structured'
           ? 'Structured mode: use labels like type:, due:, priority:, energy:, or repeat: for deterministic Atlas capture.'
           : 'Conversational mode: Atlas can infer tasks and habits from freeform text, then lets you confirm the structure.'}

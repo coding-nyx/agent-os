@@ -124,7 +124,7 @@ export function DependencyGraphView({ tasks }: DependencyGraphViewProps) {
   const svgH = Math.max(...nodes.map(n => n.y + NODE_H)) + 20;
 
   return (
-    <div className="w-full overflow-x-auto rounded-xl border border-white/10 bg-white/5 p-3">
+    <div className="w-full overflow-x-auto rounded-xl border border-white/10 bg-white/[0.045] p-3">
       <h4 className="text-[11px] font-bold text-white/50 uppercase tracking-widest mb-3">Task Dependencies</h4>
       <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
         <defs>
@@ -165,7 +165,7 @@ export function DependencyGraphView({ tasks }: DependencyGraphViewProps) {
       </svg>
       <div className="flex items-center gap-3 mt-2">
         {([['done', '#34d399', 'Done'], ['active', '#60a5fa', 'Active'], ['blocked', '#f87171', 'Blocked'], ['queued', '#a3a3a3', 'Queued']] as const).map(([s, c, l]) => (
-          <span key={s} className="flex items-center gap-1 text-[10px] text-white/40">
+          <span key={s} className="flex items-center gap-1 text-[11px] text-white/40">
             <span className="w-2 h-2 rounded-sm" style={{ background: c }} />
             {l}
           </span>

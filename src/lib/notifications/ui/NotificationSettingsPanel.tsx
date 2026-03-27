@@ -69,7 +69,7 @@ function NotificationScheduleEditor({
   };
 
   return (
-    <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
+    <div className="rounded-2xl bg-white/[0.045] border border-white/[0.09] overflow-hidden">
       {/* Header row — always visible */}
       <div className="flex items-center justify-between gap-3 px-4 py-3">
         <button
@@ -96,7 +96,7 @@ function NotificationScheduleEditor({
 
       {/* Expanded editor */}
       {expanded && (
-        <div className="border-t border-white/[0.06] px-4 pb-4 pt-3 space-y-4">
+        <div className="border-t border-white/[0.09] px-4 pb-4 pt-3 space-y-4">
           {/* Notification message */}
           <div className="space-y-2">
             <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 ml-1">
@@ -291,7 +291,7 @@ export function NotificationSettingsPanel({
   if (isGuest) {
     return (
       <div className={cn('w-[320px] max-w-[320px]', className)}>
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 space-y-2">
+        <div className="rounded-2xl bg-white/[0.045] border border-white/[0.09] p-4 space-y-2">
           <p className="text-sm font-semibold text-white/85">Reminders</p>
           <p className="text-[11px] text-white/35 leading-relaxed">
             Sign in to configure reminders.
@@ -309,7 +309,7 @@ export function NotificationSettingsPanel({
             {title ?? 'Reminders'}
           </p>
           {hydrating && (
-            <span className="text-[10px] text-white/30 uppercase tracking-widest">Loading…</span>
+            <span className="text-[11px] text-white/30 uppercase tracking-widest">Loading…</span>
           )}
         </div>
 
@@ -324,7 +324,7 @@ export function NotificationSettingsPanel({
         {manageAllHref && location.pathname !== manageAllHref && (
           <a
             href={manageAllHref}
-            className="block text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 hover:text-cyan-200 px-1 pt-2"
+            className="block text-[11px] uppercase tracking-[0.18em] text-cyan-300/70 hover:text-cyan-200 px-1 pt-2"
           >
             Manage all in Notifications
           </a>

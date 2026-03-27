@@ -172,7 +172,7 @@ function formatDate(iso: string): string {
 
 function StatCard({ icon, label, value, sub }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/5 px-5 py-4">
+    <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.045] px-5 py-4">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
         {icon}
       </div>
@@ -375,7 +375,7 @@ export default function SubscriptionManager({
       )}
 
       {/* ── Filter Tabs ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-white/10 bg-white/5 p-1 scrollbar-none">
+      <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-white/10 bg-white/[0.045] p-1 scrollbar-none">
         {FILTER_TABS.map(tab => (
           <button
             key={tab.key}
@@ -391,7 +391,7 @@ export default function SubscriptionManager({
             {tab.label}
             <span
               className={[
-                'rounded px-1 text-[10px] font-semibold',
+                'rounded px-1 text-[11px] font-semibold',
                 activeFilter === tab.key ? 'text-white/60' : 'text-white/30',
               ].join(' ')}
             >
@@ -437,7 +437,7 @@ export default function SubscriptionManager({
             return (
               <div
                 key={sub.id}
-                className="relative flex overflow-hidden rounded-xl border border-white/10 bg-white/5 transition-colors hover:bg-white/[0.07]"
+                className="relative flex overflow-hidden rounded-xl border border-white/10 bg-white/[0.045] transition-colors hover:bg-white/[0.07]"
               >
                 {/* Colored left accent bar */}
                 <div
@@ -498,17 +498,17 @@ export default function SubscriptionManager({
                   {/* Badges row */}
                   <div className="flex flex-wrap items-center gap-1.5">
                     {sub.category && (
-                      <span className="inline-flex items-center rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white/60 ring-1 ring-inset ring-white/10">
+                      <span className="inline-flex items-center rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-semibold text-white/60 ring-1 ring-inset ring-white/10">
                         {sub.category}
                       </span>
                     )}
                     <span
-                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${cycleBadge.className}`}
+                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${cycleBadge.className}`}
                     >
                       {cycleBadge.label}
                     </span>
                     <span
-                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${statusBadge.className}`}
+                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${statusBadge.className}`}
                     >
                       {statusBadge.label}
                     </span>
@@ -663,7 +663,7 @@ export default function SubscriptionManager({
               placeholder="Optional notes…"
               rows={3}
               className={[
-                'w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2',
+                'w-full resize-none rounded-lg border border-white/10 bg-white/[0.045] px-3 py-2',
                 'text-sm text-white placeholder-white/20 outline-none transition-colors',
                 'focus:border-white/20 focus:bg-white/[0.07]',
               ].join(' ')}

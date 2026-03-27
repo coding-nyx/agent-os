@@ -39,7 +39,7 @@ export function DiagnosisEmptyState({
 
   // Use neutral white-based colors to stay theme-agnostic
   const borderDrag = 'border-white/40 bg-white/10 scale-[1.005]';
-  const borderIdle = 'border-white/10 bg-white/[0.02]';
+  const borderIdle = 'border-white/10 bg-white/[0.045]';
 
   return (
     <motion.div
@@ -61,7 +61,7 @@ export function DiagnosisEmptyState({
             'w-16 h-16 rounded-2xl border-2 border-dashed flex items-center justify-center transition-all',
             isDragOver
               ? 'border-white/50 bg-white/15'
-              : 'border-white/20 bg-white/5 group-hover:border-white/40 group-hover:bg-white/10',
+              : 'border-white/20 bg-white/[0.045] group-hover:border-white/40 group-hover:bg-white/10',
           ].join(' ')}
         >
           <Upload
@@ -90,13 +90,13 @@ export function DiagnosisEmptyState({
           return (
             <div
               key={label}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/8 bg-white/[0.02]"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/[0.09] bg-white/[0.045]"
             >
               <Icon className="w-3 h-3 text-white/30" />
-              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/50">
+              <span className="text-[11px] font-black uppercase tracking-[0.15em] text-white/50">
                 {label}
               </span>
-              <span className="text-[10px] text-white/25">{desc}</span>
+              <span className="text-[11px] text-white/25">{desc}</span>
             </div>
           );
         })}
@@ -105,17 +105,17 @@ export function DiagnosisEmptyState({
       {/* Example queries */}
       {cfg.examples.length > 0 && (
         <div className="flex flex-col items-center gap-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/25">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/25">
             Example queries
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             {cfg.examples.map((q) => (
               <div
                 key={q}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/8 bg-white/[0.02]"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/[0.09] bg-white/[0.045]"
               >
                 <MessageSquare className="w-2.5 h-2.5 text-white/25" />
-                <span className="text-[10px] text-white/40">{q}</span>
+                <span className="text-[11px] text-white/40">{q}</span>
               </div>
             ))}
           </div>

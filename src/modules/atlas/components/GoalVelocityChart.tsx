@@ -213,14 +213,14 @@ export function GoalVelocityChart({ tasks, goals = [] }: GoalVelocityChartProps)
   const projection = useMemo(() => computeProjection(tasks, goals), [tasks, goals]);
 
   return (
-    <div className="w-full max-w-3xl rounded-xl border border-white/10 bg-white/5 p-4">
+    <div className="w-full max-w-3xl rounded-xl border border-white/10 bg-white/[0.045] p-4">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp className="w-4 h-4 text-[var(--module-color-400)]" aria-hidden="true" />
         <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em]">
           Goal Velocity
         </h4>
-        <span className="ml-auto text-[10px] text-white/40 tabular-nums">
+        <span className="ml-auto text-[11px] text-white/40 tabular-nums">
           Last 30 days
         </span>
       </div>
@@ -293,7 +293,7 @@ export function GoalVelocityChart({ tasks, goals = [] }: GoalVelocityChartProps)
       )}
 
       {!chart.isEmpty && projection.velocity > 0 && (
-        <div className="flex items-center justify-between mt-2 text-[10px] text-white/50">
+        <div className="flex items-center justify-between mt-2 text-[11px] text-white/50">
           <span>
             Velocity: <span className="text-white/70 font-semibold">{projection.velocity.toFixed(1)} tasks/day</span>
           </span>

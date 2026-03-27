@@ -127,7 +127,7 @@ export function TitanDiagnosisPanel({ encryptionKey, profile }: TitanDiagnosisPa
               </NeuralButton>
             </div>
             {vaultError && (
-              <p className="text-[10px] text-red-400 mt-1">{vaultError}</p>
+              <p className="text-[11px] text-red-400 mt-1">{vaultError}</p>
             )}
           </div>
         </div>

@@ -54,7 +54,7 @@ function TimeInput({
         disabled={disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-black/40 border border-white/10 rounded-2xl h-11 px-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40 [color-scheme:dark]"
+        className="w-full bg-slate-900/70 border border-white/[0.12] rounded-2xl h-11 px-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40 [color-scheme:dark]"
       />
     </div>
   );
@@ -100,9 +100,9 @@ export function RecurrenceEditor({
               const nextIso = localInputToIso(e.target.value, value.dueAt);
               onChange({ ...value, dueAt: nextIso });
             }}
-            className="w-full bg-black/40 border border-white/10 rounded-2xl h-11 px-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40 [color-scheme:dark]"
+            className="w-full bg-slate-900/70 border border-white/[0.12] rounded-2xl h-11 px-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 disabled:opacity-40 [color-scheme:dark]"
           />
-          <p className="text-[10px] text-white/40 leading-snug ml-1">
+          <p className="text-[11px] text-white/40 leading-snug ml-1">
             One-time reminders fire once and won’t repeat.
           </p>
         </div>
@@ -187,7 +187,7 @@ export function RecurrenceEditor({
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 disabled:opacity-40 ${
                       checked
                         ? 'bg-indigo-500/30 border border-indigo-500/60 text-indigo-300'
-                        : 'bg-white/[0.03] border border-white/10 text-white/50 hover:border-white/20'
+                        : 'bg-white/[0.045] border border-white/[0.12] text-white/50 hover:border-white/20'
                     }`}
                   >
                     {label}
@@ -222,7 +222,7 @@ export function RecurrenceEditor({
               disabled={disabled}
             />
           </div>
-          <p className="text-[10px] text-white/40 leading-snug ml-1">
+          <p className="text-[11px] text-white/40 leading-snug ml-1">
             Reminder fires once within this window each day.
           </p>
           <div className="space-y-1.5">

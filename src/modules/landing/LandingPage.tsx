@@ -133,7 +133,7 @@ export default function LandingPage() {
                   transition={{ delay: index * 0.09, duration: 0.40, ease: [0.22, 1, 0.36, 1] }}
                   className="rounded-2xl sm:rounded-3xl border border-white/[0.09] bg-white/[0.045] backdrop-blur-xl p-5 sm:p-7 flex flex-col h-full shadow-[0_2px_12px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.10)] hover:border-white/[0.15] hover:bg-white/[0.06] transition-colors duration-200"
                 >
-                  <div className="w-11 h-11 rounded-2xl border border-white/[0.10] bg-black/30 flex items-center justify-center mb-5">
+                  <div className="w-11 h-11 rounded-2xl border border-white/[0.10] bg-slate-900/60 flex items-center justify-center mb-5">
                     <Icon className={`w-5 h-5 ${card.color}`} />
                   </div>
                   <h3 className="font-display text-xl sm:text-2xl font-bold text-white/95">{card.title}</h3>
@@ -156,7 +156,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="relative z-[var(--z-content)] border-t border-white/[0.07] py-6 sm:py-8 text-center text-[12px] tracking-[0.08em] uppercase text-white/30 font-medium">
+      <footer className="relative z-[var(--z-content)] border-t border-white/[0.09] py-6 sm:py-8 text-center text-[12px] tracking-[0.08em] uppercase text-white/30 font-medium">
         © 2026 Nexus Neural Interface
       </footer>
 

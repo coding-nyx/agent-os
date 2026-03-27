@@ -154,11 +154,11 @@ export function ActiveResearchWorkspace({
 
   const activityToneClasses = {
     lime: 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
-    violet: 'border-violet-500/15 bg-violet-500/[0.08] text-violet-200',
-    amber: 'border-amber-500/15 bg-amber-500/[0.08] text-amber-200',
-    emerald: 'border-emerald-500/15 bg-emerald-500/[0.08] text-emerald-200',
-    rose: 'border-rose-500/15 bg-rose-500/[0.08] text-rose-200',
-    slate: 'border-white/10 bg-white/[0.04] text-white/80',
+    violet: 'border-violet-500/20 bg-violet-500/[0.12] text-violet-200',
+    amber: 'border-amber-500/20 bg-amber-500/[0.12] text-amber-200',
+    emerald: 'border-emerald-500/20 bg-emerald-500/[0.12] text-emerald-200',
+    rose: 'border-rose-500/20 bg-rose-500/[0.12] text-rose-200',
+    slate: 'border-white/[0.09] bg-white/[0.045] text-white/80',
   } satisfies Record<typeof activity.tone, string>;
 
   const artifactsModeLabel =
@@ -170,7 +170,7 @@ export function ActiveResearchWorkspace({
 
   return (
     <section className="surface-foundation-raised flex h-full min-h-[32rem] min-w-0 flex-col overflow-hidden">
-      <header className="shrink-0 border-b border-white/8 bg-white/[0.02] px-4 py-4 sm:px-5 lg:px-6">
+      <header className="shrink-0 border-b border-white/[0.09] bg-white/[0.045] px-4 py-4 sm:px-5 lg:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 space-y-3">
             <div className="flex items-start gap-3">
@@ -275,23 +275,23 @@ export function ActiveResearchWorkspace({
             </div>
           </article>
 
-          <article className="min-w-[16rem] snap-start rounded-3xl border border-white/8 bg-white/[0.03] p-4 lg:min-w-0">
+          <article className="min-w-[16rem] snap-start rounded-3xl border border-white/[0.09] bg-white/[0.045] p-4 lg:min-w-0">
             <p className="text-chip-soft text-white/45">Research map</p>
             <div className="mt-3 flex items-end justify-between gap-3">
               <div>
                 <p className="text-[24px] font-semibold tracking-tight text-white">{session.subQuestions.length}</p>
                 <p className="text-[12px] text-white/55">Tracked paths in this session</p>
               </div>
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/70">
+              <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-white/70">
                 {completedSubQuestions} complete
               </span>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="rounded-2xl border border-white/8 bg-black/20 px-3 py-2.5">
+              <div className="rounded-2xl border border-white/[0.09] bg-slate-900/50 px-3 py-2.5">
                 <p className="text-[11px] uppercase tracking-[0.14em] text-white/35">In flight</p>
                 <p className="mt-1 text-[16px] font-semibold text-white">{inFlightSubQuestions}</p>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-black/20 px-3 py-2.5">
+              <div className="rounded-2xl border border-white/[0.09] bg-slate-900/50 px-3 py-2.5">
                 <p className="text-[11px] uppercase tracking-[0.14em] text-white/35">Ready</p>
                 <p className="mt-1 text-[16px] font-semibold text-white">
                   {Math.max(session.subQuestions.length - inFlightSubQuestions, 0)}
@@ -300,29 +300,29 @@ export function ActiveResearchWorkspace({
             </div>
           </article>
 
-          <article className="min-w-[16rem] snap-start rounded-3xl border border-white/8 bg-white/[0.03] p-4 lg:min-w-0">
+          <article className="min-w-[16rem] snap-start rounded-3xl border border-white/[0.09] bg-white/[0.045] p-4 lg:min-w-0">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-chip-soft text-white/45">Artifacts</p>
                 <h3 className="mt-1 text-[14px] font-semibold text-white">{artifactsCount} linked items</h3>
               </div>
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-white/65">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-slate-900/50 text-white/65">
                 <FileText className="h-4 w-4" aria-hidden="true" />
               </div>
             </div>
             <p className="mt-3 text-[12px] leading-relaxed text-white/60">{artifactsModeLabel}</p>
             <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-white/50">
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">
+              <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1">
                 {sessionNodes.length} findings
               </span>
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">
+              <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1">
                 {sessionSources.length} sources
               </span>
             </div>
           </article>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-white/8 bg-white/[0.015] lg:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-white/[0.09] bg-white/[0.015] lg:flex-row">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {(error || isSyncing || (isSessionActive && !hasVisibleStream)) && (
               <div
@@ -330,7 +330,7 @@ export function ActiveResearchWorkspace({
                   'shrink-0 border-b px-4 py-3 text-[12px] sm:px-5',
                   error
                     ? 'border-rose-500/15 bg-rose-500/[0.08] text-rose-200'
-                    : 'border-white/8 bg-white/[0.03] text-white/65',
+                    : 'border-white/[0.09] bg-white/[0.045] text-white/65',
                 )}
                 aria-live="polite"
               >
@@ -351,7 +351,7 @@ export function ActiveResearchWorkspace({
               </div>
             )}
 
-            <div className="min-h-0 flex-1 overflow-hidden bg-white/[0.01]">
+            <div className="min-h-0 flex-1 overflow-hidden bg-white/[0.045]">
               <ChatInterface
                 messages={renderedMessages}
                 onSendMessage={onSendMessage}
@@ -371,7 +371,7 @@ export function ActiveResearchWorkspace({
           </div>
 
           {artifactsMode === 'docked' && artifactsPanel && (
-            <aside className="min-h-0 w-full shrink-0 border-t border-white/8 bg-white/[0.01] lg:w-[22rem] lg:border-l lg:border-t-0 xl:w-[24rem]">
+            <aside className="min-h-0 w-full shrink-0 border-t border-white/[0.09] bg-white/[0.045] lg:w-[22rem] lg:border-l lg:border-t-0 xl:w-[24rem]">
               <div className="h-full min-h-[22rem] p-3 sm:p-4">{artifactsPanel}</div>
             </aside>
           )}

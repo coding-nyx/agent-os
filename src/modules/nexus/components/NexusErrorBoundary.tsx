@@ -25,7 +25,7 @@ export class NexusErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return this.props.fallback ?? (
-        <div className="flex items-center justify-center h-12 text-xs text-white/30 rounded-lg border border-white/5">
+        <div className="flex items-center justify-center h-12 text-xs text-white/30 rounded-lg border border-white/[0.09]">
           {this.props.name ?? 'Component'} unavailable
         </div>
       );

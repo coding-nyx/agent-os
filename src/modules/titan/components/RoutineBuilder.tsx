@@ -194,7 +194,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
         {nameError && <p className="text-xs text-rose-400 mt-1">{nameError}</p>}
 
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
+          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">
             Day of Week
           </label>
           <NeuralSelectMenu
@@ -210,7 +210,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
       {/* Rationale & Timeframe */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
+          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">
             Rationale (Optional)
           </label>
           <NeuralTextarea
@@ -234,14 +234,14 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
           
           {/* Volume Stats */}
           <SurfaceCard className="p-3 mt-2">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[11px]">
               <div className="flex items-center gap-2 text-white/50">
                 <TrendingUp className="w-3 h-3" />
                 <span>Estimated Volume:</span>
               </div>
               <span className="font-black text-[var(--module-color-400)] tabular-nums">{totalVolume} reps</span>
             </div>
-            <div className="flex items-center justify-between text-[10px] mt-1">
+            <div className="flex items-center justify-between text-[11px] mt-1">
               <div className="flex items-center gap-2 text-white/50">
                 <Clock className="w-3 h-3" />
                 <span>Estimated Duration:</span>
@@ -255,7 +255,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
       {/* Exercise List */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">
             Exercises ({exercises.length})
           </span>
           <div className="flex gap-2">
@@ -287,7 +287,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-bold text-white/70">No exercises yet</p>
-                <p className="text-[10px] text-white/40 max-w-xs leading-relaxed">
+                <p className="text-[11px] text-white/40 max-w-xs leading-relaxed">
                   Add exercises from the template library or create custom ones
                 </p>
               </div>
@@ -329,7 +329,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
 
                             {/* Exercise Number */}
                             <div className="w-7 h-7 rounded-lg bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] flex items-center justify-center shrink-0 mt-0.5">
-                              <span className="text-[10px] font-black text-[var(--module-color-400)]">{index + 1}</span>
+                              <span className="text-[11px] font-black text-[var(--module-color-400)]">{index + 1}</span>
                             </div>
 
                             {/* Exercise Fields */}
@@ -433,7 +433,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+      <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.09]">
         <NeuralButton
           variant="ghost"
           onClick={onCancel}
@@ -458,7 +458,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="border border-white/10 rounded-xl bg-white/[0.03] p-4 space-y-3">
+            <div className="border border-white/10 rounded-xl bg-white/[0.045] p-4 space-y-3">
               {/* Category Filter */}
               <div className="flex flex-wrap gap-2">
                 {categories.map((cat) => (
@@ -466,10 +466,10 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
                     className={cn(
-                      'px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all',
+                      'px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all',
                       selectedCategory === cat
                         ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                        : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                        : 'bg-white/[0.045] border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
                     )}
                   >
                     {cat}
@@ -483,7 +483,7 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                   <button
                     key={idx}
                     onClick={() => addExerciseFromTemplate(template)}
-                    className="p-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all text-left group"
+                    className="p-3 rounded-xl border border-white/10 bg-white/[0.045] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all text-left group"
                   >
                     <div className="flex items-start justify-between mb-2">
                       <span className="text-sm font-bold text-white/90 group-hover:text-[var(--module-color-300)] transition-colors">
@@ -491,8 +491,8 @@ export function RoutineBuilder({ routine, onSave, onCancel }: RoutineBuilderProp
                       </span>
                       <Plus className="w-3.5 h-3.5 text-white/30 group-hover:text-[var(--module-color-400)] transition-colors" />
                     </div>
-                    <div className="flex items-center gap-3 text-[10px] text-white/50">
-                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 uppercase tracking-wider">
+                    <div className="flex items-center gap-3 text-[11px] text-white/50">
+                      <span className="px-2 py-0.5 rounded bg-white/[0.045] border border-white/10 uppercase tracking-wider">
                         {template.category}
                       </span>
                       <span className="font-black tabular-nums">

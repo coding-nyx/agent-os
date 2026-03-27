@@ -58,7 +58,7 @@ export const NeuralInput = React.forwardRef<HTMLInputElement, NeuralInputProps>(
             aria-invalid={hasError ? true : undefined}
             className={cn(
               // Base
-              'w-full bg-black/40 border rounded-xl text-[0.9375rem] text-white/95',
+              'w-full bg-slate-900/70 border rounded-xl text-[0.9375rem] text-white/95',
               // Sizing: min-h ensures 44px touch target; iOS zoom prevention via 1rem (set globally in CSS)
               'min-h-[44px] h-12 px-4',
               // Placeholder
@@ -66,7 +66,7 @@ export const NeuralInput = React.forwardRef<HTMLInputElement, NeuralInputProps>(
               // Transitions
               'transition-all duration-200',
               // Normal border state
-              !hasError && 'border-white/10 focus:border-[var(--module-accent-border)]',
+              !hasError && 'border-white/[0.12] focus:border-[var(--module-accent-border)]',
               // Focus ring — solid 2px, offset from border
               'focus:outline-none focus:ring-2 focus:ring-[var(--module-accent-ring)] focus:ring-offset-0',
               // Error state

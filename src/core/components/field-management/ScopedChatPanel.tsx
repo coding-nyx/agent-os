@@ -80,20 +80,20 @@ Maintain a professional, high-fidelity tone. Be concise.
       >
         <div className={cn(
           "flex-1 flex flex-col overflow-hidden rounded-[2rem] border backdrop-blur-3xl shadow-2xl",
-          "bg-black/60 border-white/10"
+          "bg-slate-900/85 border-white/[0.12]"
         )}>
           {/* Futuristic Header */}
-          <div className="p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-b from-white/[0.02] to-transparent">
+          <div className="p-6 border-b border-white/[0.09] flex items-center justify-between bg-gradient-to-b from-white/[0.02] to-transparent">
             <div className="flex items-center gap-3">
               <div className={cn(
-                "p-2 rounded-xl bg-white/5 border border-white/10",
+                "p-2 rounded-xl bg-white/[0.045] border border-white/[0.12]",
                 themeColor === 'indigo' ? "text-indigo-400" : "text-cyan-400"
               )}>
                 {selectedEntity.type === 'routine' ? <Target size={18} /> : 
                  selectedEntity.type === 'field' ? <Zap size={18} /> : <Activity size={18} />}
               </div>
               <div>
-                <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.1em] text-white/40 leading-none mb-1">
+                <div className="text-[11px] sm:text-[11px] font-semibold uppercase tracking-[0.1em] text-white/40 leading-none mb-1">
                   Scoped Analysis
                 </div>
                 <h3 className="text-sm font-bold text-white truncate max-w-[180px]">
@@ -111,9 +111,9 @@ Maintain a professional, high-fidelity tone. Be concise.
           </div>
 
           {/* Context Banner */}
-          <div className="px-6 py-3 bg-white/[0.02] border-b border-white/5 flex items-center gap-2">
+          <div className="px-6 py-3 bg-white/[0.045] border-b border-white/[0.09] flex items-center gap-2">
             <Sparkles size={12} className="text-amber-400 animate-pulse" />
-            <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-amber-400/80">
+            <span className="text-[11px] sm:text-[11px] font-semibold uppercase tracking-wider text-amber-400/80">
               Neural Link Scoped to {selectedEntity.type}
             </span>
           </div>

@@ -41,14 +41,14 @@ function EnergyBudgetBar({ budget, max = 10 }: EnergyBudgetBarProps) {
       className="space-y-1.5"
     >
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
+        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">
           Energy remaining
         </span>
         <span className={cn('text-sm font-bold tabular-nums font-display', labelColor)}>
           {typeof budget === 'number' ? `${budget.toFixed(1)}` : '—'}/{max}
         </span>
       </div>
-      <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+      <div className="h-2 w-full bg-white/[0.045] rounded-full overflow-hidden">
         <motion.div
           className={cn('h-full rounded-full', barColor)}
           initial={{ width: 0 }}
@@ -94,7 +94,7 @@ const TaskItem = React.memo(function TaskItem({ title, energyCost, status, block
   return (
     <div className={cn(
       'rounded-xl border p-3 space-y-2 transition-colors',
-      isBlocked ? 'border-amber-500/20 bg-amber-500/5' : 'border-white/5 bg-white/[0.02]'
+      isBlocked ? 'border-amber-500/20 bg-amber-500/5' : 'border-white/[0.09] bg-white/[0.045]'
     )}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -108,7 +108,7 @@ const TaskItem = React.memo(function TaskItem({ title, energyCost, status, block
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <Zap className="w-3 h-3 text-[var(--module-color-400)]" aria-hidden="true" />
-          <span className="text-[10px] font-black text-[var(--module-color-300)] tabular-nums">{energyCost}</span>
+          <span className="text-[11px] font-black text-[var(--module-color-300)] tabular-nums">{energyCost}</span>
         </div>
       </div>
 
@@ -125,7 +125,7 @@ const TaskItem = React.memo(function TaskItem({ title, energyCost, status, block
                 onClick={onAskModule}
                 variant="secondary"
                 size="sm"
-                className="!h-7 px-2.5 !rounded-lg text-[9px] font-black uppercase tracking-[0.2em]"
+                className="!h-7 px-2.5 !rounded-lg text-[11px] font-black uppercase tracking-[0.2em]"
               >
                 <MessageSquare className="w-3 h-3" />
                 Ask {blockedSource || 'Module'}
@@ -135,7 +135,7 @@ const TaskItem = React.memo(function TaskItem({ title, energyCost, status, block
       )}
 
       {isDone && (
-        <span className="ml-6 text-[9px] uppercase tracking-[0.2em] text-emerald-400/70 font-bold">
+        <span className="ml-6 text-[11px] uppercase tracking-[0.2em] text-emerald-400/70 font-bold">
           Complete
         </span>
       )}
@@ -173,7 +173,7 @@ const HabitStreakRow = React.memo(function HabitStreakRow({ name, emoji, days, a
         {days}d
       </span>
       {atRisk && (
-        <span className="text-[8px] text-amber-400/70 uppercase tracking-wider font-bold">
+        <span className="text-[11px] text-amber-400/70 uppercase tracking-wider font-bold">
           at risk
         </span>
       )}
@@ -277,13 +277,13 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--module-color-400)] font-display">
             Today's Plan
           </h3>
-          <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">
+          <p className="text-[11px] text-white/40 uppercase tracking-wider mt-0.5">
             {todayStr}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
           <Clock className="w-3 h-3 text-white/30" aria-hidden="true" />
-          <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">
+          <span className="text-[11px] text-white/40 font-bold uppercase tracking-wider">
             {completedTasks.length}/{totalTasks} tasks
           </span>
         </div>
@@ -295,7 +295,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
       {/* Cognitive Stats Row */}
       <div className="grid grid-cols-3 gap-3">
         <SurfaceCard className="p-3 text-center">
-          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
             Energy
           </span>
           <span className="text-lg font-bold tabular-nums text-[var(--module-color-300)] font-display">
@@ -303,7 +303,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           </span>
         </SurfaceCard>
         <SurfaceCard className="p-3 text-center">
-          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
             Focus
           </span>
           <span className="text-lg font-bold tabular-nums text-[var(--module-color-300)] font-display">
@@ -311,7 +311,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
           </span>
         </SurfaceCard>
         <SurfaceCard className="p-3 text-center">
-          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">
             Load
           </span>
           <span className="text-lg font-bold tabular-nums text-[var(--module-color-300)] font-display">
@@ -323,7 +323,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
       {/* Task List */}
       {tasks.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40 font-display">
+          <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40 font-display">
             Tasks
           </h4>
           {tasks.slice(0, 5).map(task => (
@@ -345,7 +345,7 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
             />
           ))}
           {tasks.length > 5 && (
-            <p className="text-[10px] font-bold text-[var(--module-color-400)] pt-1">
+            <p className="text-[11px] font-bold text-[var(--module-color-400)] pt-1">
               + {tasks.length - 5} more tasks
             </p>
           )}
@@ -356,14 +356,14 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
       {totalTasks > 0 && (
         <SurfaceCard className="p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40">
               Completion
             </span>
             <span className="text-xs font-black text-[var(--module-color-300)] tabular-nums">
               {completionPct}%
             </span>
           </div>
-          <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-white/[0.045] rounded-full overflow-hidden">
             <motion.div
               className="h-full rounded-full bg-[var(--module-color-400)]"
               initial={{ width: 0 }}
@@ -376,12 +376,12 @@ export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProp
 
       {/* Streaks — driven by profile.habits */}
       <div className="space-y-2">
-        <h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40 font-display">
+        <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40 font-display">
           Streaks
         </h4>
         <SurfaceCard className="p-3 space-y-2.5">
           {streakHabits.length === 0 || streakHabits.every(({ habit }) => habit.currentStreak === 0) ? (
-            <p className="text-[10px] text-white/30 uppercase tracking-wider text-center py-2">
+            <p className="text-[11px] text-white/30 uppercase tracking-wider text-center py-2">
               Build habits to see your streaks here.
             </p>
           ) : (

@@ -72,21 +72,21 @@ function EventRow({ event }: { event: DebugEvent }) {
       <button
         type="button"
         onClick={() => event.detail && setShowDetail((v) => !v)}
-        className="w-full flex items-start gap-1.5 py-1 px-1.5 text-left hover:bg-white/[0.03] rounded transition-colors"
+        className="w-full flex items-start gap-1.5 py-1 px-1.5 text-left hover:bg-white/[0.045] rounded transition-colors"
       >
         <span
           className={cn(
-            'shrink-0 text-[8px] font-black uppercase tracking-wider mt-0.5 px-1 py-0.5 rounded',
+            'shrink-0 text-[11px] font-black uppercase tracking-wider mt-0.5 px-1 py-0.5 rounded',
             CATEGORY_BG[event.category],
             CATEGORY_COLORS[event.category],
           )}
         >
           {CATEGORY_LABELS[event.category]}
         </span>
-        <span className="text-[10px] text-white/30 font-mono shrink-0 mt-0.5 tabular-nums">
+        <span className="text-[11px] text-white/30 font-mono shrink-0 mt-0.5 tabular-nums">
           {formatTime(event.timestamp)}
         </span>
-        <span className="text-[10px] text-white/60 font-mono break-all leading-tight flex-1 min-w-0">
+        <span className="text-[11px] text-white/60 font-mono break-all leading-tight flex-1 min-w-0">
           {event.moduleId && (
             <span className="text-white/30">{event.moduleId}:</span>
           )}
@@ -102,7 +102,7 @@ function EventRow({ event }: { event: DebugEvent }) {
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <pre className="text-[9px] text-white/30 font-mono px-2 pb-1.5 break-all whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto no-scrollbar">
+            <pre className="text-[11px] text-white/30 font-mono px-2 pb-1.5 break-all whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto no-scrollbar">
               {typeof event.detail === 'string'
                 ? event.detail
                 : JSON.stringify(event.detail, null, 2)?.slice(0, 800) ?? ''}
@@ -173,21 +173,21 @@ function DebugActivityOverlayInner() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="w-[340px] sm:w-[400px] max-h-[50vh] flex flex-col rounded-xl border border-amber-500/20 bg-black/90 backdrop-blur-2xl shadow-2xl overflow-hidden"
+            className="w-[340px] sm:w-[400px] max-h-[50vh] flex flex-col rounded-xl border border-amber-500/20 bg-slate-900/95 backdrop-blur-2xl shadow-2xl overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-white/5 shrink-0">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.09] shrink-0">
               <Bug className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-400/80 flex-1">
+              <span className="text-[11px] font-black uppercase tracking-[0.15em] text-amber-400/80 flex-1">
                 Debug Activity
               </span>
-              <span className="text-[9px] font-mono text-white/30 tabular-nums">
+              <span className="text-[11px] font-mono text-white/30 tabular-nums">
                 {events.length} events
               </span>
               <button
                 type="button"
                 onClick={() => setShowFilterBar((v) => !v)}
-                className="p-1 rounded hover:bg-white/5 transition-colors"
+                className="p-1 rounded hover:bg-white/[0.045] transition-colors"
                 aria-label="Toggle filters"
               >
                 <Filter className="w-3 h-3 text-white/40" />
@@ -195,7 +195,7 @@ function DebugActivityOverlayInner() {
               <button
                 type="button"
                 onClick={handleCopy}
-                className="p-1 rounded hover:bg-white/5 transition-colors"
+                className="p-1 rounded hover:bg-white/[0.045] transition-colors"
                 aria-label="Copy events"
               >
                 <Copy className="w-3 h-3 text-white/40" />
@@ -203,7 +203,7 @@ function DebugActivityOverlayInner() {
               <button
                 type="button"
                 onClick={toggleExpand}
-                className="p-1 rounded hover:bg-white/5 transition-colors"
+                className="p-1 rounded hover:bg-white/[0.045] transition-colors"
                 aria-label="Collapse debug overlay"
               >
                 <ChevronDown className="w-3.5 h-3.5 text-white/40" />
@@ -218,17 +218,17 @@ function DebugActivityOverlayInner() {
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="overflow-hidden border-b border-white/5"
+                  className="overflow-hidden border-b border-white/[0.09]"
                 >
                   <div className="flex flex-wrap gap-1 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => setActiveFilter('*')}
                       className={cn(
-                        'text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded-full transition-colors',
+                        'text-[11px] font-black uppercase tracking-wider px-2 py-1 rounded-full transition-colors',
                         activeFilter === '*'
                           ? 'bg-amber-500/20 text-amber-400'
-                          : 'bg-white/5 text-white/30 hover:text-white/50',
+                          : 'bg-white/[0.045] text-white/30 hover:text-white/50',
                       )}
                     >
                       ALL
@@ -239,10 +239,10 @@ function DebugActivityOverlayInner() {
                         type="button"
                         onClick={() => setActiveFilter(cat)}
                         className={cn(
-                          'text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded-full transition-colors',
+                          'text-[11px] font-black uppercase tracking-wider px-2 py-1 rounded-full transition-colors',
                           activeFilter === cat
                             ? cn(CATEGORY_BG[cat], CATEGORY_COLORS[cat])
-                            : 'bg-white/5 text-white/30 hover:text-white/50',
+                            : 'bg-white/[0.045] text-white/30 hover:text-white/50',
                         )}
                       >
                         {CATEGORY_LABELS[cat]}
@@ -260,7 +260,7 @@ function DebugActivityOverlayInner() {
             >
               {events.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
-                  <span className="text-[10px] text-white/20 font-mono">
+                  <span className="text-[11px] text-white/20 font-mono">
                     Waiting for events…
                   </span>
                 </div>
@@ -281,12 +281,12 @@ function DebugActivityOverlayInner() {
             transition={{ duration: 0.15 }}
             type="button"
             onClick={toggleExpand}
-            className="relative flex items-center justify-center w-8 h-8 rounded-lg border border-amber-500/20 bg-black/70 backdrop-blur-xl shadow-lg hover:bg-black/90 transition-colors"
+            className="relative flex items-center justify-center w-8 h-8 rounded-lg border border-amber-500/20 bg-slate-900/90 backdrop-blur-xl shadow-lg hover:bg-slate-900/95 transition-colors"
             aria-label="Expand debug overlay"
           >
             <Bug className="w-3.5 h-3.5 text-amber-400/70" />
             {sinceLastOpen > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] flex items-center justify-center px-0.5 rounded-full bg-amber-500/30 text-amber-400 text-[8px] font-black tabular-nums border border-black/50">
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] flex items-center justify-center px-0.5 rounded-full bg-amber-500/30 text-amber-400 text-[11px] font-black tabular-nums border border-black/50">
                 {sinceLastOpen > 99 ? '99+' : sinceLastOpen}
               </span>
             )}

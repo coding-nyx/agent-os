@@ -72,92 +72,92 @@ interface ChatInterfaceProps {
 
 const THEMES = {
   indigo: {
-    bubble: 'bg-indigo-950/40 border-indigo-500/20 text-indigo-50 rounded-2xl rounded-tl-sm border-l-2 border-l-indigo-400/40',
-    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
+    bubble: 'bg-slate-900/85 border-white/[0.09] border-l-[3px] border-l-indigo-400/80 text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-indigo-950/85 border-indigo-500/30 border-r-[3px] border-r-indigo-400/70 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-indigo-400',
-    glow: 'shadow-xl shadow-indigo-500/10',
-    bgGlow: 'bg-indigo-500/30',
-    btn: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'
+    glow: 'shadow-2xl shadow-black/70',
+    bgGlow: 'bg-indigo-500/25',
+    btn: 'bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-500/40'
   },
   orange: {
-    bubble: 'bg-orange-950/40 border-orange-500/20 text-orange-50 rounded-2xl rounded-tl-sm border-l-2 border-l-orange-400/40',
-    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
+    bubble: 'bg-slate-900/85 border-white/[0.09] border-l-[3px] border-l-orange-400/80 text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-orange-950/85 border-orange-500/30 border-r-[3px] border-r-orange-400/70 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-orange-400',
-    glow: 'shadow-xl shadow-orange-500/10',
-    bgGlow: 'bg-orange-500/30',
-    btn: 'bg-orange-600 hover:bg-orange-500 shadow-orange-500/20'
+    glow: 'shadow-2xl shadow-black/70',
+    bgGlow: 'bg-orange-500/25',
+    btn: 'bg-orange-600 hover:bg-orange-500 shadow-lg shadow-orange-500/40'
   },
   cyan: {
-    bubble: 'bg-cyan-950/40 border-cyan-500/20 text-cyan-50 rounded-2xl rounded-tl-sm border-l-2 border-l-cyan-400/40',
-    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
+    bubble: 'bg-slate-900/85 border-white/[0.09] border-l-[3px] border-l-cyan-400/80 text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-cyan-950/85 border-cyan-500/30 border-r-[3px] border-r-cyan-400/70 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-cyan-400',
-    glow: 'shadow-xl shadow-cyan-500/10',
-    bgGlow: 'bg-cyan-500/30',
-    btn: 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-500/20'
+    glow: 'shadow-2xl shadow-black/70',
+    bgGlow: 'bg-cyan-500/25',
+    btn: 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-500/40'
   },
   violet: {
-    bubble: 'bg-violet-950/40 border-violet-500/20 text-violet-50 rounded-2xl rounded-tl-sm border-l-2 border-l-violet-400/40',
-    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
+    bubble: 'bg-slate-900/85 border-white/[0.09] border-l-[3px] border-l-violet-400/80 text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-violet-950/85 border-violet-500/30 border-r-[3px] border-r-violet-400/70 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-violet-400',
-    glow: 'shadow-xl shadow-violet-500/10',
-    bgGlow: 'bg-violet-500/30',
-    btn: 'bg-violet-600 hover:bg-violet-500 shadow-violet-500/20'
+    glow: 'shadow-2xl shadow-black/70',
+    bgGlow: 'bg-violet-500/25',
+    btn: 'bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-500/40'
   },
   emerald: {
-    bubble: 'bg-emerald-950/40 border-emerald-500/20 text-emerald-50 rounded-2xl rounded-tl-sm border-l-2 border-l-emerald-400/40',
-    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
+    bubble: 'bg-slate-900/85 border-white/[0.09] border-l-[3px] border-l-emerald-400/80 text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-emerald-950/85 border-emerald-500/30 border-r-[3px] border-r-emerald-400/70 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-emerald-400',
-    glow: 'shadow-xl shadow-emerald-500/10',
-    bgGlow: 'bg-emerald-500/30',
-    btn: 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
+    glow: 'shadow-2xl shadow-black/70',
+    bgGlow: 'bg-emerald-500/25',
+    btn: 'bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/40'
   },
   sky: {
-    bubble: 'bg-sky-950/40 border-sky-500/20 text-sky-50 rounded-2xl rounded-tl-sm border-l-2 border-l-sky-400/40',
-    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
+    bubble: 'bg-slate-900/85 border-white/[0.09] border-l-[3px] border-l-sky-400/80 text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-sky-950/85 border-sky-500/30 border-r-[3px] border-r-sky-400/70 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-sky-400',
-    glow: 'shadow-xl shadow-sky-500/10',
-    bgGlow: 'bg-sky-500/30',
-    btn: 'bg-sky-600 hover:bg-sky-500 shadow-sky-500/20'
+    glow: 'shadow-2xl shadow-black/70',
+    bgGlow: 'bg-sky-500/25',
+    btn: 'bg-sky-600 hover:bg-sky-500 shadow-lg shadow-sky-500/40'
   },
   lime: {
-    bubble: 'bg-lime-950/40 border-lime-500/20 text-lime-50 rounded-2xl rounded-tl-sm border-l-2 border-l-lime-400/40',
-    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
+    bubble: 'bg-slate-900/85 border-white/[0.09] border-l-[3px] border-l-lime-400/80 text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-lime-950/85 border-lime-500/30 border-r-[3px] border-r-lime-400/70 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-lime-400',
-    glow: 'shadow-xl shadow-lime-500/10',
-    bgGlow: 'bg-lime-500/30',
-    btn: 'bg-lime-600 hover:bg-lime-500 shadow-lime-500/20'
+    glow: 'shadow-2xl shadow-black/70',
+    bgGlow: 'bg-lime-500/25',
+    btn: 'bg-lime-600 hover:bg-lime-500 shadow-lg shadow-lime-500/40'
   },
   rose: {
-    bubble: 'bg-rose-950/40 border-rose-500/20 text-rose-50 rounded-2xl rounded-tl-sm border-l-2 border-l-rose-400/40',
-    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
+    bubble: 'bg-slate-900/85 border-white/[0.09] border-l-[3px] border-l-rose-400/80 text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-rose-950/85 border-rose-500/30 border-r-[3px] border-r-rose-400/70 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-rose-400',
-    glow: 'shadow-xl shadow-rose-500/10',
-    bgGlow: 'bg-rose-500/30',
-    btn: 'bg-rose-600 hover:bg-rose-500 shadow-rose-500/20'
+    glow: 'shadow-2xl shadow-black/70',
+    bgGlow: 'bg-rose-500/25',
+    btn: 'bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-500/40'
   },
   fuchsia: {
-    bubble: 'bg-fuchsia-950/40 border-fuchsia-500/20 text-fuchsia-50 rounded-2xl rounded-tl-sm border-l-2 border-l-fuchsia-400/40',
-    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
+    bubble: 'bg-slate-900/85 border-white/[0.09] border-l-[3px] border-l-fuchsia-400/80 text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-fuchsia-950/85 border-fuchsia-500/30 border-r-[3px] border-r-fuchsia-400/70 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-fuchsia-400',
-    glow: 'shadow-xl shadow-fuchsia-500/10',
-    bgGlow: 'bg-fuchsia-500/30',
-    btn: 'bg-fuchsia-600 hover:bg-fuchsia-500 shadow-fuchsia-500/20'
+    glow: 'shadow-2xl shadow-black/70',
+    bgGlow: 'bg-fuchsia-500/25',
+    btn: 'bg-fuchsia-600 hover:bg-fuchsia-500 shadow-lg shadow-fuchsia-500/40'
   },
   slate: {
-    bubble: 'bg-slate-800/50 border-slate-500/20 text-slate-50 rounded-2xl rounded-tl-sm border-l-2 border-l-slate-400/40',
-    userBubble: 'bg-slate-700/60 border-slate-500/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-400/30',
+    bubble: 'bg-slate-800/90 border-white/[0.10] border-l-[3px] border-l-slate-400/70 text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-slate-700/85 border-slate-500/30 border-r-[3px] border-r-slate-400/60 text-white rounded-2xl rounded-tr-sm',
     accent: 'text-slate-400',
-    glow: 'shadow-xl shadow-slate-500/10',
-    bgGlow: 'bg-slate-500/30',
-    btn: 'bg-slate-600 hover:bg-slate-500 shadow-slate-500/20'
+    glow: 'shadow-2xl shadow-black/70',
+    bgGlow: 'bg-slate-500/25',
+    btn: 'bg-slate-600 hover:bg-slate-500 shadow-lg shadow-slate-500/30'
   },
   module: {
-    bubble: 'bg-[var(--module-accent-subtle,theme(colors.indigo.950/0.4))] border-[var(--module-accent-border)] text-white rounded-2xl rounded-tl-sm border-l-2',
-    userBubble: 'bg-slate-800/60 border-slate-600/30 text-white rounded-2xl rounded-tr-sm border-r-2 border-r-slate-500/30',
+    bubble: 'bg-slate-900/85 border-white/[0.09] border-l-[3px] border-l-[var(--module-color-400,theme(colors.indigo.400))] text-white rounded-2xl rounded-tl-sm',
+    userBubble: 'bg-[var(--module-accent-subtle,theme(colors.indigo.950/0.85))] border-[var(--module-accent-border)] border-r-[3px] text-white rounded-2xl rounded-tr-sm',
     accent: 'text-[var(--module-color-400)]',
-    glow: 'shadow-xl shadow-[var(--module-accent-muted)]',
+    glow: 'shadow-2xl shadow-black/70',
     bgGlow: 'bg-[var(--module-accent-glow)]',
-    btn: 'bg-[var(--module-accent)] hover:bg-[var(--module-accent-hover)] shadow-[var(--module-accent-muted)]'
+    btn: 'bg-[var(--module-accent)] hover:bg-[var(--module-accent-hover)] shadow-lg shadow-[var(--module-accent-muted)]'
   }
 };
 
@@ -397,12 +397,12 @@ export const ChatInterface = React.memo(function ChatInterface({
 
       {/* Clear session button */}
       {onClearHistory && !hideClearHistory && !isOrchestrator && (
-        <div className="shrink-0 flex justify-end px-3 sm:px-6 py-2 sm:py-3 border-b border-white/5 relative z-10">
+        <div className="shrink-0 flex justify-end px-3 sm:px-6 py-2 sm:py-3 border-b border-white/[0.09] relative z-10">
           <details className="relative group">
-            <summary className="list-none p-2 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/10 cursor-pointer transition-all focus:outline-none [&::-webkit-details-marker]:hidden" title="Chat Options">
+            <summary className="list-none p-2.5 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/10 cursor-pointer transition-all focus:outline-none [&::-webkit-details-marker]:hidden min-w-[44px] min-h-[44px] flex items-center justify-center" title="Chat Options">
               <MoreVertical className="w-4 h-4" />
             </summary>
-            <div className="absolute right-0 top-full mt-1 w-40 p-1 bg-[#0a0a0f] border border-white/10 rounded-xl shadow-2xl">
+            <div className="absolute right-0 top-full mt-1 w-40 p-1 bg-[#0a0a0f] border border-white/[0.12] rounded-xl shadow-2xl">
               <NeuralButton
                 variant="ghost"
                 onClick={(e) => {
@@ -412,14 +412,14 @@ export const ChatInterface = React.memo(function ChatInterface({
                 className="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg hover:bg-rose-500/10 text-white/40 hover:text-rose-400 transition-all text-left h-auto"
               >
                 <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                <span className="text-[10px] font-semibold uppercase tracking-wider">Clear Link</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Clear Link</span>
               </NeuralButton>
             </div>
           </details>
         </div>
       )}
 
-      <div ref={scrollRef} role="log" aria-live="polite" aria-label="Conversation messages" className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 no-scrollbar scrollbar-ghost scroll-smooth min-h-0">
+      <div ref={scrollRef} role="log" aria-live="polite" aria-label="Conversation messages" className="flex-1 overflow-y-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 no-scrollbar scrollbar-ghost scroll-smooth min-h-0">
         {!hasMessages && !isLoading && !error && (
           <div className="h-full flex items-center justify-center">
             <EmptyState
@@ -460,7 +460,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                       "shrink-0 mb-1.5 transition-colors",
                       isAgnes
                         ? "w-7 h-7 rounded-xl border border-indigo-400/20 shadow-lg shadow-indigo-500/20"
-                        : "w-6 h-6 rounded-lg border border-white/10 shadow-xl",
+                        : "w-6 h-6 rounded-lg border border-white/[0.12] shadow-xl",
                     )}
                   />
                 )}
@@ -473,8 +473,8 @@ export const ChatInterface = React.memo(function ChatInterface({
                     className={cn(
                       "shrink-0 mb-1.5",
                       isAgnes
-                        ? "w-7 h-7 rounded-xl border border-white/10 shadow-lg"
-                        : "w-6 h-6 rounded-lg border border-white/10 shadow-xl"
+                        ? "w-7 h-7 rounded-xl border border-white/[0.12] shadow-lg"
+                        : "w-6 h-6 rounded-lg border border-white/[0.12] shadow-xl"
                     )}
                   />
                 )}
@@ -508,7 +508,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                           <div className="flex flex-col max-w-[95%] sm:max-w-[85%] w-fit items-end">
                             <DocumentMessageCard upload={uploadParsed} themeAccent={theme.accent} />
                             <div className="mt-1.5 opacity-30 px-1">
-                              <span className="text-[9px] font-mono uppercase tracking-wider text-white">{timeLabel}</span>
+                              <span className="text-[11px] font-mono uppercase tracking-wider text-white">{timeLabel}</span>
                             </div>
                           </div>
                         );
@@ -519,7 +519,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                           <div className="flex flex-col max-w-[95%] sm:max-w-[85%] w-fit items-end">
                             <DocumentMessageCard doc={docParsed} themeAccent={theme.accent} />
                             <div className="mt-1.5 opacity-30 px-1">
-                              <span className="text-[9px] font-mono uppercase tracking-wider text-white">{timeLabel}</span>
+                              <span className="text-[11px] font-mono uppercase tracking-wider text-white">{timeLabel}</span>
                             </div>
                           </div>
                         );
@@ -537,7 +537,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                 )}
                 {actions && (
                   <div className="mt-4 self-stretch overflow-hidden">
-                    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-1 shadow-sm">
+                    <div className="rounded-2xl border border-dashed border-white/[0.12] bg-white/[0.045] p-1 shadow-sm">
                       {actions}
                     </div>
                   </div>
@@ -549,19 +549,19 @@ export const ChatInterface = React.memo(function ChatInterface({
 
         {isLoading && (
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-start">
-            <div className={cn("w-6 h-6 rounded-lg border border-white/10 flex items-center justify-center bg-black/60 shrink-0 shadow-xl mb-1.5", theme.accent)}>
+            <div className={cn("w-6 h-6 rounded-lg border border-white/[0.12] flex items-center justify-center bg-slate-900/85 shrink-0 shadow-xl mb-1.5", theme.accent)}>
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             </div>
             <div className={cn("px-6 py-4 border backdrop-blur-3xl flex items-center gap-3", theme.bubble)}>
-              <span className="text-[10px] uppercase font-semibold tracking-[0.12em] text-white/50">
+              <span className="text-[11px] uppercase font-semibold tracking-[0.10em] text-white/55">
                 {aiState?.isActing 
                   ? `${getActionLabel(aiState.currentActionType || 'action')}...` 
                   : (aiState?.isThinking ? 'Processing Neural Signals...' : `${resolvedAssistantIdentity.label} is thinking`)}
               </span>
-              <span className="flex gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce [animation-delay:300ms]" />
+              <span className={cn("flex gap-1.5", theme.accent)}>
+                <span className="w-2 h-2 rounded-full bg-current opacity-80 animate-bounce [animation-delay:0ms]" />
+                <span className="w-2 h-2 rounded-full bg-current opacity-80 animate-bounce [animation-delay:150ms]" />
+                <span className="w-2 h-2 rounded-full bg-current opacity-80 animate-bounce [animation-delay:300ms]" />
               </span>
             </div>
           </motion.div>
@@ -579,13 +579,13 @@ export const ChatInterface = React.memo(function ChatInterface({
               "absolute bottom-36 left-1/2 -translate-x-1/2 z-[var(--z-toast)] flex items-center gap-3 px-5 py-2.5 rounded-full border backdrop-blur-xl transition-all shadow-2xl h-auto",
               hasNewCompletion 
                 ? "bg-white/10 border-white/20 text-white animate-pulse" 
-                : "bg-black/80 border-white/10 text-white/60 hover:text-white hover:border-white/20",
+                : "bg-slate-900/90 border-white/[0.12] text-white/60 hover:text-white hover:border-white/20",
               theme.accent
             )}
           >
             <ChevronDown className={cn("w-4 h-4", hasNewCompletion && "animate-bounce")} />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.1em]">
-              {hasNewCompletion ? "Agent Resonance Detected" : "Scroll to Latest"}
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
+              {hasNewCompletion ? "New response" : "Scroll to latest"}
             </span>
             {hasNewCompletion && (
               <div className={cn("w-1.5 h-1.5 rounded-full bg-current animate-ping")} />
@@ -605,9 +605,9 @@ export const ChatInterface = React.memo(function ChatInterface({
             transition={{ duration: 0.18 }}
             className="shrink-0 overflow-hidden px-3 sm:px-6 pb-2"
           >
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06]">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.045] border border-white/[0.09]">
               <Loader2 className="w-3 h-3 animate-spin text-white/40 shrink-0" />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35 truncate">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-white/45 truncate">
                 {processingLabel
                   ? processingLabel
                   : aiState?.isActing && aiState.currentActionType
@@ -643,10 +643,10 @@ export const ChatInterface = React.memo(function ChatInterface({
                     <X className="w-4 h-4" />
                   </NeuralButton>
                 </div>
-                <p className="text-xs text-amber-400/80 italic leading-relaxed">
-                  A neural transmission was interrupted. Would you like to recover and retransmit the following message?
+                <p className="text-sm text-amber-300/85 leading-relaxed">
+                  A transmission was interrupted. Recover and retransmit the message below?
                 </p>
-                <div className="p-3 mt-1 rounded-lg bg-black/40 border border-white/5 text-sm text-white/70 italic font-medium truncate">
+                <div className="p-3 mt-1 rounded-lg bg-slate-900/70 border border-white/[0.09] text-sm text-white/70 italic font-medium truncate">
                   "{(() => {
                     const pendingText = messageContentToString(pendingRequest.userMessage);
                     const pendingUpload = parseDocumentUploadMessage(pendingText);
@@ -670,7 +670,7 @@ export const ChatInterface = React.memo(function ChatInterface({
         <AnimatePresence>
             {quota?.isHardLocked && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute inset-x-0 bottom-full mb-10 z-[var(--z-toast)]">
-                    <div className="bg-[#05050a]/95 backdrop-blur-3xl border border-white/10 rounded-card-strong p-12 shadow-[0_0_80px_rgba(0,0,0,0.8)] text-center space-y-8">
+                    <div className="bg-[#05050a]/95 backdrop-blur-3xl border border-white/[0.12] rounded-card-strong p-12 shadow-[0_0_80px_rgba(0,0,0,0.8)] text-center space-y-8">
                         <div className="w-20 h-20 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-6">
                             <Lock className="w-10 h-10 text-orange-400" />
                         </div>
@@ -688,10 +688,10 @@ export const ChatInterface = React.memo(function ChatInterface({
 
         <div className="relative">
           {draftUploads.length > 0 && (
-            <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 backdrop-blur-xl">
+            <div className="mb-3 rounded-2xl border border-white/[0.12] bg-white/[0.045] p-3 backdrop-blur-xl">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">Attachments ready</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">Attachments ready</p>
                   <p className="mt-1 text-xs text-white/55">Add optional context in the composer, then send.</p>
                 </div>
                 <NeuralButton
@@ -712,7 +712,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                 {draftUploads.map((draft, index) => (
                   <div
                     key={`${draft.file.name}-${index}`}
-                    className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                    className="flex items-center gap-3 rounded-xl border border-white/[0.12] bg-slate-900/50 px-3 py-2"
                   >
                     {draft.previewUrl ? (
                       <img src={draft.previewUrl} alt={draft.file.name} className="h-10 w-10 rounded-lg object-cover" loading="lazy" decoding="async" />
@@ -721,7 +721,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                     )}
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-white/80">{draft.file.name}</p>
-                      <p className="text-[10px] text-white/40">{Math.max(1, Math.round(draft.file.size / 1024))} KB</p>
+                      <p className="text-[11px] text-white/45">{Math.max(1, Math.round(draft.file.size / 1024))} KB</p>
                     </div>
                   </div>
                 ))}
@@ -734,25 +734,25 @@ export const ChatInterface = React.memo(function ChatInterface({
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                className="absolute bottom-full mb-4 left-0 w-80 bg-[#0a0a0f]/90 backdrop-blur-3xl border border-white/10 rounded-card p-6 shadow-2xl grid grid-cols-2 gap-3"
+                className="absolute bottom-full mb-4 left-0 w-80 bg-[#0a0a0f]/90 backdrop-blur-3xl border border-white/[0.12] rounded-card p-6 shadow-2xl grid grid-cols-2 gap-3"
               >
                 {canShowUpload && (
                   <>
                     <button
                       type="button"
                       onClick={handleUploadDocClick}
-                      className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group"
+                      className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/[0.045] border border-white/[0.09] hover:bg-white/10 transition-all group"
                     >
                        <FileText className="w-6 h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
-                       <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">{uploadLabel}</span>
+                       <span className="text-[11px] font-semibold uppercase tracking-wider text-white/50">{uploadLabel}</span>
                     </button>
-                    <button type="button" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+                    <button type="button" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/[0.045] border border-white/[0.09] hover:bg-white/10 transition-all group">
                        <BarChart3 className="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform" />
-                       <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Data CSV</span>
+                       <span className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Data CSV</span>
                     </button>
-                    <button type="button" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+                    <button type="button" className="flex flex-col items-center justify-center gap-3 p-4 rounded-panel bg-white/[0.045] border border-white/[0.09] hover:bg-white/10 transition-all group">
                        <Search className="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform" />
-                       <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">Web Research</span>
+                       <span className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Web Research</span>
                     </button>
                   </>
                 )}
@@ -770,7 +770,7 @@ export const ChatInterface = React.memo(function ChatInterface({
           <form onSubmit={handleSubmit} className={cn("relative group transition-all duration-700", quota?.isHardLocked && "blur-2xl opacity-10 pointer-events-none")}>
             <div className={cn("absolute inset-0 blur-[100px] opacity-0 group-focus-within:opacity-40 transition-opacity rounded-full", theme.bgGlow)} />
             <div className={cn(
-                "relative flex items-end bg-[#05050a]/60 border border-white/10 rounded-panel p-2 backdrop-blur-3xl group-focus-within:border-white/40 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.6)]",
+                "relative flex items-end bg-slate-900/70 border border-white/[0.12] rounded-panel p-2 backdrop-blur-xl group-focus-within:border-white/30 transition-all shadow-[0_4px_24px_rgba(0,0,0,0.50),inset_0_1px_0_rgba(255,255,255,0.06)]",
                 (error || quota?.isHardLocked) && "opacity-20 grayscale pointer-events-none"
             )}>
               {(canShowUpload || renderCustomActions) && (
@@ -779,7 +779,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                 variant="ghost"
                 onClick={() => setIsDrawerOpen(!isDrawerOpen)}
                 className={cn(
-                  "rounded-panel flex items-center justify-center transition-all bg-white/8 border border-white/10 hover:bg-white/12 group/plus",
+                  "rounded-panel flex items-center justify-center transition-all bg-white/8 border border-white/[0.12] hover:bg-white/12 group/plus",
                   isDrawerOpen && "bg-white/10 border-white/20 rotate-45"
                 )}
                 icon={
@@ -817,9 +817,9 @@ export const ChatInterface = React.memo(function ChatInterface({
                     toggleSpeechToText();
                   }}
                   className={cn(
-                    'w-11 h-11 rounded-2xl shrink-0 p-0 border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white/55 mr-5',
+                    'w-11 h-11 rounded-2xl shrink-0 p-0 border border-white/[0.12] bg-white/[0.045] hover:bg-white/[0.08] text-white/55 mr-5',
                     isSpeechListening && 'border-rose-400/25 bg-rose-500/10 text-rose-300 animate-pulse',
-                    !isSpeechSupported && 'text-white/20 hover:bg-white/[0.04]',
+                    !isSpeechSupported && 'text-white/20 hover:bg-white/[0.045]',
                   )}
                 >
                   {isSpeechListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -839,7 +839,7 @@ export const ChatInterface = React.memo(function ChatInterface({
               <div className="mt-2 px-2 sm:px-4" aria-live="polite">
                 <span
                   className={cn(
-                    'text-[10px] font-semibold uppercase tracking-[0.12em]',
+                    'text-[11px] font-semibold uppercase tracking-[0.10em]',
                     speechError || !isSpeechSupported ? 'text-amber-300/80' : 'text-cyan-300/75',
                   )}
                 >
@@ -850,7 +850,7 @@ export const ChatInterface = React.memo(function ChatInterface({
 
             {isGuestTrial && (
               <div className="mt-1 px-2 sm:px-4">
-                <span className="text-[9px] font-semibold text-orange-400 uppercase tracking-[0.12em] flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-orange-400 uppercase tracking-[0.10em] flex items-center gap-2">
                   <Zap className="w-3 h-3 animate-pulse" /> GUEST_QUOTA: {quota?.totalTurnsUsed} / {quota?.maxTurnsAllowed}
                 </span>
               </div>

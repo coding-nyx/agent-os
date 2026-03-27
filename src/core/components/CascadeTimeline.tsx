@@ -142,7 +142,7 @@ function CascadeChainItem({ chain, moduleNames, reducedMotion }: CascadeChainIte
   return (
     <article
       className={cn(
-        'rounded-2xl border bg-white/[0.02] overflow-hidden transition-colors',
+        'rounded-2xl border bg-white/[0.045] overflow-hidden transition-colors',
         PRIORITY_BORDER[chain.rootEvent.priority]
       )}
       role="article"
@@ -167,14 +167,14 @@ function CascadeChainItem({ chain, moduleNames, reducedMotion }: CascadeChainIte
               </p>
               <time
                 dateTime={new Date(chain.rootEvent.timestamp).toISOString()}
-                className="text-[10px] text-white/35 uppercase tracking-wider shrink-0"
+                className="text-[11px] text-white/35 uppercase tracking-wider shrink-0"
               >
                 {formatTime(chain.rootEvent.timestamp)}
               </time>
             </div>
 
             {/* Event type badge (for power users) */}
-            <span className="inline-block mt-1.5 px-2 py-0.5 rounded-md bg-white/5 text-[8px] font-mono text-white/30 uppercase tracking-wider">
+            <span className="inline-block mt-1.5 px-2 py-0.5 rounded-md bg-white/[0.045] text-[11px] font-mono text-white/30 uppercase tracking-wider">
               {chain.rootEvent.type}
             </span>
           </div>
@@ -184,7 +184,7 @@ function CascadeChainItem({ chain, moduleNames, reducedMotion }: CascadeChainIte
         {hasChildren && (
           <button
             onClick={() => setExpanded(!expanded)}
-            className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-violet-400 hover:text-violet-300 transition-colors"
+            className="mt-3 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.2em] text-violet-400 hover:text-violet-300 transition-colors"
             aria-expanded={expanded}
             aria-label={expanded ? 'Collapse cascade chain' : 'Expand cascade chain'}
           >
@@ -206,14 +206,14 @@ function CascadeChainItem({ chain, moduleNames, reducedMotion }: CascadeChainIte
             animate={{ height: 'auto', opacity: 1 }}
             exit={reducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
             transition={reducedMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
-            className="border-t border-white/5 bg-white/[0.01]"
+            className="border-t border-white/[0.09] bg-white/[0.045]"
           >
             {chain.children.map((child, idx) => (
               <div
                 key={child.id}
                 className={cn(
                   'px-4 py-3 flex items-start gap-3',
-                  idx < chain.children.length - 1 && 'border-b border-white/5'
+                  idx < chain.children.length - 1 && 'border-b border-white/[0.09]'
                 )}
               >
                 <div className="flex flex-col items-center gap-1 mt-1">
@@ -227,13 +227,13 @@ function CascadeChainItem({ chain, moduleNames, reducedMotion }: CascadeChainIte
                   <p className="text-xs text-white/65 leading-relaxed">
                     {getEventLabel(child, moduleNames)}
                   </p>
-                  <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-white/5 text-[7px] font-mono text-white/25 uppercase tracking-wider">
+                  <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-white/[0.045] text-[7px] font-mono text-white/25 uppercase tracking-wider">
                     {child.type}
                   </span>
                 </div>
                 <time
                   dateTime={new Date(child.timestamp).toISOString()}
-                  className="text-[9px] text-white/30 tracking-wider shrink-0"
+                  className="text-[11px] text-white/30 tracking-wider shrink-0"
                 >
                   {formatTime(child.timestamp)}
                 </time>
@@ -286,7 +286,7 @@ export function CascadeTimeline({ maxChains = 10, className }: CascadeTimelinePr
         <p className="text-xs text-white/40 uppercase tracking-[0.2em] font-bold">
           No recent cascade events
         </p>
-        <p className="text-[10px] text-white/30 mt-1">
+        <p className="text-[11px] text-white/30 mt-1">
           Events appear here when your modules coordinate.
         </p>
       </div>
@@ -300,10 +300,10 @@ export function CascadeTimeline({ maxChains = 10, className }: CascadeTimelinePr
       aria-label="Cascade event timeline"
     >
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-400 italic">
+        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-violet-400 italic">
           Cascade Timeline
         </h3>
-        <span className="text-[9px] text-white/30 uppercase tracking-wider">
+        <span className="text-[11px] text-white/30 uppercase tracking-wider">
           {chains.length} event{chains.length !== 1 ? 's' : ''}
         </span>
       </div>

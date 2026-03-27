@@ -62,12 +62,12 @@ export function DiagnosisDocumentPreview({
 
   return (
     <>
-      <div className={cn('rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden', className)}>
+      <div className={cn('rounded-xl border border-white/[0.12] bg-white/[0.045] overflow-hidden', className)}>
         {/* Header - always visible */}
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.02] transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.045] transition-colors"
         >
           <div className="w-8 h-8 rounded-lg bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] flex items-center justify-center flex-shrink-0">
             <Icon className="w-4 h-4 text-[var(--module-color-400)]" />
@@ -77,7 +77,7 @@ export function DiagnosisDocumentPreview({
             <p className="text-sm font-medium text-white/90 truncate">
               {docInfo.extractedTitle || docInfo.filename}
             </p>
-            <div className="flex items-center gap-2 text-[10px] text-white/40">
+            <div className="flex items-center gap-2 text-[11px] text-white/40">
               <span className="uppercase">{docInfo.fileType}</span>
               <span>•</span>
               <span>{formatFileSize(docInfo.fileSize)}</span>
@@ -98,7 +98,7 @@ export function DiagnosisDocumentPreview({
 
           <div className="flex items-center gap-1 flex-shrink-0">
             {hasPreview && (
-              <span className="text-[9px] text-white/30 uppercase tracking-wider mr-1">
+              <span className="text-[11px] text-white/30 uppercase tracking-wider mr-1">
                 {isExpanded ? 'Hide' : 'Preview'}
               </span>
             )}
@@ -122,7 +122,7 @@ export function DiagnosisDocumentPreview({
             >
               <div className="px-3 pb-3">
                 <div 
-                  className="relative rounded-lg overflow-hidden bg-black/40 border border-white/5 cursor-pointer group"
+                  className="relative rounded-lg overflow-hidden bg-slate-900/70 border border-white/[0.09] cursor-pointer group"
                   onClick={() => setIsZoomed(true)}
                 >
                   <img
@@ -150,7 +150,7 @@ export function DiagnosisDocumentPreview({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[var(--z-modal)] bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+            className="fixed inset-0 z-[var(--z-modal)] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4"
             onClick={() => setIsZoomed(false)}
           >
             <button
@@ -172,7 +172,7 @@ export function DiagnosisDocumentPreview({
               onClick={(e) => e.stopPropagation()}
             />
             
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-slate-900/85 backdrop-blur-sm">
               <p className="text-sm text-white/70">{docInfo.filename}</p>
             </div>
           </motion.div>

@@ -255,11 +255,11 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
 
             {/* Requirements Met Summary */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-white/50">
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-white/50">
                 <span>Requirements Met</span>
                 <span className="tabular-nums">{metRequirements.length}/{requirements.length}</span>
               </div>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+              <div className="h-2 bg-white/[0.045] rounded-full overflow-hidden border border-white/10">
                 <div
                   className={cn(
                     'h-full transition-all duration-700',
@@ -273,7 +273,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
             </div>
 
             {hormonalContext && (
-              <div className="flex items-center gap-2 text-[10px] text-white/50 pt-1">
+              <div className="flex items-center gap-2 text-[11px] text-white/50 pt-1">
                 <Info className="w-3 h-3" />
                 <span>Hormonal Context: <span className="text-white/70 capitalize">{hormonalContext}</span></span>
               </div>
@@ -296,7 +296,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                 'p-4 transition-all',
                 isMet 
                   ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]' 
-                  : 'border-white/10 bg-white/[0.03]'
+                  : 'border-white/10 bg-white/[0.045]'
               )}
             >
               <div className="flex items-start gap-3">
@@ -304,7 +304,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                   'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
                   isMet 
                     ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]' 
-                    : 'bg-white/5 border border-white/10'
+                    : 'bg-white/[0.045] border border-white/10'
                 )}>
                   <ReqIcon className={cn(
                     'w-5 h-5',
@@ -327,7 +327,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                     )}
                   </div>
 
-                  <p className="text-[10px] text-white/50 leading-relaxed mb-2">
+                  <p className="text-[11px] text-white/50 leading-relaxed mb-2">
                     {req.description}
                   </p>
 
@@ -338,16 +338,16 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                       ) : (
                         <TrendingDown className="w-3 h-3 text-white/40" />
                       )}
-                      <span className="text-[10px] text-white/40">
+                      <span className="text-[11px] text-white/40">
                         {req.comparison === 'gte' ? '≥' : '≤'} {req.threshold}
                       </span>
                     </div>
                     
                     <div className={cn(
-                      'px-2 py-0.5 rounded text-[10px] font-bold tabular-nums',
+                      'px-2 py-0.5 rounded text-[11px] font-bold tabular-nums',
                       isMet 
                         ? 'bg-[var(--module-accent-muted)] text-[var(--module-color-300)]' 
-                        : 'bg-white/5 text-white/50'
+                        : 'bg-white/[0.045] text-white/50'
                     )}>
                       {req.currentValue !== null ? req.currentValue.toFixed(1) : 'N/A'}
                     </div>
@@ -372,9 +372,9 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
 
         <div className="space-y-2">
           {recommendations.map((rec, idx) => (
-            <div key={idx} className="flex items-start gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+            <div key={idx} className="flex items-start gap-2.5 p-3 rounded-xl bg-white/[0.045] border border-white/[0.09]">
               <div className="w-5 h-5 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="text-[9px] font-bold text-orange-400">{idx + 1}</span>
+                <span className="text-[11px] font-bold text-orange-400">{idx + 1}</span>
               </div>
               <p className="text-xs text-white/70 leading-relaxed flex-1">
                 {rec}
@@ -387,7 +387,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
       {/* Historical Clearances */}
       {recentClearances.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
             Recent Clearances
           </h3>
           
@@ -415,7 +415,7 @@ export function ClearanceStatus({ profile, soul }: ClearanceStatusProps) {
                         <span className="text-sm font-bold text-white/90 capitalize">
                           {clearance.activity}
                         </span>
-                        <span className="text-[10px] text-white/40 tabular-nums shrink-0">
+                        <span className="text-[11px] text-white/40 tabular-nums shrink-0">
                           {formatRelativeTime(clearance.issuedAt)}
                         </span>
                       </div>

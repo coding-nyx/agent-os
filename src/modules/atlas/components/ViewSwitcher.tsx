@@ -61,7 +61,7 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
       <nav
         role="tablist"
         aria-label="Atlas planning view switcher"
-        className="inline-flex items-center gap-1 rounded-xl bg-black/20 backdrop-blur-md border border-white/[0.05] shadow-inner p-1"
+        className="inline-flex items-center gap-1 rounded-xl bg-slate-900/50 backdrop-blur-md border border-white/[0.09] shadow-inner p-1"
       >
         {PLANNING_VIEWS.map(({ key, label, icon: Icon }) => {
           const isActive = activeView === key;
@@ -79,7 +79,7 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
               className={cn(
                 'relative flex min-h-[32px] shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold tracking-[0.02em] whitespace-nowrap transition-all duration-300',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
-                isActive ? 'text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.02]',
+                isActive ? 'text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.045]',
                 isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'
               )}
             >
@@ -121,7 +121,7 @@ export function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherProps) {
           "h-[40px] px-4 gap-2",
           activeView === 'focus' 
             ? "shadow-[0_0_20px_var(--module-accent)30]" 
-            : "bg-black/20 backdrop-blur-md border border-white/[0.05] hover:bg-white/5 text-white/70 hover:text-white"
+            : "bg-slate-900/50 backdrop-blur-md border border-white/[0.09] hover:bg-white/[0.045] text-white/70 hover:text-white"
         )}
       >
         <Crosshair className="w-4 h-4" />

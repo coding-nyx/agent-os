@@ -89,14 +89,14 @@ export function AppVaultGate() {
         {/* Lock icon with ping ring */}
         <div className="relative w-16 h-16 flex items-center justify-center">
           <span className="absolute inset-0 rounded-2xl border border-indigo-500/30 animate-ping" />
-          <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-white/[0.045] border border-white/10 flex items-center justify-center">
             <Lock className="w-7 h-7 text-white/40" aria-hidden="true" />
           </div>
         </div>
 
         {/* Title block */}
         <div className="text-center space-y-1">
-          <div className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
+          <div className="text-[11px] font-black uppercase tracking-[0.4em] text-white/40">
             {hasVault ? 'NEXUS VAULT' : 'INITIALIZE VAULT'}
           </div>
           <div className="text-xs text-white/25 tracking-wide px-4">
@@ -130,7 +130,7 @@ export function AppVaultGate() {
           )}
 
           {error && (
-            <div className="text-[10px] text-rose-400/80 tracking-widest uppercase text-center">
+            <div className="text-[11px] text-rose-400/80 tracking-widest uppercase text-center">
               {error}
             </div>
           )}
@@ -155,7 +155,7 @@ export function AppVaultGate() {
               type="button"
               onClick={() => setPersistenceMode(mode)}
               className={cn(
-                'text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border transition-colors',
+                'text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border transition-colors',
                 persistenceMode === mode
                   ? 'bg-white/10 border-white/20 text-white/70'
                   : 'bg-transparent border-white/10 text-white/25 hover:border-white/20 hover:text-white/40'
@@ -171,7 +171,7 @@ export function AppVaultGate() {
           <button
             type="button"
             onClick={() => setShowReset(true)}
-            className="mt-4 text-[10px] text-white/20 hover:text-white/40 uppercase tracking-widest transition-colors"
+            className="mt-4 text-[11px] text-white/20 hover:text-white/40 uppercase tracking-widest transition-colors"
           >
             Lost Master Key?
           </button>
@@ -193,7 +193,7 @@ export function AppVaultGate() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-white tracking-tight">Irreversible Action</h3>
-                  <p className="text-[10px] text-rose-400 uppercase tracking-wider font-bold">Data Loss Warning</p>
+                  <p className="text-[11px] text-rose-400 uppercase tracking-wider font-bold">Data Loss Warning</p>
                 </div>
               </div>
 
@@ -210,7 +210,7 @@ export function AppVaultGate() {
               </div>
 
               <div className="space-y-3 mb-8">
-                <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider">
+                <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider">
                   Type "DELETE VAULT" to confirm
                 </label>
                 <NeuralInput

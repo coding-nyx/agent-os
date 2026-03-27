@@ -21,7 +21,7 @@ export function SignalBubbleCanvas({ interests }: { interests: InterestNode[] })
   if (interests.length === 0) return null;
 
   return (
-    <div className="relative w-full h-[300px] overflow-hidden rounded-3xl bg-black/20 border border-white/5">
+    <div className="relative w-full h-[300px] overflow-hidden rounded-3xl bg-slate-900/50 border border-white/[0.09]">
       <div className="absolute inset-0 signal-grid opacity-20" />
       
       {bubbles.map((bubble) => (
@@ -40,10 +40,10 @@ export function SignalBubbleCanvas({ interests }: { interests: InterestNode[] })
           }}
         >
           <div className="text-center p-2">
-            <div className="text-[10px] font-black uppercase tracking-widest text-white/90 truncate max-w-[80px]">
+            <div className="text-[11px] font-black uppercase tracking-widest text-white/90 truncate max-w-[80px]">
               {bubble.topic}
             </div>
-            <div className="text-[9px] font-bold text-white/40 mt-0.5">
+            <div className="text-[11px] font-bold text-white/40 mt-0.5">
               {bubble.score}%
             </div>
           </div>

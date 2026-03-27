@@ -74,11 +74,11 @@ function QueueColumn({
             <Icon className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/45">{label}</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/45">{label}</p>
             <p className={cn('text-sm font-semibold', config.text)}>{count}</p>
           </div>
         </div>
-        <span className={cn('rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]', config.badge)}>
+        <span className={cn('rounded-full border px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]', config.badge)}>
           Queue
         </span>
       </div>
@@ -86,7 +86,7 @@ function QueueColumn({
       {items.length > 0 ? (
         <div className="space-y-2">
           {items.map((item) => (
-            <div key={item.id} className="rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+            <div key={item.id} className="rounded-xl border border-white/[0.09] bg-slate-900/50 px-3 py-2">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex items-start gap-2.5">
                   <ModuleIcon source={item.source as Parameters<typeof ModuleIcon>[0]['source']} withBackground className="mt-0.5 h-7 w-7 rounded-lg" />
@@ -97,16 +97,16 @@ function QueueColumn({
                 </div>
                 <div className="shrink-0 text-right">
                   {item.emphasis ? (
-                    <p className={cn('text-[10px] font-semibold uppercase tracking-[0.14em]', config.text)}>{item.emphasis}</p>
+                    <p className={cn('text-[11px] font-semibold uppercase tracking-[0.14em]', config.text)}>{item.emphasis}</p>
                   ) : null}
-                  <p className="mt-1 text-[10px] text-white/35">{formatTimestamp(item.timestamp)}</p>
+                  <p className="mt-1 text-[11px] text-white/35">{formatTimestamp(item.timestamp)}</p>
                 </div>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-3 py-4 text-[11px] text-white/38">
+        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.045] px-3 py-4 text-[11px] text-white/38">
           {config.empty}
         </div>
       )}
@@ -203,7 +203,7 @@ export function OperationalCommandCenterCard({
               <Radar className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200/80">Operational command center</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-200/80">Operational command center</p>
               <p className="truncate text-[11px] text-white/48">{modeSemantics.summaryLabel} · {snapshot.attentionCount} active attention points</p>
             </div>
           </div>
@@ -212,7 +212,7 @@ export function OperationalCommandCenterCard({
         <button
           type="button"
           onClick={() => setIsExpanded((current) => !current)}
-          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.07]"
+          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.07]"
           aria-label={isExpanded ? 'Collapse command center queues' : 'Expand command center queues'}
           aria-expanded={isExpanded}
         >
@@ -222,24 +222,24 @@ export function OperationalCommandCenterCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-white/70">
+        <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[11px] text-white/70">
           {modeSemantics.levelLabel}
         </span>
         {modeSemantics.chips.slice(1).map((chip) => (
-          <span key={chip.id} className={cn('rounded-full border px-2 py-1 text-[10px]', chip.tone)}>
+          <span key={chip.id} className={cn('rounded-full border px-2 py-1 text-[11px]', chip.tone)}>
             {chip.label}
           </span>
         ))}
-        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200">
+        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
           {snapshot.approvals.count} approvals
         </span>
-        <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] text-rose-200">
+        <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-200">
           {snapshot.incidents.count} incidents
         </span>
-        <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-[10px] text-violet-200">
+        <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-[11px] text-violet-200">
           {snapshot.debt.count} debt
         </span>
-        <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-[10px] text-cyan-200">
+        <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-200">
           {snapshot.audit.count} audit
         </span>
       </div>

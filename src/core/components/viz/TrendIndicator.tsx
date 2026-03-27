@@ -45,7 +45,7 @@ export function TrendIndicator({
   const bgClass = {
     up: 'bg-emerald-500/10',
     down: 'bg-red-500/10',
-    neutral: 'bg-white/5',
+    neutral: 'bg-white/[0.045]',
   }[direction];
 
   const IconComponent = {

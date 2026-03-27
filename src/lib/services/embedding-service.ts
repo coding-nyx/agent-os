@@ -81,13 +81,19 @@ export const EmbeddingService = {
       return embedCache.get(normalized)!;
     }
 
+    const EMBED_TIMEOUT_MS = 8_000;
     const promise = (async () => {
-      const remote = await googleEmbedding(normalized);
+      const remote = await Promise.race([
+        googleEmbedding(normalized),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('embed timeout')), EMBED_TIMEOUT_MS)
+        ),
+      ]).catch(() => null); // timeout or API error → fall back immediately
       if (remote && remote.length > 0) return remote;
       return lexicalFallbackEmbedding(normalized);
     })();
 
-    // Remove rejected promises from cache to allow retrying
+    // Remove failed/timed-out promises from cache to allow retrying
     promise.catch(() => embedCache.delete(normalized));
 
     embedCache.set(normalized, promise);

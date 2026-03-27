@@ -116,9 +116,9 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
   if (upload) {
     return (
       <div className="w-full max-w-sm">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-xl overflow-hidden">
           <div className="p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">Uploaded documents</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">Uploaded documents</p>
             {upload.caption && (
               <p className="mt-2 text-xs text-white/70 whitespace-pre-wrap">{upload.caption}</p>
             )}
@@ -128,7 +128,7 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
                 return (
                   <div
                     key={`${file.name}-${index}`}
-                    className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                    className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2"
                   >
                     {file.previewDataUrl ? (
                       <img
@@ -137,7 +137,7 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
                         className="h-12 w-12 rounded-lg object-cover"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-lg border border-white/10 bg-white/[0.045] flex items-center justify-center">
                         <Icon className={cn("w-5 h-5", themeAccent)} />
                       </div>
                     )}
@@ -145,7 +145,7 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
                       <p className="truncate text-sm font-semibold text-white/85" title={file.name}>
                         {file.name}
                       </p>
-                      <p className="text-[10px] text-white/40">
+                      <p className="text-[11px] text-white/40">
                         {file.fileType.toUpperCase()} · {Math.max(1, Math.round(file.sizeBytes / 1024))} KB
                       </p>
                     </div>
@@ -172,11 +172,11 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
   return (
     <div className="w-full max-w-sm">
       {/* Card */}
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-start gap-3 p-3.5">
           <div className={cn(
-            "w-10 h-10 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center shrink-0",
+            "w-10 h-10 rounded-xl border border-white/10 bg-white/[0.045] flex items-center justify-center shrink-0",
           )}>
             <Icon className={cn("w-5 h-5", themeAccent)} />
           </div>
@@ -184,9 +184,9 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
             <p className="text-sm font-semibold text-white/85 truncate" title={doc.filename}>
               {doc.filename}
             </p>
-            <p className="text-[10px] text-white/40 mt-0.5">{meta}</p>
+            <p className="text-[11px] text-white/40 mt-0.5">{meta}</p>
             {doc.detectedTitle && doc.detectedTitle !== doc.filename && (
-              <p className="text-[10px] text-white/30 mt-0.5 truncate italic">
+              <p className="text-[11px] text-white/30 mt-0.5 truncate italic">
                 {doc.detectedTitle}
               </p>
             )}
@@ -197,7 +197,7 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
         {doc.notes.length > 0 && (
           <div className="flex flex-wrap gap-1.5 px-3.5 pb-2">
             {doc.notes.slice(0, 2).map((note, i) => (
-              <span key={i} className="text-[9px] text-white/35 bg-white/5 px-2 py-0.5 rounded-full">
+              <span key={i} className="text-[11px] text-white/35 bg-white/[0.045] px-2 py-0.5 rounded-full">
                 {note}
               </span>
             ))}
@@ -207,7 +207,7 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
         {/* Preview toggle */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-center gap-1.5 py-2 border-t border-white/5 text-[10px] font-semibold uppercase tracking-wider text-white/30 hover:text-white/50 hover:bg-white/[0.02] transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 py-2 border-t border-white/[0.09] text-[11px] font-semibold uppercase tracking-wider text-white/30 hover:text-white/50 hover:bg-white/[0.045] transition-colors"
         >
           {isExpanded ? (
             <>
@@ -224,8 +224,8 @@ export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc
 
         {/* Expandable content */}
         {isExpanded && (
-          <div className="border-t border-white/5">
-            <pre className="p-3.5 text-[10px] leading-relaxed text-white/50 font-mono overflow-x-auto overflow-y-auto max-h-60 no-scrollbar whitespace-pre-wrap break-all">
+          <div className="border-t border-white/[0.09]">
+            <pre className="p-3.5 text-[11px] leading-relaxed text-white/50 font-mono overflow-x-auto overflow-y-auto max-h-60 no-scrollbar whitespace-pre-wrap break-all">
               {doc.rawContent.slice(0, 3000)}
               {doc.rawContent.length > 3000 && '\n\n[...truncated for preview]'}
             </pre>

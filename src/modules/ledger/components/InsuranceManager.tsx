@@ -176,7 +176,7 @@ function parseOptionalFloat(raw: string): number | undefined {
  */
 function StatCard({ icon, label, value, sub }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/5 px-5 py-4">
+    <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.045] px-5 py-4">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
         {icon}
       </div>
@@ -227,7 +227,7 @@ function PolicyCard({ policy, currency, onEdit, onDelete }: PolicyCardProps) {
   };
 
   return (
-    <div className="group relative flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-colors hover:bg-white/[0.05]">
+    <div className="group relative flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.045] p-5 transition-colors hover:bg-white/[0.05]">
       {/* Header row — icon + name + badges */}
       <div className="flex items-start gap-4">
         {/* Type icon */}
@@ -251,8 +251,8 @@ function PolicyCard({ policy, currency, onEdit, onDelete }: PolicyCardProps) {
         <span
           className={
             policy.isActive
-              ? 'shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-400 ring-1 ring-inset ring-emerald-500/20'
-              : 'shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/40 ring-1 ring-inset ring-white/10'
+              ? 'shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-400 ring-1 ring-inset ring-emerald-500/20'
+              : 'shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/40 ring-1 ring-inset ring-white/10'
           }
         >
           {policy.isActive ? 'Active' : 'Inactive'}
@@ -262,7 +262,7 @@ function PolicyCard({ policy, currency, onEdit, onDelete }: PolicyCardProps) {
       {/* Type badge */}
       <div className="flex flex-wrap items-center gap-2">
         <span
-          className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+          className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
           style={{
             backgroundColor: `${color}18`,
             color,
@@ -675,7 +675,7 @@ export default function InsuranceManager({
           />
 
           {/* Active toggle */}
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.045] px-4 py-3">
             <div>
               <p className="text-sm font-medium text-white">Active Policy</p>
               <p className="text-[11px] text-white/40">
@@ -714,7 +714,7 @@ export default function InsuranceManager({
               onChange={e => setField('notes', e.target.value)}
               placeholder="Any additional details about this policy…"
               rows={3}
-              className="w-full resize-none rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-emerald-500/40 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 transition-all duration-300"
+              className="w-full resize-none rounded-2xl border border-white/[0.12] bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-emerald-500/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300"
             />
           </div>
 

@@ -61,12 +61,12 @@ export function DiagnosisDocumentCard({
         'rounded-[16px] border p-3 cursor-pointer transition-all text-left',
         isActive
           ? 'border-white/25 bg-white/8'
-          : 'border-white/10 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]',
+          : 'border-white/10 bg-white/[0.045] hover:border-white/15 hover:bg-white/[0.045]',
       ].join(' ')}
     >
       {/* Header */}
       <div className="flex items-start gap-2">
-        <div className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+        <div className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-lg bg-white/[0.045] border border-white/10 flex items-center justify-center">
           <Icon className="w-3 h-3 text-white/50" />
         </div>
         <div className="flex-1 min-w-0">
@@ -74,19 +74,19 @@ export function DiagnosisDocumentCard({
             {displayTitle}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 bg-white/5 px-1.5 py-0.5 rounded">
+            <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 bg-white/[0.045] px-1.5 py-0.5 rounded">
               {FILE_TYPE_LABELS[doc.fileType]}
             </span>
             {doc.pageCount != null && (
-              <span className="text-[9px] text-white/40">{doc.pageCount}p</span>
+              <span className="text-[11px] text-white/40">{doc.pageCount}p</span>
             )}
-            <span className="text-[9px] text-white/40">{doc.wordCount.toLocaleString()}w</span>
+            <span className="text-[11px] text-white/40">{doc.wordCount.toLocaleString()}w</span>
           </div>
         </div>
       </div>
 
       {/* Date */}
-      <p className="text-[9px] text-white/30 mt-1.5 pl-8">{formatRelativeDate(doc.createdAt)}</p>
+      <p className="text-[11px] text-white/30 mt-1.5 pl-8">{formatRelativeDate(doc.createdAt)}</p>
 
       {/* Notes toggle */}
       {doc.notes.length > 0 && (
@@ -95,7 +95,7 @@ export function DiagnosisDocumentCard({
             e.stopPropagation();
             setNotesOpen((v) => !v);
           }}
-          className="mt-1.5 pl-8 flex items-center gap-1 text-[9px] text-white/40 hover:text-white/60"
+          className="mt-1.5 pl-8 flex items-center gap-1 text-[11px] text-white/40 hover:text-white/60"
         >
           <ChevronDown
             className={[
@@ -109,7 +109,7 @@ export function DiagnosisDocumentCard({
       {notesOpen && doc.notes.length > 0 && (
         <ul className="mt-1 pl-8 space-y-0.5">
           {doc.notes.map((n, i) => (
-            <li key={i} className="text-[9px] text-white/40 leading-snug">
+            <li key={i} className="text-[11px] text-white/40 leading-snug">
               {n}
             </li>
           ))}
@@ -123,7 +123,7 @@ export function DiagnosisDocumentCard({
             e.stopPropagation();
             onReexamine();
           }}
-          className="mt-2 ml-8 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 transition-colors"
+          className="mt-2 ml-8 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 transition-colors"
         >
           <RotateCcw className="w-2.5 h-2.5" />
           Re-examine

@@ -30,7 +30,7 @@ export function RoutingSuggestion({ target, reason, onConfirm, onDismiss, visibl
           className={cn(
             'absolute bottom-[110%] left-4 right-4 z-[var(--z-toast)]',
             'flex items-center gap-3 px-4 py-3 rounded-2xl',
-            'border border-white/10 bg-black/40 backdrop-blur-3xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]',
+            'border border-white/[0.12] bg-slate-900/70 backdrop-blur-3xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]',
             'mx-0'
           )}
           role="alert"

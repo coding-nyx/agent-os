@@ -45,7 +45,7 @@ export function FormFieldWrapper({
       <label
         htmlFor={fieldId}
         className={cn(
-          'block text-[10px] font-black uppercase tracking-[0.2em] ml-4 italic transition-colors',
+          'block text-[11px] font-black uppercase tracking-[0.2em] ml-4 italic transition-colors',
           hasError
             ? 'text-red-400/80'
             : disabled

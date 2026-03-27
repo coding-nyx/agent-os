@@ -74,10 +74,10 @@ export function ActiveProgramDashboard({
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 relative z-10">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+            <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
               Active Program
             </span>
-            <div className="flex items-center gap-1.5 text-[10px] text-white/40 font-mono bg-white/5 rounded px-1.5 py-0.5 border border-white/5 hover:border-white/10 transition-colors">
+            <div className="flex items-center gap-1.5 text-[11px] text-white/40 font-mono bg-white/[0.045] rounded px-1.5 py-0.5 border border-white/[0.09] hover:border-white/10 transition-colors">
               <span>Week</span>
               <select
                 value={currentWeek}
@@ -93,7 +93,7 @@ export function ActiveProgramDashboard({
               <span>/ {activeProgram.durationWeeks}</span>
             </div>
             {currentPhase && (
-               <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/20">
+               <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/20">
                  {currentPhase.name}
                </span>
             )}
@@ -132,13 +132,13 @@ export function ActiveProgramDashboard({
              <span className="text-2xl font-bold text-[var(--module-color-300)] tabular-nums">
                {Math.round(progressPercent)}%
              </span>
-             <span className="text-[9px] uppercase tracking-wider text-white/30">Complete</span>
+             <span className="text-[11px] uppercase tracking-wider text-white/30">Complete</span>
            </div>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="mt-5 h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+      <div className="mt-5 h-1.5 w-full bg-white/[0.045] rounded-full overflow-hidden">
         <motion.div 
           className="h-full bg-[var(--module-accent)]"
           initial={{ width: 0 }}
@@ -148,7 +148,7 @@ export function ActiveProgramDashboard({
       </div>
       
       {/* Week Grid (Simple visualizer) */}
-      <div className="mt-4 pt-4 border-t border-white/5 grid grid-cols-12 gap-1">
+      <div className="mt-4 pt-4 border-t border-white/[0.09] grid grid-cols-12 gap-1">
         {Array.from({ length: activeProgram.durationWeeks }).map((_, i) => {
            const weekNum = i + 1;
            const isPast = weekNum < currentWeek;

@@ -42,7 +42,7 @@ export function JournalVaultGate() {
         {/* Icon badge */}
         <div className="relative w-20 h-20 rounded-3xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
           <BookOpen className="w-8 h-8 text-violet-400/60" aria-hidden />
-          <span className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-black/60 border border-violet-500/30 flex items-center justify-center">
+          <span className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-slate-900/85 border border-violet-500/30 flex items-center justify-center">
             <Lock className="w-4 h-4 text-violet-400/70" aria-hidden />
           </span>
         </div>
@@ -59,7 +59,7 @@ export function JournalVaultGate() {
         </div>
 
         {/* Metadata hint */}
-        <p className="text-[10px] text-white/25 uppercase tracking-widest font-medium">
+        <p className="text-[11px] text-white/25 uppercase tracking-widest font-medium">
           Atlas · Cognitive Domain
         </p>
 

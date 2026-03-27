@@ -97,7 +97,7 @@ function energyColor(level: number): string {
 function EnergySelector({ value, onChange }: EnergySelectorProps) {
   return (
     <div className="space-y-1.5">
-      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/30">
         Energy Level
       </p>
       <div className="flex gap-1.5" role="group" aria-label="Energy level 1 to 5">
@@ -113,7 +113,7 @@ function EnergySelector({ value, onChange }: EnergySelectorProps) {
             className="flex-1 flex flex-col items-center gap-0.5 h-auto py-2 px-1 min-w-0"
           >
             <span className="text-base leading-none tabular-nums">{level}</span>
-            <span className="text-[8px] uppercase tracking-[0.1em] truncate w-full text-center">
+            <span className="text-[11px] uppercase tracking-[0.1em] truncate w-full text-center">
               {ENERGY_LABELS[level]}
             </span>
           </NeuralButton>
@@ -176,7 +176,7 @@ export function EveningCheckIn({ profile, userId, onDismiss }: EveningCheckInPro
             </span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/40">
+            <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/40">
               {dateLabel}
             </span>
             <NeuralButton
@@ -193,7 +193,7 @@ export function EveningCheckIn({ profile, userId, onDismiss }: EveningCheckInPro
 
         {/* Tasks completed stat */}
         <div
-          className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2.5"
+          className="flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2.5"
           aria-label="Tasks completed today"
         >
           <CheckCircle2
@@ -221,7 +221,7 @@ export function EveningCheckIn({ profile, userId, onDismiss }: EveningCheckInPro
         <div className="space-y-1.5">
           <label
             htmlFor="evening-blockers"
-            className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30 block"
+            className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/30 block"
           >
             What blocked you today?{' '}
             <span className="text-white/20 normal-case">(optional)</span>

@@ -54,7 +54,7 @@ export function NeuralSelectMenu<T extends string | number = string>({
       <Select.Trigger
         className={cn(
           minWidthClassName,
-          'bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white/80 font-semibold',
+          'bg-slate-900/70 border border-white/[0.12] rounded-xl px-3 py-2 text-[11px] text-white/80 font-semibold',
           'flex items-center justify-between gap-2',
           'focus:outline-none focus:ring-2 focus:ring-violet-500/40',
           'transition-colors duration-200',
@@ -73,7 +73,7 @@ export function NeuralSelectMenu<T extends string | number = string>({
         <Select.Content
           className={cn(
             'overflow-hidden z-50',
-            'bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl',
+            'bg-black/90 backdrop-blur-xl border border-white/[0.12] rounded-2xl',
             'shadow-2xl shadow-black/50',
             contentClassName
           )}

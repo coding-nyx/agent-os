@@ -126,14 +126,14 @@ export function VisionModelSelector() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40">
           Vision Model
         </p>
         <NeuralButton
           variant="ghost"
           onClick={() => void fetchModels()}
           disabled={loading}
-          className="text-[9px] text-amber-400/60 hover:text-amber-400 transition-colors flex items-center gap-1 h-auto p-0 min-w-0"
+          className="text-[11px] text-amber-400/60 hover:text-amber-400 transition-colors flex items-center gap-1 h-auto p-0 min-w-0"
         >
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -141,7 +141,7 @@ export function VisionModelSelector() {
       </div>
 
       {provider !== 'openrouter' && (
-        <div className="text-[10px] text-white/40 border border-white/10 rounded-lg p-2">
+        <div className="text-[11px] text-white/40 border border-white/[0.12] rounded-lg p-2">
           Vision model selection is available for OpenRouter only.
         </div>
       )}
@@ -150,7 +150,7 @@ export function VisionModelSelector() {
       <NeuralButton
         variant="secondary"
         onClick={() => setIsOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-white/10 bg-black/30 hover:border-amber-500/30 transition-colors text-left h-auto min-h-[44px]"
+        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-white/[0.12] bg-slate-900/60 hover:border-amber-500/30 transition-colors text-left h-auto min-h-[44px]"
       >
         <span className="text-xs text-white/70 truncate">{displayName}</span>
         <ChevronDown
@@ -168,8 +168,8 @@ export function VisionModelSelector() {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="mt-2 rounded-xl border border-white/10 bg-black/40 overflow-hidden">
-              <div className="p-2 border-b border-white/5">
+            <div className="mt-2 rounded-xl border border-white/[0.12] bg-slate-900/70 overflow-hidden">
+              <div className="p-2 border-b border-white/[0.09]">
                 <NeuralInput
                   icon={<Search className="w-3 h-3" />}
                   value={search}
@@ -186,7 +186,7 @@ export function VisionModelSelector() {
                     <Loader2 className="w-4 h-4 text-amber-400/60 animate-spin" />
                   </div>
                 ) : filtered.length === 0 ? (
-                  <div className="py-6 text-center text-[10px] text-white/30">
+                  <div className="py-6 text-center text-[11px] text-white/30">
                     No vision-capable models found
                   </div>
                 ) : (
@@ -195,17 +195,17 @@ export function VisionModelSelector() {
                       key={m.id}
                       variant="ghost"
                       onClick={() => selectModel(m.id)}
-                      className={`w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors h-auto rounded-none justify-start ${
+                      className={`w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-white/[0.045] transition-colors h-auto rounded-none justify-start ${
                         selectedModel === m.id ? 'bg-amber-500/10' : ''
                       }`}
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-white/75 truncate">{m.name}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[9px] text-white/25 font-mono truncate">
+                          <span className="text-[11px] text-white/25 font-mono truncate">
                             {m.id}
                           </span>
-                          <span className="text-[9px] text-white/20 shrink-0">
+                          <span className="text-[11px] text-white/20 shrink-0">
                             {formatCtx(m.context_length)} ctx
                           </span>
                         </div>
@@ -222,9 +222,9 @@ export function VisionModelSelector() {
         )}
       </AnimatePresence>
 
-      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/20 border border-white/5">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/50 border border-white/[0.09]">
         <Cpu className="w-3 h-3 text-amber-400/50 shrink-0" />
-        <p className="text-[9px] text-white/40 truncate">
+        <p className="text-[11px] text-white/40 truncate">
           Active:{' '}
           <span className="text-amber-400/70 font-mono">{selectedModel || DEFAULT_VISION_MODEL}</span>
         </p>

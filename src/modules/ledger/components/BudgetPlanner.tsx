@@ -196,26 +196,26 @@ export function BudgetPlanner({
       {/* Overview Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Monthly Income</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Monthly Income</div>
           <div className="mt-2 text-xl font-black text-white">{formatCurrency(monthlyIncome, currency)}</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Allocated</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Allocated</div>
           <div className="mt-2 text-xl font-black text-[var(--module-color-400)]">{formatCurrency(stats.totalAllocated, currency)}</div>
-          <div className="text-[10px] text-white/50 mt-1">{formatNumber(stats.allocationPercent, 1, 1)}%</div>
+          <div className="text-[11px] text-white/50 mt-1">{formatNumber(stats.allocationPercent, 1, 1)}%</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Spent</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Spent</div>
           <div className={cn(
             "mt-2 text-xl font-black",
             stats.spendingPercent > 100 ? "text-red-400" : "text-emerald-400"
           )}>
             {formatCurrency(stats.totalSpent, currency)}
           </div>
-          <div className="text-[10px] text-white/50 mt-1">{formatNumber(stats.spendingPercent, 1, 1)}%</div>
+          <div className="text-[11px] text-white/50 mt-1">{formatNumber(stats.spendingPercent, 1, 1)}%</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Remaining</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Remaining</div>
           <div className={cn(
             "mt-2 text-xl font-black",
             stats.remaining < 0 ? "text-amber-400" : "text-emerald-400"
@@ -253,7 +253,7 @@ export function BudgetPlanner({
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">Budget Allocation</h3>
-              <p className="text-[10px] text-white/50 mt-1">Visual breakdown by category</p>
+              <p className="text-[11px] text-white/50 mt-1">Visual breakdown by category</p>
             </div>
             <PieChart className="w-5 h-5 text-[var(--module-color-400)]" />
           </div>
@@ -290,7 +290,7 @@ export function BudgetPlanner({
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">Category Progress</h3>
-              <p className="text-[10px] text-white/50 mt-1">Spending vs budget</p>
+              <p className="text-[11px] text-white/50 mt-1">Spending vs budget</p>
             </div>
             <div className="flex gap-2">
               <NeuralButton
@@ -411,7 +411,7 @@ export function BudgetPlanner({
               />
             </div>
             {monthlyIncome > 0 && formData.allocated && (
-              <p className="text-[10px] text-white/50 mt-1">
+              <p className="text-[11px] text-white/50 mt-1">
                 {((formData.allocated / monthlyIncome) * 100).toFixed(1)}% of monthly income
               </p>
             )}
@@ -451,7 +451,7 @@ export function BudgetPlanner({
           </p>
 
           {BUDGET_TEMPLATES.map((template) => (
-            <SurfaceCard key={template.id} className="p-4 hover:bg-white/[0.02] transition-colors">
+            <SurfaceCard key={template.id} className="p-4 hover:bg-white/[0.045] transition-colors">
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h4 className="text-sm font-bold text-white">{template.name}</h4>

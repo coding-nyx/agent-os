@@ -149,7 +149,7 @@ function TitanGuidedContent({ state, setState, messages, isProcessing, streaming
   if (!state.privacyLevel) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6">
-        <p className="text-[10px] text-white/50 uppercase font-black tracking-[0.2em] mb-4">Select Data Sharing Level</p>
+        <p className="text-[11px] text-white/50 uppercase font-black tracking-[0.2em] mb-4">Select Data Sharing Level</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
           <NeuralButton
             variant="secondary"

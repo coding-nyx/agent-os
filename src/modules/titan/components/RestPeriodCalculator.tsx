@@ -183,7 +183,7 @@ export function RestPeriodCalculator({
           <h3 className="text-sm font-black uppercase tracking-wide text-white/90">
             Rest Period Calculator
           </h3>
-          <p className="text-[10px] text-white/50 mt-0.5">
+          <p className="text-[11px] text-white/50 mt-0.5">
             Science-based recovery recommendations
           </p>
         </div>
@@ -191,7 +191,7 @@ export function RestPeriodCalculator({
 
       {/* Exercise Type Selector */}
       <div className="space-y-2">
-        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">
+        <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">
           Exercise Type
         </label>
         <div className="grid grid-cols-4 gap-2">
@@ -202,10 +202,10 @@ export function RestPeriodCalculator({
               variant={selectedType === type ? 'primary' : 'secondary'}
               size="sm"
               className={cn(
-                'text-[10px] font-bold uppercase tracking-wider transition-all h-auto py-2',
+                'text-[11px] font-bold uppercase tracking-wider transition-all h-auto py-2',
                 selectedType === type
                   ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                  : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                  : 'bg-white/[0.045] border-white/10 text-white/50 hover:bg-white/10'
               )}
             >
               {type}
@@ -216,7 +216,7 @@ export function RestPeriodCalculator({
 
       {/* Intensity Selector */}
       <div className="space-y-2">
-        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">
+        <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">
           Intensity Level
         </label>
         <div className="grid grid-cols-4 gap-2">
@@ -227,10 +227,10 @@ export function RestPeriodCalculator({
               variant={selectedIntensity === level ? 'primary' : 'secondary'}
               size="sm"
               className={cn(
-                'text-[10px] font-bold uppercase tracking-wider transition-all h-auto py-2',
+                'text-[11px] font-bold uppercase tracking-wider transition-all h-auto py-2',
                 selectedIntensity === level
                   ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                  : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                  : 'bg-white/[0.045] border-white/10 text-white/50 hover:bg-white/10'
               )}
             >
               {level}
@@ -240,9 +240,9 @@ export function RestPeriodCalculator({
       </div>
 
       {/* Recommendation Display */}
-      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3">
+      <div className="p-4 rounded-xl bg-white/[0.045] border border-white/[0.09] space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black uppercase tracking-wider text-white/50">
+          <span className="text-[11px] font-black uppercase tracking-wider text-white/50">
             Optimal Rest
           </span>
           <span className="text-3xl font-black text-[var(--module-color-400)] tabular-nums">
@@ -250,14 +250,14 @@ export function RestPeriodCalculator({
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-[10px] text-white/60">
+        <div className="flex items-center justify-between text-[11px] text-white/60">
           <span>Range:</span>
           <span className="font-bold tabular-nums">
             {formatSeconds(recommendation.min)} - {formatSeconds(recommendation.max)}
           </span>
         </div>
 
-        <div className="pt-2 border-t border-white/5">
+        <div className="pt-2 border-t border-white/[0.09]">
           <div className="flex items-start gap-2">
             <Info className="w-3 h-3 text-white/40 shrink-0 mt-0.5" />
             <p className="text-[11px] text-white/60 leading-relaxed">
@@ -267,12 +267,12 @@ export function RestPeriodCalculator({
         </div>
 
         {/* CNS Impact Badge */}
-        <div className="flex items-center justify-between pt-2 border-t border-white/5">
-          <span className="text-[9px] font-black uppercase tracking-wider text-white/40">
+        <div className="flex items-center justify-between pt-2 border-t border-white/[0.09]">
+          <span className="text-[11px] font-black uppercase tracking-wider text-white/40">
             CNS Impact
           </span>
           <div className={cn(
-            'px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5',
+            'px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5',
             recommendation.cnsImpact === 'low'      && 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300',
             recommendation.cnsImpact === 'moderate' && 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]',
             recommendation.cnsImpact === 'high'     && 'bg-rose-500/10   border border-rose-500/20   text-rose-300',
@@ -288,7 +288,7 @@ export function RestPeriodCalculator({
         <NeuralButton 
           variant="secondary"
           size="sm"
-          className="bg-white/5 border-white/10 text-[10px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
+          className="bg-white/[0.045] border-white/10 text-[11px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
         >
           <Clock className="w-3 h-3 mb-1" />
           Copy Rest
@@ -296,7 +296,7 @@ export function RestPeriodCalculator({
         <NeuralButton 
           variant="secondary"
           size="sm"
-          className="bg-white/5 border-white/10 text-[10px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
+          className="bg-white/[0.045] border-white/10 text-[11px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
         >
           <Activity className="w-3 h-3 mb-1" />
           Apply All
@@ -304,7 +304,7 @@ export function RestPeriodCalculator({
         <NeuralButton 
           variant="secondary"
           size="sm"
-          className="bg-white/5 border-white/10 text-[10px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
+          className="bg-white/[0.045] border-white/10 text-[11px] font-bold text-white/70 hover:bg-white/10 transition-all flex flex-col items-center py-2 h-auto"
         >
           <Zap className="w-3 h-3 mb-1" />
           Auto-Fill

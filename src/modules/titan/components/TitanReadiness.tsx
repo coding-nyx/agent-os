@@ -83,14 +83,14 @@ function HormonalContextCard({ isLocked, hormonalContext }: HormonalContextCardP
               {isLocked ? 'SECURED' : hormonalContext || 'Awaiting data'}
             </span>
           </div>
-          <div className="w-px h-5 sm:h-6 bg-white/5 self-center" />
+          <div className="w-px h-5 sm:h-6 bg-white/[0.045] self-center" />
           <div className="flex flex-col">
             <span className="text-[11px] sm:text-xs font-semibold text-white/40 uppercase tracking-[0.12em] mb-0.5">Metabolic Intensity</span>
             <span className="text-[11px] sm:text-xs font-semibold text-white/80 uppercase tracking-tighter">Baseline Optimization</span>
           </div>
         </div>
 
-        <div className="p-3 sm:p-3.5 bg-white/[0.03] border border-white/5 rounded-xl flex items-center gap-3 max-w-xs w-full md:w-auto">
+        <div className="p-3 sm:p-3.5 bg-white/[0.045] border border-white/[0.09] rounded-xl flex items-center gap-3 max-w-xs w-full md:w-auto">
           <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
           <p className="text-[11px] sm:text-xs text-white/40 leading-relaxed italic">
             Titan adapts load using cycle context once biomarkers are active.
@@ -194,7 +194,7 @@ export function TitanDashboard({
   }
 
   return (
-    <div className="p-4 sm:p-5 md:p-6 bg-black/40 border-b border-white/5 backdrop-blur-xl space-y-4 sm:space-y-5">
+    <div className="p-4 sm:p-5 md:p-6 bg-slate-900/70 border-b border-white/[0.09] backdrop-blur-xl space-y-4 sm:space-y-5">
       <ReadinessHeader presentationMode={presentationMode} activeDebtCount={activeDebtCount} />
 
       {presentationReason && (

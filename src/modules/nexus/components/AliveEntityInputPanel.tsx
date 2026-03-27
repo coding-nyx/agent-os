@@ -26,7 +26,7 @@ export function AliveEntityInputPanel({
 }: AliveEntityInputPanelProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4 text-sm text-white/50">
+      <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-4 text-sm text-white/50">
         Loading alive inputs…
       </div>
     );
@@ -38,13 +38,13 @@ export function AliveEntityInputPanel({
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/8 bg-white/[0.02]"
+      className="overflow-hidden rounded-xl border border-white/[0.09] bg-white/[0.045]"
       data-testid="alive-entity-input-panel"
     >
-      <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-white/[0.09] px-4 py-3">
         <Layers3 className="h-3.5 w-3.5 text-white/40" />
         <span className="flex-1 text-xs font-bold text-white/60">Alive inputs</span>
-        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-white/35">
+        <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[11px] text-white/35">
           {context.total} active
         </span>
       </div>
@@ -57,7 +57,7 @@ export function AliveEntityInputPanel({
 
           return (
             <div key={moduleId} className="space-y-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">
                 {moduleLabel}
               </div>
               <div className="space-y-2">
@@ -68,13 +68,13 @@ export function AliveEntityInputPanel({
                     onClick={() => onEntitySelected?.(entity)}
                     className={cn(
                       'w-full rounded-xl border px-3 py-2 text-left transition hover:bg-white/[0.05]',
-                      MODULE_COLORS[moduleId] ?? 'text-white/75 border-white/10 bg-white/[0.03]',
+                      MODULE_COLORS[moduleId] ?? 'text-white/75 border-white/10 bg-white/[0.045]',
                     )}
                     data-testid={`alive-entity-${entity.id}`}
                   >
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm font-semibold">{entity.label}</span>
-                      <span className="rounded-full border border-white/10 bg-black/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/55">
+                      <span className="rounded-full border border-white/10 bg-slate-900/50 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">
                         {entity.type}
                       </span>
                     </div>

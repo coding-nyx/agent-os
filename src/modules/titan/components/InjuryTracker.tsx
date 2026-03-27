@@ -151,7 +151,7 @@ function ExerciseSubstitutionPanel({ exercisesToAvoid }: ExerciseSubstitutionPan
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--module-color-400)] hover:text-white transition-colors"
+        className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--module-color-400)] hover:text-white transition-colors"
       >
         {open ? (
           <ChevronDown className="w-3 h-3" />
@@ -173,7 +173,7 @@ function ExerciseSubstitutionPanel({ exercisesToAvoid }: ExerciseSubstitutionPan
             <div className="mt-2 space-y-2">
               {substitutions.map(({ avoided, alternatives }) => (
                 <div key={avoided}>
-                  <p className="text-[10px] text-white/40 mb-1">
+                  <p className="text-[11px] text-white/40 mb-1">
                     Instead of{' '}
                     <span className="text-rose-400 line-through">{avoided}</span>:
                   </p>
@@ -182,14 +182,14 @@ function ExerciseSubstitutionPanel({ exercisesToAvoid }: ExerciseSubstitutionPan
                       {alternatives.map((alt) => (
                         <span
                           key={alt}
-                          className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)] cursor-default"
+                          className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)] cursor-default"
                         >
                           {alt}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-[10px] text-white/30 italic">
+                    <p className="text-[11px] text-white/30 italic">
                       No library matches — ask trainer for alternatives.
                     </p>
                   )}
@@ -222,7 +222,7 @@ function InjuryCard({ injury, onMarkResolved, saving }: InjuryCardProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.2 }}
-      className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 space-y-3"
+      className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4 space-y-3"
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
@@ -232,13 +232,13 @@ function InjuryCard({ injury, onMarkResolved, saving }: InjuryCardProps) {
           </p>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             {/* Body region */}
-            <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/5 border border-white/10 text-white/60">
+            <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white/[0.045] border border-white/10 text-white/60">
               {formatBodyRegion(injury.bodyRegion)}
             </span>
             {/* Severity */}
             <span
               className={cn(
-                'inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border',
+                'inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border',
                 severityColor(injury.severity)
               )}
             >
@@ -247,7 +247,7 @@ function InjuryCard({ injury, onMarkResolved, saving }: InjuryCardProps) {
             {/* Status */}
             <span
               className={cn(
-                'inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border',
+                'inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border',
                 statusColor(injury.status)
               )}
             >
@@ -296,7 +296,7 @@ function InjuryCard({ injury, onMarkResolved, saving }: InjuryCardProps) {
       {/* Modifications */}
       {injury.modifications && (
         <div className="rounded-xl bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] px-3 py-2">
-          <p className="text-[10px] font-semibold text-[var(--module-color-400)] mb-0.5">
+          <p className="text-[11px] font-semibold text-[var(--module-color-400)] mb-0.5">
             Coach Note
           </p>
           <p className="text-[11px] text-white/70 leading-relaxed">
@@ -308,19 +308,19 @@ function InjuryCard({ injury, onMarkResolved, saving }: InjuryCardProps) {
       {/* Exercises to avoid + affected muscle groups */}
       {(injury.exercisesToAvoid?.length ?? 0) > 0 && (
         <div>
-          <p className="text-[10px] font-semibold text-white/40 mb-1.5">Exercises to Avoid</p>
+          <p className="text-[11px] font-semibold text-white/40 mb-1.5">Exercises to Avoid</p>
           <div className="flex flex-wrap gap-1 mb-1.5">
             {injury.exercisesToAvoid!.map((ex) => (
               <span
                 key={ex}
-                className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-400/10 border border-rose-400/20 text-rose-300"
+                className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-400/10 border border-rose-400/20 text-rose-300"
               >
                 {ex}
               </span>
             ))}
           </div>
           {muscleGroups.length > 0 && (
-            <p className="text-[10px] text-white/30">
+            <p className="text-[11px] text-white/30">
               Affected groups:{' '}
               <span className="text-[var(--module-color-400)]">
                 {muscleGroups.join(', ')}
@@ -582,7 +582,7 @@ export function InjuryTracker({
                   {resolved.map((inj) => (
                     <div
                       key={inj.id}
-                      className="flex items-center justify-between rounded-xl border border-white/[0.04] bg-white/[0.02] px-3 py-2"
+                      className="flex items-center justify-between rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -590,7 +590,7 @@ export function InjuryTracker({
                           <p className="text-[12px] font-semibold text-white/60 truncate">
                             {inj.name}
                           </p>
-                          <p className="text-[10px] text-white/30">
+                          <p className="text-[11px] text-white/30">
                             {formatBodyRegion(inj.bodyRegion)} ·{' '}
                             {inj.onsetDate} → {inj.resolvedDate ?? '?'}
                           </p>
@@ -598,7 +598,7 @@ export function InjuryTracker({
                       </div>
                       <span
                         className={cn(
-                          'inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0',
+                          'inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border shrink-0',
                           severityColor(inj.severity)
                         )}
                       >

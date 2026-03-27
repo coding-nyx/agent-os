@@ -132,7 +132,7 @@ interface StatCardProps {
 
 function StatCard({ icon, label, value, sub }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/5 px-5 py-4">
+    <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.045] px-5 py-4">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
         {icon}
       </div>
@@ -365,15 +365,15 @@ export function RecurringManager({
       {/* Upcoming bills strip                                                */}
       {/* ------------------------------------------------------------------ */}
       {upcomingBills.length > 0 && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-white/40">
+        <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-white/40">
             Upcoming — Next 30 Days
           </p>
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
             {upcomingBills.map((bill, idx) => (
               <div
                 key={`${bill.id}-${idx}`}
-                className="flex shrink-0 flex-col gap-1.5 rounded-lg border border-white/10 bg-white/5 p-3 min-w-[130px]"
+                className="flex shrink-0 flex-col gap-1.5 rounded-lg border border-white/10 bg-white/[0.045] p-3 min-w-[130px]"
               >
                 <div className="flex items-center gap-1.5">
                   <span
@@ -382,7 +382,7 @@ export function RecurringManager({
                       bill.type === 'income' ? 'bg-emerald-400' : 'bg-rose-400',
                     ].join(' ')}
                   />
-                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/60">
+                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-medium text-white/60">
                     {formatDate(bill.dueDateFormatted)}
                   </span>
                 </div>
@@ -413,7 +413,7 @@ export function RecurringManager({
           description="Set up automatic tracking for your regular income and bills."
         />
       ) : (
-        <div className="flex flex-col divide-y divide-white/5 rounded-xl border border-white/10 bg-white/5">
+        <div className="flex flex-col divide-y divide-white/5 rounded-xl border border-white/10 bg-white/[0.045]">
           {sortedRules.map((rule) => {
             const badge = FREQUENCY_BADGE[rule.frequency];
             const accountName = rule.accountId ? accountMap[rule.accountId] : undefined;
@@ -448,7 +448,7 @@ export function RecurringManager({
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span
                       className={[
-                        'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
+                        'inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset',
                         badge.className,
                       ].join(' ')}
                     >
@@ -601,7 +601,7 @@ export function RecurringManager({
               value={form.notes}
               onChange={(e) => handleFieldChange('notes', e.target.value)}
               className={[
-                'w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2',
+                'w-full resize-none rounded-lg border border-white/10 bg-white/[0.045] px-3 py-2',
                 'text-sm text-white placeholder:text-white/30 outline-none',
                 'focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-colors',
               ].join(' ')}

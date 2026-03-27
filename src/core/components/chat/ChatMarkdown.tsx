@@ -74,7 +74,7 @@ export function ChatMarkdown({ content, className, isStreaming = false, proseSiz
           // ── Tables ───────────────────────────────────────────────────────
           table({ children }) {
             return (
-              <div className="chat-table-wrapper my-3 rounded-xl overflow-hidden border border-white/[0.07]">
+              <div className="chat-table-wrapper my-3 rounded-xl overflow-hidden border border-white/[0.09]">
                 <div className="overflow-x-auto overscroll-x-contain">
                   <table className="min-w-full text-sm">{children}</table>
                 </div>
@@ -83,7 +83,7 @@ export function ChatMarkdown({ content, className, isStreaming = false, proseSiz
           },
           thead({ children }) {
             return (
-              <thead className="bg-white/[0.04] border-b border-white/[0.07]">
+              <thead className="bg-white/[0.045] border-b border-white/[0.09]">
                 {children}
               </thead>
             );
@@ -97,7 +97,7 @@ export function ChatMarkdown({ content, className, isStreaming = false, proseSiz
           },
           td({ children }) {
             return (
-              <td className="px-4 py-2.5 text-[13px] text-white/75 border-b border-white/[0.04] last:border-b-0 align-top">
+              <td className="px-4 py-2.5 text-[13px] text-white/75 border-b border-white/[0.09] last:border-b-0 align-top">
                 {children}
               </td>
             );
@@ -107,7 +107,7 @@ export function ChatMarkdown({ content, className, isStreaming = false, proseSiz
           },
           tr({ children }) {
             return (
-              <tr className="hover:bg-white/[0.02] transition-colors">{children}</tr>
+              <tr className="hover:bg-white/[0.045] transition-colors">{children}</tr>
             );
           },
 
@@ -178,10 +178,10 @@ export function ChatMarkdown({ content, className, isStreaming = false, proseSiz
                     'inline-flex items-center justify-center w-4 h-4 mt-0.5 rounded border shrink-0',
                     checked
                       ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                      : 'bg-white/5 border-white/20'
+                      : 'bg-white/[0.045] border-white/20'
                   )}
                 >
-                  {checked && <span className="text-[9px] leading-none">✓</span>}
+                  {checked && <span className="text-[11px] leading-none">✓</span>}
                 </span>
               );
             }

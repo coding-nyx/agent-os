@@ -136,13 +136,13 @@ function MacroRing({
           <span className={cn('text-xs font-black tabular-nums leading-none', over ? 'text-rose-400' : 'text-white/90')}>
             {value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value}
           </span>
-          <span className="text-[8px] text-white/40 uppercase font-bold">{unit}</span>
+          <span className="text-[11px] text-white/40 uppercase font-bold">{unit}</span>
         </div>
       </div>
       <div className="text-center">
-        <div className="text-[9px] font-black uppercase tracking-widest text-white/50">{label}</div>
+        <div className="text-[11px] font-black uppercase tracking-widest text-white/50">{label}</div>
         {hasTarget && (
-          <div className="text-[9px] text-white/30 tabular-nums">
+          <div className="text-[11px] text-white/30 tabular-nums">
             / {target}{unit}
           </div>
         )}
@@ -471,7 +471,7 @@ export function DailyMacroLogger({
         ) : (
           <SurfaceCard className="p-4 sm:p-5">
             <div className="mb-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/50">
                 Today's Macros — {today}
               </p>
             </div>
@@ -510,9 +510,9 @@ export function DailyMacroLogger({
               />
             </div>
             {!hasTargets && (
-              <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5">
+              <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-xl bg-white/[0.045] border border-white/[0.09]">
                 <Info className="w-3 h-3 text-white/30 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-white/40 leading-relaxed">
+                <p className="text-[11px] text-white/40 leading-relaxed">
                   No macro targets set — ask Titan to calculate your targets based on your goals.
                 </p>
               </div>
@@ -566,31 +566,31 @@ export function DailyMacroLogger({
                   <div className="flex items-center gap-4 px-1">
                     <div className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400/70 inline-block" />
-                      <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Calories</span>
+                      <span className="text-[11px] text-white/40 font-bold uppercase tracking-wider">Calories</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-sm bg-blue-400/70 inline-block" />
-                      <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Protein</span>
+                      <span className="text-[11px] text-white/40 font-bold uppercase tracking-wider">Protein</span>
                     </div>
                     {macroTargets?.calories && (
                       <div className="flex items-center gap-1.5">
                         <span className="w-4 h-0 border-t border-dashed border-emerald-400/50 inline-block" />
-                        <span className="text-[9px] text-white/30 font-bold uppercase tracking-wider">Cal target</span>
+                        <span className="text-[11px] text-white/30 font-bold uppercase tracking-wider">Cal target</span>
                       </div>
                     )}
                   </div>
                   {(weekAvgCalories != null || weekAvgProtein != null) && (
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       {weekAvgCalories != null && (
-                        <div className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5 text-center">
+                        <div className="px-3 py-2 rounded-xl bg-white/[0.045] border border-white/[0.09] text-center">
                           <div className="text-sm font-black text-emerald-400 tabular-nums">{weekAvgCalories}</div>
-                          <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold">avg kcal/day</div>
+                          <div className="text-[11px] text-white/30 uppercase tracking-wider font-bold">avg kcal/day</div>
                         </div>
                       )}
                       {weekAvgProtein != null && (
-                        <div className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5 text-center">
+                        <div className="px-3 py-2 rounded-xl bg-white/[0.045] border border-white/[0.09] text-center">
                           <div className="text-sm font-black text-blue-400 tabular-nums">{weekAvgProtein}g</div>
-                          <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold">avg protein/day</div>
+                          <div className="text-[11px] text-white/30 uppercase tracking-wider font-bold">avg protein/day</div>
                         </div>
                       )}
                     </div>
@@ -624,7 +624,7 @@ export function DailyMacroLogger({
 
           {/* Meal Type */}
           <div className="space-y-1.5">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">
+            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">
               Meal Type
             </label>
             <NeuralSelectMenu<MealType>
@@ -690,7 +690,7 @@ export function DailyMacroLogger({
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">
+            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">
               Notes (optional)
             </label>
             <NeuralTextarea
@@ -710,7 +710,7 @@ export function DailyMacroLogger({
           )}
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
+          <div className="flex justify-end gap-3 pt-2 border-t border-white/[0.09]">
             <NeuralButton variant="ghost" onClick={handleClose} disabled={saving}>
               Cancel
             </NeuralButton>
@@ -738,7 +738,7 @@ function MealRow({ meal }: { meal: MealEntry }) {
   ].filter(Boolean);
 
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 min-h-[2.75rem] rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors gap-3">
+    <div className="flex items-center justify-between px-3 py-2.5 min-h-[2.75rem] rounded-xl bg-white/[0.045] border border-white/[0.09] hover:bg-white/[0.045] transition-colors gap-3">
       <div className="flex items-center gap-3 min-w-0">
         <Utensils className="w-3.5 h-3.5 text-[var(--module-color-400)] shrink-0" />
         <div className="min-w-0">
@@ -746,7 +746,7 @@ function MealRow({ meal }: { meal: MealEntry }) {
             <span className="text-xs font-bold text-white/80 truncate">{meal.name}</span>
             <span
               className={cn(
-                'px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border',
+                'px-1.5 py-0.5 rounded text-[11px] font-black uppercase tracking-wider border',
                 MEAL_TYPE_COLORS[meal.mealType],
               )}
             >
@@ -754,10 +754,10 @@ function MealRow({ meal }: { meal: MealEntry }) {
             </span>
           </div>
           {macros.length > 0 && (
-            <p className="text-[10px] text-white/40 mt-0.5">{macros.join(' · ')}</p>
+            <p className="text-[11px] text-white/40 mt-0.5">{macros.join(' · ')}</p>
           )}
           {meal.notes && (
-            <p className="text-[10px] text-white/30 truncate mt-0.5 italic">{meal.notes}</p>
+            <p className="text-[11px] text-white/30 truncate mt-0.5 italic">{meal.notes}</p>
           )}
         </div>
       </div>
@@ -766,7 +766,7 @@ function MealRow({ meal }: { meal: MealEntry }) {
           <div className="text-sm font-black tabular-nums text-emerald-400">
             {meal.calories}
           </div>
-          <div className="text-[9px] text-white/30 uppercase">kcal</div>
+          <div className="text-[11px] text-white/30 uppercase">kcal</div>
         </div>
       )}
     </div>

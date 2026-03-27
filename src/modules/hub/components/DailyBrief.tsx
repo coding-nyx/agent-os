@@ -32,10 +32,10 @@ interface PillarCardProps {
 }
 
 const TONE_ACCENT: Record<StatusTone, string> = {
-  good: 'border-emerald-500/30 bg-emerald-500/5',
-  warn: 'border-amber-500/30 bg-amber-500/5',
-  bad: 'border-rose-500/30 bg-rose-500/5',
-  neutral: 'border-white/10 bg-white/[0.02]'
+  good: 'border-emerald-500/25 bg-emerald-500/10',
+  warn: 'border-amber-500/25 bg-amber-500/10',
+  bad: 'border-rose-500/25 bg-rose-500/10',
+  neutral: 'border-white/[0.09] bg-white/[0.045]'
 };
 
 const TONE_DOT: Record<StatusTone, string> = {
@@ -77,7 +77,7 @@ function PillarCard({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Icon className={cn('w-4 h-4 shrink-0', TONE_TEXT[tone])} />
-          <span className="text-[10px] uppercase tracking-[0.2em] font-black text-white/50 truncate">
+          <span className="text-[11px] uppercase tracking-[0.2em] font-black text-white/50 truncate">
             {label}
           </span>
         </div>
@@ -148,7 +148,7 @@ function CascadeAlertBanner({
         <NeuralButton
           variant="ghost"
           size="sm"
-          className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-violet-400 hover:text-violet-300"
+          className="mt-2 text-[11px] font-black uppercase tracking-[0.2em] text-violet-400 hover:text-violet-300"
           aria-label="View cascade timeline"
         >
           View timeline →

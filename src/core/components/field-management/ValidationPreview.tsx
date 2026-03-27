@@ -131,13 +131,13 @@ export function ValidationPreview({ field, className }: ValidationPreviewProps) 
     <div className={cn('space-y-4', className)}>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider">
+          <p className="text-[11px] text-white/40 uppercase font-bold tracking-wider">
             Validation Preview
           </p>
           {validationResult && (
             <div className="flex items-center gap-1">
               <StatusIcon className={cn('w-3 h-3', getStatusColor())} />
-              <span className={cn('text-[10px] font-bold uppercase', getStatusColor())}>
+              <span className={cn('text-[11px] font-bold uppercase', getStatusColor())}>
                 {validationResult.isValid ? 'Valid' : 'Invalid'}
               </span>
             </div>
@@ -149,7 +149,7 @@ export function ValidationPreview({ field, className }: ValidationPreviewProps) 
       </div>
 
       {/* Field Preview */}
-      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+      <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
         <DynamicFormBuilder
           schema={previewSchema}
           values={{ [field.id]: testValue }}
@@ -193,8 +193,8 @@ export function ValidationPreview({ field, className }: ValidationPreviewProps) 
 
       {/* Validation Rules Summary */}
       {field.validation && Object.keys(field.validation).length > 0 && (
-        <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-          <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2">
+        <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+          <p className="text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2">
             Active Validation Rules
           </p>
           <div className="space-y-2">

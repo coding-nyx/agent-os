@@ -52,13 +52,13 @@ function NoVaultPanel({ onInit }: NoVaultPanelProps): React.ReactElement {
       {/* Header */}
       <div className="flex items-center gap-2">
         <ShieldAlert className="w-3.5 h-3.5 text-amber-400/70 flex-shrink-0" aria-hidden="true" />
-        <span className="text-[8px] font-black uppercase tracking-widest text-amber-400/70">
+        <span className="text-[11px] font-black uppercase tracking-widest text-amber-400/70">
           Unencrypted
         </span>
       </div>
 
       {/* Body */}
-      <p className="text-[9px] text-white/50 leading-relaxed">
+      <p className="text-[11px] text-white/50 leading-relaxed">
         Your data is stored unencrypted.
       </p>
 
@@ -66,7 +66,7 @@ function NoVaultPanel({ onInit }: NoVaultPanelProps): React.ReactElement {
       <NeuralButton
         size="sm"
         themeColor="amber"
-        className="w-full text-[10px] h-8 min-h-0"
+        className="w-full text-[11px] h-8 min-h-0"
         onClick={onInit}
         aria-label="Initialize vault"
       >
@@ -120,7 +120,7 @@ function LockedVaultPanel({ onUnlock }: LockedVaultPanelProps): React.ReactEleme
       {/* Header */}
       <div className="flex items-center gap-2">
         <Lock className="w-3.5 h-3.5 text-red-400/70 flex-shrink-0" aria-hidden="true" />
-        <span className="text-[8px] font-black uppercase tracking-widest text-red-400/70">
+        <span className="text-[11px] font-black uppercase tracking-widest text-red-400/70">
           Vault Locked
         </span>
       </div>
@@ -142,7 +142,7 @@ function LockedVaultPanel({ onUnlock }: LockedVaultPanelProps): React.ReactEleme
 
       {/* Inline error */}
       {unlockError !== null && (
-        <p role="alert" className="text-[9px] text-rose-400/70">
+        <p role="alert" className="text-[11px] text-rose-400/70">
           {unlockError}
         </p>
       )}
@@ -151,7 +151,7 @@ function LockedVaultPanel({ onUnlock }: LockedVaultPanelProps): React.ReactEleme
       <NeuralButton
         size="sm"
         themeColor="rose"
-        className="w-full text-[10px] h-8 min-h-0"
+        className="w-full text-[11px] h-8 min-h-0"
         loading={isSubmitting}
         onClick={() => void handleUnlock()}
         aria-label="Unlock vault"
@@ -187,11 +187,11 @@ function PersistencePill({
       onClick={() => onSelect(mode)}
       aria-pressed={active}
       className={[
-        'flex items-center gap-1 px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-wider',
+        'flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-black uppercase tracking-wider',
         'transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-indigo-500/50',
         active
           ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-          : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10',
+          : 'bg-white/[0.045] text-white/40 border border-white/10 hover:bg-white/10',
       ].join(' ')}
     >
       {icon}
@@ -225,7 +225,7 @@ function UnlockedVaultPanel({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <LockOpen className="w-3.5 h-3.5 text-emerald-400/70 flex-shrink-0" aria-hidden="true" />
-          <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400/70">
+          <span className="text-[11px] font-black uppercase tracking-widest text-emerald-400/70">
             Vault Secured
           </span>
         </div>
@@ -233,7 +233,7 @@ function UnlockedVaultPanel({
         <NeuralButton
           size="sm"
           variant="ghost"
-          className="h-7 px-3 text-[9px] text-red-400/80 hover:text-red-400 hover:bg-red-500/10 border border-red-500/20"
+          className="h-7 px-3 text-[11px] text-red-400/80 hover:text-red-400 hover:bg-red-500/10 border border-red-500/20"
           onClick={onLock}
           aria-label="Lock vault"
         >
@@ -243,7 +243,7 @@ function UnlockedVaultPanel({
 
       {/* Persistence pill toggle */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-[8px] text-white/40 uppercase tracking-widest">
+        <span className="text-[11px] text-white/40 uppercase tracking-widest">
           Persist:
         </span>
         <PersistencePill

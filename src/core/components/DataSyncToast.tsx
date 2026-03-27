@@ -95,14 +95,14 @@ export function DataSyncToast({
       aria-live="polite"
       aria-label={`Data sync suggestion for ${moduleName}`}
     >
-      <div className="bg-white/5 border border-white/10 backdrop-blur-sm rounded-xl p-4 w-96 max-w-[90vw] shadow-2xl">
+      <div className="bg-slate-900/90 border border-white/[0.12] backdrop-blur-xl rounded-xl p-4 w-96 max-w-[90vw] shadow-2xl shadow-black/50">
         {/* Header row */}
         <div className="flex items-center gap-2 mb-3">
           <span
             className={`w-2 h-2 rounded-full shrink-0 ${accentColor}`}
             aria-hidden
           />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">
             {moduleName} · Data Sync
           </span>
         </div>
@@ -132,21 +132,21 @@ export function DataSyncToast({
           <button
             type="button"
             onClick={onConfirm}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/10 border border-white/15 text-white hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+            className="px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-xs font-semibold rounded-lg bg-white/10 border border-white/15 text-white hover:bg-white/20 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/30"
           >
             Update
           </button>
           <button
             type="button"
             onClick={onDismiss}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+            className="px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-xs font-medium rounded-lg text-white/50 hover:text-white/80 hover:bg-white/[0.06] active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/30"
           >
             Ignore
           </button>
           <button
             type="button"
             onClick={onAskModule}
-            className="ml-auto flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+            className="ml-auto flex items-center gap-1 px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-xs font-medium rounded-lg text-white/50 hover:text-white/80 hover:bg-white/[0.06] active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/30"
           >
             Ask {moduleName}
             <ChevronRight className="w-3 h-3" aria-hidden />
@@ -154,7 +154,7 @@ export function DataSyncToast({
         </div>
 
         {/* 10-second shrinking progress bar */}
-        <div className="mt-3 h-px bg-white/5 rounded-full overflow-hidden">
+        <div className="mt-3 h-px bg-white/[0.09] rounded-full overflow-hidden">
           <motion.div
             className={`h-full ${accentColor} opacity-50`}
             initial={{ width: '100%' }}

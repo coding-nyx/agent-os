@@ -102,15 +102,15 @@ export function PlateCalculator({ targetWeight, unit: initialUnit = 'kg' }: Plat
   const hasRemainder = remainder > 0.01;
 
   return (
-    <div className="rounded-xl bg-white/[0.04] border border-white/10 p-3 space-y-2.5">
+    <div className="rounded-xl bg-white/[0.045] border border-white/10 p-3 space-y-2.5">
       {/* Header row */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-wider text-white/40">
+        <span className="text-[11px] font-black uppercase tracking-wider text-white/40">
           Plate Calc — {unit === 'kg' ? BAR_WEIGHT_KG : BAR_WEIGHT_LB}{unit} bar
         </span>
         <button
           onClick={() => setUnit(u => u === 'kg' ? 'lb' : 'kg')}
-          className="text-[10px] font-bold text-[var(--module-color-300)] hover:text-[var(--module-color-400)] transition-colors px-2 py-0.5 rounded border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]"
+          className="text-[11px] font-bold text-[var(--module-color-300)] hover:text-[var(--module-color-400)] transition-colors px-2 py-0.5 rounded border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]"
         >
           {unit === 'kg' ? 'Switch to lb' : 'Switch to kg'}
         </button>
@@ -131,7 +131,7 @@ export function PlateCalculator({ targetWeight, unit: initialUnit = 'kg' }: Plat
         <p className="text-[11px] text-white/40 italic">No plates needed.</p>
       ) : (
         <div className="space-y-1.5">
-          <p className="text-[9px] font-black uppercase tracking-wider text-white/30">Per side:</p>
+          <p className="text-[11px] font-black uppercase tracking-wider text-white/30">Per side:</p>
           <div className="flex flex-wrap gap-1.5">
             {plates.map(({ spec, count }) =>
               Array.from({ length: count }, (_, i) => (
@@ -139,7 +139,7 @@ export function PlateCalculator({ targetWeight, unit: initialUnit = 'kg' }: Plat
                   key={`${spec.label}-${i}`}
                   className={cn(
                     'inline-flex items-center justify-center rounded-full px-2 py-0.5',
-                    'text-[10px] font-black min-w-[2rem]',
+                    'text-[11px] font-black min-w-[2rem]',
                     spec.color,
                     spec.textColor,
                   )}
@@ -149,7 +149,7 @@ export function PlateCalculator({ targetWeight, unit: initialUnit = 'kg' }: Plat
               ))
             )}
             {hasRemainder && (
-              <span className="text-[10px] text-rose-400 font-semibold self-center">
+              <span className="text-[11px] text-rose-400 font-semibold self-center">
                 +{remainder.toFixed(2)}{unit} (not achievable with standard plates)
               </span>
             )}

@@ -41,7 +41,7 @@ export function SelectFieldRenderer({
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${field.id}-error` : undefined}
         className={cn(
-          'w-full bg-black/40 border border-white/10 rounded-2xl h-12 px-4 text-sm text-white',
+          'w-full bg-slate-900/70 border border-white/[0.12] rounded-2xl h-12 px-4 text-sm text-white',
           'flex items-center justify-between gap-2',
           'focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20',
           'transition-all duration-300',
@@ -60,7 +60,7 @@ export function SelectFieldRenderer({
         <Select.Content
           className={cn(
             'overflow-hidden z-50',
-            'bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl',
+            'bg-black/90 backdrop-blur-xl border border-white/[0.12] rounded-2xl',
             'shadow-2xl shadow-black/50'
           )}
           position="popper"

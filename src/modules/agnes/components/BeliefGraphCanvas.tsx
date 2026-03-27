@@ -70,7 +70,7 @@ export function BeliefGraphCanvas({
     return (
       <div
         className={cn(
-          'flex h-[320px] items-center justify-center rounded-[2rem] border border-white/10 bg-black/20 px-8 text-center text-sm text-white/35',
+          'flex h-[320px] items-center justify-center rounded-[2rem] border border-white/10 bg-slate-900/50 px-8 text-center text-sm text-white/35',
           className,
         )}
       >
@@ -81,7 +81,7 @@ export function BeliefGraphCanvas({
 
   return (
     <div className={cn('space-y-3', className)}>
-      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/20 p-3">
+      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/50 p-3">
         <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} width="100%" height="320" role="img" aria-label="Belief graph">
           <defs>
             <radialGradient id="belief-graph-core" cx="50%" cy="50%" r="75%">
@@ -146,13 +146,13 @@ export function BeliefGraphCanvas({
       </div>
 
       {selectedNode ? (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3">
           <div className="flex flex-wrap items-start gap-2">
             <span className="text-sm font-semibold text-white/85">{selectedNode.label}</span>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">
+            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white/55">
               {selectedNode.valence}
             </span>
-            <span className="rounded-full border border-indigo-400/20 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-200/80">
+            <span className="rounded-full border border-indigo-400/20 bg-indigo-500/10 px-2 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-200/80">
               {selectedNode.intensity}/10
             </span>
           </div>

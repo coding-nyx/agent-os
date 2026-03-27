@@ -194,7 +194,7 @@ export function GroundingExercise({ onComplete, onExit, agnesAI }: Props) {
       <div className="mb-8 text-center space-y-1">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20">
           <Layers className="w-3 h-3 text-indigo-400" />
-          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-400/80">
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-400/80">
             5-4-3-2-1 Grounding
           </span>
         </div>
@@ -242,7 +242,7 @@ export function GroundingExercise({ onComplete, onExit, agnesAI }: Props) {
 
               {/* Brief reflection area */}
               <div className="w-full p-5 rounded-2xl bg-indigo-500/[0.06] border border-indigo-500/15 text-left space-y-2">
-                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-400/60">
+                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-400/60">
                   Your grounding path
                 </p>
                 {STEPS.map((step, i) => (
@@ -311,7 +311,7 @@ export function GroundingExercise({ onComplete, onExit, agnesAI }: Props) {
                   onChange={e => handleInput(e.target.value)}
                   placeholder={`What do you ${currentStep.sense.toLowerCase()}…`}
                   rows={3}
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3 text-sm text-white/80 placeholder:text-white/20 resize-none focus:outline-none focus:border-indigo-500/40 transition-colors"
+                  className="w-full bg-white/[0.045] border border-white/10 rounded-2xl px-4 py-3 text-sm text-white/80 placeholder:text-white/20 resize-none focus:outline-none focus:border-indigo-500/40 transition-colors"
                 />
 
                 {/* Suggestion chips */}
@@ -322,7 +322,7 @@ export function GroundingExercise({ onComplete, onExit, agnesAI }: Props) {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleChip(chip)}
-                      className="px-3 h-auto py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/40 text-[11px] font-medium hover:bg-white/[0.08] hover:text-white/60 hover:border-white/15 border-none transition-all"
+                      className="px-3 h-auto py-1.5 rounded-full bg-white/[0.045] border border-white/[0.08] text-white/40 text-[11px] font-medium hover:bg-white/[0.08] hover:text-white/60 hover:border-white/15 border-none transition-all"
                     >
                       {chip}
                     </NeuralButton>

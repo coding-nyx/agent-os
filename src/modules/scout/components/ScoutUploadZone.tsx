@@ -241,7 +241,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
               'relative w-full min-h-[200px] rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-4 p-8 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05050a]',
               phase === 'drag_over'
                 ? 'border-[var(--module-accent-ring)] bg-[var(--module-accent-muted)] scale-[1.01]'
-                : 'border-white/10 bg-white/[0.02] hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)]'
+                : 'border-white/10 bg-white/[0.045] hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)]'
             )}
           >
             {/* Animated upload icon */}
@@ -256,7 +256,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
                 'w-16 h-16 rounded-2xl flex items-center justify-center border transition-colors duration-300',
                 phase === 'drag_over'
                   ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-glow)]'
-                  : 'border-white/10 bg-white/[0.04] group-hover:border-[var(--module-accent-border)] group-hover:bg-[var(--module-accent-muted)]'
+                  : 'border-white/10 bg-white/[0.045] group-hover:border-[var(--module-accent-border)] group-hover:bg-[var(--module-accent-muted)]'
               )}
             >
               <Upload
@@ -274,13 +274,13 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
               <p className="text-sm font-semibold text-white/70">
                 {phase === 'drag_over' ? 'Drop to upload' : 'Drag & drop an evidence source'}
               </p>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 italic">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30 italic">
                 PDF • TXT • CSV • Markdown — Max 10 MB
               </p>
             </div>
 
             {phase !== 'drag_over' && (
-              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--module-color-400)] opacity-50 italic mt-2">
+              <span className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--module-color-400)] opacity-50 italic mt-2">
                 or click to browse
               </span>
             )}
@@ -341,7 +341,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
               <div className="flex-1 space-y-2 min-w-0">
                 <p className="text-sm font-bold text-[var(--module-color-300)]">Parsing Document…</p>
                 {parseProgress && (
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--module-color-300)] italic">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--module-color-300)] italic">
                     Page {parseProgress.current} / {parseProgress.total}
                   </p>
                 )}
@@ -409,7 +409,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
               <NeuralButton
                 variant="secondary"
                 onClick={handleReset}
-                className="w-8 h-8 p-0 flex items-center justify-center shrink-0 border-white/10 bg-white/5 hover:bg-white/10"
+                className="w-8 h-8 p-0 flex items-center justify-center shrink-0 border-white/10 bg-white/[0.045] hover:bg-white/10"
                 aria-label="Remove file and select a different one"
               >
                 <X className="w-4 h-4 text-white/50" />
@@ -440,7 +440,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
 
             {/* Parser notes */}
             {parseResult.notes.length > 0 && (
-              <div className="text-[10px] text-white/30 italic space-y-0.5" aria-label="Parser notes">
+              <div className="text-[11px] text-white/30 italic space-y-0.5" aria-label="Parser notes">
                 {parseResult.notes.map((note, i) => (
                   <p key={i}>• {note}</p>
                 ))}
@@ -455,7 +455,7 @@ export function ScoutUploadZone({ onSubmit, onCancel }: ScoutUploadZoneProps) {
               className="flex items-center gap-2 text-[var(--module-color-400)]"
             >
               <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-              <span className="text-[9px] font-black uppercase tracking-[0.3em] italic">
+              <span className="text-[11px] font-black uppercase tracking-[0.3em] italic">
                 Ready for analysis
               </span>
             </motion.div>
@@ -525,7 +525,7 @@ function MetadataChip({
   return (
     <span
       role={roleProp}
-      className="px-3 py-1 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] text-[10px] font-bold text-[var(--module-color-300)] uppercase tracking-wider"
+      className="px-3 py-1 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] text-[11px] font-bold text-[var(--module-color-300)] uppercase tracking-wider"
     >
       {label}
     </span>

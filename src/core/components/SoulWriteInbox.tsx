@@ -89,13 +89,13 @@ export function SoulWriteInbox() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-full border border-white/10 bg-black/60 backdrop-blur-xl text-[10px] uppercase tracking-[0.18em] text-emerald-200/80 shadow-lg"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-full border border-white/[0.12] bg-slate-900/85 backdrop-blur-xl text-[11px] uppercase tracking-[0.18em] text-emerald-200/80 shadow-lg"
           aria-label="Open Soul Write inbox"
         >
           <Shield className="w-3.5 h-3.5 text-emerald-300/80" />
           Soul Writes
           {pendingCount > 0 && (
-            <span className="ml-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-1.5 py-0.5 text-[9px] font-bold text-emerald-200">
+            <span className="ml-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-1.5 py-0.5 text-[11px] font-bold text-emerald-200">
               {pendingCount}
             </span>
           )}
@@ -104,18 +104,18 @@ export function SoulWriteInbox() {
 
       <div
         className={cn(
-          'rounded-2xl border border-white/10 bg-black/70 backdrop-blur-xl shadow-2xl overflow-hidden',
+          'rounded-2xl border border-white/[0.12] bg-slate-900/90 backdrop-blur-xl shadow-2xl overflow-hidden',
           !open && 'hidden',
         )}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.09]">
           <div className="flex items-center gap-2 text-xs font-semibold text-white/70">
             <Shield className="w-3.5 h-3.5 text-emerald-300/80" />
             {headerLabel}
           </div>
           <button
             onClick={() => setOpen(false)}
-            className="text-[10px] text-white/40 hover:text-white/70 transition"
+            className="text-[11px] text-white/40 hover:text-white/70 transition"
           >
             Close
           </button>
@@ -134,22 +134,22 @@ export function SoulWriteInbox() {
                         <p className="text-[11px] font-semibold text-white/85 truncate">
                           {req.moduleId} — {req.field}
                         </p>
-                        <span className="text-[9px] uppercase tracking-[0.18em] text-emerald-300/70 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
+                        <span className="text-[11px] uppercase tracking-[0.18em] text-emerald-300/70 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
                           Pending
                         </span>
                       </div>
-                      <p className="text-[10px] text-white/45 mt-1">
+                      <p className="text-[11px] text-white/45 mt-1">
                         Requested by {req.requestedBy} · {timeAgo(req.createdAt)}
                       </p>
                       {req.reason && (
-                        <p className="text-[10px] text-white/55 mt-1">{req.reason}</p>
+                        <p className="text-[11px] text-white/55 mt-1">{req.reason}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => handleReject(req.id)}
                         disabled={busyId === req.id}
-                        className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white/60 flex items-center justify-center disabled:opacity-50"
+                        className="w-8 h-8 rounded-lg border border-white/[0.12] bg-white/[0.045] hover:bg-white/10 text-white/60 flex items-center justify-center disabled:opacity-50"
                         aria-label="Reject soul write"
                       >
                         <X className="w-3.5 h-3.5" />

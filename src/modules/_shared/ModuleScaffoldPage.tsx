@@ -13,7 +13,7 @@ export function ModuleScaffoldPage({ moduleId }: ModuleScaffoldPageProps) {
     <ModuleLayout title={module.title} themeColor={module.themeColor} moduleId={moduleId}>
       <div className="h-full p-6 md:p-10 overflow-y-auto">
         <div className="max-w-5xl mx-auto grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-          <section className="rounded-card border border-white/10 bg-white/[0.03] p-6 md:p-8">
+          <section className="rounded-card border border-white/10 bg-white/[0.045] p-6 md:p-8">
             <div className="flex items-center gap-4">
               <div
                 className="w-12 h-12 rounded-2xl border border-white/15 flex items-center justify-center"
@@ -35,7 +35,7 @@ export function ModuleScaffoldPage({ moduleId }: ModuleScaffoldPageProps) {
             </p>
           </section>
 
-          <aside className="rounded-card border border-white/10 bg-black/30 p-6">
+          <aside className="rounded-card border border-white/10 bg-slate-900/60 p-6">
             <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/60">Next Build Targets</h3>
             <ul className="mt-4 space-y-3 text-xs text-white/65">
               <li>Onboarding flow service + encrypted profile persistence.</li>

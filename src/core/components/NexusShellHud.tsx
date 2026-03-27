@@ -147,10 +147,10 @@ export function NexusCommandRail({ actions, className }: NexusCommandRailProps) 
                 'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-medium tracking-[0.08em] transition',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#09090e]',
                 action.isDisabled
-                  ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-white/20'
+                  ? 'cursor-not-allowed border-white/[0.09] bg-white/[0.045] text-white/20'
                   : action.isActive
                     ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/15'
-                    : 'border-white/10 bg-white/[0.04] text-white/70 hover:border-white/15 hover:bg-white/[0.07] hover:text-white/90',
+                    : 'border-white/10 bg-white/[0.045] text-white/70 hover:border-white/15 hover:bg-white/[0.07] hover:text-white/90',
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -238,43 +238,43 @@ export function NexusShellHud({
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-white/45">
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
                 <Gauge className="h-3 w-3" aria-hidden />
                 Shell HUD
               </span>
-              <span className={cn('inline-flex items-center rounded-full border px-2 py-1 text-[10px] font-medium', stateIndicator.tone)}>
+              <span className={cn('inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-medium', stateIndicator.tone)}>
                 {stateIndicator.label}
               </span>
             </div>
 
             <div className="mt-3 flex flex-wrap items-start gap-2">
-              <div className="inline-flex min-w-0 items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-2.5 py-2">
+              <div className="inline-flex min-w-0 items-center gap-2 rounded-2xl border border-white/10 bg-slate-900/50 px-2.5 py-2">
                 <ModuleIcon
                   source="nexus"
                   withBackground
                   className="h-8 w-8 rounded-xl border-violet-500/20 bg-violet-500/10 text-violet-200"
                 />
                 <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/40">Active thread</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Active thread</p>
                   <p className="truncate text-[12px] font-semibold uppercase tracking-[0.14em] text-white/90">
                     {formatThreadLabel(activeThreadId)}
                   </p>
-                  <p className="truncate font-mono text-[10px] text-white/38">{modeSemantics.levelLabel} · {activeThreadId}</p>
+                  <p className="truncate font-mono text-[11px] text-white/38">{modeSemantics.levelLabel} · {activeThreadId}</p>
                 </div>
               </div>
 
-              <div className="inline-flex min-w-[170px] flex-1 items-start rounded-2xl border border-white/10 bg-white/[0.03] px-2.5 py-2">
+              <div className="inline-flex min-w-[170px] flex-1 items-start rounded-2xl border border-white/10 bg-white/[0.045] px-2.5 py-2">
                 <NexusAgentPresenceStack participants={participants} />
               </div>
 
-              <div className="inline-flex min-w-[150px] flex-1 items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-2.5 py-2">
+              <div className="inline-flex min-w-[150px] flex-1 items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-2.5 py-2">
                 <ArrowRightLeft className="mt-0.5 h-3.5 w-3.5 text-white/45" aria-hidden />
                 <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/40">Mode + scope</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Mode + scope</p>
                   <p className="text-[12px] font-semibold text-white/88">
                     {modeSemantics.summaryLabel}
                   </p>
-                  <p className="truncate text-[10px] text-white/42">
+                  <p className="truncate text-[11px] text-white/42">
                     {modeSemantics.scopeLabel} · {modeSemantics.historyLabel} · {modeSemantics.authorityLabel}
                   </p>
                 </div>
@@ -291,16 +291,16 @@ export function NexusShellHud({
           {metrics.map((metric) => (
             <div
               key={metric.key}
-              className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2"
+              className="rounded-2xl border border-white/10 bg-slate-900/50 px-3 py-2"
               data-testid={`nexus-shell-hud-metric-${metric.key}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/40">{metric.label}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">{metric.label}</span>
                 <Bot className="h-3 w-3 text-white/22" aria-hidden />
               </div>
               <div className="mt-1 flex items-baseline gap-2">
                 <span className={cn('text-lg font-semibold leading-none', metric.tone)}>{metric.value}</span>
-                <span className="text-[10px] text-white/36">
+                <span className="text-[11px] text-white/36">
                   {metric.key === 'awaiting'
                     ? 'approval'
                     : metric.key === 'blocked'
@@ -312,7 +312,7 @@ export function NexusShellHud({
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] text-white/55">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 text-[11px] text-white/55">
           <span className="inline-flex items-center gap-1.5 uppercase tracking-[0.16em]">
             <ActivitySquare className="h-3.5 w-3.5 text-cyan-300/70" aria-hidden />
             Runtime

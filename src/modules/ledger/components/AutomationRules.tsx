@@ -261,7 +261,7 @@ function RuleRow({ rule, onToggle, onEdit, onDelete }: RuleRowProps) {
   const hasCategory   = Boolean(rule.triggerCategory);
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-4 hover:bg-white/[0.05] transition-colors">
+    <div className="flex items-center gap-3 rounded-xl border border-white/[0.09] bg-white/[0.045] p-4 hover:bg-white/[0.05] transition-colors">
       {/* Enable / disable toggle */}
       <button
         type="button"
@@ -444,7 +444,7 @@ function RuleModal({ isOpen, editingRule, onClose, onSave }: RuleModalProps) {
             rows={3}
             aria-label="Suggestion message"
             className={cn(
-              'w-full rounded-lg border bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25',
+              'w-full rounded-lg border bg-white/[0.045] px-3 py-2 text-sm text-white placeholder-white/25',
               'outline-none resize-none transition',
               'focus:ring-1',
               form.suggestionMessage.trim()
@@ -455,7 +455,7 @@ function RuleModal({ isOpen, editingRule, onClose, onSave }: RuleModalProps) {
         </div>
 
         {/* ── Enabled Toggle ────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2.5">
+        <div className="flex items-center justify-between rounded-lg border border-white/[0.09] bg-white/[0.045] px-3 py-2.5">
           <span className="text-sm text-white/70">Enable rule immediately</span>
           <button
             type="button"
@@ -478,7 +478,7 @@ function RuleModal({ isOpen, editingRule, onClose, onSave }: RuleModalProps) {
         </div>
 
         {/* ── Footer actions ────────────────────────────────────────────────── */}
-        <div className="flex justify-end gap-2 pt-2 border-t border-white/8">
+        <div className="flex justify-end gap-2 pt-2 border-t border-white/[0.09]">
           <NeuralButton variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </NeuralButton>
@@ -604,7 +604,7 @@ export default function AutomationRules({
       <div
         role="tablist"
         aria-label="Automation panels"
-        className="flex gap-1 rounded-xl border border-white/8 bg-white/[0.03] p-1"
+        className="flex gap-1 rounded-xl border border-white/[0.09] bg-white/[0.045] p-1"
       >
         {(['Suggestions', 'Rules'] as const).map(tab => (
           <button
@@ -617,7 +617,7 @@ export default function AutomationRules({
               'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               activeTab === tab
                 ? 'bg-amber-500/20 text-amber-300'
-                : 'text-white/40 hover:text-white/60 hover:bg-white/5',
+                : 'text-white/40 hover:text-white/60 hover:bg-white/[0.045]',
             )}
           >
             {tab === 'Suggestions'
@@ -630,7 +630,7 @@ export default function AutomationRules({
             {tab === 'Suggestions' && activeSuggestions.length > 0 && (
               <span
                 aria-label={`${activeSuggestions.length} active suggestions`}
-                className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-black leading-none"
+                className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[11px] font-semibold text-black leading-none"
               >
                 {activeSuggestions.length}
               </span>

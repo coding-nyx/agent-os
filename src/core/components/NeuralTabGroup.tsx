@@ -184,7 +184,7 @@ const NeuralTabButton = React.forwardRef<HTMLDivElement, NeuralTabButtonProps>((
       onKeyDown={onKeyDown}
       className={cn(
         'relative flex min-h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] md:text-[12px] font-semibold tracking-[0.02em] whitespace-nowrap transition-[color,background-color,opacity,transform] duration-300 group/tab cursor-pointer outline-none',
-        isActive ? theme.activeText : 'text-white/30 hover:text-white/60 hover:bg-white/[0.02]',
+        isActive ? theme.activeText : 'text-white/30 hover:text-white/60 hover:bg-white/[0.045]',
         isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'
       )}
       style={{
@@ -199,7 +199,7 @@ const NeuralTabButton = React.forwardRef<HTMLDivElement, NeuralTabButtonProps>((
 
         {badge !== undefined && (
           <span className={cn(
-            "ml-0.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full border px-1 text-[10px] font-semibold tabular-nums",
+            "ml-0.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full border px-1 text-[11px] font-semibold tabular-nums",
             badgeVariant && badgeVariant !== 'default' 
               ? VARIANT_BADGE_COLORS[badgeVariant] 
               : cn(theme.badgeBg, theme.badgeBorder, theme.badgeText)
@@ -293,7 +293,7 @@ export function NeuralTabGroup<T extends string = string>({
       aria-orientation="horizontal"
       className={cn(
         "flex w-fit max-w-full items-center gap-0.5 overflow-x-auto overscroll-x-contain rounded-lg p-0.5 no-scrollbar transition-[background-color,border-color,box-shadow] duration-300",
-        variant === 'pill' && "bg-black/20 backdrop-blur-md border border-white/[0.05] shadow-inner",
+        variant === 'pill' && "bg-slate-900/50 backdrop-blur-md border border-white/[0.09] shadow-inner",
         className
       )}
     >

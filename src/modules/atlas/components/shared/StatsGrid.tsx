@@ -20,7 +20,7 @@ export function StatsGrid({ stats, className }: StatsGridProps) {
     <div className={cn("grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3", className)}>
       {stats.map((stat, i) => (
         <SurfaceCard key={i} className="p-3">
-          <div className={cn("text-[10px] uppercase tracking-wider mb-1 flex items-center gap-1", stat.labelColorClass || "text-white/40")}>
+          <div className={cn("text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1", stat.labelColorClass || "text-white/40")}>
             {stat.icon}
             {stat.label}
           </div>

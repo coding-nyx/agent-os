@@ -29,7 +29,7 @@ const MODE_CARDS: {
     prompt: 'I need to write some code.',
     accent: 'text-rose-300',
     border: 'border-rose-500/20',
-    bg: 'bg-rose-500/5 hover:bg-rose-500/10'
+    bg: 'bg-rose-500/10 hover:bg-rose-500/15'
   },
   {
     id: 'comms',
@@ -39,7 +39,7 @@ const MODE_CARDS: {
     prompt: 'I need to draft an email.',
     accent: 'text-amber-300',
     border: 'border-amber-500/20',
-    bg: 'bg-amber-500/5 hover:bg-amber-500/10'
+    bg: 'bg-amber-500/10 hover:bg-amber-500/15'
   },
   {
     id: 'docs',
@@ -49,7 +49,7 @@ const MODE_CARDS: {
     prompt: 'I need to create a document.',
     accent: 'text-sky-300',
     border: 'border-sky-500/20',
-    bg: 'bg-sky-500/5 hover:bg-sky-500/10'
+    bg: 'bg-sky-500/10 hover:bg-sky-500/15'
   },
   {
     id: 'life',
@@ -59,7 +59,7 @@ const MODE_CARDS: {
     prompt: 'Help me plan something.',
     accent: 'text-emerald-300',
     border: 'border-emerald-500/20',
-    bg: 'bg-emerald-500/5 hover:bg-emerald-500/10'
+    bg: 'bg-emerald-500/10 hover:bg-emerald-500/15'
   }
 ];
 
@@ -117,7 +117,7 @@ export function ForgeDashboard({
   return (
     <div className="p-8 space-y-8">
       <section className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-5 py-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-rose-300">Forge is in progress</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.25em] text-rose-300">Forge is in progress</p>
         <p className="text-sm text-white/60 mt-1">
           Runtime operations are being finalized. Attempts to write sensitive soul state may be safely ignored.
         </p>
@@ -133,7 +133,7 @@ export function ForgeDashboard({
       {showModeCards ? (
         // ── First-run: Mode Introduction Cards ──────────────────────────────
         <section className="space-y-3">
-          <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">
+          <h4 className="text-[11px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">
             What would you like to do?
           </h4>
           <div className="grid grid-cols-2 gap-3">
@@ -151,7 +151,7 @@ export function ForgeDashboard({
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Icon className={cn('w-4 h-4', mode.accent)} />
-                    <span className={cn('text-[9px] font-black uppercase tracking-[0.25em]', mode.accent)}>
+                    <span className={cn('text-[11px] font-black uppercase tracking-[0.25em]', mode.accent)}>
                       {mode.label}
                     </span>
                   </div>
@@ -177,7 +177,7 @@ export function ForgeDashboard({
       )}
 
       <section className="space-y-3">
-        <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Execution Mode</h4>
+        <h4 className="text-[11px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Execution Mode</h4>
         {profile ? (
           <SurfaceCard className="p-4 text-xs text-rose-100/80">
             Environment: <span className="text-rose-300 font-bold">{(profile.environment || 'cloud').toUpperCase()}</span>
@@ -196,11 +196,11 @@ export function ForgeDashboard({
 
       {!showModeCards && (
         <section className="space-y-3">
-          <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Recent Sessions</h4>
+          <h4 className="text-[11px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Recent Sessions</h4>
           {sessions.slice(0, 5).map((session) => (
-            <div key={session.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs">
+            <div key={session.id} className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-xs">
               <div className="text-white/80">{session.command}</div>
-              <div className="mt-1 text-[10px] uppercase tracking-wider text-rose-300">{session.result}</div>
+              <div className="mt-1 text-[11px] uppercase tracking-wider text-rose-300">{session.result}</div>
             </div>
           ))}
           {sessions.length === 0 && (
@@ -217,7 +217,7 @@ export function ForgeDashboard({
       {/* ── Artifacts Section ─────────────────────────────────────────────── */}
       {artifacts.length > 0 && (
         <section className="space-y-3">
-          <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">
+          <h4 className="text-[11px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">
             Recent Artifacts
           </h4>
           {artifacts.slice(0, 6).map((artifact: ForgeArtifact) => {
@@ -229,12 +229,12 @@ export function ForgeDashboard({
             return (
               <div
                 key={artifact.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 flex items-start gap-3"
+                className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 flex items-start gap-3"
               >
                 <Icon className="w-3.5 h-3.5 text-rose-300 mt-0.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white/80 truncate">{artifact.title}</div>
-                  <div className="mt-0.5 text-[10px] uppercase tracking-wider text-white/40">
+                  <div className="mt-0.5 text-[11px] uppercase tracking-wider text-white/40">
                     {artifact.type}
                     {dateLabel ? ` · ${dateLabel}` : ''}
                   </div>

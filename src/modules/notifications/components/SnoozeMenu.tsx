@@ -66,7 +66,7 @@ function SuggestionRow({ suggestion, onPick }: SuggestionRowProps) {
         <span className="text-xs font-semibold text-white/90">
           {suggestion.option.label}
         </span>
-        <span className="text-[10px] italic text-white/40 leading-snug mt-0.5">
+        <span className="text-[11px] italic text-white/40 leading-snug mt-0.5">
           {suggestion.reason}
         </span>
       </span>
@@ -96,7 +96,7 @@ function SnoozeOptionRow({ option, isSuggested, onPick }: SnoozeOptionRowProps) 
       <Icon className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
       <span>{option.label}</span>
       {isSuggested && (
-        <span className="ml-auto text-[9px] uppercase tracking-widest text-cyan-500/50">
+        <span className="ml-auto text-[11px] uppercase tracking-widest text-cyan-500/50">
           suggested
         </span>
       )}
@@ -202,7 +202,7 @@ export default function SnoozeMenu({
         >
           {/* AI suggestion section */}
           <div className="px-3 pt-3 pb-1.5">
-            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/25 mb-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/25 mb-2">
               AI suggestion
             </p>
             <SuggestionRow suggestion={suggestion} onPick={handlePick} />
@@ -212,7 +212,7 @@ export default function SnoozeMenu({
 
           {/* All options */}
           <div className="px-3 pb-3">
-            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/25 mb-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/25 mb-1.5">
               Snooze for
             </p>
             {SNOOZE_OPTIONS.map((option) => (

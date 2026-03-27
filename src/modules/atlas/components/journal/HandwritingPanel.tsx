@@ -174,7 +174,7 @@ export function HandwritingPanel({ onRecognize, className }: HandwritingPanelPro
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className="w-full rounded-lg border border-white/10 bg-black/50 touch-none"
+        className="w-full rounded-lg border border-white/[0.12] bg-slate-900/80 touch-none"
         style={{ height: 120, cursor: 'crosshair' }}
         aria-label="Handwriting input canvas"
       />
@@ -182,10 +182,10 @@ export function HandwritingPanel({ onRecognize, className }: HandwritingPanelPro
       {/* Controls row */}
       <div className="flex items-center gap-2">
         {error && (
-          <span className="text-[10px] text-rose-400/80 flex-1">{error}</span>
+          <span className="text-[11px] text-rose-400/80 flex-1">{error}</span>
         )}
         {!error && (
-          <span className="text-[10px] text-white/25 flex-1">Write with your stylus, then convert →</span>
+          <span className="text-[11px] text-white/25 flex-1">Write with your stylus, then convert →</span>
         )}
 
         <button
@@ -193,7 +193,7 @@ export function HandwritingPanel({ onRecognize, className }: HandwritingPanelPro
           onClick={clear}
           disabled={strokes.length === 0 || isRecognizing}
           aria-label="Clear handwriting"
-          className="w-7 h-7 flex items-center justify-center rounded-md border border-white/10 bg-black/30 text-white/40 hover:text-rose-400 hover:bg-rose-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded-md border border-white/[0.12] bg-slate-900/60 text-white/40 hover:text-rose-400 hover:bg-rose-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <Trash2 className="w-3 h-3" />
         </button>

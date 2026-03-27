@@ -91,7 +91,7 @@ const TAX_CATEGORY_ROW: Record<TaxCategory, string> = {
   investment: 'bg-indigo-500/10 border-indigo-500/20',
   'non-deductible': 'bg-red-500/10 border-red-500/20',
   partial: 'bg-amber-500/10 border-amber-500/20',
-  unknown: 'bg-white/5 border-white/10',
+  unknown: 'bg-white/[0.045] border-white/10',
 };
 
 const ALL_TAX_CATEGORIES: TaxCategory[] = [
@@ -189,7 +189,7 @@ function TaxCategoryBadge({ category }: { category: TaxCategory }) {
   const color = TAX_CATEGORY_COLOR[category];
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border shrink-0"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wide border shrink-0"
       style={{
         color,
         borderColor: `${color}40`,
@@ -237,7 +237,7 @@ function CollapsiblePanel({
           {title}
         </span>
         {badge !== undefined && badge > 0 && (
-          <span className="text-[10px] font-semibold text-white/40 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+          <span className="text-[11px] font-semibold text-white/40 bg-white/[0.045] border border-white/10 rounded-full px-2 py-0.5">
             {badge}
           </span>
         )}
@@ -263,9 +263,9 @@ interface SummaryHeroProps {
 
 function SummaryHero({ summary, currency, isPrefilled }: SummaryHeroProps) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 space-y-4">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-5 sm:p-6 space-y-4">
       {isPrefilled && (
-        <p className="text-[10px] text-white/35 uppercase tracking-widest font-semibold">
+        <p className="text-[11px] text-white/35 uppercase tracking-widest font-semibold">
           Last Generated:{' '}
           {new Date(summary.generatedAt).toLocaleDateString('en-US', {
             month: 'short',
@@ -278,7 +278,7 @@ function SummaryHero({ summary, currency, isPrefilled }: SummaryHeroProps) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Income */}
         <div className="flex flex-col gap-1.5 rounded-xl bg-emerald-500/5 border border-emerald-500/15 p-3 sm:p-4">
-          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+          <p className="text-[11px] text-white/40 uppercase tracking-widest font-semibold">
             Total Income
           </p>
           <p className="text-lg sm:text-xl font-bold text-emerald-400 tabular-nums">
@@ -288,7 +288,7 @@ function SummaryHero({ summary, currency, isPrefilled }: SummaryHeroProps) {
 
         {/* Deductible Expenses */}
         <div className="flex flex-col gap-1.5 rounded-xl bg-blue-500/5 border border-blue-500/15 p-3 sm:p-4">
-          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+          <p className="text-[11px] text-white/40 uppercase tracking-widest font-semibold">
             Deductible Expenses
           </p>
           <p className="text-lg sm:text-xl font-bold text-blue-400 tabular-nums">
@@ -298,14 +298,14 @@ function SummaryHero({ summary, currency, isPrefilled }: SummaryHeroProps) {
 
         {/* Total Deductions */}
         <div className="flex flex-col gap-1.5 rounded-xl bg-indigo-500/5 border border-indigo-500/15 p-3 sm:p-4">
-          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+          <p className="text-[11px] text-white/40 uppercase tracking-widest font-semibold">
             Total Deductions
           </p>
           <p className="text-lg sm:text-xl font-bold text-indigo-400 tabular-nums">
             {formatAmount(summary.totalDeductions, currency)}
           </p>
           {summary.totalDeductions > summary.deductibleExpenses && (
-            <p className="text-[10px] text-white/30">
+            <p className="text-[11px] text-white/30">
               incl. manual deductions
             </p>
           )}
@@ -313,7 +313,7 @@ function SummaryHero({ summary, currency, isPrefilled }: SummaryHeroProps) {
 
         {/* Estimated Taxable Income — most prominent */}
         <div className="flex flex-col gap-1.5 rounded-xl bg-white/[0.06] border border-white/15 p-3 sm:p-4 col-span-2 lg:col-span-1">
-          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+          <p className="text-[11px] text-white/40 uppercase tracking-widest font-semibold">
             Est. Taxable Income
           </p>
           <p className="text-2xl sm:text-3xl font-black text-white tabular-nums">
@@ -411,14 +411,14 @@ function DeductionsPanel({ deductions, currency, onDelete, onAdd }: DeductionsPa
       {deductions.map((ded) => (
         <div
           key={ded.id}
-          className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3"
+          className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.045] p-3"
         >
           <div className="flex flex-col gap-1.5 min-w-0 flex-1">
             <p className="text-sm font-semibold text-white truncate">{ded.label}</p>
             <div className="flex items-center gap-2 flex-wrap">
               <TaxCategoryBadge category={ded.category} />
               {ded.notes && (
-                <span className="text-[10px] text-white/35 truncate">{ded.notes}</span>
+                <span className="text-[11px] text-white/35 truncate">{ded.notes}</span>
               )}
             </div>
           </div>
@@ -482,7 +482,7 @@ function RecentDeductibleTransactions({
         <button
           key={tx.id}
           onClick={() => onSelectTransaction(tx.id)}
-          className="w-full flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-white/20 transition-colors p-3 text-left group"
+          className="w-full flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.045] hover:bg-white/[0.07] hover:border-white/20 transition-colors p-3 text-left group"
         >
           <div className="flex flex-col gap-1.5 min-w-0 flex-1">
             <p className="text-sm font-medium text-white truncate group-hover:text-white/90 transition-colors">
@@ -490,7 +490,7 @@ function RecentDeductibleTransactions({
             </p>
             <div className="flex items-center gap-2 flex-wrap">
               {tx.taxCategory && <TaxCategoryBadge category={tx.taxCategory} />}
-              <span className="text-[10px] text-white/40">
+              <span className="text-[11px] text-white/40">
                 {new Date(tx.date).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
@@ -649,7 +649,7 @@ function CategoryAssignModal({
     >
       <div className="flex flex-col gap-4">
         {/* Selected transaction preview */}
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] divide-y divide-white/5 overflow-hidden">
+        <div className="rounded-xl border border-white/10 bg-white/[0.045] divide-y divide-white/5 overflow-hidden">
           {transactions.map((tx) => (
             <div
               key={tx.id}
@@ -659,7 +659,7 @@ function CategoryAssignModal({
                 <p className="text-sm font-medium text-white truncate">
                   {tx.description}
                 </p>
-                <p className="text-[10px] text-white/40">
+                <p className="text-[11px] text-white/40">
                   {new Date(tx.date).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',

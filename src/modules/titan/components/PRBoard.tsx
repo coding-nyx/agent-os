@@ -210,7 +210,7 @@ function PRCard({ pr, workoutLogs }: PRCardProps) {
     <>
     <div
       className={cn(
-        'bg-white/5 border border-white/10 rounded-2xl p-4',
+        'bg-white/[0.045] border border-white/10 rounded-2xl p-4',
         'hover:bg-white/[0.08] transition-colors flex flex-col gap-1',
       )}
     >
@@ -222,7 +222,7 @@ function PRCard({ pr, workoutLogs }: PRCardProps) {
         <div className="flex items-center gap-1.5 shrink-0">
           <span
             className={cn(
-              'text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize',
+              'text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize',
               CATEGORY_STYLES[category],
             )}
           >
@@ -250,7 +250,7 @@ function PRCard({ pr, workoutLogs }: PRCardProps) {
         <p className="text-xs text-white/50">
           {pr.maxWeight}&thinsp;kg&thinsp;×&thinsp;{pr.repsAtMax}
         </p>
-        <p className="text-[10px] text-white/40">{formatShortDate(pr.achievedDate)}</p>
+        <p className="text-[11px] text-white/40">{formatShortDate(pr.achievedDate)}</p>
       </div>
 
       {/* ── Sparkline ── */}
@@ -285,7 +285,7 @@ function PlaceholderCard() {
   return (
     <div
       className={cn(
-        'bg-white/[0.02] border border-dashed border-white/[0.07] rounded-2xl p-4',
+        'bg-white/[0.045] border border-dashed border-white/[0.09] rounded-2xl p-4',
         'flex items-center justify-center min-h-[160px]',
       )}
       aria-hidden="true"

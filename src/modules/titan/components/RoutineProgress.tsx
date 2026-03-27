@@ -270,21 +270,21 @@ export function RoutineProgress({ routines, workoutSessions = [], exerciseLibrar
             {sessions.slice(0, 7).map((session, idx) => (
               <div
                 key={session.id || idx}
-                className="flex items-center justify-between p-3 min-h-[2.75rem] rounded-xl bg-white/[0.02] border border-white/5 gap-3"
+                className="flex items-center justify-between p-3 min-h-[2.75rem] rounded-xl bg-white/[0.045] border border-white/[0.09] gap-3"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <span className="text-[11px] sm:text-xs font-bold text-white/80 truncate">{session.routineName}</span>
                     <span className={cn(
-                      'px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider',
+                      'px-1.5 py-0.5 rounded text-[11px] font-black uppercase tracking-wider',
                       session.status === 'completed' ? 'bg-emerald-500/10 text-emerald-300' :
                       session.status === 'partial' ? 'bg-[var(--module-accent-muted)] text-[var(--module-color-300)]' :
-                      'bg-white/5 text-white/30'
+                      'bg-white/[0.045] text-white/30'
                     )}>
                       {session.status}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] text-white/40 flex-wrap">
+                  <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-[11px] text-white/40 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {session.date}
@@ -309,7 +309,7 @@ export function RoutineProgress({ routines, workoutSessions = [], exerciseLibrar
                     )}>
                       {session.rpe}
                     </div>
-                    <div className="text-[9px] text-white/30 uppercase tracking-wider">RPE</div>
+                    <div className="text-[11px] text-white/30 uppercase tracking-wider">RPE</div>
                   </div>
                 )}
               </div>

@@ -47,7 +47,7 @@ function addDays(date: Date, n: number): Date {
 function DeltaIndicator({ delta, unit = '' }: { delta: number; unit?: string }) {
   if (Math.abs(delta) < 0.1) {
     return (
-      <span className="flex items-center gap-0.5 text-[10px] text-white/30 font-medium">
+      <span className="flex items-center gap-0.5 text-[11px] text-white/30 font-medium">
         <Minus className="w-3 h-3" />
         No change
       </span>
@@ -57,7 +57,7 @@ function DeltaIndicator({ delta, unit = '' }: { delta: number; unit?: string }) 
   return (
     <span
       className={cn(
-        'flex items-center gap-0.5 text-[10px] font-medium',
+        'flex items-center gap-0.5 text-[11px] font-medium',
         positive ? 'text-emerald-400' : 'text-rose-400',
       )}
     >
@@ -80,10 +80,10 @@ interface SummaryCardProps {
 
 function SummaryCard({ label, value, delta, unit, icon: Icon, accentClass }: SummaryCardProps) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex flex-col gap-2">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 flex flex-col gap-2">
       <div className="flex items-center gap-1.5">
         <Icon className={cn('w-3.5 h-3.5', accentClass)} aria-hidden="true" />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">{label}</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{label}</span>
       </div>
       <p className={cn('text-2xl font-black tabular-nums', accentClass)}>{value}</p>
       {delta !== undefined && <DeltaIndicator delta={delta} unit={unit} />}
@@ -158,7 +158,7 @@ interface SparklineProps {
 function Sparkline({ values, color, height = 40, showArea = true }: SparklineProps) {
   if (values.length < 2) {
     return <div style={{ height }} className="w-full flex items-center justify-center">
-      <span className="text-[10px] text-white/20">Not enough data</span>
+      <span className="text-[11px] text-white/20">Not enough data</span>
     </div>;
   }
 
@@ -208,10 +208,10 @@ function HabitAnalyticsRow({ habit, completionRates, avgRate }: HabitAnalyticsRo
   const textClass = avgRate >= 0.8 ? 'text-emerald-400' : avgRate >= 0.5 ? 'text-amber-400' : 'text-red-400';
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 grid grid-cols-[1fr_auto_80px] items-center gap-4">
+    <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3 grid grid-cols-[1fr_auto_80px] items-center gap-4">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-white/80 truncate">{habit.title}</p>
-        <p className="text-[10px] text-white/30 capitalize">{habit.frequency} · streak {habit.currentStreak}d</p>
+        <p className="text-[11px] text-white/30 capitalize">{habit.frequency} · streak {habit.currentStreak}d</p>
       </div>
       <p className={cn('text-lg font-black tabular-nums', textClass)}>
         {Math.round(avgRate * 100)}%
@@ -433,7 +433,7 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
         <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
           Task Velocity — Last 8 Weeks
         </h4>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
           {taskVelocity.every(w => w.value === 0) ? (
             <p className="text-xs text-white/30 italic">No completed tasks in the last 8 weeks.</p>
           ) : (
@@ -441,7 +441,7 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
               <BarChart data={taskVelocity} color="#34d399" height={80} />
               <div className="flex justify-between mt-2">
                 {taskVelocity.map((w, i) => (
-                  <span key={i} className="text-[9px] text-white/25 tabular-nums">{w.label}</span>
+                  <span key={i} className="text-[11px] text-white/25 tabular-nums">{w.label}</span>
                 ))}
               </div>
             </>
@@ -474,11 +474,11 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
           <h4 className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] font-display">
             Energy Trend — 14-Day Rolling Average
           </h4>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
             <Sparkline values={energyTrend} color="#0ea5e9" height={64} showArea />
             <div className="flex justify-between mt-2">
-              <span className="text-[9px] text-white/25">14 days ago</span>
-              <span className="text-[9px] text-white/25">Today</span>
+              <span className="text-[11px] text-white/25">14 days ago</span>
+              <span className="text-[11px] text-white/25">Today</span>
             </div>
           </div>
         </section>
@@ -494,7 +494,7 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
             {profile.goals.filter(g => g.status === 'active' || g.status === 'completed').map(goal => (
               <div
                 key={goal.id}
-                className="rounded-xl border border-white/10 bg-white/[0.02] p-3 flex items-center gap-4"
+                className="rounded-xl border border-white/10 bg-white/[0.045] p-3 flex items-center gap-4"
               >
                 <Target
                   className={cn(
@@ -506,15 +506,15 @@ export function AtlasAnalytics({ profile }: AtlasAnalyticsProps) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white/80 truncate">{goal.title}</p>
                   {goal.deadline && (
-                    <p className="text-[10px] text-white/30">Due {goal.deadline}</p>
+                    <p className="text-[11px] text-white/30">Due {goal.deadline}</p>
                   )}
                 </div>
                 {/* Progress bar */}
                 <div className="w-24 shrink-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-white/40">{goal.progressPercent}%</span>
+                    <span className="text-[11px] text-white/40">{goal.progressPercent}%</span>
                     <span className={cn(
-                      'text-[9px] font-bold uppercase',
+                      'text-[11px] font-bold uppercase',
                       goal.status === 'completed' ? 'text-emerald-400' : 'text-white/30',
                     )}>
                       {goal.status}

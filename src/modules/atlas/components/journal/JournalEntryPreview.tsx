@@ -130,7 +130,7 @@ export function JournalEntryPreview({
       exit={{ x: 40, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       // ── Layout & glass surface ──────────────────────────────────────────
-      className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 space-y-5"
+      className="bg-slate-900/70 backdrop-blur-md border border-white/[0.12] rounded-2xl p-6 space-y-5"
       aria-label={`Journal entry preview for ${dateLabel}`}
     >
       {/* ── 1. Header row ─────────────────────────────────────────────────── */}
@@ -183,7 +183,7 @@ export function JournalEntryPreview({
       {/* ── 2. Mood + Energy — single combined widget ─────────────────────── */}
       <div
         className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full
-                   bg-white/5 border border-white/10 text-xs"
+                   bg-white/[0.045] border border-white/[0.12] text-xs"
         role="group"
         aria-label="Mood and energy"
       >
@@ -366,7 +366,7 @@ export function JournalEntryPreview({
               role="listitem"
               className="px-2.5 py-0.5 rounded-full
                          bg-violet-500/10 border border-violet-500/20
-                         text-[10px] font-semibold text-violet-300/80
+                         text-[11px] font-semibold text-violet-300/80
                          uppercase tracking-wider"
             >
               {tag}

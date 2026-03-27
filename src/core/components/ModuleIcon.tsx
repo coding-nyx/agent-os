@@ -41,7 +41,7 @@ export function moduleSurfaceTone(source: string): string {
     user: 'border-white/10 bg-white/[0.06] text-white/80',
     system: 'border-slate-500/20 bg-slate-500/10 text-slate-100',
   };
-  return map[source.replace(/^cascade:/, '').toLowerCase()] ?? 'border-white/10 bg-white/[0.04] text-white/70';
+  return map[source.replace(/^cascade:/, '').toLowerCase()] ?? 'border-white/10 bg-white/[0.045] text-white/70';
 }
 
 function getModuleIcon(source: string) {

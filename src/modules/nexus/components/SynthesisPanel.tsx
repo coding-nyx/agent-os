@@ -57,7 +57,7 @@ function AlertAction({ action, onInjectChat, onConsultModule, onNavigate }: {
       variant="ghost"
       size="sm"
       onClick={handleClick}
-      className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white/80 transition-colors h-auto p-1"
+      className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-white/50 hover:text-white/80 transition-colors h-auto p-1"
     >
       {action.type === 'ask_nexus' ? <MessageSquare className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
       {action.label}
@@ -101,10 +101,10 @@ export function SynthesisPanel({ onInjectChat, onConsultModule, onNavigate }: Sy
       className="w-full"
     >
       <div className="flex items-center gap-2 w-full px-1 py-2">
-        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-violet-400">
+        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-violet-400">
           ⚡ Nexus Synthesis
         </span>
-        <span className="text-[10px] text-white/30">
+        <span className="text-[11px] text-white/30">
           {alerts.length} pattern{alerts.length !== 1 ? 's' : ''}
         </span>
         <span className="flex-1" />

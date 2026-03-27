@@ -896,7 +896,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             </div>
           )}
 
-          <div className="shrink-0 border-b border-white/5 px-4 pb-4 sm:px-6 sm:pb-5 md:px-8 md:pb-6">
+          <div className="shrink-0 border-b border-white/[0.09] px-4 pb-4 sm:px-6 sm:pb-5 md:px-8 md:pb-6">
             <div className="relative flex flex-col gap-3 sm:gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="relative min-w-0 overflow-x-auto no-scrollbar mask-edges-horizontal">
                 <NeuralTabGroup
@@ -926,7 +926,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                       Start Recovery
                     </NeuralButton>
 
-                    <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] sm:text-xs">
+                    <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[11px] sm:text-xs">
                       <span className="font-medium text-white/45">
                         {directWrite ? 'Direct Logbook' : 'Coach Review'}
                       </span>
@@ -1243,7 +1243,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
               </div>
               <button
                 onClick={() => setShowAdvisory(false)}
-                className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center shrink-0 transition-colors"
+                className="w-6 h-6 rounded-lg bg-white/[0.045] hover:bg-white/10 flex items-center justify-center shrink-0 transition-colors"
                 aria-label="Dismiss advisory"
               >
                 <X className="w-3 h-3 text-white/50" />

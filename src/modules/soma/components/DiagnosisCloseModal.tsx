@@ -138,7 +138,7 @@ export function DiagnosisCloseModal({
                   type="button"
                   variant="ghost"
                   onClick={onCancel}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors flex-shrink-0"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.045] transition-colors flex-shrink-0"
                   aria-label="Cancel"
                 >
                   <X className="w-4 h-4" />

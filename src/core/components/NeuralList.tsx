@@ -10,7 +10,7 @@ export function NeuralList({ children, className }: NeuralListProps) {
   return (
     <div
       className={cn(
-        'rounded-xl border border-white/5 bg-white/[0.03] overflow-hidden divide-y divide-white/5',
+        'rounded-xl border border-white/[0.09] bg-white/[0.045] overflow-hidden divide-y divide-white/5',
         className
       )}
     >
@@ -49,7 +49,7 @@ export function NeuralListItem({
         selected
           ? 'bg-[var(--module-accent-faint)] border-l-2 border-[var(--module-accent)]'
           : 'border-l-2 border-transparent',
-        onClick && !selected && 'hover:bg-white/[0.03] cursor-pointer',
+        onClick && !selected && 'hover:bg-white/[0.045] cursor-pointer',
         className
       )}
     >

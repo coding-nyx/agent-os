@@ -48,13 +48,13 @@ function SubQuestionRow({
   };
 
   return (
-    <div className="flex items-start gap-3 p-3 rounded-xl border border-white/8 bg-white/[0.03]">
+    <div className="flex items-start gap-3 p-3 rounded-xl border border-white/[0.09] bg-white/[0.045]">
       <span className="text-xs font-bold text-white/20 mt-0.5 w-4 flex-shrink-0">{index + 1}</span>
       {editing ? (
         <div className="flex-1 flex items-center gap-2">
           <NeuralInput
             autoFocus
-            className="flex-1 bg-white/5 border border-white/20 rounded-lg px-2 py-1 text-sm text-white focus:outline-none min-h-0 h-8"
+            className="flex-1 bg-white/[0.045] border border-white/20 rounded-lg px-2 py-1 text-sm text-white focus:outline-none min-h-0 h-8"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
@@ -89,7 +89,7 @@ function SearchProgress({ current, total, label }: { current: number; total: num
         <span className="text-white/40">{label || 'Searching…'}</span>
         <span className="text-white/30">{current}/{total}</span>
       </div>
-      <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+      <div className="h-1 rounded-full bg-white/[0.045] overflow-hidden">
         <motion.div
           className="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-500"
           animate={{ width: `${pct}%` }}
@@ -195,7 +195,7 @@ export function DeepResearchPanel({
           <NeuralButton
             variant="ghost"
             onClick={handleClose}
-            className="p-2 rounded-xl hover:bg-white/5 text-white/30 hover:text-white/60 transition-colors h-auto w-auto min-h-0 min-w-0 border-none"
+            className="p-2 rounded-xl hover:bg-white/[0.045] text-white/30 hover:text-white/60 transition-colors h-auto w-auto min-h-0 min-w-0 border-none"
             aria-label="Close deep research panel"
           >
             <X className="w-4 h-4" />
@@ -211,7 +211,7 @@ export function DeepResearchPanel({
               <div className="space-y-2">
                 <NeuralInput
                   label="Research Query"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/40 focus:bg-white/[0.07] transition-all"
+                  className="flex-1 bg-white/[0.045] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/40 focus:bg-white/[0.07] transition-all"
                   placeholder="What do you want to research deeply?"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -234,13 +234,13 @@ export function DeepResearchPanel({
 
               {/* Research Settings */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Depth</p>
-                  <div className="flex bg-black/40 rounded-lg p-1">
+                <div className="p-4 rounded-2xl bg-white/[0.045] border border-white/[0.09] space-y-3">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-white/40">Depth</p>
+                  <div className="flex bg-slate-900/70 rounded-lg p-1">
                     <button
                       onClick={() => setDepth('quick')}
                       className={cn(
-                        "flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                        "flex-1 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all",
                         depth === 'quick' ? "bg-white/10 text-white" : "text-white/30 hover:text-white/50"
                       )}
                     >
@@ -249,7 +249,7 @@ export function DeepResearchPanel({
                     <button
                       onClick={() => setDepth('deep')}
                       className={cn(
-                        "flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                        "flex-1 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all",
                         depth === 'deep' ? "bg-violet-500/20 text-violet-300" : "text-white/30 hover:text-white/50"
                       )}
                     >
@@ -258,10 +258,10 @@ export function DeepResearchPanel({
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between">
+                <div className="p-4 rounded-2xl bg-white/[0.045] border border-white/[0.09] flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Expert Sources</p>
-                    <p className="text-[9px] text-white/20 uppercase">Academic & Clinical</p>
+                    <p className="text-[11px] font-black uppercase tracking-widest text-white/40">Expert Sources</p>
+                    <p className="text-[11px] text-white/20 uppercase">Academic & Clinical</p>
                   </div>
                   <NeuralToggle
                     checked={useExpertSources}
@@ -279,7 +279,7 @@ export function DeepResearchPanel({
                 </div>
               )}
 
-              <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-3">
+              <div className="p-5 rounded-2xl bg-white/[0.045] border border-white/[0.09] space-y-3">
                 <p className="text-xs font-bold text-white/40 uppercase tracking-wider">How it works</p>
                 <div className="space-y-2.5 text-xs text-white/30">
                   <div className="flex items-center gap-2.5">
@@ -348,7 +348,7 @@ export function DeepResearchPanel({
               />
               <div className="space-y-2">
                 {editedQuestions.map((q, i) => (
-                  <div key={q.id} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/[0.02]">
+                  <div key={q.id} className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.09] bg-white/[0.045]">
                     <Search className="w-3.5 h-3.5 text-white/20 flex-shrink-0" />
                     <p className="text-xs text-white/50 flex-1 line-clamp-1">{q.question}</p>
                     {i < deepResearch.progress.current ? (
@@ -383,10 +383,10 @@ export function DeepResearchPanel({
                 <p className="text-sm font-semibold text-emerald-300/80">Research complete</p>
               </div>
 
-              <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.04] space-y-4">
+              <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.045] space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-sm font-semibold text-white/90 leading-snug">{deepResearch.result.synthesisNode.title}</h3>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${
                     deepResearch.result.synthesisNode.status === 'verified'
                       ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
                       : 'text-amber-400 border-amber-500/30 bg-amber-500/10'
@@ -395,7 +395,7 @@ export function DeepResearchPanel({
                   </span>
                 </div>
                 <p className="text-xs text-white/60 leading-relaxed">{deepResearch.result.synthesisNode.claim}</p>
-                <div className="flex items-center gap-4 text-xs text-white/30 pt-1 border-t border-white/5">
+                <div className="flex items-center gap-4 text-xs text-white/30 pt-1 border-t border-white/[0.09]">
                   <span>Confidence: {Math.round((deepResearch.result.synthesisNode.confidence ?? 0) * 100)}%</span>
                   <span>{deepResearch.result.capturedSources.length} sources captured</span>
                 </div>

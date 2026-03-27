@@ -81,7 +81,7 @@ function ExportCard({
   action,
 }: ExportCardProps): React.ReactElement {
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col gap-4">
+    <div className="bg-white/[0.045] border border-white/10 rounded-xl p-5 flex flex-col gap-4">
       {/* Header row */}
       <div className="flex items-center gap-3">
         <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${iconBg}`}>

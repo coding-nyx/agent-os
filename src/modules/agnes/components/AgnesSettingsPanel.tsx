@@ -75,10 +75,10 @@ export function AgnesSettingsPanel({ profile, onSave }: AgnesSettingsPanelProps)
   if (!profile) return null;
 
   return (
-    <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 space-y-4">
+    <div className="rounded-2xl bg-white/[0.045] border border-white/[0.09] p-4 space-y-4">
       <div className="flex items-center gap-2">
         <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400/70" />
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
+        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40">
           Session Preferences
         </span>
       </div>

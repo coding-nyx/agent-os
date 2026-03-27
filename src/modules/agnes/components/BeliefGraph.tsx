@@ -279,7 +279,7 @@ export function BeliefGraph({ profile }: BeliefGraphProps): React.ReactElement {
 
       {/* ── Detail panel ── */}
       {selectedNode && (
-        <div className="bg-white/5 border border-white/10 rounded-xl p-3 mt-2">
+        <div className="bg-white/[0.045] border border-white/10 rounded-xl p-3 mt-2">
           <div className="flex items-center gap-2">
             {/* Sentiment dot */}
             <div
@@ -296,7 +296,7 @@ export function BeliefGraph({ profile }: BeliefGraphProps): React.ReactElement {
             {/* Category badge */}
             <span
               className={cn(
-                'ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0',
+                'ml-auto text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0',
                 CATEGORY_BADGE_CLASS[selectedNode.sentiment],
               )}
             >

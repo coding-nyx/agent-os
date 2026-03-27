@@ -25,24 +25,24 @@ export function OptimalDeviationScale({
   const isAnomaly = Math.abs(deviation) > 0.3;
 
   return (
-    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+    <div className="p-4 rounded-2xl bg-white/[0.045] border border-white/[0.09] space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">{label}</span>
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">{label}</span>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-lg font-bold text-white tabular-nums">{value}</span>
-            <span className="text-[10px] text-white/40 font-mono uppercase">{unit}</span>
+            <span className="text-[11px] text-white/40 font-mono uppercase">{unit}</span>
           </div>
         </div>
         <div className="text-right">
-          <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest block">Optimal</span>
+          <span className="text-[11px] font-bold text-white/20 uppercase tracking-widest block">Optimal</span>
           <span className="text-xs font-mono text-emerald-400/60">{optimalRange}</span>
         </div>
       </div>
 
       <div className="relative pt-4 pb-2">
         {/* Scale Track */}
-        <div className="h-1.5 w-full bg-white/5 rounded-full relative overflow-hidden">
+        <div className="h-1.5 w-full bg-white/[0.045] rounded-full relative overflow-hidden">
           {/* Optimal Zone (Center) */}
           <div className="absolute left-[35%] right-[35%] top-0 bottom-0 bg-emerald-500/20" />
         </div>
@@ -62,7 +62,7 @@ export function OptimalDeviationScale({
         </motion.div>
 
         {/* Labels */}
-        <div className="flex justify-between mt-2 text-[8px] font-black text-white/20 uppercase tracking-[0.15em]">
+        <div className="flex justify-between mt-2 text-[11px] font-black text-white/20 uppercase tracking-[0.15em]">
           <span>Low</span>
           <span className="text-emerald-500/40">Optimal</span>
           <span>High</span>
@@ -72,7 +72,7 @@ export function OptimalDeviationScale({
       {isAnomaly && (
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-red-500/5 border border-red-500/10">
           <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[9px] font-bold text-red-400/80 uppercase tracking-wider">
+          <span className="text-[11px] font-bold text-red-400/80 uppercase tracking-wider">
             {deviation > 0 ? 'Hyper-Deviation Detected' : 'Hypo-Deviation Detected'}
           </span>
         </div>

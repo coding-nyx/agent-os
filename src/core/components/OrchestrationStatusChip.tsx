@@ -25,27 +25,28 @@ export function OrchestrationStatusChip({
   return (
     <div
       className={cn(
-        'inline-flex flex-wrap items-center gap-1.5 border text-[10px] text-white/70',
+        'inline-flex items-center gap-1 border text-[11px] text-white/70',
         isMinimal
-          ? 'rounded-full border-cyan-400/20 bg-cyan-400/[0.08] px-2 py-1'
-          : 'rounded-2xl border-white/10 bg-white/[0.04] p-1',
-        compact && !isMinimal && 'gap-1 rounded-xl',
+          ? 'rounded-md border-cyan-400/20 bg-cyan-400/[0.08] px-1.5 py-0.5'
+          : 'rounded-xl border-white/10 bg-white/[0.045] p-1',
+        compact && !isMinimal && 'gap-1 rounded-lg',
       )}
       role="status"
       aria-label="Orchestration status"
     >
+      {/* Automation level control */}
       <div className={cn(
         'inline-flex items-center gap-1',
         isMinimal
-          ? 'rounded-full border border-cyan-400/20 bg-black/20 px-1.5 py-1'
-          : 'rounded-xl border border-white/10 bg-black/20 px-1.5 py-1',
+          ? 'rounded border border-cyan-400/20 bg-slate-900/50 px-1 py-0.5'
+          : 'rounded-lg border border-white/10 bg-slate-900/50 px-1.5 py-1',
       )}>
-        <Layers3 className="h-3.5 w-3.5 text-cyan-300/70" aria-hidden />
+        <Layers3 className="h-3 w-3 text-cyan-300/70" aria-hidden />
         <button
           type="button"
           onClick={() => void lowerAutopilotLevel()}
           className={cn(
-            'rounded border px-1.5 py-0.5 text-[9px] transition hover:text-white/80',
+            'rounded border px-1 py-0.5 text-[11px] font-bold transition hover:text-white/80 min-h-[20px] min-w-[16px]',
             isMinimal ? 'border-cyan-400/20 text-cyan-100/70' : 'border-white/10 text-white/45',
           )}
           aria-label="Lower autopilot level"
@@ -53,14 +54,14 @@ export function OrchestrationStatusChip({
         >
           –
         </button>
-        <span className="font-semibold uppercase tracking-[0.16em]">
+        <span className="font-semibold uppercase tracking-[0.12em] text-[11px] min-w-[28px] text-center">
           {levelLabel}
         </span>
         <button
           type="button"
           onClick={() => void raiseAutopilotLevel()}
           className={cn(
-            'rounded border px-1.5 py-0.5 text-[9px] transition hover:text-white/80',
+            'rounded border px-1 py-0.5 text-[11px] font-bold transition hover:text-white/80 min-h-[20px] min-w-[16px]',
             isMinimal ? 'border-cyan-400/20 text-cyan-100/70' : 'border-white/10 text-white/45',
           )}
           aria-label="Raise autopilot level"
@@ -69,33 +70,39 @@ export function OrchestrationStatusChip({
           +
         </button>
       </div>
+
+      {/* Ghost badge — icon only on minimal */}
       <span
         className={cn(
-          'inline-flex items-center gap-1 border px-1.5 py-1',
-          isMinimal ? 'rounded-full' : 'rounded-xl',
+          'inline-flex items-center gap-1 border px-1.5 py-0.5',
+          isMinimal ? 'rounded' : 'rounded-lg',
           isGhost
             ? 'border-violet-500/20 bg-violet-500/15 text-violet-300'
             : isMinimal
               ? 'border-cyan-400/20 bg-cyan-400/[0.06] text-cyan-100/70'
               : 'border-white/10 bg-white/[0.05] text-white/55',
         )}
+        title={isGhost ? 'Ghost mode' : 'Visible mode'}
       >
         <Ghost className="h-3 w-3" aria-hidden />
-        {isGhost ? 'Ghost' : 'Visible'}
+        {!isMinimal && (isGhost ? 'Ghost' : 'Visible')}
       </span>
+
+      {/* History badge — icon only on minimal */}
       <span
         className={cn(
-          'inline-flex items-center gap-1 border px-1.5 py-1',
-          isMinimal ? 'rounded-full' : 'rounded-xl',
+          'inline-flex items-center gap-1 border px-1.5 py-0.5',
+          isMinimal ? 'rounded' : 'rounded-lg',
           historyMode === 'silent'
             ? 'border-amber-500/20 bg-amber-500/15 text-amber-300'
             : isMinimal
               ? 'border-cyan-400/20 bg-cyan-400/[0.06] text-cyan-100/70'
               : 'border-white/10 bg-white/[0.05] text-white/55',
         )}
+        title={historyMode === 'silent' ? 'Silent mode' : 'Standard mode'}
       >
         <History className="h-3 w-3" aria-hidden />
-        {historyMode === 'silent' ? 'Silent' : 'Standard'}
+        {!isMinimal && (historyMode === 'silent' ? 'Silent' : 'Standard')}
       </span>
     </div>
   );

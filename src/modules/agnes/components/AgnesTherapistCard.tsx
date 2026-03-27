@@ -25,13 +25,13 @@ export function AgnesTherapistCard({ baseContext, className, agentAlias = 'Agnes
             <h3 className="text-base font-black uppercase tracking-wider text-white italic leading-none">
               {agentAlias}
             </h3>
-            <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em] mt-1">Neural Agent</p>
+            <p className="text-[11px] text-white/30 font-bold uppercase tracking-[0.2em] mt-1">Neural Agent</p>
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.045] border border-white/[0.09]">
           <Heart className="w-3 h-3 text-rose-400/60" />
-          <span className="text-[9px] font-black uppercase tracking-widest text-white/40 italic">Clinical Support</span>
+          <span className="text-[11px] font-black uppercase tracking-widest text-white/40 italic">Clinical Support</span>
         </div>
       </div>
 
@@ -39,32 +39,32 @@ export function AgnesTherapistCard({ baseContext, className, agentAlias = 'Agnes
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Settings className="w-3.5 h-3.5 text-rose-400" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Preferences</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/20">Preferences</span>
           </div>
           
           <div className="space-y-2">
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20">Gender Alignment</span>
-                <p className="text-[10px] font-bold text-white/70 uppercase tracking-wider">
+            <div className="p-3 rounded-xl bg-white/[0.045] border border-white/[0.09] space-y-1">
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/20">Gender Alignment</span>
+                <p className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
                     {preferences?.gender || 'No Preference'}
                 </p>
             </div>
 
             {preferences?.tone && (
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20">Vocal Tone</span>
-                    <p className="text-[10px] font-bold text-white/70 uppercase tracking-wider">
+                <div className="p-3 rounded-xl bg-white/[0.045] border border-white/[0.09] space-y-1">
+                    <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/20">Vocal Tone</span>
+                    <p className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
                         {preferences.tone}
                     </p>
                 </div>
             )}
 
             {preferences?.traits && preferences.traits.length > 0 && (
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
-                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20">Defined Traits</span>
+                <div className="p-3 rounded-xl bg-white/[0.045] border border-white/[0.09] space-y-2">
+                    <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/20">Defined Traits</span>
                     <div className="flex flex-wrap gap-1.5">
                         {preferences.traits.map((trait, i) => (
-                            <span key={i} className="text-[8px] font-black uppercase tracking-tighter text-rose-300/60 px-1.5 py-0.5 rounded bg-rose-500/5 border border-rose-500/10">
+                            <span key={i} className="text-[11px] font-black uppercase tracking-tighter text-rose-300/60 px-1.5 py-0.5 rounded bg-rose-500/5 border border-rose-500/10">
                                 {trait}
                             </span>
                         ))}

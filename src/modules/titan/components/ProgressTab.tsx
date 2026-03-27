@@ -120,20 +120,20 @@ function PersonalRecordsPanel({
         {sorted.map(([exercise, pr]) => (
           <div
             key={exercise}
-            className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] border border-white/10"
+            className="flex items-center justify-between p-3 rounded-xl bg-white/[0.045] border border-white/10"
           >
             <div>
               {/* Capitalise first letter of each word for display */}
               <p className="text-xs font-bold text-white/80">
                 {exercise.replace(/\b\w/g, c => c.toUpperCase())}
               </p>
-              <p className="text-[10px] text-white/40">
+              <p className="text-[11px] text-white/40">
                 {new Date(pr.date).toLocaleDateString()}
               </p>
             </div>
             <div className="text-right">
               <p className="text-sm font-black text-[var(--module-color-400)]">{pr.e1RM} kg e1RM</p>
-              <p className="text-[10px] text-white/50">
+              <p className="text-[11px] text-white/50">
                 {pr.maxWeight}×{pr.repsAtMax}
               </p>
             </div>
@@ -194,7 +194,7 @@ function VolumeChart({ sessions }: { sessions: WorkoutSession[] }) {
                 title={`Week of ${week}: ${Math.round(vol).toLocaleString()} kg`}
               />
               {/* MM-DD label rotated to avoid overflow in narrow columns */}
-              <span className="text-[8px] text-white/30 rotate-[-45deg] origin-top-left whitespace-nowrap">
+              <span className="text-[11px] text-white/30 rotate-[-45deg] origin-top-left whitespace-nowrap">
                 {week.slice(5)}
               </span>
             </div>
@@ -253,16 +253,16 @@ function SessionHistoryList({
           return (
             <div
               key={session.id}
-              className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden"
+              className="rounded-xl border border-white/10 bg-white/[0.045] overflow-hidden"
             >
               <button
                 type="button"
                 onClick={() => setExpandedId(isExpanded ? null : session.id)}
-                className="w-full flex items-center justify-between p-3 text-left hover:bg-white/[0.03] transition-colors"
+                className="w-full flex items-center justify-between p-3 text-left hover:bg-white/[0.045] transition-colors"
               >
                 <div>
                   <p className="text-xs font-bold text-white/80">{displayName}</p>
-                  <p className="text-[10px] text-white/40">
+                  <p className="text-[11px] text-white/40">
                     {new Date(session.date).toLocaleDateString()} · {totalSets} sets completed
                   </p>
                 </div>
@@ -281,14 +281,14 @@ function SessionHistoryList({
                     exit={{ height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-3 pb-3 space-y-1.5 border-t border-white/5">
+                    <div className="px-3 pb-3 space-y-1.5 border-t border-white/[0.09]">
                       {session.exercises.map(log => {
                         const completed = log.sets.filter(s => s.completed);
                         if (completed.length === 0) return null;
                         return (
                           <div key={log.exerciseName} className="flex items-center justify-between">
-                            <span className="text-[10px] text-white/60">{log.exerciseName}</span>
-                            <span className="text-[10px] text-white/40">
+                            <span className="text-[11px] text-white/60">{log.exerciseName}</span>
+                            <span className="text-[11px] text-white/40">
                               {completed
                                 .map(s => `${s.weight ?? '—'}×${s.repsCompleted}`)
                                 .join(', ')}
@@ -297,7 +297,7 @@ function SessionHistoryList({
                         );
                       })}
                       {session.notes && (
-                        <p className="text-[10px] text-white/30 italic mt-2">{session.notes}</p>
+                        <p className="text-[11px] text-white/30 italic mt-2">{session.notes}</p>
                       )}
                     </div>
                   </motion.div>

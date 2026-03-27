@@ -42,15 +42,15 @@ export function FormSection({
   return (
     <div
       className={cn(
-        'relative bg-white/[0.02] backdrop-blur-sm border border-white/5 rounded-3xl overflow-hidden',
+        'relative bg-white/[0.045] backdrop-blur-sm border border-white/[0.09] rounded-3xl overflow-hidden',
         className
       )}
     >
       {/* Section Header */}
       <div
         className={cn(
-          'px-6 py-4 border-b border-white/5',
-          collapsible && 'cursor-pointer hover:bg-white/[0.02] transition-colors'
+          'px-6 py-4 border-b border-white/[0.09]',
+          collapsible && 'cursor-pointer hover:bg-white/[0.045] transition-colors'
         )}
         onClick={toggleCollapse}
         role={collapsible ? 'button' : undefined}

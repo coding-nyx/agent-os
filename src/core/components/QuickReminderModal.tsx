@@ -83,7 +83,7 @@ export function QuickReminderModal({
       <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#0b0b12]/95 p-6 shadow-2xl">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+            <div className="h-9 w-9 rounded-xl bg-white/[0.045] border border-white/10 flex items-center justify-center">
               <Bell className="h-4 w-4 text-white/60" />
             </div>
             <div>

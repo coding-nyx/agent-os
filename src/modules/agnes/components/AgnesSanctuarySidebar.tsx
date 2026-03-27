@@ -24,7 +24,7 @@ export const AgnesSanctuarySidebar: React.FC<AgnesSanctuarySidebarProps> = ({
       initial={false}
       animate={{ width: collapsed ? 80 : 300 }}
       className={cn(
-        "relative h-full flex flex-col bg-[#050508]/60 backdrop-blur-3xl border-r border-white/5 transition-all duration-500 ease-in-out z-[var(--z-content)] overflow-hidden",
+        "relative h-full flex flex-col bg-slate-900/70 backdrop-blur-3xl border-r border-white/[0.09] transition-all duration-500 ease-in-out z-[var(--z-content)] overflow-hidden",
       )}
     >
       {!collapsed ? (
@@ -43,9 +43,9 @@ export const AgnesSanctuarySidebar: React.FC<AgnesSanctuarySidebarProps> = ({
             <div className="h-px w-full bg-white/[0.05]" />
             <div className="space-y-4">
               <div className="flex items-center gap-2 px-1">
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Inner World</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">Inner World</span>
               </div>
-              <div className="bg-black/20 rounded-[2rem] border border-white/5 overflow-hidden">
+              <div className="bg-slate-900/50 rounded-[2rem] border border-white/[0.09] overflow-hidden">
                 <BeliefGraph profile={profile} />
               </div>
             </div>
@@ -54,24 +54,24 @@ export const AgnesSanctuarySidebar: React.FC<AgnesSanctuarySidebarProps> = ({
       ) : (
         <div className="flex-1 flex flex-col items-center py-8 gap-8">
            <User className="text-white/20" size={20} />
-           <div className="w-px h-12 bg-white/5" />
+           <div className="w-px h-12 bg-white/[0.045]" />
            <Bot className="text-rose-400/20" size={20} />
         </div>
       )}
 
       {/* Settings Button - Moved UP to avoid global button overlap */}
-      <div className="p-6 mb-20 border-t border-white/5 bg-black/20">
+      <div className="p-6 mb-20 border-t border-white/[0.09] bg-slate-900/50">
         <NeuralButton
           variant="ghost"
           themeColor="indigo"
           onClick={() => window.dispatchEvent(new CustomEvent('agnes:open-settings'))}
           className={cn(
-            "w-full h-11 flex items-center gap-4 px-4 rounded-xl bg-white/[0.03] border border-white/5 text-white/40 hover:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/20 transition-all group",
+            "w-full h-11 flex items-center gap-4 px-4 rounded-xl bg-white/[0.045] border border-white/[0.09] text-white/40 hover:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/20 transition-all group",
             collapsed && "justify-center px-0"
           )}
         >
           <Settings size={16} className="group-hover:rotate-45 transition-transform duration-700" />
-          {!collapsed && <span className="text-[10px] font-black uppercase tracking-widest">Module Settings</span>}
+          {!collapsed && <span className="text-[11px] font-black uppercase tracking-widest">Module Settings</span>}
         </NeuralButton>
       </div>
     </motion.aside>

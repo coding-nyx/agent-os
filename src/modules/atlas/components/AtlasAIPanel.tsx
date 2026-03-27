@@ -273,7 +273,7 @@ export function AtlasAIPanel({
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors rounded-t-[inherit]"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/[0.045] transition-colors rounded-t-[inherit]"
         aria-expanded={isExpanded}
       >
         <div className="flex items-center gap-2">
@@ -282,7 +282,7 @@ export function AtlasAIPanel({
             AI Insights
           </h3>
           {suggestions.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/20 text-violet-300/80 text-[10px] font-bold">
+            <span className="px-1.5 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/20 text-violet-300/80 text-[11px] font-bold">
               {suggestions.length}
             </span>
           )}
@@ -351,7 +351,7 @@ export function AtlasAIPanel({
                         </div>
                         <span
                           className={cn(
-                            'text-[9px] font-bold uppercase tracking-wider shrink-0 px-1.5 py-0.5 rounded',
+                            'text-[11px] font-bold uppercase tracking-wider shrink-0 px-1.5 py-0.5 rounded',
                             suggestion.impact === 'high' &&
                               'bg-rose-500/20 text-rose-400',
                             suggestion.impact === 'medium' &&
@@ -370,7 +370,7 @@ export function AtlasAIPanel({
 
               {/* ── Quick Planning Prompts ── */}
               <div className="pt-2 border-t border-white/10">
-                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Quick Planning</p>
+                <p className="text-[11px] text-white/30 uppercase tracking-widest mb-2">Quick Planning</p>
                 <div className="space-y-1.5">
                   {PLANNING_INTENTS.map((intent) => {
                     const Icon = intent.icon;
@@ -379,7 +379,7 @@ export function AtlasAIPanel({
                         key={intent.label}
                         type="button"
                         onClick={() => onSendMessage?.(intent.prompt)}
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-left group"
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/[0.045] hover:bg-white/10 transition-colors text-left group"
                       >
                         <Icon className="w-3 h-3 text-[var(--module-color-400)] shrink-0" />
                         <span className="text-xs text-white/60 group-hover:text-white/80 transition-colors truncate">

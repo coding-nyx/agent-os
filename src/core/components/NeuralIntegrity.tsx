@@ -40,15 +40,15 @@ export function NeuralIntegrity({ mode, onUpgrade }: NeuralIntegrityProps) {
           ) : (
             <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400" />
           )}
-          <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-white/40">
+          <span className="text-[11px] sm:text-[11px] font-black uppercase tracking-widest text-white/40">
             <span className="hidden sm:inline">Neural Integrity: </span>
             <span className={status === 'obstructed' ? 'text-red-500' : 'text-white'}>{label}</span>
           </span>
         </div>
-        <span className="text-[8px] sm:text-[9px] font-bold text-white/40">{Math.round(score)}%</span>
+        <span className="text-[11px] sm:text-[11px] font-bold text-white/40">{Math.round(score)}%</span>
       </div>
       
-      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+      <div className="h-1 w-full bg-white/[0.045] rounded-full overflow-hidden">
         <motion.div 
           initial={{ width: 0 }}
           animate={{ width: `${score}%` }}
@@ -68,7 +68,7 @@ export function NeuralIntegrity({ mode, onUpgrade }: NeuralIntegrityProps) {
       {isGuest && score < 95 && status === 'connected' && onUpgrade && (
         <button 
           onClick={onUpgrade}
-          className="text-[8px] font-black uppercase tracking-[0.2em] text-white/50 hover:text-indigo-400 transition-colors text-left flex items-center gap-1 mt-1 italic"
+          className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 hover:text-indigo-400 transition-colors text-left flex items-center gap-1 mt-1 italic"
         >
           Secure Neural Link Permanently →
         </button>

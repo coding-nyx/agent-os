@@ -126,12 +126,12 @@ function DebugThoughtPanelInner({ message, flags }: { message: Message; flags: D
               {(meta.apiLatencyMs !== undefined || meta.apiRequestSnippet) && (
                 <DebugSection title="API">
                   {meta.apiLatencyMs !== undefined && (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 text-[10px] font-mono font-bold mb-1.5">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 text-[11px] font-mono font-bold mb-1.5">
                       {meta.apiLatencyMs}ms
                     </span>
                   )}
                   {meta.apiRequestSnippet && (
-                    <code className="block text-[10px] font-mono text-white/40 break-all leading-relaxed">
+                    <code className="block text-[11px] font-mono text-white/40 break-all leading-relaxed">
                       {meta.apiRequestSnippet.slice(0, 500)}
                     </code>
                   )}
@@ -167,7 +167,7 @@ function DebugSection({
 }) {
   return (
     <div>
-      <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-amber-500/60 mb-1">
+      <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-amber-500/60 mb-1">
         {title}
       </p>
       {children}

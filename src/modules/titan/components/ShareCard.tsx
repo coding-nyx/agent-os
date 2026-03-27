@@ -339,7 +339,7 @@ function ShareCardPreview({
                 {prWeight} kg&thinsp;×&thinsp;{prReps}
               </p>
             )}
-            <div className="border-t border-white/[0.08] pt-3">
+            <div className="border-t border-white/[0.09] pt-3">
               {prDate && <p className="text-xs text-white/40">{formatDate(prDate)}</p>}
             </div>
           </>
@@ -356,51 +356,51 @@ function ShareCardPreview({
               {totalSets !== undefined && (
                 <div>
                   <p className={cn('text-lg font-black', accentTextClass)}>{totalSets}</p>
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider">Sets</p>
+                  <p className="text-[11px] text-white/40 uppercase tracking-wider">Sets</p>
                 </div>
               )}
               {totalVolume !== undefined && (
                 <div>
                   <p className={cn('text-lg font-black', accentTextClass)}>{totalVolume} kg</p>
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider">Volume</p>
+                  <p className="text-[11px] text-white/40 uppercase tracking-wider">Volume</p>
                 </div>
               )}
               {durationMinutes !== undefined && (
                 <div>
                   <p className={cn('text-lg font-black', accentTextClass)}>{durationMinutes} min</p>
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider">Duration</p>
+                  <p className="text-[11px] text-white/40 uppercase tracking-wider">Duration</p>
                 </div>
               )}
             </div>
 
             {/* Exercises */}
             {sessionExercises && sessionExercises.length > 0 && (
-              <div className="border-t border-white/[0.08] pt-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-2">Exercises</p>
+              <div className="border-t border-white/[0.09] pt-3">
+                <p className="text-[11px] font-black uppercase tracking-widest text-white/30 mb-2">Exercises</p>
                 <div className="flex flex-wrap gap-1.5">
                   {sessionExercises.slice(0, 6).map(ex => (
                     <span
                       key={ex}
-                      className={cn('text-[10px] px-2 py-0.5 rounded-full border', accentClass, 'text-white/60')}
+                      className={cn('text-[11px] px-2 py-0.5 rounded-full border', accentClass, 'text-white/60')}
                     >
                       {ex}
                     </span>
                   ))}
                   {sessionExercises.length > 6 && (
-                    <span className="text-[10px] text-white/30">+{sessionExercises.length - 6}</span>
+                    <span className="text-[11px] text-white/30">+{sessionExercises.length - 6}</span>
                   )}
                 </div>
               </div>
             )}
 
             {sessionDate && (
-              <p className="text-[10px] text-white/30 mt-3">{formatDate(sessionDate)}</p>
+              <p className="text-[11px] text-white/30 mt-3">{formatDate(sessionDate)}</p>
             )}
           </>
         )}
 
         {/* Branding */}
-        <p className="absolute bottom-4 right-5 text-[10px] text-white/15 tracking-widest">nexus.app</p>
+        <p className="absolute bottom-4 right-5 text-[11px] text-white/15 tracking-widest">nexus.app</p>
       </div>
     </div>
   );

@@ -74,18 +74,18 @@ export function NexusAgentPresenceStack({
           />
         ))}
         {overflow > 0 ? (
-          <span className="-ml-3 inline-flex h-8 min-w-8 items-center justify-center rounded-full border-2 border-[#090b11] bg-white/[0.08] px-2 text-[10px] font-semibold text-white/78 shadow-[0_8px_18px_rgba(0,0,0,0.28)]">
+          <span className="-ml-3 inline-flex h-8 min-w-8 items-center justify-center rounded-full border-2 border-[#090b11] bg-white/[0.08] px-2 text-[11px] font-semibold text-white/78 shadow-[0_8px_18px_rgba(0,0,0,0.28)]">
             +{overflow}
           </span>
         ) : null}
       </div>
       <div className="min-w-0">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/40">Agents present</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Agents present</p>
         <p className="truncate text-[12px] font-semibold text-white/88">
           {activeParticipants.length > 0 ? `${activeParticipants.length} active` : 'Nexus only'}
         </p>
         {inclusionSummary ? (
-          <p className="truncate text-[10px] text-white/52">{inclusionSummary}</p>
+          <p className="truncate text-[11px] text-white/52">{inclusionSummary}</p>
         ) : null}
       </div>
     </div>

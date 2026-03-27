@@ -45,23 +45,23 @@ export function GuidedIntakeFrame({
 
   return (
     <div className="h-full w-full flex flex-col items-center justify-center p-0 sm:p-4">
-      <div className="relative w-full h-full sm:h-[84vh] flex flex-col bg-black/40 backdrop-blur-xl rounded-none sm:rounded-panel border-x-0 border-y sm:border border-white/10 overflow-hidden shadow-2xl">
+      <div className="relative w-full h-full sm:h-[84vh] flex flex-col bg-slate-900/70 backdrop-blur-xl rounded-none sm:rounded-panel border-x-0 border-y sm:border border-white/[0.12] overflow-hidden shadow-2xl">
         {/* Simplified Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 border-b border-white/5 bg-gradient-to-r from-white/[0.04] to-transparent shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 border-b border-white/[0.09] bg-gradient-to-r from-white/[0.04] to-transparent shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               {statusLabel && (
                 <>
-                  <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">{statusLabel}</span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/50">{statusLabel}</span>
                   <div className="h-1 w-1 rounded-full bg-white/20" />
                 </>
               )}
-              <span className={cn('text-[9px] font-black uppercase tracking-[0.3em]', theme.accent)}>
+              <span className={cn('text-[11px] font-black uppercase tracking-[0.3em]', theme.accent)}>
                 Step {safeStep + 1} of {steps.length}
               </span>
             </div>
             <h2 className={cn('text-lg sm:text-xl font-black italic uppercase tracking-widest', theme.accent)}>{title}</h2>
-            <p className="text-[10px] sm:text-[11px] text-white/50 leading-relaxed max-w-xl">{subtitle}</p>
+            <p className="text-[11px] sm:text-[11px] text-white/50 leading-relaxed max-w-xl">{subtitle}</p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -81,11 +81,11 @@ export function GuidedIntakeFrame({
         </div>
 
         {/* Current Step Helper */}
-        <div className="px-4 sm:px-6 py-2 sm:py-3 border-b border-white/5 bg-white/[0.01] flex items-center justify-between shrink-0">
-           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">
+        <div className="px-4 sm:px-6 py-2 sm:py-3 border-b border-white/[0.09] bg-white/[0.045] flex items-center justify-between shrink-0">
+           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/60">
              Current Focus: <span className="text-white">{steps[safeStep]?.label || 'Intake'}</span>
            </p>
-           <p className="text-[10px] text-white/40 hidden sm:block">
+           <p className="text-[11px] text-white/40 hidden sm:block">
              {steps[safeStep]?.helperText || ''}
            </p>
         </div>
@@ -93,11 +93,11 @@ export function GuidedIntakeFrame({
         {/* Chat Area */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {prelude && preludeCollapsible && (
-            <div className="border-b border-white/5 bg-black/30 shrink-0">
+            <div className="border-b border-white/[0.09] bg-slate-900/60 shrink-0">
               <button
                 onClick={() => setPreludeOpen(prev => !prev)}
                 className={cn(
-                  'w-full flex items-center justify-between px-6 py-2.5 text-[10px] font-black uppercase tracking-widest transition-colors hover:bg-white/[0.03]',
+                  'w-full flex items-center justify-between px-6 py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors hover:bg-white/[0.045]',
                   theme.accent
                 )}
               >
@@ -108,7 +108,7 @@ export function GuidedIntakeFrame({
             </div>
           )}
           {prelude && !preludeCollapsible && (
-            <div className="border-b border-white/5 bg-black/30 shrink-0">{prelude}</div>
+            <div className="border-b border-white/[0.09] bg-slate-900/60 shrink-0">{prelude}</div>
           )}
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">{children}</div>
         </div>

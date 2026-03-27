@@ -143,7 +143,7 @@ export function DataBackupPanel() {
           <DatabaseZap className="w-4 h-4 text-violet-400" />
         </div>
         <div>
-          <p className="text-[9px] uppercase tracking-[0.22em] text-violet-400/60 font-black">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-violet-400/60 font-black">
             Data Portability
           </p>
           <p className="text-xs text-white/40 leading-tight mt-0.5">
@@ -238,7 +238,7 @@ export function DataBackupPanel() {
 
       {/* ── Informational note ───────────────────────────────────────────────── */}
       <div className="px-1">
-        <p className="text-[10px] text-white/20 leading-relaxed">
+        <p className="text-[11px] text-white/20 leading-relaxed">
           <span className="font-bold text-white/30">Privacy note:</span> Exports are stored only on
           your device. Vault-encrypted fields remain encrypted in the file — they are readable only
           with your vault key.

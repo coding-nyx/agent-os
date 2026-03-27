@@ -28,7 +28,7 @@ export function EnergyWaveChart({ points, flattenedUntil }: EnergyWaveChartProps
   const isFlattened = flattenedUntil ? Date.parse(flattenedUntil) > Date.now() : false;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-32" role="img" aria-label="Energy wave chart showing energy, focus, and load over time">
         <defs>
           <linearGradient id="energyGradient" x1="0" x2="1" y1="0" y2="0">

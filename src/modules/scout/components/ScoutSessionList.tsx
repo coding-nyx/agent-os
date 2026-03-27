@@ -28,14 +28,14 @@ const statusLabelMap: Record<ResearchSessionStatus, string> = {
 };
 
 const statusBadgeClasses: Record<ResearchSessionStatus, string> = {
-  idle: 'border-white/10 bg-white/[0.04] text-white/55',
+  idle: 'border-white/[0.09] bg-white/[0.045] text-white/55',
   decomposing: 'border-sky-500/20 bg-sky-500/10 text-sky-300',
   awaiting_review: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
   searching: 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
   synthesizing: 'border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-300',
   complete: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
   error: 'border-rose-500/20 bg-rose-500/10 text-rose-300',
-  cancelled: 'border-white/10 bg-white/[0.03] text-white/40',
+  cancelled: 'border-white/10 bg-white/[0.045] text-white/40',
 };
 
 const statusDotClasses: Record<ResearchSessionStatus, string> = {
@@ -67,7 +67,7 @@ export function ScoutSessionList({ sessions, onSelect, onDelete, activeSessionId
   if (sessions.length === 0) {
     return (
       <div className="surface-foundation flex flex-col items-center justify-center gap-3 rounded-[var(--foundation-radius-card)] border-dashed px-6 py-8 text-center sm:px-8">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/8 bg-white/[0.03] text-white/20">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.09] bg-white/[0.045] text-white/20">
           <Search size={20} aria-hidden="true" />
         </div>
         <p className="text-item-title text-white/72">No research sessions yet</p>
@@ -96,7 +96,7 @@ export function ScoutSessionList({ sessions, onSelect, onDelete, activeSessionId
                 'group flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors',
                 isActive
                   ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]'
-                  : 'border-white/6 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.03]'
+                  : 'border-white/[0.09] bg-white/[0.045] hover:border-white/20 hover:bg-slate-900/60'
               )}
             >
               {/* Status dot */}
@@ -114,18 +114,18 @@ export function ScoutSessionList({ sessions, onSelect, onDelete, activeSessionId
                     {session.topic}
                   </p>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <span className={cn('rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                  <span className={cn('rounded-full border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider',
                     statusBadgeClasses[session.status])}>
                     {statusLabelMap[session.status]}
                   </span>
                   {isActive && (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--module-color-300)]">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--module-color-300)]">
                       Current
                     </span>
                   )}
-                  <span className="text-[10px] text-white/28">{formatUpdatedDate(session.updatedAt)}</span>
+                  <span className="text-[11px] text-white/28">{formatUpdatedDate(session.updatedAt)}</span>
                   {subQuestionCount > 0 && (
-                    <span className="text-[10px] text-white/35">{subQuestionCount} question{subQuestionCount === 1 ? '' : 's'}</span>
+                    <span className="text-[11px] text-white/35">{subQuestionCount} question{subQuestionCount === 1 ? '' : 's'}</span>
                   )}
                 </div>
               </button>

@@ -33,22 +33,22 @@ export function ProgressRow({
   return (
     <div className={cn('space-y-2', className)}>
       <div className="flex items-center justify-between text-xs text-white/60">
-        <span className="uppercase tracking-[0.12em] text-[9px] font-semibold">{isLocked ? 'SECURED' : label}</span>
+        <span className="uppercase tracking-[0.12em] text-[11px] font-semibold">{isLocked ? 'SECURED' : label}</span>
         {!showSkeleton && !isLocked && (
-          <span className="text-[10px] text-white/40">
+          <span className="text-[11px] text-white/40">
             {value}
             {suffix}
           </span>
         )}
       </div>
       {isLocked ? (
-        <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
+        <div className="h-2 w-full rounded-full bg-white/[0.045] overflow-hidden">
           <div className="h-full w-1/3 rounded-full bg-white/10" />
         </div>
       ) : showSkeleton ? (
         <Skeleton className="h-2 w-full rounded-full" />
       ) : (
-        <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
+        <div className="h-2 w-full rounded-full bg-white/[0.045] overflow-hidden">
           <div
             className={cn('h-full rounded-full', accentClassName, isDerived ? 'opacity-50' : '')}
             style={{ width: `${percent}%` }}

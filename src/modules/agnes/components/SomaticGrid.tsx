@@ -63,10 +63,10 @@ export function SomaticGrid({ onLog }: { onLog: (data: { label: string, intensit
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 bg-black/20 rounded-3xl border border-white/5 backdrop-blur-sm">
+    <div className="flex flex-col gap-4 p-4 bg-slate-900/50 rounded-3xl border border-white/[0.09] backdrop-blur-sm">
       <div className="text-center mb-2">
-        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Somatic Input Protocol</span>
-        <p className="text-[10px] text-white/20">Press and hold to increase intensity</p>
+        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">Somatic Input Protocol</span>
+        <p className="text-[11px] text-white/20">Press and hold to increase intensity</p>
       </div>
 
       <div className="grid grid-cols-3 gap-2 aspect-square">
@@ -79,7 +79,7 @@ export function SomaticGrid({ onLog }: { onLog: (data: { label: string, intensit
                 onPointerDown={() => handleStart(r, c)}
                 onPointerUp={handleEnd}
                 onPointerLeave={handleEnd}
-                className="relative rounded-2xl overflow-hidden border border-white/5 bg-white/[0.02] flex flex-col items-center justify-center gap-1 touch-none"
+                className="relative rounded-2xl overflow-hidden border border-white/[0.09] bg-white/[0.045] flex flex-col items-center justify-center gap-1 touch-none"
                 whileTap={{ scale: 0.95 }}
               >
                 <AnimatePresence>
@@ -93,7 +93,7 @@ export function SomaticGrid({ onLog }: { onLog: (data: { label: string, intensit
                     />
                   )}
                 </AnimatePresence>
-                <span className="text-[8px] font-black tracking-widest text-white/40 z-10">{cell.label}</span>
+                <span className="text-[11px] font-black tracking-widest text-white/40 z-10">{cell.label}</span>
                 {isActive && (
                   <motion.div 
                     className="h-1 bg-white/40 rounded-full mt-1 z-10"
@@ -108,7 +108,7 @@ export function SomaticGrid({ onLog }: { onLog: (data: { label: string, intensit
 
       {intensity > 0 && (
         <div className="flex items-center justify-between px-2">
-          <span className="text-[10px] font-mono text-white/20">INTENSITY</span>
+          <span className="text-[11px] font-mono text-white/20">INTENSITY</span>
           <span className="text-xs font-black tabular-nums text-white">{(intensity * 100).toFixed(0)}%</span>
         </div>
       )}

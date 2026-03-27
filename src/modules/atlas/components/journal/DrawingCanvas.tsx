@@ -219,7 +219,7 @@ export function DrawingCanvas({ value, onChange, height = 260, className }: Draw
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
         {/* Pen / Eraser toggle */}
-        <div className="flex items-center gap-1 bg-black/30 rounded-lg border border-white/10 p-1">
+        <div className="flex items-center gap-1 bg-slate-900/60 rounded-lg border border-white/[0.12] p-1">
           <button
             type="button"
             onClick={() => setTool('pen')}
@@ -227,7 +227,7 @@ export function DrawingCanvas({ value, onChange, height = 260, className }: Draw
             aria-pressed={tool === 'pen'}
             className={cn(
               'w-7 h-7 flex items-center justify-center rounded-md transition-colors',
-              tool === 'pen' ? 'bg-violet-500/30 text-violet-300' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+              tool === 'pen' ? 'bg-violet-500/30 text-violet-300' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.045]',
             )}
           >
             <Pen className="w-3.5 h-3.5" />
@@ -239,7 +239,7 @@ export function DrawingCanvas({ value, onChange, height = 260, className }: Draw
             aria-pressed={tool === 'eraser'}
             className={cn(
               'w-7 h-7 flex items-center justify-center rounded-md transition-colors',
-              tool === 'eraser' ? 'bg-amber-500/30 text-amber-300' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+              tool === 'eraser' ? 'bg-amber-500/30 text-amber-300' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.045]',
             )}
           >
             <Eraser className="w-3.5 h-3.5" />
@@ -247,7 +247,7 @@ export function DrawingCanvas({ value, onChange, height = 260, className }: Draw
         </div>
 
         {/* Size */}
-        <div className="flex items-center gap-1 bg-black/30 rounded-lg border border-white/10 p-1">
+        <div className="flex items-center gap-1 bg-slate-900/60 rounded-lg border border-white/[0.12] p-1">
           {SIZES.map((s) => (
             <button
               key={s.label}
@@ -257,7 +257,7 @@ export function DrawingCanvas({ value, onChange, height = 260, className }: Draw
               aria-pressed={size === s.value}
               className={cn(
                 'w-7 h-7 flex items-center justify-center rounded-md text-[11px] font-bold transition-colors',
-                size === s.value ? 'bg-violet-500/30 text-violet-300' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                size === s.value ? 'bg-violet-500/30 text-violet-300' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.045]',
               )}
             >
               {s.label}
@@ -267,7 +267,7 @@ export function DrawingCanvas({ value, onChange, height = 260, className }: Draw
 
         {/* Colour */}
         {tool === 'pen' && (
-          <div className="flex items-center gap-1.5 bg-black/30 rounded-lg border border-white/10 p-1">
+          <div className="flex items-center gap-1.5 bg-slate-900/60 rounded-lg border border-white/[0.12] p-1">
             {COLORS.map((c) => (
               <button
                 key={c.value}
@@ -294,7 +294,7 @@ export function DrawingCanvas({ value, onChange, height = 260, className }: Draw
           onClick={undo}
           disabled={strokes.length === 0}
           aria-label="Undo last stroke"
-          className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/10 bg-black/30 text-white/40 hover:text-white/70 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/[0.12] bg-slate-900/60 text-white/40 hover:text-white/70 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <Undo2 className="w-3.5 h-3.5" />
         </button>
@@ -305,7 +305,7 @@ export function DrawingCanvas({ value, onChange, height = 260, className }: Draw
           onClick={clear}
           disabled={strokes.length === 0}
           aria-label="Clear canvas"
-          className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/10 bg-black/30 text-white/40 hover:text-rose-400 hover:bg-rose-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/[0.12] bg-slate-900/60 text-white/40 hover:text-rose-400 hover:bg-rose-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -320,7 +320,7 @@ export function DrawingCanvas({ value, onChange, height = 260, className }: Draw
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className="w-full rounded-xl border border-white/10 bg-black/40 touch-none"
+        className="w-full rounded-xl border border-white/[0.12] bg-slate-900/70 touch-none"
         style={{ height, cursor: tool === 'eraser' ? 'cell' : 'crosshair' }}
         aria-label="Drawing canvas"
       />

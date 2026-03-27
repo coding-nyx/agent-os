@@ -88,7 +88,7 @@ function ModuleBadge({ moduleId }: { moduleId: ModuleId }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ring-1',
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ring-1',
         colour,
       )}
     >
@@ -105,14 +105,14 @@ interface SeverityBadgeProps {
 function SeverityBadge({ severity }: SeverityBadgeProps) {
   if (severity === 'block') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-300 ring-1 ring-rose-500/40">
+      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-rose-300 ring-1 ring-rose-500/40">
         <ShieldAlert className="h-3 w-3" aria-hidden />
         Blocked
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300 ring-1 ring-amber-500/40">
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-300 ring-1 ring-amber-500/40">
       <AlertTriangle className="h-3 w-3" aria-hidden />
       Warning
     </span>
@@ -148,7 +148,7 @@ function ConflictCard({
     >
       {/* Queue indicator */}
       {queueLength > 1 && (
-        <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-white/50">
+        <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[11px] font-bold text-white/50">
           {queueLength}
         </div>
       )}
@@ -184,7 +184,7 @@ function ConflictCard({
       <div className="flex flex-wrap gap-2">
         <button
           onClick={onProceed}
-          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/70 transition-all hover:bg-white/10 hover:text-white active:scale-95"
+          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs font-semibold text-white/70 transition-all hover:bg-white/10 hover:text-white active:scale-95"
         >
           <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           Proceed Anyway

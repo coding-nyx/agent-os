@@ -212,8 +212,8 @@ export function TitanProposalCard({
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        'rounded-xl border border-white/[0.08] bg-black/40 backdrop-blur-xl overflow-hidden',
-        'shadow-lg shadow-black/20',
+        'rounded-xl border border-white/[0.09] bg-slate-900/80 backdrop-blur-xl overflow-hidden',
+        'shadow-xl shadow-black/40',
         className
       )}
       role="region"
@@ -232,7 +232,7 @@ export function TitanProposalCard({
       )}
 
       {/* ── Header ── */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.09] bg-white/[0.045]">
         <div className="p-1.5 rounded-lg bg-[var(--module-color-500)]/20">
           <Icon className="w-4 h-4 text-[var(--module-color-400)]" />
         </div>
@@ -241,7 +241,7 @@ export function TitanProposalCard({
           type="button"
           onClick={onDismiss}
           disabled={isLoading}
-          className="p-1.5 -mr-1 rounded-lg hover:bg-white/[0.06] transition-colors disabled:opacity-40"
+          className="p-1.5 -mr-1 rounded-lg hover:bg-white/[0.045] transition-colors disabled:opacity-40"
           aria-label="Dismiss proposal"
         >
           <X className="w-4 h-4 text-white/40" />
@@ -254,10 +254,10 @@ export function TitanProposalCard({
       </div>
 
       {/* ── Data Preview (with saving overlay) ── */}
-      <div className="relative px-4 py-3 border-t border-white/[0.04] bg-black/20">
+      <div className="relative px-4 py-3 border-t border-white/[0.09] bg-slate-900/50">
         <DataPreview data={proposal.generatedData} type={proposal.type} />
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 backdrop-blur-[2px] rounded-none">
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-slate-900/80 backdrop-blur-[2px] rounded-none">
             <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--module-color-400)]" />
             <span className="text-xs font-semibold text-white/70 uppercase tracking-widest">Saving…</span>
           </div>
@@ -276,7 +276,7 @@ export function TitanProposalCard({
       )}
 
       {/* ── Actions ── */}
-      <div className="flex items-center gap-2 px-4 py-3 border-t border-white/[0.06] bg-white/[0.02]">
+      <div className="flex items-center gap-2 px-4 py-3 border-t border-white/[0.09] bg-white/[0.045]">
         {proposal.actions.map((action) => {
           const variant = getButtonVariant(action);
           const isActive = activeHandler === action.handler;
@@ -322,17 +322,17 @@ export function TitanProposalSkeleton() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.2 }}
-      className="rounded-xl border border-white/[0.08] bg-black/40 backdrop-blur-xl overflow-hidden shadow-lg shadow-black/20"
+      className="rounded-xl border border-white/[0.09] bg-slate-900/70 backdrop-blur-xl overflow-hidden shadow-lg shadow-black/20"
       aria-busy="true"
       aria-label="Proposal generating…"
     >
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
-        <div className="p-1.5 rounded-lg bg-white/[0.06] animate-pulse">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.09] bg-white/[0.045]">
+        <div className="p-1.5 rounded-lg bg-white/[0.045] animate-pulse">
           <div className="w-4 h-4 rounded bg-white/10" />
         </div>
         <div className="flex-1 h-3.5 rounded-full bg-white/[0.08] animate-pulse max-w-[120px]" />
-        <div className="w-6 h-6 rounded-lg bg-white/[0.04] animate-pulse" />
+        <div className="w-6 h-6 rounded-lg bg-white/[0.045] animate-pulse" />
       </div>
 
       {/* Message line */}
@@ -341,17 +341,17 @@ export function TitanProposalSkeleton() {
       </div>
 
       {/* Data preview skeleton */}
-      <div className="px-4 py-3 border-t border-white/[0.04] bg-black/20 space-y-2.5">
+      <div className="px-4 py-3 border-t border-white/[0.09] bg-slate-900/50 space-y-2.5">
         {[80, 60, 70].map((w, i) => (
           <div key={i} className="flex justify-between items-center gap-4">
-            <div className={`h-2.5 rounded-full bg-white/[0.06] animate-pulse`} style={{ width: `${w * 0.45}%` }} />
+            <div className={`h-2.5 rounded-full bg-white/[0.045] animate-pulse`} style={{ width: `${w * 0.45}%` }} />
             <div className={`h-2.5 rounded-full bg-white/[0.09] animate-pulse`} style={{ width: `${w * 0.35}%` }} />
           </div>
         ))}
       </div>
 
       {/* Action button skeletons */}
-      <div className="flex items-center gap-2 px-4 py-3 border-t border-white/[0.06] bg-white/[0.02]">
+      <div className="flex items-center gap-2 px-4 py-3 border-t border-white/[0.09] bg-white/[0.045]">
         <div className="flex-1 h-8 rounded-lg bg-[var(--module-color-500)]/20 animate-pulse" />
         <div className="flex-1 h-8 rounded-lg bg-white/[0.05] animate-pulse" />
       </div>

@@ -35,6 +35,7 @@ import { OrchestrationStatusChip } from '@/core/components/OrchestrationStatusCh
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
 import { useNexusCoordination } from '../hooks/useNexusCoordination';
 import { ProposalCoordinatorService } from '@/lib/services/proposal-coordinator-service';
+import { SlidersHorizontal, Trash2 } from 'lucide-react';
 
 interface NexusDashboardProps {
   ai: {
@@ -124,18 +125,18 @@ function ClarificationHintBanner({
 }) {
   if (!hint || hint.reasons.length === 0) return null;
   return (
-    <div className="mx-3 mb-2 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-      <span className="mt-0.5 text-amber-400 text-xs shrink-0">⚠</span>
-      <p className="flex-1 text-xs text-amber-300/80 leading-snug">
+    <div className="mx-3 mb-2 flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-3.5 py-2.5 shadow-[inset_0_1px_0_rgba(251,191,36,0.08)]">
+      <svg className="mt-0.5 w-3.5 h-3.5 text-amber-400 shrink-0 flex-none" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+      <p className="flex-1 text-[12px] text-amber-200/85 leading-snug">
         {hint.reasons[0]}
       </p>
       <button
         type="button"
         onClick={onDismiss}
-        className="shrink-0 text-amber-400/60 hover:text-amber-300 text-xs leading-none"
+        className="shrink-0 text-amber-400/50 hover:text-amber-300 text-sm leading-none min-w-[24px] min-h-[24px] flex items-center justify-center"
         aria-label="Dismiss clarification hint"
       >
-        ✕
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
       </button>
     </div>
   );
@@ -567,7 +568,7 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
       type="button"
       data-testid="nexus-open-ops"
       onClick={handleOpenOperations}
-      className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 sm:px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-cyan-100 transition-colors hover:border-cyan-300/35 hover:bg-cyan-300/15 active:bg-cyan-300/20"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.10em] text-cyan-300 transition-all hover:border-cyan-300/45 hover:bg-cyan-300/[0.12] active:scale-95 min-h-[32px]"
     >
       Ops
     </button>
@@ -577,7 +578,7 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
       type="button"
       data-testid="nexus-clear-chat"
       onClick={handleClearChat}
-      className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 sm:px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/60 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white/90 active:bg-white/15"
+      className="inline-flex items-center rounded-lg border border-white/[0.08] bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.10em] text-white/50 transition-all hover:border-white/15 hover:bg-white/[0.07] hover:text-white/80 active:scale-95 min-h-[32px]"
     >
       Clear
     </button>
@@ -725,35 +726,58 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
   return (
     <div className="flex-1 flex flex-col h-full min-h-0">
       <div className="shrink-0 px-3 pt-2 sm:px-4 sm:pt-3">
-        <div className="rounded-2xl border border-cyan-500/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.10),transparent_50%),linear-gradient(180deg,rgba(8,12,18,0.96),rgba(5,8,13,0.98))] px-3 py-2.5 sm:px-4 sm:py-3 shadow-[0_8px_24px_rgba(0,0,0,0.22)]">
-
-          {/*
-           * Responsive layout (single DOM tree, no duplication):
-           *   Mobile  — wraps into 2 rows: [badge · status · presence] then [title]
-           *             + action pills below on their own third row
-           *   Tablet+ — single row: [badge + title · · · actions + status + presence]
-           *
-           * flex-wrap + order utilities reorder items without duplicating nodes.
-           */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-
-            {/* Title greeting — on mobile fills full width (order-1, basis-full); sm+ becomes flex-1 in-line */}
-            <h1 className="order-1 sm:order-1 basis-full sm:basis-auto flex-1 sm:min-w-0 text-[1.1rem] sm:text-base md:text-lg font-bold leading-tight tracking-tight text-white font-display sm:truncate">
+        {/* ── Mobile header (< sm): flat minimal bar ── */}
+        <div className="flex sm:hidden items-center gap-2 py-1">
+          {/* Status dot */}
+          <div className="shrink-0 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
+          {/* Greeting */}
+          <div className="flex-1 min-w-0">
+            <p className="text-[0.8125rem] font-semibold text-white truncate leading-tight">
               {welcomeGreeting}{welcomeName ? `, ${welcomeName}` : ''}
-            </h1>
+            </p>
+          </div>
+          {/* Icon-only actions */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              type="button"
+              data-testid="nexus-open-ops"
+              onClick={handleOpenOperations}
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-400/[0.08] active:scale-90 transition-all"
+              aria-label="Open operations"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              data-testid="nexus-clear-chat"
+              onClick={handleClearChat}
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.05] active:scale-90 transition-all"
+              aria-label="Clear chat"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
 
-            {/* Right cluster — status + presence */}
-            <div className="order-2 flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+        {/* ── Desktop header (≥ sm): full row with status ── */}
+        <div className="hidden sm:block rounded-2xl border border-cyan-500/20 bg-[radial-gradient(ellipse_at_top_left,rgba(34,211,238,0.10)_0%,transparent_60%),linear-gradient(160deg,rgba(10,18,30,0.98)_0%,rgba(5,8,14,0.99)_100%)] px-5 py-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(34,211,238,0.10)]">
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-400/20 flex items-center justify-center shadow-[0_0_10px_rgba(34,211,238,0.15)]">
+              <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-bold leading-tight tracking-tight text-white font-display truncate">
+                {welcomeGreeting}{welcomeName ? `, ${welcomeName}` : ''}
+              </h1>
+              <p className="text-[11px] text-cyan-400/55 font-medium leading-tight mt-0.5">Nexus · Orchestrator</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
               <OrchestrationStatusChip compact variant="minimal" />
               <NexusAgentPresenceStack participants={masterThreadSnapshot.thread.participants} />
-            </div>
-
-            {/* Action pills — order-3: below title on mobile, after presence on sm+ */}
-            <div className="order-3 sm:order-3 flex items-center gap-1.5 sm:gap-2 shrink-0 sm:ml-2">
+              <div className="w-px h-4 bg-white/10" />
               {headerOpsBtn}
               {headerClearBtn}
             </div>
-
           </div>
         </div>
       </div>

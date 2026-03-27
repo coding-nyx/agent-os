@@ -119,7 +119,7 @@ function NotificationItem({ notification, onDismiss }: NotificationItemProps): R
 
   return (
     <div
-      className="relative flex gap-3 px-4 py-3 rounded-lg bg-white/[0.03] border border-white/[0.07] hover:bg-white/[0.06] transition-colors group"
+      className="relative flex gap-3 px-4 py-3 rounded-lg bg-white/[0.045] border border-white/[0.09] hover:bg-white/[0.06] transition-colors group"
       style={{ borderLeftColor: borderColor, borderLeftWidth: '3px' }}
     >
       {/* Severity icon */}
@@ -136,7 +136,7 @@ function NotificationItem({ notification, onDismiss }: NotificationItemProps): R
           {notification.message}
         </p>
         {notification.actionTab && (
-          <p className={cn('text-[10px] font-medium uppercase tracking-wider mt-1', SEVERITY_TEXT_CLASS[notification.severity])}>
+          <p className={cn('text-[11px] font-medium uppercase tracking-wider mt-1', SEVERITY_TEXT_CLASS[notification.severity])}>
             → View {notification.actionTab}
           </p>
         )}
@@ -237,7 +237,7 @@ function AlertRuleRow({ rule, onToggle, onDelete }: AlertRuleRowProps): React.Re
   const severityColor = SEVERITY_TEXT_CLASS[rule.severity];
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-colors group">
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/[0.045] border border-white/[0.09] hover:bg-white/[0.05] transition-colors group">
       {/* Enabled / disabled visibility icon */}
       <div className={cn('shrink-0', rule.isEnabled ? 'text-white/50' : 'text-white/20')}>
         {rule.isEnabled ? <Eye size={13} strokeWidth={2} /> : <EyeOff size={13} strokeWidth={2} />}
@@ -252,19 +252,19 @@ function AlertRuleRow({ rule, onToggle, onDelete }: AlertRuleRowProps): React.Re
           {rule.label}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-          <span className="text-[10px] text-white/35 uppercase tracking-wide">
+          <span className="text-[11px] text-white/35 uppercase tracking-wide">
             {ALERT_TYPE_LABELS[rule.type]}
           </span>
           {rule.threshold !== undefined && (
             <>
-              <span className="text-white/20 text-[10px]">·</span>
-              <span className="text-[10px] text-white/35">
+              <span className="text-white/20 text-[11px]">·</span>
+              <span className="text-[11px] text-white/35">
                 threshold: {rule.threshold}
               </span>
             </>
           )}
-          <span className="text-white/20 text-[10px]">·</span>
-          <span className={cn('text-[10px] uppercase tracking-wide font-medium', severityColor)}>
+          <span className="text-white/20 text-[11px]">·</span>
+          <span className={cn('text-[11px] uppercase tracking-wide font-medium', severityColor)}>
             {rule.severity}
           </span>
         </div>
@@ -312,7 +312,7 @@ function PanelTabBar({ active, onChangeTab, notificationCount }: PanelTabBarProp
               <Bell size={12} strokeWidth={2} />
               Alerts
               {notificationCount > 0 && (
-                <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold w-4 h-4 leading-none">
+                <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-bold w-4 h-4 leading-none">
                   {notificationCount > 99 ? '99+' : notificationCount}
                 </span>
               )}
@@ -439,7 +439,7 @@ export default function AlertsCenter({
         {unreadCount > 0 && (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-500 border border-black text-white text-[9px] font-bold leading-none min-w-[16px] h-4 px-0.5"
+            className="pointer-events-none absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-500 border border-black text-white text-[11px] font-bold leading-none min-w-[16px] h-4 px-0.5"
           >
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
@@ -459,8 +459,8 @@ export default function AlertsCenter({
             'w-96 max-h-[calc(100dvh-5rem)]',
             // Glass dark aesthetic consistent with Ledger module
             'flex flex-col rounded-2xl overflow-hidden',
-            'bg-black/90 backdrop-blur-xl',
-            'border border-white/10',
+            'bg-slate-900/95 backdrop-blur-xl',
+            'border border-white/[0.12]',
             'shadow-[0_16px_48px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.04)]',
           )}
         >
@@ -568,7 +568,7 @@ function NotificationGroup({ label, color, notifications, onDismiss }: Notificat
   return (
     <div className="space-y-1">
       <p
-        className="text-[9px] font-bold uppercase tracking-[0.2em] px-1 pt-2 pb-0.5"
+        className="text-[11px] font-bold uppercase tracking-[0.2em] px-1 pt-2 pb-0.5"
         style={{ color }}
       >
         {label}
@@ -599,7 +599,7 @@ function SettingsTab({ alertRules, onToggle, onDelete, onAddDefaults }: Settings
   if (!hasRules) {
     return (
       <div className="flex flex-col items-center justify-center py-10 px-4 gap-4 text-center">
-        <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full bg-white/[0.045] border border-white/10 flex items-center justify-center">
           <Settings size={16} className="text-white/30" strokeWidth={2} />
         </div>
         <div>
@@ -624,7 +624,7 @@ function SettingsTab({ alertRules, onToggle, onDelete, onAddDefaults }: Settings
 
   return (
     <div className="p-3 space-y-1">
-      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/30 px-1 pt-2 pb-1.5">
+      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/30 px-1 pt-2 pb-1.5">
         Active Rules ({alertRules.length})
       </p>
 
@@ -640,7 +640,7 @@ function SettingsTab({ alertRules, onToggle, onDelete, onAddDefaults }: Settings
       </div>
 
       {/* Add defaults button at bottom, always accessible */}
-      <div className="pt-3 border-t border-white/[0.06] mt-3">
+      <div className="pt-3 border-t border-white/[0.09] mt-3">
         <NeuralButton
           variant="ghost"
           size="sm"

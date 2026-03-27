@@ -48,7 +48,7 @@ export function MoodEnergyPicker({
 }: MoodEnergyPickerProps) {
   return (
     <div
-      className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-black/30 px-2.5 py-2 min-w-0 overflow-hidden"
+      className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-slate-900/60 px-2.5 py-2 min-w-0 overflow-hidden"
       role="group"
       aria-label="Mood and energy selector"
     >
@@ -72,7 +72,7 @@ export function MoodEnergyPicker({
                 'flex-1 min-w-0 flex items-center justify-center h-9 rounded-lg text-base transition-all duration-150 touch-manipulation',
                 isSelected
                   ? 'bg-violet-500/20 border border-violet-500/40 scale-110'
-                  : 'bg-white/5 border border-transparent hover:bg-white/10 hover:scale-105',
+                  : 'bg-white/[0.045] border border-transparent hover:bg-white/10 hover:scale-105',
               )}
             >
               <span role="img" aria-hidden>{emoji}</span>
@@ -114,7 +114,7 @@ export function MoodEnergyPicker({
                 'flex-1 min-w-0 h-6 rounded-md transition-all duration-150 border touch-manipulation',
                 isFilled
                   ? 'bg-emerald-500/30 border-emerald-500/40 hover:bg-emerald-500/40'
-                  : 'bg-white/5 border-white/8 hover:bg-white/10',
+                  : 'bg-white/[0.045] border-white/[0.09] hover:bg-white/10',
                 isSelected && 'ring-1 ring-emerald-400/50 scale-y-110',
               )}
             />

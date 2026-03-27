@@ -69,7 +69,7 @@ export function SystemCommandCenter() {
         aria-label="User Menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-2xl hover:bg-white/5 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 h-auto"
+        className="flex items-center gap-3 bg-slate-900/70 backdrop-blur-xl border border-white/[0.12] px-4 py-2 rounded-2xl hover:bg-white/[0.045] transition-all focus:outline-none focus:ring-2 focus:ring-white/50 h-auto"
         as="button"
         variant="ghost"
       >
@@ -86,7 +86,7 @@ export function SystemCommandCenter() {
                   transition={{ type: 'spring', stiffness: 500, damping: 28 }}
                   className="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-indigo-500 border-2 border-[#010103] flex items-center justify-center"
               >
-                  <span className="text-[9px] font-black text-white leading-none">
+                  <span className="text-[11px] font-black text-white leading-none">
                       {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
               </motion.span>
@@ -98,7 +98,7 @@ export function SystemCommandCenter() {
           <span className="text-xs font-black text-white uppercase tracking-widest leading-none mb-1">
             {profile?.preferredName || (user?.email ? user.email.split('@')[0] : 'Incognito')}
           </span>
-          <span className="text-[9px] font-bold text-white/60 uppercase tracking-[0.2em]">
+          <span className="text-[11px] font-bold text-white/60 uppercase tracking-[0.2em]">
             {identityLabel}
           </span>
         </div>
@@ -107,7 +107,7 @@ export function SystemCommandCenter() {
       <AnimatePresence>
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-0 bg-black/20 md:bg-transparent" aria-hidden="true" onClick={() => { setIsOpen(false); setShowSettings(false); setPurgeStep('IDLE'); }} />
+            <div className="fixed inset-0 z-0 bg-slate-900/50 md:bg-transparent" aria-hidden="true" onClick={() => { setIsOpen(false); setShowSettings(false); setPurgeStep('IDLE'); }} />
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -158,16 +158,16 @@ export function SystemCommandCenter() {
                   ) : !showSettings ? (
                     <motion.div key="main" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4">
                       {/* Identity Section */}
-                      <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                      <div className="p-3 bg-white/[0.045] rounded-xl border border-white/[0.12]">
                         <div className="flex items-center gap-3 mb-2">
                           <Shield className="w-4 h-4 text-indigo-400" />
-                          <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">Neural Identity</span>
+                          <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">Neural Identity</span>
                         </div>
                         <p className="text-xs text-white/60 truncate italic">{user?.email || 'Temporary Session User'}</p>
                       </div>
 
                       {/* Vault inline controls */}
-                      <div className="border-t border-white/5 my-1" />
+                      <div className="border-t border-white/[0.09] my-1" />
                       <VaultPopoverPanel />
 
                       {/* Actions */}
@@ -223,7 +223,7 @@ export function SystemCommandCenter() {
                         )}
                       </div>
 
-                      <div className="pt-2 border-t border-white/10">
+                      <div className="pt-2 border-t border-white/[0.12]">
                         <NeuralButton 
                           variant="ghost"
                           onClick={() => logout()}
@@ -256,31 +256,31 @@ export function SystemCommandCenter() {
                                      type="button"
                                      onClick={() => selectPersistence('STRICT')}
                                      aria-pressed={persistenceMode === 'STRICT'}
-                                     className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${persistenceMode === 'STRICT' ? 'bg-indigo-500/20 border-indigo-500/60' : 'bg-white/[0.05] border-white/10 hover:border-white/20'}`}
+                                     className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${persistenceMode === 'STRICT' ? 'bg-indigo-500/20 border-indigo-500/60' : 'bg-white/[0.05] border-white/[0.12] hover:border-white/20'}`}
                                  >
                                     <div className="flex items-center gap-3 mb-2">
                                         <Shield className="w-5 h-5 text-indigo-400" />
                                         <span className="text-xs font-black uppercase tracking-widest text-white">STRICT_MODE</span>
                                     </div>
-                                    <p className="text-[10px] text-white/60 leading-relaxed whitespace-normal">Vault reference is purged on browser refresh. Maximum security.</p>
+                                    <p className="text-[11px] text-white/60 leading-relaxed whitespace-normal">Vault reference is purged on browser refresh. Maximum security.</p>
                                 </button>
 
                                  <button
                                      type="button"
                                      onClick={() => selectPersistence('SESSION')}
                                      aria-pressed={persistenceMode === 'SESSION'}
-                                     className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${persistenceMode === 'SESSION' ? 'bg-indigo-500/20 border-indigo-500/60' : 'bg-white/[0.05] border-white/10 hover:border-white/20'}`}
+                                     className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${persistenceMode === 'SESSION' ? 'bg-indigo-500/20 border-indigo-500/60' : 'bg-white/[0.05] border-white/[0.12] hover:border-white/20'}`}
                                  >
                                     <div className="flex items-center gap-3 mb-2">
                                         <Clock className="w-5 h-5 text-indigo-400" />
                                         <span className="text-xs font-black uppercase tracking-widest text-white">SESSION_MODE</span>
                                     </div>
-                                    <p className="text-[10px] text-white/60 leading-relaxed whitespace-normal">Vault reference survives page refresh. Purged when tab is closed.</p>
+                                    <p className="text-[11px] text-white/60 leading-relaxed whitespace-normal">Vault reference survives page refresh. Purged when tab is closed.</p>
                                 </button>
                             </div>
                         </div>
 
-                        <div className="pt-4 border-t border-white/10">
+                        <div className="pt-4 border-t border-white/[0.12]">
                             <NeuralButton 
                                 variant="ghost"
                                 onClick={() => setPurgeStep('CONFIRM')}

@@ -123,12 +123,12 @@ function MetricCell({
 }) {
   return (
     <div className={cn('flex flex-col gap-0.5', className)}>
-      <div className="flex items-center gap-1.5 text-white/50 text-[10px] font-semibold uppercase tracking-wider">
+      <div className="flex items-center gap-1.5 text-white/50 text-[11px] font-semibold uppercase tracking-wider">
         <Icon className="size-3 shrink-0" />
         {label}
       </div>
       <span className="text-lg font-black text-white leading-tight">{value}</span>
-      {subtext && <span className="text-[10px] text-white/40">{subtext}</span>}
+      {subtext && <span className="text-[11px] text-white/40">{subtext}</span>}
     </div>
   );
 }
@@ -180,7 +180,7 @@ function ProjectionTooltip({
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[10px] font-bold text-white/60 mb-1.5 uppercase tracking-wider">
+      <label className="block text-[11px] font-bold text-white/60 mb-1.5 uppercase tracking-wider">
         {label}
       </label>
       {children}
@@ -416,7 +416,7 @@ export default function RetirementPlanner({
                   'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150',
                   plan.id === selectedPlan?.id
                     ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
-                    : 'bg-white/5 border-white/10 text-white/50 hover:text-white/80 hover:border-white/20',
+                    : 'bg-white/[0.045] border-white/10 text-white/50 hover:text-white/80 hover:border-white/20',
                 )}
               >
                 {plan.name}
@@ -459,7 +459,7 @@ export default function RetirementPlanner({
 
             {/* Shortfall / surplus */}
             <div className="flex flex-col justify-center gap-1">
-              <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
+              <p className="text-[11px] font-bold text-white/50 uppercase tracking-wider">
                 {liveProjection.shortfallOrSurplus >= 0 ? 'Surplus' : 'Shortfall'}
               </p>
               <p
@@ -473,7 +473,7 @@ export default function RetirementPlanner({
                 {liveProjection.shortfallOrSurplus >= 0 ? '+' : '−'}
                 {formatCurrency(Math.abs(liveProjection.shortfallOrSurplus), currency)}
               </p>
-              <p className="text-[10px] text-white/40">
+              <p className="text-[11px] text-white/40">
                 {liveProjection.shortfallOrSurplus >= 0
                   ? 'You will exceed your target'
                   : 'Increase contributions or reduce target income'}
@@ -497,7 +497,7 @@ export default function RetirementPlanner({
             />
 
             {/* Action row */}
-            <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 pt-1 border-t border-white/5">
+            <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.09]">
               <NeuralButton
                 variant="primary"
                 size="sm"
@@ -598,13 +598,13 @@ export default function RetirementPlanner({
 
         {/* ── 5. Contribution Simulator ───────────────────────────────── */}
         {selectedPlan && (
-          <div className="rounded-xl bg-white/[0.03] border border-white/8 p-5 flex flex-col gap-4">
+          <div className="rounded-xl bg-white/[0.045] border border-white/[0.09] p-5 flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <div className="size-6 rounded-md bg-cyan-500/15 flex items-center justify-center">
                 <TrendingUp className="size-3.5 text-cyan-400" />
               </div>
               <p className="text-sm font-bold text-white/80">Contribution Simulator</p>
-              <span className="ml-auto text-[10px] text-white/30 italic">
+              <span className="ml-auto text-[11px] text-white/30 italic">
                 Changes are not saved automatically
               </span>
             </div>
@@ -629,7 +629,7 @@ export default function RetirementPlanner({
                       className="pl-14"
                     />
                   </div>
-                  <p className="text-[10px] text-white/40 mt-1.5">
+                  <p className="text-[11px] text-white/40 mt-1.5">
                     Required to hit target:{' '}
                     <span className="text-cyan-400 font-semibold">
                       {formatCurrency(requiredContribution, currency)}/mo
@@ -676,7 +676,7 @@ export default function RetirementPlanner({
               >
                 <TrackBadge onTrack={simProjection.onTrack} />
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-white/40 uppercase tracking-wider">
+                  <span className="text-[11px] text-white/40 uppercase tracking-wider">
                     Projected Nest Egg
                   </span>
                   <span className="text-sm font-bold text-white">
@@ -684,7 +684,7 @@ export default function RetirementPlanner({
                   </span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-white/40 uppercase tracking-wider">
+                  <span className="text-[11px] text-white/40 uppercase tracking-wider">
                     {simProjection.shortfallOrSurplus >= 0 ? 'Surplus' : 'Shortfall'}
                   </span>
                   <span
@@ -703,7 +703,7 @@ export default function RetirementPlanner({
                   </span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-white/40 uppercase tracking-wider">
+                  <span className="text-[11px] text-white/40 uppercase tracking-wider">
                     Monthly Income (4%)
                   </span>
                   <span className="text-sm font-bold text-white">
@@ -717,8 +717,8 @@ export default function RetirementPlanner({
 
         {/* ── 6. Plan Details ─────────────────────────────────────────── */}
         {selectedPlan && (
-          <div className="rounded-xl bg-white/[0.02] border border-white/6 p-5">
-            <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-4">
+          <div className="rounded-xl bg-white/[0.045] border border-white/[0.09] p-5">
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-wider mb-4">
               Plan Parameters
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -774,7 +774,7 @@ export default function RetirementPlanner({
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] text-white/40 font-semibold uppercase tracking-wider">
+      <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wider">
         {label}
       </span>
       <span className="text-sm font-semibold text-white/80">{value}</span>
@@ -945,7 +945,7 @@ function PlanCRUDModal({
             min={0}
             step={100}
           />
-          <p className="text-[10px] text-white/40 mt-1">
+          <p className="text-[11px] text-white/40 mt-1">
             Required nest egg = annual income ÷ 4% (25× rule)
           </p>
         </FormField>

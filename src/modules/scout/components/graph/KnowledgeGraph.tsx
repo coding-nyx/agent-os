@@ -143,24 +143,24 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
     <div className={cn("relative w-full h-full flex flex-col", className)}>
       {/* Header bar */}
       <div className="absolute top-3 left-3 right-3 z-10 flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.045] border border-white/10 backdrop-blur-md">
           <div className="w-2 h-2 rounded-full bg-lime-400" />
-          <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider">Knowledge Graph</span>
-          <span className="text-[10px] text-white/30">·</span>
-          <span className="text-[10px] text-white/50">{filteredNodes.length}/{nodes.length} nodes</span>
+          <span className="text-[11px] font-bold text-white/60 uppercase tracking-wider">Knowledge Graph</span>
+          <span className="text-[11px] text-white/30">·</span>
+          <span className="text-[11px] text-white/50">{filteredNodes.length}/{nodes.length} nodes</span>
         </div>
 
         {/* Status count badges */}
         <div className="flex items-center gap-1.5">
-          {verifiedCount > 0 && <span className="text-[9px] px-2 py-0.5 rounded-full bg-lime-500/20 text-lime-400 border border-lime-500/20 font-bold">✅ {verifiedCount}</span>}
-          {pendingCount > 0 && <span className="text-[9px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 font-bold">⏳ {pendingCount}</span>}
-          {contestedCount > 0 && <span className="text-[9px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/20 font-bold">⚠️ {contestedCount}</span>}
+          {verifiedCount > 0 && <span className="text-[11px] px-2 py-0.5 rounded-full bg-lime-500/20 text-lime-400 border border-lime-500/20 font-bold">✅ {verifiedCount}</span>}
+          {pendingCount > 0 && <span className="text-[11px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 font-bold">⏳ {pendingCount}</span>}
+          {contestedCount > 0 && <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/20 font-bold">⚠️ {contestedCount}</span>}
         </div>
 
         <button
           onClick={() => setShowFilters(f => !f)}
-          className={cn("ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wider transition-all",
-            showFilters ? "bg-lime-500/20 border-lime-500/30 text-lime-400" : "bg-white/5 border-white/10 text-white/50 hover:text-white/80"
+          className={cn("ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-bold uppercase tracking-wider transition-all",
+            showFilters ? "bg-lime-500/20 border-lime-500/30 text-lime-400" : "bg-white/[0.045] border-white/10 text-white/50 hover:text-white/80"
           )}
         >
           <SlidersHorizontal className="w-3 h-3" />
@@ -179,16 +179,16 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
           >
             {/* Status filter */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2">Status</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2">Status</p>
               <div className="flex flex-wrap gap-1.5">
                 {(['all', 'verified', 'pending', 'contested'] as StatusFilter[]).map(s => (
                   <button
                     key={s}
                     onClick={() => setStatusFilter(s)}
-                    className={cn("px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all capitalize",
+                    className={cn("px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all capitalize",
                       statusFilter === s
                         ? "bg-lime-500/30 border-lime-500/40 text-lime-400"
-                        : "bg-white/5 border-white/10 text-white/50 hover:text-white/80"
+                        : "bg-white/[0.045] border-white/10 text-white/50 hover:text-white/80"
                     )}
                   >
                     {s}
@@ -199,7 +199,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
 
             {/* Confidence slider */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2">
                 Min Confidence: <span className="text-lime-400">{minConfidence}%</span>
               </p>
               <input
@@ -216,16 +216,16 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
             {/* Tag filter */}
             {allTags.length > 0 && (
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2">Tag</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2">Tag</p>
                 <div className="flex flex-wrap gap-1.5">
                   {allTags.map(tag => (
                     <button
                       key={tag}
                       onClick={() => setTagFilter(prev => prev === tag ? null : tag)}
-                      className={cn("px-2 py-0.5 rounded-full text-[10px] border transition-all",
+                      className={cn("px-2 py-0.5 rounded-full text-[11px] border transition-all",
                         tagFilter === tag
                           ? "bg-violet-500/30 border-violet-500/40 text-violet-300"
-                          : "bg-white/5 border-white/10 text-white/40 hover:text-white/70"
+                          : "bg-white/[0.045] border-white/10 text-white/40 hover:text-white/70"
                       )}
                     >
                       #{tag}
@@ -239,7 +239,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
             {(statusFilter !== 'all' || minConfidence > 0 || tagFilter) && (
               <button
                 onClick={() => { setStatusFilter('all'); setMinConfidence(0); setTagFilter(null); }}
-                className="w-full text-[10px] text-white/40 hover:text-white/70 flex items-center justify-center gap-1 py-1 transition-colors"
+                className="w-full text-[11px] text-white/40 hover:text-white/70 flex items-center justify-center gap-1 py-1 transition-colors"
               >
                 <X className="w-3 h-3" /> Reset filters
               </button>
@@ -328,7 +328,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
                 <text
                   x={gn.x} y={gn.y + gn.r + 15}
                   textAnchor="middle"
-                  className="text-[10px] fill-white/60 font-medium select-none pointer-events-none"
+                  className="text-[11px] fill-white/60 font-medium select-none pointer-events-none"
                 >
                   {gn.label.length > 20 ? gn.label.slice(0, 17) + '...' : gn.label}
                 </text>
@@ -353,17 +353,17 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
                   {selectedNode.type === 'finding' ? (
                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-lime-500/10 border border-lime-500/20">
                       <Zap className="w-3 h-3 text-lime-400" />
-                      <span className="text-[9px] font-black uppercase tracking-widest text-lime-400">Finding</span>
+                      <span className="text-[11px] font-black uppercase tracking-widest text-lime-400">Finding</span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
                       <BookMarked className="w-3 h-3 text-cyan-400" />
-                      <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400">Source</span>
+                      <span className="text-[11px] font-black uppercase tracking-widest text-cyan-400">Source</span>
                     </div>
                   )}
                   {selectedNode.status && (
                     <span className={cn(
-                      "text-[9px] font-bold px-2 py-0.5 rounded-full border",
+                      "text-[11px] font-bold px-2 py-0.5 rounded-full border",
                       selectedNode.status === 'verified' ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/5" : "text-amber-400 border-amber-500/30 bg-amber-500/5"
                     )}>
                       {selectedNode.status}
@@ -381,7 +381,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
               <div className="flex flex-col gap-2">
                 <button 
                   onClick={() => setSelectedId(null)}
-                  className="p-2 rounded-xl hover:bg-white/5 text-white/30 transition-colors"
+                  className="p-2 rounded-xl hover:bg-white/[0.045] text-white/30 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -390,7 +390,7 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
                     href={selectedNode.data.url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 transition-colors"
+                    className="p-2 rounded-xl bg-white/[0.045] hover:bg-white/10 text-white/60 transition-colors"
                   >
                     <ExternalLink className="w-4 h-4" />
                   </a>
@@ -399,12 +399,12 @@ export function KnowledgeGraph({ nodes, sources, onNodeClick, className }: Knowl
             </div>
 
             {selectedNode.type === 'finding' && selectedNode.confidence !== undefined && (
-              <div className="mt-4 pt-4 border-t border-white/5">
-                <div className="flex items-center justify-between text-[10px] mb-2">
+              <div className="mt-4 pt-4 border-t border-white/[0.09]">
+                <div className="flex items-center justify-between text-[11px] mb-2">
                   <span className="text-white/40 uppercase tracking-widest font-bold">Confidence Score</span>
                   <span className="text-lime-400 font-mono">{Math.round(selectedNode.confidence * 100)}%</span>
                 </div>
-                <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                <div className="h-1 rounded-full bg-white/[0.045] overflow-hidden">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${selectedNode.confidence * 100}%` }}

@@ -186,7 +186,7 @@ export function ObjectFieldRenderer({
   return (
     <div
       className={cn(
-        'space-y-4 p-5 bg-white/[0.02] border border-white/5 rounded-2xl'
+        'space-y-4 p-5 bg-white/[0.045] border border-white/[0.09] rounded-2xl'
       )}
     >
       {/* Object header */}

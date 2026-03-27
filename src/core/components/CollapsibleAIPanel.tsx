@@ -305,7 +305,7 @@ export const CollapsibleAIPanel = forwardRef<CollapsibleAIPanelRef, CollapsibleA
                 <Sparkles className="relative h-4 w-4" />
               </span>
               <span className="hidden sm:inline">{persona}</span>
-              <kbd className="ml-1 hidden rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-mono not-italic tracking-normal sm:inline">
+              <kbd className="ml-1 hidden rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-mono not-italic tracking-normal sm:inline">
                 ⌘K
               </kbd>
             </motion.button>
@@ -358,7 +358,7 @@ export const CollapsibleAIPanel = forwardRef<CollapsibleAIPanelRef, CollapsibleA
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <kbd className="hidden rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-mono text-white/40 sm:inline">
+                    <kbd className="hidden rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-mono text-white/40 sm:inline">
                       ⌘K
                     </kbd>
                     <button

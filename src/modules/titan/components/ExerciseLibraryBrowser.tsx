@@ -191,7 +191,7 @@ function CategoryChip({ label, selected, onClick }: CategoryChipProps) {
         'px-3 py-1.5 rounded-xl text-[11px] font-semibold tracking-wide border transition-all duration-200',
         selected
           ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-          : 'bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/60 hover:bg-white/[0.07]',
+          : 'bg-white/[0.045] border-white/[0.08] text-white/40 hover:text-white/60 hover:bg-white/[0.07]',
       )}
     >
       {label}
@@ -211,10 +211,10 @@ function MuscleChip({ label, selected, onClick }: MuscleChipProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        'px-2.5 py-1 rounded-lg text-[10px] font-semibold tracking-wide border transition-all duration-200',
+        'px-2.5 py-1 rounded-lg text-[11px] font-semibold tracking-wide border transition-all duration-200',
         selected
           ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-          : 'bg-white/[0.03] border-white/[0.07] text-white/35 hover:text-white/55 hover:bg-white/[0.06]',
+          : 'bg-white/[0.045] border-white/[0.09] text-white/35 hover:text-white/55 hover:bg-white/[0.06]',
       )}
     >
       {label}
@@ -265,8 +265,8 @@ function ExerciseCard({
       className={cn(
         'border rounded-2xl overflow-hidden transition-colors duration-200',
         isExpanded
-          ? 'border-[var(--module-accent-border)] bg-black/40'
-          : 'border-white/[0.07] bg-white/[0.02] hover:border-white/[0.13] hover:bg-white/[0.04]',
+          ? 'border-[var(--module-accent-border)] bg-slate-900/70'
+          : 'border-white/[0.09] bg-white/[0.045] hover:border-white/[0.13] hover:bg-white/[0.045]',
       )}
     >
       {/* ── Card header — always visible ── */}
@@ -285,7 +285,7 @@ function ExerciseCard({
             </span>
             <span
               className={cn(
-                'px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-widest border',
+                'px-1.5 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-widest border',
                 badgeStyle,
               )}
             >
@@ -306,7 +306,7 @@ function ExerciseCard({
 
           {/* Aliases */}
           {(exercise.aliases ?? []).length > 0 && (
-            <p className="text-[10px] text-white/25 leading-snug truncate">
+            <p className="text-[11px] text-white/25 leading-snug truncate">
               Also: {exercise.aliases!.join(', ')}
             </p>
           )}
@@ -334,11 +334,11 @@ function ExerciseCard({
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
-            <div className="px-4 pt-3 pb-4 space-y-3 border-t border-white/[0.06]">
+            <div className="px-4 pt-3 pb-4 space-y-3 border-t border-white/[0.09]">
               {/* Secondary muscles */}
               {exercise.secondaryMuscles.length > 0 && (
                 <div className="space-y-1">
-                  <span className="block text-[9px] font-bold uppercase tracking-[0.12em] text-white/30">
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-white/30">
                     Secondary Muscles
                   </span>
                   <p className="text-[12px] text-white/55 capitalize leading-snug">
@@ -350,7 +350,7 @@ function ExerciseCard({
               {/* Movement pattern */}
               {exercise.movementPattern && (
                 <div className="space-y-1">
-                  <span className="block text-[9px] font-bold uppercase tracking-[0.12em] text-white/30">
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-white/30">
                     Movement Pattern
                   </span>
                   <p className="text-[12px] text-white/55 capitalize">
@@ -362,7 +362,7 @@ function ExerciseCard({
               {/* Alternatives */}
               {alternatives.length > 0 && (
                 <div className="space-y-1.5">
-                  <span className="block text-[9px] font-bold uppercase tracking-[0.12em] text-white/30">
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-white/30">
                     Alternatives
                   </span>
                   <div className="flex flex-wrap gap-1.5">
@@ -371,7 +371,7 @@ function ExerciseCard({
                         key={alt.id}
                         type="button"
                         onClick={() => onAddExercise?.(alt.name)}
-                        className="px-2 py-1 rounded-lg text-[11px] font-medium bg-white/[0.04] border border-white/[0.09] text-white/45 hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] hover:text-[var(--module-color-300)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--module-accent-ring)]"
+                        className="px-2 py-1 rounded-lg text-[11px] font-medium bg-white/[0.045] border border-white/[0.09] text-white/45 hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] hover:text-[var(--module-color-300)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--module-accent-ring)]"
                       >
                         {alt.name}
                       </button>
@@ -541,10 +541,10 @@ export function ExerciseLibraryBrowser({
               <button
                 onClick={() => { setMatchMyEquipment(v => !v); setEquipmentFilter('any'); setExpandedId(null); }}
                 className={cn(
-                  'px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all whitespace-nowrap',
+                  'px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all whitespace-nowrap',
                   matchMyEquipment
                     ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                    : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white/60',
+                    : 'bg-white/[0.045] border-white/10 text-white/40 hover:bg-white/10 hover:text-white/60',
                 )}
                 title={`Filter to your equipment: ${profileEquipment.join(', ')}`}
               >
@@ -577,7 +577,7 @@ export function ExerciseLibraryBrowser({
               type="button"
               onClick={clearAllFilters}
               aria-label="Clear all filters"
-              className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-white/30 hover:text-white/60 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--module-accent-ring)] rounded"
+              className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-white/30 hover:text-white/60 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--module-accent-ring)] rounded"
             >
               <X className="w-3 h-3" />
               Clear

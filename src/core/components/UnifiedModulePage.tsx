@@ -213,7 +213,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
       <ModuleLayout title={`${title} Intake`} themeColor={themeColor} moduleId={moduleId}>
         <div className="flex-1 flex items-center justify-center p-8">
           <SurfaceCard variant="strong" className="w-full max-w-2xl p-8 space-y-4">
-            <div className="text-[10px] font-black uppercase tracking-[0.3em] italic text-rose-300">
+            <div className="text-[11px] font-black uppercase tracking-[0.3em] italic text-rose-300">
               Onboarding Contract Mismatch
             </div>
             <p className="text-sm text-white/70">
@@ -283,7 +283,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         {workspaceType === 'command' && (
             <div className="flex-1 flex flex-col lg:flex-row h-full min-w-0">
                 {RenderDashboard && (
-                    <div className="w-full lg:w-[400px] xl:w-[450px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 overflow-y-auto no-scrollbar scrollbar-ghost bg-black/20 backdrop-blur-md">
+                    <div className="w-full lg:w-[400px] xl:w-[450px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/[0.09] overflow-y-auto no-scrollbar scrollbar-ghost bg-slate-900/50 backdrop-blur-md">
                         <RenderDashboard profile={profile} encryptionKey={encryptionKey} />
                         <RemindersCard moduleId={moduleId} />
                     </div>
@@ -296,7 +296,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
 
         {workspaceType === 'lab' && (
             <div className="flex-1 flex flex-col lg:flex-row h-full">
-                <div className="flex-1 border-b lg:border-b-0 lg:border-r border-white/5 overflow-y-auto no-scrollbar scrollbar-ghost p-8 bg-black/10 backdrop-blur-sm">
+                <div className="flex-1 border-b lg:border-b-0 lg:border-r border-white/[0.09] overflow-y-auto no-scrollbar scrollbar-ghost p-8 bg-black/10 backdrop-blur-sm">
                     {RenderDashboard ? (
                       <>
                         <RenderDashboard profile={profile} encryptionKey={encryptionKey} />
@@ -310,7 +310,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                       />
                     )}
                 </div>
-                <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col min-h-0 bg-black/20 backdrop-blur-md">
+                <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col min-h-0 bg-slate-900/50 backdrop-blur-md">
                     <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
                 </div>
             </div>
@@ -321,7 +321,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                 <div
                     className={cn(
                         "flex-1 flex flex-col min-h-0",
-                        !noContainer && "bg-black/10 backdrop-blur-[1px] rounded-panel border border-white/5 shadow-2xl overflow-hidden"
+                        !noContainer && "bg-black/10 backdrop-blur-[1px] rounded-panel border border-white/[0.09] shadow-2xl overflow-hidden"
                     )}
                 >
                     <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
@@ -342,8 +342,8 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
         )}
 
         {workspaceType === 'terminal' && (
-            <div className="flex-1 flex flex-col h-full bg-black/40 backdrop-blur-xl">
-                <div className="flex-1 border-b border-white/5 p-4 font-mono text-xs overflow-y-auto no-scrollbar scrollbar-ghost">
+            <div className="flex-1 flex flex-col h-full bg-slate-900/70 backdrop-blur-xl">
+                <div className="flex-1 border-b border-white/[0.09] p-4 font-mono text-xs overflow-y-auto no-scrollbar scrollbar-ghost">
                     {RenderDashboard ? <RenderDashboard profile={profile} encryptionKey={encryptionKey} /> : "FILE_SYSTEM_IDLE"}
                 </div>
                 <div className="h-[40%] flex flex-col min-h-0">

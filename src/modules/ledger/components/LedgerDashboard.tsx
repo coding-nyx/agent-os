@@ -189,7 +189,7 @@ export function LedgerDashboard({
       ? alerts.slice(0, ALERT_COLLAPSE_THRESHOLD)
       : alerts;
   const runwayToneByStatus = {
-    needs_data: 'border-white/10 bg-white/[0.03] text-white/70',
+    needs_data: 'border-white/10 bg-white/[0.045] text-white/70',
     stable: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-300',
     healthy: 'border-sky-500/20 bg-sky-500/5 text-sky-300',
     watch: 'border-amber-500/20 bg-amber-500/5 text-amber-300',
@@ -239,7 +239,7 @@ export function LedgerDashboard({
       {!profile ? (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="animate-pulse bg-white/5 rounded-lg h-24" />
+            <div key={i} className="animate-pulse bg-white/[0.045] rounded-lg h-24" />
           ))}
         </div>
       ) : (
@@ -256,7 +256,7 @@ export function LedgerDashboard({
             "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]",
             activeView === 'overview'
               ? "bg-[var(--module-accent)] text-white"
-              : "bg-white/5 text-white/60 hover:bg-white/10"
+              : "bg-white/[0.045] text-white/60 hover:bg-white/10"
           )}
         >
           Overview
@@ -269,7 +269,7 @@ export function LedgerDashboard({
             "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]",
             activeView === 'cashflow'
               ? "bg-[var(--module-accent)] text-white"
-              : "bg-white/5 text-white/60 hover:bg-white/10"
+              : "bg-white/[0.045] text-white/60 hover:bg-white/10"
           )}
         >
           <TrendingUp className="w-3 h-3 inline mr-1" />
@@ -283,7 +283,7 @@ export function LedgerDashboard({
             "px-4 py-2 min-h-[44px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]",
             activeView === 'debt'
               ? "bg-[var(--module-accent)] text-white"
-              : "bg-white/5 text-white/60 hover:bg-white/10"
+              : "bg-white/[0.045] text-white/60 hover:bg-white/10"
           )}
         >
           <Target className="w-3 h-3 inline mr-1" />
@@ -298,7 +298,7 @@ export function LedgerDashboard({
             "px-3 py-2 rounded-lg text-xs font-semibold transition-colors border",
             behavioralEnabled
               ? "bg-violet-500/20 border-violet-500/30 text-violet-300"
-              : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10"
+              : "bg-white/[0.045] border-white/10 text-white/50 hover:bg-white/10"
           )}
         >
           {behavioralEnabled ? '✦ Behavioral Insights On' : 'Enable Behavioral Insights'}
@@ -332,7 +332,7 @@ export function LedgerDashboard({
                         exit={{ opacity: 0, x: -6 }}
                         transition={{ duration: 0.18, ease: 'easeOut' }}
                         className={cn(
-                          'flex items-start gap-3 px-4 py-2.5 rounded-lg border bg-white/5',
+                          'flex items-start gap-3 px-4 py-2.5 rounded-lg border bg-white/[0.045]',
                           isDanger
                             ? 'border-red-500/30 border-l-2 border-l-red-500'
                             : isInfo
@@ -381,7 +381,7 @@ export function LedgerDashboard({
                 {alerts.length > ALERT_COLLAPSE_THRESHOLD && (
                   <button
                     onClick={() => setAlertsExpanded((prev) => !prev)}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-[11px] font-bold text-white/60 uppercase tracking-wider"
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.045] border border-white/10 hover:bg-white/10 transition-colors text-[11px] font-bold text-white/60 uppercase tracking-wider"
                     aria-expanded={alertsExpanded}
                     aria-label={
                       alertsExpanded
@@ -564,7 +564,7 @@ export function LedgerDashboard({
             ) : (
               <div className="space-y-3">
                 {recentTransactions.map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                  <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.045]">
                     <div className="flex-1">
                       <p className="text-sm font-medium text-white">{tx.description}</p>
                       <p className="text-xs text-white/60">{tx.category} · {tx.date}</p>
@@ -677,7 +677,7 @@ export function LedgerDashboard({
             ) : (
               <div className="space-y-2">
                 {recentEvents.slice(0, 8).map((evt) => (
-                  <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/5 border border-white/10">
+                  <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/[0.045] border border-white/10">
                     <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--module-color-400)]" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-white/80 truncate">
@@ -711,7 +711,7 @@ export function LedgerDashboard({
               <div className="mt-6 space-y-3">
                 <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">Debt Items</h4>
                 {profile?.debtItems.map((debt) => (
-                  <div key={debt.id} className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div key={debt.id} className="p-3 rounded-lg bg-white/[0.045] border border-white/10">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-white">{debt.name}</span>
                       <span className="text-sm font-bold text-[var(--module-color-400)]">
@@ -738,7 +738,7 @@ export function LedgerDashboard({
                 ) : (
                   <div className="space-y-2">
                     {recentEvents.slice(0, 8).map((evt) => (
-                      <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/5 border border-white/10">
+                      <div key={evt.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-white/[0.045] border border-white/10">
                         <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--module-color-400)]" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-white/80 truncate">

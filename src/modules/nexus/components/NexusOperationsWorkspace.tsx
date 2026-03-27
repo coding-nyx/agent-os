@@ -50,7 +50,7 @@ function OpsSection({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/82">{title}</p>
             {badge ? (
-              <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/52">
+              <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/52">
                 {badge}
               </span>
             ) : null}
@@ -181,7 +181,7 @@ export function NexusOperationsWorkspace({
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200/70">Nexus operations</p>
+                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-200/70">Nexus operations</p>
                   <p className="mt-2 max-w-2xl text-sm text-white/55">
                     Thread review, memory utilities, alive inputs, and execution queues.
                   </p>
@@ -221,12 +221,12 @@ export function NexusOperationsWorkspace({
               </div>
 
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3">
+                <div className="rounded-2xl border border-white/10 bg-slate-900/50 px-3 py-3">
                   <NexusAgentPresenceStack participants={masterThreadSnapshot.thread.participants} />
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <OrchestrationStatusChip compact variant="minimal" />
-                  <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                  <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
                     isNexusBusy
                       ? 'border-amber-500/20 bg-amber-500/10 text-amber-200'
                       : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
@@ -236,7 +236,7 @@ export function NexusOperationsWorkspace({
                   {topStats.map((item) => (
                     <span
                       key={item.label}
-                      className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60"
+                      className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60"
                     >
                       {item.label}: {item.value}
                     </span>
@@ -281,7 +281,7 @@ export function NexusOperationsWorkspace({
                 onRetryExecution={handleExecutionRetry}
               />
             ) : (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-white/45">
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.045] px-4 py-5 text-sm text-white/45">
                 Thread review is currently hidden in the shell state. Re-open it from command if you need the full thread monitor.
               </div>
             )}
@@ -332,7 +332,7 @@ export function NexusOperationsWorkspace({
               <button
                 type="button"
                 onClick={() => openNexusCommandPalette('Search my memory: ')}
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-4 text-left transition-colors hover:border-cyan-400/20 hover:bg-cyan-400/[0.04]"
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.045] px-4 py-4 text-left transition-colors hover:border-cyan-400/20 hover:bg-cyan-400/[0.04]"
               >
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65">No memory search active</p>

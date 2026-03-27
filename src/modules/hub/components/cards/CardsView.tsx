@@ -19,7 +19,7 @@ export const ModuleCard = React.memo(function ModuleCard({
         "group relative rounded-[28px] border transition-colors duration-200 text-left overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-black",
         isPlugin ? "p-5 w-full shrink-0" : "p-5 sm:p-7",
         isLocked
-          ? "bg-white/[0.028] border-white/[0.07] opacity-55 hover:opacity-70 cursor-not-allowed"
+          ? "bg-white/[0.028] border-white/[0.09] opacity-55 hover:opacity-70 cursor-not-allowed"
           : [
               "bg-[rgba(255,255,255,0.048)] backdrop-blur-3xl border-white/[0.12]",
               "hover:border-white/[0.22] hover:bg-[rgba(255,255,255,0.065)]",
@@ -60,7 +60,7 @@ export const ModuleCard = React.memo(function ModuleCard({
         )}
         {stat && (
           <div className={cn(
-            "flex items-center justify-between border-t border-white/[0.08]",
+            "flex items-center justify-between border-t border-white/[0.09]",
             isPlugin ? "mt-3.5 pt-3.5" : "mt-1 pt-5"
           )}>
             <span className="text-[11px] uppercase tracking-[0.15em] text-white/45 font-semibold truncate">{stat.label}</span>

@@ -93,7 +93,7 @@ function InlineStat({ label, value, accent }: { label: string; value: number; ac
         accent ? 'text-[var(--module-color-400)]' : 'text-white')}>
         {value}
       </span>
-      <span className="text-[9px] font-semibold uppercase tracking-[0.25em] text-white/35">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/35">
         {label}
       </span>
     </div>
@@ -141,7 +141,7 @@ export function ScoutDashboard({
     <div className="mx-auto flex w-full min-w-0 max-w-[var(--shell-content-max,80rem)] flex-col gap-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
 
       {/* Inquiry hero */}
-      <section className="relative overflow-hidden rounded-3xl border border-white/8 bg-white/[0.02] px-6 py-5">
+      <section className="relative overflow-hidden rounded-3xl border border-white/[0.09] bg-white/[0.045] px-6 py-5">
         <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[var(--module-accent-glow)] blur-3xl" />
 
         <p className="text-chip-soft text-[var(--module-color-400)]">Scout · Knowledge Cartographer</p>
@@ -187,7 +187,7 @@ export function ScoutDashboard({
 
       {/* Compact inline stats strip */}
       <div className="relative">
-        <div className="flex items-stretch divide-x divide-white/8 overflow-x-auto scrollbar-none rounded-2xl border border-white/8 bg-white/[0.02]">
+        <div className="flex items-stretch divide-x divide-white/8 overflow-x-auto scrollbar-none rounded-2xl border border-white/[0.09] bg-white/[0.045]">
         <InlineStat label="Nodes"    value={nodes.length} accent />
         <InlineStat label="Sources"  value={sources.length} />
         <InlineStat label="Verified" value={verified} />
@@ -225,12 +225,12 @@ export function ScoutDashboard({
           </section>
 
           <section className="surface-foundation flex min-w-0 flex-col gap-4 p-4 sm:p-5" aria-label="Research sessions">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.09] pb-4">
               <div className="flex items-center gap-2">
                 <Clock size={13} className="text-[var(--module-color-300)]" aria-hidden="true" />
                 <h2 className="text-panel-heading text-white">Research sessions</h2>
               </div>
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/60">
+              <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-white/60">
                 {formatSessionCountLabel(sessions.length)}
               </span>
             </div>
@@ -246,7 +246,7 @@ export function ScoutDashboard({
 
         <div className="space-y-4 sm:space-y-6">
           <section className="surface-foundation min-w-0 p-4 sm:p-5" aria-label="Briefings and insights">
-            <div className="border-b border-white/8 pb-4">
+            <div className="border-b border-white/[0.09] pb-4">
               <p className="text-chip-soft text-fuchsia-300">Briefings</p>
               <h2 className="mt-1 text-panel-heading text-white">Trend briefings</h2>
             </div>
@@ -255,9 +255,9 @@ export function ScoutDashboard({
               {newsBriefs.slice(0, 5).map((brief, index) => (
                 <article
                   key={`news-${index}`}
-                  className="rounded-3xl border border-white/8 bg-white/[0.03] p-4"
+                  className="rounded-3xl border border-white/[0.09] bg-white/[0.045] p-4"
                 >
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-fuchsia-300/90">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-300/90">
                     {brief.topic}
                   </p>
                   <p className="mt-2 break-words text-body-secondary text-white/70">{brief.summary}</p>

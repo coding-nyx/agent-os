@@ -87,7 +87,7 @@ function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps)
   if (!active || !payload || payload.length === 0) return null;
 
   return (
-    <div className="bg-black/80 border border-white/10 rounded-xl p-3 text-xs shadow-xl backdrop-blur-xl">
+    <div className="bg-slate-900/90 border border-white/[0.12] rounded-xl p-3 text-xs shadow-xl backdrop-blur-xl">
       <p className="text-white/60 mb-2 font-semibold">Month {label}</p>
       {payload.map((entry) => (
         <div key={entry.name} className="flex items-center gap-2 mb-1">
@@ -151,7 +151,7 @@ function StrategySummaryCard({ result, currency, isBetter }: StrategySummaryCard
               {label}
             </h3>
             {isBetter && (
-              <span className={cn('text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full', accentBg, accentText)}>
+              <span className={cn('text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full', accentBg, accentText)}>
                 Recommended
               </span>
             )}
@@ -453,7 +453,7 @@ export function DebtStrategist({
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: debtItems.filter(d => d.balance > 0).sort((a, b) => b.apr - a.apr).indexOf(debt) * 0.04, duration: 0.2 }}
-                className="flex items-center justify-between py-2 border-b border-white/5 last:border-0"
+                className="flex items-center justify-between py-2 border-b border-white/[0.09] last:border-0"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-1.5 h-1.5 rounded-full bg-[var(--module-color-400)] flex-shrink-0" />

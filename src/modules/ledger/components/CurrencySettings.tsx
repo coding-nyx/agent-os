@@ -106,7 +106,7 @@ export default function CurrencySettings({
           {storedRates.length > 0 && (
             <div className="divide-y divide-white/5 rounded-xl border border-white/10 overflow-hidden">
               {storedRates.map(r => (
-                <div key={`${r.from}-${r.to}`} className="flex items-center justify-between px-4 py-2.5 bg-white/5">
+                <div key={`${r.from}-${r.to}`} className="flex items-center justify-between px-4 py-2.5 bg-white/[0.045]">
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-mono text-white/80">{r.from} → {r.to}</span>
                     <span className="text-sm text-cyan-400 font-medium">{r.rate.toFixed(4)}</span>

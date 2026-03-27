@@ -114,12 +114,12 @@ export function CodeBlock({ children, className }: CodeBlockProps) {
   }, [rawText]);
 
   return (
-    <div className="chat-code-block group/code relative my-3 first:mt-0 last:mb-0 rounded-xl overflow-hidden border border-white/[0.07] bg-[#0d0d14] shadow-lg">
+    <div className="chat-code-block group/code relative my-3 first:mt-0 last:mb-0 rounded-xl overflow-hidden border border-white/[0.09] bg-[#0d0d14] shadow-lg">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06] bg-white/[0.02]">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.09] bg-white/[0.045]">
         <div className="flex items-center gap-2">
           <Terminal className="w-3 h-3 text-white/25 shrink-0" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/30 select-none">
+          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/30 select-none">
             {langLabel ?? 'Code'}
           </span>
         </div>
@@ -128,10 +128,10 @@ export function CodeBlock({ children, className }: CodeBlockProps) {
           onClick={handleCopy}
           aria-label={copied ? 'Copied to clipboard' : 'Copy code'}
           className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all duration-200 select-none',
+            'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all duration-200 select-none',
             copied
               ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-              : 'bg-white/[0.03] hover:bg-white/[0.08] text-white/30 hover:text-white/60 border border-white/5 hover:border-white/10'
+              : 'bg-white/[0.045] hover:bg-white/[0.08] text-white/30 hover:text-white/60 border border-white/[0.09] hover:border-white/10'
           )}
         >
           {copied ? (

@@ -58,7 +58,7 @@ export function NeuralModal({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={reducedMotion ? { duration: 0 } : undefined}
-                  className="fixed inset-0 z-[var(--z-modal)] bg-black/80 backdrop-blur-md"
+                  className="fixed inset-0 z-[var(--z-modal)] bg-slate-900/90 backdrop-blur-md"
                 />
               </Dialog.Overlay>
 
@@ -102,7 +102,7 @@ export function NeuralModal({
                       </button>
                     </Dialog.Close>
 
-                    <div className={cn("shrink-0 border-b border-white/5", theme.bg)}>
+                    <div className={cn("shrink-0 border-b border-white/[0.09]", theme.bg)}>
                       {/* Mobile drag handle */}
                       <div className="flex justify-center pt-3 pb-1 shrink-0 sm:hidden cursor-grab active:cursor-grabbing" aria-hidden>
                         <div className="w-10 h-1 rounded-full bg-white/20" />
@@ -111,7 +111,7 @@ export function NeuralModal({
                       <div className="px-5 pt-2 pb-5 sm:p-8">
                         <div className="flex items-center gap-3 sm:gap-4">
                           {Icon && (
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-panel flex items-center justify-center border border-white/10 bg-black/40 shadow-xl">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-panel flex items-center justify-center border border-white/[0.12] bg-slate-900/70 shadow-xl">
                               <Icon className={cn("w-5 h-5 sm:w-6 sm:h-6", theme.color)} />
                             </div>
                           )}

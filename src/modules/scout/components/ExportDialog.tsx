@@ -83,7 +83,7 @@ export function ExportDialog({ isOpen, onClose, target }: ExportDialogProps) {
         className="w-full max-w-2xl bg-[#0a0c11] border border-white/10 rounded-2xl flex flex-col max-h-[80vh] overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/8">
+        <div className="flex items-center justify-between p-5 border-b border-white/[0.09]">
           <div>
             <h2 className="text-sm font-bold text-white/80 uppercase tracking-widest">
               Export — {label}
@@ -101,14 +101,14 @@ export function ExportDialog({ isOpen, onClose, target }: ExportDialogProps) {
 
         {/* Preview */}
         <div className="flex-1 overflow-y-auto p-4">
-          <pre className="text-xs text-white/40 font-mono leading-relaxed whitespace-pre-wrap bg-white/[0.02] rounded-xl p-4 border border-white/5">
+          <pre className="text-xs text-white/40 font-mono leading-relaxed whitespace-pre-wrap bg-white/[0.045] rounded-xl p-4 border border-white/[0.09]">
             {markdown.slice(0, 3000)}
             {markdown.length > 3000 && '\n\n… (truncated in preview)'}
           </pre>
         </div>
 
         {/* Actions */}
-        <div className="border-t border-white/8 p-4 flex items-center justify-end gap-2">
+        <div className="border-t border-white/[0.09] p-4 flex items-center justify-end gap-2">
           <NeuralButton
             variant="outline"
             onClick={onClose}

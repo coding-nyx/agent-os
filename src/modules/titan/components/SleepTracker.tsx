@@ -187,7 +187,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
         {chartData.length > 0 && (
           <SurfaceCard className="p-4">
             <div className="mb-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/50">
                 Sleep Quality — Last 7 Nights
               </p>
             </div>
@@ -209,7 +209,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
               {recent.slice(0, 7).map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-center justify-between px-3 py-2.5 min-h-[2.75rem] rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors gap-2"
+                  className="flex items-center justify-between px-3 py-2.5 min-h-[2.75rem] rounded-xl bg-white/[0.045] border border-white/[0.09] hover:bg-white/[0.045] transition-colors gap-2"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <Moon className="w-3.5 h-3.5 text-[var(--module-color-400)] shrink-0" />
@@ -217,13 +217,13 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-white/80">{entry.date}</span>
                         {entry.tags?.map(t => (
-                          <span key={t} className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-white/5 border border-white/10 text-white/40">
+                          <span key={t} className="px-1.5 py-0.5 rounded text-[11px] font-black uppercase tracking-wider bg-white/[0.045] border border-white/10 text-white/40">
                             {t.replace('_', ' ')}
                           </span>
                         ))}
                       </div>
                       {entry.notes && (
-                        <p className="text-[10px] text-white/40 truncate mt-0.5">{entry.notes}</p>
+                        <p className="text-[11px] text-white/40 truncate mt-0.5">{entry.notes}</p>
                       )}
                     </div>
                   </div>
@@ -232,21 +232,21 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
                       <div className={cn('text-xs font-black tabular-nums', durationColor(entry.durationHours))}>
                         {entry.durationHours.toFixed(1)}h
                       </div>
-                      <div className="text-[9px] text-white/40 uppercase">duration</div>
+                      <div className="text-[11px] text-white/40 uppercase">duration</div>
                     </div>
                     {entry.hrv && (
                       <div className="text-right">
                         <div className="text-xs font-black tabular-nums text-emerald-400">
                           {entry.hrv}
                         </div>
-                        <div className="text-[9px] text-white/40 uppercase">hrv ms</div>
+                        <div className="text-[11px] text-white/40 uppercase">hrv ms</div>
                       </div>
                     )}
                     <div className="text-right">
                       <div className={cn('text-sm font-black tabular-nums', qualityColor(entry.quality))}>
-                        {entry.quality}<span className="text-[9px] text-white/40">/10</span>
+                        {entry.quality}<span className="text-[11px] text-white/40">/10</span>
                       </div>
-                      <div className={cn('text-[9px] uppercase tracking-wider font-black', qualityColor(entry.quality))}>
+                      <div className={cn('text-[11px] uppercase tracking-wider font-black', qualityColor(entry.quality))}>
                         {qualityLabel(entry.quality)}
                       </div>
                     </div>
@@ -303,7 +303,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Sleep Quality</label>
+              <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">Sleep Quality</label>
               <span className={cn('text-sm font-black tabular-nums', qualityColor(quality))}>
                 {quality}/10 — {qualityLabel(quality)}
               </span>
@@ -362,7 +362,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
           </div>
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Factors (optional)</label>
+            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">Factors (optional)</label>
             <div className="flex flex-wrap gap-2">
               {SLEEP_TAGS.map(tag => (
                 <NeuralButton
@@ -371,10 +371,10 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
                   size="sm"
                   onClick={() => toggleTag(tag)}
                   className={cn(
-                    'px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all h-auto',
+                    'px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all h-auto',
                     selectedTags.includes(tag)
                       ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                      : 'bg-white/5 border border-white/10 text-white/40 hover:bg-white/10 hover:text-white/60'
+                      : 'bg-white/[0.045] border border-white/10 text-white/40 hover:bg-white/10 hover:text-white/60'
                   )}
                 >
                   {tag.replace('_', ' ')}
@@ -384,7 +384,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
           </div>
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Notes (optional)</label>
+            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">Notes (optional)</label>
             <NeuralTextarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
@@ -400,7 +400,7 @@ export function SleepTracker({ sleepLog, onAnalyze, directWriteMode = false, onD
             </p>
           )}
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
+          <div className="flex justify-end gap-3 pt-2 border-t border-white/[0.09]">
             <NeuralButton variant="ghost" onClick={() => closeModal()}>
               Cancel
             </NeuralButton>

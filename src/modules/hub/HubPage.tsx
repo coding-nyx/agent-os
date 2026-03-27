@@ -247,7 +247,7 @@ export default function HubPage() {
                   onClick={() => setShowBottomDashboard((v) => !v)}
                   variant="secondary"
                   size="sm"
-                  className="w-full text-[10px] font-bold uppercase tracking-[0.16em]"
+                  className="w-full text-[11px] font-bold uppercase tracking-[0.16em]"
                 >
                   {showBottomDashboard ? 'Hide System Status' : 'Show System Status'}
                 </NeuralButton>

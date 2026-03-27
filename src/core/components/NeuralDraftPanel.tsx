@@ -92,18 +92,18 @@ export function NeuralDraftPanel() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-300 font-display">Neural Draft</h3>
-            <p className="text-[10px] text-white/50 uppercase">{draft.source} {draft.target ? `-> ${draft.target}` : ''}</p>
+            <p className="text-[11px] text-white/50 uppercase">{draft.source} {draft.target ? `-> ${draft.target}` : ''}</p>
           </div>
           <button
             onClick={() => dismiss(draft.id)}
-            className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 flex items-center justify-center"
+            className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.045] hover:bg-white/10 flex items-center justify-center"
             aria-label="Dismiss draft"
           >
             <X className="w-4 h-4 text-white/60" />
           </button>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-2">
           <h4 className="text-sm font-bold text-white">{draft.title}</h4>
           <p className="text-xs text-white/60 whitespace-pre-wrap">{draft.summary}</p>
         </div>
@@ -111,13 +111,13 @@ export function NeuralDraftPanel() {
         <div className="mt-4 grid grid-cols-3 gap-2">
           <button
             onClick={() => approve(draft.id)}
-            className="col-span-2 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1"
+            className="col-span-2 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1"
           >
             <Check className="w-3 h-3" /> Approve
           </button>
           <button
             onClick={() => dismiss(draft.id)}
-            className="py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1"
+            className="py-2 rounded-xl border border-white/10 bg-white/[0.045] hover:bg-white/10 text-white/70 text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1"
           >
             <Pencil className="w-3 h-3" /> Edit
           </button>

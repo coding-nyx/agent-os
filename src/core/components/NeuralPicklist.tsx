@@ -46,9 +46,9 @@ export function NeuralPicklist({
   }
 
   return (
-    <div className={cn('rounded-xl border border-white/5 bg-white/[0.03] overflow-hidden', className)}>
+    <div className={cn('rounded-xl border border-white/[0.09] bg-white/[0.045] overflow-hidden', className)}>
       {searchable && (
-        <div className="relative border-b border-white/5">
+        <div className="relative border-b border-white/[0.09]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
           <input
             type="text"
@@ -72,7 +72,7 @@ export function NeuralPicklist({
               onClick={() => toggle(option.value)}
               className={cn(
                 'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-150',
-                selected ? 'bg-[var(--module-accent-faint)]' : 'hover:bg-white/[0.03]',
+                selected ? 'bg-[var(--module-accent-faint)]' : 'hover:bg-white/[0.045]',
                 atMax && 'opacity-40 cursor-not-allowed'
               )}
             >

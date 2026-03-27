@@ -59,17 +59,17 @@ export function DayTaskPanel({ date, tasks, scheduledTasks, onClose }: DayTaskPa
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -4 }}
         transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-        className="rounded-xl border border-white/8 bg-white/[0.02] backdrop-blur-sm overflow-hidden"
+        className="rounded-xl border border-white/[0.09] bg-white/[0.045] backdrop-blur-sm overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.09]">
           <div className="flex items-center gap-2">
             <Calendar className="w-3.5 h-3.5 text-emerald-400" aria-hidden />
             <span className="text-xs font-bold text-white/80 uppercase tracking-wider">
               {formatDate(date)}
             </span>
             {hasSomething && (
-              <span className="text-[10px] text-white/30 font-mono">
+              <span className="text-[11px] text-white/30 font-mono">
                 {dayTasks.length + dayScheduled.length} item{dayTasks.length + dayScheduled.length !== 1 ? 's' : ''}
               </span>
             )}
@@ -78,7 +78,7 @@ export function DayTaskPanel({ date, tasks, scheduledTasks, onClose }: DayTaskPa
             variant="emerald"
             onClick={onClose}
             aria-label="Close day view"
-            className="p-1 rounded-md text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
+            className="p-1 rounded-md text-white/30 hover:text-white/60 hover:bg-white/[0.045] transition-colors"
           >
             <X className="w-3.5 h-3.5" aria-hidden />
           </NeuralButton>
@@ -95,7 +95,7 @@ export function DayTaskPanel({ date, tasks, scheduledTasks, onClose }: DayTaskPa
             <div
               key={task.id}
               className={cn(
-                'flex items-start gap-2.5 p-2.5 rounded-lg bg-white/[0.03] border border-white/5',
+                'flex items-start gap-2.5 p-2.5 rounded-lg bg-white/[0.045] border border-white/[0.09]',
                 task.status === 'done' && 'opacity-50'
               )}
             >
@@ -111,14 +111,14 @@ export function DayTaskPanel({ date, tasks, scheduledTasks, onClose }: DayTaskPa
                   {task.title}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className={cn('text-[10px] font-bold', PRIORITY_COLORS[task.priority])}>
+                  <span className={cn('text-[11px] font-bold', PRIORITY_COLORS[task.priority])}>
                     P{task.priority}
                   </span>
-                  <span className="flex items-center gap-0.5 text-[10px] text-white/30">
+                  <span className="flex items-center gap-0.5 text-[11px] text-white/30">
                     <Zap className="w-2.5 h-2.5" aria-hidden /> {task.energyCost}
                   </span>
                   {task.tags && task.tags.length > 0 && (
-                    <span className="text-[10px] text-white/25 truncate">{task.tags.slice(0, 2).join(', ')}</span>
+                    <span className="text-[11px] text-white/25 truncate">{task.tags.slice(0, 2).join(', ')}</span>
                   )}
                 </div>
               </div>
@@ -130,7 +130,7 @@ export function DayTaskPanel({ date, tasks, scheduledTasks, onClose }: DayTaskPa
             <div
               key={st.id}
               className={cn(
-                'flex items-start gap-2.5 p-2.5 rounded-lg bg-white/[0.03] border border-white/5',
+                'flex items-start gap-2.5 p-2.5 rounded-lg bg-white/[0.045] border border-white/[0.09]',
                 st.status === 'done' && 'opacity-50'
               )}
             >
@@ -146,12 +146,12 @@ export function DayTaskPanel({ date, tasks, scheduledTasks, onClose }: DayTaskPa
                   {st.title}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] text-white/30 capitalize">{st.category.replace('_', ' ')}</span>
-                  <span className="flex items-center gap-0.5 text-[10px] text-white/30">
+                  <span className="text-[11px] text-white/30 capitalize">{st.category.replace('_', ' ')}</span>
+                  <span className="flex items-center gap-0.5 text-[11px] text-white/30">
                     <Zap className="w-2.5 h-2.5" aria-hidden /> {st.energyCost}
                   </span>
                   {st.duration > 0 && (
-                    <span className="text-[10px] text-white/25">{st.duration}m</span>
+                    <span className="text-[11px] text-white/25">{st.duration}m</span>
                   )}
                 </div>
               </div>

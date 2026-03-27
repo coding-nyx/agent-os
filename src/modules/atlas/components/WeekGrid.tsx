@@ -185,16 +185,16 @@ export function WeekGrid({
                 'snap-center shrink-0 w-12 sm:w-auto sm:min-w-0',
                 'relative flex flex-col items-center gap-1 sm:gap-2 p-1.5 sm:p-3 rounded-xl border transition-all',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50',
-                'bg-white/[0.03] backdrop-blur-sm',
+                'bg-white/[0.045] backdrop-blur-sm',
                 isSelected &&
                   'border-emerald-500/30 bg-emerald-500/[0.06] ring-1 ring-emerald-500/20',
-                !isSelected && 'border-white/5 hover:border-white/10'
+                !isSelected && 'border-white/[0.09] hover:border-white/10'
               )}
             >
               {/* Day initial — mobile only (1 char) */}
               <span
                 className={cn(
-                  'text-[9px] font-bold uppercase tracking-wider sm:hidden',
+                  'text-[11px] font-bold uppercase tracking-wider sm:hidden',
                   day.isToday ? 'text-emerald-400' : 'text-white/40'
                 )}
               >
@@ -204,7 +204,7 @@ export function WeekGrid({
               {/* Day abbreviation — sm+ */}
               <span
                 className={cn(
-                  'hidden sm:block text-[10px] font-bold uppercase tracking-wider',
+                  'hidden sm:block text-[11px] font-bold uppercase tracking-wider',
                   day.isToday ? 'text-emerald-400' : 'text-white/40'
                 )}
               >
@@ -248,7 +248,7 @@ export function WeekGrid({
               {/* sm+: Day stats */}
               <div className="hidden sm:block w-full space-y-1.5 mt-1">
                 {/* Task count */}
-                <div className="flex items-center justify-between text-[10px]">
+                <div className="flex items-center justify-between text-[11px]">
                   <span className="text-white/30">Tasks</span>
                   <span className="font-bold tabular-nums text-white/60">
                     {stats?.completedCount ?? 0}/{stats?.taskCount ?? 0}
@@ -257,7 +257,7 @@ export function WeekGrid({
 
                 {/* Energy load bar */}
                 <div
-                  className="h-1 w-full bg-white/5 rounded-full overflow-hidden"
+                  className="h-1 w-full bg-white/[0.045] rounded-full overflow-hidden"
                   role="meter"
                   aria-label={`Energy load: ${Math.round(loadPercent)}%`}
                   aria-valuenow={Math.round(loadPercent)}
@@ -279,7 +279,7 @@ export function WeekGrid({
                 {/* Load percentage label */}
                 <span
                   className={cn(
-                    'text-[9px] font-bold tabular-nums block text-center',
+                    'text-[11px] font-bold tabular-nums block text-center',
                     colors.text
                   )}
                 >

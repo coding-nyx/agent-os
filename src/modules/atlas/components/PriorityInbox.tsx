@@ -68,10 +68,10 @@ function DeadlineBadge({ deadline }: { deadline: string }) {
     <span
       aria-label={`Due ${formatted}${isUrgent ? ' — urgent' : ''}`}
       className={cn(
-        'text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border',
+        'text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border',
         isUrgent
           ? 'text-amber-300 border-amber-400/30 bg-amber-400/10'
-          : 'text-white/40 border-white/10 bg-white/[0.03]',
+          : 'text-white/40 border-white/10 bg-white/[0.045]',
       )}
     >
       Due {formatted}
@@ -109,7 +109,7 @@ const PriorityTaskRow = React.memo(function PriorityTaskRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5 group"
+      className="flex items-center gap-3 rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2.5 group"
     >
       {/* Rank */}
       <RankBadge rank={rank} />
@@ -124,7 +124,7 @@ const PriorityTaskRow = React.memo(function PriorityTaskRow({
           <span
             aria-label={`Energy cost: ${task.energyCost}${energyExceedsBudget ? ' — exceeds budget' : ''}`}
             className={cn(
-              'inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider',
+              'inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider',
               energyExceedsBudget ? 'text-rose-400' : 'text-[var(--module-color-300)]',
             )}
           >
@@ -226,7 +226,7 @@ export function PriorityInbox({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3"
+      className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-3"
       aria-label="Priority Inbox"
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -237,7 +237,7 @@ export function PriorityInbox({
             Priority Inbox
           </span>
         </div>
-        <span className="text-[10px] text-white/30 uppercase tracking-wider" aria-live="polite">
+        <span className="text-[11px] text-white/30 uppercase tracking-wider" aria-live="polite">
           Top {topTasks.length} of {eligibleCount}
         </span>
       </div>
@@ -266,7 +266,7 @@ export function PriorityInbox({
           variant="secondary"
           size="sm"
           onClick={handleDeferOthers}
-          className="w-full h-auto py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-white/30 hover:text-white/50"
+          className="w-full h-auto py-2 text-[11px] font-bold uppercase tracking-[0.15em] text-white/30 hover:text-white/50"
           aria-label={`Defer ${eligibleCount - 3} lower-priority tasks via Atlas`}
         >
           Defer {eligibleCount - 3} other tasks → Ask Atlas

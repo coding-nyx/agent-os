@@ -88,7 +88,7 @@ export function AgnesDashboard({
   };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-8 space-y-6 sm:space-y-8">
       <SectionHeader
         label="Emotional Domain"
         title="Agnes Signalboard"
@@ -147,14 +147,14 @@ export function AgnesDashboard({
 
       {hasBeliefGraph && (
         <section className="space-y-3">
-          <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Belief Graph</h4>
+          <h4 className="text-[11px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Belief Graph</h4>
           {graph!.nodes.slice(0, 6).map((node) => (
-            <div key={node.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="flex items-center justify-between text-xs text-white/70">
+            <div key={node.id} className="rounded-xl border border-white/[0.09] bg-slate-900/60 p-3">
+              <div className="flex items-center justify-between text-[13px] text-white/70">
                 <span>{node.label}</span>
                 <span className="text-indigo-300 font-bold">{node.intensity}/10</span>
               </div>
-              <div className="mt-1 text-[10px] text-white/45 uppercase tracking-[0.2em]">{node.valence}</div>
+              <div className="mt-1 text-[11px] text-white/45 uppercase tracking-[0.15em]">{node.valence}</div>
             </div>
           ))}
         </section>
@@ -162,7 +162,7 @@ export function AgnesDashboard({
 
       {graph?.summary && (
         <section className="space-y-3">
-          <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Graph Summary</h4>
+          <h4 className="text-[11px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Graph Summary</h4>
           <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-3 text-xs text-indigo-100/80">
             {graph.summary}
           </div>

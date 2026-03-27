@@ -40,7 +40,7 @@ export function AgnesIntake({ onComplete }: AgnesIntakeProps) {
                             <h2 className="text-3xl font-black italic uppercase text-white tracking-tighter">Therapeutic Goals</h2>
                             <p className="text-white/40 text-sm italic font-medium">What breakthroughs are we aiming for in our synchronization?</p>
                         </div>
-                        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[40px] backdrop-blur-3xl space-y-6">
+                        <div className="p-8 bg-white/[0.045] border border-white/[0.09] rounded-[40px] backdrop-blur-3xl space-y-6">
                             <NeuralTextarea 
                                 value={goals} 
                                 onChange={(e) => setGoals(e.target.value)}
@@ -63,7 +63,7 @@ export function AgnesIntake({ onComplete }: AgnesIntakeProps) {
                             <h2 className="text-3xl font-black italic uppercase text-white tracking-tighter">Neural Triggers</h2>
                             <p className="text-white/40 text-sm italic font-medium">Are there specific topics or patterns that disrupt your stability?</p>
                         </div>
-                        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[40px] backdrop-blur-3xl space-y-6">
+                        <div className="p-8 bg-white/[0.045] border border-white/[0.09] rounded-[40px] backdrop-blur-3xl space-y-6">
                             <NeuralTextarea 
                                 value={triggers} 
                                 onChange={(e) => setTriggers(e.target.value)}
@@ -87,7 +87,7 @@ export function AgnesIntake({ onComplete }: AgnesIntakeProps) {
                             <h2 className="text-3xl font-black italic uppercase text-white tracking-tighter">Support History</h2>
                             <p className="text-white/40 text-sm italic font-medium">Have you worked with a agnes or neural agent before?</p>
                         </div>
-                        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[40px] backdrop-blur-3xl space-y-6">
+                        <div className="p-8 bg-white/[0.045] border border-white/[0.09] rounded-[40px] backdrop-blur-3xl space-y-6">
                             <NeuralTextarea 
                                 value={history} 
                                 onChange={(e) => setHistory(e.target.value)}
@@ -119,7 +119,7 @@ export function AgnesIntake({ onComplete }: AgnesIntakeProps) {
                                 variant="ghost" 
                                 onClick={() => setStep('GOALS')} 
                                 disabled={isSubmitting} 
-                                className="w-full mt-6 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors italic"
+                                className="w-full mt-6 text-[11px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors italic"
                             >
                                 Re-adjust Protocol
                             </NeuralButton>

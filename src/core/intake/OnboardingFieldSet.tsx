@@ -133,13 +133,13 @@ export function OnboardingFieldSet({
                   idx === currentSection
                     ? cn(accentClass, 'opacity-100')
                     : idx < currentSection
-                    ? 'text-white/50 border-white/10 bg-white/5'
-                    : 'text-white/25 border-white/5 bg-transparent',
+                    ? 'text-white/50 border-white/10 bg-white/[0.045]'
+                    : 'text-white/25 border-white/[0.09] bg-transparent',
                 )}
               >
                 <span
                   className={cn(
-                    'inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[8px] font-black',
+                    'inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[11px] font-black',
                     idx <= currentSection ? fillClass : 'bg-white/10',
                   )}
                 >
@@ -173,7 +173,7 @@ export function OnboardingFieldSet({
                 {field.name}
                 {field.required
                   ? <span className="text-rose-400 ml-0.5">*</span>
-                  : <span className="text-white/25 ml-1.5 text-[9px] font-normal normal-case tracking-normal">(optional)</span>
+                  : <span className="text-white/25 ml-1.5 text-[11px] font-normal normal-case tracking-normal">(optional)</span>
                 }
               </label>
             </div>

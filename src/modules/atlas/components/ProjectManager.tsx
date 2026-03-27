@@ -163,7 +163,7 @@ function ProjectGanttView({ projects, taskCountsByProject }: ProjectGanttViewPro
 
   if (projectsWithDeadlines.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-white/40">
+      <div className="rounded-xl border border-white/10 bg-white/[0.045] p-8 text-center text-sm text-white/40">
         No project deadlines set — add deadlines to see the timeline.
       </div>
     );
@@ -219,7 +219,7 @@ function ProjectGanttView({ projects, taskCountsByProject }: ProjectGanttViewPro
   const todayX = dateToX(today);
 
   return (
-    <div ref={containerRef} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 overflow-x-auto">
+    <div ref={containerRef} className="rounded-xl border border-white/10 bg-white/[0.045] p-4 overflow-x-auto">
       <div style={{ minWidth: LABEL_COL + 400 }}>
         <svg
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -333,7 +333,7 @@ function StatusBadge({ status }: { status: AtlasProject['status'] }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border',
+        'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border',
         STATUS_STYLES[status],
       )}
     >
@@ -559,14 +559,14 @@ export function ProjectManager({
 
               return (
                 <div key={project.id} className="relative group">
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3 hover:bg-white/[0.05] transition-colors h-full">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4 space-y-3 hover:bg-white/[0.05] transition-colors h-full">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2 pr-16">
                       <h3 className="text-sm font-bold text-white/85 leading-tight">
                         {project.title}
                       </h3>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={cn('text-[10px] font-semibold shrink-0', health.colorClass)}>
+                        <span className={cn('text-[11px] font-semibold shrink-0', health.colorClass)}>
                           {health.emoji} {health.label}
                         </span>
                         <FolderOpen className="w-4 h-4 text-white/20 shrink-0 mt-0.5" />
@@ -582,7 +582,7 @@ export function ProjectManager({
                     )}
 
                     {/* Meta row */}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/30">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/30">
                       {project.deadline && (
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
@@ -610,11 +610,11 @@ export function ProjectManager({
                     {/* Progress bar */}
                     {counts.total > 0 && (
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[9px] text-white/30">
+                        <div className="flex justify-between text-[11px] text-white/30">
                           <span>Progress</span>
                           <span>{progress}%</span>
                         </div>
-                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div className="w-full h-1 bg-white/[0.045] rounded-full overflow-hidden">
                           <div
                             className={cn(
                               'h-full rounded-full transition-all duration-300',

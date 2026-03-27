@@ -188,26 +188,26 @@ export function TaskTimeline({
           >
             <button
               onClick={() => setIsCollapsed(false)}
-              className="w-full rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm p-4 hover:bg-white/[0.04] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
+              className="w-full rounded-xl border border-white/[0.09] bg-white/[0.045] backdrop-blur-sm p-4 hover:bg-white/[0.045] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
               aria-label="Expand daily timeline"
             >
               {/* Top row: time + stats */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <CalendarClock className="w-4 h-4 text-[var(--module-color-400)]" />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
                     {formatHour(TIMELINE_START_HOUR)} – {formatHour(TIMELINE_END_HOUR)}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   {totalScheduled > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-[var(--module-color-400)] tabular-nums">
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-[var(--module-color-400)] tabular-nums">
                       <Clock className="w-3 h-3" />
                       {totalScheduled} scheduled
                     </span>
                   )}
                   {avgEnergy > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400/70 tabular-nums">
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400/70 tabular-nums">
                       <Zap className="w-3 h-3" />
                       {avgEnergy.toFixed(1)}
                     </span>
@@ -217,7 +217,7 @@ export function TaskTimeline({
               </div>
 
               {/* Day progress bar */}
-              <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+              <div className="h-1.5 rounded-full bg-white/[0.045] overflow-hidden">
                 <div
                   className="h-full rounded-full bg-[var(--module-accent)] transition-all duration-1000"
                   style={{ width: `${Math.max(1, Math.min(100, dayProgressPercent))}%` }}
@@ -253,7 +253,7 @@ export function TaskTimeline({
                 variant="ghost"
                 size="sm"
                 themeColor="module"
-                className="text-[10px] font-bold uppercase tracking-wider gap-1"
+                className="text-[11px] font-bold uppercase tracking-wider gap-1"
                 aria-label="Collapse timeline"
               >
                 <ChevronUp className="w-3.5 h-3.5" />
@@ -301,7 +301,7 @@ export function TaskTimeline({
                 >
                   <div className="w-2.5 h-2.5 rounded-full bg-rose-400 border-2 border-zinc-900 -ml-0.5 shrink-0" />
                   <div className="flex-1 h-px bg-rose-400/40" />
-                  <span className="text-[9px] font-bold text-rose-400 tabular-nums pl-2 shrink-0">
+                  <span className="text-[11px] font-bold text-rose-400 tabular-nums pl-2 shrink-0">
                     {now.toLocaleTimeString('en-US', {
                       hour: 'numeric',
                       minute: '2-digit',
@@ -319,16 +319,16 @@ export function TaskTimeline({
                 return (
                   <div
                     key={hour}
-                    className="relative flex gap-4 border-t border-white/5"
+                    className="relative flex gap-4 border-t border-white/[0.09]"
                     style={{ minHeight: `${HOUR_HEIGHT_PX}px` }}
                   >
                     {/* Time label */}
                     <div className="w-14 pt-1.5 pr-2 text-right shrink-0">
-                      <span className="text-[10px] font-bold text-white/25 tabular-nums uppercase">
+                      <span className="text-[11px] font-bold text-white/25 tabular-nums uppercase">
                         {formatHour(hour)}
                       </span>
                       <div
-                        className="mt-0.5 ml-auto w-6 h-1 rounded-full overflow-hidden bg-white/5"
+                        className="mt-0.5 ml-auto w-6 h-1 rounded-full overflow-hidden bg-white/[0.045]"
                         aria-hidden="true"
                       >
                         <div
@@ -359,23 +359,23 @@ export function TaskTimeline({
                         return (
                           <div
                             key={st.id}
-                            className="rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-2.5"
+                            className="rounded-xl border border-white/10 bg-white/[0.045] backdrop-blur-sm p-2.5"
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-white/70 font-medium truncate">
                                 {st.title}
                               </span>
-                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300 font-bold tabular-nums shrink-0">
+                              <span className="inline-flex items-center gap-1 text-[11px] text-emerald-300 font-bold tabular-nums shrink-0">
                                 ⚡ {st.energyCost}
                               </span>
                             </div>
-                            <div className="mt-0.5 flex items-center gap-2 text-[10px] text-white/30">
+                            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-white/30">
                               <span>{st.duration}min</span>
                               <span>·</span>
                               <span className="capitalize">{st.category}</span>
                             </div>
                             {st.blockedBy && (
-                              <p className="mt-1 text-[10px] text-amber-300/60">
+                              <p className="mt-1 text-[11px] text-amber-300/60">
                                 Blocked: {st.blockedBy.replace(/_/g, ' ')}
                               </p>
                             )}
@@ -393,7 +393,7 @@ export function TaskTimeline({
 
       {/* Backlog section (collapsed by default) */}
       {backlogTasks.length > 0 && (
-        <div className="border-t border-white/5 pt-4">
+        <div className="border-t border-white/[0.09] pt-4">
           <NeuralButton
             onClick={() => setShowBacklog((prev) => !prev)}
             aria-expanded={showBacklog}

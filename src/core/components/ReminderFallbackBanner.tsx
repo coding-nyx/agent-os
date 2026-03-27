@@ -13,7 +13,7 @@ export function ReminderFallbackBanner() {
   if (!import.meta.env.DEV || !active) return null;
 
   return (
-    <div className={cn('fixed top-0 left-0 right-0 z-50 bg-amber-500/20 border-b border-amber-500/30 px-4 py-2 text-center text-[10px] font-semibold text-amber-200')}>
+    <div className={cn('fixed top-0 left-0 right-0 z-50 bg-amber-500/20 border-b border-amber-500/30 px-4 py-2 text-center text-[11px] font-semibold text-amber-200')}>
       DEV: Reminder fallback active (local scheduler).
     </div>
   );

@@ -95,7 +95,7 @@ function TypeBadge({ type }: TypeBadgeProps): React.ReactElement {
   };
 
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${colorMap[type]}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${colorMap[type]}`}>
       {TYPE_LABEL[type]}
     </span>
   );
@@ -223,7 +223,7 @@ function SummaryHeroBar({
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm"
+          className="rounded-xl border border-white/10 bg-white/[0.045] px-4 py-3 backdrop-blur-sm"
         >
           <div className="mb-1 flex items-center gap-1.5">
             {stat.icon}
@@ -347,7 +347,7 @@ function HoldingsTable({
               inv.totalCost > 0 ? (inv.unrealizedGain / inv.totalCost) * 100 : 0;
 
             return (
-              <tr key={inv.id} className="group transition-colors hover:bg-white/[0.03]">
+              <tr key={inv.id} className="group transition-colors hover:bg-white/[0.045]">
                 {/* Name / Ticker */}
                 <td className="py-2.5 pr-3">
                   <p className="font-medium text-white">{inv.name}</p>
@@ -557,7 +557,7 @@ function CRUDModal({
           {/* Live computed current value — read-only */}
           <div>
             <p className="mb-1 text-xs font-medium text-white/60">Current Value (computed)</p>
-            <div className="flex h-10 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-sm font-semibold text-emerald-400">
+            <div className="flex h-10 items-center rounded-lg border border-white/10 bg-white/[0.045] px-3 text-sm font-semibold text-emerald-400">
               {formatCurrency(computedValue, currency)}
             </div>
           </div>
@@ -876,7 +876,7 @@ export default function InvestmentPortfolio({
       <div className="grid gap-6 md:grid-cols-[280px_1fr]">
 
         {/* Left: Allocation chart */}
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+        <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4 backdrop-blur-sm">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">
             Allocation by Type
           </p>
@@ -887,7 +887,7 @@ export default function InvestmentPortfolio({
         </div>
 
         {/* Right: Holdings table */}
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+        <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4 backdrop-blur-sm">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">
             Holdings
           </p>

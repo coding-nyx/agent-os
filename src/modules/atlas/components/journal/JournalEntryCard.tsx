@@ -89,13 +89,13 @@ export function JournalEntryCard({ entry, onClick }: JournalEntryCardProps) {
             {entry.tags.slice(0, 4).map((tag) => (
               <span
                 key={tag}
-                className="px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-[10px] font-medium text-violet-300/80 uppercase tracking-wide"
+                className="px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-[11px] font-medium text-violet-300/80 uppercase tracking-wide"
               >
                 {tag}
               </span>
             ))}
             {entry.tags.length > 4 && (
-              <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-white/30">
+              <span className="px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/10 text-[11px] text-white/30">
                 +{entry.tags.length - 4}
               </span>
             )}

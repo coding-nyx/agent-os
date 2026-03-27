@@ -113,19 +113,19 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
 
               <Dialog.Content asChild forceMount aria-describedby={undefined}>
                 <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="fixed inset-0 z-[calc(var(--z-modal)+1)] flex items-center justify-center p-4 pointer-events-none">
-                  <div className="relative w-full max-w-md max-h-[90vh] overflow-hidden rounded-card border border-white/10 bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,1)] flex flex-col pointer-events-auto">
+                  <div className="relative w-full max-w-md max-h-[90vh] overflow-hidden rounded-card border border-white/[0.12] bg-[#05050a] shadow-[0_0_50px_rgba(0,0,0,1)] flex flex-col pointer-events-auto">
                     <Dialog.Close asChild>
                       <button className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors z-[var(--z-content)]"><X className="w-5 h-5" /></button>
                     </Dialog.Close>
 
-                    <div className={`p-8 sm:p-10 border-b border-white/5 ${activeTheme.bg} shrink-0`}>
+                    <div className={`p-8 sm:p-10 border-b border-white/[0.09] ${activeTheme.bg} shrink-0`}>
                       <div className="flex items-start gap-5">
-                        <div className={`w-14 h-14 rounded-panel flex items-center justify-center border border-white/10 bg-black/40 shadow-2xl shrink-0`}>
+                        <div className={`w-14 h-14 rounded-panel flex items-center justify-center border border-white/[0.12] bg-slate-900/70 shadow-2xl shrink-0`}>
                           <activeTheme.icon className={`w-7 h-7 ${activeTheme.color}`} />
                         </div>
                         <div className="flex-1">
                           <Dialog.Title className="text-2xl font-bold tracking-wider text-white uppercase leading-tight font-display">{activeTheme.title}</Dialog.Title>
-                          <p className="text-white/50 text-[10px] uppercase font-bold tracking-[0.12em] mt-1">
+                          <p className="text-white/50 text-[11px] uppercase font-bold tracking-[0.12em] mt-1">
                               {view === 'VAULT_HANDSHAKE' ? (hasVault ? 'SECURE HANDSHAKE' : 'INITIALIZE VAULT') : view.replace('_', ' ')}
                           </p>
                         </div>
@@ -146,18 +146,18 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                             </NeuralButton>
                             
                             <div className="relative py-4 flex items-center justify-center">
-                                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5" /></div>
-                                <span className="relative px-4 bg-[#05050a] text-[9px] font-bold text-white/40 uppercase tracking-[0.15em]">Handshake Required</span>
+                                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.09]" /></div>
+                                <span className="relative px-4 bg-[#05050a] text-[11px] font-bold text-white/40 uppercase tracking-[0.15em]">Handshake Required</span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <button onClick={() => setView('LOGIN')} className="p-4 rounded-panel bg-white/[0.03] border border-white/5 hover:bg-white/5 transition-all text-center group">
+                                <button onClick={() => setView('LOGIN')} className="p-4 rounded-panel bg-white/[0.045] border border-white/[0.09] hover:bg-white/[0.045] transition-all text-center group">
                                     <Key className="w-5 h-5 text-white/40 mx-auto mb-2 group-hover:text-white transition-colors" />
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 group-hover:text-white">Recognize</span>
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/40 group-hover:text-white">Recognize</span>
                                 </button>
-                                <button onClick={() => setView('REGISTER')} className="p-4 rounded-panel bg-white/[0.03] border border-white/5 hover:bg-white/5 transition-all text-center group">
+                                <button onClick={() => setView('REGISTER')} className="p-4 rounded-panel bg-white/[0.045] border border-white/[0.09] hover:bg-white/[0.045] transition-all text-center group">
                                     <UserPlus className="w-5 h-5 text-white/40 mx-auto mb-2 group-hover:text-white transition-colors" />
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 group-hover:text-white">Initialize</span>
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/40 group-hover:text-white">Initialize</span>
                                 </button>
                             </div>
                           </motion.div>
@@ -167,9 +167,9 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                           <motion.form key="login" onSubmit={async (e) => { e.preventDefault(); setLoading(true); setError(''); try { if (await login(email, password)) { /* Effect handles next */ } else { setError('Auth Failed'); } } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Auth Failed'); } setLoading(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                             <NeuralInput icon={<Mail className="w-4 h-4" />} type="email" placeholder="Identity Email" value={email} onChange={(e) => setEmail(e.target.value)} />
                             <NeuralInput icon={<Lock className="w-4 h-4" />} type="password" placeholder="Account Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                            {error && <p className="text-red-400 text-[10px] text-center font-bold uppercase">{error}</p>}
+                            {error && <p className="text-red-400 text-[11px] text-center font-bold uppercase">{error}</p>}
                             <NeuralButton type="submit" loading={loading} className="w-full">Authenticate Identity</NeuralButton>
-                            <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[10px] font-bold text-white/40 hover:text-white uppercase tracking-wider transition-colors">Back to Portal</button>
+                            <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[11px] font-bold text-white/40 hover:text-white uppercase tracking-wider transition-colors">Back to Portal</button>
                           </motion.form>
                         )}
 
@@ -177,9 +177,9 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                           <motion.form key="register" onSubmit={async (e) => { e.preventDefault(); setLoading(true); setError(''); try { if (await register(email, password)) { setView('VERIFY'); } } catch (e: unknown) { if (e instanceof Error && e.message?.toLowerCase().includes('configuration-not-found')) { setError('Firebase Auth not enabled. Enable Email/Password in Console.'); } else { setError(e instanceof Error ? e.message : 'Initialization Failed'); } } setLoading(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                             <NeuralInput icon={<Mail className="w-4 h-4" />} type="email" placeholder="New Identity Email" value={email} onChange={(e) => setEmail(e.target.value)} />
                             <NeuralInput icon={<Lock className="w-4 h-4" />} type="password" placeholder="Account Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                            {error && <p className="text-red-400 text-[10px] text-center font-bold uppercase">{error}</p>}
+                            {error && <p className="text-red-400 text-[11px] text-center font-bold uppercase">{error}</p>}
                             <NeuralButton type="submit" loading={loading} className="w-full text-indigo-400">Create Identity</NeuralButton>
-                            <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[10px] font-bold text-white/40 hover:text-white uppercase tracking-wider transition-colors">Back to Portal</button>
+                            <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[11px] font-bold text-white/40 hover:text-white uppercase tracking-wider transition-colors">Back to Portal</button>
                           </motion.form>
                         )}
 
@@ -190,12 +190,12 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                                     <h3 className="text-xl font-bold uppercase text-white font-display">Handshake Pending</h3>
                                     <p className="text-xs text-white/40 leading-relaxed px-4">Identification verified link sent to <span className="text-white">{user?.email}</span>. Click the link to unlock E2EE vault setup.</p>
                                     <div className="pt-2">
-                                        <p className="text-[10px] font-bold text-amber-500/60 uppercase tracking-[0.12em] animate-pulse">! Check your spam/junk folder if signal is missing !</p>
+                                        <p className="text-[11px] font-bold text-amber-500/60 uppercase tracking-[0.12em] animate-pulse">! Check your spam/junk folder if signal is missing !</p>
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4">
-                                    <div className="flex items-center justify-center gap-3 text-blue-400/60 font-bold text-[10px] uppercase tracking-[0.12em]"><Loader2 className="w-3 h-3 animate-spin" /> Waiting for signal...</div>
-                                    <button onClick={() => sendVerification()} className="text-[10px] uppercase font-bold text-white/40 hover:text-white tracking-wider">Resend Signal</button>
+                                    <div className="flex items-center justify-center gap-3 text-blue-400/60 font-bold text-[11px] uppercase tracking-[0.12em]"><Loader2 className="w-3 h-3 animate-spin" /> Waiting for signal...</div>
+                                    <button onClick={() => sendVerification()} className="text-[11px] uppercase font-bold text-white/40 hover:text-white tracking-wider">Resend Signal</button>
                                 </div>
                             </motion.div>
                         )}
@@ -234,7 +234,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                                         <p className="text-xs text-white font-bold uppercase tracking-tight">
                                             {hasVault ? 'NEURAL HANDSHAKE' : 'INITIALIZE MASTER VAULT'}
                                         </p>
-                                        <p className="text-[10px] text-white/40 leading-relaxed">
+                                        <p className="text-[11px] text-white/40 leading-relaxed">
                                             {hasVault 
                                                 ? 'Identify verified. Provide your Master Password to decrypt your soul.' 
                                                 : 'Define your Master Password to generate your permanent E2EE keys. Nexus cannot reset this.'}
@@ -250,16 +250,16 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                                     )}
                                 </div>
 
-                                {error && <p className="text-red-400 text-[10px] text-center font-bold uppercase">{error}</p>}
+                                {error && <p className="text-red-400 text-[11px] text-center font-bold uppercase">{error}</p>}
                                 
                                 <NeuralButton type="submit" loading={loading} className={cn("w-full", hasVault ? "bg-emerald-600 hover:bg-emerald-500" : "bg-cyan-600 hover:bg-cyan-500 text-white")}>
                                     {hasVault ? 'DECRYPT & SYNC' : 'GENERATE NEURAL KEYS'}
                                 </NeuralButton>
 
-                                <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
-                                    <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[10px] font-bold text-white/40 hover:text-white uppercase tracking-wider transition-colors">Back to Identity Portal</button>
+                                <div className="flex flex-col gap-2 pt-2 border-t border-white/[0.09]">
+                                    <button type="button" onClick={() => setView('IDENTITY_CHOICE')} className="w-full text-[11px] font-bold text-white/40 hover:text-white uppercase tracking-wider transition-colors">Back to Identity Portal</button>
                                     
-                                    <button type="button" onClick={() => { logout(); reset(); }} className="w-full text-[10px] font-bold text-red-400/40 hover:text-red-400 uppercase tracking-wider transition-colors">Terminate Identity Session</button>
+                                    <button type="button" onClick={() => { logout(); reset(); }} className="w-full text-[11px] font-bold text-red-400/40 hover:text-red-400 uppercase tracking-wider transition-colors">Terminate Identity Session</button>
                                 </div>
                             </motion.form>
                         )}

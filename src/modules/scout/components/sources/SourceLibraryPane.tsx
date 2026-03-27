@@ -61,12 +61,12 @@ function SourceCard({
       className={cn(
         "group flex flex-col rounded-3xl border transition-all overflow-hidden h-full",
         isRead
-          ? 'border-white/5 bg-white/[0.02]'
-          : 'border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.06]'
+          ? 'border-white/[0.09] bg-white/[0.045]'
+          : 'border-white/10 bg-white/[0.045] hover:border-white/20 hover:bg-white/[0.06]'
       )}
     >
       {source.imageUrl && (
-        <div className="relative aspect-video w-full overflow-hidden border-b border-white/5">
+        <div className="relative aspect-video w-full overflow-hidden border-b border-white/[0.09]">
           <img 
             src={source.imageUrl} 
             alt={source.title} 
@@ -85,7 +85,7 @@ function SourceCard({
             ) : (
               <Globe className="w-4 h-4 text-white/20 shrink-0" />
             )}
-            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 truncate">
+            <span className="text-[11px] font-black uppercase tracking-widest text-white/40 truncate">
               {source.domain}
             </span>
           </div>
@@ -115,7 +115,7 @@ function SourceCard({
         </div>
 
         <div className="mt-auto pt-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[10px] text-white/20">
+          <div className="flex items-center gap-2 text-[11px] text-white/20">
             <Clock size={10} />
             <span>{new Date(source.addedAt).toLocaleDateString()}</span>
           </div>
@@ -203,19 +203,19 @@ export function SourceLibraryPane({
             placeholder="Search source library..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/[0.03] border-white/5 pl-11 h-12 rounded-2xl"
+            className="w-full bg-white/[0.045] border-white/[0.09] pl-11 h-12 rounded-2xl"
             icon={<Search className="w-4 h-4 text-white/20" />}
           />
         </div>
 
-        <div className="flex items-center gap-1 bg-white/[0.03] border border-white/5 rounded-2xl p-1">
+        <div className="flex items-center gap-1 bg-white/[0.045] border border-white/[0.09] rounded-2xl p-1">
           {(['all', 'starred', 'unread'] as FilterKey[]).map((f) => (
             <NeuralButton
               key={f}
               variant={filterKey === f ? 'primary' : 'ghost'}
               onClick={() => setFilterKey(f)}
               className={cn(
-                "px-4 py-2 h-auto w-auto min-h-0 min-w-0 border-none rounded-xl text-[10px] font-black uppercase tracking-widest",
+                "px-4 py-2 h-auto w-auto min-h-0 min-w-0 border-none rounded-xl text-[11px] font-black uppercase tracking-widest",
                 filterKey === f 
                   ? "bg-white/10 text-white shadow-sm" 
                   : "text-white/30 hover:text-white/60"
@@ -234,7 +234,7 @@ export function SourceLibraryPane({
             { value: 'domain', label: 'Domain' },
             { value: 'title', label: 'Title' },
           ]}
-          triggerClassName="bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 h-12 text-[10px] font-black uppercase tracking-widest text-white/40 focus:outline-none hover:bg-white/[0.05]"
+          triggerClassName="bg-white/[0.045] border border-white/[0.09] rounded-2xl px-4 py-3 h-12 text-[11px] font-black uppercase tracking-widest text-white/40 focus:outline-none hover:bg-white/[0.05]"
           minWidthClassName=""
           ariaLabel="Sort sources"
         />
@@ -243,7 +243,7 @@ export function SourceLibraryPane({
           <NeuralButton
             variant="outline"
             onClick={onExportSources}
-            className="px-6 h-12 text-[10px] font-black uppercase tracking-widest text-white/40 border-white/5 rounded-2xl hover:bg-white/5 hover:text-white/60"
+            className="px-6 h-12 text-[11px] font-black uppercase tracking-widest text-white/40 border-white/[0.09] rounded-2xl hover:bg-white/[0.045] hover:text-white/60"
           >
             Export
           </NeuralButton>
@@ -255,7 +255,7 @@ export function SourceLibraryPane({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 text-white/20 gap-4">
             <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Indexing Library...</span>
+            <span className="text-[11px] font-black uppercase tracking-widest">Indexing Library...</span>
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState

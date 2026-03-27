@@ -72,13 +72,13 @@ const NodeCard = React.memo(function NodeCard({
             <div className={cn(
               "rounded-xl flex items-center justify-center shrink-0 border transition-colors",
               isPlugin ? "w-7 h-7" : "w-8 h-8",
-              isHovered ? "bg-white/10 border-white/20" : "bg-white/5 border-white/10"
+              isHovered ? "bg-white/10 border-white/20" : "bg-white/[0.045] border-white/10"
             )}>
               <Icon className={isPlugin ? "w-3.5 h-3.5" : "w-4 h-4"} style={{ color: node.color }} />
             </div>
             <div className="flex-1 min-w-0 text-left">
               <div className="flex items-center gap-1.5">
-                <span className={cn("font-bold uppercase tracking-wider text-white/90 truncate", isPlugin ? "text-[9px]" : "text-[10px]")}>
+                <span className={cn("font-bold uppercase tracking-wider text-white/90 truncate", isPlugin ? "text-[11px]" : "text-[11px]")}>
                   {title}
                 </span>
                 {!canEnter && <Lock className="w-2.5 h-2.5 text-white/50" />}
@@ -86,10 +86,10 @@ const NodeCard = React.memo(function NodeCard({
               {stat && !isPlugin ? (
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <div className={cn("w-1 h-1 rounded-full", toneClass(stat.tone))} />
-                  <span className={cn("text-[9px] font-mono", toneTextClass(stat.tone))}>{stat.display}</span>
+                  <span className={cn("text-[11px] font-mono", toneTextClass(stat.tone))}>{stat.display}</span>
                 </div>
               ) : (
-                <p className="text-[8px] text-white/50 uppercase tracking-tight truncate mt-0.5">{node.description}</p>
+                <p className="text-[11px] text-white/50 uppercase tracking-tight truncate mt-0.5">{node.description}</p>
               )}
             </div>
           </div>
@@ -112,13 +112,13 @@ const NodeCard = React.memo(function NodeCard({
             >
               <div className="flex items-center gap-2 mb-2">
                 <Icon className="w-3 h-3" style={{ color: node.color }} />
-                <span className="text-[10px] font-black uppercase tracking-widest text-white">{title}</span>
+                <span className="text-[11px] font-black uppercase tracking-widest text-white">{title}</span>
               </div>
-              <p className="text-[10px] text-white/60 leading-relaxed mb-2">{node.description}</p>
+              <p className="text-[11px] text-white/60 leading-relaxed mb-2">{node.description}</p>
               {stat && (
-                <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                  <span className="text-[9px] uppercase tracking-wider text-white/40">{stat.label}</span>
-                  <span className={cn("text-[10px] font-bold", toneTextClass(stat.tone))}>{stat.display}</span>
+                <div className="flex items-center justify-between border-t border-white/[0.09] pt-2">
+                  <span className="text-[11px] uppercase tracking-wider text-white/40">{stat.label}</span>
+                  <span className={cn("text-[11px] font-bold", toneTextClass(stat.tone))}>{stat.display}</span>
                 </div>
               )}
             </motion.div>
@@ -171,7 +171,7 @@ export function GraphView({
       transition={{ duration: 0.5 }}
       className="flex-1 pointer-events-auto relative pt-20 px-6 pb-28 max-w-7xl w-full mx-auto"
     >
-      <div className="absolute inset-x-6 top-20 bottom-28 rounded-[48px] border border-white/5 bg-black/40 backdrop-blur-2xl overflow-hidden shadow-2xl">
+      <div className="absolute inset-x-6 top-20 bottom-28 rounded-[48px] border border-white/[0.09] bg-slate-900/70 backdrop-blur-2xl overflow-hidden shadow-2xl">
         {/* Faint Grid Background */}
         <div
           className="absolute inset-0 opacity-[0.02] pointer-events-none"
@@ -235,8 +235,8 @@ export function GraphView({
             animate={{ scale: [1.2, 0.95], opacity: [0, 0.2, 0] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
           />
-          <div className="absolute inset-4 border border-white/[0.03] rounded-full animate-[spin_60s_linear_infinite]" />
-          <div className="absolute inset-12 border border-white/[0.05] rounded-full animate-[spin_40s_linear_reverse_infinite]" />
+          <div className="absolute inset-4 border border-white/[0.09] rounded-full animate-[spin_60s_linear_infinite]" />
+          <div className="absolute inset-12 border border-white/[0.09] rounded-full animate-[spin_40s_linear_reverse_infinite]" />
 
           <NeuralButton
             variant="indigo"
@@ -284,7 +284,7 @@ export function GraphView({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.8, y: 10 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/80 backdrop-blur-md border border-violet-500/50 rounded-lg px-3 py-2 shadow-lg pointer-events-none"
+                  className="absolute top-full mt-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900/90 backdrop-blur-md border border-violet-500/50 rounded-lg px-3 py-2 shadow-lg pointer-events-none"
                 >
                   <div className="space-y-1 text-xs">
                     {nexusStats.map((stat, idx) => (

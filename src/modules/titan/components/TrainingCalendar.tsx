@@ -164,10 +164,10 @@ function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onSta
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 min-h-[72px] flex items-start justify-between gap-3">
+    <div className="mt-3 rounded-xl border border-white/[0.09] bg-white/[0.045] px-4 py-3 min-h-[72px] flex items-start justify-between gap-3">
       {/* Left: day label + content */}
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-1.5">
+        <p className="text-[11px] font-black uppercase tracking-[0.15em] text-white/30 mb-1.5">
           {dayLabel}
         </p>
 
@@ -180,12 +180,12 @@ function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onSta
                 </p>
               ))}
               {exercises.length > 3 && (
-                <p className="text-[10px] text-white/30">+{exercises.length - 3} more</p>
+                <p className="text-[11px] text-white/30">+{exercises.length - 3} more</p>
               )}
             </div>
             <div className="flex items-center flex-wrap gap-2">
               {totalSets > 0 && (
-                <span className="text-[10px] text-white/40 font-medium">
+                <span className="text-[11px] text-white/40 font-medium">
                   {totalSets} set{totalSets !== 1 ? 's' : ''}
                 </span>
               )}
@@ -193,7 +193,7 @@ function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onSta
                 <span
                   key={mg}
                   className={cn(
-                    'text-[9px] font-medium px-2 py-0.5 rounded-full',
+                    'text-[11px] font-medium px-2 py-0.5 rounded-full',
                     MUSCLE_COLORS[mg] ?? MUSCLE_COLORS['default'],
                   )}
                 >
@@ -211,13 +211,13 @@ function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onSta
               </p>
             </div>
             {planned.exerciseNames && planned.exerciseNames.length > 0 && (
-              <p className="text-[10px] text-white/35 truncate">
+              <p className="text-[11px] text-white/35 truncate">
                 {planned.exerciseNames.slice(0, 3).join(' · ')}
                 {planned.exerciseNames.length > 3 && ` +${planned.exerciseNames.length - 3}`}
               </p>
             )}
             {planned.notes && (
-              <p className="text-[10px] text-white/25 italic truncate">{planned.notes}</p>
+              <p className="text-[11px] text-white/25 italic truncate">{planned.notes}</p>
             )}
           </div>
         ) : routine ? (
@@ -229,12 +229,12 @@ function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onSta
               </p>
             </div>
             {routine.exercises.length > 0 && (
-              <p className="text-[10px] text-white/35 truncate">
+              <p className="text-[11px] text-white/35 truncate">
                 {routine.exercises.slice(0, 3).map(e => e.name).join(' · ')}
                 {routine.exercises.length > 3 && ` +${routine.exercises.length - 3}`}
               </p>
             )}
-            <p className="text-[10px] text-white/25 italic truncate">Recurring {routine.weekday} routine</p>
+            <p className="text-[11px] text-white/25 italic truncate">Recurring {routine.weekday} routine</p>
           </div>
         ) : (
           <p className="text-sm text-white/20 font-medium">Rest day</p>
@@ -248,7 +248,7 @@ function DayDetail({ date, dayLabel, data, routines, onQuickLog, onRemind, onSta
             variant="ghost"
             size="sm"
             onClick={() => onStartPlannedSession(plannedRoutine)}
-            className="h-7 px-2 text-[10px] font-bold text-[var(--module-color-300)] hover:bg-[var(--module-accent-muted)] shrink-0"
+            className="h-7 px-2 text-[11px] font-bold text-[var(--module-color-300)] hover:bg-[var(--module-accent-muted)] shrink-0"
           >
             Start
           </NeuralButton>
@@ -306,8 +306,8 @@ function WeeklySummary({ weekDays, workoutLogs, sessions }: WeeklySummaryProps) 
   const primaryMuscles = inferMuscleGroups(allMuscleText, 3);
 
   return (
-    <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center flex-wrap gap-x-3 gap-y-1">
-      <span className="text-[10px] text-white/30 uppercase tracking-wider font-semibold">This week</span>
+    <div className="mt-3 pt-3 border-t border-white/[0.09] flex items-center flex-wrap gap-x-3 gap-y-1">
+      <span className="text-[11px] text-white/30 uppercase tracking-wider font-semibold">This week</span>
       <span className="text-[11px] font-bold text-white/70">
         {workoutCount} workout{workoutCount !== 1 ? 's' : ''}
       </span>
@@ -316,7 +316,7 @@ function WeeklySummary({ weekDays, workoutLogs, sessions }: WeeklySummaryProps) 
       {primaryMuscles.map((mg) => (
         <span
           key={mg}
-          className={cn('text-[9px] font-medium px-2 py-0.5 rounded-full', MUSCLE_COLORS[mg] ?? MUSCLE_COLORS['default'])}
+          className={cn('text-[11px] font-medium px-2 py-0.5 rounded-full', MUSCLE_COLORS[mg] ?? MUSCLE_COLORS['default'])}
         >
           {mg}
         </span>
@@ -404,7 +404,7 @@ export function TrainingCalendar({
   const selectedData = daysWithRoutines.get(effectiveISO) ?? {};
 
   return (
-    <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 space-y-3">
+    <div className="bg-white/[0.045] border border-white/[0.09] rounded-2xl p-3 sm:p-4 space-y-3">
 
       {/* ── Week navigation ── */}
       <div className="flex items-center justify-between gap-2">
@@ -424,7 +424,7 @@ export function TrainingCalendar({
               size="sm"
               variant="ghost"
               onClick={handleToday}
-              className="px-2 h-6 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/10 shrink-0"
+              className="px-2 h-6 text-[11px] font-bold text-emerald-400 hover:bg-emerald-500/10 shrink-0"
             >
               Today
             </NeuralButton>
@@ -458,13 +458,13 @@ export function TrainingCalendar({
               onClick={() => setSelectedISO(iso)}
               className={cn(
                 'flex flex-col items-center gap-1 py-2 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20',
-                isSelected ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]',
+                isSelected ? 'bg-white/[0.06]' : 'hover:bg-white/[0.045]',
               )}
               aria-label={`${DAY_LABELS[i]} ${date.getDate()}`}
               aria-pressed={isSelected}
             >
               <span className={cn(
-                'text-[9px] font-black uppercase tracking-widest',
+                'text-[11px] font-black uppercase tracking-widest',
                 isToday ? 'text-emerald-400' : isSelected ? 'text-white/60' : 'text-white/25',
               )}>
                 {DAY_INITIALS[i]}

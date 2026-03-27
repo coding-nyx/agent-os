@@ -237,7 +237,7 @@ export function QuickLogDrawer({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-[calc(var(--z-modal)-1)] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[calc(var(--z-modal)-1)] bg-slate-900/85 backdrop-blur-sm"
             aria-hidden="true"
           />
 
@@ -262,13 +262,13 @@ export function QuickLogDrawer({
             ].join(' ')}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-6 pb-4 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between px-5 pt-6 pb-4 border-b border-white/[0.09]">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] flex items-center justify-center">
                   <Zap className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--module-color-400)]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--module-color-400)]">
                     Quick Log
                   </p>
                   <p className="text-[11px] text-white/40 leading-tight">
@@ -317,7 +317,7 @@ export function QuickLogDrawer({
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.12 }}
-                      className="bg-black/60 border border-white/10 rounded-xl overflow-hidden"
+                      className="bg-slate-900/85 border border-white/[0.12] rounded-xl overflow-hidden"
                     >
                       {searchResults.map((item) => (
                         <NeuralButton
@@ -333,7 +333,7 @@ export function QuickLogDrawer({
                           <span className="text-[13px] text-white/80 truncate">
                             {item.name}
                           </span>
-                          <span className="ml-2 flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[var(--module-accent-glow)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
+                          <span className="ml-2 flex-shrink-0 text-[11px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[var(--module-accent-glow)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
                             {item.category}
                           </span>
                         </NeuralButton>
@@ -368,7 +368,7 @@ export function QuickLogDrawer({
               />
 
               {/* Sets note */}
-              <p className="text-[10px] text-white/25 leading-snug pl-1">
+              <p className="text-[11px] text-white/25 leading-snug pl-1">
                 Sets default to <span className="text-white/40 font-semibold">1</span>.
                 Open the full session logger for multi-set logging.
               </p>
@@ -389,7 +389,7 @@ export function QuickLogDrawer({
             </div>
 
             {/* Footer actions */}
-            <div className="px-5 pb-6 pt-3 border-t border-white/[0.06] space-y-2.5">
+            <div className="px-5 pb-6 pt-3 border-t border-white/[0.09] space-y-2.5">
               <NeuralButton
                 size="md"
                 className="w-full"

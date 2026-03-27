@@ -67,7 +67,7 @@ function EntryRow({ entry, index }: EntryRowProps) {
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.04, duration: 0.2 }}
-      className="px-4 py-3 border-b border-white/[0.04] last:border-b-0"
+      className="px-4 py-3 border-b border-white/[0.09] last:border-b-0"
     >
       {/* ── Primary row: name · sets×reps · weight ── */}
       <div className="flex items-center gap-3">
@@ -89,7 +89,7 @@ function EntryRow({ entry, index }: EntryRowProps) {
         {entry.isNew && (
           <span
             aria-label="New exercise not found in library"
-            className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]"
+            className="shrink-0 text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]"
           >
             New
           </span>
@@ -107,7 +107,7 @@ function EntryRow({ entry, index }: EntryRowProps) {
           {entry.weight !== null ? (
             <>
               {entry.weight}
-              <span className="text-[10px] text-white/40 ml-0.5">{entry.unit}</span>
+              <span className="text-[11px] text-white/40 ml-0.5">{entry.unit}</span>
             </>
           ) : (
             <span className="text-white/25 text-xs">BW</span>
@@ -132,11 +132,11 @@ function EntryRow({ entry, index }: EntryRowProps) {
             role="status"
           >
             <Trophy aria-hidden="true" className="w-2.5 h-2.5 text-[var(--module-color-400)]" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--module-color-300)]">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--module-color-300)]">
               New PR
             </span>
             {entry.prDelta !== null && (
-              <span className="text-[9px] text-[var(--module-color-400)] opacity-60 ml-0.5">
+              <span className="text-[11px] text-[var(--module-color-400)] opacity-60 ml-0.5">
                 +{entry.prDelta.toFixed(1)}
               </span>
             )}
@@ -145,7 +145,7 @@ function EntryRow({ entry, index }: EntryRowProps) {
 
         {/* Parse confidence warning for 'low' entries */}
         {entry.parseConfidence === 'low' && (
-          <p className="text-[10px] text-[var(--module-color-400)] opacity-60 flex items-center gap-1">
+          <p className="text-[11px] text-[var(--module-color-400)] opacity-60 flex items-center gap-1">
             <AlertTriangle aria-hidden="true" className="w-2.5 h-2.5" />
             Couldn&apos;t fully parse
           </p>
@@ -211,7 +211,7 @@ export function LogConfirmCard({
       )}
     >
       {/* ── Header ── */}
-      <div className="flex items-center justify-between px-4 pt-5 pb-3 border-b border-white/[0.06] shrink-0">
+      <div className="flex items-center justify-between px-4 pt-5 pb-3 border-b border-white/[0.09] shrink-0">
         <div className="flex items-center gap-2.5">
           {/* Icon */}
           <div
@@ -232,10 +232,10 @@ export function LogConfirmCard({
 
           {/* Label */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--module-color-400)]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--module-color-400)]">
               Ready to log
             </p>
-            <p className="text-[10px] text-white/35 leading-none mt-0.5">
+            <p className="text-[11px] text-white/35 leading-none mt-0.5">
               {formatToday()} · {entryCount} exercise{entryCount !== 1 ? 's' : ''}
             </p>
           </div>
@@ -297,7 +297,7 @@ export function LogConfirmCard({
       )}
 
       {/* ── Footer actions ── */}
-      <div className="px-4 pb-4 pt-3 flex items-center gap-3 border-t border-white/[0.06] shrink-0">
+      <div className="px-4 pb-4 pt-3 flex items-center gap-3 border-t border-white/[0.09] shrink-0">
         {/* Primary: Log it */}
         <NeuralButton
           themeColor="module"

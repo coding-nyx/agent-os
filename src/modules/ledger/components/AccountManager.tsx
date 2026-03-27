@@ -240,27 +240,27 @@ export function AccountManager({
       {/* ── Summary Stats Row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">
             Total Assets
           </div>
           <div className="mt-2 text-xl font-black text-emerald-400">
             {formatCurrency(stats.totalAssets, currency)}
           </div>
-          <div className="text-[10px] text-white/30 mt-0.5">checking, savings, investments</div>
+          <div className="text-[11px] text-white/30 mt-0.5">checking, savings, investments</div>
         </SurfaceCard>
 
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">
             Total Liabilities
           </div>
           <div className="mt-2 text-xl font-black text-rose-400">
             {formatCurrency(stats.totalLiabilities, currency)}
           </div>
-          <div className="text-[10px] text-white/30 mt-0.5">credit cards</div>
+          <div className="text-[11px] text-white/30 mt-0.5">credit cards</div>
         </SurfaceCard>
 
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">
             Net Liquid
           </div>
           <div
@@ -270,21 +270,21 @@ export function AccountManager({
           >
             {formatCurrency(stats.netLiquid, currency)}
           </div>
-          <div className="text-[10px] text-white/30 mt-0.5">checking + savings + cash</div>
+          <div className="text-[11px] text-white/30 mt-0.5">checking + savings + cash</div>
         </SurfaceCard>
 
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">
             Accounts
           </div>
           <div className="mt-2 text-2xl font-black text-white">{stats.count}</div>
-          <div className="text-[10px] text-white/30 mt-0.5">linked</div>
+          <div className="text-[11px] text-white/30 mt-0.5">linked</div>
         </SurfaceCard>
       </div>
 
       {/* ── Section Header ── */}
       <div className="flex items-center justify-between">
-        <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">
+        <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">
           Your Accounts
         </div>
         <NeuralButton
@@ -341,7 +341,7 @@ export function AccountManager({
             return (
               <div
                 key={account.id}
-                className="group relative bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col gap-3 transition-all hover:bg-white/[0.07] hover:border-white/20"
+                className="group relative bg-white/[0.045] border border-white/10 rounded-xl p-4 flex flex-col gap-3 transition-all hover:bg-white/[0.07] hover:border-white/20"
               >
                 {/* ── Top Row: color dot + name + action buttons ── */}
                 <div className="flex items-start gap-3">
@@ -359,13 +359,13 @@ export function AccountManager({
                         {account.name}
                       </span>
                       {account.isDefault && (
-                        <span className="shrink-0 px-1.5 py-0.5 rounded text-[8px] uppercase tracking-[0.2em] font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                        <span className="shrink-0 px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.2em] font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
                           Default
                         </span>
                       )}
                     </div>
                     {account.institutionName && (
-                      <div className="text-[10px] text-white/40 mt-0.5 truncate">
+                      <div className="text-[11px] text-white/40 mt-0.5 truncate">
                         {account.institutionName}
                       </div>
                     )}
@@ -407,7 +407,7 @@ export function AccountManager({
                 </div>
 
                 {/* ── Type + last four ── */}
-                <div className="flex items-center gap-2 text-[10px] text-white/40">
+                <div className="flex items-center gap-2 text-[11px] text-white/40">
                   <span>{ACCOUNT_TYPE_LABELS[account.type]}</span>
                   {account.lastFour && (
                     <>
@@ -423,7 +423,7 @@ export function AccountManager({
                     {formatCurrency(displayBalance, account.currency ?? currency)}
                   </span>
                   {isLiability && account.balance !== 0 && (
-                    <span className="text-[10px] text-white/30">owed</span>
+                    <span className="text-[11px] text-white/30">owed</span>
                   )}
                 </div>
 
@@ -438,7 +438,7 @@ export function AccountManager({
                       const textColor = pct >= 0.7 ? 'text-rose-400' : pct >= 0.3 ? 'text-amber-400' : 'text-emerald-400';
                       return (
                         <>
-                          <div className="flex items-center justify-between text-[9px]">
+                          <div className="flex items-center justify-between text-[11px]">
                             <span className="text-white/35">Utilization</span>
                             <span className={`font-bold tabular-nums ${textColor}`}>{pctDisplay}%</span>
                           </div>
@@ -448,7 +448,7 @@ export function AccountManager({
                               style={{ width: `${pctDisplay}%` }}
                             />
                           </div>
-                          <div className="text-[9px] text-white/25 tabular-nums">
+                          <div className="text-[11px] text-white/25 tabular-nums">
                             {formatCurrency(utilized, account.currency ?? currency)} of {formatCurrency(account.creditLimit, account.currency ?? currency)} limit
                           </div>
                         </>
@@ -461,12 +461,12 @@ export function AccountManager({
                 {isLiability && (account.paymentDueDay || account.statementDay) && (
                   <div className="flex flex-wrap gap-1.5">
                     {account.paymentDueDay && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-[9px] font-semibold text-rose-400">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-[11px] font-semibold text-rose-400">
                         Due {account.paymentDueDay}{['st','nd','rd'][account.paymentDueDay <= 3 ? account.paymentDueDay - 1 : 3] ?? 'th'}
                       </span>
                     )}
                     {account.statementDay && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-semibold text-white/35">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/10 text-[11px] font-semibold text-white/35">
                         Closes {account.statementDay}{['st','nd','rd'][account.statementDay <= 3 ? account.statementDay - 1 : 3] ?? 'th'}
                       </span>
                     )}
@@ -480,7 +480,7 @@ export function AccountManager({
                       Delete{' '}
                       <span className="font-bold text-white">{account.name}</span>?
                       <br />
-                      <span className="text-[10px] text-white/40">This cannot be undone.</span>
+                      <span className="text-[11px] text-white/40">This cannot be undone.</span>
                     </p>
                     <div className="flex gap-2">
                       <NeuralButton
@@ -525,7 +525,7 @@ export function AccountManager({
 
           {/* Name */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               Account Name
             </label>
             <NeuralInput
@@ -540,7 +540,7 @@ export function AccountManager({
 
           {/* Type */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               Account Type
             </label>
             <NeuralSelectMenu
@@ -553,7 +553,7 @@ export function AccountManager({
 
           {/* Balance */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               Current Balance
             </label>
             <NeuralInput
@@ -566,7 +566,7 @@ export function AccountManager({
               step="0.01"
             />
             {formData.type === 'credit_card' && (
-              <p className="text-[10px] text-white/40 mt-1">
+              <p className="text-[11px] text-white/40 mt-1">
                 Enter a positive number for amount owed, or 0 if paid in full.
               </p>
             )}
@@ -574,12 +574,12 @@ export function AccountManager({
 
           {/* Credit card–specific fields */}
           {formData.type === 'credit_card' && (
-            <div className="space-y-3 pt-1 border-t border-white/[0.06]">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Credit Card Details</p>
+            <div className="space-y-3 pt-1 border-t border-white/[0.09]">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">Credit Card Details</p>
 
               {/* Credit Limit */}
               <div>
-                <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+                <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
                   Credit Limit <span className="text-white/20 normal-case tracking-normal">(optional)</span>
                 </label>
                 <NeuralInput
@@ -597,7 +597,7 @@ export function AccountManager({
               <div className="grid grid-cols-2 gap-3">
                 {/* Payment Due Day */}
                 <div>
-                  <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
                     Payment Due Day
                   </label>
                   <NeuralInput
@@ -615,7 +615,7 @@ export function AccountManager({
 
                 {/* Statement Closing Day */}
                 <div>
-                  <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
                     Statement Close Day
                   </label>
                   <NeuralInput
@@ -636,7 +636,7 @@ export function AccountManager({
 
           {/* Institution Name */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               Institution{' '}
               <span className="text-white/20 normal-case tracking-normal">(optional)</span>
             </label>
@@ -652,7 +652,7 @@ export function AccountManager({
 
           {/* Last Four */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               Last 4 Digits{' '}
               <span className="text-white/20 normal-case tracking-normal">(optional)</span>
             </label>
@@ -670,7 +670,7 @@ export function AccountManager({
 
           {/* Color Swatches */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               Color
             </label>
             <div className="flex gap-2 flex-wrap">
@@ -702,7 +702,7 @@ export function AccountManager({
 
           {/* Notes */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               Notes{' '}
               <span className="text-white/20 normal-case tracking-normal">(optional)</span>
             </label>
@@ -711,7 +711,7 @@ export function AccountManager({
               onChange={(e) => setField('notes', e.target.value)}
               placeholder="Any additional notes…"
               rows={2}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+              className="w-full bg-white/[0.045] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
             />
           </div>
 
@@ -752,7 +752,7 @@ export function AccountManager({
 
           {/* From Account */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               From Account
             </label>
             <NeuralSelectMenu
@@ -766,7 +766,7 @@ export function AccountManager({
 
           {/* To Account — excludes the currently-selected "from" account */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               To Account
             </label>
             <NeuralSelectMenu
@@ -782,7 +782,7 @@ export function AccountManager({
 
           {/* Amount */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               Amount
             </label>
             <NeuralInput
@@ -799,7 +799,7 @@ export function AccountManager({
 
           {/* Date */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               Date
             </label>
             <NeuralInput
@@ -813,7 +813,7 @@ export function AccountManager({
 
           {/* Notes */}
           <div>
-            <label className="block text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
+            <label className="block text-[11px] uppercase tracking-[0.3em] text-white/40 font-black mb-2">
               Notes{' '}
               <span className="text-white/20 normal-case tracking-normal">(optional)</span>
             </label>
@@ -831,7 +831,7 @@ export function AccountManager({
           {transferForm.fromAccountId &&
             transferForm.toAccountId &&
             transferForm.fromAccountId === transferForm.toAccountId && (
-              <p className="text-[10px] text-amber-400">
+              <p className="text-[11px] text-amber-400">
                 Source and destination must be different accounts.
               </p>
             )}

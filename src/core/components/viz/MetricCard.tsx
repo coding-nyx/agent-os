@@ -107,7 +107,7 @@ export function MetricCard({
       <div className="relative z-10 space-y-4">
         {/* Label */}
         <div className="flex items-center justify-between">
-          <span className="text-[10px] sm:text-xs uppercase tracking-wider text-white/60 font-bold">
+          <span className="text-[11px] sm:text-xs uppercase tracking-wider text-white/60 font-bold">
             {label}
           </span>
           {trendDirection !== 'stable' && <TrendArrow trend={trendDirection} size="sm" />}

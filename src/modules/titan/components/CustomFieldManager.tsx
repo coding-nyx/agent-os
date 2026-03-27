@@ -310,7 +310,7 @@ export function CustomFieldManager({
             </div>
             <div>
               <p className="text-xs font-bold text-white/80">Set Up Macro Tracking</p>
-              <p className="text-[10px] text-white/40 mt-0.5">
+              <p className="text-[11px] text-white/40 mt-0.5">
                 One tap creates Calories, Protein, Carbs &amp; Fat fields.
               </p>
             </div>
@@ -336,7 +336,7 @@ export function CustomFieldManager({
               <h3 className="text-sm font-black uppercase tracking-wide text-white/90">
                 Custom Fields
               </h3>
-              <p className="text-[10px] text-white/50 mt-0.5">
+              <p className="text-[11px] text-white/50 mt-0.5">
                 Add personalized tracking metrics
               </p>
             </div>
@@ -357,7 +357,7 @@ export function CustomFieldManager({
 
         {hasCustomData ? (
           <div className="space-y-2">
-            <div className="text-[10px] font-black uppercase tracking-wider text-white/50 mb-2">
+            <div className="text-[11px] font-black uppercase tracking-wider text-white/50 mb-2">
               Active Custom Fields
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -371,8 +371,8 @@ export function CustomFieldManager({
                 if (!field) return null;
 
                 return (
-                  <div key={key} className="px-3 py-2 rounded-lg bg-white/5 border border-white/10">
-                    <div className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">
+                  <div key={key} className="px-3 py-2 rounded-lg bg-white/[0.045] border border-white/10">
+                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-0.5">
                       {field.name}
                     </div>
                     <div className="text-xs font-bold text-white/80 truncate">
@@ -412,7 +412,7 @@ export function CustomFieldManager({
                   'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all',
                   activeCategory === cat.id
                     ? 'bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                    : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                    : 'bg-white/[0.045] border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
                 )}
               >
                 <span>{cat.icon}</span>
@@ -431,7 +431,7 @@ export function CustomFieldManager({
 
           {/* Active Category Description */}
           {activeFields && (
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <div className="p-4 rounded-xl bg-white/[0.045] border border-white/[0.09]">
               <p className="text-xs text-white/60 leading-relaxed">
                 {activeFields.description}
               </p>
@@ -461,7 +461,7 @@ export function CustomFieldManager({
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+          <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.09]">
             <NeuralButton variant="ghost" onClick={() => setIsModalOpen(false)}>
               Cancel
             </NeuralButton>

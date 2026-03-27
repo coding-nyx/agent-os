@@ -50,11 +50,11 @@ function ProposalCard({ proposal, onSwipe }: { proposal: Proposal, onSwipe: (dir
         </motion.div>
 
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-white/[0.045] border border-white/10 flex items-center justify-center">
             <Zap size={20} className="text-[var(--module-accent)]" />
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">{proposal.agent} Proposal</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">{proposal.agent} Proposal</span>
             <h3 className="text-lg font-bold text-white tracking-tight">{proposal.title}</h3>
           </div>
         </div>
@@ -62,14 +62,14 @@ function ProposalCard({ proposal, onSwipe }: { proposal: Proposal, onSwipe: (dir
         <div className="flex-1 space-y-4">
           <p className="text-sm text-white/60 leading-relaxed italic">"{proposal.description}"</p>
           
-          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 block mb-2">Soul Impact</span>
+          <div className="p-4 rounded-2xl bg-white/[0.045] border border-white/[0.09]">
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30 block mb-2">Soul Impact</span>
             <p className="text-xs font-mono text-[var(--module-accent)]">{proposal.impact}</p>
           </div>
         </div>
 
         <div className="mt-8 flex items-center justify-between gap-4">
-          <div className="flex-1 h-1 rounded-full bg-white/5 overflow-hidden">
+          <div className="flex-1 h-1 rounded-full bg-white/[0.045] overflow-hidden">
             <motion.div 
               className="h-full bg-[var(--module-accent)]"
               initial={{ width: 0 }}
@@ -77,7 +77,7 @@ function ProposalCard({ proposal, onSwipe }: { proposal: Proposal, onSwipe: (dir
               transition={{ duration: 5, ease: "linear" }}
             />
           </div>
-          <span className="text-[10px] font-mono text-white/20 whitespace-nowrap uppercase tracking-widest">Auto-slide in 5s</span>
+          <span className="text-[11px] font-mono text-white/20 whitespace-nowrap uppercase tracking-widest">Auto-slide in 5s</span>
         </div>
       </SurfaceCard>
     </motion.div>
@@ -104,12 +104,12 @@ export function ProposalStack({ proposals }: { proposals: Proposal[] }) {
 
   if (index >= proposals.length) {
     return (
-      <div className="h-[340px] flex flex-col items-center justify-center text-center p-8 bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
-        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-4">
+      <div className="h-[340px] flex flex-col items-center justify-center text-center p-8 bg-white/[0.045] rounded-3xl border border-dashed border-white/10">
+        <div className="w-12 h-12 rounded-full bg-white/[0.045] flex items-center justify-center mb-4">
           <Check className="text-white/20" />
         </div>
         <p className="text-xs font-bold text-white/30 uppercase tracking-[0.2em]">Queue Clear</p>
-        <p className="text-[10px] text-white/20 mt-1">No pending agent proposals</p>
+        <p className="text-[11px] text-white/20 mt-1">No pending agent proposals</p>
       </div>
     );
   }

@@ -48,17 +48,17 @@ export function AgnesEngagementModeControl({
             className={cn(
               'transition-all duration-300 border text-left',
               compact
-                ? 'px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.24em]'
-                : 'rounded-2xl p-4 bg-white/[0.02] min-h-[7.5rem] flex flex-col justify-between',
+                ? 'px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-[0.24em]'
+                : 'rounded-2xl p-4 bg-white/[0.045] min-h-[7.5rem] flex flex-col justify-between',
               selected
                 ? 'border-indigo-400/60 bg-indigo-500/12 text-white shadow-[0_0_0_1px_rgba(129,140,248,0.18)]'
-                : 'border-white/8 bg-black/20 text-white/55 hover:border-white/20 hover:text-white/80',
+                : 'border-white/[0.09] bg-slate-900/50 text-white/55 hover:border-white/20 hover:text-white/80',
             )}
           >
             <div className="space-y-1.5">
               <div className={cn(
                 'font-black uppercase italic tracking-wider',
-                compact ? 'text-[9px]' : 'text-sm',
+                compact ? 'text-[11px]' : 'text-sm',
               )}>
                 {compact ? definition.shortLabel : definition.label}
               </div>
@@ -69,7 +69,7 @@ export function AgnesEngagementModeControl({
               )}
             </div>
             {!compact && (
-              <div className="text-[9px] font-black uppercase tracking-[0.24em] text-inherit/60">
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-inherit/60">
                 {definition.summary}
               </div>
             )}

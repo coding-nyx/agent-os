@@ -118,14 +118,14 @@ function DayCell({ date, isToday, planned, routineForDay, isSelected, onClick }:
           ? 'border border-[var(--module-accent)] bg-[var(--module-accent-muted)]'
           : isSelected
             ? 'border border-[var(--module-accent)] bg-white/[0.08]'
-            : 'border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.12]',
+            : 'border border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.05] hover:border-white/[0.12]',
         isPast && !planned && !hasRoutine && 'opacity-40',
       )}
       aria-label={`${toIsoDate(date)}${planned ? ` — ${planned.routineName}` : routineForDay ? ` — ${routineForDay.name}` : ''}`}
     >
       <span
         className={cn(
-          'text-[10px] font-bold leading-none',
+          'text-[11px] font-bold leading-none',
           isToday ? 'text-[var(--module-color-300)]' : 'text-white/60',
         )}
       >
@@ -137,7 +137,7 @@ function DayCell({ date, isToday, planned, routineForDay, isSelected, onClick }:
         // Routine-derived dot — dimmer to distinguish from explicit planned workouts
         <span className="w-1.5 h-1.5 rounded-full bg-white/25 inline-block shrink-0" aria-label="routine" />
       ) : (
-        <span className="text-[8px] text-white/15 leading-none">+</span>
+        <span className="text-[11px] text-white/15 leading-none">+</span>
       )}
     </button>
   );
@@ -172,12 +172,12 @@ function DayDetail({ planned, routine, onClose, onMarkSkipped, onStartSession, o
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-[var(--module-color-300)]">
+          <p className="text-[11px] font-black uppercase tracking-widest text-[var(--module-color-300)]">
             {anchorLabel}
           </p>
           <p className="text-xs font-semibold text-white/90 mt-0.5">{name}</p>
           {!planned && routine && (
-            <p className="text-[9px] text-white/30 mt-0.5 capitalize">{routine.weekday} routine</p>
+            <p className="text-[11px] text-white/30 mt-0.5 capitalize">{routine.weekday} routine</p>
           )}
         </div>
         <button
@@ -191,20 +191,20 @@ function DayDetail({ planned, routine, onClose, onMarkSkipped, onStartSession, o
       </div>
 
       {exercises.length > 0 && (
-        <p className="text-[10px] text-white/50 mb-2 leading-relaxed">
+        <p className="text-[11px] text-white/50 mb-2 leading-relaxed">
           {exercises.slice(0, 4).join(' · ')}
           {exercises.length > 4 && ` +${exercises.length - 4}`}
         </p>
       )}
 
       {notes && (
-        <p className="text-[10px] text-white/40 italic mb-2">{notes}</p>
+        <p className="text-[11px] text-white/40 italic mb-2">{notes}</p>
       )}
 
       {planned && (
         <div className="flex items-center gap-1.5 mb-2">
           <StatusDot status={planned.status} />
-          <span className="text-[10px] text-white/50 capitalize">{planned.status}</span>
+          <span className="text-[11px] text-white/50 capitalize">{planned.status}</span>
         </div>
       )}
 
@@ -213,7 +213,7 @@ function DayDetail({ planned, routine, onClose, onMarkSkipped, onStartSession, o
         {onStartSession && routine && (!planned || planned.status === 'planned') && (
           <NeuralButton
             size="sm"
-            className="flex-1 text-[10px]"
+            className="flex-1 text-[11px]"
             onClick={() => { onStartSession(routine); onClose(); }}
           >
             <Play className="w-3 h-3 mr-1" />
@@ -224,7 +224,7 @@ function DayDetail({ planned, routine, onClose, onMarkSkipped, onStartSession, o
           <NeuralButton
             size="sm"
             variant="ghost"
-            className="flex-1 text-[10px]"
+            className="flex-1 text-[11px]"
             onClick={() => { onMarkSkipped(planned); onClose(); }}
           >
             <XCircle className="w-3 h-3 mr-1" />
@@ -239,7 +239,7 @@ function DayDetail({ planned, routine, onClose, onMarkSkipped, onStartSession, o
           <NeuralButton
             size="sm"
             variant="ghost"
-            className="w-full h-7 text-[10px] text-[var(--module-color-300)] hover:bg-[var(--module-accent-muted)]"
+            className="w-full h-7 text-[11px] text-[var(--module-color-300)] hover:bg-[var(--module-accent-muted)]"
             onClick={() => { onSchedule(); onClose(); }}
           >
             <CalendarPlus className="w-3 h-3 mr-1.5" />
@@ -331,7 +331,7 @@ function PlanModal({ isOpen, initialDate, routines, onClose, onSave, onAnalyze, 
       <div className="flex flex-col gap-4">
         {/* Date */}
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--module-color-400)] mb-1.5 block">
+          <label className="text-[11px] font-bold uppercase tracking-widest text-[var(--module-color-400)] mb-1.5 block">
             Date
           </label>
           <NeuralInput
@@ -343,7 +343,7 @@ function PlanModal({ isOpen, initialDate, routines, onClose, onSave, onAnalyze, 
 
         {/* Routine name — select or free text */}
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--module-color-400)] mb-1.5 block">
+          <label className="text-[11px] font-bold uppercase tracking-widest text-[var(--module-color-400)] mb-1.5 block">
             Routine
           </label>
           {routines.length > 0 ? (
@@ -375,7 +375,7 @@ function PlanModal({ isOpen, initialDate, routines, onClose, onSave, onAnalyze, 
 
         {/* Exercise names */}
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--module-color-400)] mb-1.5 block">
+          <label className="text-[11px] font-bold uppercase tracking-widest text-[var(--module-color-400)] mb-1.5 block">
             Exercises <span className="text-white/30 normal-case font-normal">(comma-separated, optional)</span>
           </label>
           <NeuralInput
@@ -387,7 +387,7 @@ function PlanModal({ isOpen, initialDate, routines, onClose, onSave, onAnalyze, 
 
         {/* Notes */}
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--module-color-400)] mb-1.5 block">
+          <label className="text-[11px] font-bold uppercase tracking-widest text-[var(--module-color-400)] mb-1.5 block">
             Notes <span className="text-white/30 normal-case font-normal">(optional)</span>
           </label>
           <NeuralInput
@@ -461,7 +461,7 @@ function UpcomingList({ plannedWorkouts, completedDates, onMarkSkipped }: Upcomi
               effectiveStatus === 'completed'
                 ? 'border-emerald-500/20 bg-emerald-500/5'
                 : effectiveStatus === 'skipped'
-                ? 'border-white/5 bg-white/[0.02] opacity-60'
+                ? 'border-white/[0.09] bg-white/[0.045] opacity-60'
                 : 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]',
             )}
           >
@@ -479,11 +479,11 @@ function UpcomingList({ plannedWorkouts, completedDates, onMarkSkipped }: Upcomi
               {/* Details */}
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-white/80 truncate">{pw.routineName}</p>
-                <p className="text-[10px] text-[var(--module-color-400)] mt-0.5">
+                <p className="text-[11px] text-[var(--module-color-400)] mt-0.5">
                   {formatDisplayDate(pw.date)}
                 </p>
                 {pw.exerciseNames && pw.exerciseNames.length > 0 && (
-                  <p className="text-[9px] text-white/35 mt-0.5 leading-tight">
+                  <p className="text-[11px] text-white/35 mt-0.5 leading-tight">
                     {pw.exerciseNames.slice(0, 3).join(' · ')}
                     {pw.exerciseNames.length > 3 && ` +${pw.exerciseNames.length - 3}`}
                   </p>
@@ -495,7 +495,7 @@ function UpcomingList({ plannedWorkouts, completedDates, onMarkSkipped }: Upcomi
               <NeuralButton
                 size="sm"
                 variant="ghost"
-                className="shrink-0 text-[9px] text-white/40 hover:text-white/70"
+                className="shrink-0 text-[11px] text-white/40 hover:text-white/70"
                 onClick={() => onMarkSkipped(pw)}
               >
                 Skip
@@ -651,7 +651,7 @@ export function WorkoutScheduler({
             size="sm"
             variant="ghost"
             onClick={() => setIsPlanModalOpen(true)}
-            className="h-7 px-2.5 text-[10px] font-bold text-[var(--module-color-300)] hover:bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]"
+            className="h-7 px-2.5 text-[11px] font-bold text-[var(--module-color-300)] hover:bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)]"
           >
             <CalendarPlus className="w-3.5 h-3.5 mr-1.5" />
             {planModalDate === todayIso ? 'Schedule' : `Schedule (${formatDisplayDate(planModalDate)})`}
@@ -660,16 +660,16 @@ export function WorkoutScheduler({
             type="button"
             onClick={() => setWeekOffset(o => o - 1)}
             aria-label="Previous 4 weeks"
-            className="w-7 h-7 rounded-xl flex items-center justify-center border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] transition-colors text-white/50 hover:text-white/80"
+            className="w-7 h-7 rounded-xl flex items-center justify-center border border-white/10 bg-white/[0.045] hover:bg-white/[0.07] transition-colors text-white/50 hover:text-white/80"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[10px] text-white/40 min-w-[6rem] text-center">{monthLabel}</span>
+          <span className="text-[11px] text-white/40 min-w-[6rem] text-center">{monthLabel}</span>
           <button
             type="button"
             onClick={() => setWeekOffset(o => o + 1)}
             aria-label="Next 4 weeks"
-            className="w-7 h-7 rounded-xl flex items-center justify-center border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] transition-colors text-white/50 hover:text-white/80"
+            className="w-7 h-7 rounded-xl flex items-center justify-center border border-white/10 bg-white/[0.045] hover:bg-white/[0.07] transition-colors text-white/50 hover:text-white/80"
           >
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
@@ -679,7 +679,7 @@ export function WorkoutScheduler({
       {/* Day abbreviation headers */}
       <div className="grid grid-cols-7 gap-1 mb-1">
         {DAY_ABBREVS.map(d => (
-          <div key={d} className="text-center text-[9px] font-black uppercase tracking-widest text-white/25 py-0.5">
+          <div key={d} className="text-center text-[11px] font-black uppercase tracking-widest text-white/25 py-0.5">
             {d}
           </div>
         ))}
@@ -739,24 +739,24 @@ export function WorkoutScheduler({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/[0.06]">
+      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/[0.09]">
         {(['planned', 'completed', 'skipped'] as const).map(status => (
           <div key={status} className="flex items-center gap-1">
             <StatusDot status={status} />
-            <span className="text-[9px] text-white/30 capitalize">{status}</span>
+            <span className="text-[11px] text-white/30 capitalize">{status}</span>
           </div>
         ))}
         {routineByWeekday.size > 0 && (
           <div className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-white/25 inline-block shrink-0" />
-            <span className="text-[9px] text-white/30">routine</span>
+            <span className="text-[11px] text-white/30">routine</span>
           </div>
         )}
       </div>
 
       {/* Upcoming sessions list */}
-      <div className="mt-4 pt-4 border-t border-white/[0.06]">
-        <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-3">
+      <div className="mt-4 pt-4 border-t border-white/[0.09]">
+        <p className="text-[11px] font-black uppercase tracking-widest text-white/30 mb-3">
           Next {UPCOMING_DAYS} Days
         </p>
         <UpcomingList

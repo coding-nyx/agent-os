@@ -135,7 +135,7 @@ function WeightTrendChart({ log }: { log: BodyWeightEntry[] }) {
           <circle key={i} cx={x} cy={y} r="4" fill={lineColor} />
         ))}
       </svg>
-      <div className="flex justify-between text-[9px] text-white/30 px-1 mt-0.5">
+      <div className="flex justify-between text-[11px] text-white/30 px-1 mt-0.5">
         <span>{data[0].date.slice(5)}</span>
         <span className="text-white/50 font-bold">{n} entries</span>
         <span>{data[n - 1].date.slice(5)}</span>
@@ -153,20 +153,20 @@ function EntryRow({ entry, unit }: { entry: BodyWeightEntry; unit: 'kg' | 'lbs' 
   const hasMeasurements = entry.measurements && Object.values(entry.measurements).some(v => v != null);
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded(v => !v)}
-        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/[0.03] transition-colors text-left"
+        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/[0.045] transition-colors text-left"
       >
         <div className="flex items-center gap-3">
           <Scale className="w-3 h-3 text-white/30 shrink-0" />
           <span className="text-xs font-bold text-white/80">{entry.date}</span>
           {entry.bodyFatPct != null && (
-            <span className="text-[10px] text-white/40">{entry.bodyFatPct}% BF</span>
+            <span className="text-[11px] text-white/40">{entry.bodyFatPct}% BF</span>
           )}
           {entry.notes && (
-            <span className="text-[10px] text-white/30 italic truncate max-w-[120px]">{entry.notes}</span>
+            <span className="text-[11px] text-white/30 italic truncate max-w-[120px]">{entry.notes}</span>
           )}
           {entry.photoUrl && (
             <a href={entry.photoUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
@@ -185,10 +185,10 @@ function EntryRow({ entry, unit }: { entry: BodyWeightEntry; unit: 'kg' | 'lbs' 
       </button>
 
       {expanded && hasMeasurements && entry.measurements && (
-        <div className="px-3 pb-3 pt-1 border-t border-white/5 flex flex-wrap gap-x-4 gap-y-1">
+        <div className="px-3 pb-3 pt-1 border-t border-white/[0.09] flex flex-wrap gap-x-4 gap-y-1">
           {Object.entries(entry.measurements).map(([key, val]) =>
             val != null ? (
-              <span key={key} className="text-[10px] text-white/50">
+              <span key={key} className="text-[11px] text-white/50">
                 {key.replace(/([A-Z])/g, ' $1').toLowerCase()}: {val} cm
               </span>
             ) : null
@@ -333,7 +333,7 @@ export function BodyWeightTracker({
               size="sm"
               variant="ghost"
               onClick={() => setUnit(u => u === 'kg' ? 'lbs' : 'kg')}
-              className="text-[10px] font-black uppercase tracking-wider"
+              className="text-[11px] font-black uppercase tracking-wider"
             >
               {unit}
             </NeuralButton>
@@ -412,7 +412,7 @@ export function BodyWeightTracker({
         {/* Trend chart */}
         {(bodyWeightLog?.length ?? 0) >= 2 && (
           <SurfaceCard className="p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50 mb-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/50 mb-3">
               Weight Trend — Last 90 Days
             </p>
             <WeightTrendChart log={bodyWeightLog ?? []} />
@@ -497,7 +497,7 @@ export function BodyWeightTracker({
               variant="ghost"
               size="sm"
               onClick={() => setShowMeasurements(v => !v)}
-              className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white/60 h-auto p-1"
+              className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white/60 h-auto p-1"
             >
               {showMeasurements ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
               Measurements (cm) — optional
@@ -543,7 +543,7 @@ export function BodyWeightTracker({
                 <img src={photoPreview} alt="preview" className="w-full rounded-xl object-cover max-h-40 border border-white/10" />
                 <button
                   onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
-                  className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5 text-white/60 hover:text-white"
+                  className="absolute top-1 right-1 bg-slate-900/85 rounded-full p-0.5 text-white/60 hover:text-white"
                 >✕</button>
               </div>
             ) : (
@@ -579,7 +579,7 @@ export function BodyWeightTracker({
             </p>
           )}
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
+          <div className="flex justify-end gap-3 pt-2 border-t border-white/[0.09]">
             <NeuralButton variant="ghost" onClick={() => closeModal()}>
               Cancel
             </NeuralButton>

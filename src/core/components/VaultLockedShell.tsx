@@ -73,7 +73,7 @@ export function VaultLockedShell({
     >
       <div className="flex flex-col items-center gap-6 text-center max-w-xs">
         {/* Lock badge */}
-        <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center">
+        <div className="w-16 h-16 rounded-3xl bg-white/[0.045] border border-white/10 flex items-center justify-center">
           <Lock className="w-7 h-7 text-white/30" aria-hidden="true" />
         </div>
 
@@ -87,7 +87,7 @@ export function VaultLockedShell({
 
         {/* Non-sensitive metadata (safe to show while locked) */}
         {(lastActiveLabel || (itemCount !== null && itemCount !== undefined)) && (
-          <div className="flex items-center gap-4 text-[10px] text-white/25 uppercase tracking-widest font-medium">
+          <div className="flex items-center gap-4 text-[11px] text-white/25 uppercase tracking-widest font-medium">
             {lastActiveLabel && <span>{lastActiveLabel}</span>}
             {lastActiveLabel && itemCount !== null && itemCount !== undefined && (
               <span aria-hidden="true">·</span>
@@ -112,7 +112,7 @@ export function VaultLockedShell({
               Unlock vault to continue
             </button>
           ) : (
-            <p className="text-[10px] text-white/25 italic">
+            <p className="text-[11px] text-white/25 italic">
               Unlock your vault to continue
             </p>
           )}

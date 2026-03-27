@@ -160,7 +160,7 @@ function ViewDropdown({
               }}
               className={cn(
                 "w-full text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors",
-                activeView === v ? "text-[var(--module-color-400)] bg-white/5" : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                activeView === v ? "text-[var(--module-color-400)] bg-white/[0.045]" : "text-white/40 hover:text-white/70 hover:bg-white/[0.045]"
               )}
             >
               {labels[v] || v}
@@ -284,7 +284,7 @@ export function EnhancedAtlasDashboard({
           />
           <span
             className={cn(
-              'self-start inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[length:var(--atlas-type-label)] font-semibold border border-white/10 bg-white/5',
+              'self-start inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[length:var(--atlas-type-label)] font-semibold border border-white/10 bg-white/[0.045]',
               predictiveDisplay.color
             )}
             title={predictiveDisplay.description}
@@ -322,7 +322,7 @@ export function EnhancedAtlasDashboard({
       </header>
 
       {/* ── Tab Navigation (Desktop) ── */}
-      <div className="border-b border-white/5 relative z-10 px-[var(--atlas-space-page-x)]">
+      <div className="border-b border-white/[0.09] relative z-10 px-[var(--atlas-space-page-x)]">
         <NeuralTabGroup
           tabs={tabs}
           activeTab={activeTab}
@@ -443,7 +443,7 @@ export function EnhancedAtlasDashboard({
                         });
                         setIsEditingIntention(true);
                       }}
-                      variant="ghost" size="sm" themeColor="module" className="text-[10px] text-[var(--module-color-400)] font-bold hover:text-[var(--module-color-300)] transition-colors" aria-label="Edit daily intent"
+                      variant="ghost" size="sm" themeColor="module" className="text-[11px] text-[var(--module-color-400)] font-bold hover:text-[var(--module-color-300)] transition-colors" aria-label="Edit daily intent"
                     >
                       EDIT INTENT
                     </NeuralButton>
@@ -456,21 +456,21 @@ export function EnhancedAtlasDashboard({
                           label="Theme"
                           value={intentionForm.theme}
                           onChange={(e) => setIntentionForm({ ...intentionForm, theme: e.target.value })}
-                          className="bg-white/5 border-white/10"
+                          className="bg-white/[0.045] border-white/10"
                         />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <NeuralInput 
                             label="Focus Domain"
                             value={intentionForm.focusDomain}
                             onChange={(e) => setIntentionForm({ ...intentionForm, focusDomain: e.target.value })}
-                            className="bg-white/5 border-white/10"
+                            className="bg-white/[0.045] border-white/10"
                           />
                           <NeuralInput 
                             type="number"
                             label="Energy Target"
                             value={intentionForm.energyTarget}
                             onChange={(e) => setIntentionForm({ ...intentionForm, energyTarget: parseInt(e.target.value) })}
-                            className="bg-white/5 border-white/10"
+                            className="bg-white/[0.045] border-white/10"
                           />
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
@@ -478,7 +478,7 @@ export function EnhancedAtlasDashboard({
                              onClick={() => setIsEditingIntention(false)}
                              variant="ghost"
                              size="sm"
-                             className="text-[10px] font-bold"
+                             className="text-[11px] font-bold"
                            >
                              CANCEL
                            </NeuralButton>
@@ -489,7 +489,7 @@ export function EnhancedAtlasDashboard({
                              }}
                              themeColor="module"
                              size="sm"
-                             className="text-[10px] font-bold px-4 h-8"
+                             className="text-[11px] font-bold px-4 h-8"
                            >
                              SAVE INTENT
                            </NeuralButton>
@@ -500,9 +500,9 @@ export function EnhancedAtlasDashboard({
                       <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <Target className="w-4 h-4 text-[var(--module-color-400)]" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--module-color-400)]">Focus Domain</span>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--module-color-400)]">Focus Domain</span>
                           </div>
-                          <span className="text-[10px] text-white/30 font-bold uppercase tabular-nums">
+                          <span className="text-[11px] text-white/30 font-bold uppercase tabular-nums">
                             {profile.dailyIntentions[0].date}
                           </span>
                       </div>
@@ -510,13 +510,13 @@ export function EnhancedAtlasDashboard({
                           {profile.dailyIntentions[0].theme}
                       </h3>
                       <div className="mt-4 flex items-center gap-4">
-                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.045] border border-white/10">
                             <div className="w-1.5 h-1.5 rounded-full bg-[var(--module-color-400)]" />
-                            <span className="text-[10px] font-bold text-white/60 uppercase">{profile.dailyIntentions[0].focusDomain}</span>
+                            <span className="text-[11px] font-bold text-white/60 uppercase">{profile.dailyIntentions[0].focusDomain}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <Zap className="w-3 h-3 text-amber-400" />
-                            <span className="text-[10px] font-bold text-white/30">Target: {profile.dailyIntentions[0].energyTarget}/10</span>
+                            <span className="text-[11px] font-bold text-white/30">Target: {profile.dailyIntentions[0].energyTarget}/10</span>
                           </div>
                       </div>
                      </>
@@ -656,7 +656,7 @@ export function EnhancedAtlasDashboard({
                      focusTaskId={focusTaskId}
                    />
               </section>
-              <div className="border-t border-white/5" />
+              <div className="border-t border-white/[0.09]" />
               <section className="space-y-4">
                   <h3 className="text-lg font-bold font-display text-white/90">Active Goals</h3>
                   <GoalTracker
@@ -744,19 +744,19 @@ export function EnhancedAtlasDashboard({
               onOpenReview={() => setIsReviewModalOpen(true)}
             />
             
-            <div className="border-t border-white/5 pt-6">
+            <div className="border-t border-white/[0.09] pt-6">
               <h3 className="text-lg font-bold font-display text-white/90 mb-4">Historical Analytics</h3>
               <AtlasAnalytics profile={profile} />
             </div>
 
             {profile?.reviews && profile.reviews.length > 0 && (
-              <div className="space-y-4 border-t border-white/5 pt-6">
+              <div className="space-y-4 border-t border-white/[0.09] pt-6">
                 <h3 className="text-lg font-bold font-display text-white/90">Past Reviews</h3>
                 <div className="space-y-4">
                   {profile.reviews.map((review: any) => (
                     <div
                       key={review.id}
-                      className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"
+                      className="rounded-2xl border border-white/10 bg-white/[0.045] p-6"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="text-sm font-bold text-white/90 capitalize">
@@ -795,8 +795,8 @@ export function EnhancedAtlasDashboard({
 
                       {review.blueprint && (
                         <div className="grid gap-3 sm:grid-cols-2 mb-4">
-                          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-                            <span className="text-[10px] text-white/40 uppercase tracking-wider">Blueprint Capacity</span>
+                          <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-4">
+                            <span className="text-[11px] text-white/40 uppercase tracking-wider">Blueprint Capacity</span>
                             <p className="mt-2 text-sm font-bold text-white/85">
                               {review.blueprint.capacity.safeCapacity} safe / {review.blueprint.capacity.plannedDemand} demand
                             </p>
@@ -804,8 +804,8 @@ export function EnhancedAtlasDashboard({
                               {review.blueprint.capacity.recommendedCapacityPct}% capacity · {review.blueprint.capacity.state}
                             </p>
                           </div>
-                          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-                            <span className="text-[10px] text-white/40 uppercase tracking-wider">Projected Focus</span>
+                          <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-4">
+                            <span className="text-[11px] text-white/40 uppercase tracking-wider">Projected Focus</span>
                             <p className="mt-2 text-sm font-bold text-white/85">
                               {review.blueprint.projection.nextPeriodFocus}
                             </p>
@@ -818,7 +818,7 @@ export function EnhancedAtlasDashboard({
                       
                       {review.insights && review.insights.length > 0 && (
                           <div className="mt-4 pt-4 border-t border-white/10">
-                              <span className="text-[10px] text-white/40 uppercase tracking-wider">Generated Insights</span>
+                              <span className="text-[11px] text-white/40 uppercase tracking-wider">Generated Insights</span>
                               <ul className="list-disc pl-4 mt-2 space-y-1">
                                   {review.insights.map((ins: string, i: number) => (
                                       <li key={i} className="text-xs text-[var(--module-color-300)]">{ins}</li>
@@ -829,7 +829,7 @@ export function EnhancedAtlasDashboard({
 
                       {review.blueprint?.projection?.recommendedActions?.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-white/10">
-                          <span className="text-[10px] text-white/40 uppercase tracking-wider">Recommended Actions</span>
+                          <span className="text-[11px] text-white/40 uppercase tracking-wider">Recommended Actions</span>
                           <ul className="mt-2 space-y-2">
                             {review.blueprint.projection.recommendedActions.slice(0, 3).map((action: any) => (
                               <li key={action.id} className="text-xs text-white/55">
@@ -897,7 +897,7 @@ export function EnhancedAtlasDashboard({
             onClick={() => setIsFieldsModalOpen(false)}
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5"
+            className="h-8 w-8 p-0 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.045]"
             aria-label="Close settings"
           >
             <X className="h-4 w-4" />

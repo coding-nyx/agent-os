@@ -47,7 +47,7 @@ export function MemorySearchResults({
 }: MemorySearchResultsProps) {
   if (isSearching) {
     return (
-      <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
+      <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-4">
         <div className="flex items-center gap-2 text-sm text-white/50">
           <Search className="w-4 h-4 animate-pulse" />
           <span>Scanning memory for &quot;{query}&quot;…</span>
@@ -92,10 +92,10 @@ export function MemorySearchResults({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden"
+      className="rounded-xl border border-white/[0.09] bg-white/[0.045] overflow-hidden"
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.09]">
         <Search className="w-3.5 h-3.5 text-white/40" />
         <span className="flex-1 text-xs font-bold text-white/60">Memory Search: &quot;{query}&quot;</span>
         {onDismiss ? (
@@ -116,27 +116,27 @@ export function MemorySearchResults({
             type="button"
             key={result.id}
             onClick={() => onResultClick?.(result)}
-            className="flex items-start gap-3 px-2 py-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+            className="flex items-start gap-3 px-2 py-2 rounded-lg hover:bg-white/[0.045] transition-colors"
             data-testid={`memory-result-${result.id}`}
           >
-            <span className="text-[10px] text-white/30 font-mono shrink-0 mt-0.5">
+            <span className="text-[11px] text-white/30 font-mono shrink-0 mt-0.5">
               {new Date(result.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={cn('text-[10px] font-bold uppercase', MODULE_COLORS[result.moduleId] || 'text-white/40')}>
+                <span className={cn('text-[11px] font-bold uppercase', MODULE_COLORS[result.moduleId] || 'text-white/40')}>
                   [{result.moduleId}]
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                <span className="rounded-full border border-white/10 bg-white/[0.045] px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
                   {result.type}
                 </span>
-                <span className="text-[10px] text-white/25">
+                <span className="text-[11px] text-white/25">
                   {result.citation.entityId ? `Source ${result.citation.entityId}` : result.citation.label}
                 </span>
               </div>
               <p className="text-xs text-white/60 leading-relaxed mt-0.5 line-clamp-2">{result.text}</p>
             </div>
-            <span className="text-[10px] text-white/20 font-mono shrink-0">
+            <span className="text-[11px] text-white/20 font-mono shrink-0">
               {typeof result.confidence === 'number' ? result.confidence.toFixed(2) : result.score.toFixed(2)}
             </span>
           </button>

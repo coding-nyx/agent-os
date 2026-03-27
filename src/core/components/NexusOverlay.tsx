@@ -324,12 +324,12 @@ function NexusOverlayContent() {
                 'bg-[#09090e]/96 backdrop-blur-[52px]',
                 // Mobile: bottom sheet
                 'bottom-0 left-0 right-0 rounded-t-[28px]',
-                'h-[88dvh] border-t border-l border-r border-white/[0.06]',
+                'h-[88dvh] border-t border-l border-r border-white/[0.09]',
                 'shadow-[0_-20px_60px_rgba(0,0,0,0.55)]',
                 // Desktop: right panel overrides
                 'lg:inset-y-0 lg:right-0 lg:left-auto lg:h-auto lg:bottom-0',
                 'lg:w-full lg:max-w-[420px]',
-                'lg:rounded-none lg:border-t-0 lg:border-r-0 lg:border-l lg:border-white/[0.06]',
+                'lg:rounded-none lg:border-t-0 lg:border-r-0 lg:border-l lg:border-white/[0.09]',
                 'lg:shadow-[-24px_0_60px_rgba(0,0,0,0.45)]',
               ].join(' ')}
               aria-label="Nexus overlay"
@@ -343,7 +343,7 @@ function NexusOverlayContent() {
                 <div className="rounded-[26px] border border-cyan-500/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_42%),linear-gradient(180deg,rgba(8,12,18,0.96),rgba(5,8,13,0.98))] px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:px-5 sm:py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200/70">Nexus</p>
+                      <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-200/70">Nexus</p>
                       <h2 className="mt-1 text-[clamp(1.15rem,2.2vw,1.6rem)] font-semibold leading-none tracking-[-0.03em] text-white">
                         {welcomeGreeting}
                         {welcomeName ? `, ${welcomeName}` : ''}.
@@ -364,7 +364,7 @@ function NexusOverlayContent() {
                           type="button"
                           data-testid="nexus-overlay-open-home"
                           onClick={handleOpenDashboard}
-                          className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white/90"
+                          className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white/90"
                         >
                           Home
                         </button>
@@ -372,7 +372,7 @@ function NexusOverlayContent() {
                           type="button"
                           data-testid="nexus-overlay-clear-chat"
                           onClick={handleClearChat}
-                          className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white/90"
+                          className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white/90"
                         >
                           Clear chat
                         </button>
@@ -381,13 +381,13 @@ function NexusOverlayContent() {
                     <button
                       type="button"
                       onClick={close}
-                      className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/45 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white/85"
+                      className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.045] text-white/45 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white/85"
                       aria-label="Close Nexus"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-slate-900/50 px-3 py-2">
                     <NexusAgentPresenceStack participants={masterThreadSnapshot.thread.participants} />
                   </div>
                 </div>

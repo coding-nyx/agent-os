@@ -77,14 +77,14 @@ export function DiagnosisMergeDialog({
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-5 pt-5 pb-3">
-              <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-white/[0.045] border border-white/10 flex items-center justify-center">
                 <Package className="w-4 h-4 text-white/50" />
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-white/90">
                   {isReadOnly ? 'Analysis Summary' : 'Review Extracted Data'}
                 </h2>
-                <p className="text-[10px] text-white/40">
+                <p className="text-[11px] text-white/40">
                   {isReadOnly
                     ? `${extractedData.items.length} items found during analysis`
                     : `Select items to merge into your ${spec.label.toLowerCase()} profile`}
@@ -97,7 +97,7 @@ export function DiagnosisMergeDialog({
               <div className="px-5 pb-2">
                 <button
                   onClick={toggleAll}
-                  className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40 hover:text-white/60 transition-colors"
+                  className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40 hover:text-white/60 transition-colors"
                 >
                   {checkedIds.size === extractedData.items.length ? 'Deselect All' : 'Select All'}
                 </button>
@@ -108,26 +108,26 @@ export function DiagnosisMergeDialog({
             <div className="px-5 max-h-[50vh] overflow-y-auto space-y-3">
               {Array.from(grouped.entries()).map(([type, items]) => (
                 <div key={type}>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/25 mb-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/25 mb-1.5">
                     {type.replace(/_/g, ' ')}
                   </p>
                   <div className="space-y-1">
                     {items.map((item) => (
                       <label
                         key={item.id}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors cursor-pointer"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.045] transition-colors cursor-pointer"
                       >
                         {!isReadOnly && (
                           <input
                             type="checkbox"
                             checked={checkedIds.has(item.id)}
                             onChange={() => toggleItem(item.id)}
-                            className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 accent-cyan-400"
+                            className="w-3.5 h-3.5 rounded border-white/20 bg-white/[0.045] accent-cyan-400"
                           />
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] text-white/70 truncate">{item.label}</p>
-                          <p className="text-[9px] text-white/30 truncate">
+                          <p className="text-[11px] text-white/30 truncate">
                             from {item.source} · {new Date(item.extractedAt).toLocaleDateString()}
                           </p>
                         </div>
@@ -139,15 +139,15 @@ export function DiagnosisMergeDialog({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-white/5 mt-3">
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-white/[0.09] mt-3">
               {isReadOnly ? (
                 <>
-                  <p className="text-[9px] text-white/30 italic">
+                  <p className="text-[11px] text-white/30 italic">
                     Read-only analysis — items are not persisted
                   </p>
                   <button
                     onClick={onDiscard}
-                    className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/60 hover:text-white/80 transition-colors"
+                    className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/60 hover:text-white/80 transition-colors"
                   >
                     Done
                   </button>
@@ -156,7 +156,7 @@ export function DiagnosisMergeDialog({
                 <>
                   <button
                     onClick={onDiscard}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-400/20 bg-red-500/5 text-[10px] font-bold uppercase tracking-[0.12em] text-red-300/60 hover:text-red-200 hover:bg-red-500/10 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-400/20 bg-red-500/5 text-[11px] font-bold uppercase tracking-[0.12em] text-red-300/60 hover:text-red-200 hover:bg-red-500/10 transition-colors"
                   >
                     <XCircle className="w-3.5 h-3.5" />
                     Discard All
@@ -164,7 +164,7 @@ export function DiagnosisMergeDialog({
                   <button
                     onClick={() => onMerge(Array.from(checkedIds))}
                     disabled={checkedCount === 0}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-[10px] font-bold uppercase tracking-[0.12em] text-cyan-200 hover:bg-cyan-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-200 hover:bg-cyan-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Merge Selected ({checkedCount})

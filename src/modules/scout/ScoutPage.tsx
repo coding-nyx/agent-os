@@ -562,13 +562,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
   const sessionPanel = (
     <section className="surface-foundation flex min-h-[20rem] min-w-0 flex-col overflow-hidden p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-3 border-b border-white/8 pb-4">
+      <div className="flex items-start justify-between gap-3 border-b border-white/[0.09] pb-4">
         <div className="min-w-0">
           <p className="text-chip-soft text-white/50">Sessions</p>
           <h3 className="mt-1 text-panel-heading text-white">Research history</h3>
           <p className="mt-1 text-body-secondary">Open a session to continue an inquiry or review the latest status.</p>
         </div>
-        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/60">
+        <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-white/60">
           {sessions.length}
         </span>
       </div>
@@ -589,7 +589,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
             {sessionsLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, index) => (
-                  <div key={index} className="h-20 rounded-2xl border border-white/8 bg-white/[0.03] skeleton" />
+                  <div key={index} className="h-20 rounded-2xl border border-white/[0.09] bg-white/[0.045] skeleton" />
                 ))}
               </div>
             ) : (
@@ -742,7 +742,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       contentClassName="min-h-0"
     >
       <div className="mx-auto flex w-full min-w-0 max-w-[var(--shell-content-max)] flex-col">
-        <div className="sticky top-0 z-[var(--z-header)] border-b border-white/5 bg-[#020205]/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
+        <div className="sticky top-0 z-[var(--z-header)] border-b border-white/[0.09] bg-[#020205]/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
           <div className="px-[var(--shell-page-gutter)] py-4 sm:py-5">
             <SectionHeader
               label="Intelligence domain"
@@ -834,7 +834,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 aria-label="Research sessions"
                 className="flex h-full w-full max-w-[min(24rem,88vw)] flex-col overflow-hidden border-r border-white/10 bg-[#05050a]/95 shadow-2xl"
               >
-                <div className="flex items-center justify-between border-b border-white/8 px-4 py-4 sm:px-5">
+                <div className="flex items-center justify-between border-b border-white/[0.09] px-4 py-4 sm:px-5">
                   <div>
                     <p className="text-chip-soft text-[var(--module-color-300)]">Scout sessions</p>
                     <h3 className="mt-1 text-panel-heading text-white">Switch inquiries</h3>
@@ -879,7 +879,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 aria-label={`${activeSession.topic} artifacts`}
                 className="absolute inset-x-0 bottom-0 flex max-h-[var(--shell-overlay-max-height)] min-h-[22rem] flex-col overflow-hidden rounded-t-[2rem] border-t border-white/10 bg-[#05050a]/95 shadow-2xl"
               >
-                <div className="flex items-center justify-between border-b border-white/8 px-4 py-4 sm:px-5">
+                <div className="flex items-center justify-between border-b border-white/[0.09] px-4 py-4 sm:px-5">
                   <div>
                     <p className="text-chip-soft text-[var(--module-color-300)]">Session artifacts</p>
                     <h3 className="mt-1 text-panel-heading text-white">{activeSession.topic}</h3>
@@ -943,7 +943,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                     {docProposal.summary}
                   </pre>
                 </div>
-                <div className="rounded-xl border border-white/[0.09] bg-white/[0.03] p-3">
+                <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-3">
                   <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/68">Text Preview</h4>
                   <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap text-[11px] text-white/50">
                     {docProposal.rawTextPreview}

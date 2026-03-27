@@ -118,7 +118,7 @@ export function MobileExtractedDataSheet({
         className={cn(
           'w-full flex items-center justify-between gap-3 px-4 py-3',
           'min-h-[48px]', // WCAG touch target
-          'rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-md',
+          'rounded-xl border border-white/10 bg-white/[0.045] backdrop-blur-md',
           'text-sm font-medium text-white/70 hover:text-white hover:bg-white/[0.05]',
           'transition-colors duration-200',
           'outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]'
@@ -243,7 +243,7 @@ export function MobileExtractedDataSheet({
                         <h3 className="text-xs font-bold uppercase tracking-wider text-white/50">
                           {group.label}
                         </h3>
-                        <span className="text-[10px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded">
+                        <span className="text-[11px] text-white/30 bg-white/[0.045] px-1.5 py-0.5 rounded">
                           {group.items.length}
                         </span>
                       </div>
@@ -253,7 +253,7 @@ export function MobileExtractedDataSheet({
                         {group.items.slice(0, 5).map((item) => (
                           <div
                             key={item.id}
-                            className="flex items-start gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5"
+                            className="flex items-start gap-2 px-3 py-2 rounded-lg bg-white/[0.045] border border-white/[0.09]"
                           >
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-white/80 truncate">
@@ -280,7 +280,7 @@ export function MobileExtractedDataSheet({
               </div>
 
               {/* Footer hint */}
-              <div className="px-4 py-3 border-t border-white/5 text-center">
+              <div className="px-4 py-3 border-t border-white/[0.09] text-center">
                 <p className="text-[11px] text-white/30">
                   Swipe down or tap outside to close
                 </p>

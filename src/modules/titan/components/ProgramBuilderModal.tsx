@@ -128,8 +128,8 @@ export function ProgramBuilderModal({ isOpen, onClose, onSave, existingRoutines 
          <div className="space-y-6">
             <div className="space-y-3">
                {phases.map((phase, idx) => (
-                   <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                       <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-xs font-bold text-white/50">{idx + 1}</div>
+                   <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.045] border border-white/[0.09]">
+                       <div className="w-8 h-8 rounded-full bg-white/[0.045] flex items-center justify-center text-xs font-bold text-white/50">{idx + 1}</div>
                        <div className="flex-1">
                           <NeuralInput 
                             value={phase.name} 
@@ -179,9 +179,9 @@ export function ProgramBuilderModal({ isOpen, onClose, onSave, existingRoutines 
              {WEEKDAYS.map(day => {
                const routine = schedule[day];
                return (
-                 <div key={day} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                 <div key={day} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.045] border border-white/[0.09]">
                    <div className="w-24 shrink-0">
-                     <span className="text-[10px] font-black uppercase tracking-widest text-white/30">{day}</span>
+                     <span className="text-[11px] font-black uppercase tracking-widest text-white/30">{day}</span>
                    </div>
                    
                    <div className="flex-1 min-w-0">
@@ -189,7 +189,7 @@ export function ProgramBuilderModal({ isOpen, onClose, onSave, existingRoutines 
                        <div className="flex items-center gap-2">
                           <Dumbbell className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
                           <span className="text-sm font-semibold text-white/80 truncate">{routine.name}</span>
-                          <span className="text-[10px] text-white/30 ml-2">{routine.exercises.length} exercises</span>
+                          <span className="text-[11px] text-white/30 ml-2">{routine.exercises.length} exercises</span>
                        </div>
                      ) : (
                        <span className="text-sm text-white/20 italic">Rest Day</span>

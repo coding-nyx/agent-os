@@ -280,10 +280,10 @@ export function QuickAddForm({
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* ── Type toggle ── */}
                 <fieldset>
-                  <legend className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
+                  <legend className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
                     Type
                   </legend>
-                  <div className="flex gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/5">
+                  <div className="flex gap-1 p-1 rounded-xl bg-white/[0.045] border border-white/[0.09]">
                     {TYPE_OPTIONS.map((opt) => (
                       <NeuralButton
                         key={opt.key}
@@ -314,7 +314,7 @@ export function QuickAddForm({
                 {/* ── Priority selector (tasks only) ── */}
                 {itemType === 'task' && (
                   <fieldset>
-                    <legend className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
+                    <legend className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
                       Priority
                     </legend>
                     <div className="flex gap-2">
@@ -339,7 +339,7 @@ export function QuickAddForm({
                   <div>
                     <label
                       htmlFor="quick-add-energy"
-                      className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2 mb-2"
+                      className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2 mb-2"
                     >
                       <Zap
                         className="w-3 h-3 text-emerald-400"
@@ -371,7 +371,7 @@ export function QuickAddForm({
                         '[&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-emerald-600'
                       )}
                     />
-                    <div className="flex justify-between text-[9px] text-white/15 mt-1 tabular-nums">
+                    <div className="flex justify-between text-[11px] text-white/15 mt-1 tabular-nums">
                       <span>0</span>
                       <span>5</span>
                       <span>10</span>
@@ -394,7 +394,7 @@ export function QuickAddForm({
                 {/* ── Frequency selector (habits only) ── */}
                 {itemType === 'habit' && (
                   <fieldset>
-                    <legend className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
+                    <legend className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
                       Frequency
                     </legend>
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
@@ -406,7 +406,7 @@ export function QuickAddForm({
                           variant={frequency === f ? 'primary' : 'secondary'}
                           themeColor="emerald"
                           size="sm"
-                          className="!h-8 !px-0 text-[9px] capitalize"
+                          className="!h-8 !px-0 text-[11px] capitalize"
                         >
                           {f}
                         </NeuralButton>

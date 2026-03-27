@@ -156,7 +156,7 @@ export function DiagnosisUploadZone({
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={cn(
           'relative flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed',
-          'bg-black/20 backdrop-blur p-8 min-h-[220px]',
+          'bg-slate-900/50 backdrop-blur p-8 min-h-[220px]',
           'transition-colors',
           isDisabled
             ? 'cursor-not-allowed opacity-60'

@@ -52,16 +52,16 @@ export function RemindersCard({ moduleId }: { moduleId: ModuleId }) {
   if (preview.length === 0) return null;
 
   return (
-    <section className="mx-4 mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3 shadow-xl">
+    <section className="mx-4 mb-4 rounded-2xl border border-white/[0.12] bg-white/[0.045] p-3 shadow-xl">
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bell className="h-3.5 w-3.5 text-indigo-400" />
-          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/50">Reminders</span>
+          <span className="text-[11px] font-black uppercase tracking-[0.18em] text-white/50">Reminders</span>
         </div>
         <button
           type="button"
           onClick={() => navigate('/notifications')}
-          className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45 hover:text-white/70"
+          className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/45 hover:text-white/70"
         >
           View
           <ChevronRight className="h-3 w-3" />
@@ -84,14 +84,14 @@ export function RemindersCard({ moduleId }: { moduleId: ModuleId }) {
                   );
                 }
               }}
-              className="w-full flex items-start gap-3 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-left hover:bg-white/[0.06] transition-all hover:translate-y-[-1px] active:translate-y-0"
+              className="w-full flex items-start gap-3 rounded-xl border border-white/[0.12] bg-slate-900/70 px-3 py-2 text-left hover:bg-white/[0.06] transition-all hover:translate-y-[-1px] active:translate-y-0"
             >
               <ModuleIcon source={source} withBackground className="w-6 h-6 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="truncate text-xs font-semibold text-white/90">
                   {item.title || item.data?.title || 'Reminder'}
                 </p>
-                <p className="mt-0.5 text-[10px] text-white/40">{timeAgo(item.createdAt)}</p>
+                <p className="mt-0.5 text-[11px] text-white/40">{timeAgo(item.createdAt)}</p>
               </div>
             </button>
           );

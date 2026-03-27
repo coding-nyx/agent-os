@@ -70,19 +70,19 @@ You are in a FIELD-CRUD scope. Do not discuss personal wellness data unless it r
       >
         <div className={cn(
           "flex-1 flex flex-col overflow-hidden rounded-[2.5rem] border backdrop-blur-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)]",
-          "bg-black/80 border-white/10"
+          "bg-slate-900/90 border-white/[0.12]"
         )}>
           {/* Neural Header */}
-          <div className="p-4 sm:p-8 border-b border-white/5 flex items-center justify-between relative overflow-hidden">
+          <div className="p-4 sm:p-8 border-b border-white/[0.09] flex items-center justify-between relative overflow-hidden">
             <div className="relative z-10 flex items-center gap-4">
               <div className={cn(
                 "w-12 h-12 rounded-2xl flex items-center justify-center border transition-all",
-                "bg-white/5 border-white/10 text-white shadow-inner"
+                "bg-white/[0.045] border-white/[0.12] text-white shadow-inner"
               )}>
                 <Database size={22} className="text-white/80" />
               </div>
               <div>
-                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">
+                <div className="text-[11px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">
                   Schema_Architect_V2
                 </div>
                 <h3 className="text-xl font-black italic tracking-tight text-white uppercase">
@@ -105,7 +105,7 @@ You are in a FIELD-CRUD scope. Do not discuss personal wellness data unless it r
           </div>
 
           {/* Assistant Identity Strip */}
-          <div className="px-4 sm:px-8 py-3 bg-white/[0.03] border-b border-white/5 flex items-center gap-3">
+          <div className="px-4 sm:px-8 py-3 bg-white/[0.045] border-b border-white/[0.09] flex items-center gap-3">
             <div className="flex gap-1">
               {[1, 2, 3].map(i => (
                 <motion.div 
@@ -116,14 +116,14 @@ You are in a FIELD-CRUD scope. Do not discuss personal wellness data unless it r
                 />
               ))}
             </div>
-            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">
+            <span className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">
               AI-Augmented Data Definition Active
             </span>
           </div>
 
           {/* Chat Workspace */}
           <div className="flex-1 min-h-0 flex flex-col bg-transparent p-2">
-            <div className="flex-1 rounded-[2rem] overflow-hidden border border-white/5 bg-white/[0.01]">
+            <div className="flex-1 rounded-[2rem] overflow-hidden border border-white/[0.09] bg-white/[0.045]">
               <NexusChat
                 ai={{
                   messages,
@@ -143,24 +143,24 @@ You are in a FIELD-CRUD scope. Do not discuss personal wellness data unless it r
           </div>
 
           {/* Capability Quick-Actions */}
-          <div className="p-6 bg-white/[0.02] border-t border-white/5">
+          <div className="p-6 bg-white/[0.045] border-t border-white/[0.09]">
             <div className="flex gap-3">
-              <div className="flex-1 p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="flex-1 p-3 rounded-2xl bg-white/[0.045] border border-white/[0.12] flex flex-col gap-1">
                 <Wand2 size={14} className="text-white/40 mb-1" />
-                <div className="text-[8px] font-black uppercase tracking-widest text-white/30">Auto_Suggest</div>
-                <div className="text-[10px] text-white/60 font-medium">AI-driven mapping</div>
+                <div className="text-[11px] font-black uppercase tracking-widest text-white/30">Auto_Suggest</div>
+                <div className="text-[11px] text-white/60 font-medium">AI-driven mapping</div>
               </div>
-              <div className="flex-1 p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="flex-1 p-3 rounded-2xl bg-white/[0.045] border border-white/[0.12] flex flex-col gap-1">
                 <Plus size={14} className="text-white/40 mb-1" />
-                <div className="text-[8px] font-black uppercase tracking-widest text-white/30">Manual_Override</div>
-                <div className="text-[10px] text-white/60 font-medium">Full schema control</div>
+                <div className="text-[11px] font-black uppercase tracking-widest text-white/30">Manual_Override</div>
+                <div className="text-[11px] text-white/60 font-medium">Full schema control</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Outer Orbital Glow */}
-        <div className="absolute -inset-4 bg-white/[0.02] rounded-[3rem] blur-3xl -z-10" />
+        <div className="absolute -inset-4 bg-white/[0.045] rounded-[3rem] blur-3xl -z-10" />
       </motion.div>
     </AnimatePresence>
   );

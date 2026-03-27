@@ -176,7 +176,7 @@ function StrengthLineSVG({ points }: { points: DataPoint[] }) {
           <circle key={i} cx={x} cy={y} r="3.5" style={{ fill: improving ? 'var(--module-accent)' : '#94a3b8' }} />
         ))}
       </svg>
-      <div className="flex justify-between text-[9px] text-white/30 px-1 mt-0.5">
+      <div className="flex justify-between text-[11px] text-white/30 px-1 mt-0.5">
         {points.map((p, i) => (
           <div key={i} className="flex flex-col items-center gap-0.5">
             <span className="font-bold text-white/60">{p.e1RM}</span>
@@ -249,22 +249,22 @@ function MuscleVolumeBreakdown({ sessions }: { sessions: WorkoutSession[] }) {
         const color = MUSCLE_COLOR[muscle] ?? '#94a3b8';
         return (
           <div key={muscle} className="flex items-center gap-3">
-            <span className="text-[10px] text-white/50 w-20 shrink-0 text-right">
+            <span className="text-[11px] text-white/50 w-20 shrink-0 text-right">
               {MUSCLE_DISPLAY[muscle] ?? muscle}
             </span>
-            <div className="flex-1 h-4 bg-white/5 rounded-full overflow-hidden">
+            <div className="flex-1 h-4 bg-white/[0.045] rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{ width: `${pct}%`, backgroundColor: color, opacity: 0.7 }}
               />
             </div>
-            <span className="text-[10px] text-white/40 w-8 tabular-nums text-right">
+            <span className="text-[11px] text-white/40 w-8 tabular-nums text-right">
               {Math.round(sets)}
             </span>
           </div>
         );
       })}
-      <p className="text-[9px] text-white/30 mt-1">Sets per muscle group — last 28 days</p>
+      <p className="text-[11px] text-white/30 mt-1">Sets per muscle group — last 28 days</p>
     </div>
   );
 }
@@ -362,7 +362,7 @@ function TrainingHeatmap({ sessions }: { sessions: WorkoutSession[] }) {
         ))}
       </div>
       <div className="flex items-center gap-2 mt-2">
-        <span className="text-[9px] text-white/30">Less</span>
+        <span className="text-[11px] text-white/30">Less</span>
         {[0.04, 0.2, 0.4, 0.65, 0.9].map((o, i) => (
           <div
             key={i}
@@ -370,7 +370,7 @@ function TrainingHeatmap({ sessions }: { sessions: WorkoutSession[] }) {
             style={{ backgroundColor: i === 0 ? 'rgba(255,255,255,0.04)' : `color-mix(in srgb, var(--module-accent) ${Math.round(o * 100)}%, transparent)` }}
           />
         ))}
-        <span className="text-[9px] text-white/30">More</span>
+        <span className="text-[11px] text-white/30">More</span>
       </div>
     </div>
   );
@@ -430,15 +430,15 @@ function RecoveryTrendPanel({ sleepLog }: { sleepLog: SleepEntry[] }) {
       {/* Mini stats */}
       <div className="flex gap-6">
         <div>
-          <p className="text-[9px] uppercase tracking-wider text-white/40">Avg Quality</p>
+          <p className="text-[11px] uppercase tracking-wider text-white/40">Avg Quality</p>
           <p className="text-lg font-black text-[var(--module-color-400)]">{avgQuality.toFixed(1)}<span className="text-xs text-white/40">/10</span></p>
         </div>
         <div>
-          <p className="text-[9px] uppercase tracking-wider text-white/40">Avg Duration</p>
+          <p className="text-[11px] uppercase tracking-wider text-white/40">Avg Duration</p>
           <p className="text-lg font-black text-indigo-400">{avgDuration.toFixed(1)}<span className="text-xs text-white/40">h</span></p>
         </div>
         <div>
-          <p className="text-[9px] uppercase tracking-wider text-white/40">Nights</p>
+          <p className="text-[11px] uppercase tracking-wider text-white/40">Nights</p>
           <p className="text-lg font-black text-white/70">{n}</p>
         </div>
       </div>
@@ -460,7 +460,7 @@ function RecoveryTrendPanel({ sleepLog }: { sleepLog: SleepEntry[] }) {
         <polyline points={toPolyline(qualityPts)} style={{ stroke: 'var(--module-accent)' }} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
 
-      <div className="flex items-center gap-4 text-[9px]">
+      <div className="flex items-center gap-4 text-[11px]">
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-0.5 bg-[var(--module-color-400)] rounded" />
           <span className="text-white/40">Sleep Quality (0–10)</span>
@@ -522,19 +522,19 @@ function RecoveryCheckinTrend({ checkins }: { checkins: TitanRecoveryCheckin[] }
     <div className="space-y-3">
       <div className="flex gap-6 flex-wrap">
         <div>
-          <p className="text-[9px] uppercase tracking-wider text-white/40">Pain</p>
+          <p className="text-[11px] uppercase tracking-wider text-white/40">Pain</p>
           <p className="text-lg font-black text-[var(--module-color-400)]">{avg('pain')}</p>
         </div>
         <div>
-          <p className="text-[9px] uppercase tracking-wider text-white/40">Fatigue</p>
+          <p className="text-[11px] uppercase tracking-wider text-white/40">Fatigue</p>
           <p className="text-lg font-black text-red-400">{avg('fatigue')}</p>
         </div>
         <div>
-          <p className="text-[9px] uppercase tracking-wider text-white/40">Sleep</p>
+          <p className="text-[11px] uppercase tracking-wider text-white/40">Sleep</p>
           <p className="text-lg font-black text-indigo-300">{avg('sleepQuality')}</p>
         </div>
         <div>
-          <p className="text-[9px] uppercase tracking-wider text-white/40">Mood</p>
+          <p className="text-[11px] uppercase tracking-wider text-white/40">Mood</p>
           <p className="text-lg font-black text-emerald-300">{avg('mood')}</p>
         </div>
       </div>
@@ -546,7 +546,7 @@ function RecoveryCheckinTrend({ checkins }: { checkins: TitanRecoveryCheckin[] }
         <polyline points={toPolyline(moodPts)} stroke="#34d399" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeDasharray="2 2" />
       </svg>
 
-      <div className="flex items-center gap-3 text-[9px] text-white/40 flex-wrap">
+      <div className="flex items-center gap-3 text-[11px] text-white/40 flex-wrap">
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-[var(--module-color-400)]" /> Pain (0–10)</span>
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-red-400" /> Fatigue (0–10)</span>
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-indigo-400" style={{ borderTop: '1px dashed' }} /> Sleep (1–5)</span>
@@ -627,14 +627,14 @@ function HRVTrendPanel({ sleepLog }: { sleepLog: SleepEntry[] }) {
       <div className="flex gap-6">
         <div>
           <div className="text-lg font-black tabular-nums text-emerald-400">{Math.round(avg)} ms</div>
-          <div className="text-[9px] text-white/40 uppercase">30-day avg HRV</div>
+          <div className="text-[11px] text-white/40 uppercase">30-day avg HRV</div>
         </div>
         <div>
           <div className="text-lg font-black tabular-nums text-white/80">{Math.round(values[values.length - 1])} ms</div>
-          <div className="text-[9px] text-white/40 uppercase">last reading</div>
+          <div className="text-[11px] text-white/40 uppercase">last reading</div>
         </div>
         <div>
-          <div className="text-[10px] font-black text-white/50">
+          <div className="text-[11px] font-black text-white/50">
             {values[values.length - 1] >= avg ? '↑ above avg' : '↓ below avg'}
           </div>
         </div>
@@ -652,7 +652,7 @@ function HRVTrendPanel({ sleepLog }: { sleepLog: SleepEntry[] }) {
           <circle key={i} cx={x} cy={y} r={2.5} fill="#34d399" opacity={0.8} />
         ))}
       </svg>
-      <div className="flex justify-between text-[9px] text-white/30 tabular-nums">
+      <div className="flex justify-between text-[11px] text-white/30 tabular-nums">
         <span>{data[0].date}</span>
         <span className="text-emerald-400/60">HRV (ms)</span>
         <span>{data[data.length - 1].date}</span>
@@ -729,9 +729,9 @@ function ExportPanel({ profile }: { profile: TitanProfile }) {
           { label: 'Body Weight Entries', value: bodyCount },
           { label: 'Cardio Sessions', value: cardioCount },
         ].map(({ label, value }) => (
-          <div key={label} className="rounded-xl bg-white/[0.03] border border-white/5 px-3 py-2.5 text-center">
+          <div key={label} className="rounded-xl bg-white/[0.045] border border-white/[0.09] px-3 py-2.5 text-center">
             <div className="text-lg font-black tabular-nums text-[var(--module-color-400)]">{value}</div>
-            <div className="text-[9px] text-white/40 uppercase mt-0.5">{label}</div>
+            <div className="text-[11px] text-white/40 uppercase mt-0.5">{label}</div>
           </div>
         ))}
       </div>
@@ -757,7 +757,7 @@ function ExportPanel({ profile }: { profile: TitanProfile }) {
           Export {format.toUpperCase()}
         </NeuralButton>
       </div>
-      <p className="text-[10px] text-white/30">
+      <p className="text-[11px] text-white/30">
         JSON includes all logs. CSV exports workout sessions as flat rows (one set per row).
       </p>
     </div>

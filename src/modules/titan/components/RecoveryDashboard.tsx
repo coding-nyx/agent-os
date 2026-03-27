@@ -22,7 +22,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
               <ShieldAlert className="w-5 h-5 text-[var(--module-color-400)]" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-white/40">Recovery Overview</p>
+              <p className="text-[11px] uppercase tracking-wider text-white/40">Recovery Overview</p>
               <p className="text-lg font-black text-white/90">{template.label}</p>
               <p className="mt-1 text-xs text-white/50">
                 {plan.reasons.join(', ')} · {daysRemaining} days remaining
@@ -38,19 +38,19 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
 
         <div className="mt-5 grid grid-cols-2 gap-3 text-xs sm:gap-4 lg:grid-cols-4">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-white/40">Start</p>
+            <p className="text-[11px] uppercase tracking-wider text-white/40">Start</p>
             <p className="text-white/80">{plan.startDate}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-white/40">End</p>
+            <p className="text-[11px] uppercase tracking-wider text-white/40">End</p>
             <p className="text-white/80">{plan.endDate}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-white/40">Suggested</p>
+            <p className="text-[11px] uppercase tracking-wider text-white/40">Suggested</p>
             <p className="text-white/80">{plan.suggestedDurationDays} days</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-white/40">Region</p>
+            <p className="text-[11px] uppercase tracking-wider text-white/40">Region</p>
             <p className="text-white/80">{plan.bodyRegion ?? 'n/a'}</p>
           </div>
         </div>
@@ -76,7 +76,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
         {(plan.aiSummary || plan.somaSummary || plan.agnesSummary) && (
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {plan.somaSummary && (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Stethoscope className="w-4 h-4 text-emerald-300" />
                   <span className="text-[11px] uppercase tracking-wider text-white/50">Soma</span>
@@ -85,7 +85,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
               </div>
             )}
             {plan.agnesSummary && (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="w-4 h-4 text-indigo-300" />
                   <span className="text-[11px] uppercase tracking-wider text-white/50">Agnes</span>
@@ -94,7 +94,7 @@ export function RecoveryDashboard({ plan, daysRemaining, onResume }: RecoveryDas
               </div>
             )}
             {plan.aiSummary && (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:col-span-2 xl:col-span-1">
+              <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3 sm:col-span-2 xl:col-span-1">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="w-4 h-4 text-[var(--module-color-300)]" />
                   <span className="text-[11px] uppercase tracking-wider text-white/50">Titan Overlay</span>

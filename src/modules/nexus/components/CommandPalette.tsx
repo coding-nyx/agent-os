@@ -38,7 +38,7 @@ function CommandRow({ command, isSelected, onSelect }: {
         'flex items-center justify-start gap-3 w-full px-4 py-2.5 text-left transition-colors border-none',
         isSelected
           ? 'bg-white/[0.08] text-white/90'
-          : 'text-white/60 hover:bg-white/[0.04] hover:text-white/80',
+          : 'text-white/60 hover:bg-white/[0.045] hover:text-white/80',
       )}
       role="option"
       aria-selected={isSelected}
@@ -47,7 +47,7 @@ function CommandRow({ command, isSelected, onSelect }: {
       <span className="flex-1 text-sm truncate">{command.label}</span>
       {command.isLocked && <Lock className="w-3 h-3 text-white/30" />}
       {command.shortcut && (
-        <kbd className="text-[10px] font-mono text-white/30 bg-white/5 px-1.5 py-0.5 rounded">
+        <kbd className="text-[11px] font-mono text-white/30 bg-white/[0.045] px-1.5 py-0.5 rounded">
           {command.shortcut}
         </kbd>
       )}
@@ -150,7 +150,7 @@ export function CommandPalette({
             aria-label="Command palette"
           >
             {/* Search input */}
-            <div className="px-4 py-3 border-b border-white/5 relative flex items-center gap-3">
+            <div className="px-4 py-3 border-b border-white/[0.09] relative flex items-center gap-3">
               <NeuralInput
                 ref={inputRef}
                 value={search}
@@ -159,7 +159,7 @@ export function CommandPalette({
                 icon={<Search className="w-4 h-4" />}
                 className="flex-1 bg-transparent border-none min-h-0 h-9 p-0 focus:ring-0"
               />
-              <kbd className="text-[10px] font-mono text-white/20 bg-white/5 px-1.5 py-0.5 rounded shrink-0">ESC</kbd>
+              <kbd className="text-[11px] font-mono text-white/20 bg-white/[0.045] px-1.5 py-0.5 rounded shrink-0">ESC</kbd>
             </div>
 
             {/* Command list */}
@@ -167,7 +167,7 @@ export function CommandPalette({
               {Object.entries(grouped).map(([category, commands]) => (
                 <div key={category}>
                   <div className="px-4 pt-3 pb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/30">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/30">
                       {CATEGORY_LABELS[category] || category}
                     </span>
                   </div>

@@ -79,7 +79,7 @@ const STATUS_CONFIG: Record<AgentReview['status'], StatusConfig> = {
 };
 
 const SIZE_CLS = {
-  sm: { pill: 'px-2 py-0.5 gap-1',    text: 'text-[10px]', icon: 'w-3 h-3', dot: 'w-1.5 h-1.5' },
+  sm: { pill: 'px-2 py-0.5 gap-1',    text: 'text-[11px]', icon: 'w-3 h-3', dot: 'w-1.5 h-1.5' },
   md: { pill: 'px-2.5 py-1 gap-1.5',  text: 'text-xs',     icon: 'w-3.5 h-3.5', dot: 'w-2 h-2' },
 };
 

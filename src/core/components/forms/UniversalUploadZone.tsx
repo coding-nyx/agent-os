@@ -99,7 +99,7 @@ export function UniversalUploadZone({
         onClick={() => !disabled && fileInputRef.current?.click()}
         className={cn(
           "relative group cursor-pointer rounded-[2rem] border-2 border-dashed transition-all duration-500 overflow-hidden",
-          phase === 'drag_over' ? cn("scale-[1.02] border-solid shadow-2xl", activeColorClass) : "border-white/10 hover:border-white/20 bg-white/[0.02]",
+          phase === 'drag_over' ? cn("scale-[1.02] border-solid shadow-2xl", activeColorClass) : "border-white/10 hover:border-white/20 bg-white/[0.045]",
           disabled && "opacity-50 cursor-not-allowed",
           compact ? "p-6" : "p-12"
         )}
@@ -107,7 +107,7 @@ export function UniversalUploadZone({
         <div className="flex flex-col items-center text-center space-y-4">
           <div className={cn(
             "w-16 h-16 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110",
-            phase === 'drag_over' ? "bg-white/10" : "bg-white/[0.03]"
+            phase === 'drag_over' ? "bg-white/10" : "bg-white/[0.045]"
           )}>
             {phase === 'error' ? (
               <AlertCircle className="w-8 h-8 text-rose-400" />
@@ -157,7 +157,7 @@ export function UniversalUploadZone({
                     <p className="text-xs font-black uppercase tracking-[0.2em] text-white">
                       {phase === 'uploading' ? 'Uploading' : 'Analysing'}
                     </p>
-                    <p className="text-[10px] text-white/40 uppercase tracking-widest">
+                    <p className="text-[11px] text-white/40 uppercase tracking-widest">
                       {phase === 'uploading' ? 'Securing transfer' : 'Extracting neural context'}
                     </p>
                   </div>
@@ -180,7 +180,7 @@ export function UniversalUploadZone({
         <motion.p
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 text-center text-[10px] font-black uppercase tracking-widest text-rose-400"
+          className="mt-4 text-center text-[11px] font-black uppercase tracking-widest text-rose-400"
         >
           {error}
         </motion.p>

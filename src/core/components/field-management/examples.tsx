@@ -68,7 +68,7 @@ export function ModuleSettingsPage({ moduleId, moduleName }: ModuleSettingsPageP
       <nav
         role="tablist"
         aria-label="Settings tabs"
-        className="inline-flex items-center gap-1 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10 p-1"
+        className="inline-flex items-center gap-1 rounded-2xl bg-white/[0.045] backdrop-blur-sm border border-white/10 p-1"
       >
         {tabs.map(({ key, label, icon: Icon }) => {
           const isActive = activeTab === key;
@@ -119,7 +119,7 @@ export function ModuleSettingsPage({ moduleId, moduleName }: ModuleSettingsPageP
           hidden={activeTab !== 'profile'}
         >
           {activeTab === 'profile' && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-6">
               <h2 className="text-lg font-bold text-white mb-4">Profile Settings</h2>
               <p className="text-white/60 text-sm">
                 Configure your {moduleName} profile...
@@ -137,7 +137,7 @@ export function ModuleSettingsPage({ moduleId, moduleName }: ModuleSettingsPageP
           hidden={activeTab !== 'fields'}
         >
           {activeTab === 'fields' && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-6">
               <FieldManagementPanel moduleId={moduleId} />
             </div>
           )}
@@ -151,7 +151,7 @@ export function ModuleSettingsPage({ moduleId, moduleName }: ModuleSettingsPageP
           hidden={activeTab !== 'preferences'}
         >
           {activeTab === 'preferences' && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-6">
               <h2 className="text-lg font-bold text-white mb-4">Preferences</h2>
               <p className="text-white/60 text-sm">
                 Configure your {moduleName} preferences...

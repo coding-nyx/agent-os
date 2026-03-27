@@ -52,7 +52,7 @@ export function NeuralDropdown({ trigger, items, align = 'start', className }: N
         >
           {items.map((item, i) => {
             if (item.type === 'separator') {
-              return <div key={i} className="my-1 border-t border-white/5" />;
+              return <div key={i} className="my-1 border-t border-white/[0.09]" />;
             }
             return (
               <button

@@ -184,7 +184,7 @@ function FieldCard({ field, value, isSelected, onSelect, onDelete, isExtension }
       themeColor="module"
       className={cn(
         'group relative w-full text-left rounded-2xl border p-4 transition-all duration-200 min-h-[44px] !h-auto !justify-start !items-start !flex-col',
-        'bg-white/[0.03] backdrop-blur-sm hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]',
+        'bg-white/[0.045] backdrop-blur-sm hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]',
         isSelected
           ? `${colors.border} ring-2 ring-[var(--module-accent-ring)]`
           : 'border-white/10 hover:border-white/15'
@@ -200,7 +200,7 @@ function FieldCard({ field, value, isSelected, onSelect, onDelete, isExtension }
         </div>
         <div className="flex items-center gap-1">
           {!isExtension && (
-            <span className="text-[9px] font-bold uppercase tracking-wider text-white/20 bg-white/5 px-1.5 py-0.5 rounded">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-white/20 bg-white/[0.045] px-1.5 py-0.5 rounded">
               Core
             </span>
           )}
@@ -237,11 +237,11 @@ function FieldCard({ field, value, isSelected, onSelect, onDelete, isExtension }
 
       {/* Footer */}
       <div className="flex items-center justify-between mt-2">
-        <span className={cn('text-[10px] font-medium uppercase tracking-wider', colors.text)}>
+        <span className={cn('text-[11px] font-medium uppercase tracking-wider', colors.text)}>
           {category.name}
         </span>
         {lastUpdated && (
-          <span className="text-[10px] text-white/25">
+          <span className="text-[11px] text-white/25">
             {lastUpdated}
           </span>
         )}
@@ -260,7 +260,7 @@ function SuggestionCard({ field, onAdd }: { field: FieldDefinition; onAdd: (fiel
   const Icon = resolveIcon(field.metadata?.icon);
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+    <div className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.045] transition-colors">
       <div className={cn('p-1.5 rounded-lg', colors.bg)}>
         <Icon className={cn('w-3.5 h-3.5', colors.text)} />
       </div>
@@ -357,7 +357,7 @@ export function FieldsTab({
                   <h4 className="text-xs font-black text-white/50 uppercase tracking-widest">
                     {catKey}
                   </h4>
-                  <span className="text-[10px] text-white/20">
+                  <span className="text-[11px] text-white/20">
                     {catConfig.description}
                   </span>
                 </div>

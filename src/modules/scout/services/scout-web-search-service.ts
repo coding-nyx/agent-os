@@ -4,6 +4,9 @@
  * Wraps WebCrawlerService with auto-indexing: search results are automatically
  * saved as `pending` knowledge nodes so the local knowledge base grows over time.
  *
+ * Scout is now focused purely on research and does not react to other module states
+ * to maintain its mission as an independent, aggressive research tool.
+ *
  * Falls back gracefully when no userId/encryptionKey is provided (guest mode).
  */
 
@@ -13,7 +16,6 @@ import {
   type WebCrawlerResponse as ScoutWebSearchResponse,
 } from '@/lib/services/web-crawler-service';
 import { addKnowledgeNode } from './scout-knowledge-service';
-import { Spine } from '@/lib/spine/spine-event-bus';
 
 export type { ScoutWebResult, ScoutWebSearchResponse };
 
@@ -50,7 +52,10 @@ export const ScoutWebSearchService = {
         .slice(0, indexLimit)
         .filter((r): r is ScoutWebResult & { content: string } => Boolean(r.content));
 
-      await Promise.allSettled(
+      // Fire-and-forget — don't block returning the search response.
+      // We no longer emit SCOUT_KNOWLEDGE_ENRICHED during auto-indexing to avoid notification spam
+      // and keep the "aggressive" background work silent and efficient.
+      Promise.allSettled(
         nodesToIndex.map((result) =>
           addKnowledgeNode(
             {
@@ -62,20 +67,9 @@ export const ScoutWebSearchService = {
               sources: [result.url],
             },
             context,
-          ).then((node) => {
-            if (node) {
-              Spine.publish({
-                type: 'SCOUT_KNOWLEDGE_ENRICHED',
-                source: 'scout',
-                domain: 'C',
-                priority: 'info',
-                data: { userId: options.userId, nodeId: node.id, claim: node.claim, via: 'web_search' },
-              });
-
-            }
-          }),
+          )
         ),
-      );
+      ).catch(() => {}); // suppress unhandled rejection warning
     }
 
     return response;

@@ -124,10 +124,10 @@ function statColor(value: number | string | undefined | null): string {
 function StatPill({ icon: Icon, label, value }: StatPillProps) {
   const display = value != null ? String(value) : '\u2014';
   return (
-    <div className="flex flex-col items-center gap-1 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2 min-w-0">
+    <div className="flex flex-col items-center gap-1 rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2 min-w-0">
       <Icon className="w-3.5 h-3.5 text-white/40 shrink-0" aria-hidden="true" />
       <span className={cn('text-sm font-bold tabular-nums', statColor(value))}>{display}</span>
-      <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30 truncate">{label}</span>
+      <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/30 truncate">{label}</span>
     </div>
   );
 }
@@ -269,7 +269,7 @@ export function MorningCheckIn({
             </span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/40">
+            <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/40">
               {dateLabel}
             </span>
             <NeuralButton
@@ -297,13 +297,13 @@ export function MorningCheckIn({
 
             {previewTasks.length > 0 && (
               <div className="space-y-1.5" aria-label="Top active tasks">
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/30">
                   Up Next
                 </p>
                 {previewTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2"
                   >
                     <span className="text-xs font-medium text-white/70 truncate">
                       {task.title}
@@ -311,7 +311,7 @@ export function MorningCheckIn({
                     {typeof task.energyCost === 'number' && (
                       <div className="flex items-center gap-1 shrink-0">
                         <Zap className="w-3 h-3 text-[var(--module-color-400)]" aria-hidden="true" />
-                        <span className="text-[10px] font-black text-[var(--module-color-300)] tabular-nums">
+                        <span className="text-[11px] font-black text-[var(--module-color-300)] tabular-nums">
                           {task.energyCost}
                         </span>
                       </div>
@@ -322,7 +322,7 @@ export function MorningCheckIn({
             )}
 
             {atRiskCount > 0 && (
-              <p className="text-[10px] text-amber-300/80 font-medium">
+              <p className="text-[11px] text-amber-300/80 font-medium">
                 {'\u26a0\u00A0'}
                 {atRiskCount} habit{atRiskCount !== 1 ? 's' : ''} at risk of breaking today
               </p>

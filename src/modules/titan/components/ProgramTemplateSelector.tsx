@@ -81,7 +81,7 @@ function ProgramCard({ program, isExpanded, isApplied, onToggle, onApply }: Prog
         'rounded-2xl border transition-all duration-300 overflow-hidden',
         isExpanded
           ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] shadow-[0_0_32px_rgba(255,140,0,0.08)]'
-          : 'border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.035] hover:border-white/[0.12]',
+          : 'border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.035] hover:border-white/[0.12]',
       )}
     >
       {/* ── Card header (always visible) ── */}
@@ -96,10 +96,10 @@ function ProgramCard({ program, isExpanded, isApplied, onToggle, onApply }: Prog
           <div className="flex items-center gap-3 min-w-0">
             <div
               className={cn(
-                'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[10px] font-black tracking-tight',
+                'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[11px] font-black tracking-tight',
                 isExpanded
                   ? 'bg-[var(--module-accent)] text-white shadow-[0_0_18px_rgba(255,140,0,0.35)]'
-                  : 'bg-white/[0.06] text-white/50',
+                  : 'bg-white/[0.045] text-white/50',
               )}
             >
               {program.shortName.length <= 3 ? program.shortName : <Dumbbell className="w-4 h-4" />}
@@ -118,16 +118,16 @@ function ProgramCard({ program, isExpanded, isApplied, onToggle, onApply }: Prog
 
         {/* Meta pill row */}
         <div className="flex flex-wrap gap-1.5 mt-3">
-          <span className={cn('text-[9px] font-bold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full', LEVEL_STYLES[program.level])}>
+          <span className={cn('text-[11px] font-bold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full', LEVEL_STYLES[program.level])}>
             {program.level}
           </span>
-          <span className={cn('text-[9px] font-bold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full', FOCUS_STYLES[program.focus])}>
+          <span className={cn('text-[11px] font-bold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full', FOCUS_STYLES[program.focus])}>
             {program.focus}
           </span>
-          <span className="text-[9px] font-semibold text-white/35 px-2 py-0.5 rounded-full border border-white/[0.08] bg-white/[0.03] uppercase tracking-[0.1em]">
+          <span className="text-[11px] font-semibold text-white/35 px-2 py-0.5 rounded-full border border-white/[0.09] bg-white/[0.045] uppercase tracking-[0.1em]">
             {program.daysPerWeek}d/wk
           </span>
-          <span className="text-[9px] font-semibold text-white/35 px-2 py-0.5 rounded-full border border-white/[0.08] bg-white/[0.03] uppercase tracking-[0.1em]">
+          <span className="text-[11px] font-semibold text-white/35 px-2 py-0.5 rounded-full border border-white/[0.09] bg-white/[0.045] uppercase tracking-[0.1em]">
             {EQUIPMENT_LABEL[program.equipment]}
           </span>
         </div>
@@ -144,7 +144,7 @@ function ProgramCard({ program, isExpanded, isApplied, onToggle, onApply }: Prog
             transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-4 border-t border-white/[0.07]">
+            <div className="px-4 pb-4 space-y-4 border-t border-white/[0.09]">
               {/* Full description */}
               <p className="text-[12px] text-white/60 leading-relaxed pt-3">{program.description}</p>
 
@@ -157,25 +157,25 @@ function ProgramCard({ program, isExpanded, isApplied, onToggle, onApply }: Prog
 
               {/* Day-by-day routine summary */}
               <div className="space-y-2">
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-white/30">Training Days</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-white/30">Training Days</p>
                 {program.routines.map((routine) => (
                   <div
                     key={routine.id}
-                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-3"
+                    className="rounded-xl border border-white/[0.09] bg-white/[0.045] px-3.5 py-3"
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--module-color-400)]/70 w-[2.5rem] shrink-0">
+                      <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--module-color-400)]/70 w-[2.5rem] shrink-0">
                         {routine.weekday ? routine.weekday.slice(0, 3).toUpperCase() : '—'}
                       </span>
                       <span className="text-[12px] font-semibold text-white/80 leading-tight">{routine.name}</span>
                       {routine.timeframe && (
-                        <span className="ml-auto text-[9px] text-white/30 shrink-0">{routine.timeframe}</span>
+                        <span className="ml-auto text-[11px] text-white/30 shrink-0">{routine.timeframe}</span>
                       )}
                     </div>
                     <ul className="space-y-0.5 pl-[3rem]">
                       {routine.exercises.map((ex, idx) => (
                         <li key={idx} className="text-[11px] text-white/45 leading-snug flex items-baseline gap-1.5">
-                          <span className="text-[var(--module-color-400)]/50 font-bold tabular-nums shrink-0 text-[9px]">
+                          <span className="text-[var(--module-color-400)]/50 font-bold tabular-nums shrink-0 text-[11px]">
                             {String(idx + 1).padStart(2, '0')}
                           </span>
                           <span className="text-white/55">{ex.name}</span>
@@ -220,10 +220,10 @@ interface StatPillProps {
 
 function StatPill({ icon: Icon, label, value }: StatPillProps) {
   return (
-    <div className="flex flex-col items-center gap-1 p-2.5 rounded-xl border border-white/[0.06] bg-white/[0.03]">
+    <div className="flex flex-col items-center gap-1 p-2.5 rounded-xl border border-white/[0.09] bg-white/[0.045]">
       <Icon className="w-3 h-3 text-[var(--module-color-400)]/60" />
-      <span className="text-[10px] font-bold text-white/70 capitalize leading-none">{value}</span>
-      <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-white/25 leading-none">{label}</span>
+      <span className="text-[11px] font-bold text-white/70 capitalize leading-none">{value}</span>
+      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/25 leading-none">{label}</span>
     </div>
   );
 }
@@ -253,7 +253,7 @@ export function ProgramTemplateSelector({ onApplyProgram, className }: ProgramTe
       {/* Section header */}
       <div className="flex items-center gap-2.5 mb-1">
         <Package className="w-3.5 h-3.5 text-[var(--module-color-400)]/60 shrink-0" />
-        <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/35">
+        <span className="text-[11px] font-black uppercase tracking-[0.25em] text-white/35">
           {WORKOUT_PROGRAMS.length} Programs Available
         </span>
       </div>

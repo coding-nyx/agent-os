@@ -227,7 +227,7 @@ function GoalCard({ goal, onMarkAchieved }: GoalCardProps) {
           <p className="text-sm font-semibold text-white/90 leading-tight truncate">{goal.name}</p>
           <span
             className={cn(
-              'inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border',
+              'inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold border',
               metricBadgeStyle(goal.metric)
             )}
           >
@@ -632,7 +632,7 @@ export function GoalTracker({
 
       {/* Achieved section — collapsible */}
       {achievedGoals.length > 0 && (
-        <div className="border-t border-white/[0.06] pt-3">
+        <div className="border-t border-white/[0.09] pt-3">
           <button
             type="button"
             onClick={() => setAchievedOpen((o) => !o)}
@@ -662,7 +662,7 @@ export function GoalTracker({
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span className="font-medium text-white/80 truncate">{g.name}</span>
                     {g.achievedDate && (
-                      <span className="ml-auto text-[10px] text-white/40 tabular-nums shrink-0">
+                      <span className="ml-auto text-[11px] text-white/40 tabular-nums shrink-0">
                         {g.achievedDate}
                       </span>
                     )}

@@ -43,7 +43,7 @@ export function MetricAttribution({
   return (
     <span
       className={cn(
-        'text-[9px] text-white/35 uppercase tracking-[0.2em] font-bold',
+        'text-[11px] text-white/35 uppercase tracking-[0.2em] font-bold',
         className
       )}
       aria-label={`Source: ${displayName}, last updated ${relativeTime}`}

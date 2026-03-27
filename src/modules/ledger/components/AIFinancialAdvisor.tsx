@@ -143,7 +143,7 @@ export function AIFinancialAdvisor({
       {/* Collapsed Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
+        className="w-full p-4 flex items-center justify-between hover:bg-white/[0.045] transition-colors"
       >
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-violet-500/20">
@@ -153,7 +153,7 @@ export function AIFinancialAdvisor({
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">
               AI Financial Advisor
             </h3>
-            <p className="text-[10px] text-white/50 mt-0.5">
+            <p className="text-[11px] text-white/50 mt-0.5">
               {isExpanded ? 'Click to minimize' : `${insights.length} insights available`}
             </p>
           </div>
@@ -221,12 +221,12 @@ export function AIFinancialAdvisor({
                       )}>
                         {insight.title}
                       </h5>
-                      <p className="text-[10px] text-white/70 leading-relaxed">
+                      <p className="text-[11px] text-white/70 leading-relaxed">
                         {insight.description}
                       </p>
                       {insight.action && (
                         <div className="mt-2">
-                          <span className="text-[9px] text-white/50 uppercase tracking-wider">
+                          <span className="text-[11px] text-white/50 uppercase tracking-wider">
                             → {insight.action}
                           </span>
                         </div>
@@ -400,7 +400,7 @@ function HealthScoreBar({ savingsRate, expenseRatio, debtToIncome }: {
   const color = score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-[var(--module-accent)]' : score >= 40 ? 'bg-amber-500' : 'bg-red-500';
 
   return (
-    <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
+    <div className="h-2 w-full rounded-full bg-white/[0.045] overflow-hidden">
       <div
         className={cn('h-full rounded-full transition-all duration-500', color)}
         style={{ width: `${score}%` }}
@@ -421,12 +421,12 @@ function OptimizationTip({
   description: string;
 }) {
   return (
-    <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-emerald-500/20 transition-colors">
+    <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.045] border border-white/[0.09] hover:border-emerald-500/20 transition-colors">
       <div className="flex items-center gap-2">
         <DollarSign className="w-4 h-4 text-emerald-400 shrink-0" />
         <div>
           <div className="text-xs text-white font-medium">{title}</div>
-          <div className="text-[10px] text-white/50">{description}</div>
+          <div className="text-[11px] text-white/50">{description}</div>
         </div>
       </div>
       <div className="text-xs font-bold text-emerald-400">
@@ -455,10 +455,10 @@ function RiskIndicator({
     <div className={cn("flex items-center justify-between p-2 rounded-lg border", colors[status])}>
       <div>
         <div className="text-xs font-medium text-white">{label}</div>
-        <div className="text-[10px] text-white/60">{description}</div>
+        <div className="text-[11px] text-white/60">{description}</div>
       </div>
       <div className={cn(
-        "px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider",
+        "px-2 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider",
         status === 'good' && "bg-emerald-500/30 text-emerald-300",
         status === 'warning' && "bg-amber-500/30 text-amber-300",
         status === 'critical' && "bg-red-500/30 text-red-300"

@@ -43,7 +43,7 @@ export function GuestModePanel({
             <Icon className="w-7 h-7" style={{ color: module.colorHex }} />
           </div>
           <div className="text-left">
-            <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 font-bold">Guest Link Active</div>
+            <div className="text-[11px] uppercase tracking-[0.12em] text-white/40 font-bold">Guest Link Active</div>
             <div className="text-xl font-bold uppercase tracking-[0.12em] font-display" style={{ color: module.colorHex }}>
               {module.title}
             </div>
@@ -56,7 +56,7 @@ export function GuestModePanel({
 
         <div className="grid gap-4 text-left pb-4">
           {limitations.map((item) => (
-            <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3">
               <Lock className="w-4 h-4 text-white/40 mt-0.5" />
               <span className="text-[11px] text-white/60 uppercase tracking-[0.12em] font-semibold break-words">{item}</span>
             </div>

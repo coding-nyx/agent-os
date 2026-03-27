@@ -110,7 +110,7 @@ const CATEGORY_COLORS = [
 
 function DonutChart({ slices }: { slices: { value: number; color: string; label: string }[] }) {
   const total = slices.reduce((s, sl) => s + sl.value, 0);
-  if (total === 0) return <div className="w-36 h-36 rounded-full bg-white/5 border border-white/10 mx-auto" />;
+  if (total === 0) return <div className="w-36 h-36 rounded-full bg-white/[0.045] border border-white/10 mx-auto" />;
 
   const size = 144;
   const r = 52;
@@ -266,7 +266,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className={cn('text-xl font-black', gradeColor)}>{healthScore.grade}</span>
-                <span className="text-[9px] text-white/40">{healthScore.score}</span>
+                <span className="text-[11px] text-white/40">{healthScore.score}</span>
               </div>
             </div>
 
@@ -277,10 +277,10 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
                   <div key={f.label} className="flex items-center gap-2">
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-[10px] text-white/50">{f.label}</span>
-                        <span className="text-[10px] font-mono text-white/60">{f.score}/{f.max}</span>
+                        <span className="text-[11px] text-white/50">{f.label}</span>
+                        <span className="text-[11px] font-mono text-white/60">{f.score}/{f.max}</span>
                       </div>
-                      <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                      <div className="h-1 rounded-full bg-white/[0.045] overflow-hidden">
                         <div
                           className={cn('h-full rounded-full transition-all', {
                             'bg-emerald-500': f.status === 'good',
@@ -312,7 +312,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
           <p className="text-xs font-bold text-white uppercase tracking-wider">Month-over-Month</p>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider">Income</p>
+              <p className="text-[11px] text-white/40 uppercase tracking-wider">Income</p>
               <p className="text-lg font-black text-white tabular-nums">
                 {formatCurrency(currentMonthData?.income ?? 0, currency)}
               </p>
@@ -322,7 +322,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider">Expenses</p>
+              <p className="text-[11px] text-white/40 uppercase tracking-wider">Expenses</p>
               <p className="text-lg font-black text-white tabular-nums">
                 {formatCurrency(currentMonthData?.expenses ?? 0, currency)}
               </p>
@@ -335,7 +335,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
 
           {/* 6-month savings rate bars */}
           <div>
-            <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Savings Rate (6 months)</p>
+            <p className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Savings Rate (6 months)</p>
             <div className="flex items-end gap-1 h-16">
               {savingsRates.map((m, i) => {
                 const isLast = i === savingsRates.length - 1;
@@ -349,7 +349,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
                         title={`${m.label}: ${m.rate.toFixed(1)}%`}
                       />
                     </div>
-                    <span className="text-[9px] text-white/30">{m.label.split(' ')[0]}</span>
+                    <span className="text-[11px] text-white/30">{m.label.split(' ')[0]}</span>
                   </div>
                 );
               })}
@@ -368,10 +368,10 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
                 key={opt.value}
                 onClick={() => setSelectedMonth(opt.value)}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]',
+                  'px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]',
                   selectedMonth === opt.value
                     ? 'bg-[var(--module-accent)] text-white'
-                    : 'bg-white/5 text-white/50 hover:bg-white/10'
+                    : 'bg-white/[0.045] text-white/50 hover:bg-white/10'
                 )}
                 aria-pressed={selectedMonth === opt.value}
               >
@@ -406,7 +406,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
                         {formatCurrency(cat.amount, currency)}
                       </span>
                     </div>
-                    <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-1 bg-white/[0.045] rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -417,7 +417,7 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
                       />
                     </div>
                   </div>
-                  <span className="text-[10px] text-white/40 shrink-0 w-8 text-right">
+                  <span className="text-[11px] text-white/40 shrink-0 w-8 text-right">
                     {cat.percentOfTotal.toFixed(0)}%
                   </span>
                 </div>
@@ -455,12 +455,12 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
                       <span className="text-xs text-white/50 tabular-nums">
                         {formatCurrency(bp.actual, currency)} / {formatCurrency(bp.allocated, currency)}
                       </span>
-                      <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded border', badgeColor)}>
+                      <span className={cn('text-[11px] font-bold px-1.5 py-0.5 rounded border', badgeColor)}>
                         {bp.status === 'under' ? 'Under' : bp.status === 'on_track' ? 'On track' : bp.status === 'warning' ? 'Warning' : 'Over'}
                       </span>
                     </div>
                   </div>
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-white/[0.045] rounded-full overflow-hidden">
                     <div
                       className={cn('h-full rounded-full transition-all', statusColor)}
                       style={{ width: `${utilizationPct}%` }}
@@ -503,11 +503,11 @@ export function AnalyticsTab({ profile, onAskAI }: AnalyticsTabProps) {
           ) : (
             <div className="space-y-2">
               {topExpenses.map((tx, i) => (
-                <div key={tx.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.05] transition-colors">
-                  <span className="text-[10px] font-mono text-white/30 w-4 shrink-0">{i + 1}</span>
+                <div key={tx.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.045] border border-white/[0.09] hover:bg-white/[0.05] transition-colors">
+                  <span className="text-[11px] font-mono text-white/30 w-4 shrink-0">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white/90 truncate">{tx.description}</p>
-                    <p className="text-[10px] text-white/40">{tx.category} · {tx.date}</p>
+                    <p className="text-[11px] text-white/40">{tx.category} · {tx.date}</p>
                   </div>
                   <span className="text-sm font-bold text-rose-400 tabular-nums shrink-0">
                     {formatCurrency(tx.amount, currency)}

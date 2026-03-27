@@ -143,7 +143,7 @@ function ACWRBanner({ result }: { result: ACWRResult }) {
             {hasHistory ? result.acwr.toFixed(2) : '–'}
           </span>
           <div>
-            <div className="text-[9px] font-bold uppercase tracking-widest text-white/35 mb-0.5">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-white/35 mb-0.5">
               ACWR
             </div>
             <div className="text-[11px] font-bold" style={{ color: meta.textColor }}>
@@ -155,7 +155,7 @@ function ACWRBanner({ result }: { result: ACWRResult }) {
         {/* Right: load stats */}
         <div className="flex gap-5 text-right">
           <div>
-            <div className="text-[9px] uppercase tracking-wide text-white/30 font-semibold mb-0.5">
+            <div className="text-[11px] uppercase tracking-wide text-white/30 font-semibold mb-0.5">
               Acute (7 d)
             </div>
             <div className="text-[12px] text-white/70 font-bold tabular-nums">
@@ -163,7 +163,7 @@ function ACWRBanner({ result }: { result: ACWRResult }) {
             </div>
           </div>
           <div>
-            <div className="text-[9px] uppercase tracking-wide text-white/30 font-semibold mb-0.5">
+            <div className="text-[11px] uppercase tracking-wide text-white/30 font-semibold mb-0.5">
               Chronic (4 wk avg)
             </div>
             <div className="text-[12px] text-white/70 font-bold tabular-nums">
@@ -326,7 +326,7 @@ function VolumeBarsChart({ muscles }: { muscles: MuscleVolumeWeek[] }) {
               className="w-3 h-2 rounded-sm"
               style={{ backgroundColor: STATUS_BAR_COLOR[status] }}
             />
-            <span className="text-[9px] text-white/28">{label}</span>
+            <span className="text-[11px] text-white/28">{label}</span>
           </div>
         ))}
       </div>
@@ -362,7 +362,7 @@ function RecommendationsList({ recs }: { recs: ExerciseProgressionRec[] }) {
           <div key={type}>
             {/* Group header */}
             <div
-              className="text-[10px] font-black uppercase tracking-widest mb-2"
+              className="text-[11px] font-black uppercase tracking-widest mb-2"
               style={{ color: meta.color }}
             >
               {meta.label}
@@ -385,7 +385,7 @@ function RecommendationsList({ recs }: { recs: ExerciseProgressionRec[] }) {
                         .join(' ')}
                     </span>
 
-                    <div className="flex items-center gap-2 text-[10px] shrink-0">
+                    <div className="flex items-center gap-2 text-[11px] shrink-0">
                       <span className="text-white/32">
                         e1RM{' '}
                         <span className="text-white/60 font-semibold tabular-nums">
@@ -411,7 +411,7 @@ function RecommendationsList({ recs }: { recs: ExerciseProgressionRec[] }) {
                   </div>
 
                   {/* Reasoning */}
-                  <p className="text-[10px] text-white/35 mt-1 leading-relaxed">
+                  <p className="text-[11px] text-white/35 mt-1 leading-relaxed">
                     {rec.reasoning}
                   </p>
                 </div>
@@ -498,17 +498,17 @@ export function ProgressiveOverloadPanel({
       {/* B. Volume by Muscle Group */}
       <div>
         <div className="flex items-center justify-between mb-2.5">
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/38">
+          <p className="text-[11px] font-black uppercase tracking-widest text-white/38">
             Weekly Volume — Sets vs Landmarks
           </p>
-          <p className="text-[9px] text-white/20">Mon – today</p>
+          <p className="text-[11px] text-white/20">Mon – today</p>
         </div>
         <VolumeBarsChart muscles={relevantMuscles} />
       </div>
 
       {/* C. Progression Recommendations */}
       <div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-white/38 mb-2.5">
+        <p className="text-[11px] font-black uppercase tracking-widest text-white/38 mb-2.5">
           Progression Recommendations
         </p>
         <RecommendationsList recs={recommendations} />

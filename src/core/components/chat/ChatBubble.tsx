@@ -78,7 +78,7 @@ function CopyButton({ text }: { text: string }) {
       aria-label={copied ? 'Copied' : 'Copy message'}
       title={copied ? 'Copied!' : 'Copy message'}
       className={cn(
-        'flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all',
+        'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all min-h-[32px]',
         copied
           ? 'text-emerald-400'
           : 'text-white/20 hover:text-white/60',
@@ -162,7 +162,7 @@ function AiBubble({
   // Silent action with no public content
   if (isInternalSilentAction && !hasPublicContent && !showInternalSignals) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5 text-[10px] font-semibold uppercase tracking-widest text-white/30 my-2">
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.045] border border-white/[0.09] text-[11px] font-semibold uppercase tracking-widest text-white/35 my-2">
         <div className="w-1 h-1 rounded-full bg-cyan-500 animate-pulse" />
         {actionFallback}
       </div>
@@ -198,8 +198,8 @@ function AiBubble({
             className={cn(
               'flex items-center gap-3 px-4 py-2 rounded-2xl transition-all group border h-auto w-full max-w-full',
               showProcessingPulse
-                ? 'bg-white/[0.03] border-white/10 animate-pulse'
-                : 'bg-white/5 border-white/5 hover:bg-white/10',
+                ? 'bg-white/[0.045] border-white/[0.12] animate-pulse'
+                : 'bg-white/[0.045] border-white/[0.09] hover:bg-white/10',
             )}
           >
             {showProcessingPulse ? (
@@ -209,7 +209,7 @@ function AiBubble({
             )}
             <span
               className={cn(
-                'text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] truncate',
+                'text-[11px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] truncate',
                 showProcessingPulse
                   ? 'text-indigo-400'
                   : 'text-white/20 group-hover:text-white/40',
@@ -231,7 +231,7 @@ function AiBubble({
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
               >
-                <div className="mt-2 p-3 sm:p-4 bg-black/60 border border-white/5 rounded-xl sm:rounded-2xl font-mono text-[10px] sm:text-[11px] text-white/40 leading-relaxed overflow-x-auto shadow-xl">
+                <div className="mt-2 p-3 sm:p-4 bg-slate-900/85 border border-white/[0.09] rounded-xl sm:rounded-2xl font-mono text-[11px] sm:text-[11px] text-white/40 leading-relaxed overflow-x-auto shadow-xl">
                   <pre className="whitespace-pre-wrap break-words min-w-0">{effectiveInternalText}</pre>
                 </div>
               </motion.div>
@@ -249,7 +249,7 @@ function AiBubble({
               className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0"
             >
               <ActivityIcon className="w-2.5 h-2.5" />
-              <span className="text-[9px] font-semibold uppercase tracking-wider">
+              <span className="text-[11px] font-semibold uppercase tracking-wider">
                 {getActionLabel(a.type)}
               </span>
             </div>
@@ -260,7 +260,7 @@ function AiBubble({
               className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 shrink-0"
             >
               <Zap className="w-2.5 h-2.5" />
-              <span className="text-[9px] font-semibold uppercase tracking-wider">{evt}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wider">{evt}</span>
             </div>
           ))}
         </div>
@@ -274,8 +274,8 @@ function AiBubble({
           className={cn(
             'border backdrop-blur-3xl transition-all min-w-0 overflow-hidden',
             isAgnes
-              ? 'p-5 sm:p-6 bg-gradient-to-br from-indigo-950/50 to-indigo-900/30 border-indigo-400/20 rounded-2xl rounded-tl-sm shadow-xl shadow-indigo-500/15'
-              : cn('p-3.5 sm:p-5', theme.bubble, theme.glow),
+              ? 'p-4 sm:p-5 bg-gradient-to-br from-indigo-950/90 to-slate-900/90 border-indigo-400/30 rounded-2xl rounded-tl-sm shadow-2xl shadow-black/70 border-l-[3px] border-l-indigo-400/80'
+              : cn('p-3.5 sm:p-4 md:p-5', theme.bubble, theme.glow),
           )}
         >
           <ChatMarkdown
@@ -294,7 +294,7 @@ function AiBubble({
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/35 hover:text-white/70 transition-colors"
+              className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-white/40 hover:text-white/70 transition-colors min-h-[32px]"
             >
               {expanded ? '↑ Show less' : '↓ Show full response'}
             </button>
@@ -302,12 +302,12 @@ function AiBubble({
 
           {/* Footer: actor label + timestamp + copy */}
           {!isStreaming && (
-            <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3 min-w-0 gap-2">
-              <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-white/30 truncate shrink">
+            <div className="mt-3 flex items-center justify-between border-t border-white/[0.09] pt-3 min-w-0 gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-white/40 truncate shrink">
                 {actorLabel}
               </span>
               <div className="flex items-center gap-1 shrink-0">
-                <span className="text-[9px] font-mono uppercase tracking-wider text-white/30">
+                <span className="text-[11px] font-mono uppercase tracking-wider text-white/35">
                   {timeLabel}
                 </span>
                 <CopyButton text={publicText || bubbleText} />
@@ -354,7 +354,7 @@ function UserBubble({ content, theme, isAgnes, timestamp }: UserBubbleProps) {
               alt={img.alt ?? 'Attached image'}
               loading="lazy"
               decoding="async"
-              className="max-h-60 max-w-full rounded-2xl border border-white/10 object-contain shadow-lg"
+              className="max-h-60 max-w-full rounded-2xl border border-white/[0.12] object-contain shadow-lg"
             />
           ))}
         </div>
@@ -366,8 +366,8 @@ function UserBubble({ content, theme, isAgnes, timestamp }: UserBubbleProps) {
           className={cn(
             'border backdrop-blur-3xl transition-all min-w-0 overflow-hidden',
             isAgnes
-              ? 'p-3 sm:p-4 md:p-5 bg-gradient-to-br from-slate-800/70 to-slate-700/50 border-slate-600/30 rounded-2xl rounded-tr-sm shadow-lg shadow-black/20 border-r-2 border-r-slate-500/40'
-              : cn('p-3 sm:p-3.5 md:p-5', theme.userBubble, theme.glow),
+              ? 'p-3 sm:p-4 bg-slate-800/90 border-slate-600/30 rounded-2xl rounded-tr-sm shadow-2xl shadow-black/60 border-r-[3px] border-r-indigo-400/60'
+              : cn('p-3 sm:p-4', theme.userBubble, theme.glow),
           )}
         >
           <div
@@ -382,8 +382,8 @@ function UserBubble({ content, theme, isAgnes, timestamp }: UserBubbleProps) {
             {textContent}
           </div>
 
-          <div className="mt-2 sm:mt-3 flex items-center justify-end opacity-30 border-t border-white/5 pt-1.5 sm:pt-2 gap-2">
-            <span className="text-[9px] font-mono uppercase tracking-wider shrink-0">
+          <div className="mt-2 flex items-center justify-end border-t border-white/[0.09] pt-1.5 gap-2">
+            <span className="text-[11px] font-mono tracking-wider shrink-0 text-white/40">
               {timeLabel}
             </span>
           </div>

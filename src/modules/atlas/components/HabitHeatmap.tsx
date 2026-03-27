@@ -192,7 +192,7 @@ export function HabitHeatmap({ habit }: HabitHeatmapProps) {
   const gutterWidth = 18;
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+    <div className="bg-white/[0.045] border border-white/10 rounded-xl p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-bold text-white/70 uppercase tracking-[0.12em] truncate max-w-[180px]">
@@ -202,7 +202,7 @@ export function HabitHeatmap({ habit }: HabitHeatmapProps) {
           variant="ghost"
           size="sm"
           onClick={() => setShowFullYear((v) => !v)}
-          className="shrink-0 text-[10px] text-[var(--module-color-400)] hover:text-[var(--module-color-300)] font-bold transition-colors ml-2"
+          className="shrink-0 text-[11px] text-[var(--module-color-400)] hover:text-[var(--module-color-300)] font-bold transition-colors ml-2"
           aria-label={showFullYear ? 'Show 12 weeks' : 'Show full year'}
         >
           {showFullYear ? 'Show 12 weeks' : 'Show full year'}
@@ -220,7 +220,7 @@ export function HabitHeatmap({ habit }: HabitHeatmapProps) {
               {monthLabels.map(({ weekIndex, label }) => (
                 <span
                   key={`${label}-${weekIndex}`}
-                  className="absolute text-[9px] text-white/40 font-medium leading-none"
+                  className="absolute text-[11px] text-white/40 font-medium leading-none"
                   style={{ left: weekIndex * STEP + 'px' }}
                 >
                   {label}
@@ -240,7 +240,7 @@ export function HabitHeatmap({ habit }: HabitHeatmapProps) {
               {DAY_INITIALS.map((label, i) => (
                 <div
                   key={i}
-                  className="text-[8px] text-white/30 leading-none flex items-center"
+                  className="text-[11px] text-white/30 leading-none flex items-center"
                   style={{ width: gutterWidth - 2 + 'px', height: CELL_PX + 'px' }}
                 >
                   {label}
@@ -275,10 +275,10 @@ export function HabitHeatmap({ habit }: HabitHeatmapProps) {
                       className={cn(
                         'rounded-sm',
                         cell.isFuture
-                          ? 'bg-white/[0.03]'
+                          ? 'bg-white/[0.045]'
                           : cell.completed
                             ? 'bg-[var(--module-color-500)]/80'
-                            : 'bg-white/5',
+                            : 'bg-white/[0.045]',
                       )}
                       aria-label={
                         cell.isFuture

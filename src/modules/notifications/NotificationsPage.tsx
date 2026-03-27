@@ -247,7 +247,7 @@ function NotificationCard({
           <NeuralButton
             variant="ghost"
             onClick={() => onRead(item.id)}
-            className="h-7 w-7 !px-0 rounded-xl bg-white/5 hover:bg-white/10"
+            className="h-7 w-7 !px-0 rounded-xl bg-white/[0.045] hover:bg-white/10"
             aria-label="Mark as read"
           >
             <Check className="w-3 h-3 text-white/50" />
@@ -256,7 +256,7 @@ function NotificationCard({
         <NeuralButton
           variant="ghost"
           onClick={() => onDelete(item.id)}
-          className="h-7 w-7 !px-0 rounded-xl bg-white/5 hover:bg-rose-500/20"
+          className="h-7 w-7 !px-0 rounded-xl bg-white/[0.045] hover:bg-rose-500/20"
           aria-label="Delete notification"
         >
           <Trash2 className="w-3 h-3 text-white/40 hover:text-rose-400 transition-colors" />
@@ -330,7 +330,7 @@ function SnoozeButton({
             transition={{ duration: 0.12 }}
             className="absolute right-0 top-full mt-1 z-50 w-52 bg-[#0e0e16] border border-white/10 rounded-xl shadow-xl overflow-hidden"
           >
-            <div className="px-3 py-2 border-b border-white/5">
+            <div className="px-3 py-2 border-b border-white/[0.09]">
               <p className="text-[11px] uppercase tracking-widest text-indigo-400/70 font-black mb-1">Suggested</p>
               <button
                 onClick={() => { onSnooze(item.id, computeSnoozedUntil(suggestion.option)); setOpen(false); }}
@@ -594,7 +594,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-[#05050a] flex flex-col">
-      <div className="shrink-0 border-b border-white/[0.05] bg-[#05050a]/90 backdrop-blur-xl sticky top-0 z-[var(--z-content)]">
+      <div className="shrink-0 border-b border-white/[0.09] bg-[#05050a]/90 backdrop-blur-xl sticky top-0 z-[var(--z-content)]">
         <div className={cn('mx-auto px-4 py-4 flex items-center gap-3', isWide ? 'max-w-5xl' : 'max-w-2xl')}>
           <NeuralButton
             variant="ghost"
@@ -708,7 +708,7 @@ export default function NotificationsPage() {
               transition={{ duration: 0.25 }}
               className="overflow-hidden rounded-2xl border border-indigo-500/20 bg-indigo-500/5 mb-4"
             >
-              <Suspense fallback={<div className="h-full min-h-[240px] animate-pulse bg-white/[0.03]" />}>
+              <Suspense fallback={<div className="h-full min-h-[240px] animate-pulse bg-white/[0.045]" />}>
                 <NotificationAIPanel items={items} quietHoursEnabled={quietHours.enabled} />
               </Suspense>
             </motion.div>
@@ -763,7 +763,7 @@ export default function NotificationsPage() {
                   {[...Array(4)].map((_, i) => (
                     <div
                       key={i}
-                      className="h-20 rounded-2xl bg-white/[0.025] border border-white/[0.04] animate-pulse"
+                      className="h-20 rounded-2xl bg-white/[0.025] border border-white/[0.09] animate-pulse"
                       style={{ animationDelay: `${i * 80}ms` }}
                     />
                   ))}
@@ -793,7 +793,7 @@ export default function NotificationsPage() {
                             'mt-3.5 shrink-0 w-4 h-4 rounded border transition-colors',
                             selectedIds.has(item.id)
                               ? 'bg-indigo-500 border-indigo-500'
-                              : 'bg-white/[0.04] border-white/20 hover:border-white/40'
+                              : 'bg-white/[0.045] border-white/20 hover:border-white/40'
                           )}
                           aria-label={selectedIds.has(item.id) ? 'Deselect' : 'Select'}
                         >
@@ -859,7 +859,7 @@ export default function NotificationsPage() {
                           type="time"
                           value={quietHours.from}
                           onChange={e => setQuietHours(q => ({ ...q, from: e.target.value, updatedAt: new Date().toISOString() }))}
-                          className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white/70 focus:outline-none focus:border-indigo-500/40 min-h-[44px]"
+                          className="w-full bg-white/[0.045] border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white/70 focus:outline-none focus:border-indigo-500/40 min-h-[44px]"
                         />
                       </div>
                       <div>
@@ -868,7 +868,7 @@ export default function NotificationsPage() {
                           type="time"
                           value={quietHours.to}
                           onChange={e => setQuietHours(q => ({ ...q, to: e.target.value, updatedAt: new Date().toISOString() }))}
-                          className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white/70 focus:outline-none focus:border-indigo-500/40 min-h-[44px]"
+                          className="w-full bg-white/[0.045] border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white/70 focus:outline-none focus:border-indigo-500/40 min-h-[44px]"
                         />
                       </div>
                     </div>
@@ -915,7 +915,7 @@ export default function NotificationsPage() {
                   {mergedPresets.map((p) => (
                     <div
                       key={p.scheduleId}
-                      className="flex items-center gap-2.5 rounded-xl border border-white/[0.09] bg-white/[0.03] px-3 py-2.5 transition-all hover:border-white/[0.12]"
+                      className="flex items-center gap-2.5 rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2.5 transition-all hover:border-white/[0.12]"
                     >
                       <ModuleIcon source={p.moduleId} withBackground className="w-5 h-5 shrink-0" />
                       <div className="min-w-0 flex-1">
@@ -959,7 +959,7 @@ export default function NotificationsPage() {
                     {agentSchedules.map((s) => (
                       <div
                         key={s.id}
-                        className="flex items-center gap-2.5 rounded-xl border border-white/[0.09] bg-white/[0.03] px-3 py-2.5 transition-all hover:border-white/[0.12]"
+                        className="flex items-center gap-2.5 rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2.5 transition-all hover:border-white/[0.12]"
                       >
                         <ModuleIcon source={s.moduleId} withBackground className="w-5 h-5 shrink-0" />
                         <div className="min-w-0 flex-1">
@@ -1018,7 +1018,7 @@ export default function NotificationsPage() {
                     {userSchedules.map((s) => (
                       <div
                         key={s.id}
-                        className="flex items-center gap-2.5 rounded-xl border border-white/[0.09] bg-white/[0.03] px-3 py-2.5 transition-all hover:border-white/[0.12]"
+                        className="flex items-center gap-2.5 rounded-xl border border-white/[0.09] bg-white/[0.045] px-3 py-2.5 transition-all hover:border-white/[0.12]"
                       >
                         <ModuleIcon source={s.moduleId} withBackground className="w-5 h-5 shrink-0" />
                         <div className="min-w-0 flex-1">
@@ -1056,7 +1056,7 @@ export default function NotificationsPage() {
       </div>
 
       {!loading && items.length > 0 && (
-        <div className="shrink-0 border-t border-white/[0.04] px-4 py-3">
+        <div className="shrink-0 border-t border-white/[0.09] px-4 py-3">
           <div className={cn('mx-auto flex items-center gap-2', isWide ? 'max-w-5xl' : 'max-w-2xl')}>
             <Bell className="w-3 h-3 text-white/35 shrink-0" />
             <p className="text-[11px] text-white/40">

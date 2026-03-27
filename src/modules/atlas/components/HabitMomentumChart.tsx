@@ -408,8 +408,8 @@ interface DetailRowProps {
 function DetailRow({ label, value }: DetailRowProps) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-[10px] text-white/50">{label}</span>
-      <span className="text-[10px] text-white/80 font-semibold">{value}</span>
+      <span className="text-[11px] text-white/50">{label}</span>
+      <span className="text-[11px] text-white/80 font-semibold">{value}</span>
     </div>
   );
 }
@@ -433,13 +433,13 @@ export function HabitMomentumChart({ habits, habitRecords }: HabitMomentumChartP
   if (entries.length === 0) return null;
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-1">
+    <div className="bg-white/[0.045] border border-white/10 rounded-xl p-4 space-y-1">
       {/* Section header */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">
+        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">
           30-Day Momentum
         </span>
-        <span className="text-[9px] text-white/20">rolling avg</span>
+        <span className="text-[11px] text-white/20">rolling avg</span>
       </div>
 
       {entries.map((entry) => {
@@ -455,7 +455,7 @@ export function HabitMomentumChart({ habits, habitRecords }: HabitMomentumChartP
               role="button"
               aria-expanded={isExpanded}
               tabIndex={0}
-              className="min-h-[40px] py-2 flex items-center gap-2 md:gap-3 cursor-pointer select-none rounded-lg px-1 hover:bg-white/[0.03] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+              className="min-h-[40px] py-2 flex items-center gap-2 md:gap-3 cursor-pointer select-none rounded-lg px-1 hover:bg-white/[0.045] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
               onClick={() => setExpandedId(isExpanded ? null : habit.id)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -481,16 +481,16 @@ export function HabitMomentumChart({ habits, habitRecords }: HabitMomentumChartP
               {/* Percentage + trend icon */}
               <div className="flex items-center justify-end gap-1 shrink-0 w-14 md:w-16">
                 {hasNoData ? (
-                  <span className="text-[10px] text-white/20 shrink-0 w-16 text-right">
+                  <span className="text-[11px] text-white/20 shrink-0 w-16 text-right">
                     No data
                   </span>
                 ) : isLowData ? (
-                  <span className="text-[10px] text-white/20 shrink-0 w-16 text-right italic">
+                  <span className="text-[11px] text-white/20 shrink-0 w-16 text-right italic">
                     {completedDays}d logged
                   </span>
                 ) : (
                   <>
-                    <span className={`text-[10px] font-semibold tabular-nums ${getMomentumTextClass(rate)}`}>
+                    <span className={`text-[11px] font-semibold tabular-nums ${getMomentumTextClass(rate)}`}>
                       {Math.round(rate * 100)}%
                     </span>
                     <TrendIcon delta={delta} />

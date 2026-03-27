@@ -111,12 +111,12 @@ export function SystemPanel() {
           <div className="w-7 h-7 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
             <Activity className="w-3.5 h-3.5 text-violet-400" />
           </div>
-          <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40">
             Module Health
           </h3>
           <div className="ml-auto flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[10px] uppercase tracking-[0.12em] text-emerald-400 font-bold">
+            <span className="text-[11px] uppercase tracking-[0.12em] text-emerald-400 font-bold">
               Live
             </span>
           </div>
@@ -137,7 +137,7 @@ export function SystemPanel() {
                 variants={cardVariants}
                 initial="hidden"
                 animate="visible"
-                className="rounded-2xl bg-black/30 border border-white/5 p-4 space-y-3 hover:border-white/10 transition-colors"
+                className="rounded-2xl bg-slate-900/60 border border-white/[0.09] p-4 space-y-3 hover:border-white/10 transition-colors"
               >
                 <div className="flex items-center gap-2">
                   {Icon ? (
@@ -159,7 +159,7 @@ export function SystemPanel() {
                   <div
                     className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`}
                   />
-                  <span className={`text-[10px] font-bold uppercase tracking-[0.12em] ${statusColor}`}>
+                  <span className={`text-[11px] font-bold uppercase tracking-[0.12em] ${statusColor}`}>
                     {statusLabel}
                   </span>
                 </div>
@@ -175,30 +175,30 @@ export function SystemPanel() {
           <div className="w-7 h-7 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
             <Info className="w-3.5 h-3.5 text-violet-400" />
           </div>
-          <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40">
             System Info
           </h3>
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5">
-            <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-bold">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/50 border border-white/[0.09]">
+            <span className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-bold">
               App Version
             </span>
             <span className="text-xs font-bold text-violet-300 uppercase tracking-wider">
               {APP_VERSION}
             </span>
           </div>
-          <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5">
-            <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-bold">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/50 border border-white/[0.09]">
+            <span className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-bold">
               Platform
             </span>
             <span className="text-xs font-bold text-white/50 uppercase tracking-wider">
               AGNES_OS
             </span>
           </div>
-          <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5">
-            <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-bold">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/50 border border-white/[0.09]">
+            <span className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-bold">
               Encryption
             </span>
             <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
@@ -210,7 +210,7 @@ export function SystemPanel() {
 
       {/* Session + Debug Mode */}
       <GlassCard className="p-6">
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 mb-4">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40 mb-4">
           Session
         </h3>
         <div className="space-y-3">
@@ -223,7 +223,7 @@ export function SystemPanel() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white/90">Debug Mode</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">
+                  <p className="text-[11px] text-white/40 mt-0.5">
                     Action logs · Spine events · AI reasoning overlays
                   </p>
                 </div>
@@ -255,7 +255,7 @@ export function SystemPanel() {
                       >
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-white/75">{label}</p>
-                          <p className="text-[9px] text-white/35 mt-0.5 leading-tight">{description}</p>
+                          <p className="text-[11px] text-white/35 mt-0.5 leading-tight">{description}</p>
                         </div>
                         <NeuralToggle
                           checked={debugFlags[key]}
@@ -272,14 +272,14 @@ export function SystemPanel() {
                         <Bell className="w-3.5 h-3.5 text-amber-400/70 shrink-0" />
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-white/75">Test Notification</p>
-                          <p className="text-[9px] text-white/35 mt-0.5 leading-tight">Send a test alert to the inbox</p>
+                          <p className="text-[11px] text-white/35 mt-0.5 leading-tight">Send a test alert to the inbox</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         disabled={testNotifSending}
                         onClick={() => { void sendTestNotification(); }}
-                        className={`shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] px-3 py-1.5 rounded-xl border transition-all duration-200 disabled:opacity-40 ${
+                        className={`shrink-0 text-[11px] font-bold uppercase tracking-[0.1em] px-3 py-1.5 rounded-xl border transition-all duration-200 disabled:opacity-40 ${
                           testNotifSent
                             ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
                             : 'bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20'
@@ -289,7 +289,7 @@ export function SystemPanel() {
                       </button>
                     </div>
 
-                    <p className="text-[9px] font-mono text-amber-400/60 px-1 pt-1 uppercase tracking-wider">
+                    <p className="text-[11px] font-mono text-amber-400/60 px-1 pt-1 uppercase tracking-wider">
                       ⚡ Debug active — console + overlays enabled across all modules
                     </p>
                   </div>
@@ -306,7 +306,7 @@ export function SystemPanel() {
               </div>
               <div>
                 <p className="text-sm font-bold text-white/90">Sign Out</p>
-                <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold">
+                <p className="text-[11px] text-white/35 uppercase tracking-wider font-semibold">
                   End this session
                 </p>
               </div>
@@ -335,7 +335,7 @@ export function SystemPanel() {
                 <div className="w-7 h-7 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
                   <Cpu className="w-3.5 h-3.5 text-amber-400" />
                 </div>
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40">
                   Model Selection
                 </h3>
               </div>
@@ -354,10 +354,10 @@ export function SystemPanel() {
           <div className="w-7 h-7 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
             <Code2 className="w-3.5 h-3.5 text-amber-400" />
           </div>
-          <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 flex-1">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40 flex-1">
             Developer
           </h3>
-          <span className="text-[9px] uppercase tracking-[0.12em] text-white/20 font-bold">
+          <span className="text-[11px] uppercase tracking-[0.12em] text-white/20 font-bold">
             More tools coming
           </span>
         </div>

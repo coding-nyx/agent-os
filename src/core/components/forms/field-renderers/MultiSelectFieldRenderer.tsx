@@ -45,7 +45,7 @@ export function MultiSelectFieldRenderer({
   return (
     <div
       className={cn(
-        'space-y-2 p-4 bg-black/20 border border-white/5 rounded-2xl',
+        'space-y-2 p-4 bg-slate-900/50 border border-white/[0.09] rounded-2xl',
         error && 'border-red-500/30'
       )}
       role="group"
@@ -66,7 +66,7 @@ export function MultiSelectFieldRenderer({
             className={cn(
               'flex items-center gap-3 p-3 rounded-xl cursor-pointer',
               'transition-colors',
-              'hover:bg-white/5',
+              'hover:bg-white/[0.045]',
               disabled && 'opacity-50 cursor-not-allowed'
             )}
           >
@@ -86,7 +86,7 @@ export function MultiSelectFieldRenderer({
                   'flex items-center justify-center',
                   isChecked
                     ? 'bg-gradient-to-r from-indigo-500 to-purple-500 border-transparent'
-                    : 'border-white/20 bg-black/20'
+                    : 'border-white/20 bg-slate-900/50'
                 )}
               >
                 {isChecked && <Check className="w-3.5 h-3.5 text-white" />}

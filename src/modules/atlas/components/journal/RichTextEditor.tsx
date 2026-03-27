@@ -67,7 +67,7 @@ function ToolbarButton({ onClick, active, title, children }: ToolbarButtonProps)
         'w-6 h-6 flex items-center justify-center rounded transition-colors',
         active
           ? 'text-violet-300 bg-violet-500/20'
-          : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+          : 'text-white/40 hover:text-white/70 hover:bg-white/[0.045]',
       )}
     >
       {children}
@@ -89,7 +89,7 @@ function Toolbar({
   isHandwriting?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-white/8 flex-wrap">
+    <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-white/[0.09] flex-wrap">
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
         active={editor.isActive('bold')}
@@ -326,7 +326,7 @@ export function RichTextEditor({
     <>
       <div
         className={cn(
-          'rounded-xl border border-white/10 bg-black/30 overflow-hidden',
+          'rounded-xl border border-white/10 bg-slate-900/60 overflow-hidden',
           'transition-colors focus-within:border-violet-500/40 focus-within:ring-1 focus-within:ring-violet-500/20',
           className,
         )}
@@ -348,7 +348,7 @@ export function RichTextEditor({
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.18 }}
-              className="overflow-hidden border-b border-white/8"
+              className="overflow-hidden border-b border-white/[0.09]"
             >
               <HandwritingPanel
                 onRecognize={handleRecognized}

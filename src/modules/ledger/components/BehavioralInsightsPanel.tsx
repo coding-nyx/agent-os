@@ -94,13 +94,13 @@ function SavingsRing({
       <div className="-mt-[58px] mb-[30px] text-center pointer-events-none select-none">
         <span className="text-[11px] font-bold text-[var(--module-color-300)]">{percent}%</span>
       </div>
-      <p className="text-[9px] font-black uppercase tracking-widest text-white/50 text-center truncate max-w-[80px]">
+      <p className="text-[11px] font-black uppercase tracking-widest text-white/50 text-center truncate max-w-[80px]">
         {label}
       </p>
-      <p className="text-[8px] text-white/30 text-center">
+      <p className="text-[11px] text-white/30 text-center">
         {formatCurrency(targetAmount, currency)}
       </p>
-      <p className="text-[8px] text-[var(--module-color-400)] text-center">
+      <p className="text-[11px] text-[var(--module-color-400)] text-center">
         {isFinite(monthsToGoal) ? `${monthsToGoal} mo` : '∞'}
       </p>
     </div>
@@ -138,7 +138,7 @@ function DebtBar({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between text-[9px]">
+      <div className="flex items-center justify-between text-[11px]">
         <span className="font-black uppercase tracking-widest text-white/60 truncate max-w-[120px]">
           {order}. {name}
         </span>
@@ -147,7 +147,7 @@ function DebtBar({
           {interestPaid.toLocaleString(undefined, { maximumFractionDigits: 0 })} interest
         </span>
       </div>
-      <div className="h-2 w-full rounded-full bg-white/[0.04] overflow-hidden">
+      <div className="h-2 w-full rounded-full bg-white/[0.045] overflow-hidden">
         <div
           className={cn('h-full rounded-full transition-all duration-700', color)}
           style={{ width: `${widthPct}%` }}
@@ -167,7 +167,7 @@ function RoiBadge({ score }: { score: number }) {
       : 'text-rose-400 bg-rose-400/10';
 
   return (
-    <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-black tabular-nums', color)}>
+    <span className={cn('px-1.5 py-0.5 rounded text-[11px] font-black tabular-nums', color)}>
       {formatNumber(score, 1, 1)}
     </span>
   );
@@ -224,7 +224,7 @@ export function BehavioralInsightsPanel({
       {/* ── Section header ──────────────────────────────────────────────── */}
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-[var(--module-color-400)]" />
-        <h3 className="text-[9px] font-black uppercase tracking-[0.25em] text-white/50">
+        <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-white/50">
           Behavioral Insights
         </h3>
       </div>
@@ -232,7 +232,7 @@ export function BehavioralInsightsPanel({
       {/* ── Tax deductible summary ───────────────────────────────────────── */}
       <SurfaceCard className="p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">
+          <span className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">
             Tax Deductibles
           </span>
           <DollarSign className="w-3.5 h-3.5 text-emerald-400/60" />
@@ -240,27 +240,27 @@ export function BehavioralInsightsPanel({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <p className="text-[9px] text-white/40 uppercase tracking-widest">YTD Estimate</p>
+            <p className="text-[11px] text-white/40 uppercase tracking-widest">YTD Estimate</p>
             <p className="text-lg font-black text-emerald-300 tabular-nums">
               {currency}{' '}
               {analysis.ytdDeductibleTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </p>
-            <p className="text-[8px] text-white/30">Deductible expenses × 12 months</p>
+            <p className="text-[11px] text-white/30">Deductible expenses × 12 months</p>
           </div>
           <div className="space-y-1">
-            <p className="text-[9px] text-white/40 uppercase tracking-widest">Est. Tax Saving</p>
+            <p className="text-[11px] text-white/40 uppercase tracking-widest">Est. Tax Saving</p>
             <p className="text-lg font-black text-[var(--module-color-300)] tabular-nums">
               {currency}{' '}
               {analysis.estimatedTaxSaving.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </p>
-            <p className="text-[8px] text-white/30">At 25 % marginal rate</p>
+            <p className="text-[11px] text-white/30">At 25 % marginal rate</p>
           </div>
         </div>
 
         {analysis.ytdDeductibleTotal === 0 && (
           <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
             <AlertCircle className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
-            <p className="text-[9px] text-amber-200/70 leading-relaxed">
+            <p className="text-[11px] text-amber-200/70 leading-relaxed">
               No deductible expenses detected. Label expenses with keywords like "medical",
               "equipment", or "course" to auto-categorise them.
             </p>
@@ -292,7 +292,7 @@ export function BehavioralInsightsPanel({
                   : 'text-white/30';
 
               return (
-                <div key={cat} className="flex items-center justify-between text-[9px]">
+                <div key={cat} className="flex items-center justify-between text-[11px]">
                   <span className="text-white/50">{label}</span>
                   <span className={cn('font-bold tabular-nums', accent)}>
                     {formatCurrency(total, currency)} / mo
@@ -308,7 +308,7 @@ export function BehavioralInsightsPanel({
       {/* ── ROI league table ─────────────────────────────────────────────── */}
       <SurfaceCard className="p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">
+          <span className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">
             ROI League Table
           </span>
           <BarChart2 className="w-3.5 h-3.5 text-violet-400/60" />
@@ -327,7 +327,7 @@ export function BehavioralInsightsPanel({
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
                 <TrendingUp className="w-3 h-3 text-emerald-400" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400/70">
+                <span className="text-[11px] font-black uppercase tracking-widest text-emerald-400/70">
                   Top {top5.length} — High ROI
                 </span>
               </div>
@@ -335,9 +335,9 @@ export function BehavioralInsightsPanel({
                 <div key={item.id} className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <RoiBadge score={roiScore} />
-                    <span className="text-[9px] text-white/70 truncate">{item.label}</span>
+                    <span className="text-[11px] text-white/70 truncate">{item.label}</span>
                   </div>
-                  <span className="text-[8px] text-white/30 shrink-0 tabular-nums">
+                  <span className="text-[11px] text-white/30 shrink-0 tabular-nums">
                     {usageFrequency}×/mo · {currency}{' '}
                     {item.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
@@ -347,10 +347,10 @@ export function BehavioralInsightsPanel({
 
             {/* Low performers */}
             {bottom3.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-white/[0.05]">
+              <div className="space-y-2 pt-2 border-t border-white/[0.09]">
                 <div className="flex items-center gap-1.5">
                   <TrendingDown className="w-3 h-3 text-rose-400" />
-                  <span className="text-[8px] font-black uppercase tracking-widest text-rose-400/70">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-rose-400/70">
                     Bottom {bottom3.length} — Low ROI
                   </span>
                 </div>
@@ -358,9 +358,9 @@ export function BehavioralInsightsPanel({
                   <div key={item.id} className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <RoiBadge score={roiScore} />
-                      <span className="text-[9px] text-white/60 truncate">{item.label}</span>
+                      <span className="text-[11px] text-white/60 truncate">{item.label}</span>
                     </div>
-                    <span className="text-[8px] text-white/30 shrink-0 tabular-nums">
+                    <span className="text-[11px] text-white/30 shrink-0 tabular-nums">
                       {usageFrequency}×/mo · {currency}{' '}
                       {item.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
@@ -375,7 +375,7 @@ export function BehavioralInsightsPanel({
       {/* ── Debt payoff timeline ─────────────────────────────────────────── */}
       <SurfaceCard className="p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">
+          <span className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">
             Debt Snowball Timeline
           </span>
           <Target className="w-3.5 h-3.5 text-amber-400/60" />
@@ -402,7 +402,7 @@ export function BehavioralInsightsPanel({
                 interestPaid={plan.totalInterestPaid}
               />
             ))}
-            <p className="text-[8px] text-white/20 pt-1">
+            <p className="text-[11px] text-white/20 pt-1">
               Snowball method — lowest balance paid first. Extra monthly surplus rolled into
               next debt on clearance.
             </p>
@@ -413,7 +413,7 @@ export function BehavioralInsightsPanel({
       {/* ── Savings goal progress rings ──────────────────────────────────── */}
       <SurfaceCard className="p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">
+          <span className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">
             Savings Goals
           </span>
           <TrendingUp className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
@@ -443,7 +443,7 @@ export function BehavioralInsightsPanel({
 
         {/* Confidence band summary */}
         {hasGoals && analysis.savingsProjections[0] && (
-          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/[0.05]">
+          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/[0.09]">
             {(
               [
                 ['Optimistic', analysis.savingsProjections[0].confidenceBand.optimistic, 'text-emerald-400'],
@@ -452,7 +452,7 @@ export function BehavioralInsightsPanel({
               ] as const
             ).map(([label, months, color]) => (
               <div key={label} className="text-center space-y-0.5">
-                <p className="text-[8px] text-white/30 uppercase tracking-widest">{label}</p>
+                <p className="text-[11px] text-white/30 uppercase tracking-widest">{label}</p>
                 <p className={cn('text-[11px] font-black tabular-nums', color)}>
                   {isFinite(months) ? `${months} mo` : '∞'}
                 </p>

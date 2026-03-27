@@ -132,18 +132,18 @@ export function DiagnosisChatPanel({ summary, sessionId: _sessionId, ai }: Diagn
 
   return (
     <div className={cn(
-      "flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden",
+      "flex flex-col rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-xl overflow-hidden",
       // Mobile: fill available space, let parent control bounds
       "h-[calc(100dvh-280px)] min-h-[300px]",
       // Desktop: fill parent height
       "lg:h-full lg:min-h-0"
     )}>
-      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/10 flex items-center justify-between gap-2 sm:gap-3 shrink-0 bg-white/[0.02]">
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/10 flex items-center justify-between gap-2 sm:gap-3 shrink-0 bg-white/[0.045]">
         <div className="min-w-0">
           <p className="text-[11px] sm:text-xs uppercase tracking-widest text-[var(--module-color-300)] font-semibold truncate">Clinical Analysis</p>
-          <p className="text-[10px] sm:text-[11px] text-white/40 mt-0.5 sm:mt-1 truncate">Ask Soma about this report.</p>
+          <p className="text-[11px] sm:text-[11px] text-white/40 mt-0.5 sm:mt-1 truncate">Ask Soma about this report.</p>
         </div>
-        <span className={cn('text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border whitespace-nowrap flex-shrink-0', conf.className)}>
+        <span className={cn('text-[11px] sm:text-[11px] font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border whitespace-nowrap flex-shrink-0', conf.className)}>
           {conf.label}
         </span>
       </div>

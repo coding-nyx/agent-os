@@ -187,7 +187,7 @@ export function GoalTracker({
           </div>
           <div>
             <h2 className="text-lg font-black text-white tracking-tight uppercase">Financial Goals</h2>
-            <p className="text-[10px] text-white/40 font-black tracking-widest uppercase mt-0.5">
+            <p className="text-[11px] text-white/40 font-black tracking-widest uppercase mt-0.5">
               Target Tracking & Projections
             </p>
           </div>
@@ -219,19 +219,19 @@ export function GoalTracker({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Active Goals</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Active Goals</div>
           <div className="mt-2 text-xl font-black text-white">{stats.activeGoals}</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Overall Progress</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Overall Progress</div>
           <div className="mt-2 text-xl font-black text-[var(--module-color-400)]">{formatNumber(stats.overallProgress, 1, 1)}%</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Monthly Contribution</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Monthly Contribution</div>
           <div className="mt-2 text-xl font-black text-emerald-400">{formatCurrency(stats.totalMonthlyContribution, currency)}</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Achieved</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Achieved</div>
           <div className="mt-2 text-xl font-black text-white flex items-center gap-2">
             {stats.achievedGoals}
             {stats.achievedGoals > 0 && <PartyPopper className="w-4 h-4 text-emerald-400" />}
@@ -273,7 +273,7 @@ export function GoalTracker({
                     <div>
                       <h3 className="text-sm font-bold text-white">{goal.name}</h3>
                       <span className={cn(
-                        "text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border mt-1 inline-block",
+                        "text-[11px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border mt-1 inline-block",
                         PRIORITY_COLORS[goal.priority] || PRIORITY_COLORS.medium
                       )}>
                         {goal.priority}
@@ -315,14 +315,14 @@ export function GoalTracker({
                       accentClassName={isAchieved ? "bg-emerald-500" : "bg-[var(--module-accent)]"}
                       className="mb-0"
                     />
-                    <div className="flex justify-between text-[10px] mt-2 font-mono">
+                    <div className="flex justify-between text-[11px] mt-2 font-mono">
                       <span className="text-white/70">{formatCurrency(goal.currentAmount, currency)}</span>
                       <span className="text-white/40">{formatCurrency(goal.targetAmount, currency)}</span>
                     </div>
                   </div>
 
                   {!isAchieved && (
-                    <div className="pt-2 border-t border-white/5">
+                    <div className="pt-2 border-t border-white/[0.09]">
                       <SavingsProjectionCard projection={projection} />
                     </div>
                   )}
@@ -336,7 +336,7 @@ export function GoalTracker({
                 </div>
 
                 {!isAchieved && (
-                  <div className="mt-6 pt-4 border-t border-white/5">
+                  <div className="mt-6 pt-4 border-t border-white/[0.09]">
                     {contributionTarget?.goalId === goal.id ? (
                       <div className="flex gap-2">
                         <NeuralInput
@@ -464,7 +464,7 @@ export function GoalTracker({
                     "flex-1 py-2 text-xs font-bold rounded-lg border transition-all uppercase tracking-widest",
                     formData.priority === p 
                       ? "bg-[var(--module-accent)] border-[var(--module-accent)] text-white" 
-                      : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
+                      : "bg-white/[0.045] border-white/10 text-white/40 hover:bg-white/10"
                   )}
                 >
                   {p}

@@ -134,7 +134,7 @@ export default function QuietHoursPanel({ config, onChange }: QuietHoursPanelPro
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="rounded-2xl bg-white/[0.04] border border-white/10 overflow-hidden">
+    <div className="rounded-2xl bg-white/[0.045] border border-white/10 overflow-hidden">
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-4 px-5 py-4">
         <div className="flex items-center gap-3 min-w-0">
@@ -178,7 +178,7 @@ export default function QuietHoursPanel({ config, onChange }: QuietHoursPanelPro
 
       {/* ── Body: enabled state ── */}
       {config.enabled ? (
-        <div className="px-5 pb-5 space-y-5 border-t border-white/[0.06]">
+        <div className="px-5 pb-5 space-y-5 border-t border-white/[0.09]">
           {/* DND active banner */}
           {dndActive && (
             <div
@@ -225,7 +225,7 @@ export default function QuietHoursPanel({ config, onChange }: QuietHoursPanelPro
               ))}
             </div>
             {config.exemptModules.length > 0 && (
-              <p className="mt-2 text-[10px] text-white/25">
+              <p className="mt-2 text-[11px] text-white/25">
                 {config.exemptModules.length} module
                 {config.exemptModules.length !== 1 ? 's' : ''} will bypass quiet hours
               </p>
@@ -234,7 +234,7 @@ export default function QuietHoursPanel({ config, onChange }: QuietHoursPanelPro
         </div>
       ) : (
         /* ── Body: disabled state ── */
-        <div className="px-5 py-4 border-t border-white/[0.06]">
+        <div className="px-5 py-4 border-t border-white/[0.09]">
           <p className="text-sm text-white/30 italic">
             Enable to suppress non-critical notifications during set hours.
           </p>

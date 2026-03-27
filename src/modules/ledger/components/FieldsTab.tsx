@@ -84,7 +84,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   assets: 'text-[var(--module-color-400)] border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]',
   expenses: 'text-amber-400 border-amber-500/20 bg-amber-500/5',
   liabilities: 'text-red-400 border-red-500/20 bg-red-500/5',
-  custom: 'text-slate-400 border-white/10 bg-white/5',
+  custom: 'text-slate-400 border-white/10 bg-white/[0.045]',
 };
 
 const CATEGORY_ACCENT: Record<string, string> = {
@@ -275,7 +275,7 @@ function FieldCard({
                 if (e.key === 'Enter') handleSave();
                 if (e.key === 'Escape') handleCancel();
               }}
-              className="flex-1 min-w-0 px-2 py-1 text-sm font-mono bg-black/40 border border-white/20 rounded text-white focus:outline-none focus:border-[var(--module-accent-border)]"
+              className="flex-1 min-w-0 px-2 py-1 text-sm font-mono bg-slate-900/60 border border-white/20 rounded text-white focus:outline-none focus:border-[var(--module-accent-border)]"
               autoFocus
               step={field.type === FieldType.NUMBER ? 'any' : undefined}
               min={field.validation?.minimum}
@@ -308,7 +308,7 @@ function FieldCard({
 
         {/* Description / help text */}
         {field.metadata?.helpText && (
-          <p className="text-[10px] text-white/30 leading-tight line-clamp-2">
+          <p className="text-[11px] text-white/30 leading-tight line-clamp-2">
             {field.metadata.helpText}
           </p>
         )}
@@ -432,7 +432,7 @@ export function FieldsTab({
                 {categoryKey}
               </span>
               {catConfig && (
-                <span className="text-[10px] text-white/30">
+                <span className="text-[11px] text-white/30">
                   — {catConfig.description}
                 </span>
               )}

@@ -47,7 +47,7 @@ export function ReminderProposalCard({
               {proposal.note}
             </p>
           )}
-          <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-white/40">
+          <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-white/40">
             {formatRecurrence(proposal.recurrence)}
           </p>
         </div>

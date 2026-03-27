@@ -138,20 +138,20 @@ export function ModuleHealthFAB() {
             className={cn(
               'absolute bottom-16 left-0',
               'w-[280px] max-w-[calc(100vw-2rem)] p-2.5 rounded-2xl',
-              'bg-black/70 backdrop-blur-2xl',
+              'bg-slate-900/90 backdrop-blur-2xl',
               'border border-white/[0.08]',
               'shadow-xl shadow-black/60'
             )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-1.5 pb-1.5 mb-1 border-b border-white/[0.04]">
-              <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/30">
+            <div className="flex items-center justify-between px-1.5 pb-1.5 mb-1 border-b border-white/[0.09]">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/30">
                 Modules
               </span>
               <NeuralButton
                 variant="ghost"
                 onClick={close}
-                className="p-0.5 h-auto w-auto min-h-0 min-w-0 border-none rounded-md hover:bg-white/5 transition-colors"
+                className="p-0.5 h-auto w-auto min-h-0 min-w-0 border-none rounded-md hover:bg-white/[0.045] transition-colors"
                 aria-label="Close module navigator"
                 tabIndex={-1}
               >
@@ -163,7 +163,7 @@ export function ModuleHealthFAB() {
             <div className="grid grid-cols-3 gap-1.5">
               {isLoading
                 ? Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="h-[56px] rounded-xl bg-white/[0.02] animate-pulse" />
+                    <div key={i} className="h-[56px] rounded-xl bg-white/[0.045] animate-pulse" />
                   ))
                 : modules.map((mod, i) => {
                     const Icon = mod.icon;
@@ -186,8 +186,8 @@ export function ModuleHealthFAB() {
                           'transition-all duration-150',
                           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30',
                           mod.isAccessible
-                            ? 'hover:bg-white/[0.04] active:scale-95 cursor-pointer text-white/40'
-                            : 'hover:bg-white/[0.03] active:scale-95 cursor-pointer opacity-50 hover:opacity-80 text-white/40'
+                            ? 'hover:bg-white/[0.045] active:scale-95 cursor-pointer text-white/40'
+                            : 'hover:bg-white/[0.045] active:scale-95 cursor-pointer opacity-50 hover:opacity-80 text-white/40'
                         )}
                       >
                         <div className="relative">
@@ -207,7 +207,7 @@ export function ModuleHealthFAB() {
                             <Lock className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 text-white/40" />
                           )}
                         </div>
-                        <span className="text-[8px] font-semibold text-white/40 group-hover:text-white/60 truncate max-w-full transition-colors">
+                        <span className="text-[11px] font-semibold text-white/40 group-hover:text-white/60 truncate max-w-full transition-colors">
                           {mod.title}
                         </span>
                       </NeuralButton>
@@ -231,7 +231,7 @@ export function ModuleHealthFAB() {
         whileTap={shouldReduceMotion ? undefined : { scale: 0.94 }}
         className={cn(
           'relative w-[60px] h-[60px] rounded-2xl border-white/[0.08]',
-          'bg-white/[0.04] backdrop-blur-xl',
+          'bg-white/[0.045] backdrop-blur-xl',
           'flex items-center justify-center min-w-0',
           'transition-all duration-200',
           'hover:bg-white/[0.07] hover:border-white/[0.12]',

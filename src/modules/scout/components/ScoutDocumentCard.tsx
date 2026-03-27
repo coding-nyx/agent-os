@@ -65,7 +65,7 @@ export function ScoutDocumentCard({
           : { type: 'spring', stiffness: 280, damping: 22, delay: animationDelay }
       }
       className={cn(
-        'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-4 space-y-3 group hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)] transition-colors duration-300',
+        'rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-xl p-4 space-y-3 group hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-faint)] transition-colors duration-300',
         className
       )}
       aria-label={`Document: ${metadata.filename}`}
@@ -85,7 +85,7 @@ export function ScoutDocumentCard({
           </h4>
           {metadata.extractedTitle && (
             <p
-              className="text-[10px] text-[var(--module-color-300)] italic truncate"
+              className="text-[11px] text-[var(--module-color-300)] italic truncate"
               title={metadata.extractedTitle}
             >
               {metadata.extractedTitle}
@@ -94,13 +94,13 @@ export function ScoutDocumentCard({
         </div>
 
         {/* File type badge */}
-        <span className="px-2 py-0.5 rounded-md border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] text-[8px] font-black uppercase tracking-widest text-[var(--module-color-400)] shrink-0">
+        <span className="px-2 py-0.5 rounded-md border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] text-[11px] font-black uppercase tracking-widest text-[var(--module-color-400)] shrink-0">
           {metadata.fileType.toUpperCase()}
         </span>
       </div>
 
       {/* Metadata row */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[9px] text-white/35 font-semibold uppercase tracking-wider">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/35 font-semibold uppercase tracking-wider">
         <span>{formatFileSize(metadata.fileSize)}</span>
         {metadata.pageCount !== null && (
           <>
@@ -122,7 +122,7 @@ export function ScoutDocumentCard({
 
       {/* Footer: date */}
       <div className="flex items-center justify-between">
-        <span className="text-[8px] font-mono text-white/20 italic tracking-wider">
+        <span className="text-[11px] font-mono text-white/20 italic tracking-wider">
           {formattedDate}
         </span>
       </div>
@@ -150,18 +150,18 @@ export function ScoutDocumentCardCompact({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 px-3 py-2 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors',
+        'flex items-center gap-3 px-3 py-2 rounded-xl border border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.045] transition-colors',
         className
       )}
       role="listitem"
       aria-label={`Source: ${filename}`}
     >
       <FileIcon fileType={fileType} className="w-4 h-4 text-[var(--module-color-400)] shrink-0" />
-      <span className="text-[10px] text-white/60 truncate flex-1 font-medium" title={filename}>
+      <span className="text-[11px] text-white/60 truncate flex-1 font-medium" title={filename}>
         {filename}
       </span>
       {claimCount !== undefined && claimCount > 0 && (
-        <span className="text-[9px] text-[var(--module-color-400)] font-bold shrink-0">
+        <span className="text-[11px] text-[var(--module-color-400)] font-bold shrink-0">
           {claimCount}
         </span>
       )}

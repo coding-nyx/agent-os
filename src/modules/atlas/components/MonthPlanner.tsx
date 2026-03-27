@@ -153,7 +153,7 @@ export function MonthPlanner({
         {DOW_LABELS.map((label, i) => (
           <div
             key={i}
-            className="text-center text-[10px] font-bold uppercase tracking-wider text-white/30 py-1"
+            className="text-center text-[11px] font-bold uppercase tracking-wider text-white/30 py-1"
           >
             {label}
           </div>
@@ -191,7 +191,7 @@ export function MonthPlanner({
                   ? 'bg-emerald-500/20 text-emerald-300'
                   : isToday
                     ? 'text-emerald-400'
-                    : 'text-white/60 hover:bg-white/5 hover:text-white/80',
+                    : 'text-white/60 hover:bg-white/[0.045] hover:text-white/80',
                 isToday && !isSelected && 'ring-1 ring-emerald-500/40 rounded-lg',
               )}
             >

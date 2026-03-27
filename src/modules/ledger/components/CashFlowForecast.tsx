@@ -113,7 +113,7 @@ function HorizonPill({ label, active, disabled, onClick }: HorizonPillProps) {
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400',
         active
           ? 'bg-[var(--module-accent)] text-white'
-          : 'bg-white/5 text-white/60 hover:bg-white/10',
+          : 'bg-white/[0.045] text-white/60 hover:bg-white/10',
         disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
       ].join(' ')}
     >
@@ -133,7 +133,7 @@ interface SummaryCardProps {
 
 function SummaryCard({ label, value, subLabel, colorClass = 'text-white' }: SummaryCardProps) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl bg-white/5 border border-white/10 px-4 py-3 flex-1 min-w-0">
+    <div className="flex flex-col gap-1 rounded-xl bg-white/[0.045] border border-white/10 px-4 py-3 flex-1 min-w-0">
       <span className="text-xs text-white/60 uppercase tracking-wide truncate">{label}</span>
       <span className={`text-lg font-semibold leading-tight truncate ${colorClass}`}>{value}</span>
       {subLabel && <span className="text-xs text-white/40 truncate">{subLabel}</span>}
@@ -214,7 +214,7 @@ function MonthlyTable({ forecast, currency }: MonthlyTableProps) {
         </thead>
         <tbody>
           {months.map((m, i) => (
-            <tr key={i} className="border-b border-white/5 last:border-0">
+            <tr key={i} className="border-b border-white/[0.09] last:border-0">
               <td className="py-2 text-white/80">{m.label}</td>
               <td className="py-2 text-right text-emerald-400">
                 {formatCurrency(m.totalIncome, currency)}
@@ -325,7 +325,7 @@ function WhatIfPanel({
                   type="checkbox"
                   checked={!isExcluded}
                   onChange={() => toggleRule(rule.id)}
-                  className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 accent-cyan-400 cursor-pointer"
+                  className="w-3.5 h-3.5 rounded border-white/20 bg-white/[0.045] accent-cyan-400 cursor-pointer"
                 />
                 <span
                   className={`text-xs flex-1 truncate transition-colors ${
@@ -365,7 +365,7 @@ interface EmptyStateProps {
 function EmptyState({ hasRules, onGenerate, disabled }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-14 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center">
+      <div className="w-14 h-14 rounded-2xl bg-white/[0.045] flex items-center justify-center">
         <BarChart3 className="w-7 h-7 text-white/30" />
       </div>
       <div className="space-y-1">
@@ -579,7 +579,7 @@ export function CashFlowForecast({
             </div>
 
             {/* ── Monthly summary table ─────────────────────────────────────── */}
-            <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+            <div className="rounded-xl bg-white/[0.045] border border-white/10 p-4">
               <p className="text-xs font-medium text-white/50 uppercase tracking-wide mb-3">
                 Monthly Summary
               </p>
@@ -587,7 +587,7 @@ export function CashFlowForecast({
             </div>
 
             {/* ── What-if panel ─────────────────────────────────────────────── */}
-            <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+            <div className="rounded-xl bg-white/[0.045] border border-white/10 overflow-hidden">
               <button
                 onClick={() => setWhatIfOpen((o) => !o)}
                 className={[

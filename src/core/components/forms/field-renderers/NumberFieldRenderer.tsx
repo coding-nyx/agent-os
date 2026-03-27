@@ -61,7 +61,7 @@ export function NumberFieldRenderer({
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${field.id}-error` : undefined}
         className={cn(
-          'w-full bg-black/40 border border-white/10 rounded-2xl h-12 px-4 pr-20 text-sm text-white placeholder:text-white/40',
+          'w-full bg-slate-900/70 border border-white/[0.12] rounded-2xl h-12 px-4 pr-20 text-sm text-white placeholder:text-white/40',
           'focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20',
           'transition-all duration-300',
           'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -77,7 +77,7 @@ export function NumberFieldRenderer({
           onClick={decrement}
           disabled={disabled || (min !== undefined && (value || 0) <= min)}
           className={cn(
-            'w-8 h-8 rounded-xl bg-white/5 border border-white/10',
+            'w-8 h-8 rounded-xl bg-white/[0.045] border border-white/[0.12]',
             'flex items-center justify-center',
             'hover:bg-white/10 hover:border-indigo-500/30 transition-colors',
             'disabled:opacity-30 disabled:cursor-not-allowed'
@@ -91,7 +91,7 @@ export function NumberFieldRenderer({
           onClick={increment}
           disabled={disabled || (max !== undefined && (value || 0) >= max)}
           className={cn(
-            'w-8 h-8 rounded-xl bg-white/5 border border-white/10',
+            'w-8 h-8 rounded-xl bg-white/[0.045] border border-white/[0.12]',
             'flex items-center justify-center',
             'hover:bg-white/10 hover:border-indigo-500/30 transition-colors',
             'disabled:opacity-30 disabled:cursor-not-allowed'

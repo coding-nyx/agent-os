@@ -112,7 +112,7 @@ export function PlanTab({
             'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--module-accent-ring)]',
             libraryOpen
               ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)]'
-              : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.05] hover:border-white/[0.12]',
+              : 'bg-white/[0.045] border-white/[0.08] hover:bg-white/[0.05] hover:border-white/[0.12]',
           )}
         >
           {/* Left side: icon + labels */}
@@ -137,7 +137,7 @@ export function PlanTab({
                 Exercise Library
               </p>
               {!libraryOpen && (
-                <p className="text-[10px] text-white/25 leading-tight mt-0.5">
+                <p className="text-[11px] text-white/25 leading-tight mt-0.5">
                   Browse &amp; search exercises by muscle group or equipment
                 </p>
               )}

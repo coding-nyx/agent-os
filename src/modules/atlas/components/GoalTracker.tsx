@@ -375,7 +375,7 @@ export function GoalTracker({
               {(formData.milestones || []).map((milestone) => (
                 <div
                   key={milestone.id}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10"
+                  className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.045] border border-white/10"
                 >
                   <CheckCircle2
                     className={cn(
@@ -394,7 +394,7 @@ export function GoalTracker({
                     {milestone.title}
                   </span>
                   {milestone.dueDate && (
-                    <span className="text-[10px] text-white/30">
+                    <span className="text-[11px] text-white/30">
                       {new Date(milestone.dueDate).toLocaleDateString()}
                     </span>
                   )}
@@ -453,7 +453,7 @@ export function GoalTracker({
               {tasks.map((t) => (
                 <div
                   key={t.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.045] transition-colors"
                 >
                   <span className="text-xs text-white/70">{t.title}</span>
                   <NeuralToggle

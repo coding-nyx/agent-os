@@ -245,7 +245,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
 
   /** Mode pill selector — rendered inside the NexusChat header via headerActions. */
   const modePillSelector = (
-    <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+    <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.045] border border-white/[0.12]">
       {FORGE_MODES.map((mode) => {
         const Icon = mode.icon;
         const isActive = selectedMode === mode.id;
@@ -254,10 +254,10 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
             key={mode.id}
             onClick={() => handleModeSwitch(mode.id)}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-[0.15em] transition-all duration-150',
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-[0.15em] transition-all duration-150',
               isActive
                 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                : 'text-white/40 hover:text-white/70 hover:bg-white/[0.045]'
             )}
           >
             <Icon className="w-3 h-3" />
@@ -271,13 +271,13 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
   return (
     <div className="h-full flex flex-col md:flex-row overflow-hidden">
       {isMobile && (
-        <div className="sticky top-0 z-20 flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-black/60 backdrop-blur-xl">
+        <div className="sticky top-0 z-20 flex items-center gap-2 px-4 py-2 border-b border-white/[0.12] bg-black/60 backdrop-blur-xl">
           <NeuralButton
             type="button"
             variant="secondary"
             size="sm"
             onClick={() => setShowDashboard((v) => !v)}
-            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60 h-auto"
+            className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/60 h-auto"
           >
             {showDashboard ? 'Hide Dashboard' : 'Show Dashboard'}
           </NeuralButton>
@@ -286,23 +286,23 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
       )}
       <div
         className={cn(
-          'w-full md:w-1/2 lg:w-[40%] max-h-[50vh] md:h-full md:max-h-none border-b md:border-b-0 md:border-r border-white/5 overflow-y-auto no-scrollbar',
+          'w-full md:w-1/2 lg:w-[40%] max-h-[50vh] md:h-full md:max-h-none border-b md:border-b-0 md:border-r border-white/[0.09] overflow-y-auto no-scrollbar',
           isMobile && !showDashboard && 'hidden'
         )}
       >
           <ForgeDashboard soul={globalSoul} profile={profile} isLocked={isLocked} onModeSelect={handleModeSelect} />
           <div className="px-8 pb-8">
-            <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6 space-y-4">
+            <div className="rounded-[28px] border border-white/[0.12] bg-white/[0.045] p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-rose-300 font-black">Code Editor</p>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-rose-300 font-black">Code Editor</p>
                   <p className="text-xs text-white/50">Cloud execution only</p>
                 </div>
                 <NeuralSelectMenu
                   value={editorLanguage}
                   options={[{ value: 'javascript', label: 'JavaScript' }]}
                   onChange={(next) => setEditorLanguage(next)}
-                  triggerClassName="w-auto h-8 px-2.5 text-[10px] uppercase tracking-[0.2em] text-white/70"
+                  triggerClassName="w-auto h-8 px-2.5 text-[11px] uppercase tracking-[0.2em] text-white/70"
                   minWidthClassName=""
                   ariaLabel="Editor language"
                 />
@@ -314,7 +314,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
                   variant="secondary"
                   size="sm"
                   onClick={() => setShowEditor((v) => !v)}
-                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60 h-auto"
+                  className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/60 h-auto"
                 >
                   {showEditor ? 'Collapse Editor' : 'Expand Editor'}
                 </NeuralButton>
@@ -332,7 +332,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
               <div className="flex items-center justify-between gap-4">
                 <span
                   className={cn(
-                    'text-[10px] uppercase tracking-[0.3em] font-black',
+                    'text-[11px] uppercase tracking-[0.3em] font-black',
                     editorStatus === 'running'
                       ? 'text-amber-300'
                       : editorStatus === 'success'
@@ -360,7 +360,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-black/50 p-4 text-xs text-white/70 font-mono whitespace-pre-wrap min-h-[60px] md:min-h-[120px]">
+              <div className="rounded-2xl border border-white/[0.12] bg-slate-900/80 p-4 text-xs text-white/70 font-mono whitespace-pre-wrap min-h-[60px] md:min-h-[120px]">
                 {editorOutput || 'Output will appear here.'}
               </div>
             </div>

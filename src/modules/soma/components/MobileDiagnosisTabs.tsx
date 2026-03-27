@@ -44,7 +44,7 @@ export function MobileDiagnosisTabs({
       role="tablist"
       aria-label="Diagnosis view"
       className={cn(
-        'flex w-full gap-1 rounded-xl bg-black/30 backdrop-blur-md border border-white/[0.06] p-1',
+        'flex w-full gap-1 rounded-xl bg-slate-900/60 backdrop-blur-md border border-white/[0.09] p-1',
         'lg:hidden', // Only visible below lg breakpoint
         className
       )}

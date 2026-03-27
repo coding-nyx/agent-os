@@ -57,11 +57,11 @@ export function VitalsGrid({ metrics, columns = 4, isLocked = false, onCalibrate
                         initial={{ opacity: 0, y: shouldReduceMotion ? 0 : -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ ...transition, delay: shouldReduceMotion ? 0 : i * 0.05 }}
-                        className="p-3 sm:p-4 border border-white/5 rounded-2xl bg-white/[0.02] space-y-2 sm:space-y-3 flex flex-col justify-between"
+                        className="p-3 sm:p-4 border border-white/[0.09] rounded-2xl bg-white/[0.045] space-y-2 sm:space-y-3 flex flex-col justify-between"
                     >
                         <div className="flex items-center justify-between">
                             <Icon className={cn("w-4 h-4", isLocked ? "text-amber-300/60" : metric.colorClass)} />
-                            <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em]">
+                            <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">
                               {labelText}
                             </span>
                         </div>
@@ -77,7 +77,7 @@ export function VitalsGrid({ metrics, columns = 4, isLocked = false, onCalibrate
                                 ) : showCalibrate ? (
                                     <button
                                         onClick={() => metric.metricKey && onCalibrate?.(metric.metricKey)}
-                                        className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-white/90 transition inline-flex items-center gap-2 animate-pulse"
+                                        className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.045] text-[11px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-white/90 transition inline-flex items-center gap-2 animate-pulse"
                                     >
                                         <Handshake className="w-3 h-3" />
                                         Calibrate
@@ -90,16 +90,16 @@ export function VitalsGrid({ metrics, columns = 4, isLocked = false, onCalibrate
                                       )}
                                     >
                                         {metric.value}
-                                        {metric.max && <span className="text-[10px] text-white/40 ml-1">/{metric.max}</span>}
+                                        {metric.max && <span className="text-[11px] text-white/40 ml-1">/{metric.max}</span>}
                                     </span>
                                 )}
                             </div>
                             {isLocked ? (
-                                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-1 w-full bg-white/[0.045] rounded-full overflow-hidden">
                                     <div className="h-full w-1/3 rounded-full bg-white/10" />
                                 </div>
                             ) : showProgress ? (
-                                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-1 w-full bg-white/[0.045] rounded-full overflow-hidden">
                                     <motion.div 
                                         initial={{ width: 0 }}
                                         animate={{ width: `${progressWidth}%` }}
@@ -108,7 +108,7 @@ export function VitalsGrid({ metrics, columns = 4, isLocked = false, onCalibrate
                                     />
                                 </div>
                             ) : (
-                                <div className="h-1 w-full rounded-full bg-white/5 overflow-hidden">
+                                <div className="h-1 w-full rounded-full bg-white/[0.045] overflow-hidden">
                                     <div className="h-full w-1/3 rounded-full skeleton" />
                                 </div>
                             )}

@@ -41,7 +41,7 @@ export function RecoveryCheckinPanel({
           Daily Recovery Check-in
         </h3>
         {isNudge && (
-          <span className="ml-2 text-[10px] uppercase tracking-wider text-[var(--module-color-300)] opacity-70">
+          <span className="ml-2 text-[11px] uppercase tracking-wider text-[var(--module-color-300)] opacity-70">
             Nudge
           </span>
         )}
@@ -49,7 +49,7 @@ export function RecoveryCheckinPanel({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wider text-white/40">Pain</label>
+          <label className="text-[11px] uppercase tracking-wider text-white/40">Pain</label>
           <div className="flex items-center gap-2">
             <Activity className="w-3.5 h-3.5 text-white/40" />
             <NeuralInput
@@ -63,7 +63,7 @@ export function RecoveryCheckinPanel({
           </div>
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wider text-white/40">Fatigue</label>
+          <label className="text-[11px] uppercase tracking-wider text-white/40">Fatigue</label>
           <div className="flex items-center gap-2">
             <HeartPulse className="w-3.5 h-3.5 text-white/40" />
             <NeuralInput
@@ -77,7 +77,7 @@ export function RecoveryCheckinPanel({
           </div>
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wider text-white/40">Sleep</label>
+          <label className="text-[11px] uppercase tracking-wider text-white/40">Sleep</label>
           <div className="flex items-center gap-2">
             <Moon className="w-3.5 h-3.5 text-white/40" />
             <NeuralInput
@@ -91,7 +91,7 @@ export function RecoveryCheckinPanel({
           </div>
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wider text-white/40">Mood</label>
+          <label className="text-[11px] uppercase tracking-wider text-white/40">Mood</label>
           <div className="flex items-center gap-2">
             <Brain className="w-3.5 h-3.5 text-white/40" />
             <NeuralInput
@@ -107,7 +107,7 @@ export function RecoveryCheckinPanel({
       </div>
 
       <div className="mt-3">
-        <label className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-2 mb-1">
+        <label className="text-[11px] uppercase tracking-wider text-white/40 flex items-center gap-2 mb-1">
           <MessageSquare className="w-3.5 h-3.5" /> Notes
         </label>
         <NeuralInput

@@ -268,7 +268,7 @@ export function FloatingChatPanel({
           {/* ── Drag Header ── */}
           <div
             className={cn(
-              'flex shrink-0 items-center justify-between border-b px-3 py-2.5 bg-black/20 select-none touch-none cursor-grab active:cursor-grabbing',
+              'flex shrink-0 items-center justify-between border-b px-3 py-2.5 bg-slate-900/50 select-none touch-none cursor-grab active:cursor-grabbing',
               themeClasses.sidebarBorder
             )}
             onPointerDown={onDragHandlePointerDown}
@@ -279,7 +279,7 @@ export function FloatingChatPanel({
             <div className="flex items-center gap-2 pointer-events-none">
               <div className={cn('w-1.5 h-1.5 rounded-full animate-pulse', themeClasses.indicatorBg)} />
               <GripHorizontal className="w-3.5 h-3.5 text-white/30" />
-              <span className="text-[10px] font-mono uppercase tracking-wider text-white/50">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-white/50">
                 {agentName} Terminal
               </span>
             </div>

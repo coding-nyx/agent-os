@@ -98,14 +98,14 @@ export function SpineToastProvider() {
                 <Icon className={cn('w-4 h-4 mt-0.5 shrink-0', config.iconColor)} aria-hidden="true" />
                 <div className="flex-1 min-w-0">
                   {isCascade && (
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-violet-400 mb-1">
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-violet-400 mb-1">
                       Cascade Event
                     </p>
                   )}
                   <p className="text-xs text-white/80 font-bold leading-snug">
                     {toast.title}
                   </p>
-                  <p className="text-[10px] text-white/40 mt-1 uppercase tracking-wider">
+                  <p className="text-[11px] text-white/40 mt-1 uppercase tracking-wider">
                     {toast.note || sourceName}
                   </p>
                 </div>
@@ -115,7 +115,7 @@ export function SpineToastProvider() {
                       e.stopPropagation();
                       dismissToast(toast.id);
                     }}
-                    className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center shrink-0 transition-colors"
+                    className="w-6 h-6 rounded-lg bg-white/[0.045] hover:bg-white/10 flex items-center justify-center shrink-0 transition-colors"
                     aria-label="Dismiss notification"
                   >
                     <X className="w-3 h-3 text-white/50" />

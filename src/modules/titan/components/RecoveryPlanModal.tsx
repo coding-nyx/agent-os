@@ -276,7 +276,7 @@ export function RecoveryPlanModal({
             </div>
 
             {(pendingConsults?.soma || pendingConsults?.agnes) && (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/60">
+              <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3 text-xs text-white/60">
                 <p className="mb-2">Waiting for specialist consults:</p>
                 <div className="flex flex-wrap gap-2">
                   {pendingConsults?.soma && (
@@ -296,7 +296,7 @@ export function RecoveryPlanModal({
             {(somaConsult || agnesConsult) && (
               <div className="grid gap-3 sm:grid-cols-2">
                 {somaConsult && (
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3">
                     <div className="flex items-center gap-2 mb-1 text-[11px] uppercase tracking-wider text-white/50">
                       <Stethoscope className="w-4 h-4 text-emerald-300" />
                       Soma
@@ -305,7 +305,7 @@ export function RecoveryPlanModal({
                   </div>
                 )}
                 {agnesConsult && (
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3">
                     <div className="flex items-center gap-2 mb-1 text-[11px] uppercase tracking-wider text-white/50">
                       <Sparkles className="w-4 h-4 text-indigo-300" />
                       Agnes
@@ -347,7 +347,7 @@ export function RecoveryPlanModal({
 
         {step === 3 && (
           <div className="space-y-5">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
               <p className="text-xs uppercase tracking-wider text-white/40 mb-2">Summary</p>
               <div className="text-sm text-white/70 space-y-1">
                 <div>Reasons: {reasons.join(', ') || 'None'}</div>
@@ -358,7 +358,7 @@ export function RecoveryPlanModal({
             </div>
 
             {template && (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Activity className="w-4 h-4 text-[var(--module-color-400)]" />
                   <p className="text-xs uppercase tracking-wider text-white/40">Protocol Preview</p>
@@ -373,7 +373,7 @@ export function RecoveryPlanModal({
           </div>
         )}
 
-        <div className="flex flex-col gap-3 border-t border-white/5 pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-white/[0.09] pt-4 sm:flex-row sm:items-center sm:justify-between">
           <NeuralButton variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </NeuralButton>

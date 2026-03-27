@@ -74,17 +74,17 @@ export function NexusRouteBanner() {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-300">Nexus Routing</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-violet-300">Nexus Routing</p>
             <p className="text-sm text-white/80 leading-relaxed">
               {prompt.reason ? prompt.reason : 'Nexus detected a better module for this request.'}
             </p>
-            <div className="text-[10px] text-white/50 uppercase tracking-[0.2em]">
+            <div className="text-[11px] text-white/50 uppercase tracking-[0.2em]">
               {prompt.source ? `Source: ${prompt.source}` : 'Source: neural spine'} · Target: {targetModule.title}
             </div>
           </div>
           <button
             onClick={() => setPrompt(null)}
-            className="w-11 h-11 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:bg-white/15 flex items-center justify-center"
+            className="w-11 h-11 rounded-lg border border-white/10 bg-white/[0.045] hover:bg-white/10 active:bg-white/15 flex items-center justify-center"
             aria-label="Dismiss routing prompt"
           >
             <X className="w-4 h-4 text-white/60" />
@@ -97,14 +97,14 @@ export function NexusRouteBanner() {
               else navigate('/nexus');
               setPrompt(null);
             }}
-            className="flex items-center gap-2 rounded-2xl bg-violet-600/90 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-white"
+            className="flex items-center gap-2 rounded-2xl bg-violet-600/90 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white"
           >
             Open {targetModule.title}
             <ArrowRight className="w-3 h-3" />
           </button>
           <button
             onClick={() => setPrompt(null)}
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-white/70"
+            className="rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white/70"
           >
             Stay Here
           </button>

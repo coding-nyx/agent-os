@@ -153,7 +153,7 @@ export function AgentApprovalLog({
   if (entries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-10 px-4 text-center">
-        <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full bg-white/[0.045] border border-white/[0.12] flex items-center justify-center">
           <ClipboardList className="w-5 h-5 text-white/30" aria-hidden="true" />
         </div>
         <p className="text-sm text-white/40 max-w-xs leading-relaxed">
@@ -178,8 +178,8 @@ export function AgentApprovalLog({
       {groups.map(([label, groupEntries]) => (
         <section key={label} className="mb-2 last:mb-0">
           {/* Group header / divider */}
-          <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">
+          <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-1.5 bg-slate-900/85 backdrop-blur-sm">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-white/30">
               {label}
             </span>
             <div className="flex-1 h-px bg-white/8" />
@@ -225,7 +225,7 @@ function LogRow({ entry, index }: LogRowProps) {
       animate="visible"
       className={cn(
         'flex items-start gap-3 rounded-xl px-3 py-2.5',
-        'border-l-2 bg-white/3 hover:bg-white/5 transition-colors',
+        'border-l-2 bg-white/[0.045] hover:bg-white/[0.045] transition-colors',
         config.rowCls,
       )}
       role="listitem"
@@ -244,8 +244,8 @@ function LogRow({ entry, index }: LogRowProps) {
           <span className="text-xs font-semibold text-white truncate">
             {entry.fieldLabel}
           </span>
-          <span className="text-[10px] text-white/30">·</span>
-          <span className={cn('text-[10px] font-medium', config.iconCls)}>
+          <span className="text-[11px] text-white/30">·</span>
+          <span className={cn('text-[11px] font-medium', config.iconCls)}>
             {config.label}
           </span>
         </div>
@@ -260,7 +260,7 @@ function LogRow({ entry, index }: LogRowProps) {
       {/* Relative timestamp */}
       <time
         dateTime={entry.reviewedAt}
-        className="flex-shrink-0 text-[10px] text-white/30 mt-0.5 whitespace-nowrap"
+        className="flex-shrink-0 text-[11px] text-white/30 mt-0.5 whitespace-nowrap"
       >
         {relativeTime(entry.reviewedAt)}
       </time>

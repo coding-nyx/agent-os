@@ -108,13 +108,13 @@ export function SomaticSessionPicker({ onSelect, onExit }: Props) {
                 </p>
 
                 <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${card.accentClass} opacity-70`}>
+                  <span className={`text-[11px] font-black uppercase tracking-widest ${card.accentClass} opacity-70`}>
                     {card.duration}
                   </span>
                   <div
                     className={`flex items-center gap-1 ${card.accentClass} opacity-0 group-hover:opacity-100 transition-all -translate-x-3 group-hover:translate-x-0`}
                   >
-                    <span className="text-[10px] font-black uppercase tracking-widest">Begin</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest">Begin</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </div>
                 </div>

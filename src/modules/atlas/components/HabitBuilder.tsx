@@ -308,11 +308,11 @@ export function HabitBuilder({
                       key={tpl.id}
                       type="button"
                       onClick={() => handleSelectTemplate(tpl)}
-                      className="text-left p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[var(--module-accent-border)] transition-all"
+                      className="text-left p-2.5 rounded-xl border border-white/10 bg-white/[0.045] hover:bg-white/10 hover:border-[var(--module-accent-border)] transition-all"
                     >
                       <div className="text-base mb-1">{tpl.icon}</div>
                       <div className="text-[11px] font-semibold text-white/80 leading-tight">{tpl.title}</div>
-                      <div className="text-[10px] text-white/40 mt-0.5 capitalize">{tpl.category}</div>
+                      <div className="text-[11px] text-white/40 mt-0.5 capitalize">{tpl.category}</div>
                     </button>
                   ))}
                 </div>
@@ -373,7 +373,7 @@ export function HabitBuilder({
                 setFormData({ ...formData, minimumViableVersion: e.target.value })
               }
             />
-            <p className="text-[10px] text-white/30 ml-1 italic">
+            <p className="text-[11px] text-white/30 ml-1 italic">
               The smallest version you can do on low-energy days
             </p>
           </div>

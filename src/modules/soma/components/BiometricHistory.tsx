@@ -157,7 +157,7 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
         )}
         
         {assessment.notes && (
-          <p className="text-sm text-white/60 italic border-l-2 border-white/10 pl-3">
+          <p className="text-sm text-white/60 italic border-l-2 border-white/[0.12] pl-3">
             "{assessment.notes}"
           </p>
         )}
@@ -214,7 +214,7 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
 
       {/* Timeline */}
       <SurfaceCard className="p-6">
-        <div className="flex items-center gap-3 mb-6 sticky top-0 z-10 backdrop-blur-xl bg-black/60 border-b border-white/5 -mx-6 px-6 py-3">
+        <div className="flex items-center gap-3 mb-6 sticky top-0 z-10 backdrop-blur-xl bg-slate-900/85 border-b border-white/[0.09] -mx-6 px-6 py-3">
           <History className="w-6 h-6 text-indigo-400" />
           <div>
             <h2 className="text-xl font-black text-white tracking-tight">History Timeline</h2>
@@ -250,7 +250,7 @@ export function BiometricHistory({ vitalHistory, assessmentHistory }: BiometricH
                 )} />
 
                 {/* Content */}
-                <div className="bg-white/[0.02] border border-white/10 rounded-lg p-4 hover:bg-white/[0.04] transition-colors">
+                <div className="bg-white/[0.045] border border-white/[0.12] rounded-lg p-4 hover:bg-white/[0.045] transition-colors">
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-xs text-white/40">
                       {formatDate(entry.timestamp)} • {formatTime(entry.timestamp)}

@@ -219,7 +219,7 @@ export function PieChart({
                 key={index}
                 className={cn(
                   'flex items-center gap-2 p-2 rounded-lg transition-all',
-                  'hover:bg-white/5',
+                  'hover:bg-white/[0.045]',
                   (isSelected || isHovered) && 'bg-white/10 ring-1 ring-white/20'
                 )}
                 onClick={() => handleSegmentClick(index)}
@@ -240,7 +240,7 @@ export function PieChart({
                 {/* Label and value */}
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-xs font-semibold text-white/80 truncate">{segment.label}</p>
-                  <p className="text-[10px] text-white/50 font-medium">
+                  <p className="text-[11px] text-white/50 font-medium">
                     {segment.value.toFixed(1)} ({(segment.percentage * 100).toFixed(0)}%)
                   </p>
                 </div>

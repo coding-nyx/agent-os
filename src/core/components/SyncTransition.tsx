@@ -99,17 +99,17 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
               </div>
               <div>
                 <h2 className="text-2xl font-black italic uppercase tracking-[0.2em] text-white">Soul Synchronization</h2>
-                <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.4em] mt-2 italic">Disconnecting from {moduleName}</p>
+                <p className="text-[11px] font-bold text-white/50 uppercase tracking-[0.4em] mt-2 italic">Disconnecting from {moduleName}</p>
               </div>
             </div>
 
             {/* Progress HUD */}
             <div className="space-y-4">
               <div className="flex justify-between items-end px-1">
-                <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest italic">Neural_Uplink</span>
-                <span className="text-[10px] font-mono text-white/40">{Math.round(progress)}%</span>
+                <span className="text-[11px] font-black text-indigo-400 uppercase tracking-widest italic">Neural_Uplink</span>
+                <span className="text-[11px] font-mono text-white/40">{Math.round(progress)}%</span>
               </div>
-              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-[2px]">
+              <div className="h-1.5 w-full bg-white/[0.045] rounded-full overflow-hidden border border-white/[0.09] p-[2px]">
                 <motion.div 
                   className="h-full bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.8)]"
                   initial={{ width: 0 }}
@@ -119,7 +119,7 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
             </div>
 
             {/* Technical Ticker */}
-            <div className="bg-black/40 border border-white/5 rounded-2xl p-6 h-48 overflow-hidden font-mono">
+            <div className="bg-slate-900/70 border border-white/[0.09] rounded-2xl p-6 h-48 overflow-hidden font-mono">
               <div className="space-y-2">
                 {logs.map((log, i) => (
                   <motion.div 
@@ -128,14 +128,14 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
                     animate={{ opacity: 1, x: 0 }}
                     className="flex items-center gap-3"
                   >
-                    <span className="text-indigo-500/40 text-[8px]">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-                    <span className="text-white/60 text-[9px] uppercase tracking-tighter">{log}</span>
+                    <span className="text-indigo-500/40 text-[11px]">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
+                    <span className="text-white/60 text-[11px] uppercase tracking-tighter">{log}</span>
                   </motion.div>
                 ))}
                 {progress < 100 && (
                   <div className="flex items-center gap-2 text-indigo-400/40">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    <span className="text-[9px] animate-pulse">AWAITING_RESPONSE...</span>
+                    <span className="text-[11px] animate-pulse">AWAITING_RESPONSE...</span>
                   </div>
                 )}
               </div>
@@ -143,8 +143,8 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
           </div>
 
           <div className="absolute bottom-12 left-12 right-12 flex justify-between opacity-10">
-            <span className="text-[8px] font-black uppercase tracking-[0.5em]">E2EE_ENCRYPTION_ACTIVE</span>
-            <span className="text-[8px] font-black uppercase tracking-[0.5em]">NEXUS_OS_v3.4.0</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.5em]">E2EE_ENCRYPTION_ACTIVE</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.5em]">NEXUS_OS_v3.4.0</span>
           </div>
         </motion.div>
       )}

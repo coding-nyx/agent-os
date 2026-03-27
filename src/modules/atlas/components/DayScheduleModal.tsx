@@ -66,7 +66,7 @@ function EnergyCostBadge({ cost }: { cost: number }) {
                 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
 
   return (
-    <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold border tabular-nums', color)}>
+    <span className={cn('px-2 py-0.5 rounded-full text-[11px] font-bold border tabular-nums', color)}>
       ⚡ {cost}
     </span>
   );
@@ -169,7 +169,7 @@ export function DayScheduleModal({
           onClick={handleClose}
           variant="ghost"
           size="sm"
-          className="h-8 w-8 p-0 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 shrink-0"
+          className="h-8 w-8 p-0 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.045] shrink-0"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -178,7 +178,7 @@ export function DayScheduleModal({
 
       {/* ── Tasks on this day ── */}
       <section className="mb-6">
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 mb-3">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40 mb-3">
           Scheduled on this day
         </h3>
 
@@ -203,18 +203,18 @@ export function DayScheduleModal({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-white/30 italic px-3 py-4 rounded-xl border border-white/5 bg-white/[0.02] text-center">
+          <p className="text-sm text-white/30 italic px-3 py-4 rounded-xl border border-white/[0.09] bg-white/[0.045] text-center">
             No tasks scheduled for this day.
           </p>
         )}
       </section>
 
       {/* ── Divider ── */}
-      <div className="border-t border-white/5 mb-6" />
+      <div className="border-t border-white/[0.09] mb-6" />
 
       {/* ── Add task section ── */}
       <section>
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40 mb-3">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40 mb-3">
           Add task to this day
         </h3>
 
@@ -246,7 +246,7 @@ export function DayScheduleModal({
                     'w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border text-left transition-all duration-150',
                     isSelected
                       ? 'border-[var(--module-color-400)]/60 bg-[var(--module-accent-faint)]'
-                      : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/10',
+                      : 'border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.045] hover:border-white/10',
                   )}
                   aria-pressed={isSelected}
                 >
@@ -267,7 +267,7 @@ export function DayScheduleModal({
                     </div>
                     <span className="text-sm font-medium text-white/80 truncate">{task.title}</span>
                     {task.scheduledSlot && (
-                      <span className="text-[10px] text-white/30 shrink-0">
+                      <span className="text-[11px] text-white/30 shrink-0">
                         (from {task.scheduledSlot})
                       </span>
                     )}

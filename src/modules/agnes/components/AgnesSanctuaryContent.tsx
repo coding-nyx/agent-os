@@ -69,7 +69,7 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
                 Mind <span className="text-indigo-400">Restore</span>
               </h1>
               <div className="max-w-3xl mx-auto pt-2 space-y-4">
-                <div className="text-[10px] font-black uppercase tracking-[0.35em] text-white/35">
+                <div className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">
                   Choose Your Persistent Mode
                 </div>
                 <AgnesEngagementModeControl
@@ -79,7 +79,7 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
                   modes={['casual', 'deep', 'somatic']}
                   label="Choose Agnes persistent mode"
                 />
-                <div className="flex flex-wrap items-center justify-center gap-3 text-[10px] uppercase tracking-[0.24em] text-white/30">
+                <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] uppercase tracking-[0.2em] text-white/35">
                   <span>Default: {selectedModeDefinition.label}</span>
                   <span className={cn(
                     'px-3 py-1 rounded-full border',
@@ -102,7 +102,7 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
             whileHover={{ y: -6, scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onStartSession('impromptu')}
-            className="group relative flex flex-col items-start text-left space-y-6 sm:space-y-8 p-7 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] bg-black/40 backdrop-blur-2xl border border-white/5 hover:border-orange-500/30 transition-all duration-500 shadow-2xl min-h-[10rem]"
+            className="group relative flex flex-col items-start text-left space-y-6 sm:space-y-8 p-7 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] bg-slate-900/70 backdrop-blur-2xl border border-white/[0.09] hover:border-orange-500/30 transition-all duration-500 shadow-2xl shadow-black/40 min-h-[10rem]"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-orange-500/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[2.5rem]" />
             <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 group-hover:scale-110 transition-transform duration-500">
@@ -112,7 +112,7 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
               <h3 className="text-xl sm:text-2xl font-black tracking-tight uppercase italic text-white group-hover:text-orange-400 transition-colors">Quick Support</h3>
               <p className="text-[11px] text-white/40 font-medium leading-relaxed max-w-[240px]">Private, off-the-record handshake. No trace remains in your vault.</p>
             </div>
-            <div className="text-[9px] font-black uppercase tracking-widest text-orange-500/40 group-hover:text-orange-400 transition-colors">Initialize Ephemeral Link</div>
+            <div className="text-[11px] font-black uppercase tracking-widest text-orange-500/50 group-hover:text-orange-400 transition-colors">Initialize Ephemeral Link</div>
           </motion.button>
 
           {/* Regular Session */}
@@ -122,7 +122,7 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
             onClick={() => onStartSession(hasActiveSession ? 'continue' : 'new')}
             disabled={!isAccessible}
             className={cn(
-              "group relative flex flex-col items-start text-left space-y-6 sm:space-y-8 p-7 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] bg-black/40 backdrop-blur-2xl border border-white/5 hover:border-indigo-500/30 transition-all duration-500 shadow-2xl min-h-[10rem]",
+              "group relative flex flex-col items-start text-left space-y-6 sm:space-y-8 p-7 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] bg-slate-900/70 backdrop-blur-2xl border border-white/[0.09] hover:border-indigo-500/30 transition-all duration-500 shadow-2xl shadow-black/40 min-h-[10rem]",
               !isAccessible && "opacity-30 cursor-not-allowed"
             )}
           >
@@ -138,7 +138,7 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
                  {selectedModeDefinition.tagline}
                </p>
              </div>
-             <div className="text-[9px] font-black uppercase tracking-widest text-indigo-500/40 group-hover:text-indigo-400 transition-colors">
+             <div className="text-[11px] font-black uppercase tracking-widest text-indigo-500/50 group-hover:text-indigo-400 transition-colors">
                {hasActiveSession ? `Rejoin ${selectedModeDefinition.label}` : `Open ${selectedModeDefinition.label}`}
              </div>
            </motion.button>

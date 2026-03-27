@@ -119,14 +119,14 @@ export function SecurityPanel() {
               <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-white font-display">
                 Vault Status
               </h3>
-              <p className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-semibold">
                 End-to-End Encrypted
               </p>
             </div>
           </div>
 
           <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-[0.12em] border ${vaultBadgeBg} ${vaultStateColor}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-[0.12em] border ${vaultBadgeBg} ${vaultStateColor}`}
           >
             <VaultIcon className="w-3 h-3" />
             {vaultStateLabel}
@@ -134,22 +134,22 @@ export function SecurityPanel() {
         </div>
 
         {/* Simplified vault info row */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-3 rounded-2xl bg-black/30 border border-white/5">
-          <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-3 rounded-2xl bg-slate-900/60 border border-white/[0.09]">
+          <span className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-semibold">
             Encryption
           </span>
-          <span className="text-[10px] font-bold text-white/70">PBKDF2 + AES-GCM</span>
+          <span className="text-[11px] font-bold text-white/70">PBKDF2 + AES-GCM</span>
           <span className="mx-1 text-white/15">·</span>
-          <span className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
+          <span className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-semibold">
             Persistence
           </span>
-          <span className="text-[10px] font-bold text-white/70">{persistenceMode}</span>
+          <span className="text-[11px] font-bold text-white/70">{persistenceMode}</span>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2 p-4 rounded-2xl bg-black/30 border border-white/5">
+        <div className="mt-4 flex flex-col gap-2 p-4 rounded-2xl bg-slate-900/60 border border-white/[0.09]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.12em] text-white/35 font-semibold">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-semibold">
                 Session Retention
               </p>
               <p className="text-[11px] text-white/60 mt-1">
@@ -170,7 +170,7 @@ export function SecurityPanel() {
             />
           </div>
           {sessionRetentionDisabled && (
-            <p className="text-[10px] uppercase tracking-[0.12em] text-amber-300/80 font-semibold">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-amber-300/80 font-semibold">
               Session retention is unavailable while persistence is STRICT.
             </p>
           )}
@@ -190,10 +190,10 @@ export function SecurityPanel() {
             <Lock className="w-3.5 h-3.5 text-violet-400" />
           </div>
           <div className="flex-1 text-left">
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40">
               Vault Actions
             </h3>
-            <p className="text-[9px] text-white/25 uppercase tracking-wider font-semibold mt-0.5">
+            <p className="text-[11px] text-white/25 uppercase tracking-wider font-semibold mt-0.5">
               Lock · Export · Reset
             </p>
           </div>
@@ -207,14 +207,14 @@ export function SecurityPanel() {
         {vaultActionsExpanded && (
           <div className="mt-4 space-y-3">
             {/* Lock vault */}
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-black/30 border border-white/5">
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/60 border border-white/[0.09]">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
                   <Lock className="w-4 h-4 text-amber-400" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white/90">Lock Vault</p>
-                  <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold">
+                  <p className="text-[11px] text-white/35 uppercase tracking-wider font-semibold">
                     Revoke session access
                   </p>
                 </div>
@@ -232,18 +232,18 @@ export function SecurityPanel() {
             </div>
 
             {/* Data export */}
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-black/30 border border-white/5">
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/60 border border-white/[0.09]">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
                   <Download className="w-4 h-4 text-violet-400" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white/90">Export All Data</p>
-                  <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold">
+                  <p className="text-[11px] text-white/35 uppercase tracking-wider font-semibold">
                     {isUnlocked ? 'Full decrypted archive' : 'Metadata-only (vault locked)'}
                   </p>
                   {exportError && (
-                    <p className="text-[10px] text-rose-400 font-semibold mt-0.5">{exportError}</p>
+                    <p className="text-[11px] text-rose-400 font-semibold mt-0.5">{exportError}</p>
                   )}
                 </div>
               </div>
@@ -271,7 +271,7 @@ export function SecurityPanel() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white/60">Reset Vault</p>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">
+                  <p className="text-[11px] text-white/25 uppercase tracking-wider font-semibold">
                     Wipe all encrypted data
                   </p>
                 </div>
@@ -291,10 +291,10 @@ export function SecurityPanel() {
             <Skull className="w-3.5 h-3.5 text-rose-400" />
           </div>
           <div>
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-rose-400">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-rose-400">
               Danger Zone
             </h3>
-            <p className="text-[9px] text-white/25 uppercase tracking-wider font-semibold mt-0.5">
+            <p className="text-[11px] text-white/25 uppercase tracking-wider font-semibold mt-0.5">
               Irreversible actions
             </p>
           </div>
@@ -304,7 +304,7 @@ export function SecurityPanel() {
           <div className="flex items-center justify-between p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20">
             <div>
               <p className="text-sm font-bold text-rose-300">Terminate Neural Soul</p>
-              <p className="text-[10px] text-white/35 uppercase tracking-wider font-semibold mt-0.5">
+              <p className="text-[11px] text-white/35 uppercase tracking-wider font-semibold mt-0.5">
                 Permanently delete all data
               </p>
             </div>
@@ -329,7 +329,7 @@ export function SecurityPanel() {
                   This permanently deletes all your data and cannot be undone.
                 </p>
                 {terminateError && (
-                  <p className="text-[10px] text-rose-400 font-semibold mt-1.5">{terminateError}</p>
+                  <p className="text-[11px] text-rose-400 font-semibold mt-1.5">{terminateError}</p>
                 )}
               </div>
             </div>

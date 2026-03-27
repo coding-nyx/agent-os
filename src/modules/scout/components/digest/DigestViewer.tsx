@@ -50,7 +50,7 @@ function DigestCard({
       exit={{ opacity: 0, scale: 0.95 }}
       className={cn(
         "rounded-3xl border transition-all overflow-hidden",
-        isLatest ? 'border-fuchsia-500/30 bg-fuchsia-500/5 shadow-[0_0_30px_-10px_rgba(217,70,239,0.2)]' : 'border-white/5 bg-white/[0.02]'
+        isLatest ? 'border-fuchsia-500/30 bg-fuchsia-500/5 shadow-[0_0_30px_-10px_rgba(217,70,239,0.2)]' : 'border-white/[0.09] bg-white/[0.045]'
       )}
     >
       {/* Header */}
@@ -58,7 +58,7 @@ function DigestCard({
         <div className="flex items-center gap-4">
           <div className={cn(
             "w-12 h-12 rounded-2xl flex items-center justify-center",
-            isLatest ? "bg-fuchsia-500/20 text-fuchsia-400" : "bg-white/5 text-white/30"
+            isLatest ? "bg-fuchsia-500/20 text-fuchsia-400" : "bg-white/[0.045] text-white/30"
           )}>
             <BookOpen size={20} />
           </div>
@@ -68,17 +68,17 @@ function DigestCard({
                 Intelligence Briefing
               </h4>
               {isLatest && (
-                <span className="px-2 py-0.5 rounded-full bg-fuchsia-500/20 text-[10px] font-black uppercase tracking-widest text-fuchsia-400">
+                <span className="px-2 py-0.5 rounded-full bg-fuchsia-500/20 text-[11px] font-black uppercase tracking-widest text-fuchsia-400">
                   Latest
                 </span>
               )}
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] text-white/40 uppercase tracking-widest">
+              <span className="text-[11px] text-white/40 uppercase tracking-widest">
                 {new Date(digest.generatedAt).toLocaleDateString()}
               </span>
-              <span className="text-white/10 text-[10px]">•</span>
-              <span className="text-[10px] text-white/40 uppercase tracking-widest">
+              <span className="text-white/10 text-[11px]">•</span>
+              <span className="text-[11px] text-white/40 uppercase tracking-widest">
                 {digest.summary.totalNodes} Nodes Analyzed
               </span>
             </div>
@@ -110,7 +110,7 @@ function DigestCard({
           <NeuralButton
             variant="secondary"
             onClick={() => setExpanded(!expanded)}
-            className="p-2 h-auto w-auto min-h-0 min-w-0 bg-white/5 hover:bg-white/10 text-white/40"
+            className="p-2 h-auto w-auto min-h-0 min-w-0 bg-white/[0.045] hover:bg-white/10 text-white/40"
           >
             {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </NeuralButton>
@@ -123,27 +123,27 @@ function DigestCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-t border-white/5"
+            className="border-t border-white/[0.09]"
           >
             <div className="p-8 space-y-10">
               {/* Top Claims Grid */}
               <section className="space-y-4">
-                <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-fuchsia-400 flex items-center gap-2">
+                <h5 className="text-[11px] font-black uppercase tracking-[0.2em] text-fuchsia-400 flex items-center gap-2">
                   <TrendingUp size={12} />
                   Core Insights
                 </h5>
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   {digest.topClaims.map((claim, idx) => (
-                    <div key={idx} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2">
+                    <div key={idx} className="p-4 rounded-2xl bg-white/[0.045] border border-white/[0.09] space-y-2">
                       <p className="text-xs font-bold text-white/80 leading-snug">{claim.claim}</p>
                       <div className="flex items-center justify-between pt-1">
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-white/30 uppercase tracking-widest">Confidence</span>
-                          <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
+                          <span className="text-[11px] text-white/30 uppercase tracking-widest">Confidence</span>
+                          <div className="w-12 h-1 bg-white/[0.045] rounded-full overflow-hidden">
                             <div className="h-full bg-fuchsia-500" style={{ width: `${claim.confidence * 100}%` }} />
                           </div>
                         </div>
-                        <span className="text-[10px] text-white/20 uppercase tracking-widest">{claim.evidenceCount} Sources</span>
+                        <span className="text-[11px] text-white/20 uppercase tracking-widest">{claim.evidenceCount} Sources</span>
                       </div>
                     </div>
                   ))}
@@ -171,17 +171,17 @@ function DigestCard({
               </section>
 
               {/* Summary Stats */}
-              <div className="flex items-center gap-8 py-6 border-t border-white/5">
+              <div className="flex items-center gap-8 py-6 border-t border-white/[0.09]">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white/20">Verified</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-white/20">Verified</p>
                   <p className="text-lg font-bold text-emerald-400">{digest.summary.verifiedCount}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white/20">Contested</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-white/20">Contested</p>
                   <p className="text-lg font-bold text-amber-400">{digest.summary.contestedCount}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white/20">Total Findings</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-white/20">Total Findings</p>
                   <p className="text-lg font-bold text-white/60">{digest.summary.totalNodes}</p>
                 </div>
               </div>
@@ -246,7 +246,7 @@ export function DigestViewer({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 text-white/20 gap-4">
             <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Consulting Archives...</span>
+            <span className="text-[11px] font-black uppercase tracking-widest">Consulting Archives...</span>
           </div>
         ) : digests.length === 0 && !isGenerating ? (
           <EmptyState

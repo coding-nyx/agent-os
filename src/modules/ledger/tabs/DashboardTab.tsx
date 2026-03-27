@@ -49,15 +49,15 @@ export function DashboardTab({
       </div>
 
       <div className="flex justify-center mb-6 px-4 md:px-8">
-        <div className="flex p-1 bg-white/5 rounded-lg backdrop-blur-sm border border-white/10">
+        <div className="flex p-1 bg-white/[0.045] rounded-lg backdrop-blur-sm border border-white/10">
           <button 
-            className={`px-6 py-2 rounded-md text-sm font-bold transition-colors ${view === 'overview' ? 'bg-[var(--module-accent)] text-white shadow-lg' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+            className={`px-6 py-2 rounded-md text-sm font-bold transition-colors ${view === 'overview' ? 'bg-[var(--module-accent)] text-white shadow-lg' : 'text-white/50 hover:text-white hover:bg-white/[0.045]'}`}
             onClick={() => setView('overview')}
           >
             Overview
           </button>
           <button 
-            className={`px-6 py-2 rounded-md text-sm font-bold transition-colors ${view === 'analytics' ? 'bg-[var(--module-accent)] text-white shadow-lg' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+            className={`px-6 py-2 rounded-md text-sm font-bold transition-colors ${view === 'analytics' ? 'bg-[var(--module-accent)] text-white shadow-lg' : 'text-white/50 hover:text-white hover:bg-white/[0.045]'}`}
             onClick={() => setView('analytics')}
           >
             Analytics

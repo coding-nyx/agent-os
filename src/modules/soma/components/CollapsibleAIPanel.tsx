@@ -74,7 +74,7 @@ export function CollapsibleAIPanel({ insights, onClose }: CollapsibleAIPanelProp
             <NeuralButton
               variant="ghost"
               onClick={onClose}
-              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/5 transition-colors"
+              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/[0.045] transition-colors"
               aria-label="Close AI panel"
             >
               <X className="w-4 h-4 text-white/40 hover:text-white/60" />
@@ -128,7 +128,7 @@ export function CollapsibleAIPanel({ insights, onClose }: CollapsibleAIPanelProp
           )}
 
           {/* Footer note */}
-          <div className="mt-6 pt-4 border-t border-white/5">
+          <div className="mt-6 pt-4 border-t border-white/[0.09]">
             <p className="text-xs text-white/30 italic">
               💡 These insights are generated from your biometric data and are for informational purposes only.
               Consult a healthcare professional for medical advice.

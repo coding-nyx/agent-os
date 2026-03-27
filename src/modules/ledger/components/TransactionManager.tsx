@@ -41,20 +41,20 @@ const TransactionRow = React.memo(function TransactionRow({
   onDelete: (id: string) => void;
 }) {
   return (
-    <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+    <tr className="border-b border-white/[0.09] hover:bg-white/[0.045] transition-colors">
       <td className="px-4 py-3 text-xs text-white/70">
         {new Date(transaction.date).toLocaleDateString()}
       </td>
       <td className="px-4 py-3">
         <div className="text-sm text-white font-medium">{transaction.description}</div>
         {transaction.recurring && (
-          <div className="text-[10px] text-[var(--module-color-400)] mt-1">
+          <div className="text-[11px] text-[var(--module-color-400)] mt-1">
             ↻ {transaction.recurringFrequency}
           </div>
         )}
       </td>
       <td className="px-4 py-3">
-        <span className="inline-block px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
+        <span className="inline-block px-2 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
           {transaction.category}
         </span>
       </td>
@@ -315,15 +315,15 @@ export function TransactionManager({
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Total Income</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Total Income</div>
           <div className="mt-2 text-2xl font-black text-emerald-400">{formatCurrency(stats.totalIncome, currency)}</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Total Expenses</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Total Expenses</div>
           <div className="mt-2 text-2xl font-black text-red-400">{formatCurrency(stats.totalExpenses, currency)}</div>
         </SurfaceCard>
         <SurfaceCard className="p-4">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black">Net Cash Flow</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40 font-black">Net Cash Flow</div>
           <div className={cn("mt-2 text-2xl font-black", stats.netCashFlow >= 0 ? "text-[var(--module-color-400)]" : "text-amber-400")}>
             {formatCurrency(stats.netCashFlow, currency)}
           </div>
@@ -396,13 +396,13 @@ export function TransactionManager({
             {/* Mobile card view */}
             <div className="block md:hidden space-y-3 p-4">
               {filteredTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex flex-col gap-2 p-3 rounded-lg border border-white/5 bg-white/[0.01]">
+                <div key={transaction.id} className="flex flex-col gap-2 p-3 rounded-lg border border-white/[0.09] bg-white/[0.045]">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-white truncate">{transaction.description}</div>
                       <div className="text-xs text-white/60 mt-1">{new Date(transaction.date).toLocaleDateString()}</div>
                       {transaction.recurring && (
-                        <div className="text-[10px] text-[var(--module-color-400)] mt-1">
+                        <div className="text-[11px] text-[var(--module-color-400)] mt-1">
                           ↻ {transaction.recurringFrequency}
                         </div>
                       )}
@@ -415,7 +415,7 @@ export function TransactionManager({
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-block px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
+                    <span className="inline-block px-2 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
                       {transaction.category}
                     </span>
                     <div className="flex items-center gap-2">
@@ -447,20 +447,20 @@ export function TransactionManager({
             <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[calc(100dvh-16rem)]">
               <table className="w-full" role="table">
                 <thead>
-                  <tr className="border-b border-white/10 sticky top-0 z-10 backdrop-blur-xl bg-black/60">
-                    <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('date')}>
+                  <tr className="border-b border-white/[0.12] sticky top-0 z-10 backdrop-blur-xl bg-slate-900/85">
+                    <th className="px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('date')}>
                       <div className="flex items-center gap-1">Date <ArrowUpDown className="w-3 h-3" /></div>
                     </th>
-                    <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('description')}>
+                    <th className="px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('description')}>
                       <div className="flex items-center gap-1">Description <ArrowUpDown className="w-3 h-3" /></div>
                     </th>
-                    <th className="px-4 py-3 text-left text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('category')}>
+                    <th className="px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('category')}>
                       <div className="flex items-center gap-1">Category <ArrowUpDown className="w-3 h-3" /></div>
                     </th>
-                    <th className="px-4 py-3 text-right text-[9px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('amount')}>
+                    <th className="px-4 py-3 text-right text-[11px] uppercase tracking-[0.2em] text-white/40 font-black cursor-pointer hover:text-white/60" onClick={() => toggleSort('amount')}>
                       <div className="flex items-center justify-end gap-1">Amount <ArrowUpDown className="w-3 h-3" /></div>
                     </th>
-                    <th className="px-4 py-3 text-right text-[9px] uppercase tracking-[0.2em] text-white/40 font-black">Actions</th>
+                    <th className="px-4 py-3 text-right text-[11px] uppercase tracking-[0.2em] text-white/40 font-black">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

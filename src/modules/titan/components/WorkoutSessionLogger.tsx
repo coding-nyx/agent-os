@@ -479,7 +479,7 @@ function SessionModal({
 
         {/* ── Pending sync warning ───────────────────────────────────────── */}
         {hasStagedSession && (
-          <p className="text-[10px] text-[var(--module-color-400)]">⚠ Previous session pending sync</p>
+          <p className="text-[11px] text-[var(--module-color-400)]">⚠ Previous session pending sync</p>
         )}
 
         {/* ── Exercise list (scrollable) ─────────────────────────────────── */}
@@ -501,7 +501,7 @@ function SessionModal({
                   routine.exercises[exIdx - 1].supersetWith === ex.name && (
                     <div className="flex items-center gap-2 py-0.5">
                       <div className="flex-1 h-px bg-[var(--module-accent-border)]" />
-                      <span className="text-[9px] font-black uppercase tracking-widest text-[var(--module-color-300)] px-2 py-0.5 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]">
+                      <span className="text-[11px] font-black uppercase tracking-widest text-[var(--module-color-300)] px-2 py-0.5 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]">
                         Superset
                       </span>
                       <div className="flex-1 h-px bg-[var(--module-accent-border)]" />
@@ -513,14 +513,14 @@ function SessionModal({
                   <div>
                     <span className="text-xs font-bold text-white/90">{ex.name}</span>
                     {ex.tempoScheme && (
-                      <span className="ml-2 px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-white/50 font-mono tracking-wider inline-flex items-center gap-1" title="Tempo Scheme">
+                      <span className="ml-2 px-1.5 py-0.5 rounded-md bg-white/[0.045] border border-white/10 text-[11px] text-white/50 font-mono tracking-wider inline-flex items-center gap-1" title="Tempo Scheme">
                         <Clock className="w-2.5 h-2.5" />
                         {ex.tempoScheme}
                       </span>
                     )}
-                    <span className="text-[10px] text-white/40 ml-2">planned {ex.sets}×{ex.reps}</span>
+                    <span className="text-[11px] text-white/40 ml-2">planned {ex.sets}×{ex.reps}</span>
                     {ex.supersetWith && (
-                      <span className="ml-2 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--module-accent-muted)] text-[var(--module-color-300)] border border-[var(--module-accent-border)]">
+                      <span className="ml-2 text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--module-accent-muted)] text-[var(--module-color-300)] border border-[var(--module-accent-border)]">
                         SS w/ {ex.supersetWith}
                       </span>
                     )}
@@ -579,7 +579,7 @@ function SessionModal({
                     prevCompletedSets[0],
                   );
                   return (
-                    <p className="text-[10px] text-white/30 mb-1">
+                    <p className="text-[11px] text-white/30 mb-1">
                       Last: {prevCompletedSets.length} sets · best {bestSet.weight ?? 'BW'}×{bestSet.repsCompleted}
                     </p>
                   );
@@ -615,10 +615,10 @@ function SessionModal({
                         'flex items-center gap-2 px-3 py-2 rounded-lg border transition-all',
                         s.completed
                           ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)]'
-                          : 'bg-white/[0.02] border-white/10',
+                          : 'bg-white/[0.045] border-white/10',
                       )}
                     >
-                      <span className="text-[10px] text-white/40 w-8 shrink-0">
+                      <span className="text-[11px] text-white/40 w-8 shrink-0">
                         {s.isWarmup ? <span className="text-amber-400/70 font-bold">W{setIdx + 1}</span> : `Set ${setIdx + 1}`}
                       </span>
 
@@ -686,7 +686,7 @@ function SessionModal({
         {/* ── Session-level RPE slider ───────────────────────────────────── */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-white/50">
+            <span className="text-[11px] font-black uppercase tracking-wider text-white/50">
               Rate of Perceived Exertion
             </span>
             <span className={cn(
@@ -704,7 +704,7 @@ function SessionModal({
             onChange={e => setRpe(Number(e.target.value))}
             className="w-full accent-[var(--module-accent)]"
           />
-          <div className="flex justify-between text-[9px] text-white/30">
+          <div className="flex justify-between text-[11px] text-white/30">
             <span>Easy</span>
             <span>Moderate</span>
             <span>Max effort</span>
@@ -793,14 +793,14 @@ function SessionModal({
 
         {/* ── Logbook Mode indicator ────────────────────────────────────── */}
         {directWriteMode && (
-          <div className="flex items-center gap-1.5 text-[10px] text-[var(--module-color-400)]">
+          <div className="flex items-center gap-1.5 text-[11px] text-[var(--module-color-400)]">
             <Zap className="w-3 h-3" />
             <span>Logbook Mode — saves instantly</span>
           </div>
         )}
 
         {/* ── Actions (always visible — outside scrollable area) ─────────── */}
-        <div className="flex gap-3 pt-2 border-t border-white/5">
+        <div className="flex gap-3 pt-2 border-t border-white/[0.09]">
           <NeuralButton
             size="xl"
             className="flex-1"
@@ -870,7 +870,7 @@ export function WorkoutSessionLogger({ routines, recentSessions, onSubmitSession
             metadata={lastSession ? `Last: ${lastSession.date}` : 'No sessions yet'}
           />
           {recentSessions.length > 0 && (
-            <div className="flex items-center gap-1.5 text-[10px] text-white/40">
+            <div className="flex items-center gap-1.5 text-[11px] text-white/40">
               <BarChart3 className="w-3 h-3" />
               <span>{recentSessions.length} sessions logged</span>
             </div>
@@ -889,7 +889,7 @@ export function WorkoutSessionLogger({ routines, recentSessions, onSubmitSession
             >
               <div className="flex-1">
                 <div className="text-xs font-bold text-[var(--module-color-300)]">Today — {todayRoutine.name}</div>
-                <div className="text-[10px] text-white/40 mt-0.5">
+                <div className="text-[11px] text-white/40 mt-0.5">
                   {todayRoutine.exercises.length === 0 ? 'No exercises — configure in Titan AI' : `${todayRoutine.exercises.length} exercises`}
                 </div>
               </div>
@@ -907,23 +907,23 @@ export function WorkoutSessionLogger({ routines, recentSessions, onSubmitSession
               as="div"
               variant="secondary"
               onClick={() => handleStartSession(r)}
-              className="w-full flex items-center justify-between px-3 py-2.5 h-auto bg-white/[0.03] border-white/10 hover:border-white/20 hover:bg-white/[0.05] transition-all text-left"
+              className="w-full flex items-center justify-between px-3 py-2.5 h-auto bg-white/[0.045] border-white/10 hover:border-white/20 hover:bg-white/[0.05] transition-all text-left"
             >
               <div className="flex-1">
-                <span className="text-[10px] uppercase tracking-wider text-white/40 mr-2">{r.weekday}</span>
+                <span className="text-[11px] uppercase tracking-wider text-white/40 mr-2">{r.weekday}</span>
                 <span className="text-xs text-white/70">{r.name}</span>
               </div>
-              <span className="text-[10px] text-white/30 ml-4">{r.exercises.length} ex</span>
+              <span className="text-[11px] text-white/30 ml-4">{r.exercises.length} ex</span>
             </NeuralButton>
           ))}
         </div>
 
         {/* Recent sessions micro-history */}
         {recentSessions.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-white/5 space-y-1">
-            <div className="text-[9px] font-black uppercase tracking-wider text-white/30 mb-1.5">Recent</div>
+          <div className="mt-3 pt-3 border-t border-white/[0.09] space-y-1">
+            <div className="text-[11px] font-black uppercase tracking-wider text-white/30 mb-1.5">Recent</div>
             {recentSessions.slice(0, 3).map(s => (
-              <div key={s.id} className="flex items-center justify-between text-[10px]">
+              <div key={s.id} className="flex items-center justify-between text-[11px]">
                 <span className="text-white/50">{s.date} — {s.routineName}</span>
                 <div className="flex items-center gap-2 text-white/30">
                   {s.totalVolume && <span>{s.totalVolume}kg</span>}

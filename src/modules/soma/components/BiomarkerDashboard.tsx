@@ -74,8 +74,8 @@ const SEVERITY_COLORS: Record<string, string> = {
   high: 'bg-rose-500/20 border-rose-500/30 text-rose-300',
   warning: 'bg-amber-500/20 border-amber-500/30 text-amber-300',
   moderate: 'bg-amber-500/20 border-amber-500/30 text-amber-300',
-  info: 'bg-white/5 border-white/10 text-white/60',
-  low: 'bg-white/5 border-white/10 text-white/60',
+  info: 'bg-white/[0.045] border-white/10 text-white/60',
+  low: 'bg-white/[0.045] border-white/10 text-white/60',
 };
 
 // ---------------------------------------------------------------------------
@@ -329,7 +329,7 @@ export function BiomarkerDashboard({
                       <span
                         key={idx}
                         className={cn(
-                          'inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold',
+                          'inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-semibold',
                           SEVERITY_COLORS[f.severity] ?? SEVERITY_COLORS.info
                         )}
                       >
@@ -395,7 +395,7 @@ export function BiomarkerDashboard({
                   ? 'border-rose-500/20 bg-rose-500/5'
                   : f.severity === 'warning' || f.severity === 'moderate'
                     ? 'border-amber-500/20 bg-amber-500/5'
-                    : 'border-white/10 bg-white/[0.03]'
+                    : 'border-white/10 bg-white/[0.045]'
               )}
             >
               <AlertTriangle
@@ -411,7 +411,7 @@ export function BiomarkerDashboard({
               />
               <div className="min-w-0">
                 <p className="text-xs text-white/80 leading-relaxed">{f.flag}</p>
-                <p className="text-[10px] text-white/30 mt-0.5">Source: {f.source}</p>
+                <p className="text-[11px] text-white/30 mt-0.5">Source: {f.source}</p>
               </div>
             </div>
           ))
@@ -455,7 +455,7 @@ const STATUS_STYLE: Record<string, { border: string; bg: string; text: string; d
   },
   unknown: {
     border: 'border-white/10',
-    bg: 'bg-white/[0.03]',
+    bg: 'bg-white/[0.045]',
     text: 'text-white/60',
     dot: 'bg-white/30',
   },
@@ -533,7 +533,7 @@ function CustomBiomarkersSection({
       )}
 
       {!canAddMore && extensionFields.length > 0 && (
-        <p className="text-[10px] text-amber-300/60 italic">
+        <p className="text-[11px] text-amber-300/60 italic">
           Maximum custom biomarkers reached ({maxExtensions}/{maxExtensions}).
           Remove a field to add a new one.
         </p>
@@ -607,7 +607,7 @@ function CustomBiomarkerCard({ field, onSelect }: CustomBiomarkerCardProps) {
               <span className="text-xs font-bold text-white/90 block truncate">
                 {field.name}
               </span>
-              <span className="text-[9px] text-white/40 uppercase tracking-wider">
+              <span className="text-[11px] text-white/40 uppercase tracking-wider">
                 {categoryLabel}
               </span>
             </div>
@@ -628,7 +628,7 @@ function CustomBiomarkerCard({ field, onSelect }: CustomBiomarkerCardProps) {
             {field.defaultValue != null ? String(field.defaultValue) : '—'}
           </span>
           {unit && (
-            <span className="text-[10px] text-white/30 mb-0.5 ml-1">
+            <span className="text-[11px] text-white/30 mb-0.5 ml-1">
               {unit}
             </span>
           )}
@@ -636,7 +636,7 @@ function CustomBiomarkerCard({ field, onSelect }: CustomBiomarkerCardProps) {
 
         {/* Description (truncated) */}
         {field.description && (
-          <p className="text-[10px] text-white/30 mt-1.5 line-clamp-2 leading-relaxed">
+          <p className="text-[11px] text-white/30 mt-1.5 line-clamp-2 leading-relaxed">
             {field.description}
           </p>
         )}

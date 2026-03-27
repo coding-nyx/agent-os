@@ -48,7 +48,7 @@ export interface JournalSaveFeedback {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const LABEL_CLASS = 'flex items-center gap-1.5 text-[11px] font-semibold text-white/50 uppercase tracking-widest font-display';
-const SECTION_DIVIDER = 'border-t border-white/5 pt-5';
+const SECTION_DIVIDER = 'border-t border-white/[0.09] pt-5';
 
 // Strip HTML tags and return plain text preview (max N chars)
 function htmlPreview(html: string, max = 60): string {
@@ -131,14 +131,14 @@ export function JournalEntryEditor({
       className="space-y-5 pb-24"
     >
       {/* ══ Unified writing card ═══════════════════════════════════ */}
-      <section className="rounded-xl border border-white/10 bg-black/30 overflow-hidden">
+      <section className="rounded-xl border border-white/10 bg-slate-900/60 overflow-hidden">
 
         {/* ── Header: Morning Intent (collapsible) ─────────────────── */}
         <button
           type="button"
           onClick={() => setMorningOpen((o) => !o)}
           aria-expanded={morningOpen}
-          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.03] transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.045] transition-colors"
         >
           <Sunrise className="w-3.5 h-3.5 text-amber-400/60 shrink-0" aria-hidden />
           <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest font-display shrink-0">
@@ -166,7 +166,7 @@ export function JournalEntryEditor({
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden border-t border-white/8"
+              className="overflow-hidden border-t border-white/[0.09]"
             >
               <RichTextEditor
                 value={draft.morningIntent}
@@ -180,7 +180,7 @@ export function JournalEntryEditor({
         </AnimatePresence>
 
         {/* ── Body: Free Write (always visible, no label) ──────────── */}
-        <div className="border-t border-white/8">
+        <div className="border-t border-white/[0.09]">
           <RichTextEditor
             value={draft.freeform}
             onChange={(html) => patch('freeform', html)}
@@ -199,7 +199,7 @@ export function JournalEntryEditor({
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden border-t border-white/8"
+              className="overflow-hidden border-t border-white/[0.09]"
             >
               <RichTextEditor
                 value={draft.eveningReflection}
@@ -216,7 +216,7 @@ export function JournalEntryEditor({
           type="button"
           onClick={() => setEveningOpen((o) => !o)}
           aria-expanded={eveningOpen}
-          className="w-full flex items-center gap-3 px-3 py-2.5 border-t border-white/8 hover:bg-white/[0.03] transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 border-t border-white/[0.09] hover:bg-white/[0.045] transition-colors"
         >
           <Moon className="w-3.5 h-3.5 text-blue-400/60 shrink-0" aria-hidden />
           <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest font-display shrink-0">
@@ -246,7 +246,7 @@ export function JournalEntryEditor({
             Today's Prompt
           </p>
           {isLoadingPrompt ? (
-            <div className="space-y-2 p-4 rounded-lg border border-white/10 bg-black/20">
+            <div className="space-y-2 p-4 rounded-lg border border-white/10 bg-slate-900/50">
               <Skeleton className="h-3 w-3/4 rounded" />
               <Skeleton className="h-3 w-1/2 rounded" />
             </div>
@@ -390,7 +390,7 @@ export function JournalEntryEditor({
       </section>
 
       {/* ── 9. Save (sticky) ──────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-10 px-4 pb-4 pt-3 bg-black/60 backdrop-blur-md border-t border-white/8">
+      <div className="fixed bottom-0 left-0 right-0 z-10 px-4 pb-4 pt-3 bg-slate-900/90 backdrop-blur-md border-t border-white/[0.09]">
         <NeuralButton
           themeColor="emerald"
           size="md"

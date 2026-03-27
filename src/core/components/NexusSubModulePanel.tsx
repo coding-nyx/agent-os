@@ -42,11 +42,11 @@ export function NexusSubModulePanel({ moduleId, initialContent, onBack, onNaviga
       transition={{ type: 'spring', stiffness: 350, damping: 30 }}
       className="absolute inset-0 flex flex-col bg-black/60 backdrop-blur-xl z-10"
     >
-      <div className="p-4 md:p-6 pb-3 flex items-center justify-between border-b border-white/5 shrink-0">
+      <div className="p-4 md:p-6 pb-3 flex items-center justify-between border-b border-white/[0.09] shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="w-9 h-9 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors group"
+            className="w-9 h-9 rounded-xl border border-white/[0.09] bg-white/[0.045] hover:bg-white/10 flex items-center justify-center transition-colors group"
             aria-label="Back to Nexus"
           >
             <ArrowLeft className="w-4 h-4 text-white/50 group-hover:text-white transition-colors" />
@@ -62,7 +62,7 @@ export function NexusSubModulePanel({ moduleId, initialContent, onBack, onNaviga
             )}
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-white font-display">{moduleName}</h3>
-              <p className="text-[9px] font-semibold text-white/25 uppercase tracking-wider">Sub-Module Session</p>
+              <p className="text-[11px] font-semibold text-white/25 uppercase tracking-wider">Sub-Module Session</p>
             </div>
           </div>
         </div>
@@ -70,7 +70,7 @@ export function NexusSubModulePanel({ moduleId, initialContent, onBack, onNaviga
         {manifest?.route && (
           <button
             onClick={handleNavigateToModule}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors group text-[9px] font-bold uppercase tracking-widest text-white/40 hover:text-white"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.09] bg-white/[0.045] hover:bg-white/10 transition-colors group text-[11px] font-bold uppercase tracking-widest text-white/40 hover:text-white"
           >
             Open Full Module
             <ExternalLink className="w-3 h-3" />

@@ -104,7 +104,7 @@ export function ScoutEvidenceSources({ knowledgeNodes, className }: ScoutEvidenc
           <Library className="w-3.5 h-3.5 text-[var(--module-color-400)] opacity-50" aria-hidden="true" />
           Evidence Sources
         </h4>
-        <span className="text-[9px] font-bold text-white/25 uppercase tracking-wider">
+        <span className="text-[11px] font-bold text-white/25 uppercase tracking-wider">
           {sources.length} source{sources.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -119,7 +119,7 @@ export function ScoutEvidenceSources({ knowledgeNodes, className }: ScoutEvidenc
           />
         ))}
         {sources.length > 8 && (
-          <p className="text-[9px] text-white/20 italic text-center pt-1">
+          <p className="text-[11px] text-white/20 italic text-center pt-1">
             +{sources.length - 8} more source{sources.length - 8 !== 1 ? 's' : ''}
           </p>
         )}

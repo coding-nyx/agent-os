@@ -108,7 +108,7 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
   const { label, className } = CONFIDENCE_CONFIG[level];
   return (
     <span className={cn(
-      'inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide',
+      'inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-bold uppercase tracking-wide',
       className,
     )}>
       {label}
@@ -136,7 +136,7 @@ function FieldRow({
         'w-full flex items-start gap-3 px-3 py-3.5 rounded-xl transition-colors text-left',
         'min-h-[56px]', // Ensure comfortable tap height
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-black/50',
-        selected ? 'bg-white/[0.04]' : 'bg-transparent hover:bg-white/[0.02] active:bg-white/[0.04]',
+        selected ? 'bg-white/[0.045]' : 'bg-transparent hover:bg-white/[0.045] active:bg-white/[0.045]',
       )}
       aria-pressed={selected}
       aria-label={`${humanise(field.name)}: ${field.value}${field.unit ? ` ${field.unit}` : ''}${selected ? ' (selected)' : ''}`}
@@ -236,7 +236,7 @@ export function DiagnosisResultsScreen({
   return (
     <div className="flex flex-col h-full">
       {/* ── Header ── */}
-      <div className="flex-shrink-0 px-3 sm:px-4 pt-3 sm:pt-4 pb-2.5 sm:pb-3 border-b border-white/10 space-y-2 sm:space-y-3">
+      <div className="flex-shrink-0 px-3 sm:px-4 pt-3 sm:pt-4 pb-2.5 sm:pb-3 border-b border-white/[0.12] space-y-2 sm:space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <FlaskConical className="w-4 sm:w-5 h-4 sm:h-5 text-[var(--module-color-400)] flex-shrink-0" />
@@ -247,7 +247,7 @@ export function DiagnosisResultsScreen({
             variant="ghost"
             onClick={onClose}
             disabled={isProcessing}
-            className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors disabled:opacity-50 flex-shrink-0"
+            className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.045] transition-colors disabled:opacity-50 flex-shrink-0"
             aria-label="Close results"
           >
             <X className="w-4 h-4" />
@@ -260,7 +260,7 @@ export function DiagnosisResultsScreen({
             {detectedPanels.map((panel) => (
               <span
                 key={panel}
-                className="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)] text-[10px] sm:text-[11px] font-medium"
+                className="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)] text-[11px] sm:text-[11px] font-medium"
               >
                 {panel}
               </span>
@@ -301,7 +301,7 @@ export function DiagnosisResultsScreen({
       <div className="flex-1 overflow-y-auto overscroll-contain px-2 py-2 space-y-4">
         {isProcessing && isEmpty ? (
           <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center animate-pulse">
-            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl bg-white/[0.045] border border-white/[0.12] flex items-center justify-center">
               <span className="w-6 h-6 border-2 border-t-transparent border-white/40 rounded-full animate-spin" />
             </div>
             <div>
@@ -311,7 +311,7 @@ export function DiagnosisResultsScreen({
           </div>
         ) : isEmpty ? (
           <div className="flex flex-col items-center justify-center gap-3 py-16 px-4 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-2xl bg-white/[0.045] border border-white/[0.12] flex items-center justify-center">
               <AlertCircle className="w-7 h-7 text-white/20" />
             </div>
             <p className="text-sm font-semibold text-white/40">No structured data extracted</p>
@@ -324,11 +324,11 @@ export function DiagnosisResultsScreen({
             {grouped.map(([category, itemsInGroup]) => (
               <section key={category}>
                 {/* Group header */}
-                <div className="flex items-center gap-2 px-3 py-2 sticky top-0 bg-black/40 backdrop-blur-sm z-10 rounded-lg mb-1">
+                <div className="flex items-center gap-2 px-3 py-2 sticky top-0 bg-slate-900/70 backdrop-blur-sm z-10 rounded-lg mb-1">
                   <h3 className="text-xs font-bold text-white/60 uppercase tracking-wider">
                     {categoryLabel(category)}
                   </h3>
-                  <span className="text-[10px] text-white/25 font-medium">
+                  <span className="text-[11px] text-white/25 font-medium">
                     {itemsInGroup.length}
                   </span>
                 </div>
@@ -368,7 +368,7 @@ export function DiagnosisResultsScreen({
       </div>
 
       {/* ── Sticky footer ── */}
-      <div className="flex-shrink-0 px-3 sm:px-4 py-3 sm:py-4 border-t border-white/10 bg-black/40 backdrop-blur-sm pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="flex-shrink-0 px-3 sm:px-4 py-3 sm:py-4 border-t border-white/[0.12] bg-slate-900/70 backdrop-blur-sm pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <NeuralButton
           onClick={onClose}
           disabled={isProcessing}

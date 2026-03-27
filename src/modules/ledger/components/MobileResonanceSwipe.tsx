@@ -49,19 +49,19 @@ function ResonanceCard({
 
         <div className="flex items-center justify-between mb-8">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">{transaction.category}</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">{transaction.category}</span>
             <h3 className="text-xl font-bold text-white tracking-tight">{transaction.description}</h3>
           </div>
           <div className="text-right">
             <div className="text-2xl font-black text-white tabular-nums">
               {formatCurrency(transaction.amount, currency)}
             </div>
-            <div className="text-[10px] text-white/40 font-mono uppercase">{transaction.date}</div>
+            <div className="text-[11px] text-white/40 font-mono uppercase">{transaction.date}</div>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col justify-center items-center text-center space-y-6">
-          <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+          <div className="w-20 h-20 rounded-full bg-white/[0.045] border border-white/10 flex items-center justify-center">
             <Zap size={32} className="text-cyan-400" />
           </div>
           <p className="text-sm text-white/60 leading-relaxed max-w-[240px]">
@@ -72,11 +72,11 @@ function ResonanceCard({
         <div className="mt-8 grid grid-cols-2 gap-4">
           <div className="flex flex-col items-center gap-2">
             <TrendingDown className="text-red-400 opacity-40" />
-            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Friction</span>
+            <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.2em]">Friction</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <TrendingUp className="text-emerald-400 opacity-40" />
-            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Resonance</span>
+            <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.2em]">Resonance</span>
           </div>
         </div>
       </SurfaceCard>
@@ -96,12 +96,12 @@ export function MobileResonanceSwipe({ transactions, currency, onSwipe }: Mobile
 
   if (index >= unswiped.length) {
     return (
-      <div className="h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
+      <div className="h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white/[0.045] rounded-3xl border border-dashed border-white/10">
         <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4">
           <ChevronRight className="text-emerald-400" />
         </div>
         <p className="text-xs font-bold text-white/30 uppercase tracking-[0.2em]">Resonance Clear</p>
-        <p className="text-[10px] text-white/20 mt-1">All transactions have been scored</p>
+        <p className="text-[11px] text-white/20 mt-1">All transactions have been scored</p>
       </div>
     );
   }

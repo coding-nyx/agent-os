@@ -600,7 +600,7 @@ function ReceiptRow({
 
   return (
     <div
-      className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors hover:bg-white/[0.04]"
+      className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors hover:bg-white/[0.045]"
       style={{
         background: 'rgba(255,255,255,0.025)',
         border: '1px solid rgba(255,255,255,0.06)',
@@ -686,7 +686,7 @@ interface CategoryBadgeProps {
 function CategoryBadge({ color, label }: CategoryBadgeProps) {
   return (
     <span
-      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
       style={{
         background: `${color}20`,
         color,

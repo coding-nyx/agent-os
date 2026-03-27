@@ -117,12 +117,12 @@ export const TaskCard = React.memo(function TaskCard({
       onClick={() => onEntitySelect?.(task)}
       className={cn(
         'group relative rounded-xl border overflow-hidden transition-all cursor-pointer min-h-[44px]',
-        'bg-white/[0.02] hover:bg-white/[0.035]',
+        'bg-slate-900/50 hover:bg-slate-900/75',
         isEntitySelected && 'ring-2 ring-[var(--module-accent-ring)] shadow-[var(--module-accent-glow)]',
-        isBlocked && 'opacity-60 border-white/5',
-        isDone && 'border-white/[0.04] bg-white/[0.01]',
-        isDeferred && 'border-white/[0.04] bg-white/[0.01]',
-        !isBlocked && !isDone && !isDeferred && !isEntitySelected && 'border-white/[0.04] hover:border-white/[0.08]'
+        isBlocked && 'opacity-60 border-white/[0.09]',
+        isDone && 'border-white/[0.09] bg-slate-900/30',
+        isDeferred && 'border-white/[0.09] bg-slate-900/30',
+        !isBlocked && !isDone && !isDeferred && !isEntitySelected && 'border-white/[0.08] hover:border-white/[0.14]'
       )}
     >
       {/* Left priority bar */}
@@ -181,14 +181,14 @@ export const TaskCard = React.memo(function TaskCard({
                   {task.title}
                 </span>
 
-                <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/45">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/50">
                   <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-[var(--module-color-300)]">
                     <Zap className="h-3 w-3 text-[var(--module-color-400)]" aria-hidden="true" />
                     {task.energyCost}
                   </span>
 
                   {task.recurrenceRule && (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-[var(--module-color-400)] bg-[var(--module-accent-faint)] border border-[var(--module-accent-border)] px-1.5 py-0.5 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-[11px] text-[var(--module-color-400)] bg-[var(--module-accent-faint)] border border-[var(--module-accent-border)] px-1.5 py-0.5 rounded-full">
                       <RotateCw className="w-2.5 h-2.5" aria-hidden="true" />
                       {task.recurrenceRule === 'daily' ? 'Daily' :
                        task.recurrenceRule === 'weekdays' ? 'Weekdays' :
@@ -205,7 +205,7 @@ export const TaskCard = React.memo(function TaskCard({
                           ? 'bg-rose-500/10 text-rose-300'
                           : deadlineUrgent
                             ? 'bg-amber-500/10 text-amber-300'
-                            : 'bg-white/5 text-white/45'
+                            : 'bg-white/[0.045] text-white/45'
                       )}
                     >
                       <Clock className="h-2.5 w-2.5" aria-hidden="true" />
@@ -228,7 +228,7 @@ export const TaskCard = React.memo(function TaskCard({
                           e.stopPropagation();
                           onEdit(task);
                         }}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-white/45 transition-colors hover:bg-white/5 hover:text-white/80"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-white/45 transition-colors hover:bg-white/[0.045] hover:text-white/80"
                         aria-label={`Edit ${task.title}`}
                       >
                         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
@@ -291,7 +291,7 @@ export const TaskCard = React.memo(function TaskCard({
               }
               className="overflow-hidden"
             >
-              <div className="pt-3 pl-8 space-y-3 border-t border-white/5 mt-3">
+              <div className="pt-3 pl-8 space-y-3 border-t border-white/[0.09] mt-3">
                 {/* Full description */}
                 {task.description && (
                   <p className="text-xs text-white/50 leading-relaxed">
@@ -302,7 +302,7 @@ export const TaskCard = React.memo(function TaskCard({
                 {/* Notes */}
                 {task.notes && (
                   <div className="space-y-1">
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">
+                    <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">
                       Notes
                     </span>
                     <p className="text-xs text-white/40 leading-relaxed">
@@ -317,7 +317,7 @@ export const TaskCard = React.memo(function TaskCard({
                     {task.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] text-white/40 font-medium"
+                        className="px-2 py-0.5 rounded-md bg-white/[0.045] text-[11px] text-white/40 font-medium"
                       >
                         {tag}
                       </span>
@@ -328,7 +328,7 @@ export const TaskCard = React.memo(function TaskCard({
                 {/* Dependencies */}
                 {task.dependencies.length > 0 && (
                   <div className="space-y-1">
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">
+                    <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">
                       Dependencies
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -338,10 +338,10 @@ export const TaskCard = React.memo(function TaskCard({
                           <span
                             key={depId}
                             className={cn(
-                              'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium',
+                              'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium',
                               depTask?.status === 'done'
                                 ? 'bg-white/[0.08] text-white/60'
-                                : 'bg-white/5 text-white/40'
+                                : 'bg-white/[0.045] text-white/40'
                             )}
                           >
                             <Link2
@@ -357,7 +357,7 @@ export const TaskCard = React.memo(function TaskCard({
                 )}
 
                 {/* Metadata footer */}
-                <div className="flex items-center gap-3 text-[10px] text-white/20 pt-1">
+                <div className="flex items-center gap-3 text-[11px] text-white/20 pt-1">
                   <span>
                     P{task.priority} · {PRIORITY_LABELS[task.priority]}
                   </span>
@@ -373,7 +373,7 @@ export const TaskCard = React.memo(function TaskCard({
                         e.stopPropagation();
                         onRemind(task);
                       }}
-                      className="rounded-lg px-3 py-2 text-[10px] uppercase tracking-[0.14em] text-white/50 transition-colors hover:bg-white/5 hover:text-white/80"
+                      className="rounded-lg px-3 py-2 text-[11px] uppercase tracking-[0.14em] text-white/50 transition-colors hover:bg-white/[0.045] hover:text-white/80"
                     >
                       Remind me
                     </button>
@@ -385,7 +385,7 @@ export const TaskCard = React.memo(function TaskCard({
                         e.stopPropagation();
                         onSchedule(task);
                       }}
-                      className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] uppercase tracking-[0.14em] text-[var(--module-color-400)] transition-colors hover:bg-white/5 hover:text-[var(--module-color-300)]"
+                      className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] uppercase tracking-[0.14em] text-[var(--module-color-400)] transition-colors hover:bg-white/[0.045] hover:text-[var(--module-color-300)]"
                     >
                       <CalendarPlus className="w-3 h-3" />
                       Schedule

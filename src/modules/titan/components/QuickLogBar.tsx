@@ -221,7 +221,7 @@ export function QuickLogBar({
                 onClick={handleAcceptHistory}
                 className={cn(
                   'inline-flex items-center gap-2 min-h-[44px] px-3 py-2.5 sm:px-4 sm:py-2',
-                  'bg-black/60 backdrop-blur-xl border border-white/10 rounded-full',
+                  'bg-slate-900/85 backdrop-blur-xl border border-white/[0.12] rounded-full',
                   'text-[11px] text-white/50 hover:text-[var(--module-color-400)] hover:border-[var(--module-accent-border)]',
                   'transition-all shadow-xl max-w-[min(280px,calc(100vw-2rem))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]',
                 )}
@@ -237,7 +237,7 @@ export function QuickLogBar({
         <div
           className={cn(
             'flex items-center w-full transition-all duration-300 overflow-hidden',
-            'bg-white/[0.08] backdrop-blur-2xl border-t border-white/10 shadow-[0_-20px_40px_rgba(0,0,0,0.4)]',
+            'bg-white/[0.08] backdrop-blur-2xl border-t border-white/[0.12] shadow-[0_-20px_40px_rgba(0,0,0,0.4)]',
             isFocused && 'border-[var(--module-accent-border)] bg-white/[0.1]',
             isShaking && 'animate-[quicklog-shake_0.4s_ease-in-out]',
           )}
@@ -249,7 +249,7 @@ export function QuickLogBar({
                 onClick={onOpenChat}
                 title="Open Titan chat"
                 aria-label="Open Titan chat"
-                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl bg-black/20 border border-white/10 text-white/50 hover:text-[var(--module-color-400)] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] shrink-0"
+                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl bg-slate-900/50 border border-white/[0.12] text-white/50 hover:text-[var(--module-color-400)] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)] shrink-0"
               >
                 <IconChat className="w-4 h-4" />
               </button>
@@ -281,7 +281,7 @@ export function QuickLogBar({
               placeholder={PLACEHOLDERS[placeholderIdx]}
               className={cn(
                 'flex-1 min-w-0 text-sm sm:text-[14px] text-white/90',
-                'bg-black/20 border border-white/10 rounded-xl',
+                'bg-slate-900/50 border border-white/[0.12] rounded-xl',
                 'px-3 sm:px-4 py-3 min-h-[44px] sm:min-h-[48px]',
                 'placeholder:text-white/30 placeholder:truncate caret-[var(--module-accent)]',
                 'focus:outline-none focus:border-[var(--module-accent)] focus:ring-1 focus:ring-[var(--module-accent-ring)]',
@@ -302,7 +302,7 @@ export function QuickLogBar({
                       onClick={onCardioLog}
                       title="Log Cardio"
                       aria-label="Log Cardio"
-                      className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl bg-black/20 border border-white/10 text-white/50 hover:text-[var(--module-color-400)] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
+                      className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl bg-slate-900/50 border border-white/[0.12] text-white/50 hover:text-[var(--module-color-400)] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
                     >
                       <IconDumbbell className="w-4 h-4" />
                     </button>
@@ -310,7 +310,7 @@ export function QuickLogBar({
                       onClick={onManualLog}
                       title="Manual Log"
                       aria-label="Manual log"
-                      className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl bg-black/20 border border-white/10 text-white/50 hover:text-[var(--module-color-400)] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
+                      className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl bg-slate-900/50 border border-white/[0.12] text-white/50 hover:text-[var(--module-color-400)] hover:bg-[var(--module-accent-muted)] hover:border-[var(--module-accent-border)] transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
                     >
                       <IconPlus className="w-5 h-5" />
                     </button>
@@ -333,8 +333,8 @@ export function QuickLogBar({
                   className={cn(
                     'inline-flex items-center justify-center min-w-[48px] min-h-[48px] w-12 h-12 rounded-2xl transition-all active:scale-95 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
                     showActions
-                      ? 'bg-black/30 border-white/20 text-white'
-                      : 'bg-black/20 border-white/10 text-white/40 hover:text-white/80 hover:bg-black/30 hover:border-white/15',
+                      ? 'bg-slate-900/60 border-white/20 text-white'
+                      : 'bg-slate-900/50 border-white/[0.12] text-white/40 hover:text-white/80 hover:bg-slate-900/60 hover:border-white/15',
                   )}
                 >
                   <IconPlus className={cn('w-5 h-5 transition-transform duration-300', showActions && 'rotate-45')} />

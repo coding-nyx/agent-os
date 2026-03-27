@@ -158,7 +158,7 @@ function DayCell({ day, dateKey, events, isToday, isSelected, onClick }: DayCell
           ? 'border-indigo-500/60 bg-indigo-500/10 ring-1 ring-indigo-500/40'
           : isToday
           ? 'border-white/20 bg-white/8'
-          : 'border-white/5 bg-white/3 hover:border-white/15 hover:bg-white/6',
+          : 'border-white/[0.09] bg-white/[0.045] hover:border-white/15 hover:bg-white/6',
       ].join(' ')}
     >
       {/* Day number */}
@@ -182,7 +182,7 @@ function DayCell({ day, dateKey, events, isToday, isSelected, onClick }: DayCell
             <EventDot key={ev.id} color={ev.color ?? EVENT_COLOR[ev.type]} />
           ))}
           {overflow > 0 && (
-            <span className="text-[9px] font-medium leading-none text-white/40">
+            <span className="text-[11px] font-medium leading-none text-white/40">
               +{overflow}
             </span>
           )}
@@ -203,7 +203,7 @@ function EventDetailItem({ event, currency }: EventDetailItemProps) {
   const isExpense = !event.isIncome && event.type !== 'goal_deadline' && event.type !== 'custom';
 
   return (
-    <li className="flex items-start gap-3 rounded-xl border border-white/5 bg-white/3 px-4 py-3">
+    <li className="flex items-start gap-3 rounded-xl border border-white/[0.09] bg-white/[0.045] px-4 py-3">
       {/* Type icon */}
       <span
         className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
@@ -222,7 +222,7 @@ function EventDetailItem({ event, currency }: EventDetailItemProps) {
           <p className="mt-0.5 text-xs text-white/40 leading-relaxed">{event.notes}</p>
         )}
         <span
-          className="mt-1 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest"
+          className="mt-1 inline-block rounded-full px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-widest"
           style={{ backgroundColor: `${color}20`, color }}
         >
           {EVENT_LABEL[event.type]}
@@ -330,7 +330,7 @@ export default function FinancialCalendar({ profile, currency }: FinancialCalend
     <section className="flex flex-col gap-5" aria-label="Financial Calendar">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-5 py-4">
         {/* Month navigation – previous */}
         <NeuralButton
           variant="ghost"
@@ -364,7 +364,7 @@ export default function FinancialCalendar({ profile, currency }: FinancialCalend
 
       {/* ── Legend ─────────────────────────────────────────────────────── */}
       <div
-        className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-white/5 bg-white/3 px-4 py-3"
+        className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-white/[0.09] bg-white/[0.045] px-4 py-3"
         role="list"
         aria-label="Event type legend"
       >
@@ -385,14 +385,14 @@ export default function FinancialCalendar({ profile, currency }: FinancialCalend
       </div>
 
       {/* ── Calendar Grid ───────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
+      <div className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4">
         {/* Day name headers */}
         <div className="mb-2 grid grid-cols-7 gap-1" role="row">
           {DAY_NAMES.map((name) => (
             <div
               key={name}
               role="columnheader"
-              className="py-1 text-center text-[10px] font-semibold uppercase tracking-widest text-white/30"
+              className="py-1 text-center text-[11px] font-semibold uppercase tracking-widest text-white/30"
             >
               {name}
             </div>
@@ -482,7 +482,7 @@ export default function FinancialCalendar({ profile, currency }: FinancialCalend
         <div className="flex flex-col gap-1 rounded-xl border border-rose-500/15 bg-rose-500/8 px-4 py-3">
           <div className="flex items-center gap-1.5">
             <CreditCard className="h-3.5 w-3.5 text-rose-400" aria-hidden="true" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-rose-400/70">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-rose-400/70">
               Bills Due
             </span>
           </div>
@@ -495,7 +495,7 @@ export default function FinancialCalendar({ profile, currency }: FinancialCalend
         <div className="flex flex-col gap-1 rounded-xl border border-emerald-500/15 bg-emerald-500/8 px-4 py-3">
           <div className="flex items-center gap-1.5">
             <DollarSign className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-400/70">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-emerald-400/70">
               Income
             </span>
           </div>
@@ -520,7 +520,7 @@ export default function FinancialCalendar({ profile, currency }: FinancialCalend
             />
             <span
               className={[
-                'text-[10px] font-semibold uppercase tracking-widest',
+                'text-[11px] font-semibold uppercase tracking-widest',
                 netCashFlow >= 0 ? 'text-emerald-400/70' : 'text-rose-400/70',
               ].join(' ')}
             >

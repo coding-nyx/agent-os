@@ -103,14 +103,14 @@ export function SpendingTrendsChart({
   const tooltipFormatter = useMemo(() => makeTooltipFormatter(currency), [currency]);
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 space-y-4">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.045] backdrop-blur-sm p-6 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">
             Spending by Category
           </h3>
-          <p className="text-[10px] text-white/50 mt-1">Last 6 months</p>
+          <p className="text-[11px] text-white/50 mt-1">Last 6 months</p>
         </div>
         <BarChart2 className="w-5 h-5 text-[var(--module-color-400)]" />
       </div>

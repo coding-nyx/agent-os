@@ -86,15 +86,15 @@ export function MasterSoulHUD() {
       
       {/* Tooltip on hover */}
       <div className="absolute top-full right-0 mt-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
-        <div className="bg-black/90 backdrop-blur-xl border border-white/10 p-3 rounded-xl shadow-2xl min-w-[140px]">
-          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 border-b border-white/5 pb-1">
+        <div className="bg-slate-900/95 backdrop-blur-xl border border-white/[0.12] p-3 rounded-xl shadow-2xl min-w-[140px]">
+          <div className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 border-b border-white/[0.09] pb-1">
             GlobalSoul Projection
           </div>
           {config.map((item) => (
             <div key={item.key} className="flex items-center justify-between gap-4 py-0.5">
-              <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">{item.key}</span>
+              <span className="text-[11px] font-bold text-white/60 uppercase tracking-widest">{item.key}</span>
               <span 
-                className="text-[10px] font-mono font-black"
+                className="text-[11px] font-mono font-black"
                 style={{ color: item.color }}
               >
                 {(vectors[item.key as keyof typeof vectors] * 100).toFixed(0)}%

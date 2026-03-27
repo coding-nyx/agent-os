@@ -424,7 +424,7 @@ export function JournalTab({
                   size="sm"
                   themeColor="emerald"
                   onClick={() => setRemindEntry(selectedEntry)}
-                  className="text-[10px] uppercase tracking-[0.14em] text-white/50 hover:text-white/80"
+                  className="text-[11px] uppercase tracking-[0.14em] text-white/50 hover:text-white/80"
                 >
                   Remind me
                 </NeuralButton>

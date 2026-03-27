@@ -65,16 +65,16 @@ function ActionPrompt({ icon: Icon, title, description, onClick, accentClass, bo
       variant="secondary"
       className={cn(
         'flex !flex-col !items-start !justify-start !gap-3 !p-3 !rounded-xl !border !text-left !w-full !h-auto group',
-        'bg-white/[0.02] hover:bg-white/[0.05]',
+        'bg-white/[0.045] hover:bg-white/[0.05]',
         borderClass
       )}
     >
-      <div className={cn('p-1.5 rounded-lg bg-white/5 transition-colors group-hover:bg-white/10', accentClass)}>
+      <div className={cn('p-1.5 rounded-lg bg-white/[0.045] transition-colors group-hover:bg-white/10', accentClass)}>
         <Icon className="w-3.5 h-3.5" aria-hidden="true" />
       </div>
       <div className="min-w-0">
         <p className="text-xs font-bold text-white/80">{title}</p>
-        <p className="text-[10px] text-white/40 mt-0.5 whitespace-normal">{description}</p>
+        <p className="text-[11px] text-white/40 mt-0.5 whitespace-normal">{description}</p>
       </div>
     </NeuralButton>
   );
@@ -138,7 +138,7 @@ export function PostOnboardingWelcome({
           <p className="text-xs font-black uppercase tracking-widest text-[var(--module-color-400)]">
             Atlas Activated
           </p>
-          <p className="text-[10px] text-white/40">Your cognitive baseline is set. Here's what we captured.</p>
+          <p className="text-[11px] text-white/40">Your cognitive baseline is set. Here's what we captured.</p>
         </div>
       </div>
 
@@ -146,18 +146,18 @@ export function PostOnboardingWelcome({
       {(energyPeak || firstTask || profile.summary) && (
         <div className="flex flex-wrap gap-1.5 mb-4">
           {energyPeak && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[10px] text-[var(--module-color-300)] font-medium">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--module-accent-muted)] border border-[var(--module-accent-border)] text-[11px] text-[var(--module-color-300)] font-medium">
               <Clock className="w-2.5 h-2.5" aria-hidden="true" />
               Peak: {energyPeak.slot}
             </span>
           )}
           {firstTask && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-white/50 font-medium max-w-[200px] truncate">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/10 text-[11px] text-white/50 font-medium max-w-[200px] truncate">
               First task: {firstTask.title}
             </span>
           )}
           {profile.summary && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-white/40 font-medium max-w-xs truncate">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.045] border border-white/10 text-[11px] text-white/40 font-medium max-w-xs truncate">
               {profile.summary}
             </span>
           )}
@@ -165,7 +165,7 @@ export function PostOnboardingWelcome({
       )}
 
       {/* First action prompts */}
-      <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-2">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-2">
         Start Here
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

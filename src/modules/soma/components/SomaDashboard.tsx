@@ -220,7 +220,7 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
                   ? 'border-[var(--module-color-400)] bg-[var(--module-accent-glow)] text-[var(--module-color-300)] animate-pulse'
                   : hasValue
                   ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)] hover:bg-[var(--module-accent-glow)]'
-                  : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80',
+                  : 'border-white/10 bg-white/[0.045] text-white/60 hover:bg-white/10 hover:text-white/80',
                 isExpanded && !isFlashing && 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)]',
               )}
             >
@@ -248,7 +248,7 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4">
+            <div className="bg-white/[0.045] border border-white/[0.09] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {React.createElement(activeChip.icon, { className: 'w-4 h-4 text-[var(--module-color-400)]', 'aria-hidden': true })}
@@ -447,7 +447,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
   if (!profile) {
     return (
       <div className="px-4 md:px-8 pt-6 space-y-4">
-        {[...Array(4)].map((_, i) => <div key={i} className="animate-pulse bg-white/5 rounded-lg h-24" />)}
+        {[...Array(4)].map((_, i) => <div key={i} className="animate-pulse bg-white/[0.045] rounded-lg h-24" />)}
       </div>
     );
   }
@@ -642,7 +642,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
         <p className="text-sm text-white/68 mt-1">Physical readiness & biometric tracking</p>
       </div>
 
-      <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5">
+      <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/[0.09]">
         <NeuralTabGroup<SomaView> tabs={tabs} activeTab={activeView} onTabChange={setActiveView} themeColor="module" variant="pill" layoutIdPrefix="soma-tab" />
       </div>
 

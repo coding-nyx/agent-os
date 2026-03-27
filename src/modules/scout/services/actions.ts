@@ -1,7 +1,6 @@
-import { ActionHub, ActionContext } from '@/lib/actions/action-hub';
+import { ActionHub } from '@/lib/actions/action-hub';
 import {
   loadScoutProfile,
-  saveScoutProfile,
   createEmptyScoutProfile,
   addKnowledgeNode,
   loadKnowledgeNodes,
@@ -9,13 +8,13 @@ import {
   updateKnowledgeNode,
 } from './scout-knowledge-service';
 import { ScoutWebSearchService } from './scout-web-search-service';
-import { addSource, loadSources, normalizeUrl, extractDomain } from './scout-sources-service';
+import { addSource, loadSources, normalizeUrl } from './scout-sources-service';
 import { createSession, updateSession, getSession, loadSessions } from './scout-session-service';
 import { generateDigest } from './scout-digest-service';
 import { ScoutQueryService } from './scout-query-service';
 import { generateJSONWithAgent } from '@/lib/ai-adapters/json-generation-agent';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import { ResearchSession, ScoutKnowledgeNode, SourceEntry } from '../types';
+import { SourceEntry } from '../types';
 
 let registered = false;
 
@@ -103,9 +102,6 @@ export function registerScoutActions() {
 
       pushAssistantMessage?.(`🔍 Querying your research library for "${query}"...`);
 
-      // Update interest trends for this query topic
-      await updateInterestTrends(query, userId ?? null, encryptionKey ?? null);
-
       const result = await ScoutQueryService.queryLibrary(query, { userId: userId ?? null, encryptionKey });
 
       if (result && result.supportingNodes.length > 0) {
@@ -184,7 +180,9 @@ export function registerScoutActions() {
         if (added) addedSources.push(added as any);
       }
 
-      pushAssistantMessage?.(`📥 Added ${sources.length} sources to your research library.`);
+      if (sources.length > 0) {
+        pushAssistantMessage?.(`📥 Added ${sources.length} sources to your research library.`);
+      }
       
       Spine.emit({
         type: 'SOURCE_ADDED' as any,
@@ -196,7 +194,6 @@ export function registerScoutActions() {
       });
     },
 
-    /**
     /**
      * Synthesize a knowledge node from research findings.
      * Checks for near-duplicate nodes (similarity ≥ 0.82) before creating.
@@ -269,9 +266,6 @@ export function registerScoutActions() {
         priority: 'info'
       });
 
-      // Update interest trends for this query topic
-      await updateInterestTrends(query, userId ?? null, encryptionKey ?? null);
-
       try {
         // Use ScoutWebSearchService so results are auto-indexed into the KB
         const response = await ScoutWebSearchService.search(query, {
@@ -300,22 +294,16 @@ export function registerScoutActions() {
         });
 
         // Auto-add to sources if in Scout context
-        if (context.moduleId === 'scout') {
-          try {
-            await ActionHub.execute('scout', 'add_sources', {
-              ...context,
-              payload: {
-                sources: response.results.map(r => ({
-                  url: r.url,
-                  title: r.title,
-                  snippet: r.content,
-                  imageUrl: response.images?.[0]
-                }))
-              }
-            });
-          } catch (sourceError) {
-            console.error('Failed to auto-add sources:', sourceError);
-          }
+        if (context.moduleId === 'scout' && userId && encryptionKey) {
+            // Direct service call to avoid action overhead and extra Spine events if not needed
+            // We use Promise.allSettled to ensure we don't block and handle errors gracefully
+            Promise.allSettled(response.results.map(r => addSource({
+                url: r.url,
+                title: r.title,
+                snippet: r.content,
+                imageUrl: response.images?.[0],
+                discoveredVia: 'search'
+            }, { userId, encryptionKey }))).catch(err => console.error('[Scout] Failed to auto-add sources:', err));
         }
       } catch (error) {
         pushAssistantMessage?.(`⚠️ Web search failed: ${String(error)}`);
@@ -390,101 +378,6 @@ export function registerScoutActions() {
       });
       
       pushAssistantMessage?.(`🔬 Initiating deep research protocol for: "${query}"`);
-    },
-
-    /**
-     * Handoff a research finding to Atlas for actionable scheduling.
-     */
-    handoff_to_atlas: async (context) => {
-      const { payload, pushAssistantMessage } = context;
-      const claim = typeof payload?.claim === 'string' ? payload.claim : '';
-      const suggestion = typeof payload?.suggestion === 'string' ? payload.suggestion : '';
-      
-      if (!claim || !suggestion) {
-        pushAssistantMessage?.('Please specify a finding and a concrete suggestion for Atlas.');
-        return;
-      }
-
-      Spine.emit({
-        type: 'HABIT_SUGGESTED' as any,
-        source: 'scout',
-        domain: 'C',
-        data: { 
-          title: suggestion, 
-          description: `Based on research finding: "${claim}"`,
-          origin: 'scout' 
-        },
-        cascadeDepth: 0,
-        priority: 'info'
-      });
-      
-      pushAssistantMessage?.(`📋 I've shared that finding with Atlas. You'll see a suggested task/habit in your timeline to put this research into practice.`);
-    },
-
-    /**
-     * Handoff a fitness/training research finding to Titan.
-     */
-    handoff_to_titan: async (context) => {
-      const { payload, pushAssistantMessage } = context;
-      const claim = typeof payload?.claim === 'string' ? payload.claim : '';
-      const suggestion = typeof payload?.suggestion === 'string' ? payload.suggestion : '';
-      if (!claim || !suggestion) {
-        pushAssistantMessage?.('Please specify a finding and a training suggestion for Titan.');
-        return;
-      }
-      Spine.emit({
-        type: 'TITAN_PROPOSAL',
-        source: 'scout',
-        domain: 'B',
-        data: { title: suggestion, description: `Scout finding: "${claim}"`, origin: 'scout' },
-        cascadeDepth: 0,
-        priority: 'info'
-      });
-      pushAssistantMessage?.(`💪 Forwarded to Titan. You'll see a training recommendation in your fitness module based on this research.`);
-    },
-
-    /**
-     * Handoff a financial research finding to Ledger.
-     */
-    handoff_to_ledger: async (context) => {
-      const { payload, pushAssistantMessage } = context;
-      const claim = typeof payload?.claim === 'string' ? payload.claim : '';
-      const suggestion = typeof payload?.suggestion === 'string' ? payload.suggestion : '';
-      if (!claim || !suggestion) {
-        pushAssistantMessage?.('Please specify a finding and a financial suggestion for Ledger.');
-        return;
-      }
-      Spine.emit({
-        type: 'CONTEXT_HINT_DETECTED',
-        source: 'scout',
-        domain: 'R',
-        data: { hint: suggestion, context: `Research finding: "${claim}"`, moduleId: 'ledger', origin: 'scout' },
-        cascadeDepth: 0,
-        priority: 'info'
-      });
-      pushAssistantMessage?.(`💰 Forwarded to Ledger. A financial context hint based on this research will appear in your finance module.`);
-    },
-
-    /**
-     * Handoff a health/biomarker research finding to Soma.
-     */
-    handoff_to_soma: async (context) => {
-      const { payload, pushAssistantMessage } = context;
-      const claim = typeof payload?.claim === 'string' ? payload.claim : '';
-      const suggestion = typeof payload?.suggestion === 'string' ? payload.suggestion : '';
-      if (!claim || !suggestion) {
-        pushAssistantMessage?.('Please specify a finding and a health suggestion for Soma.');
-        return;
-      }
-      Spine.emit({
-        type: 'HEALTH_CONTEXT_STALE',
-        source: 'scout',
-        domain: 'B',
-        data: { suggestion, researchFinding: claim, origin: 'scout' },
-        cascadeDepth: 0,
-        priority: 'alert'
-      });
-      pushAssistantMessage?.(`🩺 Forwarded to Soma. The health implication from this research will be surfaced in your health module.`);
     },
 
     /**
@@ -614,69 +507,5 @@ export function registerScoutActions() {
         priority: 'info'
       });
     },
-
-    /**
-     * List reminders tied to the Scout module.
-     */
-    query_reminders: async (context) => {
-      const { pushAssistantMessage } = context;
-      // Delegate to Nexus reminder system via Spine
-      Spine.emit({
-        type: 'MODULE_DELEGATED',
-        source: 'scout',
-        domain: 'C',
-        data: { action: 'query_reminders', moduleId: 'scout' },
-        cascadeDepth: 0,
-        priority: 'info'
-      });
-      pushAssistantMessage?.('📅 Checking your Scout reminders...');
-    },
   });
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Updates the user's interest profile based on a search/query topic.
- * Increments score for matching interests or adds a new one.
- */
-async function updateInterestTrends(
-  query: string,
-  userId: string | null,
-  encryptionKey: CryptoKey | null,
-): Promise<void> {
-  if (!userId || !encryptionKey) return;
-  try {
-    const profile = await loadProfile(userId, encryptionKey);
-    const queryLower = query.toLowerCase();
-    const now = new Date().toISOString();
-
-    let matched = false;
-    const updated = profile.interests.map(interest => {
-      const topicLower = interest.topic.toLowerCase();
-      const overlap = queryLower.includes(topicLower) || topicLower.includes(queryLower.slice(0, 20));
-      if (overlap) {
-        matched = true;
-        const newScore = Math.min(100, interest.score + 5);
-        return { ...interest, score: newScore, trend: 'rising' as const, lastSeenAt: now };
-      }
-      return interest;
-    });
-
-    if (!matched && query.trim().length > 4) {
-      updated.push({
-        id: `interest_${Date.now()}`,
-        topic: query.slice(0, 50),
-        score: 10,
-        trend: 'steady' as const,
-        lastSeenAt: now,
-      });
-    }
-
-    await saveScoutProfile({ ...profile, interests: updated }, { userId, encryptionKey });
-  } catch (err) {
-    console.warn('[Scout] Failed to update interest trends:', err);
-  }
 }

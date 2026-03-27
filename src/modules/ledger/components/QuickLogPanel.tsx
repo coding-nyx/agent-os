@@ -204,21 +204,21 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
   };
 
   return (
-    <div className="bg-zinc-900/90 border border-white/[0.08] rounded-2xl overflow-visible">
+    <div className="bg-slate-900/85 border border-white/[0.09] rounded-2xl overflow-visible">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.09]">
         <div className="flex items-center gap-2">
           <Zap className="w-3.5 h-3.5 text-[var(--module-color-400)]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/50">Quick Log</span>
+          <span className="text-[11px] font-black uppercase tracking-[0.15em] text-white/50">Quick Log</span>
         </div>
 
         {/* Segmented mode toggle pill */}
-        <div className="flex items-center bg-white/5 rounded-lg p-0.5 border border-white/[0.07]">
+        <div className="flex items-center bg-white/[0.045] rounded-lg p-0.5 border border-white/[0.09]">
           <button
             onClick={() => { setManualMode(false); setSubmitted(false); }}
             className={cn(
-              'px-3 py-1 rounded-md text-[10px] font-bold transition-all',
+              'px-3 py-1 rounded-md text-[11px] font-bold transition-all',
               !manualMode ? 'bg-white/[0.12] text-white' : 'text-white/35 hover:text-white/60'
             )}
           >
@@ -227,7 +227,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
           <button
             onClick={() => { setManualMode(true); setSubmitted(false); }}
             className={cn(
-              'px-3 py-1 rounded-md text-[10px] font-bold transition-all',
+              'px-3 py-1 rounded-md text-[11px] font-bold transition-all',
               manualMode ? 'bg-white/[0.12] text-white' : 'text-white/35 hover:text-white/60'
             )}
           >
@@ -253,7 +253,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                 onBlur={() => setIsFocused(false)}
                 placeholder={`e.g. "${TX_PLACEHOLDERS[placeholderIdx]}"`}
                 className={cn(
-                  'w-full bg-black/30 border rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/25',
+                  'w-full bg-slate-900/60 border rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/25',
                   'focus:outline-none focus:ring-1 transition-all',
                   parsed
                     ? 'border-[var(--module-accent-border)] focus:ring-[var(--module-accent-ring)]'
@@ -285,7 +285,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                       ? 'bg-emerald-500/10 border-emerald-500/25'
                       : swipeIntent === 'edit'
                         ? 'bg-sky-500/10 border-sky-500/25'
-                        : 'bg-black/20 border-white/[0.06]'
+                        : 'bg-slate-900/50 border-white/[0.09]'
                   )}
                   style={{ transform: `translateX(${swipeOffsetX}px)`, touchAction: 'pan-y' }}
                 >
@@ -301,7 +301,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                   <span className="text-xs text-white/55 truncate flex-1 min-w-0">{parsed.description}</span>
 
                   {/* Category chip */}
-                  <span className="shrink-0 px-2 py-0.5 rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] text-[10px] font-bold uppercase tracking-wide">
+                  <span className="shrink-0 px-2 py-0.5 rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] text-[11px] font-bold uppercase tracking-wide">
                     {parsed.category}
                   </span>
 
@@ -326,7 +326,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                 </div>
 
                 {/* Swipe hint — mobile only */}
-                <p className="text-[10px] text-white/25 px-0.5 sm:hidden" aria-live="polite">
+                <p className="text-[11px] text-white/25 px-0.5 sm:hidden" aria-live="polite">
                   Swipe right to log · left to edit
                 </p>
               </>
@@ -345,7 +345,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                 onChange={e => setManualDesc(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Description"
-                className="flex-1 bg-black/30 border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--module-accent-border)] focus:ring-1 focus:ring-[var(--module-accent-ring)] transition-all"
+                className="flex-1 bg-slate-900/60 border border-white/[0.09] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--module-accent-border)] focus:ring-1 focus:ring-[var(--module-accent-ring)] transition-all"
               />
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35 text-sm font-medium pointer-events-none select-none">
@@ -360,13 +360,13 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                   step="0.01"
                   min="0"
                   inputMode="decimal"
-                  className="w-full sm:w-32 bg-black/30 border border-white/[0.08] rounded-xl pl-9 pr-3 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--module-accent-border)] focus:ring-1 focus:ring-[var(--module-accent-ring)] transition-all"
+                  className="w-full sm:w-32 bg-slate-900/60 border border-white/[0.09] rounded-xl pl-9 pr-3 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--module-accent-border)] focus:ring-1 focus:ring-[var(--module-accent-ring)] transition-all"
                 />
               </div>
             </div>
 
             {/* Expense / Income segmented control */}
-            <div className="flex rounded-xl border border-white/[0.08] overflow-hidden bg-black/20">
+            <div className="flex rounded-xl border border-white/[0.08] overflow-hidden bg-slate-900/50">
               <button
                 onClick={() => setManualType('expense')}
                 aria-pressed={manualType === 'expense'}
@@ -374,7 +374,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                   'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition-colors',
                   manualType === 'expense'
                     ? 'bg-rose-500/20 text-rose-300'
-                    : 'text-white/35 hover:text-white/60 hover:bg-white/5'
+                    : 'text-white/35 hover:text-white/60 hover:bg-white/[0.045]'
                 )}
               >
                 <Minus className="w-3 h-3" /> Expense
@@ -387,7 +387,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                   'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition-colors',
                   manualType === 'income'
                     ? 'bg-emerald-500/20 text-emerald-300'
-                    : 'text-white/35 hover:text-white/60 hover:bg-white/5'
+                    : 'text-white/35 hover:text-white/60 hover:bg-white/[0.045]'
                 )}
               >
                 <Plus className="w-3 h-3" /> Income
@@ -398,7 +398,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
             <div className="relative">
               <button
                 onClick={() => setShowCategories(v => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-black/30 border border-white/[0.08] rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-black/40 focus:outline-none focus:ring-1 focus:ring-[var(--module-accent-ring)] transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 bg-slate-900/60 border border-white/[0.09] rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-slate-900/80 focus:outline-none focus:ring-1 focus:ring-[var(--module-accent-ring)] transition-colors"
               >
                 <span>{manualCategory}</span>
                 <ChevronDown className={cn('w-3.5 h-3.5 text-white/30 transition-transform', showCategories && 'rotate-180')} />
@@ -413,7 +413,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
                         'px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors',
                         manualCategory === cat
                           ? 'bg-[var(--module-accent)] text-[var(--module-accent-text,#fff)]'
-                          : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white'
+                          : 'bg-white/[0.045] text-white/55 hover:bg-white/10 hover:text-white'
                       )}
                     >
                       {cat}
@@ -441,7 +441,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
       </div>
 
       {/* ── Footer — recurring toggle ───────────────────────────────────────── */}
-      <div className="px-4 py-2.5 border-t border-white/[0.05]">
+      <div className="px-4 py-2.5 border-t border-white/[0.09]">
         <button
           onClick={() => setIsRecurring(r => !r)}
           aria-pressed={isRecurring}

@@ -36,7 +36,7 @@ export class AppErrorBoundary extends React.Component<AppErrorBoundaryProps, App
       return (
         <div className="fixed inset-0 bg-[#020205] flex items-center justify-center p-6">
           <div className="max-w-lg w-full rounded-3xl border border-indigo-500/30 bg-indigo-500/10 backdrop-blur-xl p-8 text-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-300 mb-3">Runtime Boundary</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-indigo-300 mb-3">Runtime Boundary</p>
             <h2 className="text-xl font-black italic uppercase tracking-wide text-white mb-3">System Recovered From Fault</h2>
             <p className="text-sm text-white/70 leading-relaxed mb-6">
               A runtime error interrupted this view. Reload to restore the neural link.

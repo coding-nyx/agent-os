@@ -56,7 +56,7 @@ export function RoutineEditor({ routine, onUpdate }: RoutineEditorProps) {
       <div className="space-y-3">
         {routine.blocks && routine.blocks.length > 0 ? (
           routine.blocks.map(block => (
-            <div key={block.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl border border-white/10 bg-white/[0.02] items-center">
+            <div key={block.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl border border-white/10 bg-white/[0.045] items-center">
               <div className="md:col-span-1 space-y-2">
                 <NeuralInput 
                   value={block.title}
@@ -74,7 +74,7 @@ export function RoutineEditor({ routine, onUpdate }: RoutineEditorProps) {
                     { value: 'recovery', label: 'Recovery' },
                     { value: 'other', label: 'Other' },
                   ]}
-                  triggerClassName="h-8 py-1 text-[10px] uppercase"
+                  triggerClassName="h-8 py-1 text-[11px] uppercase"
                   minWidthClassName=""
                   ariaLabel="Category"
                 />
@@ -112,10 +112,10 @@ export function RoutineEditor({ routine, onUpdate }: RoutineEditorProps) {
                       handleUpdateBlock(block.id, { daysOfWeek: days });
                     }}
                     className={cn(
-                      "w-8 h-8 min-w-0 px-0 rounded-lg text-[10px] font-bold border transition-all",
+                      "w-8 h-8 min-w-0 px-0 rounded-lg text-[11px] font-bold border transition-all",
                       block.daysOfWeek.includes(day) 
                         ? 'bg-[var(--module-accent-glow)] text-[var(--module-color-400)] border-[var(--module-accent-border)]' 
-                        : 'bg-white/5 text-white/20 border-transparent hover:border-white/10'
+                        : 'bg-white/[0.045] text-white/20 border-transparent hover:border-white/10'
                     )}
                   >
                     {['S', 'M', 'T', 'W', 'T', 'F', 'S'][day]}

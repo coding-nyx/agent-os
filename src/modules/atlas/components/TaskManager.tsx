@@ -178,7 +178,7 @@ export function TaskManager({
     [tasks, expandedTaskId]
   );
   const controlSelectTriggerClassName =
-    'h-11 rounded-xl border-white/10 bg-white/[0.03] px-3.5 text-[11px] sm:h-10';
+    'h-11 rounded-xl border-white/10 bg-white/[0.045] px-3.5 text-[11px] sm:h-10';
   const controlButtonClassName =
     'w-full justify-center rounded-xl px-3.5 sm:w-auto';
 
@@ -275,7 +275,7 @@ export function TaskManager({
       />
 
       {/* ── Controls: Search, Filter, Sort, Actions ── */}
-      <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-2 sm:p-2.5">
+      <div className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-2 sm:p-2.5">
         <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
           {/* Search */}
           <div className="min-w-0 flex-1">
@@ -284,7 +284,7 @@ export function TaskManager({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tasks..."
               icon={<Search className="w-4 h-4" />}
-              className="h-11 rounded-xl border-white/10 bg-white/[0.03] text-[13px] sm:h-10"
+              className="h-11 rounded-xl border-white/10 bg-white/[0.045] text-[13px] sm:h-10"
             />
           </div>
 
@@ -332,7 +332,7 @@ export function TaskManager({
               onClick={() => setShowDependencyGraph(!showDependencyGraph)}
               size="sm"
               variant="ghost"
-              className={cn(controlButtonClassName, 'border border-white/10 bg-white/[0.03]')}
+              className={cn(controlButtonClassName, 'border border-white/10 bg-white/[0.045]')}
             >
               <GitBranch className="w-4 h-4 mr-1.5" />
               Graph
@@ -499,7 +499,7 @@ export function TaskManager({
                 .map((t) => (
                   <div
                     key={t.id}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.045] transition-colors"
                   >
                     <span className="text-xs text-white/70">{t.title}</span>
                     <NeuralToggle

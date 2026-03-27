@@ -60,7 +60,7 @@ function Badge({ icon, label, className }: BadgeProps) {
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full px-2 py-0.5',
-        'text-[10px] font-semibold tracking-wide',
+        'text-[11px] font-semibold tracking-wide',
         'bg-white/[0.06] text-white/60 border border-white/10',
         className
       )}
@@ -111,7 +111,7 @@ export function EntryConfirmChip({
           exit={{ opacity: 0, y: -8, scale: 0.95 }}
           transition={{ type: 'spring', damping: 22, stiffness: 280 }}
           className={cn(
-            'relative rounded-xl border border-white/10 bg-white/[0.04]',
+            'relative rounded-xl border border-white/10 bg-white/[0.045]',
             'backdrop-blur-md px-4 py-3 flex flex-col gap-3',
             'shadow-[0_4px_24px_rgba(0,0,0,0.35)]'
           )}
@@ -142,7 +142,7 @@ export function EntryConfirmChip({
               </span>
 
               {/* Entry type label */}
-              <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-[var(--module-color-400)]/70">
+              <span className="shrink-0 text-[11px] font-bold uppercase tracking-widest text-[var(--module-color-400)]/70">
                 {parsed.type}
               </span>
             </div>
@@ -199,7 +199,7 @@ export function EntryConfirmChip({
             )}
           </div>
 
-          <p className="text-[10px] leading-relaxed text-white/35">
+          <p className="text-[11px] leading-relaxed text-white/35">
             {parsed.ingestion.guidance}
             {preferenceMode === 'structured' && parsed.ingestion.mode === 'unstructured'
               ? ' Structured mode is on — use labels like due:, priority:, or energy: to make this deterministic.'

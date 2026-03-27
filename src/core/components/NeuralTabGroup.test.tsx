@@ -62,7 +62,7 @@ describe('NeuralTabGroup', () => {
 
     const badge = container.querySelector('span.min-h-4');
     expect(badge).toBeInTheDocument();
-    expect(badge?.className).toContain('text-[10px]');
+    expect(badge?.className).toContain('text-[11px]');
   });
 
   it('supports arrow-key roving selection', () => {

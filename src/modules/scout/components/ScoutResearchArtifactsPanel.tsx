@@ -25,16 +25,16 @@ export function ScoutResearchArtifactsPanel({
     <section
       aria-label="Research artifacts"
       className={cn(
-        'surface-foundation flex h-full min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-white/8 p-4 sm:p-5',
+        'surface-foundation flex h-full min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-white/[0.09] p-4 sm:p-5',
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-4">
+      <div className="flex items-center justify-between gap-3 border-b border-white/[0.09] pb-4">
         <div className="min-w-0">
           <p className="text-chip-soft text-white/45">Research artifacts</p>
           <h3 className="mt-1 truncate text-panel-heading text-white">Findings, evidence, and context</h3>
         </div>
-        <span className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 px-2.5 text-[11px] font-semibold tabular-nums text-white/70">
+        <span className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] px-2.5 text-[11px] font-semibold tabular-nums text-white/70">
           {sessionNodes.length + sessionSources.length}
         </span>
       </div>
@@ -46,7 +46,7 @@ export function ScoutResearchArtifactsPanel({
             <span className="text-meta">{sessionNodes.length}</span>
           </div>
           {sessionNodes.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-4 py-6 text-center">
+            <div className="rounded-2xl border border-dashed border-white/[0.09] bg-white/[0.045] px-4 py-6 text-center">
               <Brain className="mx-auto mb-2 h-6 w-6 text-white/15" aria-hidden="true" />
               <p className="text-body-secondary">No findings synthesized yet for this session.</p>
             </div>
@@ -55,7 +55,7 @@ export function ScoutResearchArtifactsPanel({
               {sessionNodes.map((node) => (
                 <article
                   key={node.id}
-                  className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 transition-colors hover:border-[var(--module-accent-border)]"
+                  className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4 transition-colors hover:border-[var(--module-accent-border)]"
                 >
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div className="h-2 w-2 rounded-full bg-[var(--module-color-400)] shadow-[0_0_12px_var(--module-accent-glow)]" />
@@ -76,7 +76,7 @@ export function ScoutResearchArtifactsPanel({
             <span className="text-meta">{sessionSources.length}</span>
           </div>
           {sessionSources.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-4 py-6 text-center">
+            <div className="rounded-2xl border border-dashed border-white/[0.09] bg-white/[0.045] px-4 py-6 text-center">
               <FileText className="mx-auto mb-2 h-6 w-6 text-white/15" aria-hidden="true" />
               <p className="text-body-secondary">No sources linked yet for this session.</p>
             </div>
@@ -85,9 +85,9 @@ export function ScoutResearchArtifactsPanel({
               {sessionSources.map((source) => (
                 <article
                   key={source.id}
-                  className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-3 transition-colors hover:bg-white/[0.05]"
+                  className="flex items-center gap-3 rounded-2xl border border-white/[0.09] bg-white/[0.045] p-3 transition-colors hover:bg-white/[0.05]"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-white/45">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.045] text-white/45">
                     <ExternalLink className="h-4 w-4" aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">

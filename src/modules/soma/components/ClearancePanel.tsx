@@ -60,7 +60,7 @@ function recoveryColor(score: number | null | undefined): string {
 }
 
 function recoveryBg(score: number | null | undefined): string {
-  if (typeof score !== 'number') return 'border-white/10 bg-white/[0.03]';
+  if (typeof score !== 'number') return 'border-white/10 bg-white/[0.045]';
   if (score >= 7) return 'border-[var(--module-accent-border)] bg-[var(--module-accent-faint)]';
   if (score >= 4) return 'border-amber-500/20 bg-amber-500/5';
   return 'border-rose-500/20 bg-rose-500/5';
@@ -125,7 +125,7 @@ function ClearanceChecklist({
       hint: 'Tell Soma about any medical conditions, injuries, or medications.',
       action: !hasConditions && !noConditionsConfirmed ? (
         <button
-          className="text-[10px] text-[var(--module-color-400)] hover:text-[var(--module-color-300)] underline underline-offset-2 mt-1"
+          className="text-[11px] text-[var(--module-color-400)] hover:text-[var(--module-color-300)] underline underline-offset-2 mt-1"
           onClick={() => setNoConditionsConfirmed(true)}
         >
           I have no known conditions →
@@ -185,7 +185,7 @@ function ClearanceChecklist({
             'flex items-start gap-3 p-3 rounded-xl border transition-colors',
             step.done
               ? 'bg-[var(--module-accent-faint,rgba(255,255,255,0.04))] border-[var(--module-accent-border)]'
-              : 'bg-white/[0.02] border-white/5',
+              : 'bg-white/[0.045] border-white/[0.09]',
           )}>
             {step.done
               ? <CheckCircle2 className="w-4 h-4 text-[var(--module-color-400)] mt-0.5 shrink-0" />
@@ -197,7 +197,7 @@ function ClearanceChecklist({
               </p>
               {!step.done && (
                 <>
-                  <p className="text-[10px] text-white/30 mt-0.5 leading-relaxed">{step.hint}</p>
+                  <p className="text-[11px] text-white/30 mt-0.5 leading-relaxed">{step.hint}</p>
                   {step.action}
                 </>
               )}
@@ -269,7 +269,7 @@ export function ClearancePanel({ profile, soul, isLocked = false, onAnalyze }: C
       <SurfaceCard className={cn('p-6', recoveryBg(recoveryScore))}>
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+            <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40">
               Recovery Score
             </span>
             <div className="flex items-end gap-2">
@@ -300,14 +300,14 @@ export function ClearancePanel({ profile, soul, isLocked = false, onAnalyze }: C
         <SurfaceCard className="p-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40">
                 Hormonal Context
               </span>
               <p className="text-xs font-bold text-white/80 uppercase tracking-wider">
                 {hormonalContext}
               </p>
             </div>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[10px] font-bold text-orange-300 uppercase tracking-wider">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[11px] font-bold text-orange-300 uppercase tracking-wider">
               Active
             </span>
           </div>
@@ -351,18 +351,18 @@ export function ClearancePanel({ profile, soul, isLocked = false, onAnalyze }: C
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-white/90">{latestClearance.activity}</span>
                     <span className={cn(
-                      'inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wider',
+                      'inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-bold uppercase tracking-wider',
                       cfg.badge
                     )}>
                       {cfg.label}
                     </span>
                   </div>
                   <p className="text-xs text-white/50 leading-relaxed">{latestClearance.reason}</p>
-                  <span className="text-[10px] text-white/30">{formatRelativeTime(latestClearance.issuedAt)}</span>
+                  <span className="text-[11px] text-white/30">{formatRelativeTime(latestClearance.issuedAt)}</span>
                 </div>
               </div>
               {onAnalyze && (latestClearance.status === 'denied' || latestClearance.status === 'conditional') && (
-                <div className="mt-4 pt-4 border-t border-white/5">
+                <div className="mt-4 pt-4 border-t border-white/[0.09]">
                   <NeuralButton
                     onClick={() => onAnalyze(
                       `My previous ${latestClearance.activity} clearance was "${latestClearance.status}"` +
@@ -436,13 +436,13 @@ export function ClearancePanel({ profile, soul, isLocked = false, onAnalyze }: C
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-white/80">{record.activity}</span>
                           <span className={cn(
-                            'inline-flex items-center px-1.5 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider',
+                            'inline-flex items-center px-1.5 py-0.5 rounded-full border text-[11px] font-bold uppercase tracking-wider',
                             cfg.badge
                           )}>
                             {cfg.label}
                           </span>
                         </div>
-                        <span className="text-[10px] text-white/30 shrink-0 ml-2">
+                        <span className="text-[11px] text-white/30 shrink-0 ml-2">
                           {formatRelativeTime(record.issuedAt)}
                         </span>
                       </div>

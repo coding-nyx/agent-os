@@ -81,7 +81,7 @@ function isoToLocal(iso: string): string {
 const STATUS_BADGE: Record<RecoveryWindow['status'], string> = {
   planned: 'bg-sky-500/15 text-sky-300 border border-sky-500/30',
   active: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
-  completed: 'bg-white/5 text-white/40 border border-white/10',
+  completed: 'bg-white/[0.045] text-white/40 border border-white/10',
 };
 
 const STATUS_LABEL: Record<RecoveryWindow['status'], string> = {
@@ -226,7 +226,7 @@ export function RecoveryWindowManager({
             return (
               <div
                 key={w.id}
-                className="relative group rounded-xl border border-white/10 bg-white/[0.03] p-4 hover:border-white/20 transition-colors"
+                className="relative group rounded-xl border border-white/10 bg-white/[0.045] p-4 hover:border-white/20 transition-colors"
               >
                 {/* Action buttons — revealed on hover */}
                 <ItemActionButtons
@@ -241,14 +241,14 @@ export function RecoveryWindowManager({
                     <span className="text-sm font-semibold text-white/90">{w.title}</span>
                     <span
                       className={cn(
-                        'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
+                        'text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
                         STATUS_BADGE[w.status]
                       )}
                     >
                       {STATUS_LABEL[w.status]}
                     </span>
                     {hours !== null && (
-                      <span className="text-[10px] text-white/30 flex items-center gap-1">
+                      <span className="text-[11px] text-white/30 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {hours}h
                       </span>

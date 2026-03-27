@@ -108,7 +108,7 @@ export function NexusChat({
         }
         if (proposalStatus === 'dismissed') {
           return (
-            <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-white/5 border border-white/10 text-white/40 w-fit">
+            <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-white/[0.045] border border-white/10 text-white/40 w-fit">
               <span className="text-[11px] font-black uppercase tracking-widest">Proposal Dismissed</span>
             </div>
           );

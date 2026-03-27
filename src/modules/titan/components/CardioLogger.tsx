@@ -68,16 +68,16 @@ function SessionRow({ session }: { session: CardioSession }) {
   const pace = session.distanceKm ? paceStr(session.distanceKm, session.durationMinutes) : null;
 
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors">
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/[0.045] border border-white/[0.09] hover:bg-white/[0.045] transition-colors">
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-base leading-none">{meta?.emoji ?? '⚡'}</span>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-white/80">{meta?.label ?? session.type}</span>
-            <span className="text-[10px] text-white/40">{session.date}</span>
+            <span className="text-[11px] text-white/40">{session.date}</span>
           </div>
           {(session.notes || pace) && (
-            <p className="text-[10px] text-white/30 truncate mt-0.5">
+            <p className="text-[11px] text-white/30 truncate mt-0.5">
               {pace && <span className="mr-2">{pace}</span>}
               {session.notes}
             </p>
@@ -88,13 +88,13 @@ function SessionRow({ session }: { session: CardioSession }) {
         {session.distanceKm != null && (
           <div className="text-right hidden sm:block">
             <div className="text-xs font-black text-[var(--module-color-400)] tabular-nums">{session.distanceKm} km</div>
-            <div className="text-[9px] text-white/40">dist</div>
+            <div className="text-[11px] text-white/40">dist</div>
           </div>
         )}
         {session.avgHeartRate != null && (
           <div className="text-right hidden sm:block">
             <div className="text-xs font-black text-rose-400 tabular-nums">{session.avgHeartRate}{session.maxHeartRate ? `/${session.maxHeartRate}` : ''}</div>
-            <div className="text-[9px] text-white/40">bpm</div>
+            <div className="text-[11px] text-white/40">bpm</div>
           </div>
         )}
         {session.hrZones && (
@@ -111,7 +111,7 @@ function SessionRow({ session }: { session: CardioSession }) {
           <div className="text-xs font-black text-white/80 tabular-nums">
             {formatDuration(session.durationMinutes)}
           </div>
-          <div className="text-[9px] text-white/40 uppercase">time</div>
+          <div className="text-[11px] text-white/40 uppercase">time</div>
         </div>
       </div>
     </div>
@@ -298,7 +298,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
           />
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">Activity Type</label>
+            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">Activity Type</label>
             <div className="flex flex-wrap gap-2">
               {CARDIO_TYPES.map(ct => (
                 <NeuralButton
@@ -310,7 +310,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border',
                     type === ct.value
                       ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                      : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                      : 'bg-white/[0.045] border-white/[0.12] text-white/50 hover:bg-white/10'
                   )}
                 >
                   <span>{ct.emoji}</span>
@@ -321,9 +321,9 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
           </div>
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">Duration</label>
+            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">Duration</label>
             <div className="flex items-center gap-3">
-              <div className="flex flex-1 items-center bg-black/40 border border-white/10 rounded-2xl focus-within:border-[var(--module-accent)] transition-all px-4 h-12">
+              <div className="flex flex-1 items-center bg-slate-900/70 border border-white/[0.12] rounded-2xl focus-within:border-[var(--module-accent)] transition-all px-4 h-12">
                 <input
                   type="number"
                   min={0}
@@ -343,7 +343,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
                   onChange={e => setDurationMins(e.target.value)}
                   className="w-8 bg-transparent text-sm text-white placeholder:text-white/20 focus:outline-none text-left tabular-nums [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                <span className="ml-auto text-[10px] text-white/40 font-semibold tracking-wider">HH:MM</span>
+                <span className="ml-auto text-[11px] text-white/40 font-semibold tracking-wider">HH:MM</span>
               </div>
               {totalDurationMins > 0 && (
                 <span className="text-sm font-black text-[var(--module-color-400)] shrink-0 min-w-[60px] text-right">{formatDuration(totalDurationMins)}</span>
@@ -395,7 +395,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
 
           <div className="space-y-2">
             <div className="flex items-center justify-between ml-1">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Effort (RPE)</label>
+              <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">Effort (RPE)</label>
               <span className={cn('text-sm font-black tabular-nums', rpeColor(rpe))}>
                 {rpe}/10
               </span>
@@ -412,7 +412,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
           </div>
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">Notes (optional)</label>
+            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">Notes (optional)</label>
             <NeuralTextarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
@@ -427,7 +427,7 @@ export function CardioLogger({ cardioLog, onAnalyze, directWriteMode, onDirectSa
             </p>
           )}
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
+          <div className="flex justify-end gap-3 pt-2 border-t border-white/[0.09]">
             <NeuralButton variant="ghost" onClick={() => closeModal()}>
               Cancel
             </NeuralButton>

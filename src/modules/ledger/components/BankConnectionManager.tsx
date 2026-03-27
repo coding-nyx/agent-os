@@ -123,7 +123,7 @@ function StatusBadge({ status }: StatusBadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-widest uppercase border',
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold tracking-widest uppercase border',
         styles[status],
       )}
     >
@@ -178,7 +178,7 @@ function ConnectionCard({
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+          <div className="w-10 h-10 shrink-0 rounded-xl bg-white/[0.045] border border-white/10 flex items-center justify-center">
             <Building2 className="w-5 h-5 text-white/60" />
           </div>
           <div className="min-w-0">
@@ -245,8 +245,8 @@ function ConnectionCard({
 
       {/* Linked accounts */}
       {linkedAccounts.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-white/[0.06]">
-          <p className="text-[10px] uppercase font-semibold tracking-widest text-white/30 mb-2">
+        <div className="mt-3 pt-3 border-t border-white/[0.09]">
+          <p className="text-[11px] uppercase font-semibold tracking-widest text-white/30 mb-2">
             Linked Accounts
           </p>
           <ul className="space-y-1">
@@ -310,7 +310,7 @@ function BankPickerModal({
               key={bank.id}
               className={cn(
                 'w-full flex items-center gap-3 p-4 rounded-xl border border-white/10',
-                'bg-white/[0.03] hover:bg-white/[0.07] transition-colors text-left',
+                'bg-white/[0.045] hover:bg-white/[0.07] transition-colors text-left',
                 'disabled:opacity-40 disabled:cursor-not-allowed',
               )}
               disabled={isConnecting}
@@ -342,7 +342,7 @@ function BankPickerModal({
         })}
 
         {/* Compliance notice inside picker */}
-        <div className="flex items-center gap-2 mt-2 pt-3 border-t border-white/[0.06]">
+        <div className="flex items-center gap-2 mt-2 pt-3 border-t border-white/[0.09]">
           <Lock className="w-3.5 h-3.5 text-white/30 shrink-0" />
           <p className="text-[11px] text-white/30 leading-relaxed">
             Bank connections are powered by Plaid. Your credentials are never stored by Nexus.
@@ -376,7 +376,7 @@ function TransactionReviewRow({
   onReject,
 }: TransactionReviewRowProps) {
   return (
-    <tr className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors">
+    <tr className="border-b border-white/[0.09] hover:bg-white/[0.045] transition-colors">
       {/* Checkbox */}
       <td className="py-2.5 pl-1 pr-2 w-8">
         <button
@@ -421,7 +421,7 @@ function TransactionReviewRow({
           value={txn.category}
           onChange={(e) => onCategoryChange(txn.id, e.target.value)}
           className={cn(
-            'text-[11px] bg-white/5 border border-white/10 rounded-lg px-2 py-1',
+            'text-[11px] bg-white/[0.045] border border-white/10 rounded-lg px-2 py-1',
             'text-white/70 focus:outline-none focus:border-cyan-500/50',
             'appearance-none cursor-pointer',
           )}
@@ -439,10 +439,10 @@ function TransactionReviewRow({
       <td className="py-2.5 pr-2">
         <span
           className={cn(
-            'text-[10px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded-md',
+            'text-[11px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded-md',
             txn.type === 'income'
               ? 'bg-emerald-500/10 text-emerald-400'
-              : 'bg-white/5 text-white/40',
+              : 'bg-white/[0.045] text-white/40',
           )}
         >
           {txn.type}
@@ -546,24 +546,24 @@ function ImportReviewModal({
             No transactions to review.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+          <div className="overflow-x-auto rounded-xl border border-white/[0.09]">
             <table className="w-full text-left min-w-[560px]">
               <thead>
-                <tr className="border-b border-white/[0.08] bg-white/[0.02]">
+                <tr className="border-b border-white/[0.08] bg-white/[0.045]">
                   <th className="py-2.5 pl-1 pr-2 w-8" />
-                  <th className="py-2.5 pr-3 text-[10px] uppercase tracking-widest font-semibold text-white/30">
+                  <th className="py-2.5 pr-3 text-[11px] uppercase tracking-widest font-semibold text-white/30">
                     Date
                   </th>
-                  <th className="py-2.5 pr-3 text-[10px] uppercase tracking-widest font-semibold text-white/30">
+                  <th className="py-2.5 pr-3 text-[11px] uppercase tracking-widest font-semibold text-white/30">
                     Description
                   </th>
-                  <th className="py-2.5 pr-3 text-[10px] uppercase tracking-widest font-semibold text-white/30 text-right">
+                  <th className="py-2.5 pr-3 text-[11px] uppercase tracking-widest font-semibold text-white/30 text-right">
                     Amount
                   </th>
-                  <th className="py-2.5 pr-3 text-[10px] uppercase tracking-widest font-semibold text-white/30">
+                  <th className="py-2.5 pr-3 text-[11px] uppercase tracking-widest font-semibold text-white/30">
                     Category
                   </th>
-                  <th className="py-2.5 pr-2 text-[10px] uppercase tracking-widest font-semibold text-white/30">
+                  <th className="py-2.5 pr-2 text-[11px] uppercase tracking-widest font-semibold text-white/30">
                     Type
                   </th>
                   <th className="py-2.5 w-8" />
@@ -586,7 +586,7 @@ function ImportReviewModal({
         )}
 
         {/* Compliance footer */}
-        <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
+        <div className="flex items-center gap-2 pt-2 border-t border-white/[0.09]">
           <Lock className="w-3.5 h-3.5 text-white/30 shrink-0" />
           <p className="text-[11px] text-white/30">
             Transactions are fetched read-only via Plaid. Nexus never stores your banking credentials.
@@ -896,7 +896,7 @@ export function BankConnectionManager({
       {/* ── Plaid compliance disclaimer ──────────────────────────────────── */}
       <div className="flex items-center gap-2 mt-1">
         <Lock className="w-3 h-3 text-white/20 shrink-0" />
-        <p className="text-[10px] text-white/25 leading-relaxed">
+        <p className="text-[11px] text-white/25 leading-relaxed">
           Bank connections are powered by Plaid. Your credentials are never stored by Nexus.
         </p>
       </div>

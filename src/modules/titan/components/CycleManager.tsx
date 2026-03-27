@@ -76,10 +76,10 @@ function CycleCard({
     <NeuralButton
       variant="secondary"
       onClick={() => onSelect(cycle)}
-      className="w-full text-left p-3 rounded-xl bg-white/[0.03] border border-white/10 hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-muted)] transition-all group h-auto justify-start"
+      className="w-full text-left p-3 rounded-xl bg-white/[0.045] border border-white/10 hover:border-[var(--module-accent-border)] hover:bg-[var(--module-accent-muted)] transition-all group h-auto justify-start"
     >
       <div className="flex items-start gap-3 w-full">
-        <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+        <div className="w-8 h-8 rounded-lg bg-white/[0.045] border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
           <TypeIcon className={cn('w-4 h-4', typeMeta.color)} />
         </div>
         <div className="flex-1 min-w-0">
@@ -87,15 +87,15 @@ function CycleCard({
             <span className="text-xs font-bold text-white/90 truncate">{cycle.name}</span>
             <StatusIcon className={cn('w-3.5 h-3.5 shrink-0', STATUS_COLOR[cycle.status])} />
           </div>
-          <div className="text-[10px] text-white/40 mt-0.5">
+          <div className="text-[11px] text-white/40 mt-0.5">
             {typeMeta.label} · Started {cycle.startDate}
           </div>
           {cycle.status === 'active' && cycle.phases.length === 0 && (
-            <p className="text-[10px] text-white/30 mt-1.5 italic">No phases configured</p>
+            <p className="text-[11px] text-white/30 mt-1.5 italic">No phases configured</p>
           )}
           {cycle.status === 'active' && phase && (
             <div className="mt-2 space-y-1">
-              <div className="flex items-center justify-between text-[10px] text-white/50">
+              <div className="flex items-center justify-between text-[11px] text-white/50">
                 <span>Phase {cycle.currentPhaseIndex + 1}/{cycle.phases.length}: {phase.name}</span>
                 {phase.dosage && <span className="text-[var(--module-color-400)]">{phase.dosage}</span>}
               </div>
@@ -175,12 +175,12 @@ function CycleDetailModal({
       <div className="space-y-6">
         {/* Meta */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-            <div className="text-[9px] font-black uppercase tracking-wider text-white/40 mb-1">Started</div>
+          <div className="p-3 rounded-xl bg-white/[0.045] border border-white/[0.09]">
+            <div className="text-[11px] font-black uppercase tracking-wider text-white/40 mb-1">Started</div>
             <div className="text-xs font-bold text-white/80">{cycle.startDate}</div>
           </div>
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-            <div className="text-[9px] font-black uppercase tracking-wider text-white/40 mb-1">Progress</div>
+          <div className="p-3 rounded-xl bg-white/[0.045] border border-white/[0.09]">
+            <div className="text-[11px] font-black uppercase tracking-wider text-white/40 mb-1">Progress</div>
             <div className="text-xs font-bold text-white/80">
               Phase {cycle.currentPhaseIndex + 1} / {cycle.phases.length}
             </div>
@@ -193,7 +193,7 @@ function CycleDetailModal({
 
         {/* Phase list */}
         <div className="space-y-2">
-          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40">Phases</span>
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">Phases</span>
           {cycle.phases.map((phase, idx) => {
             const isCurrent = idx === cycle.currentPhaseIndex && cycle.status === 'active';
             const isDone = idx < cycle.currentPhaseIndex;
@@ -202,11 +202,11 @@ function CycleDetailModal({
                 key={phase.id}
                 className={cn(
                   'flex items-start gap-3 p-3 rounded-xl border transition-all',
-                  isCurrent ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)]' : isDone ? 'bg-white/[0.02] border-white/5 opacity-50' : 'bg-white/[0.02] border-white/5'
+                  isCurrent ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)]' : isDone ? 'bg-white/[0.045] border-white/[0.09] opacity-50' : 'bg-white/[0.045] border-white/[0.09]'
                 )}
               >
                 <div className={cn(
-                  'w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5',
+                  'w-6 h-6 rounded-full border flex items-center justify-center text-[11px] font-black shrink-0 mt-0.5',
                   isCurrent ? 'border-[var(--module-accent)] text-[var(--module-color-400)]' : isDone ? 'border-green-500/40 text-green-400' : 'border-white/20 text-white/30'
                 )}>
                   {isDone ? '✓' : idx + 1}
@@ -216,14 +216,14 @@ function CycleDetailModal({
                     <span className={cn('text-xs font-bold', isCurrent ? 'text-[var(--module-color-300)]' : 'text-white/70')}>
                       {phase.name}
                     </span>
-                    <span className="text-[10px] text-white/40">{phase.durationDays}d</span>
+                    <span className="text-[11px] text-white/40">{phase.durationDays}d</span>
                   </div>
                   {(phase.dosage || phase.trainingModifier) && (
-                    <div className="text-[10px] text-white/40 mt-0.5">
+                    <div className="text-[11px] text-white/40 mt-0.5">
                       {[phase.dosage, phase.trainingModifier ? `Training: ${phase.trainingModifier}` : null].filter(Boolean).join(' · ')}
                     </div>
                   )}
-                  {phase.notes && <p className="text-[10px] text-white/30 mt-1">{phase.notes}</p>}
+                  {phase.notes && <p className="text-[11px] text-white/30 mt-1">{phase.notes}</p>}
                 </div>
               </div>
             );
@@ -231,15 +231,15 @@ function CycleDetailModal({
         </div>
 
         {cycle.notes && (
-          <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-            <div className="text-[9px] font-black uppercase tracking-wider text-white/40 mb-1">Notes</div>
+          <div className="p-3 rounded-xl bg-white/[0.045] border border-white/[0.09]">
+            <div className="text-[11px] font-black uppercase tracking-wider text-white/40 mb-1">Notes</div>
             <p className="text-xs text-white/60">{cycle.notes}</p>
           </div>
         )}
 
         {/* Actions */}
         {cycle.status === 'active' && (
-          <div className="flex gap-3 pt-2 border-t border-white/5">
+          <div className="flex gap-3 pt-2 border-t border-white/[0.09]">
             <NeuralButton size="xl" className="flex-1" onClick={handleAdvancePhase}>
               <RefreshCw className="w-4 h-4 mr-2" />
               {cycle.currentPhaseIndex + 1 < cycle.phases.length ? 'Next Phase' : 'Complete Cycle'}
@@ -344,7 +344,7 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
           <div className="space-y-4">
             {active.length > 0 && (
               <div className="space-y-2">
-                <div className="text-[9px] font-black uppercase tracking-wider text-white/40">Active</div>
+                <div className="text-[11px] font-black uppercase tracking-wider text-white/40">Active</div>
                 {active.map(c => (
                   <CycleCard key={c.id} cycle={c} onSelect={setSelectedCycle} directWriteMode={directWriteMode} onDirectDelete={onDirectDelete} />
                 ))}
@@ -353,7 +353,7 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
 
             {completed.length > 0 && (
               <div className="space-y-2">
-                <div className="text-[9px] font-black uppercase tracking-wider text-white/40">Completed / Paused</div>
+                <div className="text-[11px] font-black uppercase tracking-wider text-white/40">Completed / Paused</div>
                 {completed.slice(0, 3).map(c => (
                   <CycleCard key={c.id} cycle={c} onSelect={setSelectedCycle} directWriteMode={directWriteMode} onDirectDelete={onDirectDelete} />
                 ))}
@@ -390,7 +390,7 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
           />
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-wider text-white/50 mb-1.5">
+            <label className="block text-[11px] font-black uppercase tracking-wider text-white/50 mb-1.5">
               Type
             </label>
             <div className="flex gap-2">
@@ -403,7 +403,7 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
                     'flex-1 py-2 rounded-xl text-xs font-bold transition-all h-auto',
                     cycleType === t
                       ? 'bg-[var(--module-accent-muted)] border-[var(--module-accent-border)] text-[var(--module-color-300)]'
-                      : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20'
+                      : 'bg-white/[0.045] border-white/10 text-white/50 hover:border-white/20'
                   )}
                 >
                   {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -421,7 +421,7 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
           />
 
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-black uppercase tracking-wider text-white/50">
+            <label className="block text-[11px] font-black uppercase tracking-wider text-white/50">
               Description (optional)
             </label>
             <NeuralTextarea
@@ -433,7 +433,7 @@ export function CycleManager({ cycles, onSubmitForApproval, directWriteMode, onD
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
+          <div className="flex justify-end gap-3 pt-2 border-t border-white/[0.09]">
             <NeuralButton variant="ghost" onClick={() => setShowCycleModal(false)}>
               Cancel
             </NeuralButton>

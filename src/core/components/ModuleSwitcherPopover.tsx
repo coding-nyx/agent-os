@@ -65,13 +65,13 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-2 px-3 py-2.5 sm:py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 min-h-[44px] sm:min-h-0"
+        className="flex items-center gap-2 px-3 py-2.5 sm:py-1.5 rounded-lg bg-white/[0.045] border border-white/[0.12] hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 min-h-[44px] sm:min-h-0"
         aria-label="Switch module"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
         <LayoutGrid className="w-4 h-4" />
-        <span className="text-[10px] font-bold uppercase tracking-widest hidden lg:block">Modules</span>
+        <span className="text-[11px] font-bold uppercase tracking-widest hidden lg:block">Modules</span>
       </button>
 
       {/* Popover */}
@@ -83,7 +83,7 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -4 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute top-full right-0 mt-2 z-[var(--z-modal)] w-64 bg-black/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 shadow-2xl"
+            className="absolute top-full right-0 mt-2 z-[var(--z-modal)] w-64 bg-slate-900/90 backdrop-blur-2xl border border-white/[0.12] rounded-2xl p-3 shadow-2xl"
             role="menu"
             aria-label="Module navigation"
           >
@@ -100,14 +100,14 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
                     <Sparkles className="w-3 h-3" style={{ color: '#8B5CF6' }} />
                   </div>
                   <span className="text-xs font-semibold text-violet-400">Nexus</span>
-                  <span className="ml-auto text-[9px] text-white/20 uppercase tracking-wider">Home</span>
+                  <span className="ml-auto text-[11px] text-white/25 uppercase tracking-wider">Home</span>
                 </button>
-                <div className="my-1.5 border-t border-white/[0.06]" />
+                <div className="my-1.5 border-t border-white/[0.09]" />
               </>
             )}
 
             {/* Section label */}
-            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-white/30 px-1 mb-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/35 px-1 mb-2">
               Modules
             </p>
 
@@ -127,7 +127,7 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
                     role="menuitem"
                     className={cn(
                       'flex items-center gap-2.5 px-3 py-2.5 rounded-xl w-full text-left transition-colors hover:bg-white/10 min-h-[44px]',
-                      active && 'bg-white/5 ring-1 ring-white/20'
+                      active && 'bg-white/[0.045] ring-1 ring-white/20'
                     )}
                   >
                     <div
@@ -146,7 +146,7 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
             </div>
 
             {/* Divider */}
-            <div className="my-2 border-t border-white/[0.06]" />
+            <div className="my-2 border-t border-white/[0.09]" />
 
             {/* Hub button — visual module map view */}
             <button
@@ -155,7 +155,7 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
               role="menuitem"
               className={cn(
                 'flex items-center gap-2.5 px-3 py-2.5 rounded-xl w-full text-left transition-colors hover:bg-white/10 min-h-[44px]',
-                isActiveModule('/hub') && 'bg-white/5 ring-1 ring-white/20'
+                isActiveModule('/hub') && 'bg-white/[0.045] ring-1 ring-white/20'
               )}
             >
               <div

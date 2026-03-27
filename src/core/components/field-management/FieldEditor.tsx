@@ -150,7 +150,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
         <div>
           <label
             htmlFor="field-id"
-            className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2"
+            className="block text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2"
           >
             Field ID *
           </label>
@@ -162,7 +162,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
             disabled={isEditing}
             placeholder="my_custom_field"
             className={cn(
-              'w-full px-4 py-2 bg-white/[0.03] border rounded-xl text-sm text-white placeholder:text-white/30',
+              'w-full px-4 py-2 bg-white/[0.045] border rounded-xl text-sm text-white placeholder:text-white/30',
               'focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               errors.fieldId ? 'border-red-500/50' : 'border-white/10'
@@ -181,7 +181,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
         <div>
           <label
             htmlFor="field-name"
-            className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2"
+            className="block text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2"
           >
             Field Name *
           </label>
@@ -192,7 +192,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
             onChange={(e) => setName(e.target.value)}
             placeholder="My Custom Field"
             className={cn(
-              'w-full px-4 py-2 bg-white/[0.03] border rounded-xl text-sm text-white placeholder:text-white/30',
+              'w-full px-4 py-2 bg-white/[0.045] border rounded-xl text-sm text-white placeholder:text-white/30',
               'focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent',
               errors.name ? 'border-red-500/50' : 'border-white/10'
             )}
@@ -201,7 +201,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
         </div>
 
         <div>
-          <label className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2">
+          <label className="block text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2">
             Description
           </label>
           <textarea
@@ -209,14 +209,14 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional description of this field..."
             rows={3}
-            className="w-full px-4 py-2 bg-white/[0.03] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent resize-none"
+            className="w-full px-4 py-2 bg-white/[0.045] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent resize-none"
           />
         </div>
 
         <div>
           <label
             htmlFor="field-type"
-            className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2"
+            className="block text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2"
           >
             Field Type *
           </label>
@@ -226,7 +226,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
             onChange={(e) => setType(e.target.value as FieldType)}
             disabled={isEditing}
             className={cn(
-              'w-full px-4 py-2 bg-white/[0.03] border border-white/10 rounded-xl text-sm text-white',
+              'w-full px-4 py-2 bg-white/[0.045] border border-white/10 rounded-xl text-sm text-white',
               'focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
@@ -253,7 +253,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
             id="required"
             checked={required}
             onChange={(e) => setRequired(e.target.checked)}
-            className="w-4 h-4 rounded border-white/10 bg-white/[0.03] text-indigo-500 focus:ring-2 focus:ring-indigo-400/50"
+            className="w-4 h-4 rounded border-white/10 bg-white/[0.045] text-indigo-500 focus:ring-2 focus:ring-indigo-400/50"
           />
           <label htmlFor="required" className="text-sm text-white cursor-pointer">
             Required field
@@ -263,7 +263,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
 
       {/* Validation Rules */}
       {showValidationFields && (
-        <div className="space-y-4 pt-4 border-t border-white/5">
+        <div className="space-y-4 pt-4 border-t border-white/[0.09]">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">
             Validation Rules
           </h3>
@@ -274,7 +274,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
                 <div>
                   <label
                     htmlFor="min-length"
-                    className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2"
+                    className="block text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2"
                   >
                     Min Length
                   </label>
@@ -284,13 +284,13 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
                     value={minLength}
                     onChange={(e) => setMinLength(e.target.value)}
                     placeholder="0"
-                    className="w-full px-4 py-2 bg-white/[0.03] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent"
+                    className="w-full px-4 py-2 bg-white/[0.045] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="max-length"
-                    className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2"
+                    className="block text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2"
                   >
                     Max Length
                   </label>
@@ -300,7 +300,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
                     value={maxLength}
                     onChange={(e) => setMaxLength(e.target.value)}
                     placeholder="Unlimited"
-                    className="w-full px-4 py-2 bg-white/[0.03] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent"
+                    className="w-full px-4 py-2 bg-white/[0.045] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent"
                   />
                 </div>
               </>
@@ -309,7 +309,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
             {(type === FieldType.NUMBER || type === FieldType.RANGE) && (
               <>
                 <div>
-                  <label className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2">
+                  <label className="block text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2">
                     Minimum
                   </label>
                   <input
@@ -317,11 +317,11 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
                     value={minimum}
                     onChange={(e) => setMinimum(e.target.value)}
                     placeholder="No minimum"
-                    className="w-full px-4 py-2 bg-white/[0.03] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent"
+                    className="w-full px-4 py-2 bg-white/[0.045] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2">
+                  <label className="block text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2">
                     Maximum
                   </label>
                   <input
@@ -329,7 +329,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
                     value={maximum}
                     onChange={(e) => setMaximum(e.target.value)}
                     placeholder="No maximum"
-                    className="w-full px-4 py-2 bg-white/[0.03] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent"
+                    className="w-full px-4 py-2 bg-white/[0.045] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent"
                   />
                 </div>
               </>
@@ -338,7 +338,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
 
           {type === FieldType.TEXT && (
             <div>
-              <label className="block text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2">
+              <label className="block text-[11px] text-white/40 uppercase font-bold tracking-wider mb-2">
                 Pattern (Regex)
               </label>
               <input
@@ -346,7 +346,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
                 value={pattern}
                 onChange={(e) => setPattern(e.target.value)}
                 placeholder="^[A-Za-z]+$"
-                className="w-full px-4 py-2 bg-white/[0.03] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent font-mono"
+                className="w-full px-4 py-2 bg-white/[0.045] border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent font-mono"
               />
             </div>
           )}
@@ -355,7 +355,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
 
       {/* Options for Select/MultiSelect */}
       {showOptionsFields && (
-        <div className="space-y-4 pt-4 border-t border-white/5">
+        <div className="space-y-4 pt-4 border-t border-white/[0.09]">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">
             Options
           </h3>
@@ -365,17 +365,17 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
             {options.map((option, index) => (
               <div
                 key={index}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/10"
+                className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.045] border border-white/10"
               >
                 <div className="flex-1 grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-1">
+                    <p className="text-[11px] text-white/40 uppercase font-bold tracking-wider mb-1">
                       Value
                     </p>
                     <p className="text-sm text-white font-mono">{option.value}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-1">
+                    <p className="text-[11px] text-white/40 uppercase font-bold tracking-wider mb-1">
                       Label
                     </p>
                     <p className="text-sm text-white">{option.label}</p>
@@ -394,8 +394,8 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
           </div>
 
           {/* Add New Option */}
-          <div className="space-y-3 p-4 rounded-xl bg-black/20 border border-white/5">
-            <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider">
+          <div className="space-y-3 p-4 rounded-xl bg-slate-900/50 border border-white/[0.09]">
+            <p className="text-[11px] text-white/40 uppercase font-bold tracking-wider">
               Add Option
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -404,14 +404,14 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
                 value={newOptionValue}
                 onChange={(e) => setNewOptionValue(e.target.value)}
                 placeholder="value"
-                className="px-3 py-2 bg-white/[0.03] border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent font-mono"
+                className="px-3 py-2 bg-white/[0.045] border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent font-mono"
               />
               <input
                 type="text"
                 value={newOptionLabel}
                 onChange={(e) => setNewOptionLabel(e.target.value)}
                 placeholder="Label"
-                className="px-3 py-2 bg-white/[0.03] border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent"
+                className="px-3 py-2 bg-white/[0.045] border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-transparent"
               />
             </div>
             <NeuralButton
@@ -432,7 +432,7 @@ export function FieldEditor({ moduleId, field, onSave, onCancel }: FieldEditorPr
       )}
 
       {/* Preview Button */}
-      <div className="pt-4 border-t border-white/5">
+      <div className="pt-4 border-t border-white/[0.09]">
         <NeuralButton
           type="button"
           onClick={() => setShowPreview(!showPreview)}

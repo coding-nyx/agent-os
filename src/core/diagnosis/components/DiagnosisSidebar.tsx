@@ -81,9 +81,9 @@ export function DiagnosisSidebar({
   const hasDocuments = documents.length > 0;
 
   return (
-    <div className="hidden lg:flex w-64 shrink-0 border-r border-white/5 bg-white/[0.01] flex-col h-full min-h-0">
+    <div className="hidden lg:flex w-64 shrink-0 border-r border-white/[0.09] bg-white/[0.045] flex-col h-full min-h-0">
       {/* Header */}
-      <div className="shrink-0 px-4 pt-4 pb-3 border-b border-white/5">
+      <div className="shrink-0 px-4 pt-4 pb-3 border-b border-white/[0.09]">
         <div className="flex items-center gap-2">
           <Microscope className="w-4 h-4 text-white/40" />
           <span className="text-[11px] font-bold text-white/70 uppercase tracking-[0.1em]">
@@ -92,7 +92,7 @@ export function DiagnosisSidebar({
         </div>
         <div className="flex items-center gap-1.5 mt-1.5">
           <span className={`w-1.5 h-1.5 rounded-full ${phase === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-white/20'}`} />
-          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/40">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/40">
             {phase === 'active' ? 'Active Session' : phase === 'reviewing' ? 'Reviewing' : 'Idle'}
           </span>
         </div>
@@ -102,8 +102,8 @@ export function DiagnosisSidebar({
       <div className="flex-1 overflow-y-auto no-scrollbar min-h-0">
         {/* Live Summary */}
         {hasSummary && (
-          <div className="px-4 py-3 border-b border-white/5">
-            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/30 mb-2">
+          <div className="px-4 py-3 border-b border-white/[0.09]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/30 mb-2">
               Analysis Progress
             </p>
             <div className="space-y-1.5">
@@ -114,7 +114,7 @@ export function DiagnosisSidebar({
                     initial={prefersReduced ? false : { opacity: 0, x: -6 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="text-[10px] text-white/50 leading-relaxed"
+                    className="text-[11px] text-white/50 leading-relaxed"
                   >
                     <span className="text-white/20 mr-1.5">{i + 1}.</span>
                     {line}
@@ -127,10 +127,10 @@ export function DiagnosisSidebar({
 
         {/* Extracted Data Summary */}
         {hasExtracted && (
-          <div className="px-4 py-3 border-b border-white/5">
-            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/30 mb-2">
+          <div className="px-4 py-3 border-b border-white/[0.09]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/30 mb-2">
               Extracted Data
-              <span className="ml-1.5 text-white/50 bg-white/5 px-1.5 py-0.5 rounded">
+              <span className="ml-1.5 text-white/50 bg-white/[0.045] px-1.5 py-0.5 rounded">
                 {extractedData.items.length}
               </span>
             </p>
@@ -140,13 +140,13 @@ export function DiagnosisSidebar({
                 return (
                   <div
                     key={type}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.02] border border-white/5"
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.045] border border-white/[0.09]"
                   >
                     <Icon className="w-3 h-3 text-white/30 shrink-0" />
-                    <span className="text-[10px] text-white/60 capitalize flex-1 min-w-0 truncate">
+                    <span className="text-[11px] text-white/60 capitalize flex-1 min-w-0 truncate">
                       {type.replace(/_/g, ' ')}
                     </span>
-                    <span className="text-[9px] font-bold text-white/40 bg-white/5 px-1.5 py-0.5 rounded shrink-0">
+                    <span className="text-[11px] font-bold text-white/40 bg-white/[0.045] px-1.5 py-0.5 rounded shrink-0">
                       {items.length}
                     </span>
                   </div>
@@ -164,14 +164,14 @@ export function DiagnosisSidebar({
                     className="flex items-start gap-1.5 pl-1"
                   >
                     <Icon className="w-2.5 h-2.5 text-white/20 mt-0.5 shrink-0" />
-                    <span className="text-[9px] text-white/40 leading-snug truncate">
+                    <span className="text-[11px] text-white/40 leading-snug truncate">
                       {item.label}
                     </span>
                   </div>
                 );
               })}
               {extractedData.items.length > 5 && (
-                <p className="text-[9px] text-white/25 pl-4 italic">
+                <p className="text-[11px] text-white/25 pl-4 italic">
                   +{extractedData.items.length - 5} more
                 </p>
               )}
@@ -182,7 +182,7 @@ export function DiagnosisSidebar({
         {/* Documents */}
         {hasDocuments && (
           <div className="px-3 py-3">
-            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/30 mb-2 px-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/30 mb-2 px-1">
               Documents
             </p>
             <div className="space-y-2">
@@ -203,7 +203,7 @@ export function DiagnosisSidebar({
         {/* Empty state when no data yet */}
         {!hasSummary && !hasExtracted && !hasDocuments && phase === 'active' && (
           <div className="px-4 py-8 text-center">
-            <p className="text-[10px] text-white/25 italic">
+            <p className="text-[11px] text-white/25 italic">
               Upload a document or ask a question to begin analysis.
             </p>
           </div>
@@ -212,10 +212,10 @@ export function DiagnosisSidebar({
 
       {/* Upload footer */}
       {onUpload && (
-        <div className="shrink-0 p-3 border-t border-white/5">
+        <div className="shrink-0 p-3 border-t border-white/[0.09]">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.045] text-[11px] font-bold uppercase tracking-[0.12em] text-white/50 hover:text-white/70 hover:bg-white/8 transition-colors"
           >
             <FileUp className="w-3 h-3" />
             Upload Document

@@ -154,7 +154,7 @@ export function AgentOverridePanel({
             }}
             className={cn(
               'fixed bottom-0 left-0 right-0 z-50',
-              'bg-black/80 backdrop-blur-xl border-t border-white/10',
+              'bg-slate-900/90 backdrop-blur-xl border-t border-white/[0.12]',
               'rounded-t-2xl px-5 pb-8 pt-4',
               'max-h-[85dvh] overflow-y-auto',
             )}
@@ -168,7 +168,7 @@ export function AgentOverridePanel({
               {/* Header row */}
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest text-white/40 mb-0.5">
+                  <p className="text-[11px] uppercase tracking-widest text-white/40 mb-0.5">
                     Agent Review
                   </p>
                   <h2 className="text-base font-semibold text-white">
@@ -189,7 +189,7 @@ export function AgentOverridePanel({
 
             {/* Agent note */}
             {agentReview.agentNote && (
-              <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3.5">
+              <div className="mb-4 rounded-xl border border-white/[0.12] bg-white/[0.045] p-3.5">
                 <p className="text-xs font-medium text-white/50 mb-1">Agent note</p>
                 <p className="text-sm italic text-white/80 leading-relaxed">
                   "{agentReview.agentNote}"
@@ -200,8 +200,8 @@ export function AgentOverridePanel({
             {/* Value comparison — only for modified entries */}
             {hasModification && (
               <div className="mb-5 grid grid-cols-2 gap-2">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">
+                <div className="rounded-xl border border-white/[0.12] bg-white/[0.045] p-3">
+                  <p className="text-[11px] uppercase tracking-wider text-white/40 mb-1">
                     Your entry
                   </p>
                   <p className="text-sm font-semibold text-white">
@@ -209,7 +209,7 @@ export function AgentOverridePanel({
                   </p>
                 </div>
                 <div className="rounded-xl border border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--module-color-400)] opacity-70 mb-1">
+                  <p className="text-[11px] uppercase tracking-wider text-[var(--module-color-400)] opacity-70 mb-1">
                     Agent suggests
                   </p>
                   <p className="text-sm font-semibold text-[var(--module-color-300)]">
@@ -286,7 +286,7 @@ export function AgentOverridePanel({
                 disabled={loadingAccept}
                 icon={<ShieldOff className="w-4 h-4" />}
                 className={cn(
-                  'bg-white/5 border-white/15 text-white/70 hover:bg-white/10',
+                  'bg-white/[0.045] border-white/15 text-white/70 hover:bg-white/10',
                   // Span full width when Accept is hidden (no suggestion)
                   !hasModification && 'col-span-2',
                 )}
@@ -302,7 +302,7 @@ export function AgentOverridePanel({
                     ? <ChevronDown className="w-4 h-4" />
                     : <PencilLine className="w-4 h-4" />
                 }
-                className="bg-white/5 border-white/15 text-white/70 hover:bg-white/10"
+                className="bg-white/[0.045] border-white/15 text-white/70 hover:bg-white/10"
               >
                 {showEdit ? 'Hide Editor' : 'Edit Manually'}
               </ActionButton>
@@ -311,7 +311,7 @@ export function AgentOverridePanel({
               <ActionButton
                 onClick={onDismiss}
                 icon={<X className="w-4 h-4" />}
-                className="bg-white/5 border-white/15 text-white/50 hover:bg-white/10"
+                className="bg-white/[0.045] border-white/15 text-white/50 hover:bg-white/10"
               >
                 Dismiss
               </ActionButton>

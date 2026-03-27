@@ -29,13 +29,13 @@ export function MedicalImageAnalysisResult({
         'relative overflow-hidden rounded-xl border p-4 transition-all',
         selected 
           ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)]' 
-          : 'border-white/10 bg-white/5 hover:bg-white/10'
+          : 'border-white/10 bg-white/[0.045] hover:bg-white/10'
       )}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-black/20 flex items-center justify-center text-[var(--module-color-400)]">
+          <div className="w-10 h-10 rounded-lg bg-slate-900/50 flex items-center justify-center text-[var(--module-color-400)]">
             <FileImage className="w-5 h-5" />
           </div>
           <div>
@@ -55,7 +55,7 @@ export function MedicalImageAnalysisResult({
               'flex h-6 w-6 items-center justify-center rounded-md border transition-all',
               selected
                 ? 'border-[var(--module-accent-border)] bg-[var(--module-accent)] text-white'
-                : 'border-white/10 bg-white/5 text-white/20'
+                : 'border-white/10 bg-white/[0.045] text-white/20'
             )}
           >
             {selected && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -65,8 +65,8 @@ export function MedicalImageAnalysisResult({
 
       {/* Impression */}
       {impression && (
-        <div className="mb-3 rounded-lg bg-black/20 p-3 border border-white/5">
-          <p className="text-[10px] font-bold text-white/40 mb-1 uppercase tracking-wider">
+        <div className="mb-3 rounded-lg bg-slate-900/50 p-3 border border-white/[0.09]">
+          <p className="text-[11px] font-bold text-white/40 mb-1 uppercase tracking-wider">
             Clinical Impression
           </p>
           <p className="text-sm font-medium text-white/90 leading-relaxed">
@@ -78,7 +78,7 @@ export function MedicalImageAnalysisResult({
       {/* Findings */}
       {findings.length > 0 && (
         <div className="space-y-2 mb-3">
-          <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider">
+          <p className="text-[11px] font-bold text-white/40 uppercase tracking-wider">
             Detailed Findings
           </p>
           <ul className="space-y-1.5 pl-1">
@@ -94,12 +94,12 @@ export function MedicalImageAnalysisResult({
 
       {/* Clinical Flags */}
       {flags.length > 0 && (
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-white/[0.09]">
           {flags.map((flag: any, i: number) => (
             <span
               key={i}
               className={cn(
-                'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border',
+                'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide border',
                 flag.severity === 'severe' || flag.severity === 'high'
                   ? 'bg-red-500/10 border-red-500/20 text-red-300'
                   : flag.severity === 'moderate'

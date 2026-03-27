@@ -47,7 +47,7 @@ export function JournalHistoryList({ entries, onSelect, isLoading }: JournalHist
     return (
       <div className="space-y-3">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+          <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 space-y-2">
             <Skeleton className="h-3 w-24 rounded" />
             <Skeleton className="h-3 w-full rounded" />
             <Skeleton className="h-3 w-3/4 rounded" />

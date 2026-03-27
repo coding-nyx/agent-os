@@ -199,7 +199,7 @@ function ToggleSwitch({ checked, onChange, label, disabled = false }: ToggleSwit
         disabled && 'opacity-40 cursor-not-allowed',
         checked
           ? 'bg-emerald-500/30 border-emerald-500/40'
-          : 'bg-white/5 border-white/10'
+          : 'bg-white/[0.045] border-white/10'
       )}
     >
       <span
@@ -232,16 +232,16 @@ function DataCategoryCard({ category, moduleNames, onChange }: DataCategoryCardP
   const isProtected = category.sensitivity === 'protected';
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.045] overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white/20"
+        className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.045] transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white/20"
         aria-expanded={expanded}
       >
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-sm font-bold text-white/80">{category.label}</span>
           <span className={cn(
-            'inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[8px] font-black uppercase tracking-[0.15em]',
+            'inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-black uppercase tracking-[0.15em]',
             badge.className
           )}>
             <BadgeIcon className="w-2.5 h-2.5" />
@@ -256,18 +256,18 @@ function DataCategoryCard({ category, moduleNames, onChange }: DataCategoryCardP
       </button>
 
       {expanded && (
-        <div className="border-t border-white/5 p-4 space-y-4">
+        <div className="border-t border-white/[0.09] p-4 space-y-4">
           <p className="text-xs text-white/50 leading-relaxed">{category.description}</p>
 
           <div className="flex items-center gap-2">
-            <span className="text-[9px] text-white/30 uppercase tracking-[0.2em] font-bold">
+            <span className="text-[11px] text-white/30 uppercase tracking-[0.2em] font-bold">
               Managed by:
             </span>
             {category.ownerModules.map(id => {
               const manifest = MODULE_MANIFEST[id];
               const Icon = manifest?.icon;
               return (
-                <span key={id} className="inline-flex items-center gap-1 text-[10px] text-white/50 font-bold">
+                <span key={id} className="inline-flex items-center gap-1 text-[11px] text-white/50 font-bold">
                   {Icon && <Icon className="w-3 h-3" style={{ color: manifest?.colorHex }} />}
                   {moduleNames[id] || manifest?.title || id}
                 </span>
@@ -282,7 +282,7 @@ function DataCategoryCard({ category, moduleNames, onChange }: DataCategoryCardP
                 <p className="text-xs text-rose-300 font-bold">
                   Only {moduleNames[category.ownerModules[0]] || category.ownerModules[0]} can see these.
                 </p>
-                <p className="text-[10px] text-rose-200/50 mt-0.5">
+                <p className="text-[11px] text-rose-200/50 mt-0.5">
                   This data is never shared with other modules or external products.
                 </p>
               </div>
@@ -296,7 +296,7 @@ function DataCategoryCard({ category, moduleNames, onChange }: DataCategoryCardP
                 const explanation = category.explanations[target.targetModuleId];
 
                 return (
-                  <div key={target.targetModuleId} className="rounded-xl border border-white/5 bg-white/[0.01] p-3">
+                  <div key={target.targetModuleId} className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
                         {Icon && <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: manifest?.colorHex }} />}
@@ -311,7 +311,7 @@ function DataCategoryCard({ category, moduleNames, onChange }: DataCategoryCardP
                       />
                     </div>
                     {explanation && (
-                      <p className="text-[10px] text-white/30 mt-2 ml-6 leading-relaxed italic">
+                      <p className="text-[11px] text-white/30 mt-2 ml-6 leading-relaxed italic">
                         {explanation}
                       </p>
                     )}
@@ -394,7 +394,7 @@ export function DataSharingSettings() {
 
       {Object.entries(grouped).map(([domain, cats]) => (
         <div key={domain} className="space-y-3">
-          <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40 italic">
+          <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40 italic">
             {domainLabels[domain] || domain}
           </h4>
           {cats.map(cat => (

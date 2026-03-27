@@ -69,7 +69,7 @@ export function SpineOverlay() {
         className={cn(
           'pointer-events-auto absolute -left-7 top-1/2 -translate-y-1/2',
           'w-5 h-5 rounded-full flex items-center justify-center',
-          'border border-white/10 bg-black/40 backdrop-blur-sm',
+          'border border-white/[0.12] bg-slate-900/70 backdrop-blur-sm',
           'opacity-0 group-hover/spine:opacity-100 transition-opacity duration-300',
           'focus:opacity-100 focus-visible:ring-1 focus-visible:ring-white/30',
         )}

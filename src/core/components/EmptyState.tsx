@@ -30,7 +30,7 @@ export function EmptyState({
         className
       )}
     >
-      <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center">
+      <div className="w-12 h-12 rounded-2xl bg-white/[0.045] border border-white/[0.12] flex items-center justify-center">
         <Icon className="w-5 h-5 text-white/60" />
       </div>
       <div className="space-y-1">

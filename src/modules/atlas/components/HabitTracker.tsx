@@ -122,7 +122,7 @@ export function HabitTracker({
                   }
                   className={cn(
                     'group rounded-xl border p-3 transition-colors',
-                    'bg-white/[0.03] backdrop-blur-sm',
+                    'bg-white/[0.045] backdrop-blur-sm',
                     atRisk && !doneToday && 'border-amber-500/20',
                     doneToday && 'border-emerald-500/15 bg-emerald-500/[0.03]',
                     !atRisk && !doneToday && 'border-white/10'
@@ -167,7 +167,7 @@ export function HabitTracker({
                         >
                           {habit.title}
                         </span>
-                        <span className="text-[10px] text-white/25 font-medium shrink-0">
+                        <span className="text-[11px] text-white/25 font-medium shrink-0">
                           {FREQUENCY_LABELS[habit.frequency] ?? habit.frequency}
                         </span>
                       </div>
@@ -177,7 +177,7 @@ export function HabitTracker({
                           className="w-2.5 h-2.5 text-emerald-400/50"
                           aria-hidden="true"
                         />
-                        <span className="text-[10px] text-white/25 tabular-nums">
+                        <span className="text-[11px] text-white/25 tabular-nums">
                           {habit.energyCost} energy
                         </span>
                       </div>
@@ -222,7 +222,7 @@ export function HabitTracker({
                         className="w-3 h-3 text-amber-400/50"
                         aria-hidden="true"
                       />
-                      <span className="text-[10px] text-amber-400/50 font-bold tabular-nums">
+                      <span className="text-[11px] text-amber-400/50 font-bold tabular-nums">
                         {habit.bestStreak}
                       </span>
                     </div>
@@ -236,7 +236,7 @@ export function HabitTracker({
                       className={cn(
                         'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0',
                         'w-7 h-7 min-w-0 !p-0 rounded-lg flex items-center justify-center min-h-[44px]',
-                        'text-white/20 hover:text-white/40 hover:bg-white/5 transition-all',
+                        'text-white/20 hover:text-white/40 hover:bg-white/[0.045] transition-all',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]'
                       )}
                     >
@@ -247,7 +247,7 @@ export function HabitTracker({
                   {/* At-risk warning text */}
                   {atRisk && !doneToday && (
                     <p
-                      className="mt-2 ml-9 text-[10px] text-amber-300/60 font-medium"
+                      className="mt-2 ml-9 text-[11px] text-amber-300/60 font-medium"
                       role="alert"
                     >
                       Streak at risk — complete before it resets
@@ -263,7 +263,7 @@ export function HabitTracker({
       {/* ── Paused habits ── */}
       {pausedHabits.length > 0 && (
         <div className="space-y-2 pt-2">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 block">
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/20 block">
             Paused
           </span>
           {pausedHabits.map((habit) => (
@@ -283,13 +283,13 @@ export function HabitTracker({
                 <span className="text-sm text-white/30 font-medium truncate flex-1">
                   {habit.title}
                 </span>
-                <span className="text-[10px] text-emerald-400/40 font-black uppercase tracking-widest hidden group-hover:inline">
+                <span className="text-[11px] text-emerald-400/40 font-black uppercase tracking-widest hidden group-hover:inline">
                    RESUME
                 </span>
-                <span className="text-[10px] text-white/15 shrink-0 group-hover:hidden">
+                <span className="text-[11px] text-white/15 shrink-0 group-hover:hidden">
                   {FREQUENCY_LABELS[habit.frequency] ?? habit.frequency}
                 </span>
-                <span className="text-[10px] text-white/15 tabular-nums shrink-0 group-hover:hidden">
+                <span className="text-[11px] text-white/15 tabular-nums shrink-0 group-hover:hidden">
                   Best: {habit.bestStreak}d
                 </span>
               </div>

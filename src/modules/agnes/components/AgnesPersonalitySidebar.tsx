@@ -20,7 +20,7 @@ export function AgnesPersonalitySidebar({ baseContext, className, naked = false 
             className={cn("w-72 flex flex-col items-center justify-center p-6 surface-card h-full !backdrop-blur-[2px]", className)}
         >
             <User className="w-8 h-8 text-white/10 mb-4" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic text-center">Neural Profile Offline</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/20 italic text-center">Neural Profile Offline</p>
         </motion.div>
     );
   }
@@ -40,7 +40,7 @@ export function AgnesPersonalitySidebar({ baseContext, className, naked = false 
             className={cn("w-72 flex flex-col items-center justify-center p-6 surface-card h-full !backdrop-blur-[2px]", className)}
         >
             <User className="w-8 h-8 text-white/10 mb-4" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic text-center">Profile Data Pending</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/20 italic text-center">Profile Data Pending</p>
         </motion.div>
     );
   }
@@ -56,14 +56,14 @@ export function AgnesPersonalitySidebar({ baseContext, className, naked = false 
             <h3 className="text-base font-black uppercase tracking-wider text-white italic leading-none">
               {identity?.name || 'Subject'}
             </h3>
-            <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em] mt-1">User Personality</p>
+            <p className="text-[11px] text-white/30 font-bold uppercase tracking-[0.2em] mt-1">User Personality</p>
           </div>
         </div>
 
         {baseContext.communicationStyle && (
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.045] border border-white/[0.09]">
             <MessageSquare className="w-3 h-3 text-white/40" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-white/40 italic">{baseContext.communicationStyle} Style</span>
+            <span className="text-[11px] font-black uppercase tracking-widest text-white/40 italic">{baseContext.communicationStyle} Style</span>
           </div>
         )}
       </div>
@@ -72,11 +72,11 @@ export function AgnesPersonalitySidebar({ baseContext, className, naked = false 
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Target className="w-3.5 h-3.5 text-rose-400" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Focus Areas</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/20">Focus Areas</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {struggles.map((item, i) => (
-              <div key={i} className="px-3 py-1.5 rounded-xl bg-rose-400/5 border border-white/5 text-[10px] font-medium text-white/60">
+              <div key={i} className="px-3 py-1.5 rounded-xl bg-rose-400/5 border border-white/[0.09] text-[11px] font-medium text-white/60">
                 {item}
               </div>
             ))}
@@ -88,11 +88,11 @@ export function AgnesPersonalitySidebar({ baseContext, className, naked = false 
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Brain className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Active Goals</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/20">Active Goals</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {goals.map((item, i) => (
-              <div key={i} className="px-3 py-1.5 rounded-xl bg-indigo-400/5 border border-white/5 text-[10px] font-medium text-white/60">
+              <div key={i} className="px-3 py-1.5 rounded-xl bg-indigo-400/5 border border-white/[0.09] text-[11px] font-medium text-white/60">
                 {item}
               </div>
             ))}
