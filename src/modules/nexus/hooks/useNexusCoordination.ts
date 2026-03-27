@@ -3,6 +3,8 @@ import type { ModuleId } from '@/lib/module-manifest';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import type { MessageContent, UnifiedMemoryResult } from '@/lib/types';
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
+import { Spine } from '@/lib/spine/spine-event-bus';
+import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { OrchestrationInteractionGateService } from '@/lib/services/orchestration-interaction-gate-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import { CommandIntelligenceService } from '@/lib/services/command-intelligence-service';
@@ -241,6 +243,27 @@ export function useNexusCoordination(input: UseNexusCoordinationInput) {
         !shouldKeepMentionedAgentInThread(parsedCommand, decision.target)
       ) {
         presentRoutingSuggestion(decision.target, decision.reason, decision.confidence);
+        // Delegate to target module — do NOT send to Nexus AI, which lacks the target's actions.
+        // Sending through Nexus AI leaves a dangling pending request ("neural transmission interrupted").
+        NexusHandoffService.store({
+          moduleId: decision.target,
+          type: 'delegate',
+          content: contentText,
+          reason: decision.reason,
+          sourceModuleId: 'nexus',
+          createdAt: new Date().toISOString(),
+        });
+        Spine.emit({
+          type: 'MODULE_DELEGATED',
+          source: 'nexus',
+          target: decision.target,
+          domain: 'system',
+          data: { content: contentText, confidence: decision.confidence, reason: decision.reason },
+          cascadeDepth: 0,
+          priority: 'info',
+        });
+        setClarificationHint(null);
+        return;
       }
     } else {
       setClarificationHint(null);
@@ -249,7 +272,7 @@ export function useNexusCoordination(input: UseNexusCoordinationInput) {
     await ai.handleSendMessage(content, onActionParsed, { threadId: currentThreadId });
     // Clear hint once the LLM has taken the message — it will handle disambiguation itself.
     setClarificationHint(null);
-  }, [ai, currentThreadId, presentRoutingSuggestion, suggestionCount]);
+  }, [ai, currentThreadId, presentRoutingSuggestion, setClarificationHint, suggestionCount]);
 
   const handleInjectChat = useCallback((text: string) => {
     void ai.handleSendMessage(text, undefined, { threadId: currentThreadId });
