@@ -25,15 +25,16 @@ import { SchedulerService } from './lib/spine/scheduler-service';
 import { OrchestrationRetryWorkerService } from './lib/services/orchestration-retry-worker-service';
 import { Spine } from './lib/spine/spine-event-bus';
 import { useOrchestrationProfileSync } from './lib/hooks/use-orchestration-profile-sync';
-import { 
-  CORE_CASCADE_RULES, 
-  ATLAS_CASCADE_RULES, 
-  ATLAS_PLANNING_CASCADE_RULES, 
-  AGNES_CASCADE_RULES, 
-  ATLAS_FAILURE_RULES, 
-  SOMA_CASCADE_RULES, 
+import {
+  CORE_CASCADE_RULES,
+  ATLAS_CASCADE_RULES,
+  ATLAS_PLANNING_CASCADE_RULES,
+  AGNES_CASCADE_RULES,
+  ATLAS_FAILURE_RULES,
+  SOMA_CASCADE_RULES,
   TITAN_CASCADE_RULES,
-  ATLAS_MORNING_RULES
+  ATLAS_MORNING_RULES,
+  SCOUT_CASCADE_RULES
 } from './lib/spine/cascade-rules';
 import { DataLayerProvider } from './lib/data-layer/provider';
 
@@ -68,6 +69,7 @@ function SpineRuntimeBootstrap() {
     Spine.registerCascadeRules(SOMA_CASCADE_RULES);
     Spine.registerCascadeRules(TITAN_CASCADE_RULES);
     Spine.registerCascadeRules(ATLAS_MORNING_RULES);
+    Spine.registerCascadeRules(SCOUT_CASCADE_RULES);
   }, []);
 
   useEffect(() => {

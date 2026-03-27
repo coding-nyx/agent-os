@@ -787,3 +787,112 @@ export const TITAN_CASCADE_RULES: CascadeRule[] = [
 export function registerTitanCascadeRules(): void {
   Spine.registerCascadeRules(TITAN_CASCADE_RULES);
 }
+
+// ============================================================================
+// Scout Cascade Rules
+// ============================================================================
+
+/**
+ * KNOWLEDGE_SYNTHESIZED → VITAL_UPDATED
+ * A new knowledge node has been added to the research graph.
+ * Propagates as a VITAL_UPDATED so other modules (Agnes, Atlas) are aware
+ * that cognitive research load has changed.
+ */
+export const SCOUT_CASCADE_RULES: CascadeRule[] = [
+  {
+    id: 'scout-knowledge-synthesized-to-vital',
+    trigger: 'KNOWLEDGE_SYNTHESIZED' as SpineEventType,
+    condition: () => true,
+    transform: (event) => ({
+      type: 'VITAL_UPDATED' as SpineEventType,
+      domain: 'C' as const,
+      source: 'spine-cascade:scout',
+      priority: 'info' as const,
+      data: {
+        triggeredBy: 'KNOWLEDGE_SYNTHESIZED',
+        nodeId: event.data.nodeId,
+        claim: event.data.claim,
+        sessionId: event.data.sessionId,
+        message: 'New knowledge node added to your research graph.',
+        timestamp: new Date().toISOString(),
+      },
+    }),
+  },
+
+  /**
+   * DEEP_RESEARCH_COMPLETED → VITAL_UPDATED
+   * A deep research session has finished. Emit VITAL_UPDATED so other modules
+   * can observe the shift in cognitive research state.
+   */
+  {
+    id: 'scout-deep-research-completed-to-vital',
+    trigger: 'DEEP_RESEARCH_COMPLETED' as SpineEventType,
+    condition: () => true,
+    transform: (event) => ({
+      type: 'VITAL_UPDATED' as SpineEventType,
+      domain: 'C' as const,
+      source: 'spine-cascade:scout',
+      priority: 'info' as const,
+      data: {
+        triggeredBy: 'DEEP_RESEARCH_COMPLETED',
+        nodeId: event.data.nodeId,
+        query: event.data.query,
+        message: `Deep research complete: "${event.data.query}"`,
+        timestamp: new Date().toISOString(),
+      },
+    }),
+  },
+
+  /**
+   * DIGEST_GENERATED → VITAL_UPDATED
+   * A research digest has been produced. Surface as VITAL_UPDATED so the
+   * broader platform knows a synthesis artifact is available.
+   */
+  {
+    id: 'scout-digest-generated-to-vital',
+    trigger: 'DIGEST_GENERATED' as SpineEventType,
+    condition: () => true,
+    transform: (event) => ({
+      type: 'VITAL_UPDATED' as SpineEventType,
+      domain: 'C' as const,
+      source: 'spine-cascade:scout',
+      priority: 'info' as const,
+      data: {
+        triggeredBy: 'DIGEST_GENERATED',
+        digestId: event.data.digestId,
+        generatedAt: event.data.generatedAt,
+        message: 'A new research digest is ready for review.',
+        timestamp: new Date().toISOString(),
+      },
+    }),
+  },
+
+  /**
+   * SCOUT_PROFILE_UPDATED → VITAL_UPDATED
+   * Research profile metrics have changed (load, depth, diversity).
+   * Propagate as VITAL_UPDATED for downstream consumers tracking cognitive state.
+   */
+  {
+    id: 'scout-profile-updated-to-vital',
+    trigger: 'SCOUT_PROFILE_UPDATED' as SpineEventType,
+    condition: () => true,
+    transform: (event) => ({
+      type: 'VITAL_UPDATED' as SpineEventType,
+      domain: 'C' as const,
+      source: 'spine-cascade:scout',
+      priority: 'info' as const,
+      data: {
+        triggeredBy: 'SCOUT_PROFILE_UPDATED',
+        onboardingComplete: event.data.onboardingComplete,
+        researchLoad: (event.data.metrics as Record<string, unknown>)?.researchLoad,
+        researchDepth: (event.data.metrics as Record<string, unknown>)?.researchDepth,
+        interestDiversity: (event.data.metrics as Record<string, unknown>)?.interestDiversity,
+        timestamp: new Date().toISOString(),
+      },
+    }),
+  },
+];
+
+export function registerScoutCascadeRules(): void {
+  Spine.registerCascadeRules(SCOUT_CASCADE_RULES);
+}
