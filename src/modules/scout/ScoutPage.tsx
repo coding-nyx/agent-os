@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useAI } from '@/llm-engine/ai-context';
 import type { MessageContent } from '@/lib/types';
+import { contentToString } from '@/core/components/chat/ChatBubble';
 import { getScoutSystemPrompt } from './personas';
 import { ScoutDashboard } from './components/ScoutDashboard';
 import { UniversalUploadZone } from '@/core/components/forms/UniversalUploadZone';
@@ -527,6 +528,58 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     handleSendMessage: handleSendMessageWrapped,
   }), [ai, handleSendMessageWrapped]);
 
+  // Watermark of how many AI messages have already been written to reasoningHistory.
+  // Resets when the active session changes so prior-session messages aren't re-recorded.
+  const prevMessagesLengthRef = useRef(0);
+
+  useEffect(() => {
+    prevMessagesLengthRef.current = ai.messages.length;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    const msgs = ai.messages;
+    const prevLen = prevMessagesLengthRef.current;
+    if (!activeSession || msgs.length <= prevLen) {
+      prevMessagesLengthRef.current = msgs.length;
+      return;
+    }
+
+    const newMsgs = msgs.slice(prevLen);
+    prevMessagesLengthRef.current = msgs.length;
+
+    const newEntries = newMsgs
+      .filter((m) => m.role === 'assistant' || m.role === 'user')
+      .map((m) => ({
+        id: crypto.randomUUID(),
+        type: (m.role === 'user' ? 'user' : 'reasoning') as 'user' | 'reasoning',
+        text: contentToString(m.content),
+        timestamp: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
+      }));
+
+    if (newEntries.length === 0) return;
+
+    const existing = activeSession.reasoningHistory ?? [];
+    updateSessionFn(activeSession.id, { reasoningHistory: [...existing, ...newEntries] }).catch(() => {});
+  }, [ai.messages, activeSession, updateSessionFn]);
+
+  const handleRenameSession = useCallback(
+    async (sessionId: string, newTopic: string): Promise<void> => {
+      await updateSessionFn(sessionId, { topic: newTopic });
+    },
+    [updateSessionFn],
+  );
+
+  const handleArchiveSession = useCallback(
+    async (sessionId: string): Promise<void> => {
+      await updateSessionFn(sessionId, { archived: true });
+      if (activeSessionId === sessionId) {
+        setActiveSessionId(null);
+      }
+    },
+    [updateSessionFn, activeSessionId],
+  );
+
   const handleStartSession = useCallback(() => {
     setIsNewSessionDialogOpen(true);
   }, []);
@@ -569,7 +622,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           <p className="mt-1 text-body-secondary">Open a session to continue an inquiry or review the latest status.</p>
         </div>
         <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/60">
-          {sessions.length}
+          {sessions.filter((s) => !s.archived).length}
         </span>
       </div>
 
@@ -597,6 +650,8 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 sessions={sessions}
                 onSelect={handleSelectSession}
                 onDelete={deleteSessionFn}
+                onRename={handleRenameSession}
+                onArchive={handleArchiveSession}
                 activeSessionId={activeSessionId ?? undefined}
               />
             )}
