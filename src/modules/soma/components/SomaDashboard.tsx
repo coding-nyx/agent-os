@@ -255,7 +255,7 @@ function QuickEntryChips({ uid, getMasterKey, allReadings, onAddVitalReading }: 
                   <span className="text-sm font-semibold text-white">
                     Log {activeChip.label}
                   </span>
-                  <span className="text-xs text-white/40">{activeChip.unit}</span>
+                  <span className="text-[11px] text-white/50">{activeChip.unit}</span>
                 </div>
                 <NeuralButton
                   variant="ghost"
@@ -469,7 +469,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
             <Activity className="w-6 h-6 text-[var(--module-color-400)]" />
             <div>
               <h2 className="text-2xl font-bold text-white tracking-tight font-display">Physical Readiness</h2>
-              <p className="text-sm text-white/60">Soma readiness score</p>
+              <p className="text-sm text-white/68">Soma readiness score</p>
             </div>
           </div>
           <NeuralButton variant="ghost" themeColor="module" onClick={toggleAIPanel} className="text-xs font-semibold h-auto min-h-0 py-1">{showAIPanel ? 'Hide' : 'Show'} AI Insights</NeuralButton>
@@ -479,12 +479,12 @@ export const SomaDashboard = React.memo(function SomaDashboard({
             {hasReadinessData ? (
               <ProgressRing percentage={readinessScore} size={140} strokeWidth={12} label="Readiness" color={readinessScore >= 80 ? 'green' : readinessScore >= 60 ? 'amber' : 'orange'} />
             ) : (
-              <div className="w-[140px] h-[140px] rounded-full border border-white/10 bg-white/[0.02] flex items-center justify-center text-xs text-white/40 text-center px-4">No readiness data yet</div>
+              <div className="w-[140px] h-[140px] rounded-full border border-white/[0.09] bg-white/[0.045] flex items-center justify-center text-[11px] text-white/50 text-center px-4">No readiness data yet</div>
             )}
           </div>
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5"><p className="text-xs text-white/40 uppercase tracking-wider mb-1">Biomarkers</p><p className="text-2xl font-bold text-white">{profile.biomarkers.length}</p></div>
-            <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5"><p className="text-xs text-white/40 uppercase tracking-wider mb-1">Clearances</p><p className="text-2xl font-bold text-white">{profile.clearances.filter(c => c.status === 'granted').length}</p></div>
+            <div className="bg-white/[0.045] rounded-xl p-4 border border-white/[0.09] shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]"><p className="text-[11px] text-white/50 uppercase tracking-wider mb-1">Biomarkers</p><p className="text-2xl font-bold text-white">{profile.biomarkers.length}</p></div>
+            <div className="bg-white/[0.045] rounded-xl p-4 border border-white/[0.09] shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]"><p className="text-[11px] text-white/50 uppercase tracking-wider mb-1">Clearances</p><p className="text-2xl font-bold text-white">{profile.clearances.filter(c => c.status === 'granted').length}</p></div>
           </div>
         </div>
       </SurfaceCard>
@@ -538,11 +538,11 @@ export const SomaDashboard = React.memo(function SomaDashboard({
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-black uppercase tracking-widest text-[var(--module-color-400)]">Active Analysis</p>
-                <p className="text-[11px] text-white/40 mt-0.5">{itemsCount} items extracted</p>
+                <p className="text-[11px] text-white/50 mt-0.5">{itemsCount} items extracted</p>
               </div>
             </div>
             <div className="flex gap-2">
-              <NeuralButton variant="ghost" onClick={diagnosis.resetDiagnosis} className="px-3 py-1.5 text-[11px] text-white/40">Reset</NeuralButton>
+              <NeuralButton variant="ghost" onClick={diagnosis.resetDiagnosis} className="px-3 py-1.5 text-[11px] text-white/50">Reset</NeuralButton>
               <NeuralButton variant="secondary" themeColor="module" onClick={diagnosis.endDiagnosis} className="px-3 py-1.5 text-[11px] font-bold">Review & Merge</NeuralButton>
             </div>
           </motion.div>
@@ -639,7 +639,7 @@ export const SomaDashboard = React.memo(function SomaDashboard({
 
       <div className="px-4 md:px-8 pt-6 pb-2 md:pb-4">
         <h1 className="text-2xl font-bold text-white tracking-tight font-display">Soma</h1>
-        <p className="text-sm text-white/60 mt-1">Physical readiness & biometric tracking</p>
+        <p className="text-sm text-white/68 mt-1">Physical readiness & biometric tracking</p>
       </div>
 
       <div className="px-4 md:px-8 pb-3 md:pb-6 border-b border-white/5">

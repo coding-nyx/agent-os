@@ -1323,7 +1323,7 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                     <p className="text-lg font-mono text-cyan-300">${visionReviewData.monthlyIncome.toLocaleString()}</p>
                   </div>
                 )}
-                <p className="text-xs text-white/50 italic">Extracted document data is ready for profile commitment.</p>
+                <p className="text-sm text-white/68 italic">Extracted document data is ready for profile commitment.</p>
               </div>
             )}
             <div className="flex gap-3 pt-4 border-t border-white/10">
@@ -1349,16 +1349,16 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
               <div className="space-y-4">
                 <p className="text-sm text-white/70">{docProposalSummary ?? 'Document analysis ready for review.'}</p>
                 <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Extracted Fields</h4>
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-white/60 mb-2">Extracted Fields</h4>
                   {Object.entries(docProposal.fields).filter(([, v]) => v.length > 0).length === 0 ? (
-                    <p className="text-xs text-white/40 italic">No structured fields detected.</p>
+                    <p className="text-sm text-white/50 italic">No structured fields detected.</p>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-white/70">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-white/68">
                       {Object.entries(docProposal.fields)
                         .filter(([, v]) => v.length > 0)
                         .map(([k, v]) => (
                           <div key={k} className="flex justify-between gap-3">
-                            <span className="text-white/50">{k}</span>
+                            <span className="text-white/60">{k}</span>
                             <span className="font-mono text-cyan-300">{v}</span>
                           </div>
                         ))}
@@ -1366,7 +1366,7 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                   )}
                 </div>
                 <div className="bg-black/30 border border-white/10 rounded-xl p-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2">Text Preview</h4>
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-white/60 mb-2">Text Preview</h4>
                   <pre className="text-[11px] text-white/50 whitespace-pre-wrap max-h-48 overflow-y-auto">
                     {docProposal.rawTextPreview}
                     {docProposal.rawTextPreview.length >= 2400 ? '\n[truncated]' : ''}
@@ -1521,13 +1521,13 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                             const tier = latest.score >= 800 ? 'Exceptional' : latest.score >= 740 ? 'Very Good' : latest.score >= 670 ? 'Good' : latest.score >= 580 ? 'Fair' : 'Poor';
                             const color = latest.score >= 740 ? '#10b981' : latest.score >= 670 ? '#3b82f6' : latest.score >= 580 ? '#f59e0b' : '#ef4444';
                             return (
-                              <button onClick={() => setActiveTab('credit')} className="text-left rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 transition-colors p-4">
+                              <button onClick={() => setActiveTab('credit')} className="text-left rounded-xl border border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.07] transition-colors p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className="text-lg">🛡️</span>
-                                  <span className="text-xs text-white/50 font-medium uppercase tracking-wide">Credit Score</span>
+                                  <span className="text-xs text-white/60 font-medium uppercase tracking-wide">Credit Score</span>
                                 </div>
                                 <div className="text-2xl font-bold" style={{ color }}>{latest.score}</div>
-                                <div className="text-xs text-white/50 mt-0.5">{tier} · {latest.bureau}</div>
+                                <div className="text-xs text-white/60 mt-0.5">{tier} · {latest.bureau}</div>
                               </button>
                             );
                           })()}
@@ -1542,13 +1542,13 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                               return days >= 0 && days <= 30;
                             }).length;
                             return (
-                              <button onClick={() => setActiveTab('insurance')} className="text-left rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 transition-colors p-4">
+                              <button onClick={() => setActiveTab('insurance')} className="text-left rounded-xl border border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.07] transition-colors p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className="text-lg">🔒</span>
-                                  <span className="text-xs text-white/50 font-medium uppercase tracking-wide">Insurance</span>
+                                  <span className="text-xs text-white/60 font-medium uppercase tracking-wide">Insurance</span>
                                 </div>
-                                <div className="text-2xl font-bold text-emerald-400">{fmt(totalMonthly)}<span className="text-sm font-normal text-white/40">/mo</span></div>
-                                <div className="text-xs text-white/50 mt-0.5">{active.length} policies{soonRenewing > 0 ? ` · ⚠ ${soonRenewing} renewing soon` : ''}</div>
+                                <div className="text-2xl font-bold text-emerald-400">{fmt(totalMonthly)}<span className="text-sm font-normal text-white/50">/mo</span></div>
+                                <div className="text-xs text-white/60 mt-0.5">{active.length} policies{soonRenewing > 0 ? ` · ⚠ ${soonRenewing} renewing soon` : ''}</div>
                               </button>
                             );
                           })()}
@@ -1558,13 +1558,13 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                             const proj = profile.lastRetirementProjection!;
                             const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: profile.currency, notation: 'compact', maximumFractionDigits: 1 }).format(n);
                             return (
-                              <button onClick={() => setActiveTab('retirement')} className="text-left rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 transition-colors p-4">
+                              <button onClick={() => setActiveTab('retirement')} className="text-left rounded-xl border border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.07] transition-colors p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className="text-lg">🏖️</span>
-                                  <span className="text-xs text-white/50 font-medium uppercase tracking-wide">Retirement</span>
+                                  <span className="text-xs text-white/60 font-medium uppercase tracking-wide">Retirement</span>
                                 </div>
                                 <div className={`text-2xl font-bold ${proj.onTrack ? 'text-emerald-400' : 'text-amber-400'}`}>{fmt(proj.projectedNestEgg)}</div>
-                                <div className="text-xs text-white/50 mt-0.5">{proj.onTrack ? '✅ On track' : '⚠ Behind'} · {proj.yearsToRetirement}y left</div>
+                                <div className="text-xs text-white/60 mt-0.5">{proj.onTrack ? '✅ On track' : '⚠ Behind'} · {proj.yearsToRetirement}y left</div>
                               </button>
                             );
                           })()}

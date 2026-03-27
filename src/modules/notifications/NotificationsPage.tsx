@@ -123,17 +123,17 @@ function FilterPill({
       variant="ghost"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 !px-3 !h-8 rounded-xl text-[11px] font-bold uppercase tracking-[0.1em] transition-all duration-200 border',
+        'flex items-center gap-1.5 !px-3 !h-9 min-h-[44px] sm:min-h-0 sm:!h-9 rounded-xl text-[11px] font-bold uppercase tracking-[0.1em] transition-all duration-200 border',
         active
           ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30'
-          : 'bg-white/[0.03] border-white/[0.06] text-white/35 hover:text-white/60 hover:bg-white/[0.06] hover:border-white/10',
+          : 'bg-white/[0.045] border-white/[0.09] text-white/50 hover:text-white/70 hover:bg-white/[0.07] hover:border-white/[0.12]',
       )}
     >
       {label}
       {count !== undefined && count > 0 && (
         <span className={cn(
-          'rounded-md px-1.5 py-0.5 text-[9px] font-black',
-          active ? 'bg-indigo-500/30 text-indigo-200' : 'bg-white/10 text-white/40',
+          'rounded-md px-1.5 py-0.5 text-[11px] font-black',
+          active ? 'bg-indigo-500/30 text-indigo-200' : 'bg-white/10 text-white/50',
         )}>
           {count}
         </span>
@@ -151,16 +151,16 @@ function EmptyInbox() {
       className="flex flex-col items-center justify-center gap-5 py-24 px-8 text-center"
     >
       <div className="relative">
-        <div className="w-20 h-20 rounded-3xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
-          <Inbox className="w-8 h-8 text-white/20" />
+        <div className="w-20 h-20 rounded-3xl bg-white/[0.045] border border-white/[0.09] flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
+          <Inbox className="w-8 h-8 text-white/35" />
         </div>
         <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
           <Check className="w-2.5 h-2.5 text-indigo-400" />
         </div>
       </div>
       <div>
-        <p className="text-sm font-semibold text-white/60 mb-1">All clear</p>
-        <p className="text-xs text-white/30 leading-relaxed max-w-[220px]">
+        <p className="text-sm font-semibold text-white/68 mb-1">All clear</p>
+        <p className="text-sm text-white/50 leading-relaxed max-w-[220px]">
           No notifications yet. Reminders and system alerts will appear here.
         </p>
       </div>
@@ -213,11 +213,11 @@ function NotificationCard({
         <div className="flex items-center gap-1.5 mb-1">
           <ModuleIcon source={source} withBackground className="w-5 h-5 shrink-0" />
           {priorityIcon(item.priority)}
-          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/40">
+          <span className="text-[11px] font-black uppercase tracking-[0.15em] text-white/50">
             {source}
           </span>
           {typeLabel && (
-            <span className="text-[10px] text-white/25 truncate">· {typeLabel}</span>
+            <span className="text-[11px] text-white/40 truncate">· {typeLabel}</span>
           )}
         </div>
 
@@ -229,7 +229,7 @@ function NotificationCard({
         </p>
 
         {body && (
-          <p className="text-[11px] text-white/35 leading-relaxed line-clamp-2 break-words">
+          <p className="text-[11px] text-white/50 leading-relaxed line-clamp-2 break-words">
             {body}
           </p>
         )}
@@ -240,8 +240,8 @@ function NotificationCard({
         className="flex items-center gap-1.5 px-3 pb-2.5"
         onClick={(e) => e.stopPropagation()}
       >
-        <Clock className="w-3 h-3 text-white/20 shrink-0" />
-        <span className="text-[10px] text-white/25 flex-1">{timeAgo(item.createdAt)}</span>
+        <Clock className="w-3 h-3 text-white/35 shrink-0" />
+        <span className="text-[11px] text-white/40 flex-1">{timeAgo(item.createdAt)}</span>
 
         {!item.read && (
           <NeuralButton
@@ -265,7 +265,7 @@ function NotificationCard({
           <NeuralButton
             variant="ghost"
             onClick={() => onNavigate(item)}
-            className="h-7 !px-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
+            className="h-7 !px-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1"
             aria-label="Open"
           >
             Open <ChevronRight className="w-3 h-3" />
@@ -314,7 +314,7 @@ function SnoozeButton({
           'w-7 h-7 flex items-center justify-center rounded-lg border transition-all',
           snoozed
             ? 'bg-amber-500/20 border-amber-500/30 text-amber-300'
-            : 'bg-white/[0.04] border-white/10 text-white/30 hover:text-white/60 hover:bg-white/[0.08]'
+            : 'bg-white/[0.045] border-white/[0.09] text-white/50 hover:text-white/70 hover:bg-white/[0.08]'
         )}
         title={snoozed ? `Snoozed (${snoozeCountdown(snoozedUntil!)}) — click to unsnooze` : 'Snooze'}
       >
@@ -331,20 +331,20 @@ function SnoozeButton({
             className="absolute right-0 top-full mt-1 z-50 w-52 bg-[#0e0e16] border border-white/10 rounded-xl shadow-xl overflow-hidden"
           >
             <div className="px-3 py-2 border-b border-white/5">
-              <p className="text-[9px] uppercase tracking-widest text-indigo-400/70 font-black mb-1">Suggested</p>
+              <p className="text-[11px] uppercase tracking-widest text-indigo-400/70 font-black mb-1">Suggested</p>
               <button
                 onClick={() => { onSnooze(item.id, computeSnoozedUntil(suggestion.option)); setOpen(false); }}
                 className="w-full text-left flex items-center justify-between group"
               >
-                <span className="text-xs font-medium text-white/70 group-hover:text-white">{suggestion.option.label}</span>
-                <span className="text-[10px] text-white/30 italic max-w-[100px] text-right leading-tight">{suggestion.reason}</span>
+                <span className="text-sm font-medium text-white/70 group-hover:text-white">{suggestion.option.label}</span>
+                <span className="text-[11px] text-white/50 italic max-w-[100px] text-right leading-tight">{suggestion.reason}</span>
               </button>
             </div>
             {SNOOZE_OPTIONS.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => { onSnooze(item.id, computeSnoozedUntil(opt)); setOpen(false); }}
-                className="w-full text-left px-3 py-2 text-xs text-white/50 hover:text-white hover:bg-white/[0.05] transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.05] transition-colors flex items-center gap-2 min-h-[44px]"
               >
                 <Clock className="w-3 h-3 shrink-0" />
                 {opt.label}
@@ -599,20 +599,20 @@ export default function NotificationsPage() {
           <NeuralButton
             variant="ghost"
             onClick={() => navigate(-1)}
-            className="w-9 h-9 !px-0 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06]"
+            className="w-11 h-11 !px-0 rounded-xl bg-white/[0.045] hover:bg-white/[0.08] border border-white/[0.09]"
             aria-label="Go back"
           >
             <ArrowLeft className="w-4 h-4 text-white/60" />
           </NeuralButton>
 
           <div className="flex-1 min-w-0">
-            <p className="text-[9px] uppercase tracking-[0.25em] text-indigo-400/70 font-black leading-none mb-0.5">
+            <p className="text-[11px] uppercase tracking-[0.25em] text-indigo-400/70 font-black leading-none mb-0.5">
               System
             </p>
             <h1 className="text-base font-black italic uppercase tracking-tight text-white leading-none flex items-center gap-2">
               Notifications
               {unreadCount > 0 && (
-                <span className="text-[10px] font-black not-italic normal-case tracking-wide bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-full px-2 py-0.5">
+                <span className="text-[11px] font-black not-italic normal-case tracking-wide bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-full px-2 py-0.5">
                   {unreadCount} new
                 </span>
               )}
@@ -635,10 +635,10 @@ export default function NotificationsPage() {
               variant="ghost"
               onClick={() => setShowAI(v => !v)}
               className={cn(
-                'w-9 h-9 !px-0 rounded-xl border transition-all',
+                'w-11 h-11 !px-0 rounded-xl border transition-all',
                 showAI
                   ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300'
-                  : 'bg-white/[0.04] border-white/[0.06] text-white/40 hover:text-white/70'
+                  : 'bg-white/[0.045] border-white/[0.09] text-white/50 hover:text-white/70'
               )}
               aria-label="AI triage assistant"
             >
@@ -648,10 +648,10 @@ export default function NotificationsPage() {
               <NeuralButton
                 variant="ghost"
                 onClick={() => setConfirmClearAll(true)}
-                className="w-9 h-9 !px-0 rounded-xl bg-white/[0.04] hover:bg-rose-500/10 border border-white/[0.06] hover:border-rose-500/20"
+                className="w-11 h-11 !px-0 rounded-xl bg-white/[0.045] hover:bg-rose-500/10 border border-white/[0.09] hover:border-rose-500/20"
                 aria-label="Clear all notifications"
               >
-                <Trash2 className="w-3.5 h-3.5 text-white/40 hover:text-rose-400 transition-colors" />
+                <Trash2 className="w-3.5 h-3.5 text-white/50 hover:text-rose-400 transition-colors" />
               </NeuralButton>
             )}
           </div>
@@ -724,13 +724,13 @@ export default function NotificationsPage() {
               exit={{ opacity: 0, y: -8 }}
               className="flex items-center gap-2 mb-3 px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 backdrop-blur-xl"
             >
-              <span className="text-xs text-white/60 font-medium flex-1">
+              <span className="text-sm text-white/68 font-medium flex-1">
                 {selectedIds.size} selected
               </span>
-              <NeuralButton variant="ghost" size="sm" onClick={selectAll} className="text-xs text-white/40 hover:text-white/70">
+              <NeuralButton variant="ghost" size="sm" onClick={selectAll} className="text-[11px] text-white/50 hover:text-white/70">
                 All {filtered.length}
               </NeuralButton>
-              <NeuralButton variant="ghost" size="sm" onClick={clearSelection} className="text-xs text-white/40 hover:text-white/70">
+              <NeuralButton variant="ghost" size="sm" onClick={clearSelection} className="text-[11px] text-white/50 hover:text-white/70">
                 Clear
               </NeuralButton>
               <NeuralButton
@@ -777,8 +777,8 @@ export default function NotificationsPage() {
                     animate={{ opacity: 1 }}
                     className="flex flex-col items-center gap-3 py-20 text-center"
                   >
-                    <BellOff className="w-7 h-7 text-white/15" />
-                    <p className="text-xs text-white/30">No {filter === 'unread' ? 'unread' : 'alert'} notifications</p>
+                    <BellOff className="w-7 h-7 text-white/30" />
+                    <p className="text-sm text-white/50">No {filter === 'unread' ? 'unread' : 'alert'} notifications</p>
                   </motion.div>
                 )
               ) : (
@@ -831,10 +831,10 @@ export default function NotificationsPage() {
             <div className={cn('space-y-3', isWide ? 'max-h-[calc(100dvh-170px)] overflow-y-auto pr-1 no-scrollbar' : '')}>
 
               {/* Quiet Hours / DND */}
-              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
                 <div className="flex items-center gap-2 mb-3">
                   <Moon className="w-3.5 h-3.5 text-indigo-400" />
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/50 font-semibold flex-1">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/68 font-semibold flex-1">
                     Quiet Hours / DND
                   </p>
                   <NeuralToggle
@@ -849,31 +849,31 @@ export default function NotificationsPage() {
                     {isInQuietHours(quietHours) && (
                       <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
                         <Moon className="w-3 h-3 text-amber-400 shrink-0" />
-                        <span className="text-xs text-amber-300">DND active right now</span>
+                        <span className="text-sm text-amber-300">DND active right now</span>
                       </div>
                     )}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[10px] text-white/40 mb-1">From</label>
+                        <label className="block text-[11px] text-white/50 mb-1">From</label>
                         <input
                           type="time"
                           value={quietHours.from}
                           onChange={e => setQuietHours(q => ({ ...q, from: e.target.value, updatedAt: new Date().toISOString() }))}
-                          className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/70 focus:outline-none focus:border-indigo-500/40"
+                          className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white/70 focus:outline-none focus:border-indigo-500/40 min-h-[44px]"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-white/40 mb-1">To</label>
+                        <label className="block text-[11px] text-white/50 mb-1">To</label>
                         <input
                           type="time"
                           value={quietHours.to}
                           onChange={e => setQuietHours(q => ({ ...q, to: e.target.value, updatedAt: new Date().toISOString() }))}
-                          className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/70 focus:outline-none focus:border-indigo-500/40"
+                          className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white/70 focus:outline-none focus:border-indigo-500/40 min-h-[44px]"
                         />
                       </div>
                     </div>
                     <div>
-                      <p className="text-[10px] text-white/40 mb-1.5">Exempt modules (always delivered)</p>
+                      <p className="text-[11px] text-white/50 mb-1.5">Exempt modules (always delivered)</p>
                       <div className="flex flex-wrap gap-1.5">
                         {(['agnes', 'atlas', 'titan', 'soma', 'ledger', 'scout', 'forge'] as const).map(mod => {
                           const isExempt = quietHours.exemptModules.includes(mod);
@@ -888,10 +888,10 @@ export default function NotificationsPage() {
                                 updatedAt: new Date().toISOString(),
                               }))}
                               className={cn(
-                                'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border transition-all',
+                                'px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide border transition-all min-h-[36px]',
                                 isExempt
                                   ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300'
-                                  : 'bg-white/[0.03] border-white/[0.06] text-white/30 hover:text-white/50'
+                                  : 'bg-white/[0.045] border-white/[0.09] text-white/50 hover:text-white/68'
                               )}
                             >
                               {mod}
@@ -902,31 +902,31 @@ export default function NotificationsPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-white/25">Enable to suppress non-critical notifications during set hours.</p>
+                  <p className="text-sm text-white/50">Enable to suppress non-critical notifications during set hours.</p>
                 )}
               </div>
 
               {/* Presets */}
-              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-white/50 font-semibold mb-3">
+              <div className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-white/68 font-semibold mb-3">
                   Presets
                 </p>
                 <div className="space-y-1.5">
                   {mergedPresets.map((p) => (
                     <div
                       key={p.scheduleId}
-                      className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2 transition-all hover:border-white/10"
+                      className="flex items-center gap-2.5 rounded-xl border border-white/[0.09] bg-white/[0.03] px-3 py-2.5 transition-all hover:border-white/[0.12]"
                     >
                       <ModuleIcon source={p.moduleId} withBackground className="w-5 h-5 shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className={cn('text-xs font-semibold truncate leading-none mb-0.5', p.config.enabled ? 'text-white/80' : 'text-white/35')}>
+                        <p className={cn('text-sm font-semibold truncate leading-none mb-0.5', p.config.enabled ? 'text-white/80' : 'text-white/50')}>
                           {p.config.messageTemplate.title}
                         </p>
-                        <p className="text-[10px] text-white/35">
+                        <p className="text-[11px] text-white/50">
                           {recurrenceSummary(p.config.recurrence)}
                         </p>
                       </div>
-                      <span className={cn('text-[8px] font-black uppercase px-1.5 py-0.5 rounded border shrink-0', moduleTextColor(p.moduleId), 'bg-white/[0.03]')}>
+                      <span className={cn('text-[11px] font-black uppercase px-1.5 py-0.5 rounded border shrink-0', moduleTextColor(p.moduleId), 'bg-white/[0.045]')}>
                         {p.moduleId}
                       </span>
                       <NeuralToggle
@@ -943,30 +943,30 @@ export default function NotificationsPage() {
               </div>
 
               {/* Nexus Reminders */}
-              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/50 font-semibold">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/68 font-semibold">
                     Nexus Reminders
                   </p>
                   {agentSchedules.length > 0 && (
-                    <span className="text-[10px] text-white/30">{agentSchedules.length}</span>
+                    <span className="text-[11px] text-white/50">{agentSchedules.length}</span>
                   )}
                 </div>
                 {agentSchedules.length === 0 ? (
-                  <p className="text-xs text-white/25">No agent-created reminders yet.</p>
+                  <p className="text-sm text-white/50">No agent-created reminders yet.</p>
                 ) : (
                   <div className="space-y-1.5">
                     {agentSchedules.map((s) => (
                       <div
                         key={s.id}
-                        className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2 transition-all hover:border-white/10"
+                        className="flex items-center gap-2.5 rounded-xl border border-white/[0.09] bg-white/[0.03] px-3 py-2.5 transition-all hover:border-white/[0.12]"
                       >
                         <ModuleIcon source={s.moduleId} withBackground className="w-5 h-5 shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <p className={cn('text-xs font-semibold truncate leading-none mb-0.5', s.enabled ? 'text-white/80' : 'text-white/35')}>
+                          <p className={cn('text-sm font-semibold truncate leading-none mb-0.5', s.enabled ? 'text-white/80' : 'text-white/50')}>
                             {s.messageTemplate?.title || 'Reminder'}
                           </p>
-                          <p className="text-[10px] text-white/35">
+                          <p className="text-[11px] text-white/50">
                             {recurrenceSummary(s.recurrence)}
                           </p>
                         </div>
@@ -980,7 +980,7 @@ export default function NotificationsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setDeleteScheduleTarget({ id: s.id, title: s.messageTemplate?.title || 'Reminder' })}
-                          className="h-7 w-7 p-0 text-white/20 hover:text-rose-400"
+                          className="h-7 w-7 p-0 text-white/40 hover:text-rose-400"
                           aria-label={`Delete reminder ${s.messageTemplate?.title || 'Reminder'}`}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -992,10 +992,10 @@ export default function NotificationsPage() {
               </div>
 
               {/* Your Reminders */}
-              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-white/50 font-semibold">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/68 font-semibold">
                       Your Reminders
                     </p>
                     <NeuralButton
@@ -1008,24 +1008,24 @@ export default function NotificationsPage() {
                     </NeuralButton>
                   </div>
                   {userSchedules.length > 0 && (
-                    <span className="text-[10px] text-white/30">{userSchedules.length}</span>
+                    <span className="text-[11px] text-white/50">{userSchedules.length}</span>
                   )}
                 </div>
                 {userSchedules.length === 0 ? (
-                  <p className="text-xs text-white/25">No custom reminders yet. Use + to create one.</p>
+                  <p className="text-sm text-white/50">No custom reminders yet. Use + to create one.</p>
                 ) : (
                   <div className="space-y-1.5">
                     {userSchedules.map((s) => (
                       <div
                         key={s.id}
-                        className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2 transition-all hover:border-white/10"
+                        className="flex items-center gap-2.5 rounded-xl border border-white/[0.09] bg-white/[0.03] px-3 py-2.5 transition-all hover:border-white/[0.12]"
                       >
                         <ModuleIcon source={s.moduleId} withBackground className="w-5 h-5 shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <p className={cn('text-xs font-semibold truncate leading-none mb-0.5', s.enabled ? 'text-white/80' : 'text-white/35')}>
+                          <p className={cn('text-sm font-semibold truncate leading-none mb-0.5', s.enabled ? 'text-white/80' : 'text-white/50')}>
                             {s.messageTemplate?.title || 'Reminder'}
                           </p>
-                          <p className="text-[10px] text-white/35">
+                          <p className="text-[11px] text-white/50">
                             {recurrenceSummary(s.recurrence)}
                           </p>
                         </div>
@@ -1039,7 +1039,7 @@ export default function NotificationsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setDeleteScheduleTarget({ id: s.id, title: s.messageTemplate?.title || 'Reminder' })}
-                          className="h-7 w-7 p-0 text-white/20 hover:text-rose-400"
+                          className="h-7 w-7 p-0 text-white/40 hover:text-rose-400"
                           aria-label={`Delete reminder ${s.messageTemplate?.title || 'Reminder'}`}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1058,14 +1058,14 @@ export default function NotificationsPage() {
       {!loading && items.length > 0 && (
         <div className="shrink-0 border-t border-white/[0.04] px-4 py-3">
           <div className={cn('mx-auto flex items-center gap-2', isWide ? 'max-w-5xl' : 'max-w-2xl')}>
-            <Bell className="w-3 h-3 text-white/20 shrink-0" />
-            <p className="text-[10px] text-white/20">
+            <Bell className="w-3 h-3 text-white/35 shrink-0" />
+            <p className="text-[11px] text-white/40">
               {items.length} notification{items.length !== 1 ? 's' : ''}
               {unreadCount > 0 ? ` · ${unreadCount} unread` : ' · all read'}
             </p>
             <div className="ml-auto flex items-center gap-1">
-              <Zap className="w-2.5 h-2.5 text-indigo-400/40" />
-              <span className="text-[9px] uppercase tracking-[0.15em] text-indigo-400/30 font-black">
+              <Zap className="w-2.5 h-2.5 text-indigo-400/50" />
+              <span className="text-[11px] uppercase tracking-[0.15em] text-indigo-400/50 font-black">
                 Nexus Inbox
               </span>
             </div>

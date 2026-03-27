@@ -66,8 +66,8 @@ export function BootLoader({ message = "Loading..." }: BootLoaderProps) {
 
           {/* Label */}
           <p
-            className="text-[10px] font-medium tracking-[0.3em] uppercase"
-            style={{ color: 'rgba(255,255,255,0.22)' }}
+            className="text-[11px] font-medium tracking-[0.22em] uppercase"
+            style={{ color: 'rgba(255,255,255,0.38)' }}
           >
             {message}
           </p>

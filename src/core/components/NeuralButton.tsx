@@ -110,24 +110,22 @@ const NeuralButtonImpl = React.forwardRef<any, NeuralButtonProps>(function Neura
   };
 
   const sizes = {
-    sm: 'h-9 min-h-[44px] sm:min-h-0 px-4.5 text-[11px]',
-    md: 'h-10 min-h-[44px] sm:min-h-0 px-6 text-sm',
-    lg: 'h-12 px-8 text-base',
-    xl: 'h-13 px-10 text-base'
+    sm: 'h-9 min-h-[44px] px-4 text-[12px] tracking-[0.03em]',
+    md: 'h-10 min-h-[44px] px-5 text-sm',
+    lg: 'h-12 min-h-[44px] px-8 text-base',
+    xl: 'h-13 min-h-[48px] px-10 text-base'
   };
-  const orangeSizes = {
-    sm: 'h-8 min-h-[40px] sm:min-h-0 px-3.5 text-[10px]',
-    md: 'h-9 min-h-[42px] sm:min-h-0 px-5 text-[13px]',
-    lg: 'h-10 px-6 text-sm',
-    xl: 'h-11 px-7 text-sm'
-  };
-  const iconOnlySize = themeColor === 'orange' ? 'h-10 w-10 p-0' : 'h-11 w-11 p-0';
-  const resolvedSizes = themeColor === 'orange' ? orangeSizes : sizes;
+  const iconOnlySize = 'h-11 w-11 min-h-[44px] min-w-[44px] p-0';
+  const resolvedSizes = sizes;
 
   const Component = as === 'div' ? motion.div : as === 'span' ? motion.span : motion.button;
   const isDisabled = Boolean(disabled || loading);
   const motionScaleProps: HTMLMotionProps<'button'> | {} =
-    !isDisabled ? { whileHover: { scale: 1.02 }, whileTap: { scale: 0.98 } } : {};
+    !isDisabled ? {
+      whileHover: { scale: 1.015 },
+      whileTap: { scale: 0.97 },
+      transition: { type: 'spring', stiffness: 500, damping: 30 }
+    } : {};
   const overflowClass = iconOnly || allowOverflow ? 'overflow-visible' : 'overflow-hidden';
   const resolvedChildren = React.Children.map(children as React.ReactNode, (child) => {
     if (typeof child === 'function') {
@@ -153,7 +151,7 @@ const NeuralButtonImpl = React.forwardRef<any, NeuralButtonProps>(function Neura
     <Component
       ref={ref}
       className={cn(
-        'relative isolate font-medium tracking-[0.04em] rounded-button border transition-all duration-300 flex items-center justify-center group disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none whitespace-nowrap',
+        'relative isolate font-medium tracking-[0.04em] rounded-button border transition-all duration-200 flex items-center justify-center group disabled:opacity-35 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none whitespace-nowrap cursor-pointer',
         overflowClass,
         variants[variant],
         iconOnly ? iconOnlySize : resolvedSizes[size],

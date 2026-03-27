@@ -87,9 +87,9 @@ export function NeuralModal({
                     className={cn(
                       "relative w-full overflow-hidden flex flex-col bg-[#05050a] pointer-events-auto",
                       // Mobile: bottom-sheet shape
-                      "rounded-t-3xl border-t border-x border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] max-h-[85vh]",
+                      "rounded-t-3xl border-t border-x border-white/[0.10] shadow-[0_-12px_50px_rgba(0,0,0,0.65)] max-h-[90vh]",
                       // Desktop: centered modal shape
-                      "sm:rounded-modal sm:border sm:shadow-[0_0_50px_rgba(0,0,0,0.5)] sm:max-h-[calc(100dvh-2rem)]",
+                      "sm:rounded-modal sm:border sm:shadow-[0_20px_60px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.08)] sm:max-h-[calc(100dvh-2rem)]",
                       widths[maxWidth]
                     )}
                   >
@@ -120,7 +120,7 @@ export function NeuralModal({
                               {title}
                             </Dialog.Title>
                             {subtitle && (
-                              <p className="text-white/35 text-[10px] sm:text-[11px] uppercase font-semibold tracking-[0.15em] mt-0.5 sm:mt-1 truncate">
+                              <p className="text-white/50 text-[11px] sm:text-[12px] uppercase font-semibold tracking-[0.12em] mt-1 truncate">
                                 {subtitle}
                               </p>
                             )}

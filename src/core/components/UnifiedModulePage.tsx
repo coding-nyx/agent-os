@@ -154,8 +154,8 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
             {/* Module name + sweep line */}
             <div className="flex flex-col items-center gap-3">
               <p
-                className="text-[10px] font-semibold tracking-[0.32em] uppercase"
-                style={{ color: 'rgba(255,255,255,0.22)' }}
+                className="text-[11px] font-semibold tracking-[0.25em] uppercase"
+                style={{ color: 'rgba(255,255,255,0.35)' }}
               >
                 {manifest.alias}
               </p>

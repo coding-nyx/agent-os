@@ -11,58 +11,71 @@ export const ModuleCard = React.memo(function ModuleCard({
   return (
     <motion.button
       onClick={onClick}
-      whileHover={{ y: -6, scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ y: -5, scale: 1.015 }}
+      whileTap={{ scale: 0.975 }}
       aria-label={`Open ${title} module`}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 26 }}
       className={cn(
-        "group relative rounded-[32px] border transition-all text-left overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/50",
-        isPlugin ? "p-6 w-full shrink-0" : "p-6 sm:p-8",
+        "group relative rounded-[28px] border transition-colors duration-200 text-left overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-black",
+        isPlugin ? "p-5 w-full shrink-0" : "p-5 sm:p-7",
         isLocked
-          ? "bg-white/[0.03] border-white/[0.07] opacity-60 hover:opacity-75"
-          : "bg-black/60 backdrop-blur-3xl border-white/20 hover:border-white/30 hover:bg-white/[0.05] shadow-2xl"
+          ? "bg-white/[0.028] border-white/[0.07] opacity-55 hover:opacity-70 cursor-not-allowed"
+          : [
+              "bg-[rgba(255,255,255,0.048)] backdrop-blur-3xl border-white/[0.12]",
+              "hover:border-white/[0.22] hover:bg-[rgba(255,255,255,0.065)]",
+              "shadow-[0_4px_20px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]",
+              "hover:shadow-[0_8px_32px_rgba(0,0,0,0.40),inset_0_1px_0_rgba(255,255,255,0.14)]",
+            ]
       )}
     >
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none">
-        <div className="absolute inset-0 hub-card-sheen" />
-      </div>
+      {/* Hover sheen */}
+      {!isLocked && (
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none overflow-hidden rounded-[inherit]">
+          <div className="absolute inset-0 hub-card-sheen" />
+        </div>
+      )}
       <div className="relative z-10">
         <div className={cn(
-          "rounded-2xl border flex items-center justify-center transition-all shadow-inner",
-          isPlugin ? "w-10 h-10 mb-4 bg-white/5 border-white/10" : "w-16 h-16 mb-6 bg-white/10 border-white/20 group-hover:scale-110 group-hover:rotate-3",
-          isLocked ? "bg-white/[0.06] border-white/[0.08]" : ""
+          "rounded-2xl border flex items-center justify-center transition-all duration-300",
+          isPlugin
+            ? "w-10 h-10 mb-3.5 bg-white/[0.06] border-white/[0.10]"
+            : "w-14 h-14 mb-5 bg-white/[0.08] border-white/[0.15] group-hover:scale-105 group-hover:rotate-2",
+          isLocked && "opacity-50"
         )}>
-          <Icon className={isPlugin ? "w-5 h-5" : "w-8 h-8"} style={{ color: isLocked ? '#666' : color }} />
+          <Icon
+            className={isPlugin ? "w-5 h-5" : "w-7 h-7"}
+            style={{ color: isLocked ? 'rgba(255,255,255,0.35)' : color }}
+          />
         </div>
         <h3 className={cn(
-          "font-bold tracking-[0.1em] text-white mb-3 uppercase font-display transition-colors truncate",
-          isPlugin ? "text-lg" : "text-2xl",
-          !isLocked && "group-hover:text-white"
+          "font-bold tracking-[0.08em] text-white/95 uppercase font-display transition-colors duration-200 truncate",
+          isPlugin ? "text-base mb-1.5" : "text-xl sm:text-2xl mb-2.5",
         )}>
           {title}
         </h3>
         {!isPlugin && (
-          <p className="text-[13px] text-white/60 font-medium leading-relaxed line-clamp-2 mb-6 group-hover:text-white/80 transition-colors">
+          <p className="text-[13px] text-white/55 font-medium leading-relaxed line-clamp-2 mb-5 group-hover:text-white/75 transition-colors duration-200">
             {description}
           </p>
         )}
         {stat && (
           <div className={cn(
-            "flex items-center justify-between border-t border-white/10",
-            isPlugin ? "mt-4 pt-4" : "mt-2 pt-6"
+            "flex items-center justify-between border-t border-white/[0.08]",
+            isPlugin ? "mt-3.5 pt-3.5" : "mt-1 pt-5"
           )}>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-black">{stat.label}</span>
-            <div className="flex items-center gap-3">
-              <div className={cn("w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_currentColor]", toneClass(stat.tone))} />
-              <span className={cn("text-sm font-bold tracking-widest font-display", toneTextClass(stat.tone))}>
+            <span className="text-[11px] uppercase tracking-[0.15em] text-white/45 font-semibold truncate">{stat.label}</span>
+            <div className="flex items-center gap-2 shrink-0 ml-2">
+              <div className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor]", toneClass(stat.tone))} />
+              <span className={cn("text-[13px] font-bold tabular-nums font-display", toneTextClass(stat.tone))}>
                 {stat.display}
               </span>
             </div>
           </div>
         )}
       </div>
-      <div className="absolute top-0 right-0 p-8 opacity-[0.05] group-hover:opacity-[0.12] transition-opacity">
-        <Icon className={isPlugin ? "w-20 h-20" : "w-32 h-32"} style={{ color: isLocked ? '#444' : color }} />
+      {/* Background watermark icon */}
+      <div className="absolute top-0 right-0 p-6 opacity-[0.04] group-hover:opacity-[0.10] transition-opacity duration-400 pointer-events-none">
+        <Icon className={isPlugin ? "w-16 h-16" : "w-28 h-28"} style={{ color: isLocked ? '#333' : color }} />
       </div>
     </motion.button>
   );
@@ -80,43 +93,55 @@ export function CardsView({ modules, moduleAccess, moduleStats, displayNames, on
   return (
     <motion.div
       key="cards"
-      initial={{ opacity: 0, filter: 'blur(8px)' }}
-      animate={{ opacity: 1, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, filter: 'blur(8px)' }}
-      transition={{ duration: 0.5 }}
-      className="flex-1 pointer-events-auto overflow-y-auto no-scrollbar pt-4 px-6 pb-40 flex flex-col"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="flex-1 pointer-events-auto overflow-y-auto no-scrollbar pt-4 px-4 sm:px-6 pb-36 flex flex-col"
     >
-      <div className="flex-1 flex flex-col justify-center max-w-[1200px] mx-auto w-full mb-20">
+      <div className="flex-1 flex flex-col justify-center max-w-[1200px] mx-auto w-full mb-16">
         {/* Daily Brief — Wellness at a Glance */}
         <DailyBrief />
 
-        <div className="flex items-center gap-6 mb-10" role="heading" aria-level={2}>
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" aria-hidden="true" />
-          <h2 className="text-[11px] font-black uppercase tracking-[0.6em] text-white/60 italic drop-shadow-sm">Soul Core Interface</h2>
-          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/20 to-transparent" aria-hidden="true" />
+        <div className="flex items-center gap-4 mb-8" role="heading" aria-level={2}>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/15 to-transparent" aria-hidden="true" />
+          <h2 className="text-[12px] font-bold uppercase tracking-[0.45em] text-white/55">Soul Core</h2>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/15 to-transparent" aria-hidden="true" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
-          {modules.filter(m => !m.isPlugin).map((m) => (
-            <ModuleCard
+        {/* Grid: 1 col mobile, 2 col tablet, 3–4 col desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+          {modules.filter(m => !m.isPlugin).map((m, i) => (
+            <motion.div
               key={m.id}
-              {...m}
-              title={displayNames?.[m.id] || m.title}
-              isLocked={!moduleAccess[m.id]}
-              stat={moduleStats[m.id]}
-              onClick={() => onModuleNavigate(m.id, m.route)}
-            />
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04, duration: 0.30, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <ModuleCard
+                {...m}
+                title={displayNames?.[m.id] || m.title}
+                isLocked={!moduleAccess[m.id]}
+                stat={moduleStats[m.id]}
+                onClick={() => onModuleNavigate(m.id, m.route)}
+              />
+            </motion.div>
           ))}
         </div>
       </div>
 
       <div className="w-full max-w-[1400px] mx-auto">
-        <div className="flex items-center gap-6 mb-8" role="heading" aria-level={2}>
-          <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-white/40 italic drop-shadow-sm">Synaptic Plugins</h2>
-          <div className="h-px flex-1 bg-gradient-to-r from-white/20 to-transparent" aria-hidden="true" />
+        <div className="flex items-center gap-4 mb-6" role="heading" aria-level={2}>
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.40em] text-white/40">Plugins</h2>
+          <div className="h-px flex-1 bg-gradient-to-r from-white/12 to-transparent" aria-hidden="true" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 pb-8">
-          {modules.filter(m => m.isPlugin).map((m) => (
-            <div key={m.id}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pb-6">
+          {modules.filter(m => m.isPlugin).map((m, i) => (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 + 0.1, duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            >
               <ModuleCard
                 {...m}
                 title={displayNames?.[m.id] || m.title}
@@ -125,7 +150,7 @@ export function CardsView({ modules, moduleAccess, moduleStats, displayNames, on
                 onClick={() => onModuleNavigate(m.id, m.route)}
                 isPlugin={true}
               />
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

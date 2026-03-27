@@ -564,7 +564,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     <section className="surface-foundation flex min-h-[20rem] min-w-0 flex-col overflow-hidden p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3 border-b border-white/8 pb-4">
         <div className="min-w-0">
-          <p className="text-chip-soft text-white/45">Sessions</p>
+          <p className="text-chip-soft text-white/50">Sessions</p>
           <h3 className="mt-1 text-panel-heading text-white">Research history</h3>
           <p className="mt-1 text-body-secondary">Open a session to continue an inquiry or review the latest status.</p>
         </div>
@@ -644,7 +644,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
     return (
       <section className="surface-foundation-raised flex min-h-[24rem] flex-col items-center justify-center px-6 py-12 text-center sm:px-10">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/8 bg-white/[0.03] text-white/20">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/[0.09] bg-white/[0.045] text-white/35 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
           <Search className="h-8 w-8" aria-hidden="true" />
         </div>
         <div className="mt-6 max-w-md space-y-2">
@@ -774,13 +774,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
             {errorMessage && (
               <div className="mt-4 flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-300">
                 <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                <p className="text-xs leading-relaxed">{errorMessage}</p>
+                <p className="text-sm leading-relaxed">{errorMessage}</p>
                 <NeuralButton
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setErrorMessage(null)}
-                  className="ml-auto h-7 w-7 p-0 text-red-400/70 hover:bg-white/10 hover:text-red-200"
+                  className="ml-auto h-9 w-9 p-0 text-red-400/70 hover:bg-white/10 hover:text-red-200"
                 >
                   <X size={14} />
                 </NeuralButton>
@@ -936,15 +936,15 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           <div className="space-y-6">
             {docProposal && (
               <div className="space-y-4">
-                <p className="text-sm text-white/70">{docProposalSummary ?? 'Document analysis ready for review.'}</p>
-                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/50">Analysis Summary</h4>
-                  <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap text-[12px] text-white/70">
+                <p className="text-sm text-white/68">{docProposalSummary ?? 'Document analysis ready for review.'}</p>
+                <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-3 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
+                  <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/68">Analysis Summary</h4>
+                  <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap text-sm text-white/68">
                     {docProposal.summary}
                   </pre>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/50">Text Preview</h4>
+                <div className="rounded-xl border border-white/[0.09] bg-white/[0.03] p-3">
+                  <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/68">Text Preview</h4>
                   <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap text-[11px] text-white/50">
                     {docProposal.rawTextPreview}
                     {docProposal.rawTextPreview.length >= 2400 ? '\n[truncated]' : ''}
@@ -991,13 +991,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 <div className="mb-6 flex items-center justify-between">
                   <div>
                     <h2 className="text-sm font-black uppercase tracking-widest text-[var(--module-color-300)]">Evidence Vault</h2>
-                    <p className="mt-1 text-xs text-white/40">Extract research evidence from documents</p>
+                    <p className="mt-1 text-sm text-white/50">Extract research evidence from documents</p>
                   </div>
                   <NeuralButton
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowUploadZone(false)}
-                    className="h-9 w-9 p-0 text-white/40 transition-colors hover:bg-white/10"
+                    className="h-9 w-9 p-0 text-white/50 transition-colors hover:bg-white/10"
                   >
                     <X size={18} />
                   </NeuralButton>

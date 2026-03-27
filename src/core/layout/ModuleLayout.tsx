@@ -314,85 +314,81 @@ export function ModuleLayout({
       />
 
       <div className="fixed inset-0 z-[var(--z-base)] pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_45%)] opacity-40" />
-        <div className="absolute inset-0 surface-grid opacity-[0.015]" />
-        <div className={`absolute top-0 right-0 w-[820px] h-[820px] ${theme.glow} rounded-full blur-[170px] animate-pulse opacity-45`} />
-        <div className={`absolute bottom-0 left-0 w-[600px] h-[600px] ${theme.glow} rounded-full blur-[150px] opacity-25`} />
-        
+        {/* Subtle top-center radial for depth */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.06),_transparent_50%)] opacity-50" />
+        {/* Primary accent blob — top-right */}
+        <div className={`absolute -top-20 -right-20 w-[700px] h-[700px] ${theme.glow} rounded-full blur-[180px] opacity-40`} />
+        {/* Secondary accent blob — bottom-left, subtler */}
+        <div className={`absolute -bottom-32 -left-20 w-[500px] h-[500px] ${theme.glow} rounded-full blur-[160px] opacity-18`} />
       </div>
 
       <AnimatePresence>
         {(!hideNavigation) && (
-          <motion.header 
+          <motion.header
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
-            className="sticky top-0 z-[var(--z-header)] border-b border-white/5 bg-black/50 backdrop-blur-2xl px-4 md:px-6 py-3 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] flex items-center justify-between gap-2"
+            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+            className="sticky top-0 z-[var(--z-header)] border-b border-white/[0.07] bg-black/55 backdrop-blur-2xl shadow-[0_1px_0_rgba(255,255,255,0.04)] px-3 sm:px-4 md:px-6 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top,0.625rem))] flex items-center justify-between gap-2"
           >
             {/* Left cluster: back + title */}
-            <div className="flex items-center gap-2 md:gap-4 min-w-0">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
               {!hideBack && (
-                <button 
+                <button
                   onClick={handleExit}
                   aria-label="Back to Hub"
-                  className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 active:bg-white/15 transition-all group shrink-0"
+                  className="shrink-0 w-10 h-10 sm:w-11 sm:h-11 min-h-[44px] min-w-[44px] rounded-xl bg-white/[0.06] border border-white/[0.09] flex items-center justify-center hover:bg-white/[0.10] hover:border-white/[0.14] active:bg-white/[0.05] active:scale-95 transition-all duration-150 group"
                 >
-                  <ArrowLeft className="w-4 h-4 text-white/40 group-hover:text-white" />
+                  <ArrowLeft className="w-4 h-4 text-white/50 group-hover:text-white/90 transition-colors" />
                 </button>
               )}
               <div className="flex flex-col min-w-0">
-                <h1 className={`text-sm md:text-base font-bold tracking-[0.08em] md:tracking-[0.15em] uppercase font-display ${theme.accent} truncate max-w-[130px] sm:max-w-[180px] md:max-w-[220px] lg:max-w-xs`}>{title}</h1>
+                <h1 className={`text-[13px] sm:text-sm md:text-[15px] font-bold tracking-[0.10em] md:tracking-[0.14em] uppercase font-display ${theme.accent} truncate max-w-[120px] sm:max-w-[180px] md:max-w-[240px] lg:max-w-xs`}>{title}</h1>
                 {/* Subtitle — sm+ only */}
-                <div className="hidden sm:flex items-center gap-1.5">
-                  <div className={`w-1 h-1 rounded-full animate-pulse shrink-0 ${debugMode ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+                <div className="hidden sm:flex items-center gap-1.5 mt-0.5">
+                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${debugMode ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
                   {debugMode ? (
                     <ModelBadge debugMode={debugMode} />
                   ) : (
-                    <span className="text-[9px] font-medium text-white/40 uppercase tracking-[0.1em] truncate font-mono">
-                      Link Stable // Secure Tunnel
+                    <span className="text-[10px] font-medium text-white/45 uppercase tracking-[0.08em] truncate font-mono">
+                      Secure · Encrypted
                     </span>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Right cluster: ticker → bell → modules → security → divider → avatar */}
-            <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            {/* Right cluster */}
+            <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 shrink-0">
               <TelemetryTicker debugMode={debugMode} />
 
               {moduleId !== 'nexus' && (
                 <button
                   type="button"
                   onClick={() => window.dispatchEvent(new Event('open-nexus'))}
-                  aria-label="Open Nexus"
-                  className="relative w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 active:bg-white/15 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 shrink-0"
+                  aria-label="Open Nexus AI"
+                  className="relative w-10 h-10 sm:w-11 sm:h-11 min-h-[44px] min-w-[44px] rounded-xl bg-white/[0.06] border border-white/[0.09] flex items-center justify-center hover:bg-white/[0.10] hover:border-white/[0.14] active:scale-95 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-white/25 shrink-0"
                 >
-                    <Sparkles className="w-4 h-4 text-white/50" />
+                  <Sparkles className="w-4 h-4 text-white/55 group-hover:text-white/90" />
                 </button>
               )}
 
-              {/* Module switcher — mobile + md+ */}
-              <div className="block md:hidden">
-                <ModuleSwitcherPopover currentModuleId={moduleId} />
-              </div>
-              <div className="hidden md:block">
-                <ModuleSwitcherPopover currentModuleId={moduleId} />
-              </div>
+              <ModuleSwitcherPopover currentModuleId={moduleId} />
 
               {/* Security protocol — lg+ */}
               <button
                 type="button"
                 onClick={openSecurityProtocol}
-                className="hidden lg:flex flex-col items-end text-left focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg px-2 py-1 hover:bg-white/5 transition-colors"
+                className="hidden lg:flex flex-col items-end text-left focus:outline-none focus:ring-2 focus:ring-white/25 rounded-lg px-2.5 py-1.5 hover:bg-white/[0.05] active:bg-white/[0.03] transition-colors min-h-[44px] justify-center"
               >
-                <span className="text-[9px] font-semibold text-white/40 uppercase tracking-wider mb-1 leading-none">Security Protocol</span>
+                <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.08em] mb-0.5 leading-none">Security</span>
                 <div className="flex items-center gap-1.5">
                   <Shield className={`w-3 h-3 ${theme.accent}`} />
-                  <span className="text-[10px] font-medium text-white/60 tracking-tight leading-none uppercase font-mono">Device: Synced</span>
+                  <span className="text-[11px] font-medium text-white/65 leading-none uppercase font-mono">Synced</span>
                 </div>
               </button>
 
-              <div className="w-px h-6 bg-white/5 hidden sm:block" />
+              <div className="w-px h-5 bg-white/[0.07] hidden sm:block" />
               <SystemCommandCenter />
             </div>
           </motion.header>
@@ -453,7 +449,7 @@ export function ModuleLayout({
                         {children}
                     </div>
                     {RenderMobileFooter && (
-                        <div className="lg:hidden shrink-0 border-t border-white/5 bg-black/40 backdrop-blur-2xl pb-[env(safe-area-inset-bottom,0px)]">
+                        <div className="lg:hidden shrink-0 border-t border-white/[0.07] bg-black/55 backdrop-blur-2xl pb-[max(env(safe-area-inset-bottom,0px),4px)] shadow-[0_-1px_0_rgba(255,255,255,0.04)]">
                             <RenderMobileFooter />
                         </div>
                     )}

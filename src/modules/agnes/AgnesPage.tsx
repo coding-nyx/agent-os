@@ -699,9 +699,9 @@ function AgnesContent({
               className="flex-1 flex flex-col min-h-0 h-full"
             >
               {isHydrating ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/30">
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/50">
                   <div className="w-8 h-8 rounded-full border-2 border-indigo-500/40 border-t-indigo-400 animate-spin" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400/60">Restoring Session</span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-400/70">Restoring Session</span>
                 </div>
               ) : (
                 <AgnesSanctuaryContent
@@ -772,7 +772,7 @@ function AgnesContent({
                       className="flex-1 flex flex-col items-center justify-center gap-4 text-white/30"
                     >
                       <div className="w-8 h-8 rounded-full border-2 border-indigo-500/40 border-t-indigo-400 animate-spin" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400/60">
+                      <span className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-400/70">
                         Synchronizing Neural Link
                       </span>
                     </motion.div>
@@ -804,20 +804,20 @@ function AgnesContent({
                               className="flex items-center gap-2 px-4 rounded-full border-white/5 hover:border-rose-500/20 hover:text-rose-400"
                             >
                               <LogOut className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline font-bold uppercase tracking-widest text-[10px] ml-2">End</span>
+                              <span className="hidden sm:inline font-bold uppercase tracking-widest text-[11px] ml-2">End</span>
                             </NeuralButton>
                           </div>
                         </div>
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                          <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-white/45">
-                            <span className="px-3 py-1 rounded-full border border-indigo-400/20 bg-indigo-500/10 text-indigo-100/70">
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] text-white/60">
+                            <span className="px-3 py-1 rounded-full border border-indigo-400/20 bg-indigo-500/10 text-indigo-100/80">
                               {activeModeDefinition.label}
                             </span>
-                            <span className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.03] text-white/40">
+                            <span className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.045] text-white/60">
                               {isImpromptu ? 'Off the Record' : 'Vault Continuity'}
                             </span>
                             {engagementMode === 'somatic' && (
-                              <span className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.03] text-white/40">
+                              <span className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.045] text-white/60">
                                 Somatic Inquiry {somaticEnabled ? 'Enabled' : 'Adapted'}
                               </span>
                             )}
@@ -873,7 +873,7 @@ function AgnesContent({
               </div>
               <div className="text-center space-y-2">
                 <h3 className="text-xs font-black uppercase tracking-[0.4em] text-indigo-400">Synthesizing</h3>
-                <p className="text-[10px] text-white/30 uppercase tracking-[0.2em]">Neural link distillation in progress</p>
+                <p className="text-[11px] text-white/50 uppercase tracking-[0.15em]">Neural link distillation in progress</p>
               </div>
             </div>
           </motion.div>
@@ -890,19 +890,19 @@ function AgnesContent({
         >
           <div className="space-y-8">
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div className="p-4 rounded-2xl sm:rounded-[2rem] bg-white/[0.03] border border-white/5">
+              <div className="p-4 rounded-2xl sm:rounded-[2rem] bg-white/[0.045] border border-white/[0.09] shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
                 <div className="flex items-center gap-2 mb-2">
                   <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
-                  <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/50">Exchanges</span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.15em] text-white/68">Exchanges</span>
                 </div>
                 <span className="text-2xl font-black text-white tabular-nums">
                   {messages.filter(m => m.role === 'user').length}
                 </span>
               </div>
-              <div className="p-4 rounded-2xl sm:rounded-[2rem] bg-white/[0.03] border border-white/5">
+              <div className="p-4 rounded-2xl sm:rounded-[2rem] bg-white/[0.045] border border-white/[0.09] shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                  <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/50">Duration</span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.15em] text-white/68">Duration</span>
                 </div>
                 <span className="text-2xl font-black text-white tabular-nums">
                   {(() => {
@@ -916,7 +916,7 @@ function AgnesContent({
             <div className="relative p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] bg-indigo-500/[0.04] border border-indigo-500/10">
               <div className="flex items-center gap-2 mb-4">
                 <Brain className="w-4 h-4 text-indigo-400" />
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-400/60">Reflection</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.15em] text-indigo-400/80">Reflection</span>
               </div>
               <p className="text-sm text-white/80 leading-relaxed font-medium italic">"{sessionSummary}"</p>
             </div>
@@ -932,7 +932,7 @@ function AgnesContent({
                 onClick={handleDiscardAndClose}
                 disabled={isClosingSession}
                 className={cn(
-                  "w-full h-auto text-[10px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white/40 hover:bg-transparent border-none transition-colors disabled:opacity-30",
+                  "w-full h-auto text-[11px] font-black uppercase tracking-[0.15em] text-white/50 hover:text-white/70 hover:bg-transparent border-none transition-colors disabled:opacity-30",
                   sessionType === 'impromptu' ? "py-2" : "py-3"
                 )}
               >
@@ -1015,7 +1015,7 @@ export default function AgnesPage() {
               variant="ghost"
               themeColor="indigo"
               onClick={() => window.dispatchEvent(new Event('agnes:open-settings'))}
-              className="w-full flex items-center justify-center gap-3 h-auto px-6 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black uppercase tracking-widest text-[10px] hover:bg-indigo-500/20 hover:border-indigo-500/30 active:scale-95 transition-all"
+              className="w-full flex items-center justify-center gap-3 min-h-[44px] px-6 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black uppercase tracking-[0.12em] text-[11px] hover:bg-indigo-500/20 hover:border-indigo-500/30 active:scale-95 transition-all"
             >
               <Settings size={14} />
               Agnes Settings

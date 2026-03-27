@@ -11,23 +11,59 @@
   :root {
     --void: #020205;
     --surface: #05050a;
-    --card-glass: rgba(255, 255, 255, 0.03);
-    --card-glass-strong: rgba(255, 255, 255, 0.06);
-    --card-glass-soft: rgba(255, 255, 255, 0.02);
-    --interactive: rgba(255, 255, 255, 0.06);
-    --overlay: rgba(0, 0, 0, 0.6);
+    --card-glass: rgba(255, 255, 255, 0.045);
+    --card-glass-strong: rgba(255, 255, 255, 0.075);
+    --card-glass-soft: rgba(255, 255, 255, 0.028);
+    --interactive: rgba(255, 255, 255, 0.07);
+    --interactive-hover: rgba(255, 255, 255, 0.10);
+    --interactive-press: rgba(255, 255, 255, 0.06);
+    --overlay: rgba(0, 0, 0, 0.65);
 
     --text-primary: rgba(255, 255, 255, 0.95);
-    --text-secondary: rgba(255, 255, 255, 0.6);
-    --text-muted: rgba(255, 255, 255, 0.4);
+    --text-secondary: rgba(255, 255, 255, 0.68);
+    --text-muted: rgba(255, 255, 255, 0.50);
+    --text-disabled: rgba(255, 255, 255, 0.28);
 
-    --border: rgba(255, 255, 255, 0.1);
-    --border-hover: rgba(255, 255, 255, 0.15);
+    --border: rgba(255, 255, 255, 0.10);
+    --border-hover: rgba(255, 255, 255, 0.18);
+    --border-active: rgba(255, 255, 255, 0.24);
     --stroke-soft: rgba(255, 255, 255, 0.08);
     --stroke-strong: rgba(255, 255, 255, 0.16);
+    --stroke-accent: rgba(255, 255, 255, 0.04);
 
     --shadow-soft: 0 30px 80px rgba(0, 0, 0, 0.35);
     --shadow-glow: 0 0 60px rgba(255, 255, 255, 0.08);
+
+    /* ── Elevation Scale ── */
+    --elevation-1: 0 2px 8px rgba(0, 0, 0, 0.30), 0 1px 3px rgba(0, 0, 0, 0.20);
+    --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.40), 0 2px 6px rgba(0, 0, 0, 0.25);
+    --elevation-3: 0 8px 32px rgba(0, 0, 0, 0.50), 0 4px 12px rgba(0, 0, 0, 0.30);
+    --elevation-modal: 0 20px 60px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.40);
+
+    /* ── Semantic Status Colors ── */
+    --color-success: #10b981;
+    --color-success-text: #34d399;
+    --color-success-muted: rgba(16, 185, 129, 0.12);
+    --color-success-border: rgba(16, 185, 129, 0.22);
+    --color-warning: #f59e0b;
+    --color-warning-text: #fbbf24;
+    --color-warning-muted: rgba(245, 158, 11, 0.12);
+    --color-warning-border: rgba(245, 158, 11, 0.22);
+    --color-error: #ef4444;
+    --color-error-text: #f87171;
+    --color-error-muted: rgba(239, 68, 68, 0.12);
+    --color-error-border: rgba(239, 68, 68, 0.22);
+    --color-info: #3b82f6;
+    --color-info-text: #60a5fa;
+    --color-info-muted: rgba(59, 130, 246, 0.12);
+    --color-info-border: rgba(59, 130, 246, 0.22);
+
+    /* ── Layout Constants ── */
+    --touch-min: 44px;
+    --nav-height: 3.5rem;
+    --bottom-nav-height: 4rem;
+    --rail-width: 260px;
+    --rail-width-sm: 220px;
 
     --nexus: #8b5cf6;
     --agnes: #6366f1;
@@ -88,8 +124,8 @@
     --type-meta-line: 1.35;
 
     --foundation-surface-app: var(--void);
-    --foundation-surface-primary: rgba(255, 255, 255, 0.03);
-    --foundation-surface-raised: rgba(255, 255, 255, 0.06);
+    --foundation-surface-primary: rgba(255, 255, 255, 0.045);
+    --foundation-surface-raised: rgba(255, 255, 255, 0.072);
     --foundation-border-subtle: rgba(255, 255, 255, 0.08);
     --foundation-border-strong: rgba(255, 255, 255, 0.16);
     --foundation-text-primary: var(--text-primary);
@@ -135,11 +171,14 @@
     --z-modal: 80;
     --z-toast: 90;
 
-    --surface-card-border: rgba(255, 255, 255, 0.12);
-    --surface-card-bg: rgba(255, 255, 255, 0.04);
-    --surface-card-strong-bg: rgba(255, 255, 255, 0.06);
-    --surface-panel-border: rgba(255, 255, 255, 0.08);
-    --surface-panel-bg: rgba(5, 5, 10, 0.55);
+    --surface-card-border: rgba(255, 255, 255, 0.13);
+    --surface-card-bg: rgba(255, 255, 255, 0.045);
+    --surface-card-strong-bg: rgba(255, 255, 255, 0.072);
+    --surface-panel-border: rgba(255, 255, 255, 0.09);
+    --surface-panel-bg: rgba(5, 5, 10, 0.60);
+
+    /* Top-edge highlight (makes cards look elevated) */
+    --card-edge-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.10);
 
 
     --background: 240 10% 3.9%;
@@ -346,17 +385,18 @@
 
 /* Glassmorphism */
 .glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--card-edge-highlight);
 }
 
 .glass-darker {
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 @layer components {
@@ -366,7 +406,7 @@
     border-radius: var(--radius-card);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    box-shadow: var(--shadow-soft);
+    box-shadow: var(--elevation-1), var(--card-edge-highlight);
   }
 
   .surface-card-strong {
@@ -375,14 +415,14 @@
     border-radius: var(--radius-card-strong);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    box-shadow: var(--shadow-soft), var(--shadow-glow);
+    box-shadow: var(--elevation-2), var(--shadow-glow), var(--card-edge-highlight);
   }
 
   .surface-inset {
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.38);
+    border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: var(--radius-panel);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
 
   .surface-grid {
@@ -474,31 +514,33 @@
 
   /* ── Surface Hierarchy ── */
   .surface-1 {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.028);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--card-edge-highlight);
   }
   .surface-2 {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.048);
+    border: 1px solid rgba(255, 255, 255, 0.09);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--elevation-1), var(--card-edge-highlight);
   }
   .surface-3 {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.070);
+    border: 1px solid rgba(255, 255, 255, 0.13);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    box-shadow: var(--shadow-soft);
+    box-shadow: var(--elevation-2), var(--card-edge-highlight);
   }
 
   /* ── Typography Roles ── */
   .text-label {
-    font-size: 0.5625rem; /* 9px */
+    font-size: 0.6875rem; /* 11px — up from 9px for readability */
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.10em;
     line-height: 1;
   }
   .text-heading-sm {
@@ -749,6 +791,78 @@ input,
 select,
 textarea {
   border-radius: var(--radius-button);
+}
+
+/* ── Mobile UX Essentials ── */
+/* Prevent iOS Safari auto-zoom on input focus (requires font-size >= 16px) */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 1rem !important;
+  }
+}
+
+/* Utility: top-edge card highlight for elevated look */
+.card-highlight {
+  box-shadow: var(--card-edge-highlight);
+}
+
+/* Utility: semantic status badges */
+.badge-success {
+  background: var(--color-success-muted);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
+}
+.badge-warning {
+  background: var(--color-warning-muted);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
+}
+.badge-error {
+  background: var(--color-error-muted);
+  color: var(--color-error-text);
+  border: 1px solid var(--color-error-border);
+}
+.badge-info {
+  background: var(--color-info-muted);
+  color: var(--color-info-text);
+  border: 1px solid var(--color-info-border);
+}
+
+/* Utility: touch target enforcer */
+.touch-target {
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
+}
+
+/* Utility: readable container width on large screens */
+.content-readable {
+  max-width: 72ch;
+}
+
+/* Utility: glassmorphism card hover state */
+.glass-hover {
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.glass-hover:hover {
+  background-color: rgba(255, 255, 255, 0.062);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: var(--elevation-2), var(--card-edge-highlight);
+}
+
+/* Utility: mobile-first padding for page containers */
+.page-inset {
+  padding-left: clamp(1rem, 4vw, 2rem);
+  padding-right: clamp(1rem, 4vw, 2rem);
+}
+
+/* Mobile scrollbar — slightly more visible on touch */
+@media (max-width: 767px) {
+  ::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
 }
 
 /* Agnes chat — Lora serif for warmth & readability */

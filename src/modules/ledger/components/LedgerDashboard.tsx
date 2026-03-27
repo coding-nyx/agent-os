@@ -298,7 +298,7 @@ export function LedgerDashboard({
             "px-3 py-2 rounded-lg text-xs font-semibold transition-colors border",
             behavioralEnabled
               ? "bg-violet-500/20 border-violet-500/30 text-violet-300"
-              : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
+              : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10"
           )}
         >
           {behavioralEnabled ? '✦ Behavioral Insights On' : 'Enable Behavioral Insights'}
@@ -368,7 +368,7 @@ export function LedgerDashboard({
                           >
                             {alert.title}
                           </p>
-                          <p className="text-[10px] text-white/60 mt-0.5 leading-relaxed">
+                          <p className="text-[11px] text-white/68 mt-0.5 leading-relaxed">
                             {alert.message}
                           </p>
                         </div>
@@ -381,7 +381,7 @@ export function LedgerDashboard({
                 {alerts.length > ALERT_COLLAPSE_THRESHOLD && (
                   <button
                     onClick={() => setAlertsExpanded((prev) => !prev)}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-[10px] font-bold text-white/50 uppercase tracking-wider"
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-[11px] font-bold text-white/60 uppercase tracking-wider"
                     aria-expanded={alertsExpanded}
                     aria-label={
                       alertsExpanded
@@ -414,7 +414,7 @@ export function LedgerDashboard({
                 'text-rose-400': healthScore.grade === 'D' || healthScore.grade === 'F',
               })} />
               <div className="flex-1">
-                <p className="text-[10px] text-white/50 uppercase tracking-wider">Financial Health Score</p>
+                <p className="text-[11px] text-white/50 uppercase tracking-wider">Financial Health Score</p>
                 <p className={cn('text-sm font-bold', {
                   'text-emerald-300': healthScore.grade === 'A' || healthScore.grade === 'B',
                   'text-amber-300': healthScore.grade === 'C',
@@ -425,7 +425,7 @@ export function LedgerDashboard({
               </div>
               <button
                 onClick={() => onAskAI?.('What does my financial health score mean and how can I improve it?')}
-                className="text-[10px] text-white/30 hover:text-white/60 transition-colors font-semibold min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
+                className="text-[11px] text-white/50 hover:text-white/70 transition-colors font-semibold min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
               >
                 Explain →
               </button>
@@ -474,7 +474,7 @@ export function LedgerDashboard({
             >
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
+                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-white/50">
                     Runway Projection
                   </p>
                   <h3 className="text-lg font-semibold text-white">
@@ -495,29 +495,29 @@ export function LedgerDashboard({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">Modeled Liquidity</p>
+                <div className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Modeled Liquidity</p>
                   <p className="mt-2 text-2xl font-semibold text-white">
                     {formatCurrency(runwayProjection.modeledLiquidity, profile?.currency)}
                   </p>
-                  <p className="mt-1 text-[11px] text-white/50">
+                  <p className="mt-1 text-[11px] text-white/60">
                     Ledger balance {formatCurrency(runwayProjection.ledgerBalance, profile?.currency)} + reserves {formatCurrency(runwayProjection.reserveSavings, profile?.currency)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">Monthly Burn</p>
+                <div className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Monthly Burn</p>
                   <p className={cn(
                     'mt-2 text-2xl font-semibold',
                     runwayProjection.monthlyBurn > 0 ? 'text-rose-300' : 'text-emerald-300',
                   )}>
                     {runwayProjection.monthlyBurn > 0 ? '−' : ''}{formatCurrency(runwayProjection.monthlyBurn, profile?.currency)}
                   </p>
-                  <p className="mt-1 text-[11px] text-white/50">
+                  <p className="mt-1 text-[11px] text-white/60">
                     Expenses {formatCurrency(runwayProjection.monthlyExpenseBaseline, profile?.currency)} − income {formatCurrency(runwayProjection.monthlyIncome, profile?.currency)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">Projected Coverage</p>
+                <div className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Projected Coverage</p>
                   <p className="mt-2 text-2xl font-semibold text-white">
                     {runwayProjection.monthsRemaining === null
                       ? runwayProjection.status === 'needs_data'
@@ -525,7 +525,7 @@ export function LedgerDashboard({
                         : 'Stable'
                       : `${formatNumber(runwayProjection.monthsRemaining, 1, 1)} mo`}
                   </p>
-                  <p className="mt-1 text-[11px] text-white/50">
+                  <p className="mt-1 text-[11px] text-white/60">
                     {runwayProjection.daysRemaining === null
                       ? 'Runway is self-funded at the current baseline.'
                       : `≈ ${formatNumber(runwayProjection.daysRemaining, 0, 0)} days at current burn.`}
@@ -534,12 +534,12 @@ export function LedgerDashboard({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 justify-between">
-                <p className="text-[10px] text-white/45 leading-relaxed">
+                <p className="text-[11px] text-white/50 leading-relaxed">
                   {runwayFormulaText}
                 </p>
                 <button
                   onClick={() => onAskAI?.('Explain my runway projection math and show the fastest ways to extend it.')}
-                  className="text-[10px] text-white/35 hover:text-white/65 transition-colors font-semibold min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
+                  className="text-[11px] text-white/50 hover:text-white/70 transition-colors font-semibold min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--module-accent-ring)]"
                 >
                   Explain runway →
                 </button>
@@ -573,7 +573,7 @@ export function LedgerDashboard({
                       <p className={cn('text-sm font-bold', tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400')}>
                         {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, profile?.currency)}
                       </p>
-                      <p className="text-xs text-white/40 capitalize">{tx.type}</p>
+                      <p className="text-xs text-white/50 capitalize">{tx.type}</p>
                     </div>
                   </div>
                 ))}
@@ -584,8 +584,8 @@ export function LedgerDashboard({
           <div className="grid grid-cols-1 gap-4">
             <SurfaceCard className="p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">Spending</span>
-                <span className="text-[9px] text-white/50 uppercase tracking-widest">Breakdown</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white/50">Spending</span>
+                <span className="text-[11px] text-white/50 uppercase tracking-widest">Breakdown</span>
               </div>
               {spendingRows.length === 0 ? (
                 <EmptyState
@@ -613,8 +613,8 @@ export function LedgerDashboard({
 
             <SurfaceCard className="p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">Active Plan</span>
-                <span className="text-[9px] text-white/50 uppercase tracking-widest">Planner</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white/50">Active Plan</span>
+                <span className="text-[11px] text-white/50 uppercase tracking-widest">Planner</span>
               </div>
               {profile?.activePlanId ? (
                 <div className="rounded-2xl border border-[var(--module-accent-border)] bg-[var(--module-accent-faint)] p-4 space-y-2">
@@ -624,14 +624,14 @@ export function LedgerDashboard({
                       <>
                         <p className="text-xs text-[var(--module-color-300)] font-medium">{activePlan.title}</p>
                         {activePlan.summary && (
-                          <p className="text-[10px] text-white/40 leading-relaxed">{activePlan.summary}</p>
+                          <p className="text-[11px] text-white/60 leading-relaxed">{activePlan.summary}</p>
                         )}
                       </>
                     ) : (
                       <p className="text-xs text-[var(--module-color-300)] truncate">Plan: {profile.activePlanId.slice(0, 8)}…</p>
                     );
                   })()}
-                  <p className="text-[10px] text-white/50">Planner state: {profile.plannerBotState.toUpperCase()}</p>
+                  <p className="text-[11px] text-white/60">Planner state: {profile.plannerBotState.toUpperCase()}</p>
                 </div>
               ) : (
                 <EmptyState
@@ -652,7 +652,7 @@ export function LedgerDashboard({
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">Cash Flow Analysis</h3>
-              <p className="text-[10px] text-white/50 mt-1">Income vs expenses over time</p>
+              <p className="text-[11px] text-white/60 mt-1">Income vs expenses over time</p>
             </div>
             <TrendingUp className="w-5 h-5 text-[var(--module-color-400)]" />
           </div>
@@ -684,7 +684,7 @@ export function LedgerDashboard({
                         {EVENT_DISPLAY_NAMES[evt.type] ?? evt.type}
                       </p>
                       {!!evt.data?.description && (
-                        <p className="text-[10px] text-white/40 truncate mt-0.5">{String(evt.data.description)}</p>
+                        <p className="text-[11px] text-white/50 truncate mt-0.5">{String(evt.data.description)}</p>
                       )}
                     </div>
                     {typeof evt.data?.amount === 'number' && (
@@ -745,7 +745,7 @@ export function LedgerDashboard({
                             {EVENT_DISPLAY_NAMES[evt.type] ?? evt.type}
                           </p>
                           {!!evt.data?.description && (
-                            <p className="text-[10px] text-white/40 truncate mt-0.5">{String(evt.data.description)}</p>
+                            <p className="text-[11px] text-white/50 truncate mt-0.5">{String(evt.data.description)}</p>
                           )}
                         </div>
                         {typeof evt.data?.amount === 'number' && (
@@ -783,12 +783,12 @@ export function LedgerDashboard({
       )}
 
       <section className="space-y-3">
-        <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Statement Analysis</h4>
+        <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-[0.12em] font-display">Statement Analysis</h4>
         <SurfaceCard className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-white">Enable Document Analysis</p>
-              <p className="text-[9px] text-white/50 mt-1">Upload bank statements and receipts for AI extraction. Images are analyzed in memory, never stored to cloud.</p>
+              <p className="text-[11px] text-white/60 mt-1">Upload bank statements and receipts for AI extraction. Images are analyzed in memory, never stored to cloud.</p>
             </div>
             <Switch.Root
               checked={profile?.documentAnalysisEnabled || false}
@@ -810,7 +810,7 @@ export function LedgerDashboard({
               </button>
 
               {profile?.lastDocumentAnalysis && (
-                <div className="text-[9px] text-white/50 p-2 rounded border border-white/10">
+                <div className="text-[11px] text-white/60 p-2 rounded border border-white/10">
                   <p>Last analysis: {new Date(profile.lastDocumentAnalysis.analyzedAt).toLocaleDateString()}</p>
                   <p>Period: {profile.lastDocumentAnalysis.periodLabel}</p>
                   <p>Transactions: {profile.lastDocumentAnalysis.transactionCount}</p>
@@ -822,16 +822,16 @@ export function LedgerDashboard({
       </section>
 
       <section className="space-y-3">
-        <h4 className="text-[9px] font-bold text-white/50 uppercase tracking-[0.12em] font-display">Risk Flags</h4>
+        <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-[0.12em] font-display">Risk Flags</h4>
         {warnings.length === 0 ? (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-[10px] text-emerald-300">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-emerald-300">
             Resource profile is stable.
           </div>
         ) : (
           warnings.map((warning, index) => (
             <div key={index} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3">
               <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5" />
-              <p className="text-[10px] text-amber-100/80 leading-relaxed">{warning}</p>
+              <p className="text-sm text-amber-100/80 leading-relaxed">{warning}</p>
             </div>
           ))
         )}
