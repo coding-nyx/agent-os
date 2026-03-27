@@ -39,6 +39,7 @@ const NON_MUTATING_ACTIONS = new Set([
   'query_module_data',
   'query_memory',
   'search_memory',
+  'web_search',
   'query_profile',
   'analyze_trends',
   'analyze_spending',
@@ -208,7 +209,7 @@ export class OrchestrationActionGateService {
       dispatchStatus = 'awaiting_approval';
     } else if (mutatesState && !policy.canMutateState) {
       dispatchStatus = policy.executionMode === 'analysis_only' ? 'analysis_only' : 'blocked';
-    } else if (policy.executionMode === 'analysis_only') {
+    } else if (mutatesState && policy.executionMode === 'analysis_only') {
       dispatchStatus = 'analysis_only';
     }
 
