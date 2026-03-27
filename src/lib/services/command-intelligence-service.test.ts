@@ -153,32 +153,21 @@ describe('CommandIntelligenceService', () => {
       expect(result.parserVersion).toBe('phase1-v1');
     });
 
-    it('throws IntentParseError when LLM call fails', async () => {
+    it('returns fallback envelope with llm-fallback mode when LLM call fails', async () => {
       const mockGenerateJSON = vi.fn().mockRejectedValue(new Error('Network timeout'));
 
-      await expect(
-        CommandIntelligenceService.parseWithLLM(
-          'plan my day',
-          {
-            sourceModuleId: 'nexus',
-            now: new Date('2026-03-24T08:00:00.000Z'),
-            timezone: 'UTC',
-            generateJSON: mockGenerateJSON,
-          },
-        ),
-      ).rejects.toThrow(IntentParseError);
+      const result = await CommandIntelligenceService.parseWithLLM(
+        'plan my day',
+        {
+          sourceModuleId: 'nexus',
+          now: new Date('2026-03-24T08:00:00.000Z'),
+          timezone: 'UTC',
+          generateJSON: mockGenerateJSON,
+        },
+      );
 
-      await expect(
-        CommandIntelligenceService.parseWithLLM(
-          'plan my day',
-          {
-            sourceModuleId: 'nexus',
-            now: new Date('2026-03-24T08:00:00.000Z'),
-            timezone: 'UTC',
-            generateJSON: mockGenerateJSON,
-          },
-        ),
-      ).rejects.toMatchObject({ phase: 'llm' });
+      expect(result.parserMode).toBe('llm-fallback');
+      expect(result.intents[0].intentType).toBe('plan_day');
     });
 
     it('returns phase1 envelope when no generateJSON is provided', async () => {

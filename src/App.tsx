@@ -2,7 +2,7 @@ import React, { lazy, Suspense, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './core/components/ThemeProvider';
 import { AuthProvider, useAuth } from './lib/auth-context';
-import { VaultProvider } from './lib/vault-context';
+import { VaultProvider, useVault } from './lib/vault-context';
 import { GlobalSoulProvider } from './lib/global-soul-context';
 import { AIProvider, useAI } from './llm-engine/ai-context';
 import { BootLoader } from './core/components/BootLoader';
@@ -36,6 +36,7 @@ import {
   ATLAS_MORNING_RULES
 } from './lib/spine/cascade-rules';
 import { DataLayerProvider } from './lib/data-layer/provider';
+import { registerScoutHandoffConsumer } from './modules/scout/services/scout-handoff-consumer';
 
 // Route-level lazy loading for chunk splitting.
 const LandingPage = lazy(() => import('./modules/landing/LandingPage'));
@@ -58,6 +59,8 @@ function AIWrapper({ children }: { children: React.ReactNode }) {
 
 function SpineRuntimeBootstrap() {
   const { user } = useAuth();
+  const { getMasterKey, isUnlocked } = useVault();
+  const userId = user?.uid ?? null;
 
   useEffect(() => {
     Spine.registerCascadeRules(CORE_CASCADE_RULES);
@@ -71,8 +74,28 @@ function SpineRuntimeBootstrap() {
   }, []);
 
   useEffect(() => {
-    Spine.setUser(user?.uid ?? null);
-  }, [user?.uid]);
+    Spine.setUser(userId);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      registerScoutHandoffConsumer({ userId: null, encryptionKey: null });
+      return;
+    }
+    let cancelled = false;
+
+    void getMasterKey().then((encryptionKey) => {
+      if (cancelled) return;
+      registerScoutHandoffConsumer({
+        userId,
+        encryptionKey,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, getMasterKey, isUnlocked]);
 
   return null;
 }

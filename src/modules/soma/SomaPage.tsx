@@ -29,11 +29,9 @@ import { SomaOnboarding } from './onboarding/SomaOnboarding';
 
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
 import { somaDiagnosisSpec } from './diagnosis/soma-diagnosis-spec';
-import { registerSomaFieldActions } from './actions/soma-field-actions';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { SomaNotificationSettingsPanel } from './components/SomaNotificationSettingsPanel';
 
-registerSomaFieldActions();
 registerDiagnosisSpec(somaDiagnosisSpec);
 
 interface SomaContentProps {

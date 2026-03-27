@@ -71,6 +71,7 @@ export const ScoutWebSearchService = {
                 priority: 'info',
                 data: { userId: options.userId, nodeId: node.id, claim: node.claim, via: 'web_search' },
               });
+
             }
           }),
         ),

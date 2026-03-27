@@ -46,6 +46,8 @@ const NOTIFICATION_ALLOWLIST = new Set([
   // Goal & habit alerts
   "STREAK_BROKEN",
   "COMMITMENT_MISSED",
+  // Scout research updates
+  "SCOUT_KNOWLEDGE_ENRICHED",
   // AI & system errors the user should know about
   "AI_LINK_FAILURE",
 ]);
@@ -186,6 +188,13 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
       return {
         title: 'Nexus Alert — Habit Streak At Risk',
         body: 'Your habit streak health is critically low. Check Atlas to recover it.'
+      };
+    case 'SCOUT_KNOWLEDGE_ENRICHED':
+      return {
+        title: 'Nexus Knowledge Enriched',
+        body: payloadData?.claim 
+          ? `Auto-indexed discovery: "${String(payloadData.claim).slice(0, 60)}..."`
+          : 'Scout has auto-indexed new research into your library.'
       };
     case 'MODULE_REMINDER_DUE':
       return {

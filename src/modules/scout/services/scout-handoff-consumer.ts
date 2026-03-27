@@ -22,6 +22,7 @@ interface HandoffConsumerContext {
 }
 
 let consumerRegistered = false;
+let activeContext: HandoffConsumerContext = {};
 
 /**
  * Registers a Spine listener that watches for MODULE_HANDOFF_RECEIVED events
@@ -30,6 +31,7 @@ let consumerRegistered = false;
  * Idempotent — calling more than once has no effect.
  */
 export function registerScoutHandoffConsumer(context: HandoffConsumerContext): () => void {
+  activeContext = context;
   if (consumerRegistered) return () => {};
   consumerRegistered = true;
 
@@ -41,8 +43,8 @@ export function registerScoutHandoffConsumer(context: HandoffConsumerContext): (
     if (!query) return;
 
     const result = await ScoutCrossModuleQueryService.query(query, {
-      userId: context.userId,
-      encryptionKey: context.encryptionKey,
+      userId: activeContext.userId,
+      encryptionKey: activeContext.encryptionKey,
       requestingModule: data.sourceModuleId ?? 'nexus',
     });
 
@@ -69,6 +71,7 @@ export function registerScoutHandoffConsumer(context: HandoffConsumerContext): (
   return () => {
     unsubscribe();
     consumerRegistered = false;
+    activeContext = {};
   };
 }
 

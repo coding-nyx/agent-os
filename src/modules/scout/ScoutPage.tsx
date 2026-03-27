@@ -1074,7 +1074,7 @@ export default function ScoutPage() {
           setActiveProfile(loadedProfile);
           return loadedProfile;
         },
-        syncGuestProfile: syncGuestScoutProfileToUser as any,
+        syncGuestProfile: syncGuestScoutProfileToUser,
       }}
       renderOnboarding={(props) => (
         <ScoutOnboarding

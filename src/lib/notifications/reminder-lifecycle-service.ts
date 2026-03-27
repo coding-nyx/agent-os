@@ -1,5 +1,3 @@
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getFirebase } from '@/lib/firebase';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { ModuleId } from '@/lib/module-manifest';
@@ -14,6 +12,7 @@ import type {
 } from './types';
 import { NOTIFICATION_COLLECTIONS } from './types';
 import { ReminderLifecycleError } from './errors';
+import { queueScheduleReminder } from './schedule-dispatch-service';
 
 export interface ReminderProposalDraft {
   moduleId: ModuleId;
@@ -37,39 +36,6 @@ function generateId(): string {
     return crypto.randomUUID();
   }
   return `proposal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function callScheduleReminderWithRetry(scheduleId: string, maxAttempts = 3): Promise<void> {
-  const { app } = getFirebase();
-  if (!app) return;
-  const functions = getFunctions(app);
-  const scheduleReminder = httpsCallable<{ scheduleId: string }, unknown>(
-    functions,
-    'scheduleReminder',
-  );
-
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      await scheduleReminder({ scheduleId });
-      return;
-    } catch (err) {
-      lastError = err;
-      if (attempt < maxAttempts) {
-        await sleep(Math.min(500 * 2 ** (attempt - 1), 4000));
-      }
-    }
-  }
-
-  throw new ReminderLifecycleError(
-    'schedule_failed',
-    `scheduleReminder Cloud Function failed after ${maxAttempts} attempts`,
-    lastError,
-  );
 }
 
 class ReminderLifecycleServiceImpl {
@@ -156,7 +122,7 @@ class ReminderLifecycleServiceImpl {
     );
 
     // Call Cloud Function with retry — throw on final failure
-    await callScheduleReminderWithRetry(scheduleId);
+    await queueScheduleReminder(scheduleId);
 
     // Mark proposal as confirmed
     await dataLayer.updateDocument<PersistedReminderProposal>(proposalPath(userId), proposalId, {

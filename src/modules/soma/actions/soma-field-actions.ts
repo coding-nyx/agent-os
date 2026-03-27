@@ -434,7 +434,7 @@ export function resetSomaActionsRegistered(): void {
  * for field CRUD operations and readiness computation.
  */
 export function registerSomaFieldActions(): void {
-  // if (somaActionsRegistered) return; // Force re-registration for debugging
+  if (somaActionsRegistered) return;
   somaActionsRegistered = true;
 
   console.log('[SomaFieldActions] Registering actions for soma...');

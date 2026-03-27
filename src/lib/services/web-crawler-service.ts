@@ -55,13 +55,26 @@ function resolveBackend(): Backend | null {
 async function fetchWithTimeout(
   url: string,
   init: RequestInit,
-  timeoutMs = 30_000,
+  timeoutMs = 15_000,
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
+
+  // Merge external signal with the timeout signal so either can cancel the fetch.
+  const externalSignal = init.signal instanceof AbortSignal ? init.signal : null;
+  let signal: AbortSignal;
+  if (externalSignal) {
+    // AbortSignal.any is widely supported (Chrome 116+, Firefox 124+, Safari 17.4+).
+    // Fall back to timeout-only if unavailable.
+    signal = typeof AbortSignal.any === 'function'
+      ? AbortSignal.any([timeoutController.signal, externalSignal])
+      : timeoutController.signal;
+  } else {
+    signal = timeoutController.signal;
+  }
 
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await fetch(url, { ...init, signal });
   } finally {
     clearTimeout(timeoutId);
   }
@@ -206,16 +219,17 @@ export const WebCrawlerService = {
       }
     };
 
-    const maxRetries = 2;
+    const maxRetries = 1;
     let lastError: Error | null = null;
     for (let i = 0; i <= maxRetries; i++) {
       try {
         return await attempt();
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
+        // Don't retry on abort (timeout or external cancel)
+        if (lastError.name === 'AbortError') break;
         if (i === maxRetries) break;
-        const delay = 400 * Math.pow(2, i);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, 400));
       }
     }
 

@@ -268,7 +268,7 @@ export class Orchestrator {
     const normalized = fullText.replace(/[\u201C\u201D\u2018\u2019]/g, '"');
 
     // Extract well-formed <action type="...">...</action> tags
-    const actionRegex = /<action\s+type="([^"]+)">([\s\S]*?)<\/action>/gi;
+    const actionRegex = /<action\s+type=["']?([^"'\s>]+)["']?>([\s\S]*?)<\/action>/gi;
     let match;
     while ((match = actionRegex.exec(normalized)) !== null) {
       const type = match[1];
@@ -503,7 +503,7 @@ export class Orchestrator {
 
   private async executeWithRetry(
     fn: () => Promise<Response>,
-    maxRetries: number = 3,
+    maxRetries: number = 4,
     signal?: AbortSignal
   ): Promise<Response> {
     let lastError: Error | null = null;
@@ -511,7 +511,8 @@ export class Orchestrator {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       try {
         const response = await fn();
-        if (response.ok || response.status < 500) return response;
+        // Retry on 429 (Too Many Requests) or 5xx (Server Errors)
+        if (response.ok || (response.status < 500 && response.status !== 429)) return response;
         lastError = new Error(`API Error: ${response.status}`);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') throw error;
@@ -575,7 +576,7 @@ export class Orchestrator {
       },
       body,
       signal: options.signal,
-    }), 3, options.signal);
+    }), 4, options.signal);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -629,7 +630,7 @@ export class Orchestrator {
       },
       body,
       signal,
-    }), 3, signal);
+    }), 4, signal);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -729,7 +730,7 @@ export class Orchestrator {
       headers: { 'Content-Type': 'application/json' },
       body,
       signal,
-    }), 3, signal);
+    }), 4, signal);
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
@@ -775,7 +776,7 @@ export class Orchestrator {
       },
       body,
       signal,
-    }), 3, signal);
+    }), 4, signal);
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');

@@ -39,6 +39,7 @@ const NON_MUTATING_ACTIONS = new Set([
   'query_module_data',
   'query_memory',
   'search_memory',
+  'web_search', // Explicitly non-mutating: data retrieval only
   'query_profile',
   'analyze_trends',
   'analyze_spending',

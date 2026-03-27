@@ -125,12 +125,8 @@ export const NSV_READ_PERMISSIONS: Record<ModuleId, NSVMetricPath[]> = {
   ],
   scout: [
     // Research intelligence — lean context, cognitively-focused
-    'biological.cnsFatigue',          // research capacity signal
-    'cognitive.energyBudget',         // reading/learning capacity
-    'cognitive.focusScore',           // deep research feasibility
     'cognitive.researchLoad',         // primary domain
     'cognitive.interestDiversity',    // primary domain — breadth of research interests
-    'emotional.moodTrend'             // curiosity/engagement calibration
   ],
   ledger: [
     // Financial intelligence — resource domain + stress/energy for decision quality

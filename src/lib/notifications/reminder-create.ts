@@ -1,5 +1,3 @@
-import { getFirebase } from '@/lib/firebase';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { ModuleId } from '@/lib/module-manifest';
 import type {
@@ -9,7 +7,7 @@ import type {
   NotificationDeepLink,
   Recurrence,
 } from '@/lib/notifications/types';
-import { ReminderLifecycleError } from './errors';
+import { queueScheduleReminder } from './schedule-dispatch-service';
 
 export interface ReminderDraft {
   moduleId: ModuleId;
@@ -23,39 +21,6 @@ export interface ReminderDraft {
   source?: NotificationScheduleConfig['source'];
   tags?: string[];
   createdBy: 'user' | 'agent';
-}
-
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function callScheduleReminder(scheduleId: string, maxAttempts = 3): Promise<void> {
-  const { app } = getFirebase();
-  if (!app) return;
-  const functions = getFunctions(app);
-  const scheduleReminder = httpsCallable<{ scheduleId: string }, unknown>(
-    functions,
-    'scheduleReminder',
-  );
-
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      await scheduleReminder({ scheduleId });
-      return;
-    } catch (err) {
-      lastError = err;
-      if (attempt < maxAttempts) {
-        await sleep(Math.min(500 * 2 ** (attempt - 1), 4000));
-      }
-    }
-  }
-
-  throw new ReminderLifecycleError(
-    'schedule_failed',
-    `scheduleReminder Cloud Function failed after ${maxAttempts} attempts for schedule ${scheduleId}`,
-    lastError,
-  );
 }
 
 export async function createReminderSchedule(
@@ -97,8 +62,8 @@ export async function createReminderSchedule(
     payload,
   );
 
-  // Throws ReminderLifecycleError after 3 attempts — caller is responsible for error handling.
-  await callScheduleReminder(id);
+  // Throws ReminderLifecycleError after retry exhaustion.
+  await queueScheduleReminder(id);
 
   return id;
 }

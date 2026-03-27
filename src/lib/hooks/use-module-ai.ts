@@ -1107,7 +1107,12 @@ export function useModuleAI({
           detail: e instanceof Error ? e.message : String(e),
         });
         if (mountedRef.current) {
-          setError('The neural tunnel encountered an interference packet.');
+          const errorMessage = e instanceof Error ? e.message : String(e);
+          if (errorMessage.includes('429')) {
+            setError('The neural link is congested. Please try again in a moment.');
+          } else {
+            setError('The neural tunnel encountered an interference packet.');
+          }
         }
         if (onError) {
           onError(e);

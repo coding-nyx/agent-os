@@ -309,15 +309,18 @@ export function clearGuestScoutProfile(): void {
 }
 
 export async function syncGuestScoutProfileToUser(
-  guestProfile: ScoutProfile,
-  { userId, encryptionKey }: LoadContext = {}
-): Promise<void> {
-  if (!userId || !encryptionKey) return;
+  { userId, encryptionKey }: LoadContext = {},
+): Promise<boolean> {
+  if (!userId || !encryptionKey) return false;
+  if (!localStorage.getItem(GUEST_SCOUT_KEY)) return false;
+
+  const guestProfile = loadGuestScoutProfile();
   const existing = await loadScoutProfile({ userId, encryptionKey });
-  if (existing?.onboardingComplete) return;
+  if (existing?.onboardingComplete) return false;
 
   await saveScoutProfile(guestProfile, { userId, encryptionKey });
   clearGuestScoutProfile();
+  return true;
 }
 
 export function subscribeScoutProfile(

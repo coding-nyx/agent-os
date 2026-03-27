@@ -1,16 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
-import { getFirebase } from '@/lib/firebase';
 import { BridgeService } from '@/lib/services/bridge-service';
 import { useLocation } from 'react-router-dom';
 import type { ModuleId } from '@/lib/module-manifest';
 import type { NotificationScheduleConfig, Recurrence } from '../types';
+import { ReminderLifecycleService } from '../reminder-lifecycle-service';
+import { queueScheduleReminder } from '../schedule-dispatch-service';
 import { RecurrenceEditor } from './RecurrenceEditor';
 import { recurrenceSummary } from '../recurrence-summary';
 import { type NotificationSchedulePreset } from '../preset-registry';
@@ -58,8 +58,9 @@ function NotificationScheduleEditor({
 
   const setEnabled = (enabled: boolean) => {
     dirtyRef.current = true;
-    setDraft((d) => ({ ...d, enabled }));
-    void onSave({ ...draft, enabled, updatedAt: formatNowIso() });
+    const next = { ...draft, enabled };
+    setDraft(next);
+    void onSave({ ...next, updatedAt: formatNowIso() });
   };
 
   const setRecurrence = (recurrence: Recurrence) => {
@@ -243,6 +244,11 @@ export function NotificationSettingsPanel({
         next,
       );
 
+      if (!next.enabled && wasEnabled) {
+        await ReminderLifecycleService.cancel(user.uid, scheduleId);
+        return;
+      }
+
       // Request OS notification permission the first time a user enables a schedule.
       if (isNewlyEnabled && 'Notification' in window && Notification.permission !== 'granted') {
         await BridgeService.requestPermissionAndInit();
@@ -252,15 +258,7 @@ export function NotificationSettingsPanel({
       // Saves that only update message/recurrence text do not re-enqueue.
       if (isNewlyEnabled) {
         try {
-          const { app } = getFirebase();
-          if (app) {
-            const functions = getFunctions(app);
-            const scheduleReminder = httpsCallable<{ scheduleId: string }, unknown>(
-              functions,
-              'scheduleReminder',
-            );
-            await scheduleReminder({ scheduleId });
-          }
+          await queueScheduleReminder(scheduleId);
         } catch (err) {
           const maybe = err as { code?: string; message?: string; details?: unknown };
           console.warn('[NotificationSettingsPanel] scheduleReminder failed:', {

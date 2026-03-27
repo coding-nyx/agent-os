@@ -121,7 +121,12 @@ export function registerScoutActions() {
 
         pushAssistantMessage?.(`${result.answer}\n\n**Supporting Findings (${result.supportingNodes.length}):**\n${nodeLines}${sourceLine}${webLine}`);
       } else {
-        pushAssistantMessage?.(`I don't see any specific claims in our local knowledge base regarding "${query}". Shall I search the web?`);
+        // No local signal — automatically fall back to live web search instead of just recommending it.
+        pushAssistantMessage?.(`No local signal found for "${query}". Initiating live web search...`);
+        await ActionHub.execute('scout', 'web_search', {
+          ...context,
+          payload: { query },
+        });
       }
     },
 

@@ -14,6 +14,7 @@ import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
 import { ModuleThemeProvider } from '@/core/theme/ModuleThemeContext';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { Spine } from '@/lib/spine/spine-event-bus';
 
 export type WorkspaceType = 'focus' | 'lab' | 'command' | 'terminal';
 
@@ -236,6 +237,14 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
             await persistProfile(completedProfile);
             setProfile(completedProfile);
             setIsOnboarding(false);
+            Spine.emit({
+              type: 'MODULE_PROFILE_UPDATED',
+              source: moduleId,
+              domain: 'system',
+              data: { moduleId, reason: 'onboarding_complete', onboardingMode },
+              cascadeDepth: 0,
+              priority: 'info',
+            });
           }}
         />
       </ModuleLayout>

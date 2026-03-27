@@ -15,9 +15,26 @@ export interface EventFilterOptions {
   minPriority?: 'info' | 'alert' | 'critical';
 }
 
+export interface CascadeTruncationRecord {
+  timestamp: number;
+  triggerType: SpineEventType;
+  source: string;
+  cascadeDepth: number;
+  matchingRuleIds: string[];
+}
+
+export interface CascadeDiagnosticsSnapshot {
+  maxCascadeDepth: number;
+  truncationCount: number;
+  truncationCountByTrigger: Record<string, number>;
+  recentTruncations: CascadeTruncationRecord[];
+}
+
 const PRIORITY_LEVELS = { info: 0, alert: 1, critical: 2 };
 const SPINE_EVENTS_SUBCOLLECTION = 'events';
 const SPINE_SPEC_EVENTS_SUBCOLLECTION = 'spec_events';
+const MAX_CASCADE_DEPTH = 3;
+const MAX_RECENT_CASCADE_TRUNCATIONS = 100;
 
 /**
  * System alert event types that must be rate-limited in the client process.
@@ -56,6 +73,9 @@ class SpineEventBus {
   private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /** Tracks the last emission timestamp (ms) for rate-limited cascade alert types. */
   private _alertCooldowns = new Map<string, number>();
+  private _cascadeTruncationCount = 0;
+  private _cascadeTruncationByTrigger = new Map<SpineEventType, number>();
+  private _recentCascadeTruncations: CascadeTruncationRecord[] = [];
   private uid: string | null = null;
   private dataLayer: NexusDataLayer | null = null;
   private _sequenceCounter = 0;
@@ -127,28 +147,32 @@ class SpineEventBus {
 
     this.recentEvents = [event, ...this.recentEvents].slice(0, 50);
 
-    if (event.cascadeDepth < 3) {
-      const matchingRules = this.cascadeRules.filter((rule) => rule.trigger === event.type && rule.condition(event));
-      matchingRules.forEach((rule) => {
-        const cascaded = rule.transform(event);
+    const matchingRules = this.cascadeRules.filter((rule) => rule.trigger === event.type && rule.condition(event));
+    if (matchingRules.length > 0) {
+      if (event.cascadeDepth >= MAX_CASCADE_DEPTH) {
+        this.recordCascadeTruncation(event, matchingRules);
+      } else {
+        matchingRules.forEach((rule) => {
+          const cascaded = rule.transform(event);
 
-        // Rate-limit cascade emissions for system alert types to prevent a
-        // single VITAL_UPDATED in a critical state from flooding the bus and
-        // Firestore with repeated push notifications.
-        if (CASCADE_ALERT_RATE_LIMITED_TYPES.has(cascaded.type as string)) {
-          const lastEmittedMs = this._alertCooldowns.get(cascaded.type as string) ?? 0;
-          if (Date.now() - lastEmittedMs < CASCADE_ALERT_COOLDOWN_MS) {
-            return; // suppress — same alert type already emitted within cooldown window
+          // Rate-limit cascade emissions for system alert types to prevent a
+          // single VITAL_UPDATED in a critical state from flooding the bus and
+          // Firestore with repeated push notifications.
+          if (CASCADE_ALERT_RATE_LIMITED_TYPES.has(cascaded.type as string)) {
+            const lastEmittedMs = this._alertCooldowns.get(cascaded.type as string) ?? 0;
+            if (Date.now() - lastEmittedMs < CASCADE_ALERT_COOLDOWN_MS) {
+              return; // suppress — same alert type already emitted within cooldown window
+            }
+            this._alertCooldowns.set(cascaded.type as string, Date.now());
           }
-          this._alertCooldowns.set(cascaded.type as string, Date.now());
-        }
 
-        this.emit({
-          ...cascaded,
-          source: `cascade:${event.source}`,
-          cascadeDepth: event.cascadeDepth + 1
+          this.emit({
+            ...cascaded,
+            source: `cascade:${event.source}`,
+            cascadeDepth: event.cascadeDepth + 1
+          });
         });
-      });
+      }
     }
 
     if (event.priority !== 'info') {
@@ -186,11 +210,32 @@ class SpineEventBus {
     this.debounceTimers.forEach((timer) => globalThis.clearTimeout(timer));
     this.debounceTimers.clear();
     this._alertCooldowns.clear();
+    this.resetCascadeDiagnostics();
   }
 
   /** Exposed for testing: reset the alert cooldown registry without a full clear(). */
   resetAlertCooldowns(): void {
     this._alertCooldowns.clear();
+  }
+
+  getCascadeDiagnostics(): CascadeDiagnosticsSnapshot {
+    const truncationCountByTrigger: Record<string, number> = {};
+    this._cascadeTruncationByTrigger.forEach((count, eventType) => {
+      truncationCountByTrigger[eventType] = count;
+    });
+
+    return {
+      maxCascadeDepth: MAX_CASCADE_DEPTH,
+      truncationCount: this._cascadeTruncationCount,
+      truncationCountByTrigger,
+      recentTruncations: [...this._recentCascadeTruncations],
+    };
+  }
+
+  resetCascadeDiagnostics(): void {
+    this._cascadeTruncationCount = 0;
+    this._cascadeTruncationByTrigger.clear();
+    this._recentCascadeTruncations = [];
   }
 
   private async logEvent(event: SpineEvent): Promise<void> {
@@ -250,6 +295,37 @@ class SpineEventBus {
       ...event,
       cascadeDepth: event.cascadeDepth ?? 0
     };
+  }
+
+  private recordCascadeTruncation(event: SpineEvent, matchingRules: CascadeRule[]): void {
+    this._cascadeTruncationCount += 1;
+    this._cascadeTruncationByTrigger.set(
+      event.type,
+      (this._cascadeTruncationByTrigger.get(event.type) ?? 0) + 1,
+    );
+
+    const record: CascadeTruncationRecord = {
+      timestamp: Date.now(),
+      triggerType: event.type,
+      source: event.source,
+      cascadeDepth: event.cascadeDepth,
+      matchingRuleIds: matchingRules.map((rule) => rule.id),
+    };
+    this._recentCascadeTruncations = [record, ...this._recentCascadeTruncations].slice(
+      0,
+      MAX_RECENT_CASCADE_TRUNCATIONS,
+    );
+
+    NexusLogger.emit('spine', {
+      moduleId: event.source,
+      label: 'CASCADE_TRUNCATED',
+      detail: record,
+    });
+    NexusLogger.warn(
+      'SpineEventBus',
+      `Cascade truncated at depth ${event.cascadeDepth} for ${event.type}`,
+      { matchingRuleIds: record.matchingRuleIds, source: event.source },
+    );
   }
 }
 

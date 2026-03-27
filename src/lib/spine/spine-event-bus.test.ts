@@ -277,6 +277,36 @@ describe('SpineEventBus', () => {
       expect(handler).toHaveBeenCalledTimes(4);
     });
 
+    it('tracks truncation diagnostics when cascade is cut at max depth', () => {
+      const rule: CascadeRule = {
+        id: 'recursive-truncation',
+        trigger: 'VITAL_UPDATED',
+        condition: () => true,
+        transform: () => ({
+          type: 'VITAL_UPDATED',
+          source: 'cascade',
+          domain: 'B',
+          priority: 'info',
+          data: {},
+          cascadeDepth: 0,
+        }),
+      };
+      Spine.registerCascadeRules([rule]);
+
+      Spine.emit(makeTestEvent());
+
+      const diagnostics = Spine.getCascadeDiagnostics();
+      expect(diagnostics.maxCascadeDepth).toBe(3);
+      expect(diagnostics.truncationCount).toBe(1);
+      expect(diagnostics.truncationCountByTrigger.VITAL_UPDATED).toBe(1);
+      expect(diagnostics.recentTruncations).toHaveLength(1);
+      expect(diagnostics.recentTruncations[0]).toMatchObject({
+        triggerType: 'VITAL_UPDATED',
+        cascadeDepth: 3,
+        matchingRuleIds: ['recursive-truncation'],
+      });
+    });
+
     it('does not fire cascade when condition returns false', () => {
       const handler = vi.fn();
       Spine.on('BURNOUT_WARNING', handler);
@@ -356,6 +386,33 @@ describe('SpineEventBus', () => {
 
       Spine.emit(makeTestEvent());
       expect(burnoutHandler).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('cascade diagnostics lifecycle', () => {
+    it('resets diagnostics explicitly', () => {
+      const rule: CascadeRule = {
+        id: 'recursive-reset',
+        trigger: 'VITAL_UPDATED',
+        condition: () => true,
+        transform: () => ({
+          type: 'VITAL_UPDATED',
+          source: 'cascade',
+          domain: 'B',
+          priority: 'info',
+          data: {},
+          cascadeDepth: 0,
+        }),
+      };
+      Spine.registerCascadeRules([rule]);
+      Spine.emit(makeTestEvent());
+      expect(Spine.getCascadeDiagnostics().truncationCount).toBeGreaterThan(0);
+
+      Spine.resetCascadeDiagnostics();
+      const diagnostics = Spine.getCascadeDiagnostics();
+      expect(diagnostics.truncationCount).toBe(0);
+      expect(diagnostics.truncationCountByTrigger).toEqual({});
+      expect(diagnostics.recentTruncations).toEqual([]);
     });
   });
 });

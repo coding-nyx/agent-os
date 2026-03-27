@@ -64,7 +64,7 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   const thoughtText = thoughtMatch ? thoughtMatch[1].trim() : '';
 
   // 2. Extract action content — \s+ tolerates extra whitespace between tag name and attribute
-  const actionMatches = [...normalized.matchAll(/<action\s+type="([^"]+)">([\s\S]*?)<\/action>/gi)];
+  const actionMatches = [...normalized.matchAll(/<action\s+type=["']?([^"'\s>]+)["']?>([\s\S]*?)<\/action>/gi)];
   const actionText = actionMatches.map(m => `[ACTION: ${m[1]}] ${m[2].trim()}`).join('\n');
   const bracketActionMatches = [...normalized.matchAll(/\[action\s+type=["']?([a-z_]+)["']?\]\s*(\{[\s\S]*?\})/gi)];
   const bracketActionText = bracketActionMatches.map(m => `[ACTION: ${m[1]}] ${m[2].trim()}`).join('\n');
@@ -88,7 +88,7 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   const isThinking = hasThoughtOpener && !hasThoughtCloser;
 
   // Check if currently acting — <action type="..."> present but no </action> yet
-  const actionOpenMatch = normalized.match(/<action\s+type="([^"]+)">[\s\S]*$/i);
+  const actionOpenMatch = normalized.match(/<action\s+type=["']?([^"'\s>]+)["']?>[\s\S]*$/i);
   const isActing = actionOpenMatch !== null && !normalized.toLowerCase().includes('</action>', actionOpenMatch.index);
   const currentActionType = actionOpenMatch ? actionOpenMatch[1] : null;
 

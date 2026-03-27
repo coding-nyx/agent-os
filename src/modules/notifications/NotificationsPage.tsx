@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { lazy, Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -31,14 +31,13 @@ import type { NotificationScheduleConfig } from '@/lib/notifications/types';
 import { buildAllPresets } from '@/lib/notifications/preset-registry';
 import { recurrenceSummary } from '@/lib/notifications/recurrence-summary';
 import { BridgeService } from '@/lib/services/bridge-service';
+import { queueScheduleReminder } from '@/lib/notifications/schedule-dispatch-service';
 import { useNotifications, type InboxRecord } from '@/lib/notifications/NotificationContext';
 import { type ModuleId } from '@/lib/module-manifest';
 import { ModuleIcon, moduleTextColor } from '@/core/components/ModuleIcon';
-import { getFirebase } from '@/lib/firebase';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { ReminderOutcomeService } from '@/lib/notifications/reminder-outcome-service';
+import { ReminderLifecycleService } from '@/lib/notifications/reminder-lifecycle-service';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { NexusChat } from '@/core/components/NexusChat';
 import { NOTIFICATIONS_PERSONA } from './personas';
 import { serializeNotificationContext, NOTIFICATION_SCOPE_ACTIONS } from './prompts/notification-prompt-builder';
 import {
@@ -53,6 +52,11 @@ import {
   isInQuietHours,
   groupByDate,
 } from './services/notification-service';
+
+const NexusChat = lazy(async () => {
+  const mod = await import('@/core/components/NexusChat');
+  return { default: mod.NexusChat };
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -387,19 +391,6 @@ export default function NotificationsPage() {
   const [quietHours, setQuietHours] = useState<QuietHoursConfig>(createDefaultQuietHours());
   const [showAI, setShowAI] = useState(false);
 
-  // AI agent
-  const notificationSummary = useMemo(() => buildNotificationSummary(items), [items]);
-  const enrichedSystemPrompt = useMemo(() => {
-    const ctx = serializeNotificationContext(notificationSummary, quietHours.enabled);
-    return `${NOTIFICATIONS_PERSONA}\n\n${ctx}`;
-  }, [notificationSummary, quietHours.enabled]);
-
-  const ai = useModuleAI({
-    moduleId: 'notifications' as ModuleId,
-    systemPrompt: enrichedSystemPrompt,
-    persistencePolicy: 'session-only' as any,
-  });
-
   useEffect(() => {
     const onResize = () => setIsWide(window.innerWidth >= 1024);
     window.addEventListener('resize', onResize);
@@ -447,11 +438,21 @@ export default function NotificationsPage() {
 
   const deleteSchedule = useCallback(async (id: string) => {
     if (!user) return;
+    const schedule = schedules.find((entry) => entry.id === id);
+    if (schedule?.enabled) {
+      await ReminderLifecycleService.cancel(user.uid, id);
+    }
     await dataLayer.deleteDocument(`users/${user.uid}/notification_schedules`, id);
-  }, [dataLayer, user]);
+  }, [dataLayer, schedules, user]);
 
   const toggleSchedule = useCallback(async (id: string, enabled: boolean) => {
     if (!user) return;
+
+    if (!enabled) {
+      await ReminderLifecycleService.cancel(user.uid, id);
+      return;
+    }
+
     await dataLayer.updateDocument(`users/${user.uid}/notification_schedules`, id, { 
       enabled, 
       updatedAt: new Date().toISOString() 
@@ -459,12 +460,7 @@ export default function NotificationsPage() {
 
     if (enabled) {
       try {
-        const { app } = getFirebase();
-        if (app) {
-          const functions = getFunctions(app);
-          const scheduleReminder = httpsCallable<{ scheduleId: string }, unknown>(functions, 'scheduleReminder');
-          await scheduleReminder({ scheduleId: id });
-        }
+        await queueScheduleReminder(id);
       } catch (err) {
         console.warn('[NotificationsPage] scheduleReminder failed:', err);
       }
@@ -516,11 +512,7 @@ export default function NotificationsPage() {
     }
     if (isNewlyEnabled) {
       try {
-        const { app } = getFirebase();
-        if (app) {
-          const scheduleReminderFn = httpsCallable<{ scheduleId: string }, unknown>(getFunctions(app), 'scheduleReminder');
-          await scheduleReminderFn({ scheduleId });
-        }
+        await queueScheduleReminder(scheduleId);
       } catch (err) {
         console.warn('[NotificationsPage] scheduleReminder preset failed:', err);
       }
@@ -569,13 +561,23 @@ export default function NotificationsPage() {
 
   const deleteSelected = useCallback(async () => {
     if (!user) return;
+    const selectedRecords = Array.from(selectedIds)
+      .map((id) => items.find((item) => item.id === id))
+      .filter((item): item is InboxRecord => Boolean(item));
+
+    await Promise.all(
+      selectedRecords.map((record) =>
+        ReminderOutcomeService.recordOutcome(dataLayer, user.uid, record, 'skipped'),
+      ),
+    );
+
     await Promise.all(
       Array.from(selectedIds).map(id =>
         dataLayer.deleteDocument(`users/${user.uid}/notification_inbox`, id)
       )
     );
     setSelectedIds(new Set());
-  }, [selectedIds, user, dataLayer]);
+  }, [dataLayer, items, selectedIds, user]);
 
   // ── Snooze handlers ──────────────────────────────────────────────────────
   const handleSnooze = useCallback((id: string, snoozedUntil: string) => {
@@ -706,16 +708,9 @@ export default function NotificationsPage() {
               transition={{ duration: 0.25 }}
               className="overflow-hidden rounded-2xl border border-indigo-500/20 bg-indigo-500/5 mb-4"
             >
-              <NexusChat
-                moduleId={'notifications' as ModuleId}
-                ai={ai}
-                agentName="Nexus Notify"
-                themeColor={'indigo' as any}
-                placeholder="Triage my inbox, set quiet hours, snooze alerts..."
-                authMode="global"
-                showInternalSignals={false}
-                hideClearHistory={true}
-              />
+              <Suspense fallback={<div className="h-full min-h-[240px] animate-pulse bg-white/[0.03]" />}>
+                <NotificationAIPanel items={items} quietHoursEnabled={quietHours.enabled} />
+              </Suspense>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1109,5 +1104,38 @@ export default function NotificationsPage() {
         confirmLabel="Clear All"
       />
     </div>
+  );
+}
+
+function NotificationAIPanel({
+  items,
+  quietHoursEnabled,
+}: {
+  items: InboxRecord[];
+  quietHoursEnabled: boolean;
+}) {
+  const notificationSummary = useMemo(() => buildNotificationSummary(items), [items]);
+  const enrichedSystemPrompt = useMemo(() => {
+    const ctx = serializeNotificationContext(notificationSummary, quietHoursEnabled);
+    return `${NOTIFICATIONS_PERSONA}\n\n${ctx}`;
+  }, [notificationSummary, quietHoursEnabled]);
+
+  const ai = useModuleAI({
+    moduleId: 'notifications' as ModuleId,
+    systemPrompt: enrichedSystemPrompt,
+    persistencePolicy: 'session-only' as any,
+  });
+
+  return (
+    <NexusChat
+      moduleId={'notifications' as ModuleId}
+      ai={ai}
+      agentName="Nexus Notify"
+      themeColor={'indigo' as any}
+      placeholder="Triage my inbox, set quiet hours, snooze alerts..."
+      authMode="global"
+      showInternalSignals={false}
+      hideClearHistory={true}
+    />
   );
 }

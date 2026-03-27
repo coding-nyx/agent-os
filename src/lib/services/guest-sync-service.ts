@@ -2,7 +2,7 @@ import { syncGuestTitanProfileToUser } from '@/modules/titan/services/titan-prof
 import { syncGuestAgnesProfileToUser } from '@/modules/agnes/services/agnes-profile-service';
 import { syncGuestLedgerProfileToUser } from '@/modules/ledger/services/ledger-intake-service';
 import { syncGuestAtlasProfileToUser } from '@/modules/atlas/services/atlas-profile-service';
-import { loadGuestScoutProfile, syncGuestScoutProfileToUser } from '@/modules/scout/services/scout-knowledge-service';
+import { syncGuestScoutProfileToUser } from '@/modules/scout/services/scout-knowledge-service';
 import { syncGuestForgeProfileToUser } from '@/modules/forge/services/forge-session-service';
 
 export async function syncAllGuestDataToUser(userId: string, encryptionKey: CryptoKey): Promise<void> {
@@ -14,7 +14,7 @@ export async function syncAllGuestDataToUser(userId: string, encryptionKey: Cryp
     syncGuestAgnesProfileToUser(context),
     syncGuestLedgerProfileToUser(context),
     syncGuestAtlasProfileToUser(context),
-    syncGuestScoutProfileToUser(loadGuestScoutProfile(), context),
+    syncGuestScoutProfileToUser(context),
     syncGuestForgeProfileToUser(context)
   ];
 

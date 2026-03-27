@@ -4,7 +4,8 @@ import { WebCrawlerService as WebSearchService } from '@/lib/services/web-crawle
 /** Returns true when at least one search backend is resolvable. */
 export function isSearchAvailable(): boolean {
   const tavilyKey = import.meta.env.VITE_TAVILY_API_KEY as string | undefined;
-  const proxyUrl = import.meta.env.VITE_SCOUT_PROXY_URL as string | undefined;
+  // Must match the env vars checked by WebCrawlerService.resolveBackend()
+  const proxyUrl = import.meta.env.VITE_WEB_CRAWLER_PROXY_URL as string | undefined;
   const functionsUrl = import.meta.env.VITE_FUNCTIONS_BASE_URL as string | undefined;
   const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined;
   return Boolean(tavilyKey || proxyUrl || functionsUrl || projectId);

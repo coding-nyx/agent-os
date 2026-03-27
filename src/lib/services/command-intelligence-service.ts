@@ -759,7 +759,8 @@ export const CommandIntelligenceService = {
         signal: options.signal,
       });
     } catch (error) {
-      throw new IntentParseError('llm', 'LLM call failed', error);
+      console.warn('[CommandIntelligenceService] LLM parse failed, falling back to phase 1 parser:', error);
+      return { ...fallback, parserMode: 'llm-fallback' as const };
     }
 
     try {
