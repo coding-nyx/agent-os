@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertTriangle, Clock, Plus, RefreshCcw } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { AlertTriangle, BookOpen, CheckCircle2, Clock, Database, FileSearch, Plus, RefreshCcw, Zap } from 'lucide-react';
 import type { GlobalProjection } from '@/lib/types';
 import type { ScoutProfile } from '../services/scout-knowledge-service';
 import type { ResearchSession } from '../types';
@@ -23,6 +23,7 @@ interface ScoutDashboardProps {
   isRefreshingNews?: boolean;
   isLocked?: boolean;
   onStartSession?: () => void;
+  onGenerateDigest?: () => void;
 }
 
 function formatSessionCountLabel(count: number) {
@@ -86,16 +87,47 @@ function normalizeKnowledgeNodes(
   });
 }
 
-function InlineStat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+function formatRelativeTime(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
+interface MetricCardProps {
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  accent?: boolean;
+}
+
+function MetricCard({ label, value, icon, accent }: MetricCardProps) {
   return (
-    <div className="flex min-w-[4.5rem] flex-col items-center gap-0.5 px-4 py-3">
-      <span className={cn('text-2xl font-black tabular-nums tracking-tight',
-        accent ? 'text-[var(--module-color-400)]' : 'text-white')}>
-        {value}
-      </span>
-      <span className="text-[9px] font-semibold uppercase tracking-[0.25em] text-white/35">
-        {label}
-      </span>
+    <div className="flex flex-1 flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.02] p-4">
+      <div className={cn(
+        'flex h-8 w-8 items-center justify-center rounded-xl border',
+        accent
+          ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)]'
+          : 'border-white/10 bg-white/[0.04] text-white/50'
+      )}>
+        {icon}
+      </div>
+      <div>
+        <p className={cn(
+          'text-2xl font-black tabular-nums tracking-tight',
+          accent ? 'text-[var(--module-color-400)]' : 'text-white'
+        )}>
+          {value}
+        </p>
+        <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">
+          {label}
+        </p>
+      </div>
     </div>
   );
 }
@@ -113,6 +145,7 @@ export function ScoutDashboard({
   isRefreshingNews,
   isLocked = false,
   onStartSession,
+  onGenerateDigest,
 }: ScoutDashboardProps) {
   if (isLocked) {
     return (
@@ -128,7 +161,8 @@ export function ScoutDashboard({
   const nodes = normalizeKnowledgeNodes(rawNodes, profile?.updatedAt);
   const interests = profile?.interests || [];
   const newsBriefs = profile?.newsBriefs || [];
-  const verified = nodes.filter((node) => node.status === 'verified').length;
+  const verifiedCount = nodes.filter((node) => node.status === 'verified').length;
+  const verifiedPct = nodes.length > 0 ? `${Math.round((verifiedCount / nodes.length) * 100)}%` : '—';
   const avgConfidence =
     nodes.length > 0
       ? Math.round((nodes.reduce((acc, node) => acc + (node.confidence || 0), 0) / nodes.length) * 100)
@@ -136,6 +170,14 @@ export function ScoutDashboard({
   const activeSessionsCount = sessions.filter((session) =>
     ['decomposing', 'searching', 'synthesizing'].includes(session.status)
   ).length;
+
+  const recentSessions = useMemo(
+    () =>
+      [...sessions]
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .slice(0, 5),
+    [sessions],
+  );
 
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[var(--shell-content-max,80rem)] flex-col gap-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
@@ -185,37 +227,112 @@ export function ScoutDashboard({
         )}
       </section>
 
-      {/* Compact inline stats strip */}
-      <div className="relative">
-        <div className="flex items-stretch divide-x divide-white/8 overflow-x-auto scrollbar-none rounded-2xl border border-white/8 bg-white/[0.02]">
-        <InlineStat label="Nodes"    value={nodes.length} accent />
-        <InlineStat label="Sources"  value={sources.length} />
-        <InlineStat label="Verified" value={verified} />
-        <InlineStat label="Topics"   value={interests.length} />
-        <InlineStat label="Active"   value={activeSessionsCount} />
-        {onRefreshNews && (
-          <div className="ml-auto flex items-center px-4">
-              <NeuralButton
-                type="button"
-                onClick={onRefreshNews}
-                loading={isRefreshingNews}
-                variant="ghost"
-                themeColor="lime"
-                size="sm"
-                aria-label={isRefreshingNews ? 'Refreshing briefs' : 'Refresh briefs'}
-                className="shrink-0"
-              >
+      {/* Research health metrics */}
+      <section aria-label="Research health metrics">
+        <div className="flex flex-wrap gap-3 sm:flex-nowrap">
+          <MetricCard
+            label="Knowledge nodes"
+            value={nodes.length}
+            icon={<Database size={15} />}
+            accent
+          />
+          <MetricCard
+            label="Verified"
+            value={verifiedPct}
+            icon={<CheckCircle2 size={15} />}
+          />
+          <MetricCard
+            label="Sources saved"
+            value={sources.length}
+            icon={<BookOpen size={15} />}
+          />
+          <MetricCard
+            label="Active sessions"
+            value={activeSessionsCount}
+            icon={<FileSearch size={15} />}
+          />
+        </div>
+      </section>
+
+      {/* Quick actions */}
+      <section aria-label="Quick actions">
+        <div className="flex flex-wrap gap-2">
+          <NeuralButton
+            type="button"
+            onClick={onStartSession}
+            themeColor="lime"
+            size="sm"
+          >
+            <Plus size={14} />
+            <span>New Research Session</span>
+          </NeuralButton>
+
+          <NeuralButton
+            type="button"
+            onClick={onGenerateDigest}
+            variant="secondary"
+            size="sm"
+            disabled={!onGenerateDigest}
+          >
+            <Zap size={14} />
+            <span>Generate Digest</span>
+          </NeuralButton>
+
+          {onRefreshNews && (
+            <NeuralButton
+              type="button"
+              onClick={onRefreshNews}
+              loading={isRefreshingNews}
+              variant="secondary"
+              size="sm"
+              aria-label={isRefreshingNews ? 'Refreshing news' : 'Refresh News'}
+            >
               <RefreshCcw
                 className={cn('h-3.5 w-3.5', isRefreshingNews && 'animate-spin')}
                 aria-hidden="true"
               />
-              <span className="hidden sm:inline">{isRefreshingNews ? 'Refreshing…' : 'Refresh briefs'}</span>
+              <span>{isRefreshingNews ? 'Refreshing…' : 'Refresh News'}</span>
             </NeuralButton>
-          </div>
-        )}
+          )}
         </div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-2xl bg-gradient-to-l from-[#020205] to-transparent" aria-hidden="true" />
-      </div>
+      </section>
+
+      {/* Trending interests */}
+      <section aria-label="Trending interests">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4 sm:p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--module-color-400)]">
+            Tracked interests
+          </p>
+          <h2 className="mt-1 text-panel-heading text-white">Trending topics</h2>
+
+          {interests.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {interests.map((interest) => (
+                <span
+                  key={interest.id}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold',
+                    interest.trend === 'rising'
+                      ? 'border-[var(--module-accent-border)] bg-[var(--module-accent-muted)] text-[var(--module-color-300)]'
+                      : interest.trend === 'cooling'
+                        ? 'border-white/10 bg-white/[0.03] text-white/45'
+                        : 'border-white/10 bg-white/[0.05] text-white/70'
+                  )}
+                >
+                  {interest.trend === 'rising' && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--module-color-400)]" aria-hidden="true" />
+                  )}
+                  {interest.topic}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-body-secondary text-white/45">
+              Add interests in your profile to see trending topics here.
+            </p>
+          )}
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.95fr)] xl:items-start">
         <div className="space-y-4 sm:space-y-6">
@@ -224,11 +341,12 @@ export function ScoutDashboard({
             <KnowledgeGraph nodes={nodes} sources={sources} className="w-full h-full" />
           </section>
 
-          <section className="surface-foundation flex min-w-0 flex-col gap-4 p-4 sm:p-5" aria-label="Research sessions">
+          {/* Recent activity feed */}
+          <section className="surface-foundation flex min-w-0 flex-col gap-4 p-4 sm:p-5" aria-label="Recent activity">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-4">
               <div className="flex items-center gap-2">
                 <Clock size={13} className="text-[var(--module-color-300)]" aria-hidden="true" />
-                <h2 className="text-panel-heading text-white">Research sessions</h2>
+                <h2 className="text-panel-heading text-white">Recent activity</h2>
               </div>
               <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/60">
                 {formatSessionCountLabel(sessions.length)}
@@ -236,7 +354,7 @@ export function ScoutDashboard({
             </div>
 
             <ScoutSessionList
-              sessions={sessions}
+              sessions={recentSessions}
               onSelect={onSelectSession || (() => {})}
               onDelete={onDeleteSession || (() => {})}
               activeSessionId={activeSessionId}
@@ -261,14 +379,27 @@ export function ScoutDashboard({
                     {brief.topic}
                   </p>
                   <p className="mt-2 break-words text-body-secondary text-white/70">{brief.summary}</p>
+                  {brief.source && (
+                    <a
+                      href={brief.source}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block text-[11px] text-[var(--module-color-400)] underline-offset-2 hover:underline"
+                    >
+                      {brief.source}
+                    </a>
+                  )}
+                  <p className="mt-1.5 text-[10px] text-white/35">
+                    Updated {formatRelativeTime(brief.updatedAt)}
+                  </p>
                 </article>
               ))}
 
               {newsBriefs.length === 0 && (
                 <div className="rounded-3xl border border-dashed border-white/10 px-4 py-6 text-center">
-                  <p className="text-item-title text-white/65">No trend briefings yet</p>
+                  <p className="text-item-title text-white/65">No news briefs yet</p>
                   <p className="mt-1 text-body-secondary text-white/45">
-                    Start researching topics and refresh briefs when you want Scout to surface new developments.
+                    No news briefs yet — click Refresh News above to surface new developments.
                   </p>
                 </div>
               )}

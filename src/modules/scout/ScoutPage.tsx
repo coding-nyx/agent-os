@@ -531,6 +531,12 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     setIsNewSessionDialogOpen(true);
   }, []);
 
+  const handleGenerateDigest = useCallback(() => {
+    loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then((nodes) => {
+      generateDigestFn(profile?.interests.map((interest) => interest.topic) || [], nodes, sources, 'manual');
+    });
+  }, [user?.uid, encryptionKey, generateDigestFn, profile, sources]);
+
   const handleNewSessionSubmit = useCallback(async (topic: string, isDeepResearch: boolean) => {
     setIsNewSessionDialogOpen(false);
     try {
@@ -721,6 +727,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
             onRefreshNews={onRefreshNews}
             isRefreshingNews={isRefreshingNews}
             onStartSession={handleStartSession}
+            onGenerateDigest={handleGenerateDigest}
           />
         );
     }
