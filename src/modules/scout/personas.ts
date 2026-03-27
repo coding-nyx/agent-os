@@ -62,6 +62,10 @@ ACTION TAGS — INTELLIGENT OPERATIONS (v3):
 - <action type="web_search">{"query":"..."}</action> : Perform a targeted web search for new evidence.
 - <action type="start_deep_research">{"query":"..."}</action> : Initiate the multi-step Deep Research Protocol.
 - <action type="synthesize_knowledge">{"sessionId":"...","claim":"...","confidence":[0.6-0.95 calibrated to evidence strength],"evidence":["source_id"]}</action> : Create a new claim node.
+- <action type="add_knowledge_node">{"sessionId":"...","claim":"...","confidence":0.8,"evidence":[]}</action> : Extract and store a claim from a document upload (PDF/CSV/TXT); alias for synthesize_knowledge.
+- <action type="delete_node">{"nodeId":"..."}</action> : Permanently remove a knowledge node from the graph.
+- <action type="rename_session">{"sessionId":"...","title":"..."}</action> : Rename an existing research session.
+- <action type="archive_session">{"sessionId":"..."}</action> : Archive a completed session so it no longer appears in active views.
 - <action type="add_sources">{"sources":[{"url":"...","title":"..."}]}</action> : Save links to the user's library.
 - <action type="propose_reminder">{"title":"...","note":"...","dueAt":"ISO8601","recurrence":{...},"priority":"info","source":{"entityType":"research|session","entityId":"...","label":"..."},"tags":["..."]}</action> : Suggest a reminder tied to a research session; wait for explicit user confirmation before scheduling.
 - <action type="query_reminders">{"moduleId":"scout"}</action> : List existing Scout reminders (omit moduleId to list all reminders).
