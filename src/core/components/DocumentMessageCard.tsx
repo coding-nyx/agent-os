@@ -107,7 +107,10 @@ interface DocumentMessageCardProps {
   themeAccent?: string;
 }
 
-export function DocumentMessageCard({ doc, upload, themeAccent = 'text-orange-400' }: DocumentMessageCardProps) {
+// ⚡ Bolt Performance Optimization:
+// Wrapped DocumentMessageCard in React.memo to prevent O(N) evaluation and
+// DOM reconciliation of all mapped DocumentMessageCard components when the parent ChatInterface updates state (like the chat input).
+export const DocumentMessageCard = React.memo(function DocumentMessageCard({ doc, upload, themeAccent = 'text-orange-400' }: DocumentMessageCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (upload) {
@@ -231,6 +234,6 @@ export function DocumentMessageCard({ doc, upload, themeAccent = 'text-orange-40
       </div>
     </div>
   );
-}
+});
 
 export { parseDocumentUploadMessage };
