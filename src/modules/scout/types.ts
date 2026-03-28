@@ -38,7 +38,7 @@ export interface SubQuestion {
   results?: any[];
 }
 
-export type ResearchSessionStatus = 'idle' | 'decomposing' | 'awaiting_review' | 'searching' | 'synthesizing' | 'complete' | 'error' | 'cancelled';
+export type ResearchSessionStatus = 'idle' | 'decomposing' | 'awaiting_review' | 'searching' | 'synthesizing' | 'complete' | 'error' | 'cancelled' | 'archived';
 
 export interface ReasoningEntry {
   id: string;

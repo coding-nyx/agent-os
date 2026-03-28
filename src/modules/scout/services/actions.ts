@@ -6,6 +6,7 @@ import {
   loadKnowledgeNodes,
   queryKnowledgeNodes,
   updateKnowledgeNode,
+  deleteKnowledgeNode,
 } from './scout-knowledge-service';
 import { ScoutWebSearchService } from './scout-web-search-service';
 import { addSource, loadSources, normalizeUrl } from './scout-sources-service';
@@ -493,11 +494,49 @@ export function registerScoutActions() {
     },
 
     /**
-     * Finalize the current research turn and sync the workbench.
+     * Alias for synthesize_knowledge — used by document analysis prompts (PDF/CSV/TXT).
+     * Delegates directly so duplicate-detection and embedding logic run once.
      */
-    commit_research: async (context) => {
-      const { userId, encryptionKey, pushAssistantMessage } = context;
-      pushAssistantMessage?.('✅ Research workbench committed. All findings and sources have been saved.');
+    add_knowledge_node: async (context) => {
+      return ActionHub.execute('scout', 'synthesize_knowledge', context);
+    },
+
+    delete_node: async ({ payload, userId, pushAssistantMessage }) => {
+      const nodeId = typeof payload?.nodeId === 'string' ? payload.nodeId : '';
+      if (!nodeId) {
+        pushAssistantMessage?.('No node ID provided.');
+        return;
+      }
+      await deleteKnowledgeNode(nodeId, { userId: userId ?? null });
+      pushAssistantMessage?.(`Node ${nodeId} removed from knowledge graph.`);
+    },
+
+    rename_session: async ({ payload, userId, pushAssistantMessage }) => {
+      const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : '';
+      const title = typeof payload?.title === 'string' ? payload.title : '';
+      if (!sessionId || !title) {
+        pushAssistantMessage?.('Session ID and new title required.');
+        return;
+      }
+      await updateSession(sessionId, { topic: title }, { userId: userId ?? null });
+      pushAssistantMessage?.(`Session renamed to "${title}".`);
+    },
+
+    archive_session: async ({ payload, userId, pushAssistantMessage }) => {
+      const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : '';
+      if (!sessionId) {
+        pushAssistantMessage?.('Session ID required.');
+        return;
+      }
+      await updateSession(sessionId, { status: 'archived' }, { userId: userId ?? null });
+      pushAssistantMessage?.('Session archived.');
+    },
+
+    /**
+     * Finalizes the current research turn and signals all consumers via Spine.
+     */
+    commit_research: async ({ userId, pushAssistantMessage }) => {
+      pushAssistantMessage?.('Research workbench committed. All findings and sources have been saved.');
       Spine.emit({
         type: 'SCOUT_PROFILE_UPDATED',
         source: 'scout',
