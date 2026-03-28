@@ -548,3 +548,50 @@ export function registerScoutActions() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Updates the user's interest profile based on a search/query topic.
+ * Increments score for matching interests or adds a new one.
+ */
+async function updateInterestTrends(
+  query: string,
+  userId: string | null,
+  encryptionKey: CryptoKey | null,
+): Promise<void> {
+  if (!userId || !encryptionKey) return;
+  try {
+    const profile = await loadProfile(userId, encryptionKey);
+    const queryLower = query.toLowerCase();
+    const now = new Date().toISOString();
+
+    let matched = false;
+    const updated = profile.interests.map(interest => {
+      const topicLower = interest.topic.toLowerCase();
+      const overlap = queryLower.includes(topicLower) || topicLower.includes(queryLower.slice(0, 20));
+      if (overlap) {
+        matched = true;
+        const newScore = Math.min(100, interest.score + 5);
+        return { ...interest, score: newScore, trend: 'rising' as const, lastSeenAt: now };
+      }
+      return interest;
+    });
+
+    if (!matched && query.trim().length > 4) {
+      updated.push({
+        id: `interest_${Date.now()}`,
+        topic: query.slice(0, 50),
+        score: 10,
+        trend: 'steady' as const,
+        lastSeenAt: now,
+      });
+    }
+
+    await saveScoutProfile({ ...profile, interests: updated }, { userId, encryptionKey }, { suppressEvent: true });
+  } catch (err) {
+    console.warn('[Scout] Failed to update interest trends:', err);
+  }
+}
