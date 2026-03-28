@@ -143,6 +143,22 @@ describe('OrchestrationActionGateService', () => {
     expect(decision.metadata.runtime.willPersistHistory).toBe(false);
   });
 
+  it('dispatches web_search at autopilot level 0 — non-mutating reads are never blocked by analysis_only policy', () => {
+    const decision = OrchestrationActionGateService.evaluate({
+      moduleId: 'scout',
+      actionType: 'web_search',
+      payload: { query: 'latest AI research' },
+      autopilotLevel: 0,
+      historyMode: 'standard',
+      isGuest: false,
+    });
+
+    expect(decision.shouldDispatch).toBe(true);
+    expect(decision.metadata.mutatesState).toBe(false);
+    expect(decision.metadata.dispatchStatus).toBe('approved');
+    expect(decision.metadata.execution.status).toBe('executed');
+  });
+
   it('keeps ephemeral sessions analysis-only regardless of action type', () => {
     const decision = OrchestrationActionGateService.evaluate({
       moduleId: 'ledger',

@@ -209,7 +209,7 @@ export class OrchestrationActionGateService {
       dispatchStatus = 'awaiting_approval';
     } else if (mutatesState && !policy.canMutateState) {
       dispatchStatus = policy.executionMode === 'analysis_only' ? 'analysis_only' : 'blocked';
-    } else if (policy.executionMode === 'analysis_only') {
+    } else if (mutatesState && policy.executionMode === 'analysis_only') {
       dispatchStatus = 'analysis_only';
     }
 
