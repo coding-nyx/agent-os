@@ -1,6 +1,7 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import {
   loadScoutProfile,
+  saveScoutProfile,
   createEmptyScoutProfile,
   addKnowledgeNode,
   loadKnowledgeNodes,
@@ -498,7 +499,7 @@ export function registerScoutActions() {
      * Delegates directly so duplicate-detection and embedding logic run once.
      */
     add_knowledge_node: async (context) => {
-      return ActionHub.execute('scout', 'synthesize_knowledge', context);
+      await ActionHub.execute('scout', 'synthesize_knowledge', context);
     },
 
     delete_node: async ({ payload, userId, pushAssistantMessage }) => {

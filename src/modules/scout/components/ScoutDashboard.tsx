@@ -120,6 +120,14 @@ function MetricCard({ label, value, icon, accent }: MetricCardProps) {
   );
 }
 
+function InlineStat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-4 py-3 min-w-[72px]">
+      <span className={cn('text-lg font-black tabular-nums leading-none', accent ? 'text-[var(--module-color-300)]' : 'text-white')}>{value}</span>
+      <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-white/35">{label}</span>
+    </div>
+  );
+}
 export function ScoutDashboard({
   soul: _soul,
   profile,
@@ -220,7 +228,7 @@ export function ScoutDashboard({
         <div className="flex items-stretch divide-x divide-white/8 overflow-x-auto scrollbar-none rounded-2xl border border-white/[0.09] bg-white/[0.045]">
         <InlineStat label="Nodes"    value={nodes.length} accent />
         <InlineStat label="Sources"  value={sources.length} />
-        <InlineStat label="Verified" value={verified} />
+        <InlineStat label="Verified" value={verifiedCount} />
         <InlineStat label="Topics"   value={interests.length} />
         <InlineStat label="Active"   value={activeSessionsCount} />
         {onRefreshNews && (
@@ -241,9 +249,10 @@ export function ScoutDashboard({
               />
               <span>{isRefreshingNews ? 'Refreshing…' : 'Refresh News'}</span>
             </NeuralButton>
+          </div>
           )}
         </div>
-      </section>
+      </div>
 
       {/* Trending interests */}
       <section aria-label="Trending interests">

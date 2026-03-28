@@ -33,6 +33,7 @@ const statusLabelMap: Record<ResearchSessionStatus, string> = {
   complete: 'Complete',
   error: 'Error',
   cancelled: 'Cancelled',
+  archived: 'Archived',
 };
 
 const statusBadgeClasses: Record<ResearchSessionStatus, string> = {
@@ -44,6 +45,7 @@ const statusBadgeClasses: Record<ResearchSessionStatus, string> = {
   complete: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
   error: 'border-rose-500/20 bg-rose-500/10 text-rose-300',
   cancelled: 'border-white/[0.12] bg-white/[0.045] text-white/40',
+  archived: 'border-white/[0.09] bg-white/[0.03] text-white/30',
 };
 
 const statusDotClasses: Record<ResearchSessionStatus, string> = {
@@ -55,6 +57,7 @@ const statusDotClasses: Record<ResearchSessionStatus, string> = {
   complete:        'bg-emerald-400',
   error:           'bg-rose-400',
   cancelled:       'bg-white/15',
+  archived:        'bg-white/10',
 };
 
 function formatUpdatedDate(value: string) {

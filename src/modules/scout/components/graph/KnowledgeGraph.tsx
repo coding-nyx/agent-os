@@ -27,6 +27,9 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  BookMarked,
+  ExternalLink,
+  RotateCcw,
 } from 'lucide-react';
 import type { ScoutKnowledgeNode, SourceEntry } from '../../types';
 
@@ -60,6 +63,8 @@ interface GraphEdge {
   sourceId: string;
   targetId: string;
 }
+
+type StatusFilter = 'all' | 'verified' | 'pending' | 'contested';
 
 interface KnowledgeGraphProps {
   nodes: ScoutKnowledgeNode[];
@@ -233,6 +238,24 @@ export function KnowledgeGraph({
     [nodes],
   );
 
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [minConfidence, setMinConfidence] = useState(0);
+
+  const filteredNodes = useMemo(
+    () =>
+      graphNodes.filter(n => {
+        if (statusFilter !== 'all' && n.status !== statusFilter) return false;
+        if (n.confidence * 100 < minConfidence) return false;
+        if (tagFilter && !n.tags.includes(tagFilter)) return false;
+        return true;
+      }),
+    [graphNodes, statusFilter, minConfidence, tagFilter],
+  );
+
+  const verifiedCount = statusCounts.verified;
+  const pendingCount = statusCounts.pending;
+  const contestedCount = statusCounts.contested;
+
   return (
     <div className={cn('relative w-full h-full flex flex-col', className)}>
 
@@ -316,7 +339,7 @@ export function KnowledgeGraph({
                   {allTags.map(tag => (
                     <button
                       key={tag}
-                      onClick={() => setTagFilter(prev => prev === tag ? null : tag)}
+                      onClick={() => setTagFilter(prev => prev === tag ? '' : tag)}
                       className={cn("px-2 py-0.5 rounded-full text-[11px] border transition-all",
                         tagFilter === tag
                           ? "bg-violet-500/30 border-violet-500/40 text-violet-300"
@@ -333,26 +356,13 @@ export function KnowledgeGraph({
             {/* Reset */}
             {(statusFilter !== 'all' || minConfidence > 0 || tagFilter) && (
               <button
-                onClick={() => { setStatusFilter('all'); setMinConfidence(0); setTagFilter(null); }}
+                onClick={() => { setStatusFilter('all'); setMinConfidence(0); setTagFilter(''); }}
                 className="w-full text-[11px] text-white/40 hover:text-white/70 flex items-center justify-center gap-1 py-1 transition-colors"
               >
-                All
+                <RotateCcw className="w-3 h-3" />
+                Reset filters
               </button>
-              {allTags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => setTagFilter(prev => (prev === tag ? '' : tag))}
-                  className={cn(
-                    'px-2 py-0.5 rounded-full text-[10px] border transition-all',
-                    tagFilter === tag
-                      ? 'bg-violet-500/30 border-violet-500/40 text-violet-300'
-                      : 'bg-white/5 border-white/10 text-white/40 hover:text-white/70',
-                  )}
-                >
-                  #{tag}
-                </button>
-              ))}
-            </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -399,10 +409,30 @@ export function KnowledgeGraph({
               );
             })}
 
-                <text
-                  x={gn.x} y={gn.y + gn.r + 15}
-                  textAnchor="middle"
-                  className="text-[11px] fill-white/60 font-medium select-none pointer-events-none"
+            {/* Nodes */}
+            {graphNodes.map(gn => {
+              const colors = statusColors(gn.status);
+              const isSelected = selectedId === gn.id;
+              const isHovered = hoveredId === gn.id;
+              const isConnected = connectedIds ? connectedIds.has(gn.id) : false;
+              const tagMatch = !tagFilter || gn.tags.includes(tagFilter);
+              const baseOpacity = tagMatch ? 1 : 0.2;
+              const opacity =
+                selectedId && !isSelected && !isConnected
+                  ? baseOpacity * 0.25
+                  : baseOpacity;
+
+              return (
+                <motion.g
+                  key={gn.id}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity }}
+                  whileHover={{ scale: 1.12 }}
+                  onClick={() => handleNodeClick(gn)}
+                  onMouseEnter={() => setHoveredId(gn.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  className="cursor-pointer"
+                  style={{ originX: `${gn.x}px`, originY: `${gn.y}px` }}
                 >
                   {/* Selection / hover glow */}
                   {(isSelected || isHovered) && (
@@ -468,17 +498,10 @@ export function KnowledgeGraph({
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  {selectedNode.type === 'finding' ? (
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-lime-500/10 border border-lime-500/20">
-                      <Zap className="w-3 h-3 text-lime-400" />
-                      <span className="text-[11px] font-black uppercase tracking-widest text-lime-400">Finding</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
-                      <BookMarked className="w-3 h-3 text-cyan-400" />
-                      <span className="text-[11px] font-black uppercase tracking-widest text-cyan-400">Source</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-lime-500/10 border border-lime-500/20">
+                    <Zap className="w-3 h-3 text-lime-400" />
+                    <span className="text-[11px] font-black uppercase tracking-widest text-lime-400">Claim</span>
+                  </div>
                   {selectedNode.status && (
                     <span className={cn(
                       "text-[11px] font-bold px-2 py-0.5 rounded-full border",
@@ -491,8 +514,8 @@ export function KnowledgeGraph({
                 <h4 className="text-sm font-semibold text-white leading-relaxed line-clamp-2">
                   {selectedNode.label}
                 </h4>
-                {selectedNode.type === 'source' && selectedNode.domain && (
-                  <p className="text-[11px] text-white/40 mt-1">{selectedNode.domain}</p>
+                {selectedNode.data.source && (
+                  <p className="text-[11px] text-white/40 mt-1">{selectedNode.data.source}</p>
                 )}
               </div>
               
@@ -503,97 +526,34 @@ export function KnowledgeGraph({
                 >
                   <X className="w-4 h-4" />
                 </button>
-                {selectedNode.type === 'source' && (
-                  <a 
-                    href={selectedNode.data.url} 
-                    target="_blank" 
+                {selectedNode.data.source && (
+                  <a
+                    href={selectedNode.data.source}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 rounded-xl bg-white/[0.045] hover:bg-white/10 text-white/60 transition-colors"
                   >
-                    {selectedNode.status}
-                  </span>
-                  <span className="text-[10px] font-mono text-lime-400">
-                    {confidencePct}% confidence
-                  </span>
-                </div>
-
-                {/* Claim text */}
-                <p className="text-sm font-semibold text-white leading-relaxed line-clamp-3">
-                  {selectedNode.label}
-                </p>
-
-                {/* Evidence source IDs */}
-                {selectedNode.evidence.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 mb-1">
-                      Evidence sources
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedNode.evidence.slice(0, 8).map(id => (
-                        <span
-                          key={id}
-                          className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/40"
-                        >
-                          {id.length > 12 ? id.slice(0, 10) + '…' : id}
-                        </span>
-                      ))}
-                      {selectedNode.evidence.length > 8 && (
-                        <span className="text-[9px] text-white/30">
-                          +{selectedNode.evidence.length - 8} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Tags */}
-                {selectedNode.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {selectedNode.tags.map(tag => (
-                      <span
-                        key={tag}
-                        className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/25 text-violet-300"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
                 )}
               </div>
-
-              {/* Close button */}
-              <button
-                onClick={() => setSelectedId(null)}
-                aria-label="Close detail"
-                className="p-2 rounded-xl hover:bg-white/5 text-white/30 hover:text-white/70 transition-colors flex-shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
-            {selectedNode.type === 'finding' && selectedNode.confidence !== undefined && (
+            {selectedNode.confidence !== undefined && (
               <div className="mt-4 pt-4 border-t border-white/[0.09]">
                 <div className="flex items-center justify-between text-[11px] mb-2">
                   <span className="text-white/40 uppercase tracking-widest font-bold">Confidence Score</span>
                   <span className="text-lime-400 font-mono">{Math.round(selectedNode.confidence * 100)}%</span>
                 </div>
                 <div className="h-1 rounded-full bg-white/[0.045] overflow-hidden">
-                  <motion.div 
+                  <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${selectedNode.confidence * 100}%` }}
                     className="h-full bg-lime-500"
                   />
                 </div>
               </div>
-              <div className="h-1 rounded-full bg-white/5 overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${confidencePct}%` }}
-                  transition={{ duration: 0.4, ease: 'easeOut' }}
-                  className="h-full bg-lime-500 rounded-full"
-                />
-              </div>
-            </div>
+            )}
           </motion.div>
           );
         })()}
