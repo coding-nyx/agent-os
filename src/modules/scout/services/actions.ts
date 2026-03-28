@@ -398,7 +398,7 @@ export function registerScoutActions() {
 
       // Resolve the node
       let targetClaim = claimText ?? '';
-      let targetNodeId = nodeId;
+      const targetNodeId = nodeId;
       if (nodeId) {
         const nodes = await loadKnowledgeNodes({ userId: userId ?? null, encryptionKey });
         const node = nodes.find(n => n.id === nodeId);

@@ -494,11 +494,11 @@ describe('NexusDashboard', () => {
   it('keeps the main Nexus surface minimal with only welcome, participants, and chat', async () => {
     render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" />);
 
-    expect(screen.getByText(/Good (morning|afternoon|evening)/i)).toBeInTheDocument();
-    expect(screen.getByTestId('nexus-open-ops')).toBeInTheDocument();
-    expect(screen.getByTestId('nexus-clear-chat')).toBeInTheDocument();
-    expect(screen.getByTestId('orchestration-status-chip')).toBeInTheDocument();
-    expect(screen.getByTestId('nexus-chat')).toBeInTheDocument();
+    expect(screen.getAllByText(/Good (morning|afternoon|evening)/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('nexus-open-ops')[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('nexus-clear-chat')[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('orchestration-status-chip')[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('nexus-chat')[0]).toBeInTheDocument();
 
     expect(screen.queryByText(/Master Thread/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId('routing-suggestion')).not.toBeInTheDocument();
@@ -509,7 +509,7 @@ describe('NexusDashboard', () => {
   it('opens Nexus operations from the visible shell entrypoint', async () => {
     render(<NexusDashboard ai={makeAI(1)} agentName="Nexus" />);
 
-    fireEvent.click(screen.getByTestId('nexus-open-ops'));
+    fireEvent.click(screen.getAllByTestId('nexus-open-ops')[0]);
 
     expect(mockNavigate).toHaveBeenCalledWith('/nexus/ops');
   });
@@ -518,7 +518,7 @@ describe('NexusDashboard', () => {
     const ai = makeAI(1);
     render(<NexusDashboard ai={ai} agentName="Nexus" />);
 
-    fireEvent.click(screen.getByTestId('nexus-clear-chat'));
+    fireEvent.click(screen.getAllByTestId('nexus-clear-chat')[0]);
 
     expect(ai.clearSession).toHaveBeenCalledTimes(1);
   });

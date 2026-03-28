@@ -690,11 +690,19 @@ export function useModuleAI({
         const offsetHours = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0');
         const offsetMins = String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
         const isoWithOffset = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}${offsetSign}${offsetHours}:${offsetMins}`;
+
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const tomorrow = new Date(now);
+        tomorrow.setDate(now.getDate() + 1);
+        const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+
         const timeContext = [
           '[CURRENT_TIME]',
           `ISO: ${isoWithOffset}`,
           `Local: ${localTime}`,
           `Timezone: ${timezone}`,
+          `Today: ${todayStr}`,
+          `Tomorrow: ${tomorrowStr}`,
         ].join('\n');
         const finalSystemPromptWithTime = `${finalSystemPrompt}\n\n${timeContext}`;
 
