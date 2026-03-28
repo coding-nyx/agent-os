@@ -40,6 +40,14 @@ export interface SubQuestion {
 
 export type ResearchSessionStatus = 'idle' | 'decomposing' | 'awaiting_review' | 'searching' | 'synthesizing' | 'complete' | 'error' | 'cancelled';
 
+export interface ReasoningEntry {
+  id: string;
+  type: 'reasoning' | 'search' | 'result' | 'synthesis' | 'source' | 'user';
+  text: string;
+  timestamp: number;
+  data?: any;
+}
+
 export interface ResearchSession {
   id: string;
   userId: string;
@@ -49,13 +57,8 @@ export interface ResearchSession {
   createdAt: string;
   updatedAt: string;
   resultNodeId?: string;
-  reasoningHistory?: Array<{
-    id: string;
-    type: 'reasoning' | 'search' | 'result' | 'synthesis' | 'source' | 'user';
-    text: string;
-    timestamp: number;
-    data?: any;
-  }>;
+  archived?: boolean;
+  reasoningHistory?: ReasoningEntry[];
 }
 
 export interface ScoutKnowledgeNode {
