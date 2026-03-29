@@ -73,11 +73,6 @@ export const habitActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
         title: habit.title,
         previousStreak
       });
-      emitSpineEvent('STREAK_BROKEN', {
-        habitId: habit.id,
-        title: habit.title,
-        previousStreak
-      });
     }
 
     if (habit.currentStreak >= habit.targetStreak && previousStreak < habit.targetStreak) {

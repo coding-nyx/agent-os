@@ -1,12 +1,13 @@
-import type React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { BookOpen, FileText, History, Loader2, Search, Sparkles, Zap } from 'lucide-react';
 import { getActionLabel } from '@/lib/actions/action-labels';
 import { ChatInterface } from '@/core/components/ChatInterface';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { cn } from '@/lib/utils';
-import type { GuestQuota, Message } from '@/lib/types';
+import type { GuestQuota, Message, MessageContent } from '@/lib/types';
 import type { AddSourceInput } from '../services/scout-sources-service';
 import type { ResearchSession, ScoutKnowledgeNode, SourceEntry } from '../types';
+import { useMessageEditRetry } from '@/lib/hooks/use-message-edit-retry';
 
 interface ActiveResearchWorkspaceProps {
   session: ResearchSession;
@@ -18,6 +19,7 @@ interface ActiveResearchWorkspaceProps {
   knowledgeNodes: ScoutKnowledgeNode[];
   sources: SourceEntry[];
   messages: Message[];
+  setMessages?: (msgs: Message[]) => void;
   isProcessing: boolean;
   aiState?: {
     isThinking: boolean;
@@ -45,6 +47,7 @@ export function ActiveResearchWorkspace({
   knowledgeNodes,
   sources,
   messages,
+  setMessages,
   isProcessing,
   aiState,
   streamingText,
@@ -54,6 +57,28 @@ export function ActiveResearchWorkspace({
   artifactsPanel,
   onToggleArtifacts,
 }: ActiveResearchWorkspaceProps) {
+  // Stable no-op used when setMessages is not provided (edit/retry will be disabled)
+  const noopSetMessages = useCallback((_msgs: Message[]) => { /* noop */ }, []);
+  const resolvedSetMessages = setMessages ?? noopSetMessages;
+  const sendMessageForHook = useCallback(
+    (content: MessageContent) => onSendMessage(typeof content === 'string' ? content : ''),
+    [onSendMessage],
+  );
+  const { editUserMessage, retryUserMessage } = useMessageEditRetry(
+    messages ?? [],
+    resolvedSetMessages,
+    sendMessageForHook,
+  );
+  const handleEditMessage = useCallback(
+    (index: number, newContent: string) => {
+      const msg = (messages ?? [])[index];
+      if (!msg || msg.role !== 'user') return;
+      editUserMessage(index, newContent);
+    },
+    [messages, editUserMessage],
+  );
+  const canEditRetry = !!setMessages;
+
   const visibleStreamingText = (streamingText || '').trim();
   const hasVisibleStream = visibleStreamingText.length > 0;
   const transientStreamMessage = hasVisibleStream
@@ -366,6 +391,8 @@ export function ActiveResearchWorkspace({
                 quota={quota ?? undefined}
                 moduleId="scout"
                 showInternalSignals={false}
+                onEditMessage={canEditRetry ? handleEditMessage : undefined}
+                onRetryMessage={canEditRetry ? retryUserMessage : undefined}
               />
             </div>
           </div>

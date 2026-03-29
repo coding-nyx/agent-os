@@ -769,5 +769,336 @@ export function registerLedgerActions() {
       markProfileDirty?.();
     },
 
+    // ── Handler: detect_spending_anomaly ──────────────────────────────────
+    /**
+     * Compares 7-day category spend against an 8-week weekly baseline.
+     * Pushes an assistant message listing any categories where spend exceeds
+     * 1.5x the baseline average and emits MODULE_STATE_UPDATED with the
+     * anomaly list so other modules can react.
+     */
+    detect_spending_anomaly: async ({ userId, encryptionKey, profileCache, payload, pushAssistantMessage, emitSpineEvent }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
+      if (!profile) return;
+
+      const transactions: Transaction[] = profile.transactions ?? [];
+      if (transactions.length === 0) return;
+
+      const now = Date.now();
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+      // 7-day window
+      const cutoff7d = new Date(now - 7 * MS_PER_DAY);
+      const recent7d = transactions.filter(tx => new Date(tx.date) > cutoff7d && tx.type === 'expense');
+
+      // 8-week (56-day) window for baseline
+      const cutoff8w = new Date(now - 56 * MS_PER_DAY);
+      const baseline8w = transactions.filter(tx => new Date(tx.date) > cutoff8w && tx.type === 'expense');
+
+      // Sum recent 7-day spend per category
+      const recent7dByCategory: Record<string, number> = {};
+      for (const tx of recent7d) {
+        const cat = tx.category ?? 'Other';
+        recent7dByCategory[cat] = (recent7dByCategory[cat] ?? 0) + tx.amount;
+      }
+
+      // Compute weekly baseline per category: total 8-week spend / 8 weeks
+      const baseline8wByCategory: Record<string, number> = {};
+      for (const tx of baseline8w) {
+        const cat = tx.category ?? 'Other';
+        baseline8wByCategory[cat] = (baseline8wByCategory[cat] ?? 0) + tx.amount;
+      }
+      const categoryBaseline: Record<string, number> = {};
+      for (const [cat, total] of Object.entries(baseline8wByCategory)) {
+        categoryBaseline[cat] = total / 8; // weekly average
+      }
+
+      const fmt = (n: number) =>
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: profile.currency ?? 'USD' }).format(n);
+
+      // Detect anomalies: 7-day spend > 1.5x weekly baseline
+      const anomalies: Array<{ category: string; spent: number; baseline: number; pctOver: number }> = [];
+      for (const [cat, spent] of Object.entries(recent7dByCategory)) {
+        const baseline = categoryBaseline[cat] ?? 0;
+        if (baseline > 0 && spent > baseline * 1.5) {
+          const pctOver = Math.round(((spent - baseline) / baseline) * 100);
+          anomalies.push({ category: cat, spent, baseline, pctOver });
+        }
+      }
+
+      if (anomalies.length === 0) return;
+
+      const lines = anomalies
+        .sort((a, b) => b.pctOver - a.pctOver)
+        .map(a => `- **${a.category}**: ${fmt(a.spent)} spent this week vs. ${fmt(a.baseline)} avg weekly baseline (+${a.pctOver}%)`)
+        .join('\n');
+
+      pushAssistantMessage?.(
+        `Spending anomalies detected in the last 7 days:\n\n${lines}\n\nThese categories are running significantly above your normal weekly pace.`
+      );
+
+      emitSpineEvent('MODULE_STATE_UPDATED' as any, {
+        spendingAnomalies: anomalies,
+        source: 'ledger',
+      });
+    },
+
+    // ── Handler: detect_financial_stress_cascade ──────────────────────────
+    /**
+     * Cross-module detector that reads NSV signals (financialFriction,
+     * stressLoad, cashFlowRunwayDays) and pushes a cascade warning when
+     * all three breach their thresholds simultaneously.
+     */
+    detect_financial_stress_cascade: async ({ payload, emitSpineEvent, pushAssistantMessage, getLatestNSV }) => {
+      const nsv = getLatestNSV?.() as any;
+
+      const financialFriction: number = nsv?.resource?.financialFriction ?? 0;
+      // stressLoad stored as 0-10, normalize to 0-1
+      const stressLoadRaw: number = nsv?.emotional?.stressLoad ?? 0;
+      const stressLoad: number = stressLoadRaw > 1 ? stressLoadRaw / 10 : stressLoadRaw;
+      const cashFlowRunwayDays: number = nsv?.resource?.cashFlowRunwayDays ?? 999;
+
+      const isCascade = financialFriction > 6 && stressLoad > 0.7 && cashFlowRunwayDays < 30;
+      if (!isCascade) return;
+
+      emitSpineEvent('MODULE_STATE_UPDATED' as any, {
+        cascadeDetected: true,
+        financialFriction,
+        stressLoad,
+        cashFlowRunwayDays,
+      });
+
+      pushAssistantMessage?.(
+        "I'm noticing compounding pressure — financial friction is high, emotional load is elevated, and runway is short. This pattern can cascade quickly. Would it help to review what's most urgent?"
+      );
+    },
+
+    // ── Handler: record_resonance_feedback ────────────────────────────────
+    /**
+     * Records whether a given transaction aligned with the user's values,
+     * accumulates per-category ROI coefficients once 10+ feedback entries
+     * exist, and acknowledges the user.
+     */
+    record_resonance_feedback: async ({ userId, encryptionKey, profileCache, payload, pushAssistantMessage, markProfileDirty }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
+      if (!profile) return;
+
+      const transactionId = typeof payload?.transactionId === 'string' ? payload.transactionId : '';
+      const aligned = typeof payload?.aligned === 'boolean' ? payload.aligned : false;
+
+      if (!transactionId) {
+        pushAssistantMessage?.('Transaction ID is required for resonance feedback.');
+        return;
+      }
+
+      const transactions: Transaction[] = profile.transactions ?? [];
+      const txIndex = transactions.findIndex((tx) => tx.id === transactionId);
+
+      if (txIndex === -1) {
+        pushAssistantMessage?.('Transaction not found.');
+        return;
+      }
+
+      // Store feedback on the transaction
+      const updatedTransaction: Transaction = {
+        ...transactions[txIndex],
+      };
+      (updatedTransaction as any).resonanceFeedback = aligned;
+
+      const updatedTransactions: Transaction[] = [
+        ...transactions.slice(0, txIndex),
+        updatedTransaction,
+        ...transactions.slice(txIndex + 1),
+      ];
+
+      const next: LedgerIntakeProfile = {
+        ...profile,
+        transactions: updatedTransactions,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Compute per-category ROI coefficients when enough feedback exists
+      const feedbackTxns = updatedTransactions.filter(
+        (tx) => (tx as any).resonanceFeedback !== undefined,
+      );
+      const totalFeedback = feedbackTxns.length;
+
+      if (totalFeedback >= 10) {
+        // Group by category and compute aligned ratio per category
+        const categoryStats: Record<string, { aligned: number; total: number }> = {};
+        for (const tx of feedbackTxns) {
+          const cat = tx.category ?? 'Other';
+          if (!categoryStats[cat]) categoryStats[cat] = { aligned: 0, total: 0 };
+          categoryStats[cat].total += 1;
+          if ((tx as any).resonanceFeedback === true) categoryStats[cat].aligned += 1;
+        }
+        const coefficients: Record<string, number> = {};
+        for (const [cat, stats] of Object.entries(categoryStats)) {
+          coefficients[cat] = stats.total > 0 ? stats.aligned / stats.total : 0;
+        }
+        (next as any).resonanceCoefficients = coefficients;
+      }
+
+      await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
+      markProfileDirty?.();
+
+      pushAssistantMessage?.(
+        aligned
+          ? 'Noted — that spending felt meaningful.'
+          : "Understood — I'll factor that in for future suggestions.",
+      );
+
+      if (totalFeedback >= 10) {
+        pushAssistantMessage?.(
+          "I've updated your Resonance ROI model based on your feedback patterns.",
+        );
+      }
+    },
+
+    // ── Handler: compute_resonance_roi ────────────────────────────────────
+    /**
+     * Uses accumulated resonanceCoefficients to produce a resonance-weighted
+     * value ranking across spending categories.
+     */
+    compute_resonance_roi: async ({ userId, encryptionKey, profileCache, pushAssistantMessage }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
+      if (!profile) return;
+
+      const coefficients: Record<string, number> =
+        (profile as any).resonanceCoefficients ?? {};
+
+      if (Object.keys(coefficients).length === 0) {
+        pushAssistantMessage?.(
+          'No Resonance ROI model yet. Log at least 10 pieces of spending feedback to build your personal model.',
+        );
+        return;
+      }
+
+      const transactions: Transaction[] = profile.transactions ?? [];
+      const fmt = (n: number) =>
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: profile.currency ?? 'USD',
+        }).format(n);
+
+      // Sum raw spend per category then apply coefficient for resonance-weighted value
+      const rawSpend: Record<string, number> = {};
+      for (const tx of transactions.filter((tx) => tx.type === 'expense')) {
+        const cat = tx.category ?? 'Other';
+        rawSpend[cat] = (rawSpend[cat] ?? 0) + tx.amount;
+      }
+
+      const resonanceValues: Array<{ category: string; raw: number; resonance: number; coefficient: number }> = [];
+      for (const [cat, coeff] of Object.entries(coefficients)) {
+        const raw = rawSpend[cat] ?? 0;
+        resonanceValues.push({ category: cat, raw, resonance: raw * coeff, coefficient: coeff });
+      }
+
+      resonanceValues.sort((a, b) => b.resonance - a.resonance);
+
+      if (resonanceValues.length === 0) {
+        pushAssistantMessage?.('No categorized spending data found to compute Resonance ROI.');
+        return;
+      }
+
+      const lines = resonanceValues
+        .map(
+          (rv) =>
+            `- **${rv.category}**: ${fmt(rv.resonance)} resonance value ` +
+            `(${fmt(rv.raw)} spent × ${Math.round(rv.coefficient * 100)}% alignment)`,
+        )
+        .join('\n');
+
+      pushAssistantMessage?.(
+        `## Resonance ROI — Spending Value Ranking\n\n` +
+        `Categories ranked by how much value your spending generates relative to your stated values:\n\n` +
+        lines +
+        `\n\nHigher resonance = spending that feels meaningful. Lower resonance = areas to review or reduce.`,
+      );
+    },
+
+    // ── Handler: suggest_budget_rebalance ─────────────────────────────────
+    /**
+     * Compares 12-week average actual spend per variable expense category
+     * against the budgeted amount, surfaces over-budget and under-utilized
+     * categories, and suggests a reallocation amount.
+     */
+    suggest_budget_rebalance: async ({ userId, encryptionKey, profileCache, payload, pushAssistantMessage }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
+      if (!profile) return;
+
+      const transactions: Transaction[] = profile.transactions ?? [];
+      const variableExpenses: BudgetLineItem[] = profile.variableExpenses ?? [];
+
+      if (variableExpenses.length === 0) {
+        pushAssistantMessage?.('No variable expense categories found in your profile to analyze.');
+        return;
+      }
+
+      const now = Date.now();
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+      const cutoff12w = new Date(now - 84 * MS_PER_DAY); // 12 weeks = 84 days
+
+      const recent12w = transactions.filter(
+        tx => new Date(tx.date) > cutoff12w && tx.type === 'expense'
+      );
+
+      // Sum 12-week spend per category label (case-insensitive match)
+      const spendByCategory: Record<string, number> = {};
+      for (const tx of recent12w) {
+        const cat = (tx.category ?? 'Other').toLowerCase();
+        spendByCategory[cat] = (spendByCategory[cat] ?? 0) + tx.amount;
+      }
+
+      const fmt = (n: number) =>
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: profile.currency ?? 'USD' }).format(n);
+
+      const overBudget: string[] = [];
+      const underBudget: string[] = [];
+      let reallocationPool = 0;
+
+      for (const item of variableExpenses) {
+        const labelKey = item.label.toLowerCase();
+        const totalSpend12w = spendByCategory[labelKey] ?? 0;
+        const weeklyAvg = totalSpend12w / 12;
+        const budgeted = item.amount; // stored as monthly or weekly amount
+
+        if (budgeted <= 0) continue;
+
+        if (weeklyAvg > budgeted * 1.1) {
+          const pct = Math.round(((weeklyAvg - budgeted) / budgeted) * 100);
+          overBudget.push(
+            `- **${item.label}** — spending ${fmt(weeklyAvg)}, budgeted ${fmt(budgeted)} (+${pct}%)`
+          );
+        } else if (weeklyAvg < budgeted * 0.6) {
+          const pct = Math.round(((budgeted - weeklyAvg) / budgeted) * 100);
+          const slack = budgeted - weeklyAvg;
+          reallocationPool += slack;
+          underBudget.push(
+            `- **${item.label}** — spending ${fmt(weeklyAvg)}, budgeted ${fmt(budgeted)} (-${pct}%)`
+          );
+        }
+      }
+
+      if (overBudget.length === 0 && underBudget.length === 0) {
+        pushAssistantMessage?.('Your spending is well-aligned with your budget allocations.');
+        return;
+      }
+
+      const sections: string[] = ['Budget review (12-week average):'];
+      if (overBudget.length > 0) {
+        sections.push(`\n**Over budget:**\n${overBudget.join('\n')}`);
+      }
+      if (underBudget.length > 0) {
+        sections.push(`\n**Under-utilized:**\n${underBudget.join('\n')}`);
+      }
+      if (reallocationPool > 0) {
+        sections.push(
+          `\nYou could reallocate ~${fmt(reallocationPool)} from under-utilized categories toward savings or your most important goal.`
+        );
+      }
+
+      pushAssistantMessage?.(sections.join('\n'));
+    },
+
   });
 }

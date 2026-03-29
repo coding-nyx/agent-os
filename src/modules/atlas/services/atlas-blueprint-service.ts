@@ -408,10 +408,173 @@ export function computeAtlasReviewBlueprint(input: ReviewInput): AtlasReviewBlue
   };
 }
 
+// ─── Lightweight Capacity Helpers ─────────────────────────────────────────────
+
+/**
+ * Quick capacity snapshot without full projection surface.
+ * Suitable for injecting into daily planning prompts without weekly-review overhead.
+ */
+export function computeQuickCapacitySnapshot(
+  profile: AtlasProfile | null,
+  soul: GlobalProjection | null,
+): AtlasCapacityBlueprint | null {
+  if (!profile) return null;
+  const now = new Date();
+  const nsv = soul?.crossFunctionalState;
+
+  const vitality = average([
+    normalizeTenScale(nsv?.cognitive?.energyBudget),
+    normalizeTenScale(nsv?.cognitive?.focusScore),
+    normalizeTenScale(nsv?.biological?.sleepQuality),
+    normalizeTenScale(average(profile.energyWave?.map((p) => p.energy) ?? [])),
+  ]);
+
+  const friction = average([
+    normalizeTenScale(nsv?.cognitive?.planningLoad),
+    normalizeTenScale(nsv?.planning?.deadlinePressure),
+    normalizeTenScale(nsv?.emotional?.stressLoad),
+    normalizeTenScale(nsv?.cognitive?.activeLoad),
+  ]);
+
+  const resilience = average([
+    normalizeTenScale(nsv?.emotional?.emotionalResilience),
+    normalizeTenScale(nsv?.biological?.recoveryScore),
+    normalizeTenScale(typeof nsv?.biological?.cnsFatigue === 'number' ? 10 - nsv.biological.cnsFatigue : null),
+  ]);
+
+  const activeGoals = profile.goals?.filter((g) => g.status === 'active') ?? [];
+  const goalLinkedTasks = profile.tasks?.filter((t) => t.goalId).length ?? 0;
+  const activeHabits = profile.habits?.filter((h) => h.status === 'active') ?? [];
+
+  const specAlignment = average([
+    normalizeRatio(nsv?.planning?.goalAlignment),
+    normalizeRatio(nsv?.planning?.habitMomentum),
+    activeGoals.length > 0 ? clamp(goalLinkedTasks / Math.max(activeGoals.length, 1), 0, 1) : null,
+    activeHabits.length > 0
+      ? clamp(activeHabits.filter((h) => (h.currentStreak ?? 0) > 0).length / activeHabits.length, 0, 1)
+      : null,
+  ]);
+
+  const vitalityScore = round1((vitality ?? 0.5) * 10);
+  const frictionScore = round1((friction ?? 0.5) * 10);
+  const resilienceScore = round1((resilience ?? 0.5) * 10);
+  const specAlignmentScore = round1((specAlignment ?? 0.5) * 10);
+
+  const baselineCapacity = sumEnergyWave(profile) || round1(((nsv?.cognitive?.energyBudget ?? 5) as number) * 4.5);
+  const plannedDemand =
+    estimateScheduledDemand(profile.scheduledTasks ?? [], now) +
+    estimateTaskDemand(profile.tasks ?? [], now) +
+    estimateHabitLoad(profile.habits ?? []);
+
+  const rawCapacityPct =
+    72 + vitalityScore * 2.2 + resilienceScore * 1.8 + specAlignmentScore * 1.2 - frictionScore * 2.8;
+  const recommendedCapacityPct = Math.round(clamp(rawCapacityPct, MIN_CAPACITY_PCT, MAX_CAPACITY_PCT));
+  const safeCapacity = round1((baselineCapacity * recommendedCapacityPct) / 100);
+  const headroom = round1(safeCapacity - plannedDemand);
+  const loadRatio = safeCapacity > 0 ? round1(plannedDemand / safeCapacity) : 0;
+
+  const state: AtlasCapacityState =
+    recommendedCapacityPct <= 72 || resilienceScore <= 4.2
+      ? 'recover'
+      : recommendedCapacityPct < 92 || frictionScore >= 6
+        ? 'compress'
+        : recommendedCapacityPct >= 108 && vitalityScore >= 7 && resilienceScore >= 6.5 && frictionScore <= 4.5
+          ? 'expand'
+          : 'hold';
+
+  const blueprint: AtlasCapacityBlueprint = {
+    baselineCapacity,
+    safeCapacity,
+    plannedDemand: round1(plannedDemand),
+    loadRatio,
+    headroom,
+    recommendedCapacityPct,
+    state,
+    vectors: {
+      vitality: vitalityScore,
+      friction: frictionScore,
+      resilience: resilienceScore,
+      specAlignment: specAlignmentScore,
+    },
+    pressurePoints: [],
+  };
+
+  blueprint.pressurePoints = buildPressurePoints(blueprint);
+  return blueprint;
+}
+
+export type DailyCapacityEstimate = {
+  totalCapacity: number;
+  committedEnergy: number;
+  availableEnergy: number;
+  dayOfWeek: number;
+};
+
+/**
+ * Single-day capacity estimate: energy wave for the target day, NSV modifiers applied,
+ * minus routine block and scheduled task commitments.
+ */
+export function computeDailyCapacity(
+  profile: AtlasProfile | null,
+  soul: GlobalProjection | null,
+  targetDate: string,
+): DailyCapacityEstimate {
+  const fallback: DailyCapacityEstimate = { totalCapacity: 40, committedEnergy: 0, availableEnergy: 40, dayOfWeek: 0 };
+  if (!profile) return fallback;
+
+  const nsv = soul?.crossFunctionalState;
+  const target = new Date(targetDate + 'T12:00:00');
+  const dayOfWeek = target.getDay();
+
+  // Base capacity from energy wave sum (represents full-day energy budget)
+  let baseCapacity = sumEnergyWave(profile) || 40;
+
+  // Apply NSV modifiers
+  const sleepQuality = nsv?.biological?.sleepQuality;
+  if (typeof sleepQuality === 'number' && sleepQuality < 4) {
+    baseCapacity -= baseCapacity * 0.2; // -20% for poor sleep
+  }
+  const cnsFatigue = nsv?.biological?.cnsFatigue;
+  if (typeof cnsFatigue === 'number' && cnsFatigue > 7) {
+    baseCapacity = Math.min(baseCapacity, 20); // hard cap when fatigued
+  }
+  const stressLoad = nsv?.emotional?.stressLoad;
+  if (typeof stressLoad === 'number' && stressLoad > 7) {
+    baseCapacity -= baseCapacity * 0.1; // -10% for high stress
+  }
+
+  const totalCapacity = round1(Math.max(0, baseCapacity));
+
+  // Committed energy: routine blocks for this day + already scheduled tasks
+  let committedEnergy = 0;
+
+  if (profile.routine?.isActive && profile.routine.blocks?.length) {
+    for (const block of profile.routine.blocks) {
+      if (block.daysOfWeek.includes(dayOfWeek)) {
+        committedEnergy += block.energyCost ?? 0;
+      }
+    }
+  }
+
+  const datePrefix = targetDate.slice(0, 10);
+  for (const st of profile.scheduledTasks ?? []) {
+    if (st.scheduledAt.startsWith(datePrefix) && st.status !== 'done') {
+      committedEnergy += st.energyCost ?? 0;
+    }
+  }
+
+  committedEnergy = round1(committedEnergy);
+  const availableEnergy = round1(Math.max(0, totalCapacity - committedEnergy));
+
+  return { totalCapacity, committedEnergy, availableEnergy, dayOfWeek };
+}
+
 export const AtlasBlueprintService = {
   computeReviewBlueprint: computeAtlasReviewBlueprint,
   projectAtCapacityPct: projectAtlasCapacityBlueprint,
   inferDocumentIngestionMode: inferAtlasDocumentIngestionMode,
+  computeQuickCapacitySnapshot,
+  computeDailyCapacity,
 };
 
 // ─── Deadline Pressure Score ──────────────────────────────────────────────────

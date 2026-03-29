@@ -612,7 +612,8 @@ function AgnesContent({
         const snapshot = JSON.stringify({
           moduleId: 'agnes',
           endedAt: new Date().toISOString(),
-          history: messages
+          // Strip debugMeta — it can be very large and is never needed for memory retrieval
+          history: messages.map(({ debugMeta: _drop, ...msg }) => msg)
         });
 
         const existing = await ModuleMemoryService.getEnvelope(user.uid, 'agnes', encryptionKey);

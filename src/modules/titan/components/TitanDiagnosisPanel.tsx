@@ -161,6 +161,7 @@ export function TitanDiagnosisPanel({ encryptionKey, profile }: TitanDiagnosisPa
             moduleId="titan"
             ai={{
               messages: dx.messages,
+              setMessages: dx.setMessages,
               isProcessing: dx.isProcessing,
               streamingText: dx.streamingText,
               error: dx.error,

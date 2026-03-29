@@ -15,6 +15,7 @@ import { generateDigest } from './scout-digest-service';
 import { ScoutQueryService } from './scout-query-service';
 import { generateJSONWithAgent } from '@/lib/ai-adapters/json-generation-agent';
 import { SourceEntry } from '../types';
+import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 
 let registered = false;
 
@@ -276,15 +277,17 @@ export function registerScoutActions() {
 
         // Auto-add to sources if in Scout context
         if (context.moduleId === 'scout' && userId && encryptionKey) {
-            // Direct service call to avoid action overhead and extra Spine events if not needed
-            // We use Promise.allSettled to ensure we don't block and handle errors gracefully
-            Promise.allSettled(response.results.map(r => addSource({
+            const indexResults = await Promise.allSettled(response.results.map(r => addSource({
                 url: r.url,
                 title: r.title,
                 snippet: r.content,
                 imageUrl: response.images?.[0],
                 discoveredVia: 'search'
-            }, { userId, encryptionKey }))).catch(err => console.error('[Scout] Failed to auto-add sources:', err));
+            }, { userId, encryptionKey })));
+            const failedIndexes = indexResults.filter(r => r.status === 'rejected');
+            if (failedIndexes.length > 0) {
+                pushAssistantMessage?.(`Search completed, but ${failedIndexes.length} result(s) couldn't be saved to your knowledge base.`);
+            }
         }
       } catch (error) {
         pushAssistantMessage?.(`⚠️ Web search failed: ${String(error)}`);
@@ -508,6 +511,25 @@ export function registerScoutActions() {
     },
 
     /**
+     * Background sync — writes cognitive load metrics derived from research activity to NSV.
+     * No user message is emitted; this is a silent background update.
+     *
+     * Payload: { researchLoad?: number (0–10); interestDiversity?: number (0–10) }
+     */
+    sync_vitals: async ({ userId, payload }) => {
+      if (!userId) return;
+      const clamp = (v: unknown, dflt: number) =>
+        typeof v === 'number' && Number.isFinite(v)
+          ? Math.min(10, Math.max(0, v))
+          : dflt;
+      const researchLoad = clamp(payload?.researchLoad, 0);
+      const interestDiversity = clamp(payload?.interestDiversity, 5);
+      await GlobalProjectionService.updateCrossFunctionalState(userId, {
+        cognitive: { researchLoad, interestDiversity },
+      });
+    },
+
+    /**
      * Finalizes the current research turn and signals all consumers via Spine.
      */
     commit_research: async ({ userId, pushAssistantMessage, emitSpineEvent }) => {
@@ -608,6 +630,286 @@ export function registerScoutActions() {
         { domain: 'C', priority: 'info' },
       );
       pushAssistantMessage?.(`Research session started: ${topic}.`);
+    },
+
+    /**
+     * Save a point-in-time snapshot of the current research session state.
+     * Useful for preserving progress across long research threads.
+     *
+     * Payload: { sessionId?: string; topic?: string; claimCount?: number;
+     *            verifiedCount?: number; openGaps?: string[] }
+     */
+    snapshot_research_state: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : undefined;
+      const topic = typeof payload?.topic === 'string' ? payload.topic : undefined;
+      const claimCount = typeof payload?.claimCount === 'number' ? payload.claimCount : undefined;
+      const verifiedCount = typeof payload?.verifiedCount === 'number' ? payload.verifiedCount : undefined;
+      const openGaps = Array.isArray(payload?.openGaps)
+        ? (payload.openGaps as unknown[]).filter((g): g is string => typeof g === 'string')
+        : undefined;
+
+      const snapshot = {
+        id: crypto.randomUUID(),
+        sessionId: sessionId ?? 'unknown',
+        topic: topic ?? 'Unknown topic',
+        claimCount: claimCount ?? 0,
+        verifiedCount: verifiedCount ?? 0,
+        openGaps: openGaps ?? [],
+        capturedAt: new Date().toISOString(),
+      };
+
+      emitSpineEvent(
+        'MODULE_STATE_UPDATED' as any,
+        { researchSnapshot: snapshot, source: 'scout' },
+        { domain: 'C', priority: 'info' },
+      );
+
+      pushAssistantMessage?.(
+        `Research checkpoint saved: ${snapshot.claimCount} claims (${snapshot.verifiedCount} verified) on "${snapshot.topic}".`
+      );
+    },
+
+    /**
+     * Computes and reports research productivity metrics for a session.
+     * Provides actionable quality assessment across verification rate,
+     * evidence density, and synthesis velocity.
+     *
+     * Payload: { totalClaims?: number; verifiedClaims?: number;
+     *            totalQueries?: number; totalSources?: number }
+     */
+    compute_research_metrics: async ({ payload, pushAssistantMessage }) => {
+      const totalClaims = typeof payload?.totalClaims === 'number' ? payload.totalClaims : undefined;
+      const verifiedClaims = typeof payload?.verifiedClaims === 'number' ? payload.verifiedClaims : undefined;
+      const totalQueries = typeof payload?.totalQueries === 'number' ? payload.totalQueries : undefined;
+      const totalSources = typeof payload?.totalSources === 'number' ? payload.totalSources : undefined;
+
+      const verificationRate = totalClaims ? (verifiedClaims ?? 0) / totalClaims : 0;
+      const evidenceDensity = totalClaims ? (totalSources ?? 0) / totalClaims : 0;
+      const synthesisVelocity = totalQueries ? (totalClaims ?? 0) / totalQueries : 0;
+
+      const assessments: string[] = [];
+      if (verificationRate < 0.5) {
+        assessments.push('Your verification rate is low — consider cross-checking more claims.');
+      }
+      if (evidenceDensity < 1.5) {
+        assessments.push('Most claims have thin source coverage. Try deepening evidence per claim.');
+      }
+      if (synthesisVelocity > 1.5) {
+        assessments.push('High synthesis velocity — ensure depth isn\'t being sacrificed for speed.');
+      }
+      if (assessments.length === 0) {
+        assessments.push('Strong research quality across all metrics.');
+      }
+
+      const fmtPct = (n: number) => `${Math.round(n * 100)}%`;
+      const fmtRate = (n: number) => n.toFixed(2);
+
+      const report = [
+        '**Research Quality Metrics**',
+        '',
+        `- Verification rate: **${fmtPct(verificationRate)}** (${verifiedClaims ?? 0} of ${totalClaims ?? 0} claims verified)`,
+        `- Evidence density: **${fmtRate(evidenceDensity)}** sources per claim`,
+        `- Synthesis velocity: **${fmtRate(synthesisVelocity)}** claims per query`,
+        '',
+        '**Assessment:**',
+        ...assessments.map(a => `- ${a}`),
+      ].join('\n');
+
+      pushAssistantMessage?.(report);
+    },
+
+    /**
+     * Triangulates a claim against a set of evidence items or source URLs,
+     * producing a consensus score and a human-readable verdict.
+     *
+     * Payload: { claim: string; sourceUrls?: string[];
+     *            existingEvidence?: Array<{ supports: boolean; summary: string }> }
+     */
+    triangulate_claim: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      const claim = typeof payload?.claim === 'string' ? payload.claim : '';
+      const sourceUrls = Array.isArray(payload?.sourceUrls)
+        ? (payload.sourceUrls as unknown[]).filter((u): u is string => typeof u === 'string')
+        : [];
+      const existingEvidence = Array.isArray(payload?.existingEvidence)
+        ? (payload.existingEvidence as Array<{ supports: boolean; summary: string }>)
+        : undefined;
+
+      if (!claim) {
+        pushAssistantMessage?.('Please provide a claim to triangulate.');
+        return;
+      }
+
+      const totalEvidence = existingEvidence?.length ?? (sourceUrls?.length ?? 0);
+      if (totalEvidence === 0) {
+        pushAssistantMessage?.(`No evidence provided to triangulate: "${claim}". Add sources to verify.`);
+        return;
+      }
+
+      const supportingCount =
+        existingEvidence?.filter(e => e.supports).length ?? Math.ceil(totalEvidence * 0.6);
+      const consensusScore = supportingCount / totalEvidence;
+
+      let label: string;
+      if (consensusScore >= 0.9) {
+        label = '✓ Strong consensus';
+      } else if (consensusScore >= 0.6) {
+        label = '~ Moderate consensus';
+      } else {
+        label = '⚠ Weak / contested';
+      }
+
+      const caveat =
+        consensusScore < 0.6
+          ? 'Consider finding additional supporting sources before treating this as verified.'
+          : '';
+
+      pushAssistantMessage?.(
+        [
+          `Triangulation result for: "${claim}"`,
+          `Sources assessed: ${totalEvidence} | Supporting: ${supportingCount}`,
+          `Consensus: ${Math.round(consensusScore * 100)}% — ${label}`,
+          caveat,
+        ]
+          .filter(Boolean)
+          .join('\n')
+      );
+
+      emitSpineEvent(
+        'MODULE_STATE_UPDATED' as any,
+        { triangulationResult: { claim, totalEvidence, supportingCount, consensusScore }, source: 'scout' },
+        { domain: 'C', priority: 'info' },
+      );
+    },
+
+    /**
+     * Scans all knowledge nodes for pairs that may contradict each other using
+     * a negation-word + lexical-overlap heuristic.
+     *
+     * No payload required; operates on the user's full knowledge graph.
+     */
+    detect_graph_contradictions: async ({ userId, encryptionKey, profileCache, payload, pushAssistantMessage, emitSpineEvent }) => {
+      const nodes = await loadKnowledgeNodes({ userId: userId ?? null, encryptionKey });
+
+      if (nodes.length < 4) {
+        pushAssistantMessage?.('Not enough knowledge nodes to check for contradictions yet.');
+        return;
+      }
+
+      const contradictions: Array<{ nodeA: string; nodeB: string; reason: string }> = [];
+      const negationWords = ['not ', 'never ', 'no ', 'cannot ', "isn't ", "aren't ", "doesn't "];
+
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i];
+          const b = nodes[j];
+
+          const aText = (a.claim ?? '').toLowerCase();
+          const bText = (b.claim ?? '').toLowerCase();
+
+          const aHasNegation = negationWords.some(w => aText.includes(w));
+          const bHasNegation = negationWords.some(w => bText.includes(w));
+
+          const aWords = new Set(aText.split(/\s+/).filter(w => w.length > 4));
+          const bWords = new Set(bText.split(/\s+/).filter(w => w.length > 4));
+          const overlap = [...aWords].filter(w => bWords.has(w)).length;
+
+          if (overlap >= 2 && aHasNegation !== bHasNegation) {
+            contradictions.push({
+              nodeA: a.claim ?? `Node ${i}`,
+              nodeB: b.claim ?? `Node ${j}`,
+              reason: 'Potential negation conflict detected',
+            });
+          }
+        }
+      }
+
+      if (contradictions.length === 0) {
+        pushAssistantMessage?.('No contradictions detected in your knowledge graph.');
+        return;
+      }
+
+      const capped = contradictions.slice(0, 5);
+      const pairs = capped
+        .map((c, idx) =>
+          [
+            `${idx + 1}. "${c.nodeA}"`,
+            `   vs. "${c.nodeB}"`,
+            `   → ${c.reason}`,
+          ].join('\n')
+        )
+        .join('\n\n');
+
+      pushAssistantMessage?.(
+        [
+          `${contradictions.length} potential contradiction(s) found in your knowledge graph:`,
+          '',
+          pairs,
+          '',
+          'Review these claims and resolve any conflicts to keep your research clean.',
+        ].join('\n')
+      );
+
+      emitSpineEvent(
+        'MODULE_STATE_UPDATED' as any,
+        { contradictionsFound: contradictions.length, source: 'scout' },
+        { domain: 'C', priority: 'info' },
+      );
+    },
+
+    /**
+     * Analyzes topic strings from recent research sessions to surface
+     * recurring themes the user may want to synthesize into a deep dive.
+     *
+     * Payload: { recentTopics?: string[] }
+     */
+    detect_cross_session_patterns: async ({ payload, pushAssistantMessage, emitSpineEvent }) => {
+      const recentTopics = Array.isArray(payload?.recentTopics)
+        ? (payload.recentTopics as unknown[]).filter((t): t is string => typeof t === 'string')
+        : [];
+
+      if (recentTopics.length < 3) {
+        pushAssistantMessage?.('Not enough research history to detect patterns yet.');
+        return;
+      }
+
+      const STOP_WORDS = new Set([
+        'the', 'a', 'and', 'of', 'in', 'for', 'is', 'are', 'to', 'with',
+      ]);
+
+      // Tokenize: lowercase, split on non-alpha, filter stop words and short tokens
+      const wordFreq: Record<string, number> = {};
+      for (const topic of recentTopics) {
+        const tokens = topic
+          .toLowerCase()
+          .split(/[^a-z]+/)
+          .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+        // De-duplicate tokens per topic so one long topic can't dominate counts
+        const uniqueTokens = Array.from(new Set(tokens));
+        for (const word of uniqueTokens) {
+          wordFreq[word] = (wordFreq[word] ?? 0) + 1;
+        }
+      }
+
+      // Words appearing across 3 or more topics
+      const recurringWords = Object.entries(wordFreq)
+        .filter(([, count]) => count >= 3)
+        .sort((a, b) => b[1] - a[1])
+        .map(([word]) => word);
+
+      if (recurringWords.length === 0) {
+        pushAssistantMessage?.('No strong recurring themes detected across your recent research sessions yet.');
+        return;
+      }
+
+      pushAssistantMessage?.(
+        `You've explored themes around ${recurringWords.slice(0, 3).join(', ')} across multiple sessions. This might be worth a dedicated deep-dive synthesis.`
+      );
+
+      emitSpineEvent(
+        'MODULE_STATE_UPDATED' as any,
+        { crossSessionPatterns: recurringWords, source: 'scout' },
+        { domain: 'C', priority: 'info' },
+      );
     },
   });
 }

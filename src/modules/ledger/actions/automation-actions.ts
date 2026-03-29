@@ -90,10 +90,13 @@ export function registerLedgerAutomationActions(): void {
   if (registered) return;
   registered = true;
   ActionHub.registerMultiple('ledger', {
-    create_automation_rule:  handleCreateAutomationRule,
-    update_automation_rule:  handleUpdateAutomationRule,
-    delete_automation_rule:  handleDeleteAutomationRule,
-    toggle_automation_rule:  handleToggleAutomationRule,
-    dismiss_suggestion:      handleDismissSuggestion,
+    create_automation_rule:      handleCreateAutomationRule,
+    update_automation_rule:      handleUpdateAutomationRule,
+    delete_automation_rule:      handleDeleteAutomationRule,
+    toggle_automation_rule:      handleToggleAutomationRule,
+    dismiss_suggestion:          handleDismissSuggestion,
+    add_default_automation_rules: async ({ pushAssistantMessage }) => {
+      pushAssistantMessage?.('This analysis is coming soon.');
+    },
   });
 }

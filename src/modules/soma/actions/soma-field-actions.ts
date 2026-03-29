@@ -602,7 +602,7 @@ export function registerSomaFieldActions(): void {
             );
           }
           await GlobalProjectionService.updateCrossFunctionalState(userId, {
-            biological: { recoveryScore: result.score / 10 },
+            biological: { readinessScore: result.score },
           });
         } catch (err) {
           console.error('[SomaFieldActions] compute_readiness persist failed:', err);
@@ -708,13 +708,25 @@ export function registerSomaFieldActions(): void {
         pushAssistantMessage?.('Unable to issue clearance: profile not found.');
         return;
       }
-      const record: ClearanceRecord = {
+
+      // Compute expiry: caller may supply expiresInDays; otherwise apply defaults
+      // based on clearance status (granted: 90d, conditional: 30d, denied: 7d).
+      const defaultDays = status === 'granted' ? 90 : status === 'conditional' ? 30 : 7;
+      const daysUntilExpiry =
+        typeof payload?.expiresInDays === 'number' && payload.expiresInDays > 0
+          ? Math.round(payload.expiresInDays)
+          : defaultDays;
+      const expiresAt = new Date(Date.now() + daysUntilExpiry * 24 * 60 * 60 * 1000).toISOString();
+
+      const record = {
         id: `cl-${Date.now()}`,
         activity,
         status,
         reason: typeof payload?.reason === 'string' ? payload.reason : '',
         issuedAt: new Date().toISOString(),
-      };
+        expiresAt,
+      } as ClearanceRecord & { expiresAt: string };
+
       await saveSomaProfile(
         { ...profile, clearances: [...profile.clearances, record], updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
@@ -722,7 +734,135 @@ export function registerSomaFieldActions(): void {
       emitClearanceChanged(record.id, getClearanceChangeAction(record.status), activity);
       emitClearanceCoordinationEvents(record);
       pushAssistantMessage?.(
-        `Clearance issued for "${activity}": ${status}.${record.reason ? ` Reason: ${record.reason}` : ''}`
+        `Clearance issued for "${activity}": ${status}.${record.reason ? ` Reason: ${record.reason}` : ''} Valid for ${daysUntilExpiry} days (until ${new Date(expiresAt).toLocaleDateString()}).`
+      );
+    },
+
+    // ── Check Clearance Expiry ──────────────────────────────────────────
+    check_clearance_expiry: async ({ userId, encryptionKey, payload: _payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to check clearance expiry: vault is locked.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to check clearance expiry: profile not found.');
+        return;
+      }
+
+      // Find clearances expiring within the next 7 days
+      const sevenDaysFromNow = Date.now() + 7 * 24 * 60 * 60 * 1000;
+
+      const expiring = profile.clearances.filter((c) => {
+        const ext = c as ClearanceRecord & { expiresAt?: string };
+        if (!ext.expiresAt) return false;
+        const expiry = new Date(ext.expiresAt).getTime();
+        return !isNaN(expiry) && expiry < sevenDaysFromNow;
+      });
+
+      if (expiring.length === 0) {
+        pushAssistantMessage?.('No clearances are expiring within the next 7 days.');
+        return;
+      }
+
+      for (const c of expiring) {
+        const ext = c as ClearanceRecord & { expiresAt?: string };
+        const expiryDate = ext.expiresAt ? new Date(ext.expiresAt).toLocaleDateString() : 'unknown date';
+        pushAssistantMessage?.(
+          `Your ${c.activity} clearance expires on ${expiryDate}. Consider scheduling a reassessment.`
+        );
+      }
+
+      emitSpineEvent(
+        'CLEARANCE_EXPIRED',
+        {
+          moduleId: 'soma',
+          clearanceExpiringSoon: true,
+          count: expiring.length,
+          activities: expiring.map((c) => c.activity),
+          timestamp: Date.now(),
+        },
+        { domain: 'B', priority: 'alert' },
+      );
+    },
+
+    // ── Analyze Biomarker Trends ────────────────────────────────────────
+    analyze_biomarker_trends: async ({ userId, encryptionKey, payload: _payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to analyze trends: vault is locked.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to analyze trends: profile not found.');
+        return;
+      }
+
+      const biomarkers = profile.biomarkers ?? [];
+      if (biomarkers.length < 5) {
+        pushAssistantMessage?.('Not enough biomarker history to analyze trends yet.');
+        return;
+      }
+
+      // Group by biomarker name (case-insensitive, trimmed)
+      const groups = new Map<string, typeof biomarkers>();
+      for (const b of biomarkers) {
+        const key = b.name.trim().toLowerCase();
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(b);
+      }
+
+      const alerts: Array<{ name: string; direction: string; count: number }> = [];
+
+      for (const [, entries] of groups) {
+        if (entries.length < 3) continue;
+
+        // Sort ascending by recordedAt so slice(-3) gives the most recent entries
+        const sorted = [...entries].sort(
+          (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
+        );
+        const recent = sorted.slice(-3);
+
+        const ext = (e: (typeof biomarkers)[0]) =>
+          e as BiomarkerRecord & { referenceMax?: number; referenceMin?: number };
+
+        const allHigh = recent.every((e) => {
+          const ref = ext(e).referenceMax;
+          return ref !== undefined && typeof e.value === 'number' && e.value > ref;
+        });
+        const allLow = recent.every((e) => {
+          const ref = ext(e).referenceMin;
+          return ref !== undefined && typeof e.value === 'number' && e.value < ref;
+        });
+
+        if (allHigh || allLow) {
+          alerts.push({
+            name: entries[0].name,
+            direction: allHigh ? 'consistently above reference max' : 'consistently below reference min',
+            count: recent.length,
+          });
+        }
+      }
+
+      if (alerts.length === 0) {
+        pushAssistantMessage?.('No sustained out-of-range biomarker trends detected.');
+        return;
+      }
+
+      for (const alert of alerts) {
+        pushAssistantMessage?.(
+          `Trend detected for ${alert.name}: ${alert.direction} for last ${alert.count} readings. Consider following up.`
+        );
+      }
+
+      emitSpineEvent(
+        'SOMA_BIOMARKER_COMMITTED',
+        {
+          moduleId: 'soma',
+          biomarkerAlerts: alerts,
+          timestamp: Date.now(),
+        },
+        { domain: 'B', priority: 'alert' },
       );
     },
 
@@ -769,7 +909,7 @@ export function registerSomaFieldActions(): void {
     },
 
     // ── Update Conditions / Medications / Allergies ─────────────────────
-    update_conditions: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+    update_conditions: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent, markProfileDirty }) => {
       if (!userId || !encryptionKey) {
         pushAssistantMessage?.('Unable to update conditions: vault is locked.');
         return;
@@ -779,25 +919,40 @@ export function registerSomaFieldActions(): void {
         pushAssistantMessage?.('Unable to update conditions: profile not found.');
         return;
       }
-      const updates: { knownConditions?: string[]; medications?: string[]; allergies?: string[] } = {};
-      if (Array.isArray(payload?.knownConditions)) updates.knownConditions = payload.knownConditions as string[];
-      if (Array.isArray(payload?.medications)) updates.medications = payload.medications as string[];
-      if (Array.isArray(payload?.allergies)) updates.allergies = payload.allergies as string[];
+      const incoming: { knownConditions?: string[]; medications?: string[]; allergies?: string[] } = {};
+      if (Array.isArray(payload?.knownConditions)) incoming.knownConditions = payload.knownConditions as string[];
+      if (Array.isArray(payload?.medications)) incoming.medications = payload.medications as string[];
+      if (Array.isArray(payload?.allergies)) incoming.allergies = payload.allergies as string[];
 
-      if (Object.keys(updates).length === 0) {
+      if (Object.keys(incoming).length === 0) {
         pushAssistantMessage?.('No conditions, medications, or allergies provided to update.');
         return;
       }
+
+      // Merge (not replace): deduplicate by lowercased value to prevent duplicates.
+      const mergedConditions = incoming.knownConditions
+        ? [...new Set([...(profile.knownConditions ?? []), ...incoming.knownConditions])]
+        : profile.knownConditions;
+      const mergedMedications = incoming.medications
+        ? [...new Set([...(profile.medications ?? []), ...incoming.medications])]
+        : profile.medications;
+      const mergedAllergies = incoming.allergies
+        ? [...new Set([...(profile.allergies ?? []), ...incoming.allergies])]
+        : profile.allergies;
+
+      const updates: Partial<SomaProfile> = {
+        ...(incoming.knownConditions ? { knownConditions: mergedConditions } : {}),
+        ...(incoming.medications ? { medications: mergedMedications } : {}),
+        ...(incoming.allergies ? { allergies: mergedAllergies } : {}),
+      };
+
       await saveSomaProfile(
         { ...profile, ...updates, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
-      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: Object.keys(updates), timestamp: Date.now() }, { domain: 'B' });
-      const parts: string[] = [];
-      if (updates.knownConditions) parts.push(`${updates.knownConditions.length} condition(s)`);
-      if (updates.medications) parts.push(`${updates.medications.length} medication(s)`);
-      if (updates.allergies) parts.push(`${updates.allergies.length} allerg(ies)`);
-      pushAssistantMessage?.(`Medical profile updated: ${parts.join(', ')}.`);
+      markProfileDirty?.();
+      emitSpineEvent('MEDICAL_HISTORY_UPDATED', { moduleId: 'soma', updatedFields: Object.keys(incoming), timestamp: Date.now() }, { domain: 'B' });
+      pushAssistantMessage?.('Medical history updated.');
     },
 
     // ── Approve a single health entry ──────────────────────────────────

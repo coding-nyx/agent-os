@@ -30,6 +30,7 @@ export const titanAllowedActions = [
   'start_recovery_plan',
   'end_recovery_plan',
   'log_recovery_checkin',
+  'consensus_clearance_check',
   // Proposal Actions
   'propose_routine',
   'propose_sleep_log',
@@ -40,4 +41,6 @@ export const titanAllowedActions = [
   // Scheduling actions
   'schedule_workout',
   'update_planned_workout',
+  // Workout intelligence
+  'suggest_exercise_substitute',
 ] as const;

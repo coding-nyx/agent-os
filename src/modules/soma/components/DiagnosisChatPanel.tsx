@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import type { SomaDiagnosisSummary } from '../types';
 import { ChatInterface } from '@/core/components/ChatInterface';
 import type { UseDiagnosisReturn } from '@/core/diagnosis/use-diagnosis';

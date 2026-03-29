@@ -691,6 +691,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           knowledgeNodes={knowledgeNodes}
           sources={sources}
           messages={ai.messages}
+          setMessages={ai.setMessages}
           isProcessing={ai.isProcessing}
           aiState={ai.aiState}
           streamingText={ai.streamingText}

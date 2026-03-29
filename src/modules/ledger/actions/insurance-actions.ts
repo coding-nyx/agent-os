@@ -79,8 +79,11 @@ export function registerLedgerInsuranceActions(): void {
   if (registered) return;
   registered = true;
   ActionHub.registerMultiple('ledger', {
-    create_insurance_policy: handleCreateInsurancePolicy,
-    update_insurance_policy: handleUpdateInsurancePolicy,
-    delete_insurance_policy: handleDeleteInsurancePolicy,
+    create_insurance_policy:  handleCreateInsurancePolicy,
+    update_insurance_policy:  handleUpdateInsurancePolicy,
+    delete_insurance_policy:  handleDeleteInsurancePolicy,
+    analyze_insurance_coverage: async ({ pushAssistantMessage }) => {
+      pushAssistantMessage?.('This analysis is coming soon.');
+    },
   });
 }

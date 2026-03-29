@@ -22,8 +22,10 @@ import type {
   AtlasGoal,
   AtlasProject,
 } from '../services/atlas-profile-service';
-import type { AtlasRoutine, NeuralStateVector } from '@/lib/types';
+import type { AtlasRoutine, AtlasCapacityBlueprint, NeuralStateVector } from '@/lib/types';
 import { ATLAS_PERSONA } from '../personas';
+import type { PlanningDigest } from '../services/atlas-proactive-service';
+import type { GoalVelocity, DependencyGraph, HistoricalPatterns } from '../services/atlas-planning-engine';
 
 // ============================================================================
 // Context Mode Discriminated Union
@@ -85,6 +87,18 @@ export interface AtlasDataContext {
   checkIns?: AtlasCheckInSummary[];
   /** ISO date string for "today", defaults to Date.now() when omitted. */
   today?: string;
+
+  // ── Computed intelligence (from planning engine + proactive service) ──
+  /** Proactive planning alerts and capacity summary. */
+  planningDigest?: PlanningDigest;
+  /** Dependency graph summary for context injection. */
+  dependencyGraph?: Pick<DependencyGraph, 'criticalPath' | 'blockedChains' | 'orphanTasks' | 'cycleDetected'>;
+  /** Per-goal velocity and risk analysis. */
+  goalVelocities?: GoalVelocity[];
+  /** Historical completion patterns. */
+  historicalPatterns?: HistoricalPatterns;
+  /** Quick capacity snapshot for daily planning. */
+  capacityBlueprint?: AtlasCapacityBlueprint;
 }
 
 /**
@@ -414,13 +428,20 @@ function buildAtlasDataContextBlock(data: AtlasDataContext): string {
     }
   }
 
-  // ── Tasks ──────────────────────────────────────────────────────────────
+  // ── Tasks (grouped by project/goal for full visibility) ────────────────
   if (data.tasks && data.tasks.length > 0) {
     const activeTasks = data.tasks.filter(t =>
       t.status === 'active' || t.status === 'queued' || t.status === 'blocked'
     );
 
-    // Sort: overdue first, then by priority desc, then by energyCost desc
+    const formatTask = (t: AtlasTask): string => {
+      const overdue = t.deadline && t.deadline.slice(0, 10) < today ? ' OVERDUE' : '';
+      const dueStr = t.deadline ? ` due:${t.deadline.slice(0, 10)}` : '';
+      const depStr = t.status === 'blocked' ? ' [BLOCKED]' : '';
+      return `    [P${t.priority}|E${t.energyCost}] "${t.title}" (${t.status})${dueStr}${overdue}${depStr}`;
+    };
+
+    // Sort all active: overdue first, then priority desc
     const sorted = [...activeTasks].sort((a, b) => {
       const aOverdue = a.deadline && a.deadline.slice(0, 10) < today ? 1 : 0;
       const bOverdue = b.deadline && b.deadline.slice(0, 10) < today ? 1 : 0;
@@ -428,25 +449,55 @@ function buildAtlasDataContextBlock(data: AtlasDataContext): string {
       return b.priority - a.priority;
     });
 
-    const topTasks = sorted.slice(0, 15);
-    const taskLines = topTasks.map(t => {
-      const overdue = t.deadline && t.deadline.slice(0, 10) < today ? ' 🔴OVERDUE' : '';
-      const dueStr = t.deadline ? ` | due: ${t.deadline.slice(0, 10)}` : '';
-      const descStr = t.description
-        ? ` | desc: "${t.description.slice(0, 80)}${t.description.length > 80 ? '...' : ''}"`
-        : '';
-      const notesStr = t.notes
-        ? ` | notes: "${t.notes.slice(0, 60)}${t.notes.length > 60 ? '...' : ''}"`
-        : '';
-      return `  - [P${t.priority}|E${t.energyCost}] "${t.title}" (${t.status})${dueStr}${overdue}${descStr}${notesStr}`;
-    });
+    // Overdue tasks always shown first as a standalone section
+    const overdueTasks = sorted.filter(t => t.deadline && t.deadline.slice(0, 10) < today);
+    if (overdueTasks.length > 0) {
+      const lines = overdueTasks.map(formatTask);
+      parts.push(`OVERDUE TASKS (${overdueTasks.length}):\n${lines.join('\n')}`);
+    }
 
+    // Group remaining by project, then goal, then unlinked
+    const nonOverdue = sorted.filter(t => !(t.deadline && t.deadline.slice(0, 10) < today));
+    const grouped: string[] = [];
+
+    // By project
+    const projectIds = [...new Set(nonOverdue.filter(t => t.projectId).map(t => t.projectId!))];
+    for (const pid of projectIds) {
+      const project = data.projects?.find(p => p.id === pid);
+      const projectTasks = nonOverdue.filter(t => t.projectId === pid);
+      const label = project ? `Project: "${project.title}"` : `Project: ${pid.slice(0, 12)}`;
+      grouped.push(`  ${label} (${projectTasks.length} tasks):`);
+      for (const t of projectTasks.slice(0, 8)) grouped.push(formatTask(t));
+      if (projectTasks.length > 8) grouped.push(`    ... +${projectTasks.length - 8} more`);
+    }
+
+    // By goal (tasks not already shown under a project)
+    const shownIds = new Set(nonOverdue.filter(t => t.projectId).map(t => t.id));
+    const goalIds = [...new Set(nonOverdue.filter(t => t.goalId && !shownIds.has(t.id)).map(t => t.goalId!))];
+    for (const gid of goalIds) {
+      const goal = data.goals?.find(g => g.id === gid);
+      const goalTasks = nonOverdue.filter(t => t.goalId === gid && !shownIds.has(t.id));
+      const label = goal ? `Goal: "${goal.title}"` : `Goal: ${gid.slice(0, 12)}`;
+      grouped.push(`  ${label} (${goalTasks.length} tasks):`);
+      for (const t of goalTasks.slice(0, 6)) grouped.push(formatTask(t));
+      if (goalTasks.length > 6) grouped.push(`    ... +${goalTasks.length - 6} more`);
+      for (const t of goalTasks) shownIds.add(t.id);
+    }
+
+    // Unlinked tasks
+    const unlinked = nonOverdue.filter(t => !shownIds.has(t.id) && !t.projectId && !t.goalId);
+    if (unlinked.length > 0) {
+      grouped.push(`  Unlinked tasks (${unlinked.length}):`);
+      for (const t of unlinked.slice(0, 10)) grouped.push(formatTask(t));
+      if (unlinked.length > 10) grouped.push(`    ... +${unlinked.length - 10} more`);
+    }
+
+    parts.push(`ACTIVE TASKS (${activeTasks.length} total):\n${grouped.join('\n')}`);
+
+    // Today's priority tasks
     const todayTasks = sorted.filter(t =>
       !t.deadline || t.deadline.slice(0, 10) <= today
     ).slice(0, 8);
-
-    parts.push(`ACTIVE TASKS (${activeTasks.length} total, top ${topTasks.length} shown):\n${taskLines.join('\n')}`);
-
     if (todayTasks.length > 0) {
       const todayLines = todayTasks.map(t =>
         `  - [P${t.priority}] "${t.title}" — energy: ${t.energyCost}/10`
@@ -509,6 +560,74 @@ function buildAtlasDataContextBlock(data: AtlasDataContext): string {
       return `  - ${ci.type.toUpperCase()} (${ci.completedAt.slice(11, 16)}):${energyStr}${moodStr}${intentStr}${reflectStr}`;
     });
     parts.push(`TODAY'S CHECK-INS:\n${checkInLines.join('\n')}`);
+  }
+
+  // ── Planning Alerts (proactive intelligence) ──────────────────────────
+  if (data.planningDigest && data.planningDigest.alerts.length > 0) {
+    const alertLines = data.planningDigest.alerts.map(a => {
+      const hint = a.actionHint ? ` → ${a.actionHint.slice(0, 60)}` : '';
+      return `  [${a.severity.toUpperCase()}] ${a.title}: ${a.detail.slice(0, 100)}${hint}`;
+    });
+    parts.push(`[PLANNING ALERTS]\n${alertLines.join('\n').slice(0, 400)}`);
+  }
+
+  // ── Dependency Graph ──────────────────────────────────────────────────
+  if (data.dependencyGraph) {
+    const dg = data.dependencyGraph;
+    const dgLines: string[] = [];
+
+    if (dg.criticalPath.length > 1) {
+      const pathTitles = dg.criticalPath.slice(0, 4).map(id => {
+        const task = data.tasks?.find(t => t.id === id);
+        return task ? `"${task.title.slice(0, 25)}"` : id.slice(0, 12);
+      });
+      const more = dg.criticalPath.length > 4 ? ` → +${dg.criticalPath.length - 4} more` : '';
+      dgLines.push(`  Critical path: ${pathTitles.join(' → ')}${more}`);
+    }
+
+    for (const chain of dg.blockedChains.slice(0, 2)) {
+      const rootTask = data.tasks?.find(t => t.id === chain.root);
+      const rootLabel = rootTask ? `"${rootTask.title.slice(0, 25)}"` : chain.root.slice(0, 12);
+      dgLines.push(`  Blocked: ${rootLabel} blocks ${chain.chain.length} downstream task(s)`);
+    }
+
+    if (dg.orphanTasks.length > 0) {
+      dgLines.push(`  Orphan tasks: ${dg.orphanTasks.length} not linked to any goal/project`);
+    }
+
+    if (dg.cycleDetected) {
+      dgLines.push(`  WARNING: Dependency cycle detected in task graph`);
+    }
+
+    if (dgLines.length > 0) {
+      parts.push(`[DEPENDENCY GRAPH]\n${dgLines.join('\n').slice(0, 300)}`);
+    }
+  }
+
+  // ── Goal Velocity ─────────────────────────────────────────────────────
+  if (data.goalVelocities && data.goalVelocities.length > 0) {
+    const velocityLines = data.goalVelocities.slice(0, 5).map(v => {
+      const riskLabel = v.riskLevel.toUpperCase().replace('-', ' ');
+      const paceStr = v.requiredVelocity !== null
+        ? `${v.actualVelocity} ms/wk actual vs ${v.requiredVelocity} required`
+        : `${v.actualVelocity} ms/wk`;
+      const daysStr = v.daysRemaining !== null ? `, ${v.daysRemaining}d left` : '';
+      return `  [${riskLabel}] "${v.title.slice(0, 30)}" — ${v.completedMilestones}/${v.totalMilestones} ms, ${paceStr}${daysStr}`;
+    });
+    parts.push(`[GOAL VELOCITY]\n${velocityLines.join('\n').slice(0, 300)}`);
+  }
+
+  // ── Capacity Snapshot ─────────────────────────────────────────────────
+  if (data.capacityBlueprint) {
+    const cb = data.capacityBlueprint;
+    const headroomSign = cb.headroom >= 0 ? '+' : '';
+    const patternsStr = data.historicalPatterns
+      ? ` | Completion: ${Math.round(data.historicalPatterns.completionRate7d * 100)}% (7d)${data.historicalPatterns.avgEnergyAccuracy !== null ? `, energy accuracy: ${Math.round(data.historicalPatterns.avgEnergyAccuracy * 100)}%` : ''}`
+      : '';
+    const pressureStr = cb.pressurePoints.length > 0
+      ? `\n  Pressure: ${cb.pressurePoints.slice(0, 2).join('; ').slice(0, 100)}`
+      : '';
+    parts.push(`[CAPACITY SNAPSHOT]\n  State: ${cb.state.toUpperCase()} | Capacity: ${cb.safeCapacity} | Demand: ${cb.plannedDemand} | Headroom: ${headroomSign}${cb.headroom}${patternsStr}${pressureStr}`.slice(0, 350));
   }
 
   return parts.join('\n\n');

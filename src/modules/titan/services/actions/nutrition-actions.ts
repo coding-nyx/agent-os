@@ -92,6 +92,17 @@ export const nutritionHandlers: Record<string, ActionHandler> = {
     // Round calories to whole number
     if (calories != null) calories = Math.round(calories);
 
+    // ── Validate macro-to-calorie consistency (warn, do not block) ───────────
+    if (protein !== undefined && carbs !== undefined && fat !== undefined && calories !== undefined) {
+      const expectedCalories = protein * 4 + carbs * 4 + fat * 9;
+      const deviation = Math.abs(calories - expectedCalories);
+      if (deviation / Math.max(expectedCalories, 1) > 0.1) {
+        pushAssistantMessage?.(
+          `Note: Logged calories (${Math.round(calories)}) don't match macro totals (${Math.round(expectedCalories)} kcal calculated). The entry was saved as logged.`
+        );
+      }
+    }
+
     // ── Build entry ──────────────────────────────────────────────────────────
     const entry: MealEntry = {
       id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),

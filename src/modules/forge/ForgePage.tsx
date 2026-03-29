@@ -370,7 +370,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
         <div className="flex-1 min-h-0 flex flex-col">
           <NexusChat
             moduleId="forge"
-            ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
+            ai={{ messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage }}
             agentName={agentAlias}
             themeColor="cyan"
             placeholder="Describe the implementation task, repository target, or command sequence..."

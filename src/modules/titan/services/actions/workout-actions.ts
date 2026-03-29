@@ -214,7 +214,7 @@ export const workoutHandlers: Record<string, ActionHandler> = {
       const decayedExisting = existingFatigue * Math.pow(0.5, hoursElapsed / 48);
       const newFatigue = Math.max(decayedExisting, rawFatigue);
 
-      queueNSVUpdate(userId, { biological: { cnsFatigue: Math.round(newFatigue * 10) / 10 } }, 'log_workout_session');
+      queueNSVUpdate(userId, { biological: { cnsFatigue: Math.round(newFatigue * 10) / 10, lastSessionTimestamp: now } }, 'log_workout_session');
     }
   },
 
@@ -265,7 +265,7 @@ export const workoutHandlers: Record<string, ActionHandler> = {
       const e1RM = reps === 1 ? weight : Math.round(weight * (1 + reps / 30));
       const existing = updatedPRs[key];
       if (!existing || e1RM > existing.e1RM) {
-        isNewPR = !existing; // true = first time, still a PR
+        isNewPR = !existing || e1RM > (existing.e1RM ?? 0);
         updatedPRs[key] = {
           exerciseName,
           maxWeight: weight,
@@ -274,7 +274,6 @@ export const workoutHandlers: Record<string, ActionHandler> = {
           achievedDate: today,
           sessionId,
         };
-        isNewPR = true;
       }
     }
 
@@ -327,6 +326,72 @@ export const workoutHandlers: Record<string, ActionHandler> = {
     }
 
     pushAssistantMessage(lines.join('\n\n'));
+  },
+
+  // ── suggest_exercise_substitute ───────────────────────────────────────────
+  // Injury-aware exercise substitution. Looks up the injured body region in a
+  // static map and surfaces pain-free alternatives without mutating stored data.
+  suggest_exercise_substitute: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+    const originalExercise = typeof payload?.originalExercise === 'string' ? payload.originalExercise.trim() : '';
+    const injuryName = typeof payload?.injuryName === 'string' ? payload.injuryName.trim() : undefined;
+    const bodyRegionRaw = typeof payload?.bodyRegion === 'string' ? payload.bodyRegion.trim() : '';
+
+    if (!originalExercise) {
+      pushAssistantMessage?.('Please specify the original exercise you want to substitute.');
+      return;
+    }
+
+    // Load profile to cross-reference active injuries when bodyRegion is omitted
+    const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+
+    // Derive effective body region: prefer explicit payload, fall back to first
+    // active injury region that matches the injuryName (if provided)
+    let effectiveRegion = bodyRegionRaw.toLowerCase();
+
+    if (!effectiveRegion && profile) {
+      const activeInjuries = (profile.history?.injuries ?? []).filter(
+        (inj) => inj.status === 'active' || inj.status === 'recovering'
+      );
+      const matched = injuryName
+        ? activeInjuries.find((inj) => inj.name.toLowerCase().includes(injuryName.toLowerCase()))
+        : activeInjuries[0];
+      if (matched) {
+        // Normalise compound BodyRegion values (e.g. 'upper_back', 'lower_back') to 'back'
+        effectiveRegion = matched.bodyRegion.replace(/upper_|lower_/, '').replace(/_back$/, 'back');
+      }
+    }
+
+    const SUBSTITUTION_MAP: Record<string, string[]> = {
+      shoulder: ['Cable pulls', 'Resistance band rows', 'Face pulls', 'Dumbbell Y-raises'],
+      knee: ['Seated leg press', 'Hip thrusts', 'Leg curls', 'Step-ups with support'],
+      back: ['Dead bugs', 'Bird dogs', 'Pallof press', 'Cable pull-throughs'],
+      hip: ['Lateral band walks', 'Clamshells', 'Seated hip abduction', 'Nordic curls'],
+      wrist: ['Cable curls (rope)', 'Hammer curls', 'Machine chest press', 'Tricep pushdowns (rope)'],
+      ankle: ['Seated calf raises', 'Upper body focus', 'Swimming', 'Pool running'],
+    };
+
+    const alternatives = effectiveRegion ? SUBSTITUTION_MAP[effectiveRegion] : undefined;
+
+    if (alternatives && alternatives.length > 0) {
+      pushAssistantMessage?.(
+        `Since you're working around your ${effectiveRegion}, here are some alternatives to ${originalExercise}: ${alternatives.join(', ')}.`
+      );
+    } else {
+      pushAssistantMessage?.(
+        "I don't have specific substitutions for that region yet. Focus on pain-free range of motion and consult your PT."
+      );
+    }
+
+    emitSpineEvent(
+      'SOMA_PROFILE_UPDATED',
+      {
+        exerciseSubstituted: true,
+        original: originalExercise,
+        region: effectiveRegion || null,
+        injuryName: injuryName ?? null,
+      },
+      { domain: 'B', priority: 'info' },
+    );
   },
 
   // ── apply_program_template ─────────────────────────────────────────────────

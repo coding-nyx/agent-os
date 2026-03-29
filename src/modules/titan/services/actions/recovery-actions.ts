@@ -13,6 +13,8 @@
 import {
   loadProfile,
   persistProfile,
+  ClearanceService,
+  SomaDataService,
 } from './shared';
 import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
 import type { ActionHandler, TitanProfile } from './shared';
@@ -218,9 +220,20 @@ export const recoveryHandlers: Record<string, ActionHandler> = {
 
     await persistProfile(next, userId ?? null, encryptionKey ?? null);
 
-    // Restore NSV to baseline recovered state
+    // Restore NSV to baseline recovered state.
+    // Compute average recoveryScore from the last 3 check-ins when available;
+    // fall back to a hardcoded default of 7 when no check-in data exists.
     if (userId) {
-      queueNSVUpdate(userId, { biological: { recoveryScore: 7, cnsFatigue: 2 } }, 'end_recovery_plan');
+      const recentCheckins = (profile.recoveryCheckins ?? []).slice(0, 3);
+      const recoveryScore = recentCheckins.length > 0
+        ? Math.min(10, Math.max(0, Math.round(
+            recentCheckins.reduce((sum, c) => {
+              const score = (10 - c.pain) * 0.3 + (10 - c.fatigue) * 0.4 + c.sleepQuality * 0.3;
+              return sum + score;
+            }, 0) / recentCheckins.length
+          )))
+        : 7;
+      queueNSVUpdate(userId, { biological: { recoveryScore, cnsFatigue: 2 } }, 'end_recovery_plan');
     }
 
     // Emit spine event for cross-module awareness
@@ -239,6 +252,93 @@ export const recoveryHandlers: Record<string, ActionHandler> = {
     pushAssistantMessage?.(
       `✅ **Recovery plan ended**\n` +
       `You're cleared to resume training. Start gradually and listen to your body.`
+    );
+  },
+
+  /**
+   * consensus_clearance_check — Cross-signal clearance check combining Titan
+   * self-assessment, NSV recoveryScore, and NSV readinessScore.
+   *
+   * Payload: same as self_clearance_check (activity string)
+   *
+   * Consensus rules:
+   *   - 'granted'     : titan medical clearance is granted AND recovery > 6 AND readiness > 60
+   *   - 'denied'      : titan medical clearance is denied (overrides everything else)
+   *   - 'conditional' : clearance granted but either recovery ≤ 6 or readiness ≤ 60
+   *
+   * Emits: SOMA_CLEARANCE_CHANGED when consensus differs from titan clearance alone
+   */
+  consensus_clearance_check: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent, getLatestNSV }) => {
+    const activity = typeof payload?.activity === 'string' ? payload.activity : 'high_intensity';
+
+    const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+
+    // Derive titan clearance via ClearanceService (same pattern as self_clearance_check)
+    const healthSnapshot =
+      userId && encryptionKey
+        ? await SomaDataService.getHealthSnapshot(userId, encryptionKey)
+        : null;
+    const clearanceResult = healthSnapshot
+      ? ClearanceService.evaluate(healthSnapshot, activity)
+      : profile
+        ? ClearanceService.evaluate(profile, activity)
+        : null;
+
+    const titanClearance: 'granted' | 'denied' | 'conditional' = clearanceResult?.status ?? 'conditional';
+
+    // Read NSV biological scores — prefer session cache here (advisory path, not safety-critical)
+    const nsv = getLatestNSV?.() ?? {};
+    const bio = (nsv.biological ?? {}) as Record<string, unknown>;
+    const recoveryScore = typeof bio.recoveryScore === 'number' ? bio.recoveryScore : null;
+    const readinessScore = typeof bio.readinessScore === 'number' ? bio.readinessScore : null;
+
+    // Apply consensus logic
+    let consensusStatus: 'granted' | 'denied' | 'conditional';
+    let reason: string;
+
+    if (titanClearance === 'denied') {
+      consensusStatus = 'denied';
+      reason = 'Titan medical clearance is denied — overrides all other signals.';
+    } else if (
+      (recoveryScore === null || recoveryScore > 6) &&
+      (readinessScore === null || readinessScore > 60) &&
+      titanClearance === 'granted'
+    ) {
+      consensusStatus = 'granted';
+      reason = 'All signals within acceptable range.';
+    } else {
+      consensusStatus = 'conditional';
+      const constraints: string[] = [];
+      if (recoveryScore !== null && recoveryScore <= 6) {
+        constraints.push(`recovery score ${recoveryScore}/10 is at or below threshold (6)`);
+      }
+      if (readinessScore !== null && readinessScore <= 60) {
+        constraints.push(`readiness score ${readinessScore}/100 is at or below threshold (60)`);
+      }
+      reason = constraints.length > 0
+        ? `Conditional due to: ${constraints.join('; ')}.`
+        : 'Clearance is conditional — insufficient signal data.';
+    }
+
+    // Emit conflict event when consensus disagrees with titan-alone clearance
+    if (consensusStatus !== titanClearance) {
+      emitSpineEvent(
+        'SOMA_CLEARANCE_CHANGED',
+        {
+          clearanceConflict: true,
+          titanClearance,
+          consensusStatus,
+          activity,
+          reason,
+        },
+        { domain: 'B', priority: consensusStatus === 'denied' ? 'alert' : 'info' },
+      );
+    }
+
+    const recoveryStr = recoveryScore !== null ? `${recoveryScore}/10` : 'unknown';
+    const readinessStr = readinessScore !== null ? `${readinessScore}/100` : 'unknown';
+    pushAssistantMessage?.(
+      `Clearance check: Recovery ${recoveryStr}, Readiness ${readinessStr}. Status: ${consensusStatus}.`
     );
   },
 

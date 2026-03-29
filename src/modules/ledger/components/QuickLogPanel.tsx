@@ -24,6 +24,7 @@ interface QuickLogPanelProps {
 
 const QUICK_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Health', 'Bills', 'Income', 'Other'];
 const INCOME_KEYWORDS = ['salary', 'income', 'freelance', 'dividend', 'refund', 'bonus', 'paycheck', 'revenue'];
+const RECEIPT_KEYWORDS = ['receipt', 'invoice', 'bill', 'paid', 'bought', 'spent', 'purchase'];
 const AMOUNT_REGEX = /\$?([\d,]+(?:\.\d{1,2})?)/;
 const SWIPE_TRIGGER = 96;
 const SWIPE_LIMIT = 140;
@@ -68,6 +69,7 @@ export function QuickLogPanel({ categories, currency, accounts = [], onAddTransa
 
   const [naturalInput, setNaturalInput] = useState('');
   const [parsed, setParsed] = useState<ReturnType<typeof parseNaturalInput>>(null);
+  const [showReceiptHint, setShowReceiptHint] = useState(false);
   const [manualMode, setManualMode] = useState(false);
   const [manualAmount, setManualAmount] = useState('');
   const [manualDesc, setManualDesc] = useState('');
@@ -122,6 +124,7 @@ export function QuickLogPanel({ categories, currency, accounts = [], onAddTransa
     const val = e.target.value;
     setNaturalInput(val);
     setParsed(parseNaturalInput(val));
+    setShowReceiptHint(RECEIPT_KEYWORDS.some((k) => val.toLowerCase().includes(k)));
     setSubmitted(false);
     resetSwipe();
   };
@@ -284,6 +287,12 @@ export function QuickLogPanel({ categories, currency, accounts = [], onAddTransa
                 </span>
               )}
             </div>
+
+            {showReceiptHint && (
+              <p className="text-xs text-white/40 mt-1">
+                Tip: Include amount, merchant, and category for best results.
+              </p>
+            )}
 
             {/* Parsed preview — single row, never stacks */}
             {parsed && (

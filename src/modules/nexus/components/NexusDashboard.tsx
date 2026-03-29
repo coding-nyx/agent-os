@@ -792,6 +792,9 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
               if (m.threadId) return m.threadId === currentThreadId;
               return currentThreadId === 'nexus.dashboard';
             }),
+            // Disable edit/retry in the Nexus dashboard because messages are filtered
+            // by thread; setMessages operates on the full history and is not safe here.
+            setMessages: undefined,
             handleSendMessage: handleSendWithRouting,
             isProcessing: ai.isProcessing || isNexusBusy,
           }}

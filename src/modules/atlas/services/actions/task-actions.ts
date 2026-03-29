@@ -9,6 +9,7 @@ import {
   sanitizeTitle,
   parseBoundedScore
 } from './shared';
+import { suggestTaskBreakdown } from '../atlas-planning-engine';
 
 export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
   update_task_graph: async ({ userId, encryptionKey, payload, updateGlobalSoul }) => {
@@ -106,6 +107,54 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
       goalId: newTask.goalId,
       projectId: newTask.projectId
     });
+
+    // ── Post-creation intelligence ────────────────────────────────────
+    // If task has dependencies on blocked tasks, set to blocked immediately
+    if (newTask.dependencies.length > 0) {
+      const hasBlockedDep = newTask.dependencies.some(depId => {
+        const dep = profile.tasks.find(t => t.id === depId);
+        return dep && dep.status !== 'done';
+      });
+      if (hasBlockedDep && newTask.status === 'queued') {
+        newTask.status = 'blocked';
+        newTask.updatedAt = new Date().toISOString();
+        await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+      }
+    }
+
+    // Overload warning after adding
+    const activeLoad = calculateActiveLoad(profile.tasks);
+    if (activeLoad > 7) {
+      emitSpineEvent('ATLAS_CAPACITY_WARNING', {
+        activeLoad,
+        taskCount: profile.tasks.filter(t => t.status === 'active' || t.status === 'queued').length,
+        triggeredBy: newTask.id,
+      });
+    }
+
+    // Auto-suggest goal link for orphan tasks
+    if (!newTask.goalId && !newTask.projectId) {
+      const titleWords = newTask.title.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const activeGoals = profile.goals.filter(g => g.status === 'active');
+      for (const goal of activeGoals) {
+        const goalWords = goal.title.toLowerCase().split(/\s+/);
+        const milestoneWords = goal.milestones
+          .filter(m => !m.completed)
+          .flatMap(m => m.title.toLowerCase().split(/\s+/));
+        const allGoalWords = [...goalWords, ...milestoneWords];
+        const overlap = titleWords.filter(w => allGoalWords.some(gw => gw.includes(w) || w.includes(gw)));
+        if (overlap.length > 0) {
+          emitSpineEvent('ATLAS_TASK_GOAL_SUGGESTION', {
+            taskId: newTask.id,
+            taskTitle: newTask.title,
+            suggestedGoalId: goal.id,
+            suggestedGoalTitle: goal.title,
+            matchedWords: overlap,
+          });
+          break;
+        }
+      }
+    }
   },
 
   update_task: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
@@ -537,6 +586,92 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     });
 
     if (pushAssistantMessage) pushAssistantMessage('Task notes updated.');
+  },
+
+  atlas_suggest_task_breakdown: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+    const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!raw) return;
+    const profile = raw;
+
+    const taskId = typeof payload?.taskId === 'string' ? payload.taskId : null;
+    if (!taskId) return;
+
+    const parentTask = profile.tasks.find(t => t.id === taskId);
+    if (!parentTask) {
+      pushAssistantMessage?.(`Could not find task with ID "${taskId}".`);
+      return;
+    }
+
+    const breakdown = suggestTaskBreakdown(parentTask, profile);
+
+    const subtasks = breakdown.subtasks.map(s => ({
+      id: crypto.randomUUID(),
+      title: s.title,
+      estimatedEnergyCost: s.estimatedEnergyCost,
+      status: 'pending',
+      rationale: s.rationale,
+    }));
+
+    const lines = [
+      `**Suggested breakdown for: ${parentTask.title}**`,
+      `Strategy: ${breakdown.decompositionStrategy} | Total energy: ~${breakdown.totalEstimatedEnergy}`,
+      '',
+      ...subtasks.map((s, i) => `${i + 1}. ${s.title} *(~${s.estimatedEnergyCost} energy)* — ${s.rationale}`),
+      '',
+      'These are suggestions only — use "Create Task" to add any of them to your task list.',
+    ];
+
+    pushAssistantMessage?.(lines.join('\n'));
+
+    emitSpineEvent('DRAFT_PROPOSED', {
+      parentTaskId: taskId,
+      parentTaskTitle: parentTask.title,
+      subtaskCount: subtasks.length,
+      subtasks,
+      strategy: breakdown.decompositionStrategy,
+    });
+  },
+
+  atlas_batch_complete_tasks: async ({ userId, encryptionKey, profileCache, payload, pushAssistantMessage, emitSpineEvent, markProfileDirty }) => {
+    const taskIds: string[] = Array.isArray(payload?.taskIds)
+      ? (payload.taskIds as unknown[]).filter((id): id is string => typeof id === 'string')
+      : [];
+
+    if (taskIds.length === 0) {
+      pushAssistantMessage?.('Please specify which tasks to complete.');
+      return;
+    }
+
+    const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!raw) return;
+    const profile = raw;
+
+    const now = new Date().toISOString();
+    let completedCount = 0;
+
+    for (const id of taskIds) {
+      const task = profile.tasks.find(t => t.id === id);
+      if (!task) continue;
+
+      task.status = 'done';
+      task.completedAt = now;
+      task.updatedAt = now;
+      unblockDependents(profile.tasks, task.id);
+      completedCount++;
+    }
+
+    if (completedCount === 0) return;
+
+    await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    markProfileDirty?.();
+
+    emitSpineEvent('TASK_COMPLETED', {
+      batchCompleted: true,
+      count: completedCount,
+      taskIds: taskIds.slice(0, completedCount)
+    });
+
+    pushAssistantMessage?.(`Marked ${completedCount} task${completedCount !== 1 ? 's' : ''} as complete.`);
   },
 
   delegate_to_module: async ({ emitSpineEvent, payload }) => {

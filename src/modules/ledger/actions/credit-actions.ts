@@ -64,5 +64,8 @@ export function registerLedgerCreditActions(): void {
     add_credit_score_entry:    handleAddCreditScoreEntry,
     delete_credit_score_entry: handleDeleteCreditScoreEntry,
     set_credit_factors:        handleSetCreditFactors,
+    analyze_credit_score_trend: async ({ pushAssistantMessage }) => {
+      pushAssistantMessage?.('This analysis is coming soon.');
+    },
   });
 }

@@ -346,6 +346,109 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     if (pushAssistantMessage) pushAssistantMessage('Milestone removed.');
   },
 
+  atlas_analyze_goal_velocity: async ({ userId, encryptionKey, pushAssistantMessage, emitSpineEvent }) => {
+    const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!raw) return;
+    const profile = raw;
+
+    const activeGoals = profile.goals.filter(g => g.status === 'active');
+
+    if (activeGoals.length === 0) {
+      pushAssistantMessage?.('You have no active goals to analyze.');
+      return;
+    }
+
+    const now = Date.now();
+    const belowTargetGoals: Array<{ id: string; title: string; actual: number; expected: number }> = [];
+
+    for (const goal of activeGoals) {
+      const totalMilestones = goal.milestones.length;
+      const milestonesCompleted = goal.milestones.filter(m => m.completed).length;
+
+      const createdAtMs = Date.parse(goal.createdAt);
+      if (isNaN(createdAtMs) || totalMilestones === 0) continue;
+
+      const daysSinceCreation = Math.max(1, (now - createdAtMs) / (1000 * 60 * 60 * 24));
+      const actualVelocity = (milestonesCompleted / daysSinceCreation) * 30;
+
+      // estimatedMonths is not part of the AtlasGoal schema — skip expected rate comparison
+      // when it's absent. We still track the velocity for reporting.
+      const estimatedMonths = typeof (goal as unknown as Record<string, unknown>).estimatedMonths === 'number'
+        ? (goal as unknown as Record<string, unknown>).estimatedMonths as number
+        : null;
+
+      if (estimatedMonths !== null && estimatedMonths > 0) {
+        const expectedVelocity = totalMilestones / estimatedMonths;
+        if (actualVelocity < expectedVelocity * 0.5) {
+          belowTargetGoals.push({
+            id: goal.id,
+            title: goal.title,
+            actual: Math.round(actualVelocity * 100) / 100,
+            expected: Math.round(expectedVelocity * 100) / 100,
+          });
+        }
+      }
+    }
+
+    if (belowTargetGoals.length > 0) {
+      const lines = [
+        '**Goal Velocity Alert** — the following goals are below 50% of their expected pace:',
+        '',
+        ...belowTargetGoals.map(
+          g => `- **${g.title}**: ${g.actual} milestones/month actual vs ${g.expected} expected`
+        ),
+        '',
+        'Consider reviewing priorities or adjusting milestone targets for these goals.',
+      ];
+      pushAssistantMessage?.(lines.join('\n'));
+
+      emitSpineEvent('GOAL_MISSING_PROGRESS', {
+        velocityAlert: true,
+        goalIds: belowTargetGoals.map(g => g.id),
+        goals: belowTargetGoals,
+      });
+    } else {
+      pushAssistantMessage?.('All active goals with defined timelines are on track. Keep going!');
+    }
+  },
+
+  atlas_validate_coherence: async ({ userId, encryptionKey, profileCache, payload, pushAssistantMessage, emitSpineEvent }) => {
+    const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!raw) return;
+    const profile = raw;
+
+    const activeGoals = profile.goals.filter(g => g.status !== 'completed');
+    const queuedTasks = profile.tasks.filter(t => t.status !== 'done');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const activeHabits = profile.habits.filter(h => h.status !== 'paused' && h.status !== 'archived');
+
+    const goalIds = new Set(activeGoals.map(g => g.id));
+    const unlinkedTasks = queuedTasks.filter(t => {
+      const taskExt = t as unknown as Record<string, unknown>;
+      const goalId = typeof taskExt.goalId === 'string' ? taskExt.goalId : undefined;
+      return !goalId || !goalIds.has(goalId);
+    });
+
+    if (unlinkedTasks.length > 0) {
+      const titles = unlinkedTasks
+        .slice(0, 5)
+        .map(t => `"${t.title}"`)
+        .join(', ');
+      const overflow = unlinkedTasks.length > 5 ? ` and ${unlinkedTasks.length - 5} more` : '';
+      pushAssistantMessage?.(
+        `${unlinkedTasks.length} task(s) aren't connected to any active goal: ${titles}${overflow}. Would you like to link them?`
+      );
+    } else {
+      pushAssistantMessage?.("Everything on your task list connects to an active goal. You're aligned.");
+    }
+
+    emitSpineEvent('ATLAS_STATE_CHANGED', {
+      reason: 'coherence_check',
+      coherenceCheck: true,
+      unlinkedCount: unlinkedTasks.length
+    });
+  },
+
   complete_goal: async ({ userId, encryptionKey, payload, emitSpineEvent, updateGlobalSoul, markProfileDirty }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;

@@ -104,7 +104,7 @@ export const journalActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
     }
 
     const sentence3 = streakSaved
-      ? ` ${JOURNAL_FORWARD[tone]}`
+      ? ` ${JOURNAL_FORWARD[tone]} Your journaling streak continues!`
       : ` ${JOURNAL_FORWARD[tone]}`;
     const response = `${sentence1}${sentence2}${sentence3}`;
 

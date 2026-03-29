@@ -66,5 +66,8 @@ export function registerLedgerReceiptActions(): void {
     add_receipt:                  handleAddReceipt,
     delete_receipt:               handleDeleteReceipt,
     link_receipt_to_transaction:  handleLinkReceiptToTransaction,
+    analyze_receipts_by_tax_year: async ({ pushAssistantMessage }) => {
+      pushAssistantMessage?.('This analysis is coming soon.');
+    },
   });
 }

@@ -12,6 +12,7 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
+import { NexusLogger } from '@/lib/nexus-logger';
 import type { ModuleId } from '@/lib/module-manifest';
 
 let registered = false;
@@ -33,11 +34,18 @@ export function registerOrchestratorActions() {
    *
    * Payload: { moduleId: string }
    */
-  ActionHub.register('nexus', 'navigate_to_module', ({ payload, navigateTo }) => {
+  ActionHub.register('nexus', 'navigate_to_module', ({ payload, navigateTo, orchestration }) => {
     const moduleId = typeof payload?.moduleId === 'string'
       ? (payload.moduleId as ModuleId)
       : null;
     if (!moduleId || !navigateTo) return;
+
+    // Don't route in early session turns — let context build first
+    const turnCount = (orchestration as any)?.turnCount ?? 0;
+    if (turnCount < 3) {
+      NexusLogger.warn('ActionHub', `[ActionHub] Routing suggestion for "${moduleId}" suppressed — session too early (turn ${turnCount})`);
+      return;
+    }
 
     const route = NexusRoutingService.getRoute(moduleId);
     if (route) navigateTo(route);

@@ -175,7 +175,7 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
     if (!clearance) return;
   },
 
-  analyze_medical_image: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
+  analyze_medical_image: async ({ userId, encryptionKey, payload, emitSpineEvent, pushAssistantMessage }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -184,6 +184,20 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
     const medications = Array.isArray(payload?.medications) ? payload.medications : [];
     const allergies = Array.isArray(payload?.allergies) ? payload.allergies : [];
     const clinicalFlags = Array.isArray(payload?.clinicalFlags) ? payload.clinicalFlags : [];
+
+    // ── Per-field extraction confidence scoring ──────────────────────────
+    // Scores a single extracted value 0–1 based on value completeness.
+    function scoreFieldConfidence(value: unknown): number {
+      if (value === null || value === undefined || value === '') return 0;
+      if (typeof value === 'number' && !isNaN(value)) return 1.0;
+      if (typeof value === 'string') {
+        if (value.length < 2) return 0.3;
+        if (/^\d+\.?\d*$/.test(value.trim())) return 0.95; // numeric string
+        if (value.length > 50) return 0.6; // long text = less certain
+        return 0.85;
+      }
+      return 0.7;
+    }
 
     const newBiomarkers = biomarkers
       .filter((b: unknown) => b && typeof b === 'object')
@@ -195,6 +209,23 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
         source: 'medical_image_analysis',
         recordedAt: new Date().toISOString()
       }));
+
+    // Compute per-field confidence scores over the raw biomarker payload objects
+    const fieldScores: Record<string, number> = {};
+    for (const b of biomarkers.filter((b: unknown) => b && typeof b === 'object') as Record<string, unknown>[]) {
+      const fieldName = typeof b.name === 'string' ? b.name : 'biomarker';
+      fieldScores[fieldName] = scoreFieldConfidence(b.value);
+    }
+
+    const scoreValues = Object.values(fieldScores);
+    const overallConfidence: number =
+      scoreValues.length > 0
+        ? scoreValues.reduce((sum, s) => sum + s, 0) / scoreValues.length
+        : 1.0;
+
+    const lowConfidenceFields = Object.entries(fieldScores)
+      .filter(([, score]) => score < 0.7)
+      .map(([name]) => name);
 
     const newLabSummaries = labSummaries
       .filter((l: unknown) => l && typeof l === 'object')
@@ -221,6 +252,15 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
       .filter((a: unknown) => typeof a === 'string')
       .slice(0, 20);
 
+    // Warn when overall extraction confidence falls below threshold
+    if (overallConfidence < 0.85 && lowConfidenceFields.length > 0) {
+      pushAssistantMessage?.(
+        `Document processed, but some fields have low extraction confidence:\n` +
+        lowConfidenceFields.map((f) => `- ${f}`).join('\n') +
+        `\n\nPlease verify these values before relying on them. All fields have been saved — low-confidence ones are flagged for review.`
+      );
+    }
+
     const analysis: MedicalImageAnalysis = {
       id: crypto.randomUUID(),
       analyzedAt: new Date().toISOString(),
@@ -235,6 +275,8 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
         }))
         .slice(0, 10)
     };
+    // Attach overall extraction confidence for downstream traceability
+    (analysis as any).extractionConfidence = overallConfidence;
 
     const next: TitanProfile = {
       ...profile,

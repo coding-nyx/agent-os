@@ -246,7 +246,10 @@ export const ModuleMemoryService = {
             }
           }
 
-          const nextHistory = [...existingHistory, embeddedEvent];
+          // Cap history to prevent ciphertext from growing beyond Firestore's 1MB document limit.
+          // Each event with a 256-float embedding is ~2KB; 50 events ≈ 100KB headroom for snapshot.
+          const MAX_HISTORY_EVENTS = 50;
+          const nextHistory = [...existingHistory, embeddedEvent].slice(-MAX_HISTORY_EVENTS);
           const encryptedPayload = await encryptWithKey(
             JSON.stringify({
               latestSnapshot: snapshot,

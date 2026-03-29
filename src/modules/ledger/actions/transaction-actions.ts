@@ -93,7 +93,12 @@ export interface Goal {
  * Handle create_transaction action — persists to profile and refreshes UI.
  */
 async function handleCreateTransaction(context: ActionContext): Promise<void> {
-  const { payload, userId, encryptionKey, emitSpineEvent, markProfileDirty } = context;
+  const { payload, userId, encryptionKey, emitSpineEvent, markProfileDirty, pushAssistantMessage } = context;
+
+  if (!userId || !encryptionKey) {
+    pushAssistantMessage?.('Transaction could not be saved — please sign in again.');
+    return;
+  }
 
   const parseNum = (v: unknown, fb = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : fb);
   const rawAmount = parseNum(payload.amount);
@@ -255,7 +260,7 @@ async function handleUpdateTransaction(context: ActionContext): Promise<void> {
     // Resolve new budget category id
     const newCategoryId = updated.budgetCategoryId ??
       (typeof payload.category === 'string'
-        ? updatedBudgetCategories.find(c => c.name.toLowerCase() === payload.category.toLowerCase())?.id
+        ? updatedBudgetCategories.find(c => c.name.toLowerCase() === (payload.category as string).toLowerCase())?.id
         : undefined);
     if (newCategoryId) {
       updated.budgetCategoryId = newCategoryId;
