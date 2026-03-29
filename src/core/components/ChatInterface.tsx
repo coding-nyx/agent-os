@@ -482,7 +482,7 @@ export const ChatInterface = React.memo(function ChatInterface({
         )}
         <AnimatePresence initial={false}>
           {messages.map((msg, i) => {
-            if (msg.role === 'system') return null;
+            if (msg.role === 'system' || msg.hidden) return null;
             const isAI = msg.role === 'assistant';
             const isLast = i === messages.length - 1;
             const actorIdentity = isAI

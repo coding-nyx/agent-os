@@ -133,6 +133,7 @@ function AgnesContent({
   const [sessionSummary, setSessionSummary] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
   const [pendingImpromptuWelcome, setPendingImpromptuWelcome] = useState<string | null>(null);
+  const [pendingBeliefOpen, setPendingBeliefOpen] = useState(false);
   const [activeBeliefContext, setActiveBeliefContext] = useState<{ triggeringBeliefs: string[]; rationale: string[] } | null>(null);
   const [beliefGraph, setBeliefGraph] = useState<AgnesBeliefGraph | null>(null);
   const [beliefWorkflow, setBeliefWorkflow] = useState<BeliefGraphWorkflow | null>(null);
@@ -361,6 +362,7 @@ function AgnesContent({
       setPreferredPersistentMode(loadGuestAgnesPreferredMode());
       setModeContinuity(undefined);
       setActiveBeliefContext(null);
+      setPendingBeliefOpen(false);
       setSessionSummary(null);
     }
     prevUserRef.current = user;
@@ -375,6 +377,20 @@ function AgnesContent({
       setPendingImpromptuWelcome(null);
     }
   }, [pendingImpromptuWelcome, isHydrating, isImpromptu, setMessages]);
+
+  // For belief-triggered sessions, fire a hidden trigger so Agnes generates a
+  // personalised opening (tone adapts to the belief context in the system prompt).
+  // Waits for hydration to settle so the trigger isn't overwritten by the reset effect.
+  useEffect(() => {
+    if (pendingBeliefOpen && !isHydrating && !isImpromptu && !isProcessing) {
+      setPendingBeliefOpen(false);
+      handleSendMessage(
+        '[Open session — begin with a warm, present greeting. Let the client lead.]',
+        undefined,
+        { hideUserMessage: true },
+      );
+    }
+  }, [pendingBeliefOpen, isHydrating, isImpromptu, isProcessing, handleSendMessage]);
 
   const handleRouteConfirm = useCallback(() => {
     if (!routingSuggestion) return;
@@ -531,21 +547,16 @@ function AgnesContent({
       ],
     } satisfies Record<AgnesPersistentEngagementMode, string[]>;
 
-    let initialMsg: string;
     if (beliefContext?.triggeringBeliefs?.length) {
-      const beliefGreetings = [
-        `Hi ${userName}, I'm glad you're here. Take a moment to settle in — I'm with you. What's been sitting with you lately?`,
-        `Welcome back, ${userName}. No rush. I'm here, fully present. What's most alive for you right now?`,
-        `Hi ${userName}. I'm glad you came. Whenever you're ready — what's been on your mind?`,
-      ];
-      initialMsg = beliefGreetings[Math.floor(Math.random() * beliefGreetings.length)];
+      // Let Agnes generate a personalised opening — tone is shaped by the belief context
+      // already injected into the system prompt via beliefFocusBlock.
+      setPendingBeliefOpen(true);
     } else {
-      initialMsg = isFirstSession
+      const initialMsg = isFirstSession
         ? firstTimeGreetings[preferredPersistentMode][Math.floor(Math.random() * firstTimeGreetings[preferredPersistentMode].length)]
         : returningGreetings[preferredPersistentMode][Math.floor(Math.random() * returningGreetings[preferredPersistentMode].length)];
+      setMessages([{ role: 'assistant', content: initialMsg }]);
     }
-
-    setMessages([{ role: 'assistant', content: initialMsg }]);
   }, [
     agentAlias,
     clearSession,
@@ -554,6 +565,7 @@ function AgnesContent({
     profile,
     setMessages,
     setActiveBeliefContext,
+    setPendingBeliefOpen,
   ]);
 
   const hasActiveSession = !isGuest && messages.length > 0;
@@ -701,6 +713,7 @@ function AgnesContent({
     setModeContinuity(undefined);
     setSessionSummary(null);
     setActiveBeliefContext(null);
+    setPendingBeliefOpen(false);
 
     // Flush any belief workflow that arrived during the session
     if (pendingPostSessionBeliefWorkflowRef.current !== null) {

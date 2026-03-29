@@ -30,7 +30,7 @@ interface NexusChatProps {
         handleSendMessage: (
           content: MessageContent,
           onActionParsed?: (type: string, payload: Record<string, unknown>) => void,
-          options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }
+          options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; hideUserMessage?: boolean }
         ) => void;
         pendingRequest?: PendingRequestState | null;
         clearPendingRequest?: () => void;

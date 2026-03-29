@@ -641,7 +641,7 @@ export function useModuleAI({
     async (
       content: MessageContent,
       onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void,
-      options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; threadId?: string }
+      options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; threadId?: string; hideUserMessage?: boolean }
     ) => {
       if (isProcessingRef.current) return;
       if (isGuest && quota.isHardLocked) return;
@@ -652,6 +652,7 @@ export function useModuleAI({
       const userMsg: Message = {
         role: 'user',
         content: options?.visibleContent ?? content,
+        hidden: options?.hideUserMessage || undefined,
         timestamp: new Date().toISOString(),
         threadId: options?.threadId,
       };

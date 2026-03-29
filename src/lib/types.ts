@@ -544,6 +544,8 @@ export interface Message {
   actor?: ActorIdentityRef;
   /** Optional debug metadata — populated only when debug instrumentation is active. */
   debugMeta?: MessageDebugMeta;
+  /** When true the message is sent to the LLM but never rendered in the chat UI. */
+  hidden?: boolean;
 }
 
 export interface ActiveSessionState {
