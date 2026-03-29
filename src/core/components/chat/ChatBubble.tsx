@@ -150,7 +150,7 @@ function AiBubble({
 
   const effectiveIsThinking = showInternalSignals ? isThinking : false;
   const effectiveIsActing = showInternalSignals ? isActing : false;
-  const effectiveInternalText = showInternalSignals ? internalText : '';
+  const effectiveInternalText = (showInternalSignals || debugMode) ? internalText : '';
 
   const showProcessingPulse = effectiveIsThinking || effectiveIsActing;
   const showCompletedThought = debugMode && !!effectiveInternalText && !showProcessingPulse;

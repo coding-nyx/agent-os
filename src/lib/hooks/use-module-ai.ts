@@ -565,6 +565,12 @@ export function useModuleAI({
 
     if (currentMessages.length === 0) return;
 
+    // Strip ephemeral debug metadata before any persistence — debug signals are display-only
+    const persistableMessages = currentMessages.map((msg) => {
+      const { debugMeta: _dm, ...rest } = msg as typeof msg & { debugMeta?: unknown };
+      return rest as typeof msg;
+    });
+
     const shouldSaveRemote = forceRemote || (persistencePolicy === 'auto' && user && !isGuest);
 
     if (shouldSaveRemote && user) {
@@ -576,7 +582,7 @@ export function useModuleAI({
         moduleId,
         startTime: sessionStartRef.current,
         lastMessageAt,
-        history: currentMessages,
+        history: persistableMessages,
         tokenCount: 0,
         isGuestTrial: false,
         contextPolicy: resolvedContextPolicy
@@ -587,7 +593,7 @@ export function useModuleAI({
     // Always persist to sessionStorage as a lightweight fallback
     try {
       sessionStorage.setItem(`nexus_session_${moduleId}_${activeSessionId}`, JSON.stringify({
-        history: currentMessages,
+        history: persistableMessages,
         startTime: sessionStartRef.current,
         savedAt: new Date().toISOString()
       }));
