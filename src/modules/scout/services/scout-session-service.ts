@@ -18,7 +18,8 @@ function sessionsCollection(userId: string): string {
 
 export async function createSession(
   topic: string,
-  { userId }: SessionContext
+  { userId }: SessionContext,
+  options?: { mode?: 'web' | 'deep' }
 ): Promise<ResearchSession | null> {
   if (!userId) return null;
 
@@ -30,6 +31,8 @@ export async function createSession(
     id,
     userId,
     topic,
+    mode: options?.mode ?? 'web',
+    seedState: 'unseeded',
     status: 'idle',
     subQuestions: [],
     createdAt: now,

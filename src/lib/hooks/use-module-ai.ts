@@ -658,6 +658,11 @@ export function useModuleAI({
       // H-2: read current messages from ref so handleSendMessage doesn't need `messages`
       // in its useCallback deps — this keeps handleSendMessage stable across AI responses
       // and prevents ai useMemo from firing on every message update.
+      // Snapshot history BEFORE setMessages so buildHistoryForStream always uses the
+      // pre-user-message history (messagesRef.current is re-synced on every render so
+      // after setMessages triggers a re-render it would contain userMsg, causing the AI
+      // to see the user message twice — once in history, once as the content argument).
+      const historyBeforeUserMsg = [...messagesRef.current];
       let localHistory = [...messagesRef.current, userMsg].slice(-MAX_MESSAGES);
       setMessages(localHistory);
       setIsProcessing(true);
@@ -922,7 +927,7 @@ export function useModuleAI({
 
         const sendStartTime = Date.now();
         const { historySlice, summaryBlock } = buildHistoryForStream(
-          messagesRef.current,
+          historyBeforeUserMsg,
           userMsg.threadId,
           sessionSummaryRef.current,
         );

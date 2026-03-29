@@ -21,7 +21,7 @@ interface UseSessionsReturn {
   sessions: ResearchSession[];
   isLoading: boolean;
   error: string | null;
-  createSession: (topic: string) => Promise<ResearchSession | null>;
+  createSession: (topic: string, options?: { mode?: 'web' | 'deep' }) => Promise<ResearchSession | null>;
   updateSession: (id: string, patch: Partial<ResearchSession>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -56,12 +56,12 @@ export function useSessions({ userId }: SessionContext): UseSessionsReturn {
   }, [load]);
 
   const handleCreateSession = useCallback(
-    async (topic: string): Promise<ResearchSession | null> => {
+    async (topic: string, options?: { mode?: 'web' | 'deep' }): Promise<ResearchSession | null> => {
       if (!userId) {
         throw new Error("You must be signed in to create a persistent research session.");
       }
       try {
-        const result = await createSession(topic, ctx);
+        const result = await createSession(topic, ctx, options);
         if (result) {
           setSessions((prev) => [result, ...prev]);
         }

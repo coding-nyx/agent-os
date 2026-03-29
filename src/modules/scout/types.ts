@@ -52,6 +52,10 @@ export interface ResearchSession {
   id: string;
   userId: string;
   topic: string;
+  mode?: 'web' | 'deep';
+  seedState?: 'unseeded' | 'seeding' | 'seeded';
+  seededAt?: string;
+  lastSearchAt?: string;
   status: ResearchSessionStatus;
   subQuestions: SubQuestion[];
   createdAt: string;

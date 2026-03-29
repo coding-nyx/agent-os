@@ -21,6 +21,7 @@ import {
   syncGuestScoutProfileToUser,
   loadKnowledgeNodes,
   addKnowledgeNode,
+  queryKnowledgeNodes,
 } from './services/scout-knowledge-service';
 import { generateNewsBriefs } from './services/scout-news-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
@@ -56,6 +57,13 @@ import { ScoutResearchArtifactsPanel } from './components/ScoutResearchArtifacts
 import { ScoutSessionList } from './components/ScoutSessionList';
 import type { ExportTarget } from './services/scout-export-service';
 import type { DeepResearchResult } from './hooks/useDeepResearch';
+import { WebCrawlerService } from '@/lib/services/web-crawler-service';
+import {
+  classifyMasterIntent,
+  formatSearchDigest,
+  isRecheckIntent,
+  updateMasterTopicStreakWithPolicy,
+} from './services/scout-flow-orchestrator';
 import { runDocumentPipeline, type DocumentParsed } from '@/lib/services/document-pipeline';
 import { scoutDocumentPolicy, type ScoutDocumentProposal } from './services/scout-document-policy';
 import { NeuralModal } from '@/core/components/NeuralModal';
@@ -274,12 +282,207 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       .join('\n');
   }, [activeSession, knowledgeNodes]);
 
+  const seedSessionContext = useCallback(async (
+    session: { id: string; topic: string },
+    options?: { force?: boolean },
+  ) => {
+    if (!user?.uid || !encryptionKey) return;
+    if (!options?.force) {
+      const alreadySeeded = knowledgeNodes.some((node) => node.parentSessionId === session.id);
+      if (alreadySeeded) {
+        await updateSessionFn(session.id, { seedState: 'seeded', seededAt: new Date().toISOString() });
+        return;
+      }
+    }
+
+    await updateSessionFn(session.id, { seedState: 'seeding' });
+    const response = await WebCrawlerService.search(session.topic, { maxResults: 5, includeImages: false });
+    const topResults = response.results.slice(0, 3);
+
+    await Promise.allSettled(
+      topResults.map(async (result) => {
+        const source = await addSourceFn({
+          url: result.url,
+          title: result.title,
+          snippet: (result.content ?? '').slice(0, 280),
+          discoveredVia: 'search',
+        });
+        await addKnowledgeNode(
+          {
+            claim: (result.content ?? result.title).slice(0, 420),
+            confidence: typeof result.score === 'number' ? Math.min(0.85, result.score) : 0.65,
+            evidence: source ? [source.id] : [],
+            status: 'pending',
+            parentSessionId: session.id,
+            source: result.url,
+            sources: [result.url],
+          },
+          { userId: user.uid, encryptionKey },
+        );
+      }),
+    );
+
+    await updateSessionFn(session.id, {
+      seedState: 'seeded',
+      seededAt: new Date().toISOString(),
+      lastSearchAt: new Date().toISOString(),
+    });
+  }, [user?.uid, encryptionKey, knowledgeNodes, updateSessionFn, addSourceFn]);
+
+  const buildMasterDeterministicPrompt = useCallback(async (rawUserText: string) => {
+    const intentDecision = classifyMasterIntent(rawUserText);
+    const topicState = updateMasterTopicStreakWithPolicy({
+      userText: rawUserText,
+      shouldTrack: intentDecision.shouldTrackTopic,
+    });
+
+    if (topicState.shouldProposeSession) {
+      Spine.emit({
+        type: 'RESEARCH_PROPOSED' as any,
+        source: 'scout',
+        domain: 'C',
+        data: {
+          query: rawUserText,
+          reason: `We've covered ${topicState.topicKey} across several exchanges — this looks like a research session candidate.`,
+          mode: 'deep',
+        },
+        cascadeDepth: 0,
+        priority: 'info',
+      });
+    }
+
+    if (!intentDecision.shouldSearch) {
+      return [
+        '[MASTER_FLOW_INSTRUCTION]',
+        'Respond naturally in conversational mode.',
+        `Detected intent: ${intentDecision.intentClass}.`,
+        intentDecision.conversationStyle === 'brief_ack'
+          ? 'Keep it very short (one sentence).'
+          : intentDecision.conversationStyle === 'chatty'
+            ? 'Keep it warm, brief, and conversational.'
+            : 'Provide a direct answer without forced citations.',
+        'Do not emit web_search or expanded_web_search for this turn.',
+        'Do not append a source list unless explicitly requested by the user.',
+        '[USER_QUERY]',
+        rawUserText,
+      ].join('\n\n');
+    }
+
+    const response = await WebCrawlerService.search(rawUserText, { maxResults: 5, includeImages: false });
+    const digest = formatSearchDigest(rawUserText, response.results);
+    return [
+      '[MASTER_FLOW_INSTRUCTION]',
+      'Use the pre-fetched search context below to answer directly.',
+      'Do not emit web_search or expanded_web_search for this turn.',
+      intentDecision.shouldIncludeSources
+        ? 'Include key sources in the response.'
+        : 'Do not add an explicit source list unless user requests citations.',
+      digest,
+      '[USER_QUERY]',
+      rawUserText,
+    ].join('\n\n');
+  }, []);
+
+  const buildSessionDeterministicPrompt = useCallback(async (rawUserText: string) => {
+    if (!activeSession) return rawUserText;
+
+    const intentDecision = classifyMasterIntent(rawUserText);
+    if (intentDecision.intentClass === 'acknowledgment' || intentDecision.intentClass === 'smalltalk' || intentDecision.intentClass === 'conversational') {
+      return [
+        '[SESSION_FLOW_INSTRUCTION]',
+        'Respond conversationally without triggering search.',
+        `Detected intent: ${intentDecision.intentClass}.`,
+        'Keep response concise and context-aware.',
+        'Do not emit web_search or expanded_web_search for this turn.',
+        '[USER_QUERY]',
+        rawUserText,
+      ].join('\n\n');
+    }
+
+    const shouldRecheck = isRecheckIntent(rawUserText);
+    const sessionHits = shouldRecheck
+      ? []
+      : await queryKnowledgeNodes(rawUserText, { userId: user?.uid ?? null, encryptionKey }, { limit: 5, threshold: 0.62 })
+        .then((nodes) => nodes.filter((node) => node.parentSessionId === activeSession.id));
+
+    const shouldSearch = shouldRecheck || intentDecision.shouldSearch || sessionHits.length === 0;
+    if (!shouldSearch) {
+      const hitLines = sessionHits
+        .slice(0, 5)
+        .map((node) => `- ${node.claim} (confidence: ${Math.round(node.confidence * 100)}%)`)
+        .join('\n');
+      return [
+        '[SESSION_FLOW_INSTRUCTION]',
+        'Use session context first. Do not run web_search or expanded_web_search for this turn.',
+        'Answer conversationally; do not force source blocks unless requested.',
+        `[ACTIVE_SESSION_TOPIC] ${activeSession.topic}`,
+        '[SESSION_CONTEXT_HITS]',
+        hitLines,
+        '[USER_QUERY]',
+        rawUserText,
+      ].join('\n\n');
+    }
+
+    const searchResponse = await WebCrawlerService.search(rawUserText, { maxResults: 5, includeImages: false });
+    const topResults = searchResponse.results.slice(0, 3);
+    const digest = formatSearchDigest(rawUserText, searchResponse.results);
+
+    if (user?.uid && encryptionKey) {
+      await Promise.allSettled(
+        topResults.map(async (result) => {
+          const source = await addSourceFn({
+            url: result.url,
+            title: result.title,
+            snippet: (result.content ?? '').slice(0, 280),
+            discoveredVia: 'search',
+          });
+          await addKnowledgeNode(
+            {
+              claim: (result.content ?? result.title).slice(0, 420),
+              confidence: typeof result.score === 'number' ? Math.min(0.85, result.score) : 0.66,
+              evidence: source ? [source.id] : [],
+              status: 'pending',
+              parentSessionId: activeSession.id,
+              source: result.url,
+              sources: [result.url],
+            },
+            { userId: user.uid, encryptionKey },
+          );
+        }),
+      );
+      await updateSessionFn(activeSession.id, { lastSearchAt: new Date().toISOString() });
+    }
+
+    return [
+      '[SESSION_FLOW_INSTRUCTION]',
+      'Use session context and the pre-fetched search context below to answer directly.',
+      'Do not emit web_search or expanded_web_search for this turn.',
+      intentDecision.shouldIncludeSources
+        ? 'Include key sources.'
+        : 'Do not add explicit source list unless user requests citations.',
+      `[ACTIVE_SESSION_TOPIC] ${activeSession.topic}`,
+      digest,
+      '[USER_QUERY]',
+      rawUserText,
+    ].join('\n\n');
+  }, [activeSession, addSourceFn, encryptionKey, updateSessionFn, user?.uid]);
+
   useEffect(() => {
     if (activeSessionId && !activeSession) {
       setActiveSessionId(null);
       setIsArtifactsSheetOpen(false);
     }
   }, [activeSessionId, activeSession]);
+
+  useEffect(() => {
+    if (!activeSession) return;
+    if (activeSession.mode !== 'deep') return;
+    if (activeSession.seedState === 'seeded' || activeSession.seedState === 'seeding') return;
+    seedSessionContext(activeSession).catch((error) => {
+      console.warn('[Scout] Deep-session seed failed:', error);
+      void updateSessionFn(activeSession.id, { seedState: 'unseeded' });
+    });
+  }, [activeSession, seedSessionContext, updateSessionFn]);
 
   const openExportDialog = useCallback((target: ExportTarget) => {
     Spine.emit({
@@ -544,11 +747,37 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   ) => {
     setErrorMessage(null);
     try {
-      await ai.handleSendMessage(content, onAction ?? onActionParsed);
+      const rawUserText = typeof content === 'string' ? content : contentToString(content);
+      if (!rawUserText.trim()) {
+        await ai.handleSendMessage(content, onAction ?? onActionParsed);
+        return;
+      }
+
+      if (!activeSession) {
+        const deterministicPrompt = await buildMasterDeterministicPrompt(rawUserText);
+        await ai.handleSendMessage(deterministicPrompt, onAction ?? onActionParsed, { visibleContent: content });
+        return;
+      }
+
+      if (activeSession.mode !== 'deep' && activeSession.seedState !== 'seeded' && activeSession.seedState !== 'seeding') {
+        await seedSessionContext(activeSession).catch((error) => {
+          console.warn('[Scout] Session seed-on-first-question failed:', error);
+        });
+      }
+
+      const deterministicPrompt = await buildSessionDeterministicPrompt(rawUserText);
+      await ai.handleSendMessage(deterministicPrompt, onAction ?? onActionParsed, { visibleContent: content });
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     }
-  }, [ai.handleSendMessage, onActionParsed]);
+  }, [
+    ai.handleSendMessage,
+    onActionParsed,
+    activeSession,
+    buildMasterDeterministicPrompt,
+    buildSessionDeterministicPrompt,
+    seedSessionContext,
+  ]);
 
   const aiProp = useMemo(() => ({
     ...ai,
@@ -620,7 +849,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   const handleNewSessionSubmit = useCallback(async (topic: string, isDeepResearch: boolean) => {
     setIsNewSessionDialogOpen(false);
     try {
-      const session = await createSessionFn(topic);
+      const session = await createSessionFn(topic, { mode: isDeepResearch ? 'deep' : 'web' });
       if (session) {
         setActiveSessionId(session.id);
         setSelectedView('research');

@@ -53,6 +53,13 @@ export interface DeferredApproval {
   label: string;
 }
 
+function stableSerialize(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableSerialize(item)).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b));
+  return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`).join(',')}}`;
+}
+
 interface ExecuteModuleAIActionsResult {
   analysisOnlyLabels: string[];
   dispatchedActionTypes: string[];
@@ -122,6 +129,7 @@ export class ModuleAIActionExecutionService {
     const deferredApprovals: DeferredApproval[] = [];
     const soulUpdates: NeuralStateVectorPatch = {};
     let profileDirty = false;
+    const executedActionSignatures = new Set<string>();
 
     // Per-turn profile cache: shared across all action handlers within this AI response.
     // Allows sequential ledger actions to read each other's in-memory mutations instead
@@ -158,6 +166,16 @@ export class ModuleAIActionExecutionService {
       const adjustedPayload = type === 'propose_reminder'
         ? adjustRelativeReminderPayload(payload)
         : { ...payload };
+      const signature = `${type}|${stableSerialize(adjustedPayload)}`;
+      if (executedActionSignatures.has(signature)) {
+        NexusLogger.emit('ai', {
+          moduleId,
+          label: 'action_deduped',
+          detail: { actionType: type },
+        });
+        continue;
+      }
+      executedActionSignatures.add(signature);
 
       if (!allowedActions.includes(type)) {
         console.warn(`[SchemaGuard] Blocked unauthorized action "${type}" for module "${moduleId}"`);

@@ -18,6 +18,7 @@ export const LEDGER_CASCADE_RULES: CascadeRule[] = [
       type: 'BUDGET_UPDATED' as LedgerSpineEventType,
       domain: 'R' as const,
       source: event.source,
+      priority: 'info' as const,
       data: {
         transactionAmount: event.data.amount,
         transactionType: event.data.type,
@@ -33,6 +34,7 @@ export const LEDGER_CASCADE_RULES: CascadeRule[] = [
       type: 'FINANCIAL_HEALTH_CHECK' as LedgerSpineEventType,
       domain: 'R' as const,
       source: event.source,
+      priority: 'info' as const,
       data: {
         goalProgress: event.data.percentComplete,
         goalName: event.data.goalName,
@@ -48,6 +50,7 @@ export const LEDGER_CASCADE_RULES: CascadeRule[] = [
       type: 'FINANCIAL_FRICTION_CHANGED' as LedgerSpineEventType,
       domain: 'R' as const,
       source: event.source,
+      priority: 'alert' as const,
       data: {
         newScore: 8.5,
         analysis: `Risk detected: ${event.data.riskType}`,
