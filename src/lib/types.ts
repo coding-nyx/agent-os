@@ -451,6 +451,18 @@ export interface SpineEventPayload {
   cascadeDepth?: number;
   priority: SpineEventPriority;
   idempotencyKey?: string;
+  /**
+   * Correlates related events in one end-to-end flow (delegation, export, etc.).
+   * Optional for backward compatibility with legacy emitters.
+   */
+  flowId?: string;
+  /**
+   * Stable origin marker for loop prevention and same-origin filtering.
+   * Optional for backward compatibility with legacy emitters.
+   */
+  originId?: string;
+  /** Event payload schema version for migration-safe consumers. */
+  schemaVersion?: number;
 }
 
 export interface SpineEvent {
@@ -465,6 +477,9 @@ export interface SpineEvent {
   priority: SpineEventPriority;
   sequence: number;
   idempotencyKey: string;
+  flowId?: string;
+  originId?: string;
+  schemaVersion?: number;
 }
 
 // --- Soul Write Protocol (S10-002) ---

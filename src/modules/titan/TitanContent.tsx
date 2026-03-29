@@ -59,6 +59,7 @@ import { TITAN_PERSONA } from './personas';
 import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { QuickReminderModal } from '@/core/components/QuickReminderModal';
+import { isPhysicalCommitmentMissed } from '@/lib/spine/flow-contracts';
 
 // ── Custom hooks ──────────────────────────────────────────────────────────────
 import type { TitanTab } from './hooks/types';
@@ -263,7 +264,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     const eventKey = `commitment-missed-${event.id}`;
     if (handledMiscEventsRef.current.has(eventKey)) return;
     handledMiscEventsRef.current.add(eventKey);
-    if (event.data?.domain !== 'physical' && event.domain !== 'B') return;
+    if (!isPhysicalCommitmentMissed(event)) return;
     const title = event.data?.commitmentTitle ?? event.data?.title ?? 'a physical commitment';
     ai.handleSendMessage(
       `[System] You missed ${title as string}. Should we adjust your training plan or reschedule this session?`,

@@ -162,22 +162,51 @@ export function stripPartialLeadingTag(text: string): string {
   return text.replace(/<[^>]*$/, '');
 }
 
+/**
+ * Extracts the first well-balanced JSON object or array from a string.
+ * Handles cases where the LLM emits trailing extra braces (e.g. `{...}}`).
+ */
+function extractBalancedJson(text: string): string | null {
+  const opener = text[0];
+  const closer = opener === '{' ? '}' : opener === '[' ? ']' : null;
+  if (!closer) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\' && inString) { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === opener) depth++;
+    else if (ch === closer) {
+      depth--;
+      if (depth === 0) return text.slice(0, i + 1);
+    }
+  }
+  return null;
+}
+
 export function sanitizeJsonPayload(content: string): string {
   if (!content) return '';
-  
+
   // 1. Remove markdown code blocks if present
   let sanitized = content.replace(/```(?:json)?\s*([\s\S]*?)```/gi, '$1');
-  
+
   // 2. Remove common AI prefixes/suffixes like "Here is the JSON:" or "JSON update:"
   sanitized = sanitized.replace(/^(?:JSON|Payload|Update):\s*/i, '');
 
   // 3. Trim whitespace
   sanitized = sanitized.trim();
 
-  // 4. Extract just the JSON object/array if there's trailing prose
-  const jsonMatch = sanitized.match(/^(\{[\s\S]*\}|\[[\s\S]*\])/);
-  if (jsonMatch) {
-    sanitized = jsonMatch[1];
+  // 4. Extract just the JSON object/array using balanced bracket matching.
+  // This correctly handles LLM emissions like `{...}}` where a greedy regex
+  // would capture the extra brace and produce invalid JSON.
+  const firstChar = sanitized[0];
+  if (firstChar === '{' || firstChar === '[') {
+    const balanced = extractBalancedJson(sanitized);
+    if (balanced) sanitized = balanced;
   }
 
   // 5. Attempt to fix common JSON errors (trailing commas)

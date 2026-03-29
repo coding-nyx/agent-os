@@ -1,6 +1,7 @@
 import { SpineEvent, SpineEventType } from '@/lib/types';
 import { LedgerSpineEventType } from '@/modules/ledger/actions/ledger-field-actions';
 import { Spine } from '@/lib/spine/spine-event-bus';
+import { resolveReadinessScore } from '@/lib/spine/flow-contracts';
 
 export interface CascadeRule {
   id: string;
@@ -630,17 +631,19 @@ export const SOMA_CASCADE_RULES: CascadeRule[] = [
   {
     id: 'soma-poor-readiness-to-compound-stress',
     trigger: 'SOMA_READINESS_UPDATED' as SpineEventType,
-    condition: (event: SpineEvent) =>
-      event.type === 'SOMA_READINESS_UPDATED' &&
-      typeof event.data.score === 'number' &&
-      (event.data.score as number) <= 30,
+    condition: (event: SpineEvent) => {
+      if (event.type !== 'SOMA_READINESS_UPDATED') return false;
+      const score = resolveReadinessScore(event.data);
+      return typeof score === 'number' && score <= 30;
+    },
     transform: (event: SpineEvent) => ({
       type: 'COMPOUND_STRESS' as SpineEventType,
       domain: 'B' as const,
       source: event.source,
+      priority: 'alert' as const,
       data: {
         trigger: 'soma_poor_readiness',
-        readinessScore: event.data.score,
+        readinessScore: resolveReadinessScore(event.data),
         message: 'Physical readiness critically low — high-intensity training not recommended.',
       },
     }),
@@ -654,6 +657,7 @@ export const SOMA_CASCADE_RULES: CascadeRule[] = [
       type: 'VITAL_UPDATED' as SpineEventType,
       domain: 'B' as const,
       source: event.source,
+      priority: 'alert' as const,
       data: {
         trigger: 'clearance_revoked',
         clearanceId: event.data.clearanceId,
@@ -665,17 +669,19 @@ export const SOMA_CASCADE_RULES: CascadeRule[] = [
   {
     id: 'soma-optimal-readiness-to-vital-update',
     trigger: 'SOMA_READINESS_UPDATED' as SpineEventType,
-    condition: (event: SpineEvent) =>
-      event.type === 'SOMA_READINESS_UPDATED' &&
-      typeof event.data.score === 'number' &&
-      (event.data.score as number) >= 80,
+    condition: (event: SpineEvent) => {
+      if (event.type !== 'SOMA_READINESS_UPDATED') return false;
+      const score = resolveReadinessScore(event.data);
+      return typeof score === 'number' && score >= 80;
+    },
     transform: (event: SpineEvent) => ({
       type: 'VITAL_UPDATED' as SpineEventType,
       domain: 'B' as const,
       source: event.source,
+      priority: 'info' as const,
       data: {
         trigger: 'soma_optimal_readiness',
-        readinessScore: event.data.score,
+        readinessScore: resolveReadinessScore(event.data),
         message: 'Physical readiness optimal.',
       },
     }),

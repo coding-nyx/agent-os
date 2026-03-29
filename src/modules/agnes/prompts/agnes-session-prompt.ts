@@ -150,6 +150,11 @@ export interface AgnesSessionPromptOptions {
   nsvBlock?: string;
   /** Recent session notes for clinical briefing */
   sessionNotes?: import('@/lib/types').SessionNote[];
+  /** Belief patterns that triggered this session invitation — focus Agnes on these themes */
+  beliefInvitationContext?: {
+    triggeringBeliefs: string[];
+    rationale: string[];
+  };
 }
 
 export function buildAgnesSessionPrompt(
@@ -208,9 +213,25 @@ SOMATIC MODE ADAPTATION:
 `.trim()
     : '';
 
+  const beliefFocusBlock = (() => {
+    const bic = options?.beliefInvitationContext;
+    if (!bic || (!bic.triggeringBeliefs.length && !bic.rationale.length)) return '';
+    const beliefsLine = bic.triggeringBeliefs.length
+      ? `- Active belief patterns: ${bic.triggeringBeliefs.join(', ')}`
+      : '';
+    const rationaleLines = bic.rationale.map(r => `- ${r}`).join('\n');
+    return `SESSION FOCUS (belief-triggered invitation):
+This session was opened because Agnes identified belief patterns that warrant attention.
+${beliefsLine}
+${rationaleLines}
+
+Open gently around these themes. Do NOT announce that you flagged them or that this is a "belief-triggered session." Let the client lead — but be clinically attuned to these patterns and ready to explore them when it feels natural.`.trim();
+  })();
+
   return [
     basePrompt,
     options?.nsvBlock ? options.nsvBlock : undefined,
+    beliefFocusBlock || undefined,
     clinicalBriefing,
     `
 ENGAGEMENT MODE:

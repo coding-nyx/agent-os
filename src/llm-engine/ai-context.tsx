@@ -79,6 +79,7 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
         const state = newAgent.getOrchestratorState();
         setRuntimeModelId(state.activeModelId);
         setRuntimeProvider(state.provider);
+        setInitFailed(false);
         setIsInitialized(true);
     };
 
@@ -89,7 +90,12 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
         setInitFailed(true);
     }, 8000);
 
-    init().finally(() => clearTimeout(timer));
+    init()
+      .catch((e) => {
+        console.warn('AIProvider: initialization failed', e);
+        setInitFailed(true);
+      })
+      .finally(() => clearTimeout(timer));
 
     return () => {
       clearTimeout(timer);

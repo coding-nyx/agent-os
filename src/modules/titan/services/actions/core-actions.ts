@@ -12,6 +12,7 @@ import {
 import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
 import { ownsMetric, isExclusiveOwner, type NSVMetricPath } from '@/lib/services/nsv-ownership';
 import type { ActionHandler, TitanProfile, Routine } from './shared';
+import { deriveReadinessLevel } from '@/lib/spine/flow-contracts';
 
 export const coreHandlers: Record<string, ActionHandler> = {
 
@@ -191,6 +192,8 @@ export const coreHandlers: Record<string, ActionHandler> = {
         ? ClearanceService.evaluate(profile, activity)
         : null;
     const hasContraindication = clearance != null && clearance.status !== 'granted';
+    const readinessScore = typeof recoveryScore === 'number' ? Math.max(0, Math.min(100, Math.round(recoveryScore * 10))) : null;
+    const readinessLevel = deriveReadinessLevel(readinessScore);
     
     // Additional CNS fatigue check for high-intensity activities
     const hasCnsFatigueBlock = activity === 'high_intensity' && cnsFatigue !== null && cnsFatigue >= 8;
@@ -228,7 +231,10 @@ export const coreHandlers: Record<string, ActionHandler> = {
         priority: 'info',
         data: {
           passedClearance: false,
-          readinessScore: recoveryScore,
+          score: readinessScore,
+          readinessScore,
+          level: readinessLevel ?? 'critical',
+          recoveryScore,
         },
       });
       return;
@@ -247,7 +253,10 @@ export const coreHandlers: Record<string, ActionHandler> = {
       priority: 'info',
       data: {
         passedClearance: true,
-        readinessScore: recoveryScore,
+        score: readinessScore,
+        readinessScore,
+        level: readinessLevel ?? 'good',
+        recoveryScore,
       },
     });
   },

@@ -16,7 +16,7 @@ This report highlights heuristic promotions and flow risks that require human re
 - Actions promoted heuristically (still in registry): 0
 - Actions with auto-generated labels: 122
 - High-risk actions detected: 29
-- Mutating actions detected: 134
+- Mutating actions detected: 132
 - Staged heuristic actions: 144
 - Staged heuristic events: 153
 

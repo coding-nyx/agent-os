@@ -974,6 +974,34 @@ export function useModuleAI({
 
         // M-1: guard post-unmount state update
         if (!mountedRef.current) return;
+        if (response.isInterrupted) {
+          const interruptedText = pendingStreamTextRef.current.trim();
+          if (interruptedText) {
+            localHistory = [
+              ...localHistory,
+              {
+                role: 'assistant',
+                content: `${interruptedText}\n\n[Link interrupted]`,
+                timestamp: new Date().toISOString(),
+                threadId: threadIdRef.current,
+              } as Message,
+            ].slice(-MAX_MESSAGES);
+            messagesRef.current = localHistory;
+            setMessages(localHistory);
+            flushActiveSession();
+          } else {
+            setError('The neural link was interrupted. Please retry.');
+          }
+          if (streamRafRef.current) {
+            cancelAnimationFrame(streamRafRef.current);
+            streamRafRef.current = 0;
+          }
+          pendingStreamTextRef.current = '';
+          setStreamingText('');
+          currentAssistantMessageBodyRef.current = '';
+          markPendingRequestFailed();
+          return;
+        }
 
         // --- Action processing ---
         const silentHistoryBuffers = new Map<string, string[]>();
@@ -1323,6 +1351,10 @@ export function useModuleAI({
         }
       } catch (e: unknown) {
         if (e instanceof DOMException && e.name === 'AbortError') {
+          if (streamRafRef.current) {
+            cancelAnimationFrame(streamRafRef.current);
+            streamRafRef.current = 0;
+          }
           if (pendingStreamTextRef.current) {
             localHistory = [...localHistory, { role: 'assistant', content: pendingStreamTextRef.current, timestamp: new Date().toISOString(), threadId: threadIdRef.current } as Message].slice(-MAX_MESSAGES);
             messagesRef.current = localHistory;
@@ -1331,15 +1363,19 @@ export function useModuleAI({
           }
           return;
         }
+        if (streamRafRef.current) {
+          cancelAnimationFrame(streamRafRef.current);
+          streamRafRef.current = 0;
+        }
         console.error(`Module ${moduleId} AI link failure:`, e);
-        
+
         if (pendingStreamTextRef.current) {
           localHistory = [...localHistory, { role: 'assistant', content: pendingStreamTextRef.current + '\n\n[Link interrupted]', timestamp: new Date().toISOString(), threadId: threadIdRef.current } as Message].slice(-MAX_MESSAGES);
           messagesRef.current = localHistory;
           if (mountedRef.current) setMessages(localHistory);
           flushActiveSession();
         }
-        
+
         // Emit critical failure event so the notification system can alert the user
         Spine.emit({
           type: 'AI_LINK_FAILURE',
@@ -1372,8 +1408,15 @@ export function useModuleAI({
         }
         markPendingRequestFailed();
       } finally {
+        if (streamRafRef.current) {
+          cancelAnimationFrame(streamRafRef.current);
+          streamRafRef.current = 0;
+        }
+        pendingStreamTextRef.current = '';
+        currentAssistantMessageBodyRef.current = '';
         if (mountedRef.current) {
           setIsProcessing(false);
+          setStreamingText('');
           setAIState({ isThinking: false, isActing: false, currentActionType: null });
           setDisposition(null);
           setConsultationTarget(null);

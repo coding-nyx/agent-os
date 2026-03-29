@@ -77,6 +77,7 @@ import {
   resolveScoutShellState,
   type ScoutTopLevelView,
 } from './scout-shell-layout';
+import { createFlowMeta } from '@/lib/spine/flow-contracts';
 
 registerDiagnosisSpec(scoutDiagnosisSpec);
 
@@ -227,6 +228,10 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   sourcesRef.current = sources;
   const digestsRef = useRef(digests);
   digestsRef.current = digests;
+  const localExportOriginRef = useRef<string | null>(null);
+  if (localExportOriginRef.current === null) {
+    localExportOriginRef.current = `scout-export:${crypto.randomUUID()}`;
+  }
 
   const emitDeepResearchBackupFound = useCallback((query: string) => {
     const trimmed = query.trim();
@@ -484,7 +489,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     });
   }, [activeSession, seedSessionContext, updateSessionFn]);
 
-  const openExportDialog = useCallback((target: ExportTarget) => {
+  const presentExportDialog = useCallback((target: ExportTarget) => {
+    setExportTarget(target);
+    setExportDialogOpen(true);
+  }, []);
+
+  const requestExport = useCallback((target: ExportTarget) => {
+    const flowMeta = createFlowMeta(localExportOriginRef.current!);
     Spine.emit({
       type: 'EXPORT_REQUESTED',
       source: 'scout',
@@ -492,10 +503,11 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       data: { exportType: target.type },
       cascadeDepth: 0,
       priority: 'info',
+      ...flowMeta,
+      idempotencyKey: `export:${target.type}:${flowMeta.flowId}`,
     });
-    setExportTarget(target);
-    setExportDialogOpen(true);
-  }, []);
+    presentExportDialog(target);
+  }, [presentExportDialog]);
 
   const handleSelectSession = useCallback(
     (sessionId: string) => {
@@ -564,21 +576,22 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     });
 
     const unsubExport = Spine.subscribe('EXPORT_REQUESTED', (event) => {
+      if (event.originId === localExportOriginRef.current) return;
       const exportType = event.data?.exportType as string;
       const s = sourcesRef.current;
       const d = digestsRef.current;
       if (exportType === 'full-library') {
         loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then((nodes) => {
-          openExportDialog({ type: 'full-library', nodes, digests: d, sources: s });
+          presentExportDialog({ type: 'full-library', nodes, digests: d, sources: s });
         });
       } else if (exportType === 'sources') {
-        openExportDialog({ type: 'sources', sources: s });
+        presentExportDialog({ type: 'sources', sources: s });
       } else if (exportType === 'nodes') {
         loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then((nodes) => {
-          openExportDialog({ type: 'nodes', nodes });
+          presentExportDialog({ type: 'nodes', nodes });
         });
       } else if (exportType === 'digest' && d[0]) {
-        openExportDialog({ type: 'digest', digest: d[0] });
+        presentExportDialog({ type: 'digest', digest: d[0] });
       }
     });
 
@@ -607,7 +620,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       unsubSession();
       unsubProposal();
     };
-  }, [openDeepResearch, openExportDialog, user?.uid, encryptionKey]);
+  }, [openDeepResearch, presentExportDialog, user?.uid, encryptionKey]);
 
   const ai = useModuleAI({
     moduleId: 'scout',
@@ -1056,7 +1069,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
             onAddSource={addSourceFn}
             onUpdateSource={updateSourceFn}
             onArchiveSource={archiveSourceFn}
-            onExportSources={() => openExportDialog({ type: 'sources', sources })}
+            onExportSources={() => requestExport({ type: 'sources', sources })}
           />
         );
       case 'briefings':
@@ -1073,7 +1086,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               });
             }}
             onDelete={deleteDigestFn}
-            onExport={(digest) => openExportDialog({ type: 'digest', digest })}
+            onExport={(digest) => requestExport({ type: 'digest', digest })}
           />
         );
       case 'overview':

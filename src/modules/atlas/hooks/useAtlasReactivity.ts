@@ -39,27 +39,30 @@ export function useAtlasReactivity(
       
       tasksToDefer.forEach(task => {
         onUpdateTask(task.id, { status: 'deferred' });
-        
-        Spine.emit({
-          intent: 'DEFER_LOW_PRIORITY',
-          source: 'ATLAS',
-          payload: {
-            intent: 'TASK_DEFERRED_DUE_TO_LOAD',
-            raw_blob: { taskId: task.id, capacity }
-          },
-          logic_gates: { confidence: 1.0, requires_approval: false, patient_scope: 'USER' }
-        } as any);
+      });
+
+      Spine.emit({
+        type: 'ATLAS_ENERGY_OVERLOAD',
+        source: 'atlas',
+        domain: 'C',
+        data: {
+          deferredCount: tasksToDefer.length,
+          capacity,
+          deferredTaskIds: tasksToDefer.map(t => t.id),
+        },
+        cascadeDepth: 0,
+        priority: 'alert',
       });
     }
   }, [nsv, profile, onUpdateTask]);
 
-  // 2. Inter-Agent: Agnes -> Atlas (INFER_TASK_COMPLETE)
+  // 2. Inter-Agent: Agnes -> Atlas (TASK_COMPLETED inference)
   useEffect(() => {
-    const unsubscribe = Spine.on('AGNES.INFER_TASK_COMPLETE' as any, (event: any) => {
-      const keyword = event.payload?.raw_blob?.keyword;
+    const unsubscribe = Spine.on('TASK_COMPLETED', (event) => {
+      const keyword = (event.data as Record<string, unknown>)?.keyword as string | undefined;
       if (!keyword || !profile) return;
 
-      const matchingTask = profile.tasks.find(t => 
+      const matchingTask = profile.tasks.find(t =>
         t.title.toLowerCase().includes(keyword.toLowerCase()) && t.status !== 'done'
       );
 
@@ -72,10 +75,10 @@ export function useAtlasReactivity(
     return unsubscribe;
   }, [profile, onUpdateTask]);
 
-  // 3. Inter-Agent: Soma -> Atlas (VITALITY_CRITICAL)
+  // 3. Inter-Agent: Soma/Agnes -> Atlas (BURNOUT_WARNING = vitality critical)
   useEffect(() => {
-    const unsubscribe = Spine.on('SOMA.VITALITY_CRITICAL' as any, (event: any) => {
-      console.warn('[Atlas] Soma reported VITALITY_CRITICAL. Locking Blueprint.');
+    const unsubscribe = Spine.on('BURNOUT_WARNING', () => {
+      console.warn('[Atlas] BURNOUT_WARNING received. Locking Blueprint.');
       onLockBlueprint(true);
     });
 

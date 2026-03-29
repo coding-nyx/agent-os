@@ -133,6 +133,7 @@ function AgnesContent({
   const [sessionSummary, setSessionSummary] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
   const [pendingImpromptuWelcome, setPendingImpromptuWelcome] = useState<string | null>(null);
+  const [activeBeliefContext, setActiveBeliefContext] = useState<{ triggeringBeliefs: string[]; rationale: string[] } | null>(null);
   const [beliefGraph, setBeliefGraph] = useState<AgnesBeliefGraph | null>(null);
   const [beliefWorkflow, setBeliefWorkflow] = useState<BeliefGraphWorkflow | null>(null);
   const [beliefWorkflowBusy, setBeliefWorkflowBusy] = useState(false);
@@ -246,6 +247,34 @@ function AgnesContent({
     [isImpromptu]
   );
   const activeModeDefinition = AGNES_ENGAGEMENT_MODE_DEFINITIONS[engagementMode];
+
+  // Fingerprint only the NSV fields Agnes is permitted to read (per NSV_READ_PERMISSIONS).
+  // This prevents the systemPrompt from rebuilding on every NSV write — only the fields
+  // Agnes actually uses need to trigger a rebuild.
+  const agnesNsvFingerprint = useMemo(() => {
+    const nsv = globalSoul?.crossFunctionalState as NeuralStateVector | undefined;
+    if (!nsv) return '';
+    return JSON.stringify({
+      bio: {
+        cnsFatigue: nsv.biological?.cnsFatigue,
+        sleepQuality: nsv.biological?.sleepQuality,
+        hormonalContext: nsv.biological?.hormonalContext,
+      },
+      emo: {
+        emotionalResilience: nsv.emotional?.emotionalResilience,
+        stressLoad: nsv.emotional?.stressLoad,
+        moodTrend: nsv.emotional?.moodTrend,
+        traumaMarkers: nsv.emotional?.traumaMarkers,
+      },
+      cog: {
+        energyBudget: nsv.cognitive?.energyBudget,
+        activeLoad: nsv.cognitive?.activeLoad,
+      },
+      plan: { streakHealth: nsv.planning?.streakHealth },
+      res: { financialFriction: nsv.resource?.financialFriction },
+    });
+  }, [globalSoul?.crossFunctionalState]);
+
   const systemPrompt = useMemo(
     () => {
       const nsv = globalSoul?.crossFunctionalState as NeuralStateVector | undefined;
@@ -260,10 +289,11 @@ function AgnesContent({
           engagementMode,
           continuity: modeContinuity,
           nsvBlock,
+          beliefInvitationContext: (!isImpromptu && activeBeliefContext) ? activeBeliefContext : undefined,
         }
       );
     },
-    [isImpromptu, profile?.baseContext, coreProfile?.agentPersonalityProvision?.agentGenders?.agnes, engagementMode, modeContinuity, globalSoul?.crossFunctionalState]
+    [isImpromptu, profile?.baseContext, coreProfile?.agentPersonalityProvision?.agentGenders?.agnes, engagementMode, modeContinuity, agnesNsvFingerprint, activeBeliefContext] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const {
@@ -279,7 +309,10 @@ function AgnesContent({
     handleSendMessage,
     prewarmMemory,
     clearSession,
-    summarizeSession
+    summarizeSession,
+    pendingApprovals,
+    approveAction,
+    dismissAction,
   } = useModuleAI({
     moduleId: 'agnes',
     systemPrompt,
@@ -327,6 +360,7 @@ function AgnesContent({
       setEngagementMode(loadGuestAgnesPreferredMode());
       setPreferredPersistentMode(loadGuestAgnesPreferredMode());
       setModeContinuity(undefined);
+      setActiveBeliefContext(null);
       setSessionSummary(null);
     }
     prevUserRef.current = user;
@@ -402,7 +436,7 @@ function AgnesContent({
     }
   }, [engagementMode, messages, isImpromptu, persistPreferredMode]);
 
-  const startSession = useCallback(async (type: 'impromptu' | 'new' | 'continue') => {
+  const startSession = useCallback(async (type: 'impromptu' | 'new' | 'continue', beliefContext?: { triggeringBeliefs: string[]; rationale: string[] }) => {
     if (type === 'continue') {
       setSessionType('new'); // Continue is effectively a 'new' persistent session from a routing perspective
       setEngagementMode(preferredPersistentMode);
@@ -448,6 +482,7 @@ function AgnesContent({
     setModeContinuity(undefined);
     setSessionStartedAt(Date.now());
     setCurrentState('session');
+    setActiveBeliefContext(beliefContext ?? null);
 
     if (profile?.baseContext) {
       const ctx = profile.baseContext;
@@ -496,9 +531,19 @@ function AgnesContent({
       ],
     } satisfies Record<AgnesPersistentEngagementMode, string[]>;
 
-    const initialMsg = isFirstSession
-      ? firstTimeGreetings[preferredPersistentMode][Math.floor(Math.random() * firstTimeGreetings[preferredPersistentMode].length)]
-      : returningGreetings[preferredPersistentMode][Math.floor(Math.random() * returningGreetings[preferredPersistentMode].length)];
+    let initialMsg: string;
+    if (beliefContext?.triggeringBeliefs?.length) {
+      const beliefGreetings = [
+        `Hi ${userName}, I'm glad you're here. Take a moment to settle in — I'm with you. What's been sitting with you lately?`,
+        `Welcome back, ${userName}. No rush. I'm here, fully present. What's most alive for you right now?`,
+        `Hi ${userName}. I'm glad you came. Whenever you're ready — what's been on your mind?`,
+      ];
+      initialMsg = beliefGreetings[Math.floor(Math.random() * beliefGreetings.length)];
+    } else {
+      initialMsg = isFirstSession
+        ? firstTimeGreetings[preferredPersistentMode][Math.floor(Math.random() * firstTimeGreetings[preferredPersistentMode].length)]
+        : returningGreetings[preferredPersistentMode][Math.floor(Math.random() * returningGreetings[preferredPersistentMode].length)];
+    }
 
     setMessages([{ role: 'assistant', content: initialMsg }]);
   }, [
@@ -508,6 +553,7 @@ function AgnesContent({
     prewarmMemory,
     profile,
     setMessages,
+    setActiveBeliefContext,
   ]);
 
   const hasActiveSession = !isGuest && messages.length > 0;
@@ -567,8 +613,15 @@ function AgnesContent({
         setBeliefWorkflowBusy(false);
       }
     }
-    await startSession(hasActiveSession ? 'continue' : 'new');
-  }, [encryptionKey, hasActiveSession, isGuest, startSession, user]);
+    const invitation = beliefWorkflow?.invitation;
+    const beliefContext = invitation
+      ? {
+          triggeringBeliefs: invitation.triggeringBeliefs ?? [],
+          rationale: invitation.rationale ?? [],
+        }
+      : undefined;
+    await startSession('new', beliefContext);
+  }, [beliefWorkflow?.invitation, encryptionKey, isGuest, startSession, user]);
 
   const handleDismissBeliefInvitation = useCallback(async () => {
     if (!user || isGuest || !encryptionKey) return;
@@ -647,6 +700,7 @@ function AgnesContent({
     setEngagementMode(preferredPersistentMode);
     setModeContinuity(undefined);
     setSessionSummary(null);
+    setActiveBeliefContext(null);
 
     // Flush any belief workflow that arrived during the session
     if (pendingPostSessionBeliefWorkflowRef.current !== null) {
@@ -983,7 +1037,7 @@ function AgnesContent({
                       </div>
 
                       <NexusChat
-                        ai={{ messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage }}
+                        ai={{ messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage, pendingApprovals, approveAction, dismissAction }}
                         agentName={agentAlias}
                         themeColor="indigo"
                         placeholder="Communicate..."

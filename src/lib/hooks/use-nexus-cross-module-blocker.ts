@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { HUB_MODULE_ORDER, type ModuleId } from '@/lib/module-manifest';
 import type { SpineEvent, SpineEventType } from '@/lib/types';
+import { isDelegationCompletionSignal, parseDelegationTarget } from '@/lib/spine/flow-contracts';
 
 type PendingMap = Map<ModuleId, number>;
 
@@ -62,22 +63,21 @@ export function useNexusCrossModuleBlocker() {
     const handleModuleDelegated = (event: SpineEvent) => {
       // Nexus started a delegation: lock until the target finishes.
       if (event.source === 'nexus') {
-        const targetId = getTargetAsModuleId(event);
+        const targetFromContract = parseDelegationTarget(event);
+        const targetId = targetFromContract && isModuleId(targetFromContract)
+          ? targetFromContract
+          : getTargetAsModuleId(event);
         if (targetId && trackedTargets.has(targetId)) {
           addPending(targetId);
           return;
         }
       }
 
-      // Query results: Nexus is the target, and the source module is responding.
-      // useHandoffProcessor emits `MODULE_DELEGATED` with `data.reason === 'query_result'`.
-      if (event.target === 'nexus' && event.type === ('MODULE_DELEGATED' as SpineEventType)) {
-        const reason = event.data?.reason;
-        if (reason === 'query_result') {
-          const sourceId = getSourceAsModuleId(event);
-          if (sourceId) removePending(sourceId);
-          else clearAll();
-        }
+      // Completion signals: query results or explicit completion statuses.
+      if (event.target === 'nexus' && event.type === ('MODULE_DELEGATED' as SpineEventType) && isDelegationCompletionSignal(event)) {
+        const sourceId = getSourceAsModuleId(event);
+        if (sourceId) removePending(sourceId);
+        else clearAll();
       }
     };
 
@@ -88,8 +88,18 @@ export function useNexusCrossModuleBlocker() {
       }
     };
 
+    const handleModuleProgress = (event: SpineEvent) => {
+      if (!isDelegationCompletionSignal(event)) return;
+      const sourceId = getSourceAsModuleId(event);
+      if (sourceId && pendingMapRef.current.has(sourceId)) {
+        removePending(sourceId);
+      }
+    };
+
     const unsubDelegated = Spine.on('MODULE_DELEGATED', handleModuleDelegated);
     const unsubVital = Spine.on('VITAL_UPDATED', handleVitalUpdated);
+    const unsubProfileUpdated = Spine.on('MODULE_PROFILE_UPDATED', handleModuleProgress);
+    const unsubAiFailure = Spine.on('AI_LINK_FAILURE', handleModuleProgress);
 
     // Safety net: clear stale pending targets so chat never deadlocks.
     const interval = window.setInterval(() => {
@@ -109,6 +119,8 @@ export function useNexusCrossModuleBlocker() {
       try {
         unsubDelegated?.();
         unsubVital?.();
+        unsubProfileUpdated?.();
+        unsubAiFailure?.();
       } catch {
         // ignore unsubscribe errors
       }
@@ -121,4 +133,3 @@ export function useNexusCrossModuleBlocker() {
     pendingTargets,
   };
 }
-

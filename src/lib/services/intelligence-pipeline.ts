@@ -2,6 +2,7 @@ import { Spine } from '../spine/spine-event-bus';
 import { DerivedInsightsService } from './derived-insights-service';
 import { useAuth } from '../auth-context';
 import { useEffect } from 'react';
+import { isCriticalReadiness, resolveReadinessScore } from '@/lib/spine/flow-contracts';
 
 /**
  * IntelligencePipeline
@@ -32,12 +33,12 @@ export const IntelligencePipeline = {
 
     // 2. Overtraining Risk (Titan + Soma correlation)
     unsubs.push(Spine.on('SOMA_READINESS_UPDATED', async (event) => {
-      const { score, level } = event.data;
-      if (Number(score ?? 100) < 40 && level === 'critical') {
+      const score = resolveReadinessScore(event.data);
+      if (isCriticalReadiness(event.data)) {
         await DerivedInsightsService.addInsight(userId, {
           moduleId: 'titan',
           type: 'overtraining_risk',
-          content: `Critical recovery deficit detected (Readiness: ${score}/100). High-intensity training is currently unsafe.`,
+          content: `Critical recovery deficit detected (Readiness: ${score ?? 'unknown'}/100). High-intensity training is currently unsafe.`,
           severity: 'critical'
         });
       }

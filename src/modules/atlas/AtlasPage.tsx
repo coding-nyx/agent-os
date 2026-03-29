@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
-import type { AtlasReviewBlueprint, SpineEventType } from '@/lib/types';
+import type { AtlasReviewBlueprint, SpineDomain, SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { ATLAS_PERSONA } from './personas';
 import { buildAtlasPrompt, type AtlasDataContext } from './prompts/atlas-prompt-builder';
@@ -53,6 +53,7 @@ import { useUIStore } from '@/lib/stores/ui-store';
 import { AtlasPlanningEngine } from './services/atlas-planning-engine';
 import { AtlasProactiveService } from './services/atlas-proactive-service';
 import { AtlasBlueprintService } from './services/atlas-blueprint-service';
+import { createFlowMeta } from '@/lib/spine/flow-contracts';
 
 function buildRecoveryWindow(reason: string): RecoveryWindow {
   const now = Date.now();
@@ -241,7 +242,10 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
           data: {
             overdueCount: overdueTasks.length,
             taskIds: overdueTasks.map((t) => t.id),
+            impactDomain: 'physical',
+            moduleAffinity: ['titan'],
           },
+          ...createFlowMeta('atlas'),
         });
         try {
           sessionStorage.setItem(sessionKey, '1');
@@ -413,13 +417,18 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     moduleId: 'atlas',
     payload,
     encryptionKey,
-    emitSpineEvent: (type: SpineEventType, data: Record<string, unknown>) => Spine.emit({
+    emitSpineEvent: (
+      type: SpineEventType,
+      data: Record<string, unknown>,
+      options?: { domain?: string; priority?: 'info' | 'alert' | 'critical'; target?: string }
+    ) => Spine.emit({
       type,
       source: 'atlas',
-      domain: 'system' as const,
+      domain: (options?.domain ?? 'C') as SpineDomain,
+      target: options?.target,
       data,
       cascadeDepth: 0,
-      priority: 'info' as const
+      priority: options?.priority ?? 'info',
     }),
     updateGlobalSoul: updateCrossFunctionalState,
     delegateToModule: (target: string, reason: string, delegationContent: string) => {
@@ -449,7 +458,8 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     payload: Record<string, unknown>,
     reason: string
   ) => {
-    void ActionHub.execute('atlas', actionType, buildActionContext(payload)).then(() => {
+    void ActionHub.execute('atlas', actionType, buildActionContext(payload)).then((executed) => {
+      if (!executed) return;
       Spine.emit({
         type: 'MODULE_PROFILE_UPDATED',
         source: 'atlas',
@@ -457,6 +467,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
         data: { moduleId: 'atlas', reason },
         cascadeDepth: 0,
         priority: 'info',
+        ...createFlowMeta('atlas'),
       });
     });
   }, [buildActionContext]);

@@ -1,15 +1,15 @@
 # Flow System Audit Report
 
-Generated: 2026-03-25T14:47:40.587Z
+Generated: 2026-03-29T20:04:47.540Z
 
 ## Summary
-- Spine events in registry: 153
+- Spine events in registry: 170
 - Events with no emitters: 45
 - Events with no listeners: 109
 - Events with no emitters AND no listeners: 39
-- Action tags referenced in prompts: 161
-- ActionHub registered actions: 113
-- Missing ActionHub handlers for action tags: 95
+- Action tags referenced in prompts: 240
+- ActionHub registered actions: 195
+- Missing ActionHub handlers for action tags: 121
 
 ## Events Missing Emitters
 - CLEARANCE_DENIED
@@ -215,6 +215,7 @@ Generated: 2026-03-25T14:47:40.587Z
 - RISK_DETECTED, FLATTEN_ENERGY_WAVE, SOMATIC_SUPPORT_REQUESTED
 - WEEKLY_REVIEW_DUE, MORNING_BRIEF_DUE, EVENING_CHECKIN_DUE
 - ATLAS_STATE_CHANGED, ATLAS_GOAL_MILESTONE
+- HABIT_STREAK_MILESTONE
 
 ### Missing Cascade Sources
 - GOAL_COMPLETED, PLANNING_STATE_UPDATED, ATLAS_TASK_COMPLETED, soma_poor_readiness, clearance_revoked
@@ -227,12 +228,17 @@ Generated: 2026-03-25T14:47:40.587Z
 
 ## Missing Action Handlers for Action Tags
 - action_name
+- add_exempt_module
 - add_knowledge_node
-- add_soul_insight
+- add_sources
 - advance_cycle_phase
-- analyze_financial_document
+- analyze_knowledge_gaps
 - analyze_medical_image
+- apply_program_template
+- archive_session
+- bulk_delete
 - categorize_expense
+- clear_workout_program
 - commit_research
 - commit_transaction
 - complete_agnes_onboarding
@@ -240,18 +246,22 @@ Generated: 2026-03-25T14:47:40.587Z
 - complete_cycle
 - complete_forge_onboarding
 - complete_ledger_onboarding
-- complete_onboarding
 - complete_scout_onboarding
 - complete_task
 - complete_titan_onboarding
 - create_cycle
-- create_financial_plan
 - create_habit
 - create_project
+- create_reminder
 - create_task
 - defer_task
+- delete_node
+- delete_project
 - diagnosis_summary
+- disable_quiet_hours
+- enable_quiet_hours
 - end_recovery_plan
+- expanded_web_search
 - extract_citation
 - extract_finding
 - flag_anomaly
@@ -279,11 +289,15 @@ Generated: 2026-03-25T14:47:40.587Z
 - focus_struggles
 - focus_summary
 - format_for_export
+- list_sessions
+- log_goal
 - log_habit_metric
+- log_injury
+- log_meal
 - log_recovery_checkin
 - log_sleep
-- log_transaction_summary
 - log_workout_session
+- mark_all_read
 - move_task
 - parse_biometric_data
 - parse_financial_document
@@ -291,30 +305,43 @@ Generated: 2026-03-25T14:47:40.587Z
 - pause_habit
 - project_savings_timeline
 - propose_refactor
+- propose_research
 - propose_sleep_log
 - propose_workout_log
+- rename_session
+- resume_session
 - run_debt_simulation
 - run_tests
 - schedule_send
+- schedule_workout
 - self_clearance_check
 - set_daily_intention
 - set_deadline
 - set_financial_goal
+- snooze_all_from_source
+- snooze_notification
+- start_deep_research
 - start_recovery_plan
+- suggest_daily_plan
+- suggest_progression
 - summarize_section
+- synthesize_knowledge
 - temporal_review
 - track_interest
 - update_atlas_profile
-- update_budget_snapshot
 - update_forge_profile
 - update_global_base_context
 - update_goal
 - update_goal_progress
 - update_habit
 - update_habit_streak
+- update_injury
 - update_interest_cluster
 - update_ledger_profile
 - update_nsv
+- update_planned_workout
+- update_project
+- update_quiet_hours
 - update_routine
 - update_scout_profile
 - update_task
