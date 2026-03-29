@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Bell, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { useNotifications, type NotificationToast } from '@/lib/notifications/NotificationContext';
 import type { NotificationPriority } from '@/lib/notifications/types';
@@ -43,7 +43,7 @@ const PRIORITY_CONFIG: Record<NotificationPriority, {
 
 export function SpineToastProvider() {
   const { toasts, dismissToast, performAction } = useNotifications();
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const reducedMotion = useReducedMotion();
   const moduleNames = globalSoul?.displayNames ?? {};
 

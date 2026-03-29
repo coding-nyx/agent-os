@@ -11,21 +11,8 @@
  *                     without a full decrypt on every document.
  */
 
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  limit as fsLimit,
-  onSnapshot,
-  orderBy,
-  query,
-  setDoc,
-} from 'firebase/firestore';
-
-import { getFirebase } from '@/lib/firebase';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { JournalEntry } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
@@ -62,10 +49,6 @@ function journalEntryHasSignificantContent(entry: JournalEntry): boolean {
 
 function entriesColPath(userId: string) {
   return `atlas_journals/${userId}/entries`;
-}
-
-function entryDocPath(userId: string, date: string) {
-  return `atlas_journals/${userId}/entries/${date}`;
 }
 
 async function decryptEntry(
@@ -118,11 +101,7 @@ export async function saveJournalEntry(
   opts: { userId: string; encryptionKey: CryptoKey },
 ): Promise<boolean> {
   const { userId, encryptionKey } = opts;
-  const { db } = getFirebase();
-  if (!db) {
-    console.error('[JournalService] Firestore is unavailable — cannot save entry.');
-    return false;
-  }
+  const dataLayer = getNexusDataLayer();
 
   if (!journalEntryHasSignificantContent(entry)) {
     console.info('[JournalService] Skipping save — entry has no significant content.', {
@@ -144,8 +123,7 @@ export async function saveJournalEntry(
     },
   };
 
-  const ref = doc(db, entryDocPath(userId, entry.id));
-  await setDoc(ref, payload);
+  await dataLayer.setDocument(entriesColPath(userId), entry.id, payload);
   return true;
 }
 
@@ -159,16 +137,9 @@ export async function loadJournalEntry(
   opts: { userId: string; encryptionKey: CryptoKey },
 ): Promise<JournalEntry | null> {
   const { userId, encryptionKey } = opts;
-  const { db } = getFirebase();
-  if (!db) {
-    console.error('[JournalService] Firestore is unavailable — cannot load entry.');
-    return null;
-  }
-
-  const snap = await getDoc(doc(db, entryDocPath(userId, date)));
-  if (!snap.exists()) return null;
-
-  const raw = snap.data() as PersistedJournalDoc;
+  const dataLayer = getNexusDataLayer();
+  const raw = await dataLayer.getDocument<PersistedJournalDoc>(entriesColPath(userId), date);
+  if (!raw) return null;
   return decryptEntry(raw, encryptionKey);
 }
 
@@ -184,19 +155,15 @@ export async function loadJournalEntries(opts: {
   limit?: number;
 }): Promise<JournalEntry[]> {
   const { userId, encryptionKey, limit = 30 } = opts;
-  const { db } = getFirebase();
-  if (!db) {
-    console.error('[JournalService] Firestore is unavailable — cannot load entries.');
-    return [];
-  }
-
-  const col = collection(db, entriesColPath(userId));
-  const q = query(col, orderBy('metadata.date', 'desc'), fsLimit(limit));
-  const snap = await getDocs(q);
+  const dataLayer = getNexusDataLayer();
+  const docs = await dataLayer.query<PersistedJournalDoc>({
+    collection: entriesColPath(userId),
+    orderBy: [{ field: 'metadata.date', direction: 'desc' }],
+    limit,
+  });
 
   const results: JournalEntry[] = [];
-  for (const docSnap of snap.docs) {
-    const raw = docSnap.data() as PersistedJournalDoc;
+  for (const raw of docs) {
     const entry = await decryptEntry(raw, encryptionKey);
     if (entry !== null) results.push(entry);
   }
@@ -216,29 +183,20 @@ export function subscribeJournalEntries(opts: {
   limit?: number;
 }): () => void {
   const { userId, encryptionKey, onUpdate, limit = 30 } = opts;
-  const { db } = getFirebase();
-  if (!db) {
-    console.error('[JournalService] Firestore is unavailable — cannot subscribe to entries.');
-    onUpdate([]);
-    return () => {};
-  }
-
-  const col = collection(db, entriesColPath(userId));
-  const q = query(col, orderBy('metadata.date', 'desc'), fsLimit(limit));
-
-  const unsubscribe = onSnapshot(
-    q,
-    async (snap) => {
+  const dataLayer = getNexusDataLayer();
+  const unsubscribe = dataLayer.subscribeToQuery<PersistedJournalDoc>(
+    {
+      collection: entriesColPath(userId),
+      orderBy: [{ field: 'metadata.date', direction: 'desc' }],
+      limit,
+    },
+    async (docs) => {
       const results: JournalEntry[] = [];
-      for (const docSnap of snap.docs) {
-        const raw = docSnap.data() as PersistedJournalDoc;
+      for (const raw of docs) {
         const entry = await decryptEntry(raw, encryptionKey);
         if (entry !== null) results.push(entry);
       }
       onUpdate(results); // already sorted newest-first by the Firestore query
-    },
-    (err) => {
-      console.error('[JournalService] Real-time journal subscription error:', err);
     },
   );
 
@@ -253,13 +211,8 @@ export async function deleteJournalEntry(
   opts: { userId: string },
 ): Promise<void> {
   const { userId } = opts;
-  const { db } = getFirebase();
-  if (!db) {
-    console.error('[JournalService] Firestore is unavailable — cannot delete entry.');
-    return;
-  }
-
-  await deleteDoc(doc(db, entryDocPath(userId, date)));
+  const dataLayer = getNexusDataLayer();
+  await dataLayer.deleteDocument(entriesColPath(userId), date);
 }
 
 /**

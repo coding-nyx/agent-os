@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useRef } from 'react';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useAI } from '@/llm-engine/ai-context';
 import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
@@ -45,7 +45,7 @@ interface SomaContentProps {
 function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
   const { user } = useAuth();
   const { sendMessage, analyzeImage } = useAI();
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const [queuedUpload, setQueuedUpload] = React.useState<File | null>(null);
 
   // Extension fields — custom user-defined biomarker fields
@@ -353,8 +353,8 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
  * Peer module to Titan, handling all medical and biomarker sovereignty.
  */
 export default function SomaPage() {
-  const { globalSoul } = useGlobalSoul();
-  const agentAlias = globalSoul?.displayNames?.soma || 'Soma';
+  // Primitive selector — only re-renders when the display name string changes.
+  const agentAlias = useGlobalSoulStore(s => s.globalSoul?.displayNames?.soma || 'Soma');
 
   // Register diagnosis specialization
   // moved to module scope to avoid race condition with useDiagnosis hook

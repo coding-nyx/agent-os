@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { NeuralStateVector, SpineEvent } from '@/lib/types';
 
@@ -177,7 +177,8 @@ export interface UseNexusSynthesisReturn {
 }
 
 export function useNexusSynthesis(): UseNexusSynthesisReturn {
-  const { globalSoul, isLoading } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
+  const isLoading = useGlobalSoulStore(s => s.isLoading);
 
   const nsv = globalSoul?.crossFunctionalState ?? null;
 

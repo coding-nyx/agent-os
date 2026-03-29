@@ -4,7 +4,7 @@ import { User, Settings, LogOut, Shield, ChevronDown, Activity, Lock, Unlock, Cl
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulActions } from '@/lib/global-soul-context';
 import { SoulTerminationService } from '@/lib/services/soul-termination-service';
 import { GlassCard } from './GlassCard';
 import { NeuralButton } from './NeuralButton';
@@ -14,7 +14,7 @@ import { useNotifications } from '@/lib/notifications/NotificationContext';
 export function SystemCommandCenter() {
   const { user, isGuest, profile, logout, refreshProfile } = useAuth();
   const { unreadCount } = useNotifications();
-  const { refreshGlobalSoul } = useGlobalSoul();
+  const { refreshGlobalSoul } = useGlobalSoulActions();
   const { isUnlocked, lockVault, persistenceMode, setPersistenceMode } = useVault();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);

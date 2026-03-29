@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore, useGlobalSoulActions } from '@/lib/global-soul-context';
 import { useAtlasPredictiveState } from '@/lib/hooks/use-atlas-predictive-state';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
@@ -50,6 +50,9 @@ import type { AtlasJournalSummary, AtlasCheckInSummary } from './prompts/atlas-p
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { AtlasReviewService } from './services/atlas-review-service';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { AtlasPlanningEngine } from './services/atlas-planning-engine';
+import { AtlasProactiveService } from './services/atlas-proactive-service';
+import { AtlasBlueprintService } from './services/atlas-blueprint-service';
 
 function buildRecoveryWindow(reason: string): RecoveryWindow {
   const now = Date.now();
@@ -72,8 +75,13 @@ interface AtlasContentProps {
 }
 
 function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: AtlasContentProps) {
-  const { globalSoul, updateCrossFunctionalState } = useGlobalSoul();
+  const { updateCrossFunctionalState } = useGlobalSoulActions();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const agentAlias = globalSoul?.displayNames?.atlas || 'Atlas';
+  // Keep globalSoul in a ref so callbacks that need it at call-time don't list it
+  // as a dep — prevents AtlasActionsContext from recreating on every NSV write.
+  const globalSoulRef = useRef(globalSoul);
+  globalSoulRef.current = globalSoul;
   const setHideGlobalFAB = useUIStore((s) => s.setHideGlobalFAB);
   const { display: predictiveDisplay } = useAtlasPredictiveState(
     globalSoul?.crossFunctionalState ?? null
@@ -298,17 +306,57 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
         energyRating: ci.energyLevel,
       }));
 
+    // ── Computed planning intelligence ──────────────────────────────────
+    const soul = globalSoul ?? null;
+
+    const planningDigest = profile
+      ? AtlasProactiveService.generatePlanningDigest(profile, soul)
+      : undefined;
+
+    const dependencyGraph = profile?.tasks
+      ? (() => {
+          const dg = AtlasPlanningEngine.buildDependencyGraph(profile.tasks);
+          return {
+            criticalPath: dg.criticalPath,
+            blockedChains: dg.blockedChains,
+            orphanTasks: dg.orphanTasks,
+            cycleDetected: dg.cycleDetected,
+          };
+        })()
+      : undefined;
+
+    const goalVelocities = profile?.goals && profile.goals.length > 0
+      ? AtlasPlanningEngine.computeGoalVelocities(profile.goals, profile.tasks ?? [], new Date())
+      : undefined;
+
+    const historicalPatterns = profile
+      ? AtlasPlanningEngine.computeHistoricalPatterns(profile)
+      : undefined;
+
+    const capacityBlueprint = profile
+      ? AtlasBlueprintService.computeQuickCapacitySnapshot(profile, soul)
+      : undefined;
+
     const dataContext: AtlasDataContext = {
-      tasks: profile.tasks?.slice(0, 30),
-      goals: profile.goals?.slice(0, 25),
-      habits: profile.habits?.filter(h => h.status === 'active').slice(0, 10),
+      tasks: profile.tasks,           // full list — prompt builder groups them
+      goals: profile.goals,
+      habits: profile.habits?.filter(h => h.status !== 'archived'),
+      projects: profile.projects,
       routine: profile.routine ?? null,
       today,
       journalSummaries: recentJournalSummaries.length > 0 ? recentJournalSummaries : undefined,
       checkIns: todayCheckIns.length > 0 ? todayCheckIns : undefined,
+      // Intelligence blocks
+      planningDigest,
+      dependencyGraph,
+      goalVelocities,
+      historicalPatterns: historicalPatterns ?? undefined,
+      capacityBlueprint: capacityBlueprint ?? undefined,
     };
 
-    return buildAtlasPrompt({ kind: 'general' }, nsvBlock, extBlock, dataContext);
+    return buildAtlasPrompt({ kind: 'general' }, nsvBlock, extBlock, dataContext, nsv);
+  // Only recalculate when the NSV data or profile content actually changes —
+  // not on every global_souls write (which always creates a new object reference).
   }, [profile, globalSoul?.crossFunctionalState, extensions, recentJournalSummaries]);
 
   // AI Logic for Atlas
@@ -631,8 +679,10 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     const totalScheduled = thisWeekScheduled.length;
     const totalCompleted = thisWeekScheduled.filter((s) => s.status === 'done').length;
     const completionRate = totalScheduled > 0 ? totalCompleted / totalScheduled : 0;
-    const cognitive = globalSoul?.crossFunctionalState?.cognitive ?? {};
-    const blueprint = incomingBlueprint ?? AtlasReviewService.buildActionableReview(profile, globalSoul);
+    // Read from ref so this callback doesn't need globalSoul as a dep.
+    const soul = globalSoulRef.current;
+    const cognitive = soul?.crossFunctionalState?.cognitive ?? {};
+    const blueprint = incomingBlueprint ?? AtlasReviewService.buildActionableReview(profile, soul);
     const habitSummary = (profile.habits ?? []).map((h) => ({
       habitId: h.id,
       habitTitle: h.title ?? '',
@@ -674,7 +724,8 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       blueprint,
     }, 'weekly_review_saved');
     handleReviewOpened();
-  }, [profile, globalSoul, globalSoul?.crossFunctionalState?.cognitive, executeAtlasAction, handleReviewOpened]);
+  // globalSoul is read from globalSoulRef at call-time — no dep needed.
+  }, [profile, executeAtlasAction, handleReviewOpened]);
 
   // S-journal-01: Morning brief dismiss — record today's date so JournalTab
   // can pre-populate the morningIntent placeholder.
@@ -783,6 +834,59 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     persistUpdate(next);
   });
 
+  // Memoize the context actions object so AtlasActionsContext.value stays stable
+  // across re-renders triggered by globalSoul writes. All individual handlers are
+  // useCallback-wrapped — this object only recreates when a handler actually changes.
+  const atlasActions = useMemo(() => ({
+    onCompleteTask: handleCompleteTask,
+    onUncompleteTask: handleUncompleteTask,
+    onCompleteHabit: handleCompleteHabit,
+    onUpdateGoalProgress: handleUpdateGoalProgress,
+    onPauseHabit: handlePauseHabit,
+    onCreateTask: handleCreateTask,
+    onCreateHabit: handleCreateHabit,
+    onCreateGoal: handleCreateGoal,
+    onUpdateTask: handleUpdateTask,
+    onUpdateHabit: handleUpdateHabit,
+    onUpdateGoal: handleUpdateGoal,
+    onDeleteTask: handleDeleteTask,
+    onDeleteHabit: handleDeleteHabit,
+    onDeleteGoal: handleDeleteGoal,
+    onCreateRecoveryWindow: handleCreateRecoveryWindow,
+    onUpdateRecoveryWindow: handleUpdateRecoveryWindow,
+    onDeleteRecoveryWindow: handleDeleteRecoveryWindow,
+    onCreateProject: handleCreateProject,
+    onUpdateProject: handleUpdateProject,
+    onDeleteProject: handleDeleteProject,
+    onScheduleTask: handleScheduleTask,
+    onUnscheduleTask: handleUnscheduleTask,
+    onUpdateRoutine: handleUpdateRoutine,
+    onUpdateIntention: handleUpdateIntention,
+    onSaveFieldValue: handleSaveFieldValue,
+    onRemoveFieldValue: handleRemoveFieldValue,
+    onAddField: handleAddField,
+    onDeleteField: handleDeleteField,
+    onSendMessage: ai.handleSendMessage,
+    onSaveWeeklyReview: handleSaveWeeklyReview,
+    onTabChange: setActiveTab,
+    onViewChange: setActiveView,
+    onReviewOpened: handleReviewOpened,
+    onMorningBriefDismiss: handleMorningBriefDismiss,
+    onEveningCheckinDismiss: handleEveningCheckinDismiss,
+  }), [
+    handleCompleteTask, handleUncompleteTask, handleCompleteHabit, handleUpdateGoalProgress,
+    handlePauseHabit, handleCreateTask, handleCreateHabit, handleCreateGoal,
+    handleUpdateTask, handleUpdateHabit, handleUpdateGoal,
+    handleDeleteTask, handleDeleteHabit, handleDeleteGoal,
+    handleCreateRecoveryWindow, handleUpdateRecoveryWindow, handleDeleteRecoveryWindow,
+    handleCreateProject, handleUpdateProject, handleDeleteProject,
+    handleScheduleTask, handleUnscheduleTask, handleUpdateRoutine, handleUpdateIntention,
+    handleSaveFieldValue, handleRemoveFieldValue, handleAddField, handleDeleteField,
+    ai.handleSendMessage, handleSaveWeeklyReview,
+    setActiveTab, setActiveView, handleReviewOpened,
+    handleMorningBriefDismiss, handleEveningCheckinDismiss,
+  ]);
+
   return (
     <SingleAgentLayout
       moduleId="atlas"
@@ -833,43 +937,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
             }}
           />
         )}
-        <AtlasActionsProvider actions={{
-          onCompleteTask: handleCompleteTask,
-          onUncompleteTask: handleUncompleteTask,
-          onCompleteHabit: handleCompleteHabit,
-          onUpdateGoalProgress: handleUpdateGoalProgress,
-          onPauseHabit: handlePauseHabit,
-          onCreateTask: handleCreateTask,
-          onCreateHabit: handleCreateHabit,
-          onCreateGoal: handleCreateGoal,
-          onUpdateTask: handleUpdateTask,
-          onUpdateHabit: handleUpdateHabit,
-          onUpdateGoal: handleUpdateGoal,
-          onDeleteTask: handleDeleteTask,
-          onDeleteHabit: handleDeleteHabit,
-          onDeleteGoal: handleDeleteGoal,
-          onCreateRecoveryWindow: handleCreateRecoveryWindow,
-          onUpdateRecoveryWindow: handleUpdateRecoveryWindow,
-          onDeleteRecoveryWindow: handleDeleteRecoveryWindow,
-          onCreateProject: handleCreateProject,
-          onUpdateProject: handleUpdateProject,
-          onDeleteProject: handleDeleteProject,
-          onScheduleTask: handleScheduleTask,
-          onUnscheduleTask: handleUnscheduleTask,
-          onUpdateRoutine: handleUpdateRoutine,
-          onUpdateIntention: handleUpdateIntention,
-          onSaveFieldValue: handleSaveFieldValue,
-          onRemoveFieldValue: handleRemoveFieldValue,
-          onAddField: handleAddField,
-          onDeleteField: handleDeleteField,
-          onSendMessage: ai.handleSendMessage,
-          onSaveWeeklyReview: handleSaveWeeklyReview,
-          onTabChange: setActiveTab,
-          onViewChange: setActiveView,
-          onReviewOpened: handleReviewOpened,
-          onMorningBriefDismiss: handleMorningBriefDismiss,
-          onEveningCheckinDismiss: handleEveningCheckinDismiss,
-        }}>
+        <AtlasActionsProvider actions={atlasActions}>
           <EnhancedAtlasDashboard
             soul={globalSoul}
             profile={effectiveProfile}

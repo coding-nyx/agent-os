@@ -21,7 +21,8 @@ function rankEvents(
   envelopes: ModuleMemoryEnvelope[],
   queryEmbedding: number[],
   recencyWeight: number,
-  topK: number
+  topK: number,
+  minScore?: number,
 ): RetrievedMemory[] {
   const retrievals: RetrievedMemory[] = [];
 
@@ -29,6 +30,7 @@ function rankEvents(
     envelope.eventHistory.forEach((event) => {
       if (!event.summary) return;
       const score = scoreEvent(event, queryEmbedding, recencyWeight);
+      if (minScore !== undefined && score < minScore) return;
       retrievals.push({
         sessionId: event.id,
         sessionDate: event.timestamp,
@@ -83,7 +85,7 @@ export const EpisodicMemoryService = {
       })
     );
 
-    return rankEvents(envelopes, queryEmbedding, recencyWeight, topK);
+    return rankEvents(envelopes, queryEmbedding, recencyWeight, topK, options.minScore);
   },
 
   async retrieveRelevantUnified(
@@ -104,7 +106,7 @@ export const EpisodicMemoryService = {
     const topK = options.topK ?? 5;
     const recencyWeight = options.recencyWeight ?? 0.3;
     const queryEmbedding = await EmbeddingService.embed(query);
-    return rankEvents(envelopes, queryEmbedding, recencyWeight, topK);
+    return rankEvents(envelopes, queryEmbedding, recencyWeight, topK, options.minScore);
   },
 
   async retrieveRelevantUnifiedFromEnvelopes(

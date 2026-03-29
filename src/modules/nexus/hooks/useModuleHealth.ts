@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { MODULE_MANIFEST, HUB_MODULE_ORDER, type ModuleId } from '@/lib/module-manifest';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
@@ -102,7 +102,7 @@ function deriveMetricTone(moduleId: ModuleId, nsv: Record<string, unknown> | nul
 export function useModuleHealth(): UseModuleHealthReturn {
   const auth = useAuth();
   const user = auth?.user;
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const vault = useVault();
   const { alerts } = useNexusSynthesis();
   const [envelopes, setEnvelopes] = useState<Record<string, ModuleMemoryEnvelope | null>>({});

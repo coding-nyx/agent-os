@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useVault } from '@/lib/vault-context';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { UnifiedAuthModal, AuthMode } from '@/core/components/UnifiedAuthModal';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,7 @@ type ViewMode = '3D' | 'GRAPH' | 'CARDS';
 export default function HubPage() {
   const navigate = useNavigate();
   const { isModuleAccessible } = useVault();
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('global');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {

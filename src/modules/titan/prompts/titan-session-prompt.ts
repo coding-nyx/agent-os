@@ -116,7 +116,17 @@ export const TITAN_ALLOWED_ACTIONS: Record<TitanContextMode['kind'], readonly st
 function formatRoutines(routines: Routine[]): string {
   if (!routines.length) return 'None';
   return routines
-    .map(r => `${r.weekday || 'unknown'} (${r.timeframe || 'daily'}) - ${r.exercises?.length || 0} exercises`)
+    .map(r => {
+      const header = `${r.weekday || 'unknown'} (${r.timeframe || 'daily'})${r.name ? ` — ${r.name}` : ''}`;
+      if (!r.exercises?.length) return `${header}: (no exercises)`;
+      const exLines = r.exercises.map(e => {
+        const rpe = e.targetRPE != null ? ` @RPE${e.targetRPE}` : '';
+        const rest = e.restSeconds != null ? ` rest:${e.restSeconds}s` : '';
+        const notes = e.notes ? ` [${e.notes}]` : '';
+        return `    • ${e.name}: ${e.sets}×${e.reps}${rpe}${rest}${notes}`;
+      });
+      return `${header}:\n${exLines.join('\n')}`;
+    })
     .join('\n');
 }
 
@@ -176,18 +186,42 @@ function formatSleepLog(entries: SleepEntry[]): string {
 function formatRecentSessions(sessions: WorkoutSession[]): string {
   if (!sessions.length) return 'No sessions logged yet.';
 
-  const recent = sessions.slice(0, 7);
+  // Last 3 sessions: full exercise breakdown
+  const detailed = sessions.slice(0, 3);
+  const compact = sessions.slice(3, 10);
 
-  // Per-session detail for last 7
-  const lines = recent.map(s => {
-    const vol = s.totalVolume ? `, ${s.totalVolume}kg` : '';
+  const detailedLines = detailed.map(s => {
+    const vol = s.totalVolume ? `, ${s.totalVolume}kg total` : '';
     const rpe = s.rpe != null ? `, RPE ${s.rpe}/10` : '';
     const status = s.status !== 'completed' ? ` [${s.status}]` : '';
-    return `${s.date}: ${s.routineName}${vol}${rpe}${status}`;
+    const header = `${s.date}: ${s.routineName}${vol}${rpe}${status}`;
+    if (!s.exercises?.length) return header;
+    const exLines = s.exercises.map(ex => {
+      const completedSets = ex.sets.filter(st => st.completed);
+      if (!completedSets.length) return `    • ${ex.exerciseName}: no completed sets`;
+      const setStr = completedSets.map(st => {
+        const w = st.weight != null ? `${st.weight}kg` : 'BW';
+        return `${w}×${st.repsCompleted}`;
+      }).join(', ');
+      return `    • ${ex.exerciseName}: ${setStr}`;
+    });
+    return `${header}\n${exLines.join('\n')}`;
   });
 
-  // Compact aggregate for everything beyond the last 7
-  const older = sessions.slice(7);
+  const lines = [...detailedLines];
+
+  // Sessions 4–10: compact summary
+  if (compact.length) {
+    const compactLines = compact.map(s => {
+      const vol = s.totalVolume ? `, ${s.totalVolume}kg` : '';
+      const rpe = s.rpe != null ? `, RPE ${s.rpe}/10` : '';
+      return `${s.date}: ${s.routineName}${vol}${rpe}`;
+    });
+    lines.push(...compactLines);
+  }
+
+  // Compact aggregate for everything beyond the last 10
+  const older = sessions.slice(10);
   if (older.length) {
     const totalVol = older.reduce((t, s) => t + (s.totalVolume ?? 0), 0);
     const avgRpe = older.filter(s => s.rpe != null).length
@@ -305,15 +339,39 @@ ${(() => {
   }).join('\n');
 })()}
 
-BODY COMPOSITION (latest):
+BODY COMPOSITION (last 5 entries):
 ${(() => {
   const log = profile.bodyWeightLog ?? [];
   if (!log.length) return 'No body composition data.';
-  const latest = log[0];
-  const bfp = latest.bodyFatPct != null ? `, body fat ${latest.bodyFatPct.toFixed(1)}%` : '';
-  const m = latest.measurements;
+  const entries = log.slice(0, 5);
+  const lines = entries.map((entry, i) => {
+    const bfp = entry.bodyFatPct != null ? `, BF% ${entry.bodyFatPct.toFixed(1)}` : '';
+    const trend = i < entries.length - 1
+      ? (() => {
+          const diff = entry.weight - entries[i + 1].weight;
+          return diff > 0 ? ` ▲${diff.toFixed(1)}kg` : diff < 0 ? ` ▼${Math.abs(diff).toFixed(1)}kg` : '';
+        })()
+      : '';
+    return `${entry.date}: ${entry.weight}kg${bfp}${trend}`;
+  });
+  const m = entries[0].measurements;
   const mStr = m ? Object.entries(m).filter(([, v]) => v != null).map(([k, v]) => `${k}: ${v}cm`).join(', ') : '';
-  return `${latest.date}: ${latest.weight}kg${bfp}${mStr ? `\nMeasurements: ${mStr}` : ''}`;
+  return `${lines.join('\n')}${mStr ? `\nLatest measurements: ${mStr}` : ''}`;
+})()}
+
+RECENT NUTRITION (last 5 meals):
+${(() => {
+  const meals = profile.mealLog ?? [];
+  if (!meals.length) return 'No meals logged.';
+  return meals.slice(0, 5).map(m => {
+    const macros = [
+      m.calories != null ? `${m.calories}kcal` : null,
+      m.protein != null ? `P${m.protein}g` : null,
+      m.carbs != null ? `C${m.carbs}g` : null,
+      m.fat != null ? `F${m.fat}g` : null,
+    ].filter(Boolean).join(' ');
+    return `${m.date} [${m.mealType}] ${m.name}${macros ? ` — ${macros}` : ''}`;
+  }).join('\n');
 })()}`;
 
   const hasMedicalData = profile.knownConditions?.length || profile.medications?.length || profile.allergies?.length;
@@ -422,7 +480,12 @@ WEEKLY VOLUME (Sets vs Landmarks):
 ${volume.filter(v => v.sets > 0).map(v => `- ${v.muscleGroup}: ${v.sets.toFixed(1)} sets (${v.status.toUpperCase()})`).join('\n') || 'No volume recorded this week.'}
 
 RECOMMENDATIONS (Top 5):
-${recs.slice(0, 5).map(r => `- ${r.exerciseName}: ${r.recommendation.toUpperCase()} (${r.reasoning})`).join('\n') || 'No recommendations yet (need more data).'}
+${recs.slice(0, 5).map(r => {
+  const weightHint = r.suggestedWeightKg != null ? ` → target ${r.suggestedWeightKg}kg` : '';
+  const repsHint = r.suggestedReps != null ? ` → target ${r.suggestedReps} reps` : '';
+  const e1rmHint = r.currentE1RM > 0 ? ` [e1RM ${r.currentE1RM.toFixed(1)}kg]` : '';
+  return `- ${r.exerciseName}${e1rmHint}: ${r.recommendation.toUpperCase()}${weightHint}${repsHint} — ${r.reasoning}`;
+}).join('\n') || 'No recommendations yet (need more data).'}
 `;
 
   return `

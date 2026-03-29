@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { NsvSnapshotService, flattenNsv, type NsvSnapshot } from '@/lib/services/nsv-snapshot-service';
 import type { TrendDirection } from '@/core/components/TrendArrow';
 
@@ -98,7 +98,7 @@ const SAVE_DEBOUNCE_MS = 5_000;
 export function useNsvTrends(): Record<string, TrendDirection> {
   const auth = useAuth();
   const user = auth?.user;
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
 
   const nsv = globalSoul?.crossFunctionalState ?? null;
 

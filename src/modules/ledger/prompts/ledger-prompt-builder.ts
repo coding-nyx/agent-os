@@ -16,10 +16,9 @@
  */
 
 import type { FieldDefinition } from '@/lib/field-system/types';
-import type { Account, RecurringRule, NetWorthSnapshot, CashFlowForecast } from '../services/ledger-intake-service';
+import type { Account, RecurringRule, NetWorthSnapshot, CashFlowForecast, DebtItem, BudgetCategory, FinancialGoal as FinancialGoalFull, FinancialPlan, Transaction } from '../services/ledger-intake-service';
 import { computeUpcomingBills } from '../services/recurring-engine';
 import { computeCurrentNetWorth } from '../services/aggregation/networth-aggregation';
-import type { DebtItem } from '../services/ledger-intake-service';
 
 // ============================================================================
 // Type Definitions
@@ -637,8 +636,13 @@ export function serializeLedgerFinancialContext(opts: {
   // Computed from actual transactions — reflects what the UI shows
   actualTotalIncome?: number;
   actualTotalExpenses?: number;
+  budgetCategories?: BudgetCategory[];
+  financialGoals?: FinancialGoalFull[];
+  plans?: FinancialPlan[];
+  activePlanId?: string | null;
+  transactions?: Transaction[];
 }): string {
-  const { accounts = [], debtItems = [], netWorthHistory = [], recurringRules = [], lastCashFlowForecast, currency = 'USD', subscriptions = [], investments = [], alertRules = [], monthlyIncome, fixedExpenses = [], variableExpenses = [], actualTotalIncome, actualTotalExpenses } = opts;
+  const { accounts = [], debtItems = [], netWorthHistory = [], recurringRules = [], lastCashFlowForecast, currency = 'USD', subscriptions = [], investments = [], alertRules = [], monthlyIncome, fixedExpenses = [], variableExpenses = [], actualTotalIncome, actualTotalExpenses, budgetCategories = [], financialGoals = [], plans = [], activePlanId = null, transactions = [] } = opts;
   const blocks: string[] = [];
 
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
@@ -723,6 +727,177 @@ export function serializeLedgerFinancialContext(opts: {
       warnings.push(`⚠ Cash low point: ${fmtCompact(lowestPoint.balance)} on ${lowestPoint.date}`);
     }
     blocks.push(`[CASH FLOW FORECAST — ${horizon}d]\n  End balance: ${fmtCompact(endBalance)} | Lowest: ${fmtCompact(lowestPoint.balance)} on ${lowestPoint.date}${warnings.length > 0 ? '\n' + warnings.join('\n') : ''}`);
+  }
+
+  // ─── Block A: Active Financial Plan ─────────────────────────────────────
+  const planToShow = (activePlanId ? plans.find(p => p.id === activePlanId) : null)
+    ?? plans.find(p => p.status === 'active')
+    ?? null;
+  if (planToShow) {
+    const taskLines = planToShow.tasks.map((t, i) => `    ${i + 1}. ${t}`).join('\n');
+    blocks.push(
+      `[ACTIVE FINANCIAL PLAN — "${planToShow.title}"]\n` +
+      `  Summary: ${planToShow.summary}\n` +
+      `  Monthly target surplus: ${fmt(planToShow.monthlyTarget)}\n` +
+      `  Allocation — Essentials: ${planToShow.allocation.essentials}% | Growth: ${planToShow.allocation.growth}% | Buffer: ${planToShow.allocation.buffer}%\n` +
+      `  Tasks:\n${taskLines || '    (No tasks defined)'}`
+    );
+  }
+
+  // ─── Block B: Budget Categories ──────────────────────────────────────────
+  if (budgetCategories.length > 0) {
+    const catLines = budgetCategories.map(cat => {
+      const remaining = cat.allocated - cat.spent;
+      const pctUsed = cat.allocated > 0 ? (cat.spent / cat.allocated) * 100 : 0;
+      const status = pctUsed > 100 ? 'OVER BUDGET' : pctUsed > 80 ? 'WARNING' : 'ON TRACK';
+      return `  - ${cat.name}: allocated ${fmt(cat.allocated)} | spent ${fmt(cat.spent)} | remaining ${fmt(remaining)} | ${pctUsed.toFixed(0)}% used [${status}]`;
+    });
+    blocks.push(`[BUDGET CATEGORIES — ${budgetCategories.length} tracked]\n${catLines.join('\n')}`);
+  }
+
+  // ─── Block C: Financial Goals ─────────────────────────────────────────────
+  if (financialGoals.length > 0) {
+    const now = new Date();
+    const goalLines = financialGoals.map(g => {
+      const pctComplete = Math.min(100, g.targetAmount > 0 ? (g.currentAmount / g.targetAmount) * 100 : 0);
+      const remaining = g.targetAmount - g.currentAmount;
+      const monthsNeeded = g.monthlyContribution > 0 ? Math.ceil(remaining / g.monthlyContribution) : null;
+      let monthsRemaining: number | null = null;
+      if (g.targetDate) {
+        const target = new Date(g.targetDate);
+        monthsRemaining = Math.max(0, Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+      }
+      let trackStatus: string;
+      if (g.monthlyContribution <= 0) {
+        trackStatus = 'NO CONTRIBUTION';
+      } else if (monthsNeeded !== null && monthsRemaining !== null) {
+        const gap = monthsNeeded - monthsRemaining;
+        trackStatus = gap > 0 ? `BEHIND (${gap} mo gap)` : 'ON TRACK';
+      } else if (monthsNeeded !== null) {
+        trackStatus = `~${monthsNeeded} mo to completion`;
+      } else {
+        trackStatus = 'NO CONTRIBUTION';
+      }
+      const targetDateStr = g.targetDate ? ` | target: ${g.targetDate}` : '';
+      return `  - [id:${g.id}] ${g.name} (${g.type}, ${g.priority}): ${fmt(g.currentAmount)}/${fmt(g.targetAmount)} (${pctComplete.toFixed(0)}%) | contrib: ${fmt(g.monthlyContribution)}/mo${targetDateStr} | ${trackStatus}`;
+    });
+    blocks.push(`[FINANCIAL GOALS — ${financialGoals.length} active]\n${goalLines.join('\n')}`);
+  }
+
+  // ─── Block D: Debt Snapshot ───────────────────────────────────────────────
+  if (debtItems.length > 0) {
+    const sorted = [...debtItems].sort((a, b) => (b.apr ?? 0) - (a.apr ?? 0));
+    const debtLines = sorted.map(d => {
+      const payment = d.minimumPayment ?? d.minPayment;
+      return `  - ${d.name} (${d.type ?? 'debt'}): balance ${fmt(d.balance)} | APR ${d.apr.toFixed(1)}% | min payment ${fmt(payment)}${d.isVariableRate ? ' [variable]' : ''}`;
+    });
+    const totalBalance = debtItems.reduce((s, d) => s + d.balance, 0);
+    const totalMinPayments = debtItems.reduce((s, d) => s + (d.minimumPayment ?? d.minPayment), 0);
+    const dtiLine = typeof monthlyIncome === 'number' && monthlyIncome > 0
+      ? ` | DTI: ${((totalMinPayments / monthlyIncome) * 100).toFixed(1)}%`
+      : '';
+    blocks.push(
+      `[DEBT SNAPSHOT — ${debtItems.length} items, sorted by APR]\n${debtLines.join('\n')}\n  Total balance: ${fmt(totalBalance)} | Total min payments: ${fmt(totalMinPayments)}/mo${dtiLine}`
+    );
+  }
+
+  // ─── Block E: Financial Health Alerts ────────────────────────────────────
+  {
+    const alerts: string[] = [];
+    const totalFixed = fixedExpenses.reduce((s, e) => s + e.amount, 0);
+    const totalVariable = variableExpenses.reduce((s, e) => s + e.amount, 0);
+    const income = typeof monthlyIncome === 'number' ? monthlyIncome : 0;
+
+    // 1. Negative cashflow
+    if (income > 0 && income - totalFixed - totalVariable < 0) {
+      alerts.push(`⚠ Negative cashflow: income ${fmt(income)} is less than planned expenses ${fmt(totalFixed + totalVariable)} (deficit: ${fmt(income - totalFixed - totalVariable)})`);
+    }
+
+    // 2. Budget breach per category
+    for (const cat of budgetCategories) {
+      const pctUsed = cat.allocated > 0 ? (cat.spent / cat.allocated) * 100 : 0;
+      if (pctUsed > 100) {
+        alerts.push(`⚠ Budget breach — ${cat.name}: ${pctUsed.toFixed(0)}% utilized, overage ${fmt(cat.spent - cat.allocated)}`);
+      } else if (pctUsed > 90) {
+        alerts.push(`⚠ Budget warning — ${cat.name}: ${pctUsed.toFixed(0)}% utilized, only ${fmt(cat.allocated - cat.spent)} remaining`);
+      }
+    }
+
+    // 3. Emergency fund coverage
+    const liquidAccounts = accounts.filter(a => a.type === 'checking' || a.type === 'savings' || a.type === 'cash');
+    const liquidAssets = liquidAccounts.reduce((s, a) => s + a.balance, 0);
+    const ccDebt = accounts.filter(a => a.type === 'credit_card').reduce((s, a) => s + Math.abs(a.balance), 0);
+    const netLiquid = liquidAssets - ccDebt;
+    const monthlyExpenses = totalFixed + totalVariable;
+    if (monthlyExpenses > 0) {
+      const efMonths = netLiquid / monthlyExpenses;
+      if (efMonths < 1) {
+        alerts.push(`⚠ CRITICAL: Emergency fund < 1 month (${efMonths.toFixed(1)} mo). Liquid assets: ${fmt(netLiquid)}`);
+      } else if (efMonths < 3) {
+        alerts.push(`⚠ Emergency fund low: ${efMonths.toFixed(1)} months of coverage (target: 3+ mo)`);
+      }
+    }
+
+    // 4. Goal at risk
+    if (financialGoals.length > 0) {
+      const now = new Date();
+      for (const g of financialGoals) {
+        if (!g.targetDate || g.monthlyContribution <= 0) continue;
+        const remaining = g.targetAmount - g.currentAmount;
+        const monthsNeeded = Math.ceil(remaining / g.monthlyContribution);
+        const target = new Date(g.targetDate);
+        const monthsRemaining = Math.max(0, Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+        if (monthsNeeded > monthsRemaining) {
+          alerts.push(`⚠ Goal at risk — "${g.name}": needs ${monthsNeeded} mo but only ${monthsRemaining} mo remain (gap: ${monthsNeeded - monthsRemaining} mo, shortfall: ${fmt((monthsNeeded - monthsRemaining) * g.monthlyContribution)})`);
+        }
+      }
+    }
+
+    // 5. High-APR debt
+    if (debtItems.length > 0) {
+      const highApr = debtItems.filter(d => (d.apr ?? 0) > 20);
+      if (highApr.length > 0) {
+        const worst = [...highApr].sort((a, b) => (b.apr ?? 0) - (a.apr ?? 0))[0];
+        alerts.push(`⚠ High-APR debt — worst offender: "${worst.name}" at ${worst.apr?.toFixed(1)}% APR. ${highApr.length} debt(s) above 20% APR. Recommend avalanche strategy.`);
+      }
+    }
+
+    // 6. Subscription creep
+    const activeSubs2 = subscriptions.filter(s => s.status === 'active' || s.status === 'trial');
+    const totalSubMonthly = activeSubs2.reduce((s, sub) => s + sub.monthlyEquivalent, 0);
+    if (income > 0 && totalSubMonthly / income > 0.15) {
+      alerts.push(`ℹ Subscription creep: subscriptions total ${fmt(totalSubMonthly)}/mo = ${((totalSubMonthly / income) * 100).toFixed(1)}% of income (threshold: 15%)`);
+    }
+
+    // 7. Strategy conflict: high-APR debt AND savings goals coexist
+    const hasHighAprDebt = debtItems.some(d => (d.apr ?? 0) > 20);
+    const hasSavingsGoals = financialGoals.some(g => g.type === 'savings' || g.type === 'investment');
+    if (hasHighAprDebt && hasSavingsGoals) {
+      alerts.push(`ℹ Strategy conflict: high-APR debt (>20%) and active savings/investment goals coexist. Mathematically, paying off high-APR debt first yields better returns than most savings rates.`);
+    }
+
+    if (alerts.length > 0) {
+      blocks.push(`[FINANCIAL HEALTH ALERTS]\n${alerts.map(a => `  ${a}`).join('\n')}`);
+    }
+  }
+
+  // ─── Block F: Spending Patterns — This Month ─────────────────────────────
+  if (transactions.length > 0) {
+    const nowMonth = new Date().toISOString().slice(0, 7);
+    const monthExpenses = transactions.filter(t => t.type === 'expense' && t.date?.startsWith(nowMonth));
+    if (monthExpenses.length > 0) {
+      const totalMonthSpend = monthExpenses.reduce((s, t) => s + t.amount, 0);
+      const byCategory: Record<string, number> = {};
+      for (const t of monthExpenses) {
+        const cat = t.category || 'Uncategorized';
+        byCategory[cat] = (byCategory[cat] ?? 0) + t.amount;
+      }
+      const top5 = Object.entries(byCategory)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([cat, amount]) => `  - ${cat}: ${fmt(amount)} (${totalMonthSpend > 0 ? ((amount / totalMonthSpend) * 100).toFixed(0) : 0}% of total)`);
+      blocks.push(`[SPENDING PATTERNS — THIS MONTH]\n  Total expenses: ${fmt(totalMonthSpend)} across ${monthExpenses.length} transactions\n${top5.join('\n')}`);
+    }
   }
 
   // ─── P2: Subscriptions ───────────────────────────────────────────────────

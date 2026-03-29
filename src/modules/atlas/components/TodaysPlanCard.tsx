@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Circle, AlertTriangle, Clock, Zap, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -191,7 +191,7 @@ interface TodaysPlanCardProps {
 }
 
 export function TodaysPlanCard({ profile, isLocked = false }: TodaysPlanCardProps) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const reducedMotion = useReducedMotion();
 
   const cognitive = globalSoul?.crossFunctionalState?.cognitive;

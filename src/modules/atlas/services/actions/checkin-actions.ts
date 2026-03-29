@@ -10,6 +10,7 @@ import {
   loadProfile,
   persistProfile
 } from './shared';
+import { forecastLoad } from '../atlas-planning-engine';
 
 export const checkinActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
 
@@ -133,6 +134,28 @@ export const checkinActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
             waveBaseline: waveAvg,
           });
         }
+      }
+    }
+
+    // Load forecast after morning check-in: warn if today is overloaded given reported energy
+    if (type === 'morning' && energyRating !== undefined) {
+      const todayForecast = forecastLoad(profile, null, 1, new Date());
+      if (todayForecast.length > 0 && todayForecast[0].overloaded) {
+        const day = todayForecast[0];
+        // Count how many tasks could reasonably be deferred
+        const deferCandidates = profile.tasks
+          .filter(t => (t.status === 'queued' || t.status === 'active') && t.priority >= 3)
+          .sort((a, b) => b.energyCost - a.energyCost);
+        const deferCount = Math.max(1, Math.ceil((day.totalDemand - day.estimatedCapacity) / 5));
+        emitSpineEvent('ATLAS_ADAPTIVE_SUGGESTION', {
+          suggestionType: 'reschedule_overloaded_day',
+          reason: 'forecast_overload_on_checkin',
+          demandToday: day.totalDemand,
+          capacityToday: day.estimatedCapacity,
+          deficit: day.totalDemand - day.estimatedCapacity,
+          suggestedDeferCount: Math.min(deferCount, deferCandidates.length),
+          topDeferCandidate: deferCandidates[0]?.title ?? null,
+        });
       }
     }
 

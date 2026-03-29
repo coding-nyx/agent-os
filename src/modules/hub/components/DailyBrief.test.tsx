@@ -3,7 +3,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { DailyBrief } from './DailyBrief';
 import { useAuth } from '@/lib/auth-context';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { useNsvTrends } from '@/modules/nexus/hooks/useNsvTrends';
 
@@ -35,7 +35,7 @@ vi.mock('@/lib/auth-context', () => ({
 }));
 
 vi.mock('@/lib/global-soul-context', () => ({
-  useGlobalSoul: vi.fn(),
+  useGlobalSoulStore: vi.fn(),
 }));
 
 vi.mock('@/lib/hooks/useReducedMotion', () => ({
@@ -52,7 +52,7 @@ describe('DailyBrief', () => {
       profile: { preferredName: 'Jules' },
     } as any);
 
-    vi.mocked(useGlobalSoul).mockReturnValue({
+    vi.mocked(useGlobalSoulStore).mockImplementation((selector: any) => selector({
       globalSoul: {
         crossFunctionalState: {
           biological: { recoveryScore: 8 },
@@ -62,7 +62,8 @@ describe('DailyBrief', () => {
         },
         displayNames: {},
       },
-    } as any);
+      isLoading: false,
+    }));
 
     vi.mocked(useReducedMotion).mockReturnValue(true);
 

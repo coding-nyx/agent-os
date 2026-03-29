@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { useAI } from '@/llm-engine/ai-context';
@@ -143,7 +143,7 @@ interface BudgetTemplate {
 }
 
 export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfile | null; encryptionKey: CryptoKey | null }) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('ledger');
@@ -193,6 +193,11 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
       variableExpenses: profile.variableExpenses,
       actualTotalIncome: txIncome,
       actualTotalExpenses: txExpenses,
+      budgetCategories: profile.budgetCategories,
+      financialGoals: profile.financialGoals,
+      plans: profile.plans,
+      activePlanId: profile.activePlanId,
+      transactions: profile.transactions,
     });
     const extensionBlock = serializeLedgerExtensionFields(
       extensions,
@@ -212,7 +217,7 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
     });
     const parts = [LEDGER_PERSONA, context, extendedContext, extensionBlock].filter(Boolean);
     return parts.join('\n\n');
-  }, [profile?.accounts, profile?.debtItems, profile?.netWorthHistory, profile?.recurringRules, profile?.lastCashFlowForecast, profile?.currency, profile?.subscriptions, profile?.investments, profile?.alertRules, profile?.creditScoreHistory, profile?.creditFactors, profile?.insurancePolicies, profile?.lastRetirementProjection, profile?.retirementPlans, profile?.taxDeductions, profile?.lastTaxSummary, profile?.automationRules, profile?.monthlyIncome, profile?.fixedExpenses, profile?.variableExpenses, profile?.transactions, extensions, fieldValues]);
+  }, [profile?.accounts, profile?.debtItems, profile?.netWorthHistory, profile?.recurringRules, profile?.lastCashFlowForecast, profile?.currency, profile?.subscriptions, profile?.investments, profile?.alertRules, profile?.creditScoreHistory, profile?.creditFactors, profile?.insurancePolicies, profile?.lastRetirementProjection, profile?.retirementPlans, profile?.taxDeductions, profile?.lastTaxSummary, profile?.automationRules, profile?.monthlyIncome, profile?.fixedExpenses, profile?.variableExpenses, profile?.transactions, profile?.budgetCategories, profile?.financialGoals, profile?.plans, profile?.activePlanId, extensions, fieldValues]);
 
   const ai = useModuleAI({
     moduleId: 'ledger',
@@ -1253,28 +1258,42 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
     }
   }, [profile?.onboardingComplete, profile?.activePlanId, agentAlias, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages]);
 
+  // Memoize the context actions object so LedgerActionsContext.value stays stable
+  // across re-renders triggered by globalSoul writes. All individual handlers are
+  // useCallback-wrapped — this object only recreates when a handler actually changes.
+  const ledgerActions = useMemo(() => ({
+    onAddTransaction: handleAddTransaction,
+    onUpdateTransaction: handleUpdateTransaction,
+    onDeleteTransaction: handleDeleteTransaction,
+    onImportCSV: handleImportCSV,
+    onExportCSV: handleExportCSV,
+    onUpdateCategory: handleUpdateBudgetCategory,
+    onAddCategory: handleAddBudgetCategory,
+    onDeleteCategory: handleDeleteBudgetCategory,
+    onApplyTemplate: handleApplyBudgetTemplate,
+    onAddGoal: handleAddGoal,
+    onUpdateGoal: handleUpdateGoal,
+    onDeleteGoal: handleDeleteGoal,
+    onAddDebt: handleAddDebt,
+    onUpdateDebt: handleUpdateDebt,
+    onDeleteDebt: handleDeleteDebt,
+    onValueChange: handleExtensionValueChange,
+    onAddField: handleAddField,
+    onDeleteField: handleDeleteField,
+    onAskAI: ai.handleSendMessage,
+  }), [
+    handleAddTransaction, handleUpdateTransaction, handleDeleteTransaction,
+    handleImportCSV, handleExportCSV,
+    handleUpdateBudgetCategory, handleAddBudgetCategory, handleDeleteBudgetCategory,
+    handleApplyBudgetTemplate,
+    handleAddGoal, handleUpdateGoal, handleDeleteGoal,
+    handleAddDebt, handleUpdateDebt, handleDeleteDebt,
+    handleExtensionValueChange, handleAddField, handleDeleteField,
+    ai.handleSendMessage,
+  ]);
+
   return (
-    <LedgerActionsProvider value={{ 
-      onAddTransaction: handleAddTransaction, 
-      onUpdateTransaction: handleUpdateTransaction, 
-      onDeleteTransaction: handleDeleteTransaction, 
-      onImportCSV: handleImportCSV, 
-      onExportCSV: handleExportCSV, 
-      onUpdateCategory: handleUpdateBudgetCategory, 
-      onAddCategory: handleAddBudgetCategory, 
-      onDeleteCategory: handleDeleteBudgetCategory, 
-      onApplyTemplate: handleApplyBudgetTemplate, 
-      onAddGoal: handleAddGoal, 
-      onUpdateGoal: handleUpdateGoal, 
-      onDeleteGoal: handleDeleteGoal, 
-      onAddDebt: handleAddDebt, 
-      onUpdateDebt: handleUpdateDebt, 
-      onDeleteDebt: handleDeleteDebt, 
-      onValueChange: handleExtensionValueChange, 
-      onAddField: handleAddField, 
-      onDeleteField: handleDeleteField, 
-      onAskAI: ai.handleSendMessage 
-    }}>
+    <LedgerActionsProvider value={ledgerActions}>
       <SingleAgentLayout
         moduleId="ledger"
         agentName={agentAlias}

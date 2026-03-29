@@ -46,6 +46,13 @@ interface ExecuteModuleAIActionsInput {
   recordAssistantContent: (content: string, metadata: ActionOrchestrationMetadata) => void;
 }
 
+export interface DeferredApproval {
+  executionId: string;
+  actionType: string;
+  payload: Record<string, unknown>;
+  label: string;
+}
+
 interface ExecuteModuleAIActionsResult {
   analysisOnlyLabels: string[];
   dispatchedActionTypes: string[];
@@ -59,6 +66,7 @@ interface ExecuteModuleAIActionsResult {
   soulUpdates: NeuralStateVectorPatch;
   threadArtifacts: SpecialistConsultationArtifact[];
   executionArtifacts: ThreadExecutionArtifact[];
+  deferredApprovals: DeferredApproval[];
 }
 
 function mergeSoulPatch(target: NeuralStateVectorPatch, patch: NeuralStateVectorPatch) {
@@ -111,6 +119,7 @@ export class ModuleAIActionExecutionService {
     const orchestrationMetadata: ActionOrchestrationMetadata[] = [];
     const threadArtifacts: SpecialistConsultationArtifact[] = [];
     const executionArtifacts: ThreadExecutionArtifact[] = [];
+    const deferredApprovals: DeferredApproval[] = [];
     const soulUpdates: NeuralStateVectorPatch = {};
     let profileDirty = false;
 
@@ -209,6 +218,15 @@ export class ModuleAIActionExecutionService {
         } else if (noticePrefix === 'Not executed in this session') {
           analysisOnlyLabels.push(getActionLabel(type));
         }
+        // Preserve payload so the UI can surface an Approve/Dismiss card
+        if (orchestrationDecision.metadata.dispatchStatus === 'awaiting_approval') {
+          deferredApprovals.push({
+            executionId: orchestrationDecision.metadata.execution.id,
+            actionType: type,
+            payload: adjustedPayload,
+            label: getActionLabel(type),
+          });
+        }
         continue;
       }
 
@@ -296,6 +314,7 @@ export class ModuleAIActionExecutionService {
       soulUpdates,
       threadArtifacts,
       executionArtifacts,
+      deferredApprovals,
     };
   }
 }

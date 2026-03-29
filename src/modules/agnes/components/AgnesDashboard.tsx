@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, Activity } from 'lucide-react';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { BeliefGraph, subscribeBeliefGraph } from '../services/belief-graph-service';
@@ -19,7 +19,7 @@ export function AgnesDashboard({
   profile: unknown;
   encryptionKey: CryptoKey | null;
 }) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
   const locked = isLocked || !isModuleAccessible('agnes');

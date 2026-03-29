@@ -27,6 +27,8 @@ import { AgentIcon } from './AgentIcon';
 import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
 import { useMotionConfig } from '@/lib/hooks/use-motion-config';
 import { ChatBubble, contentToString } from './chat/ChatBubble';
+import { DeferredApprovalCard } from './chat/DeferredApprovalCard';
+import type { DeferredApproval } from '@/lib/hooks/use-module-ai';
 
 // Helper to convert MessageContent to string for display (kept for non-bubble usages below)
 function messageContentToString(content: MessageContent): string {
@@ -72,6 +74,10 @@ interface ChatInterfaceProps {
   onEditMessage?: (index: number, newContent: string) => void;
   /** Called when the user clicks retry on a message at the given index. */
   onRetryMessage?: (index: number) => void;
+  /** Pending high-risk actions awaiting user approval. */
+  pendingApprovals?: DeferredApproval[];
+  onApproveAction?: (executionId: string) => void;
+  onDismissAction?: (executionId: string) => void;
 }
 
 const THEMES = {
@@ -203,6 +209,9 @@ export const ChatInterface = React.memo(function ChatInterface({
   aboveInput,
   onEditMessage,
   onRetryMessage,
+  pendingApprovals,
+  onApproveAction,
+  onDismissAction,
 }: ChatInterfaceProps) {
   const draftKey = `nexus_input_draft_${moduleId ?? 'default'}`;
   const [input, setInput] = useState<string>(() => {
@@ -488,7 +497,7 @@ export const ChatInterface = React.memo(function ChatInterface({
             
             const actions = renderMessageActions ? renderMessageActions(msg, i) : null;
             return (
-              <motion.div key={i} initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={transition} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
+              <motion.div key={msg.timestamp ? `${msg.timestamp}-${msg.role}-${i}` : `msg-${i}`} initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={transition} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
                 {/* Icon row — for AI messages includes optional internal-signals chip */}
                 {isAI && (() => {
                   const msgContent = contentToString(msg.content);
@@ -562,6 +571,19 @@ export const ChatInterface = React.memo(function ChatInterface({
                           externalShowInternal={showInternalMap[i] ?? false}
                           onToggleInternal={() => toggleInternalForMessage(i)}
                         />
+                        {isLast && !effectiveIsProcessing && pendingApprovals && pendingApprovals.length > 0 && (
+                          <div className="w-full mt-1 space-y-1">
+                            {pendingApprovals.map((approval) => (
+                              <DeferredApprovalCard
+                                key={approval.executionId}
+                                approval={approval}
+                                moduleId={moduleId ?? 'nexus'}
+                                onApprove={(id) => onApproveAction?.(id)}
+                                onDismiss={(id) => onDismissAction?.(id)}
+                              />
+                            ))}
+                          </div>
+                        )}
                     </div>
                 ) : (
                     (() => {

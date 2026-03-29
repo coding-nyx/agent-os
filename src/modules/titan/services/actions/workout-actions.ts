@@ -5,6 +5,11 @@ import {
 } from './shared';
 import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
 import type { ActionHandler, TitanProfile, WorkoutSession, ExerciseLog, ExerciseSet, PersonalRecord, TitanWorkoutSet, TitanWorkoutLog } from './shared';
+import {
+  generateProgressionRecommendations,
+  computeACWR,
+  computeWeeklyVolumeByMuscle,
+} from '../../utils/progressive-overload';
 
 export const workoutHandlers: Record<string, ActionHandler> = {
 
@@ -298,34 +303,103 @@ export const workoutHandlers: Record<string, ActionHandler> = {
 
   // ── suggest_progression ────────────────────────────────────────────────────
   // Emitted by the AI to surface per-exercise overload recommendations.
+  // Reads actual profile data to produce specific, personalised prescriptions.
   // Does NOT mutate any stored data — purely pushes an advisory message.
-  suggest_progression: async ({ payload, pushAssistantMessage }) => {
+  suggest_progression: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
     if (!pushAssistantMessage) return;
-    const exercises = Array.isArray(payload?.exercises) ? payload.exercises as string[] : [];
-    const strategy = typeof payload?.strategy === 'string' ? payload.strategy : 'double_progression';
+
+    const requestedExercises = Array.isArray(payload?.exercises) ? payload.exercises as string[] : [];
+    const strategy = typeof payload?.strategy === 'string' ? payload.strategy : undefined;
     const message = typeof payload?.message === 'string' ? payload.message : '';
 
+    const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+
+    // Build data-driven per-exercise recommendations when profile is available
+    if (profile?.workoutSessions?.length) {
+      const allRecs = generateProgressionRecommendations(
+        profile.workoutSessions,
+        profile.personalRecords ?? {},
+      );
+      const acwr = computeACWR(profile.workoutSessions);
+      const weeklyVolume = computeWeeklyVolumeByMuscle(profile.workoutSessions);
+
+      // Filter to requested exercises if specified, else show all (up to 8)
+      const filtered = requestedExercises.length > 0
+        ? allRecs.filter(r =>
+            requestedExercises.some(req =>
+              r.exerciseName.toLowerCase().includes(req.toLowerCase()) ||
+              req.toLowerCase().includes(r.exerciseName.toLowerCase()),
+            ),
+          )
+        : allRecs.slice(0, 8);
+
+      const recLines = filtered.map(r => {
+        const e1rmStr = r.currentE1RM > 0 ? ` (e1RM ${r.currentE1RM.toFixed(1)}kg)` : '';
+        let action = '';
+        if (r.recommendation === 'add_weight' && r.suggestedWeightKg != null) {
+          action = `**Add weight → ${r.suggestedWeightKg}kg**`;
+        } else if (r.recommendation === 'add_reps' && r.suggestedReps) {
+          action = `**Add reps → ${r.suggestedReps}**`;
+        } else if (r.recommendation === 'deload') {
+          action = `**Deload** (cut weight ~20%)`;
+        } else {
+          action = `**Maintain** current load`;
+        }
+        return `• **${r.exerciseName}**${e1rmStr}: ${action} — ${r.reasoning}`;
+      });
+
+      // ACWR context header
+      const acwrLine = acwr.chronicLoad > 0
+        ? `ACWR ${acwr.acwr} (${acwr.status.toUpperCase()}) — ${acwr.recommendation}`
+        : 'No 28-day baseline yet — establish consistent training before ramping load.';
+
+      // Volume gaps
+      const underMEV = weeklyVolume.filter(v => v.sets > 0 && v.status === 'below_mev');
+      const overMRV = weeklyVolume.filter(v => v.status === 'above_mrv');
+      const volumeWarnings: string[] = [];
+      if (overMRV.length) {
+        volumeWarnings.push(`⚠ Above MRV: ${overMRV.map(v => `${v.muscleGroup} (${v.sets.toFixed(0)} sets)`).join(', ')} — recovery-compressing.`);
+      }
+      if (underMEV.length) {
+        volumeWarnings.push(`📉 Below MEV: ${underMEV.map(v => `${v.muscleGroup} (${v.sets.toFixed(0)} sets)`).join(', ')} — add volume to drive adaptation.`);
+      }
+
+      const sections: string[] = [
+        `**Progression Analysis**`,
+        acwrLine,
+        ...(volumeWarnings.length ? ['', ...volumeWarnings] : []),
+        ...(message ? ['', message] : []),
+        '',
+        ...(recLines.length ? recLines : ['No data yet for requested exercises — log sessions first.']),
+      ];
+
+      pushAssistantMessage(sections.join('\n'));
+      return;
+    }
+
+    // Fallback: no session data — emit generic guidance based on strategy hint
     const strategyLabel: Record<string, string> = {
-      linear: '📈 Linear Progression',
-      double_progression: '🔁 Double Progression',
-      deload: '🔽 Deload Week',
+      linear: 'Linear Progression',
+      double_progression: 'Double Progression',
+      deload: 'Deload Week',
     };
 
-    const lines: string[] = [
-      `**${strategyLabel[strategy] ?? 'Progression Plan'}**`,
+    const fallbackLines: string[] = [
+      `**${strategy ? (strategyLabel[strategy] ?? 'Progression Plan') : 'Progression Plan'}**`,
       ...(message ? [message] : []),
-      ...(exercises.length > 0 ? [`Exercises: ${exercises.join(', ')}`] : []),
     ];
 
     if (strategy === 'linear') {
-      lines.push('Add **2.5 kg** to each barbell lift each session. Reset to 3×5 if you miss a rep.');
+      fallbackLines.push('Add **2.5 kg** to each barbell lift each session. Reset to 3×5 if you miss a rep.');
     } else if (strategy === 'double_progression') {
-      lines.push('Work up to the **top of your rep range** across all sets, then add weight and restart at the bottom of the range.');
+      fallbackLines.push('Work up to the **top of your rep range** across all sets, then add weight and restart at the bottom of the range.');
     } else if (strategy === 'deload') {
-      lines.push('Reduce weight by **40–50%** and volume by **40%** for the next 7 days to allow full recovery.');
+      fallbackLines.push('Reduce weight by **40–50%** and volume by **40%** for the next 7 days to allow full recovery.');
+    } else {
+      fallbackLines.push('Log a few sessions first — I need your training history to give you specific weight and rep targets.');
     }
 
-    pushAssistantMessage(lines.join('\n\n'));
+    pushAssistantMessage(fallbackLines.join('\n\n'));
   },
 
   // ── suggest_exercise_substitute ───────────────────────────────────────────

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore, useGlobalSoulActions } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { AgnesOnboarding } from './onboarding/AgnesOnboarding';
@@ -107,7 +107,11 @@ function AgnesContent({
   setSessionActive
 }: AgnesContentProps) {
   const { generateJSON } = useAI();
-  const { globalSoul, updateCrossFunctionalState } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
+  const { updateCrossFunctionalState } = useGlobalSoulActions();
+  // Keep globalSoul in a ref so callbacks that read it at call-time don't list it as a dep.
+  const globalSoulRef = useRef(globalSoul);
+  globalSoulRef.current = globalSoul;
 
   const { user, isGuest, profile: coreProfile } = useAuth();
   const { isModuleAccessible } = useVault();
@@ -791,7 +795,8 @@ function AgnesContent({
     const exerciseType = selectedSomaticExercise ?? 'breathwork';
 
     // Update NSV: reduce stress load, increase resilience
-    const emotional = globalSoul?.crossFunctionalState?.emotional;
+    // Read from ref so this callback doesn't need globalSoul as a dep.
+    const emotional = globalSoulRef.current?.crossFunctionalState?.emotional;
     await updateCrossFunctionalState({
       emotional: {
         stressLoad: Math.max(0, (emotional?.stressLoad ?? 5) - 1.5),
@@ -810,7 +815,8 @@ function AgnesContent({
 
     setCurrentState('selecting');
     setSelectedSomaticExercise(null);
-  }, [selectedSomaticExercise, globalSoul, updateCrossFunctionalState]);
+  // globalSoul is read from globalSoulRef at call-time — no dep needed.
+  }, [selectedSomaticExercise, updateCrossFunctionalState]);
 
   const handleSomaticExit = useCallback(() => {
     setCurrentState('selecting');
@@ -1146,8 +1152,8 @@ function AgnesOnboardingWrapper({ profile, onComplete }: { profile: TherapyIntak
 }
 
 export default function AgnesPage() {
-  const { globalSoul } = useGlobalSoul();
-  const agentAlias = globalSoul?.displayNames?.agnes || 'Agnes';
+  // Primitive selector — only re-renders when the display name string changes.
+  const agentAlias = useGlobalSoulStore(s => s.globalSoul?.displayNames?.agnes || 'Agnes');
 
   return (
     <UnifiedModulePage<TherapyIntakeProfile>

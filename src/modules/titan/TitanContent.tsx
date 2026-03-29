@@ -14,7 +14,7 @@ import { TrainTab } from './tabs/TrainTab';
 import { PlanTab } from './tabs/PlanTab';
 import { BodyTab } from './tabs/BodyTab';
 import { CyclesTab } from './tabs/CyclesTab';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore, useGlobalSoulActions } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -81,7 +81,11 @@ function resolveInitialTab(searchParams: URLSearchParams, recoveryActive: boolea
 }
 
 export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null }) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
+  // Keep globalSoul in a ref so callbacks that need it at call-time don't list it
+  // as a dep — prevents re-renders of callbacks on every NSV write.
+  const globalSoulRef = useRef(globalSoul);
+  globalSoulRef.current = globalSoul;
   const { isModuleAccessible, getMasterKey, lockVault } = useVault();
   const { user, isGuest } = useAuth();
   const isLocked = !isModuleAccessible('titan');
@@ -397,7 +401,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       userId: user.uid,
       isGuest,
       encryptionKey,
-      getLatestNSV: () => globalSoul?.crossFunctionalState ?? {},
+      getLatestNSV: () => globalSoulRef.current?.crossFunctionalState ?? {},
       pushAssistantMessage: (msg: string) => { console.log('[Titan Proposal]', msg); },
       emitSpineEvent: (type, payload) => {
         Spine.emit({ type, source: 'titan', domain: 'B', data: payload, cascadeDepth: 0, priority: 'info' });
@@ -408,7 +412,8 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
     if (!success) throw new Error(`Action "${actionType}" could not be found. Please try again.`);
     setActiveProposal(null);
-  }, [user?.uid, isGuest, encryptionKey, globalSoul?.crossFunctionalState]);
+  // globalSoul is read from globalSoulRef at call-time via getLatestNSV — no dep needed.
+  }, [user?.uid, isGuest, encryptionKey]);
 
   // ── Direct-write handlers ──────────────────────────────────────────────────
   const handleToggleDirectWrite = useCallback(async () => {

@@ -504,7 +504,6 @@ export const routineActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
     // ── Filter eligible tasks ───────────────────────────────────────────
     const eligible = profile.tasks.filter(task => {
       if (task.status !== 'queued' && task.status !== 'active') return false;
-      if (task.status === 'blocked') return false; // respect dependencies
       if (!task.scheduledSlot && !task.deadline) return true;
       if (task.scheduledSlot && task.scheduledSlot <= targetDate) return true;
       if (task.deadline && task.deadline.slice(0, 10) <= targetDate) return true;

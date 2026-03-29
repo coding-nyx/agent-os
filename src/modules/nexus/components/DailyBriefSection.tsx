@@ -3,7 +3,7 @@ import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { motion } from 'framer-motion';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import {
@@ -53,7 +53,7 @@ interface DailyBriefSectionProps {
 }
 
 export function DailyBriefSection({ collapsed = false, onToggleCollapse, onAskAboutDomain, headerActions }: DailyBriefSectionProps) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const auth = useAuth();
   const profile = auth?.profile;
   const reducedMotion = useReducedMotion();

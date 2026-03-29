@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { getMetricOwner } from '@/lib/services/nsv-ownership';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import type { NSVMetricPath } from '@/lib/services/nsv-ownership';
 
 interface MetricAttributionProps {
@@ -33,7 +33,7 @@ export function MetricAttribution({
   showOwner = true,
   className
 }: MetricAttributionProps) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const ownerId = getMetricOwner(metricPath);
   const displayName = globalSoul?.displayNames?.[ownerId] || ownerId;
   const relativeTime = formatRelativeTime(lastUpdated);

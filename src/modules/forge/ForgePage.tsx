@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Code, Mail, FileText, ListChecks, LucideIcon } from 'lucide-react';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -52,12 +52,14 @@ function formatExecutionOutput(payload: { logs?: string[]; result?: string; erro
 }
 
 function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null; encryptionKey: CryptoKey | null }) {
-  const { globalSoul } = useGlobalSoul();
+  // Primitive selector — only re-renders when display name string changes
+  const agentAlias = useGlobalSoulStore(s => s.globalSoul?.displayNames?.forge || 'Forge');
+  // Full globalSoul for dashboard display — separate selector keeps ForgeContent from
+  // re-rendering on NSV writes that don't affect forge-relevant fields.
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const { user } = useAuth();
   const { isModuleAccessible } = useVault();
   const isLocked = !isModuleAccessible('forge');
-
-  const agentAlias = globalSoul?.displayNames?.forge || 'Forge';
   const [editorLanguage, setEditorLanguage] = useState('javascript');
   const [editorCode, setEditorCode] = useState('// Forge cloud runner\\nconsole.log("Forge online");');
   const [editorStatus, setEditorStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
@@ -72,11 +74,13 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
   const activeOverlay = FORGE_MODES.find((m) => m.id === selectedMode)?.overlay ?? FORGE_CODE_OVERLAY;
   const systemPrompt = `${FORGE_PERSONA}\n\n${activeOverlay}`;
 
-  const { messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage } = useModuleAI({
+  const ai = useModuleAI({
     moduleId: 'forge',
     systemPrompt,
     encryptionKey
   });
+  // Destructure locally for use in this component — does NOT affect NexusChat's ai prop stability.
+  const { messages, setMessages, isProcessing, streamingText, handleSendMessage } = ai;
 
   const profileRef = useRef(profile);
   profileRef.current = profile;
@@ -370,7 +374,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
         <div className="flex-1 min-h-0 flex flex-col">
           <NexusChat
             moduleId="forge"
-            ai={{ messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage }}
+            ai={ai}
             agentName={agentAlias}
             themeColor="cyan"
             placeholder="Describe the implementation task, repository target, or command sequence..."

@@ -125,7 +125,8 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     // Overload warning after adding
     const activeLoad = calculateActiveLoad(profile.tasks);
     if (activeLoad > 7) {
-      emitSpineEvent('ATLAS_CAPACITY_WARNING', {
+      emitSpineEvent('ATLAS_PREDICTIVE_ALERT', {
+        alertType: 'capacity_warning',
         activeLoad,
         taskCount: profile.tasks.filter(t => t.status === 'active' || t.status === 'queued').length,
         triggeredBy: newTask.id,
@@ -144,7 +145,8 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
         const allGoalWords = [...goalWords, ...milestoneWords];
         const overlap = titleWords.filter(w => allGoalWords.some(gw => gw.includes(w) || w.includes(gw)));
         if (overlap.length > 0) {
-          emitSpineEvent('ATLAS_TASK_GOAL_SUGGESTION', {
+          emitSpineEvent('ATLAS_ADAPTIVE_SUGGESTION', {
+            suggestionType: 'task_goal_link',
             taskId: newTask.id,
             taskTitle: newTask.title,
             suggestedGoalId: goal.id,

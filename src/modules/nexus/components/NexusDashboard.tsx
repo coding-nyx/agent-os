@@ -6,7 +6,7 @@ import { useDataLayer } from '@/lib/data-layer/provider';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import type { Message, GuestQuota, MessageContent, SpineEvent } from '@/lib/types';
 import { CommandPalette } from './CommandPalette';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulActions } from '@/lib/global-soul-context';
 import { useAI } from '@/llm-engine/ai-context';
 import { type DocumentPipelineStage } from '@/lib/services/document-pipeline';
 import { useNexusCrossModuleBlocker } from '@/lib/hooks/use-nexus-cross-module-blocker';
@@ -146,7 +146,7 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
   const { user, isGuest, profile } = useAuth();
   const dataLayer = useDataLayer();
   const navigate = useNavigate();
-  const { refreshGlobalSoul } = useGlobalSoul();
+  const { refreshGlobalSoul } = useGlobalSoulActions();
   const { alerts } = useNexusSynthesis();
   const { isCrossModuleBusy, pendingTargets } = useNexusCrossModuleBlocker();
   const { isConflictBlocking } = useNexusConflictBlocker();

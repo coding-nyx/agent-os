@@ -49,7 +49,7 @@ vi.mock('@/lib/vault-context', () => ({
 }));
 
 vi.mock('@/lib/global-soul-context', () => ({
-  useGlobalSoul: () => mockSoul,
+  useGlobalSoulActions: () => mockSoul,
 }));
 
 vi.mock('@/lib/notifications/NotificationContext', () => ({

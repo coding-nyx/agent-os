@@ -69,7 +69,22 @@ vi.mock('react-router-dom', () => ({
 // ─── Context hooks ─────────────────────────────────────────────────────────────
 vi.mock('@/lib/auth-context', () => ({ useAuth: vi.fn() }));
 vi.mock('@/lib/vault-context', () => ({ useVault: vi.fn() }));
-vi.mock('@/lib/global-soul-context', () => ({ useGlobalSoul: vi.fn() }));
+vi.mock('@/lib/global-soul-context', () => {
+  const useGlobalSoulStore = vi.fn();
+  return {
+    useGlobalSoulStore: Object.assign(useGlobalSoulStore, {
+      getState: () => ({ globalSoul: null, isLoading: false }),
+      subscribe: () => () => {},
+    }),
+    useGlobalSoulActions: () => ({
+      refreshGlobalSoul: vi.fn(),
+      enhanceContext: (c: any) => c,
+      enhanceContextForModule: (c: any) => c,
+      updateCrossFunctionalState: vi.fn(),
+      getFilteredSoulForModule: vi.fn(),
+    }),
+  };
+});
 const mockDataLayer = {};
 vi.mock('@/lib/data-layer/provider', () => ({ useDataLayer: vi.fn(() => mockDataLayer) }));
 
@@ -231,7 +246,7 @@ import { DailyBriefSection } from './DailyBriefSection';
 import { useNexusSynthesis } from '../hooks/useNexusSynthesis';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { OrchestrationHistoryService } from '@/lib/services/orchestration-history-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import { CommandIntelligenceService } from '@/lib/services/command-intelligence-service';
@@ -293,7 +308,6 @@ function makeGlobalSoulMock(crossFunctionalState: Record<string, unknown> | null
   return {
     globalSoul: crossFunctionalState ? { crossFunctionalState } : null,
     isLoading: false,
-    refreshGlobalSoul: vi.fn(),
   };
 }
 
@@ -435,7 +449,7 @@ describe('NexusDashboard', () => {
       isGuest: false,
       profile: null,
     });
-    (useGlobalSoul as any).mockReturnValue(makeGlobalSoulMock());
+    (useGlobalSoulStore as any).mockImplementation((selector: any) => selector(makeGlobalSoulMock()));
     (useNexusSynthesis as any).mockReturnValue({ alerts: [], isAnalyzing: false });
     vi.spyOn(OrchestrationHistoryService, 'listSilentHistoryForThread').mockResolvedValue([]);
     useOrchestrationStore.getState().resetShell();
@@ -1020,13 +1034,13 @@ describe('NexusDashboard', () => {
   });
 
   it('surfaces anticipatory planning proposals and injects the planning prompt on approval', async () => {
-    (useGlobalSoul as any).mockReturnValue(makeGlobalSoulMock({
+    (useGlobalSoulStore as any).mockImplementation((selector: any) => selector(makeGlobalSoulMock({
       emotional: { stressLoad: 3, emotionalResilience: 0.4 },
       cognitive: { activeLoad: 8, taskCompletionRate: 0.2, planningLoad: 8, focusScore: 0.4 },
       planning: { deadlinePressure: 8 },
       biological: { sleepQuality: 4, recoveryScore: 0.4 },
       resource: {},
-    }));
+    })));
     (useNexusSynthesis as any).mockReturnValue({
       alerts: [
         makeSynthesisAlert({
@@ -1248,7 +1262,7 @@ describe('useModuleHealth', () => {
     (useVault as any).mockReturnValue(makeVaultMock());
 
     // No NSV — all derived tones will be 'neutral'
-    (useGlobalSoul as any).mockReturnValue(makeGlobalSoulMock(null));
+    (useGlobalSoulStore as any).mockImplementation((selector: any) => selector(makeGlobalSoulMock(null)));
 
     (useNexusSynthesis as any).mockReturnValue({ alerts: [], isAnalyzing: false });
   });

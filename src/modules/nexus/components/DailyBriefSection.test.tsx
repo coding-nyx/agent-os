@@ -27,7 +27,10 @@ vi.mock('@/lib/auth-context', () => ({
 }));
 
 vi.mock('@/lib/global-soul-context', () => ({
-  useGlobalSoul: () => ({ globalSoul: null }),
+  useGlobalSoulStore: Object.assign(
+    (selector: any) => selector({ globalSoul: null, isLoading: false }),
+    { getState: () => ({ globalSoul: null, isLoading: false }), subscribe: () => () => {} },
+  ),
 }));
 
 vi.mock('@/lib/hooks/useReducedMotion', () => ({

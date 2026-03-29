@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { NeuralStateVector } from '@/lib/types';
 
 export function MasterSoulHUD() {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const state = globalSoul?.crossFunctionalState as NeuralStateVector | undefined;
 
   const clamp01 = (value: number | null | undefined, fallback = 0.5) => {

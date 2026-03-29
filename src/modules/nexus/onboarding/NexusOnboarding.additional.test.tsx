@@ -58,7 +58,22 @@ vi.mock('react-router-dom', () => ({
 // Auth / Vault / Global Soul context
 vi.mock('@/lib/auth-context', () => ({ useAuth: vi.fn() }));
 vi.mock('@/lib/vault-context', () => ({ useVault: vi.fn() }));
-vi.mock('@/lib/global-soul-context', () => ({ useGlobalSoul: vi.fn() }));
+vi.mock('@/lib/global-soul-context', () => {
+  const useGlobalSoulStore = vi.fn();
+  return {
+    useGlobalSoulStore: Object.assign(useGlobalSoulStore, {
+      getState: () => ({ globalSoul: null, isLoading: false }),
+      subscribe: () => () => {},
+    }),
+    useGlobalSoulActions: () => ({
+      refreshGlobalSoul: vi.fn(),
+      enhanceContext: (c: any) => c,
+      enhanceContextForModule: (c: any) => c,
+      updateCrossFunctionalState: vi.fn(),
+      getFilteredSoulForModule: vi.fn(),
+    }),
+  };
+});
 vi.mock('@/lib/data-layer/provider', () => ({ useDataLayer: vi.fn(() => ({})) }));
 
 // AI context (needed indirectly by useGuidedChatIntake / useOnboardingSchema)
@@ -108,7 +123,7 @@ import { useNexusSynthesis } from '../hooks/useNexusSynthesis';
 // Context hook references for mockReturnValue setup
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useOrchestrationStore } from '@/lib/stores/orchestration-store';
 import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
@@ -365,7 +380,7 @@ describe('useNexusSynthesis', () => {
   // ── T-09 ───────────────────────────────────────────────────────────────────
   it('T-09 — COMPOUND_STRESS alert fires at threshold (stress=7, cnsFatigue=6, friction=6)', () => {
     // AT threshold — should trigger
-    (useGlobalSoul as any).mockReturnValue(makeGlobalSoul(7, 6, 6));
+    (useGlobalSoulStore as any).mockImplementation((selector: any) => selector(makeGlobalSoul(7, 6, 6)));
     const { result: atThreshold } = renderHook(() => useNexusSynthesis());
 
     const compound = atThreshold.current.alerts.find((a) => a.id === 'COMPOUND_STRESS');
@@ -373,7 +388,7 @@ describe('useNexusSynthesis', () => {
     expect(compound?.severity).toBe('critical');
 
     // BELOW threshold (stress=6) — should NOT trigger
-    (useGlobalSoul as any).mockReturnValue(makeGlobalSoul(6, 6, 6));
+    (useGlobalSoulStore as any).mockImplementation((selector: any) => selector(makeGlobalSoul(6, 6, 6)));
     const { result: belowThreshold } = renderHook(() => useNexusSynthesis());
 
     const noCompound = belowThreshold.current.alerts.find((a) => a.id === 'COMPOUND_STRESS');
@@ -383,7 +398,7 @@ describe('useNexusSynthesis', () => {
   // ── T-10 ───────────────────────────────────────────────────────────────────
   it('T-10 — ask_nexus action from COMPOUND_STRESS carries the correct onInjectChat payload', () => {
     // Trigger COMPOUND_STRESS so the alert + its actions are present
-    (useGlobalSoul as any).mockReturnValue(makeGlobalSoul(7, 6, 6));
+    (useGlobalSoulStore as any).mockImplementation((selector: any) => selector(makeGlobalSoul(7, 6, 6)));
     const { result } = renderHook(() => useNexusSynthesis());
 
     const compound = result.current.alerts.find((a) => a.id === 'COMPOUND_STRESS');

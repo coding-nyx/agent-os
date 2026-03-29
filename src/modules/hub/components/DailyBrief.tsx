@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { TrendArrow, type TrendDirection } from '@/core/components/TrendArrow';
@@ -189,7 +189,7 @@ interface DailyBriefProps {
 }
 
 export function DailyBrief({ collapsed = false }: DailyBriefProps) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const { profile } = useAuth();
   const reducedMotion = useReducedMotion();
   const trends = useNsvTrends();

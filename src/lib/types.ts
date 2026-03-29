@@ -200,6 +200,8 @@ export interface MemorySearchOptions {
   moduleIds: string[];
   topK?: number;
   recencyWeight?: number;
+  /** Drop results scoring below this threshold before topK cutoff (0–1). Default: no threshold. */
+  minScore?: number;
 }
 
 export type UnifiedMemoryResultType = 'episodic' | 'semantic' | 'rag';

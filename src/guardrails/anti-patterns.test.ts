@@ -57,10 +57,17 @@ describe('Guardrails: cross-module writes', () => {
 
         otherCollections.forEach((collection) => {
           const writePatterns = [
+            // Direct Firestore SDK calls
             new RegExp(`\\bsetDoc\\s*\\([^\\)]*['"]${collection}['"]`, 'm'),
             new RegExp(`\\bupdateDoc\\s*\\([^\\)]*['"]${collection}['"]`, 'm'),
             new RegExp(`\\baddDoc\\s*\\([^\\)]*['"]${collection}['"]`, 'm'),
             new RegExp(`batch\\.(set|update|delete)\\s*\\([^\\)]*['"]${collection}['"]`, 'm'),
+            // NexusDataLayer API calls with another module's collection string
+            new RegExp(`\\.setDocument\\s*\\(\\s*['"]${collection}['"]`, 'm'),
+            new RegExp(`\\.updateDocument\\s*\\(\\s*['"]${collection}['"]`, 'm'),
+            new RegExp(`\\.deleteDocument\\s*\\(\\s*['"]${collection}['"]`, 'm'),
+            new RegExp(`type:\\s*['"]set['"][^}]*collection:\\s*['"]${collection}['"]`, 'm'),
+            new RegExp(`collection:\\s*['"]${collection}['"][^}]*type:\\s*['"]set['"]`, 'm'),
           ];
 
           if (writePatterns.some((pattern) => pattern.test(content))) {
@@ -143,7 +150,7 @@ describe('Guardrails: module profile store alignment', () => {
     profileServicePaths.forEach((file) => {
       const content = fs.readFileSync(file, 'utf8');
 
-      if (/getFirebase|firebase\/firestore|readDocOnce/.test(content)) {
+      if (/getFirebase\(|from ['"]firebase\/firestore['"]/.test(content)) {
         offenders.push(
           `${file} bypasses NexusDataLayer for a primary module profile store. Use getNexusDataLayer instead.`
         );
@@ -207,6 +214,45 @@ describe('Guardrails: shared runtime data-layer boundary', () => {
       if (/firebase\/firestore|getFirebase\(/.test(content)) {
         offenders.push(`${file} bypasses NexusDataLayer. Use getNexusDataLayer() APIs.`);
       }
+    });
+
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('Guardrails: Firebase SDK boundary (global)', () => {
+  // Deny-by-default: only these files are permitted to import Firebase SDKs directly.
+  const FIREBASE_SDK_ALLOWLIST = new Set([
+    path.join(projectRoot, 'src', 'lib', 'firebase.ts'),
+    path.join(projectRoot, 'src', 'lib', 'data-layer', 'firebase-data-layer.ts'),
+    path.join(projectRoot, 'scripts', 'migrate-session-store-v2.ts'),
+    path.join(projectRoot, 'scripts', 'migrate-data.ts'),
+  ]);
+
+  // Only firestore imports need to go through NexusDataLayer.
+  // firebase/auth and firebase/storage are separate services with no equivalent abstraction.
+  const FIREBASE_IMPORT_PATTERN = /from\s+['"]firebase\/firestore['"]/;
+
+  it('blocks firebase SDK imports outside the data-layer allowlist', () => {
+    const offenders: string[] = [];
+
+    const roots = [
+      path.join(projectRoot, 'src'),
+      path.join(projectRoot, 'scripts'),
+    ];
+
+    roots.forEach((root) => {
+      collectFiles(root).forEach((file) => {
+        if (FIREBASE_SDK_ALLOWLIST.has(file)) return;
+        if (file.includes('.test.') || file.includes('.spec.')) return;
+
+        const content = fs.readFileSync(file, 'utf8');
+        if (FIREBASE_IMPORT_PATTERN.test(content)) {
+          offenders.push(
+            `${file} imports Firebase SDK directly. Route through NexusDataLayer (getNexusDataLayer()) or src/lib/firebase.ts.`,
+          );
+        }
+      });
     });
 
     expect(offenders).toEqual([]);

@@ -34,6 +34,9 @@ interface NexusChatProps {
         ) => void;
         pendingRequest?: PendingRequestState | null;
         clearPendingRequest?: () => void;
+        pendingApprovals?: import('@/lib/hooks/use-module-ai').DeferredApproval[];
+        approveAction?: (executionId: string) => void;
+        dismissAction?: (executionId: string) => void;
     };
     agentName: string;
     themeColor: ModuleTheme | 'module';
@@ -54,7 +57,11 @@ interface NexusChatProps {
     aboveInput?: ReactNode;
 }
 
-export function NexusChat({ 
+// React.memo prevents rerenders when parent components (module pages) rerender
+// due to data updates but NexusChat's own props haven't changed. This is the
+// final safety net that protects the chat conversation flow from being disrupted
+// by data-layer writes during agent execution.
+export const NexusChat = React.memo(function NexusChat({ 
     ai, 
     agentName, 
     themeColor, 
@@ -77,7 +84,7 @@ export function NexusChat({
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
 
-    const { messages, setMessages, isProcessing, aiState, streamingText, error, quota, handleSendMessage, pendingRequest, clearPendingRequest } = ai;
+    const { messages, setMessages, isProcessing, aiState, streamingText, error, quota, handleSendMessage, pendingRequest, clearPendingRequest, pendingApprovals, approveAction, dismissAction } = ai;
 
     // Build a stable no-op setMessages if the caller doesn't provide one
     const noopSetMessages = useCallback((_msgs: Message[]) => { /* edit/retry unavailable */ }, []);
@@ -86,6 +93,12 @@ export function NexusChat({
     // Wrap handleSendMessage to drop the optional extra args so the hook signature (MessageContent) → void is satisfied
     const sendMessageForHook = useCallback(
       (content: MessageContent) => handleSendMessage(content, onActionParsed),
+      [handleSendMessage, onActionParsed],
+    );
+
+    // Stable callback for ChatInterface — avoids breaking React.memo on every render
+    const handleChatSend = useCallback(
+      (content: string) => handleSendMessage(content, onActionParsed),
       [handleSendMessage, onActionParsed],
     );
 
@@ -213,14 +226,20 @@ export function NexusChat({
     const visibleStreamingText = streamingText.trim();
     const hasVisibleStream = visibleStreamingText.length > 0;
 
-    const transientStreamMessage = (() => {
+    // RC-2 fix: memoize transientStreamMessage so its reference is stable when
+    // not streaming. Without this, every re-render of NexusChat (e.g. triggered
+    // by a profile subscription update) created a new object and array, causing
+    // ChatInterface's React.memo shallow comparison to fail and forcing a re-render
+    // mid-stream or after data writes — the "page reload" effect.
+    const transientStreamMessage = useMemo(() => {
         if (!hasVisibleStream) return null;
         return { role: 'assistant' as const, content: visibleStreamingText };
-    })();
+    }, [hasVisibleStream, visibleStreamingText]);
 
-    const renderedMessages = transientStreamMessage
-        ? [...messages, transientStreamMessage]
-        : messages;
+    const renderedMessages = useMemo(
+        () => (transientStreamMessage ? [...messages, transientStreamMessage] : messages),
+        [messages, transientStreamMessage],
+    );
 
     // Show the loading/thinking bubble if:
     // 1. AI is processing AND (
@@ -244,9 +263,33 @@ export function NexusChat({
         }
     }, [isGeneratingReminderProposal, proposalStatus, resetStatus]);
 
-    // Sync phase: AI has finished its entire stream (public + internal) but 
+    // Sync phase: AI has finished its entire stream (public + internal) but
     // background handlers (database writes, resonance synthesis) are still running.
     const isSyncing = isProcessing && !hasVisibleStream && !isActuallyThinking;
+
+    // RC-2 fix: stabilize callbacks passed to ChatInterface so its React.memo
+    // comparison doesn't fail when NexusChat re-renders due to parent updates
+    // (e.g. module profile subscription firing after an AI action writes data).
+    const handleQuotaExhausted = useCallback(() => setShowAuth(true), []);
+    const handleRecoverPendingRequest = useCallback(() => {
+      if (pendingRequest) {
+        const content = typeof pendingRequest.userMessage === 'string'
+          ? pendingRequest.userMessage
+          : pendingRequest.userMessage.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
+        clearPendingRequest?.();
+        handleSendMessage(content, onActionParsed);
+      }
+    }, [pendingRequest, clearPendingRequest, handleSendMessage, onActionParsed]);
+    const handleDismissPendingRequest = useCallback(() => clearPendingRequest?.(), [clearPendingRequest]);
+    const handleRetry = useCallback(() => {
+      const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+      if (lastUserMsg) {
+        const content = typeof lastUserMsg.content === 'string'
+          ? lastUserMsg.content
+          : lastUserMsg.content.filter(p => p.type === 'text').map(p => (p as any).text).join(' ');
+        handleSendMessage(content, onActionParsed);
+      }
+    }, [messages, handleSendMessage, onActionParsed]);
 
     return (
         <div className="flex-1 flex flex-col min-h-0 relative h-full">
@@ -263,7 +306,7 @@ export function NexusChat({
             )}
             <ChatInterface
                 messages={renderedMessages}
-                onSendMessage={(content) => handleSendMessage(content, onActionParsed)}
+                onSendMessage={handleChatSend}
                 onClearHistory={onClearHistory}
                 hideClearHistory={hideClearHistory}
                 isLoading={isActuallyThinking}
@@ -276,7 +319,7 @@ export function NexusChat({
                 error={error}
                 isGuestTrial={isGuest}
                 quota={quota ?? undefined}
-                onQuotaExhausted={() => setShowAuth(true)}
+                onQuotaExhausted={handleQuotaExhausted}
                 showInternalSignals={showInternalSignals}
                 renderCustomActions={renderCustomActions}
                 renderMessageActions={canRenderReminderActions ? reminderMessageActions : renderMessageActions}
@@ -287,31 +330,18 @@ export function NexusChat({
                 processingLabel={processingLabel}
                 enableSpeechToText={enableSpeechToText}
                 pendingRequest={pendingRequest}
-                onRecoverPendingRequest={() => {
-                  if (pendingRequest) {
-                    const content = typeof pendingRequest.userMessage === 'string'
-                      ? pendingRequest.userMessage
-                      : pendingRequest.userMessage.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
-                    clearPendingRequest?.();
-                    handleSendMessage(content, onActionParsed);
-                  }
-                }}
-                onDismissPendingRequest={() => clearPendingRequest?.()}
-                onRetry={() => {
-                    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-                    if (lastUserMsg) {
-                      const content = typeof lastUserMsg.content === 'string'
-                        ? lastUserMsg.content
-                        : lastUserMsg.content.filter(p => p.type === 'text').map(p => (p as any).text).join(' ');
-                      handleSendMessage(content, onActionParsed);
-                    }
-                }}
+                onRecoverPendingRequest={handleRecoverPendingRequest}
+                onDismissPendingRequest={handleDismissPendingRequest}
+                onRetry={handleRetry}
                 aboveInput={aboveInput}
                 onEditMessage={canEditRetry ? handleEditMessage : undefined}
                 onRetryMessage={canEditRetry ? retryUserMessage : undefined}
+                pendingApprovals={pendingApprovals}
+                onApproveAction={approveAction}
+                onDismissAction={dismissAction}
             />
 
             <UnifiedAuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} mode={authMode} />
         </div>
     );
-}
+});

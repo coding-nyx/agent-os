@@ -4,7 +4,7 @@ import { Shield, Zap, Lock, Mail, Key, ArrowRight, Loader2, X, UserPlus, Fingerp
 import * as Dialog from '@radix-ui/react-dialog';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulActions } from "@/lib/global-soul-context";
 import { useVault } from '@/lib/vault-context';
 import { NeuralButton } from './NeuralButton';
 import { NeuralInput } from './NeuralInput';
@@ -35,7 +35,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
   const logout = auth?.logout ?? noopAsync;
   const isGuest = auth?.isGuest ?? false;
   const refreshProfile = auth?.refreshProfile ?? noopAsync;
-  const { refreshGlobalSoul } = useGlobalSoul();
+  const { refreshGlobalSoul } = useGlobalSoulActions();
   const vault = useVault() as any;
   const unlockVault = vault?.unlockVault ?? noopAsync;
   const isUnlocked = vault?.isUnlocked ?? false;

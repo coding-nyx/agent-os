@@ -1,10 +1,10 @@
 import React from 'react';
 import { Zap, Heart, Shield } from 'lucide-react';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { motion } from 'framer-motion';
 
 export function AgnesTelemetryHeader() {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const emotional = globalSoul?.crossFunctionalState?.emotional;
 
   if (!emotional) return null;

@@ -114,12 +114,8 @@ export function registerScoutActions() {
 
         pushAssistantMessage?.(`${result.answer}\n\n**Supporting Findings (${result.supportingNodes.length}):**\n${nodeLines}${sourceLine}${webLine}`);
       } else {
-        // No local signal — automatically fall back to live web search instead of just recommending it.
-        pushAssistantMessage?.(`No local signal found for "${query}". Initiating live web search...`);
-        await ActionHub.execute('scout', 'web_search', {
-          ...context,
-          payload: { query },
-        });
+        // No local signal — surface the gap and let the AI decide what to propose next.
+        pushAssistantMessage?.(`No prior findings in the research library for "${query}".`);
       }
     },
 
@@ -910,6 +906,138 @@ export function registerScoutActions() {
         { crossSessionPatterns: recurringWords, source: 'scout' },
         { domain: 'C', priority: 'info' },
       );
+    },
+
+    /**
+     * Propose a web search or deep research session to the user without executing it.
+     * Emits a RESEARCH_PROPOSED Spine event and shows a confirmation prompt.
+     *
+     * Payload: { query: string; reason: string; mode: 'web' | 'deep' }
+     */
+    propose_research: async (context) => {
+      const { payload, pushAssistantMessage, emitSpineEvent } = context;
+      const query = typeof payload?.query === 'string' ? payload.query : '';
+      const reason = typeof payload?.reason === 'string' ? payload.reason : '';
+      const mode = payload?.mode === 'deep' ? 'deep' : 'web';
+      if (!query) return;
+
+      emitSpineEvent(
+        'RESEARCH_PROPOSED' as any,
+        { query, reason, mode },
+        { domain: 'C', priority: 'info' }
+      );
+
+      const label = mode === 'deep' ? 'Deep Research session' : 'web search';
+      pushAssistantMessage?.(
+        `💡 **Proposal:** ${reason}\n\nStart a ${label} for *"${query}"*? (Reply "yes" or click Accept above)`
+      );
+    },
+
+    /**
+     * Audit KB coverage for a topic before initiating web research.
+     * Surfaces what is already known, what gaps exist, and a working hypothesis.
+     *
+     * Payload: { topic: string }
+     */
+    analyze_knowledge_gaps: async (context) => {
+      const { userId, encryptionKey, payload, pushAssistantMessage } = context;
+      const topic = typeof payload?.topic === 'string' ? payload.topic : '';
+      if (!topic) return;
+
+      const nodes = await queryKnowledgeNodes(topic, { userId: userId ?? null, encryptionKey }, { limit: 10, threshold: 0.45 });
+
+      const openrouterKey = (typeof localStorage !== 'undefined' ? localStorage.getItem('VITE_OPENROUTER_API_KEY') : null)
+        || (import.meta.env.VITE_OPENROUTER_API_KEY as string);
+
+      const analysis = await generateJSONWithAgent({
+        prompt: `Research topic: "${topic}"
+KB has ${nodes.length} related findings:
+${nodes.map((n: any) => `- ${n.claim} (confidence: ${n.confidence.toFixed(2)}, status: ${n.status})`).join('\n') || '(none)'}
+
+Return JSON: {
+  "covered": ["aspect already addressed"],
+  "gaps": ["aspect not yet researched"],
+  "targetedQueries": ["specific search to fill each gap"],
+  "hypothesis": "working hypothesis based on existing evidence",
+  "sourceStrategy": "academic|news|technical|mixed",
+  "confidence": 0.0
+}`,
+        openrouterKey,
+        systemPrompt: 'You are a research gap analyst. Be specific, concise, and actionable. Return only valid JSON.',
+        temperature: 0.3,
+      });
+
+      if (!analysis) return;
+
+      pushAssistantMessage?.(
+        `**Gap Analysis for "${topic}"**\n\n` +
+        `**Already covered:** ${((analysis as any).covered || []).slice(0, 3).join(' · ') || 'Nothing yet'}\n` +
+        `**Gaps identified:** ${((analysis as any).gaps || []).slice(0, 3).join(' · ') || 'None found'}\n` +
+        `**Working hypothesis:** ${(analysis as any).hypothesis || 'Insufficient data for a hypothesis.'}`
+      );
+    },
+
+    /**
+     * Multi-variant web search: runs 3 query variants, deduplicates results by URL,
+     * and auto-indexes the top 3 into the KB as sources.
+     *
+     * Payload: { query: string }
+     */
+    expanded_web_search: async (context) => {
+      const { userId, encryptionKey, payload, pushAssistantMessage } = context;
+      const query = typeof payload?.query === 'string' ? payload.query : '';
+      if (!query) return;
+
+      const year = new Date().getFullYear();
+      const variants = [query, `${query} ${year}`, `${query} evidence research`];
+
+      pushAssistantMessage?.(`🔎 Expanded search across ${variants.length} query variants for "${query}"...`);
+
+      const { WebCrawlerService } = await import('@/lib/services/web-crawler-service');
+      const batchResults = await WebCrawlerService.searchBatch(variants, {
+        maxResults: 5,
+        includeImages: false,
+      });
+
+      const seen = new Set<string>();
+      const merged = batchResults.flatMap((r: any) => r.results).filter((r: any) => {
+        try {
+          const key = r.url.replace(/[?#].*$/, '');
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+
+      const formatted = (merged as any[]).slice(0, 8)
+        .map((r: any) => {
+          try {
+            const domain = new URL(r.url).hostname;
+            return `**${r.title}** (${domain})\n${r.content?.slice(0, 400) ?? ''}`;
+          } catch {
+            return `**${r.title}**\n${r.content?.slice(0, 400) ?? ''}`;
+          }
+        })
+        .join('\n\n---\n\n');
+
+      // Background auto-index top 3 into KB
+      if (userId && encryptionKey) {
+        const topResults = (merged as any[]).slice(0, 3).map((r: any) => ({
+          url: r.url,
+          title: r.title,
+          snippet: r.content?.slice(0, 300),
+          discoveredVia: 'search' as const,
+        }));
+        Promise.allSettled(
+          topResults.map((src: any) =>
+            addSource(src, { userId, encryptionKey })
+          )
+        ).catch(() => {});
+      }
+
+      pushAssistantMessage?.(`**Search Results (${merged.length} unique sources):**\n\n${formatted}`);
     },
   });
 }

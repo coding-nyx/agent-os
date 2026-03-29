@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useAI } from '@/llm-engine/ai-context';
 import type { MessageContent } from '@/lib/types';
 import { contentToString } from '@/core/components/chat/ChatBubble';
-import { getScoutSystemPrompt } from './personas';
+import { getMasterChatPrompt, getSessionChatPrompt } from './personas';
 import { ScoutDashboard } from './components/ScoutDashboard';
 import { UniversalUploadZone } from '@/core/components/forms/UniversalUploadZone';
 import {
@@ -82,8 +82,9 @@ interface ScoutViewProps {
 
 function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews, onActionParsed }: ScoutViewProps) {
   const { user } = useAuth();
-  const { globalSoul } = useGlobalSoul();
-  const agentAlias = globalSoul?.displayNames?.scout || 'Scout';
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
+  // Primitive selector — only re-renders when the display name string itself changes.
+  const agentAlias = useGlobalSoulStore(s => s.globalSoul?.displayNames?.scout || 'Scout');
   const { sendMessage, analyzeImage } = useAI();
   const setHideGlobalFAB = useUIStore((state) => state.setHideGlobalFAB);
 
@@ -108,6 +109,11 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
   const [docProposalParsed, setDocProposalParsed] = useState<DocumentParseResult | null>(null);
   const [docReviewOpen, setDocReviewOpen] = useState(false);
   const [isNewSessionDialogOpen, setIsNewSessionDialogOpen] = useState(false);
+  const [researchProposal, setResearchProposal] = useState<{
+    query: string;
+    reason: string;
+    mode: 'web' | 'deep';
+  } | null>(null);
 
   useEffect(() => {
     const handleResize = () => setViewportWidth(window.innerWidth);
@@ -257,6 +263,17 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     [sessions, activeSessionId],
   );
 
+  const sessionContext = useMemo(() => {
+    if (!activeSession || knowledgeNodes.length === 0) return '';
+    const sessionNodes = knowledgeNodes
+      .filter((n: any) => n.parentSessionId === activeSession.id || !n.parentSessionId)
+      .slice(0, 15);
+    if (sessionNodes.length === 0) return 'No prior findings in this session yet.';
+    return sessionNodes
+      .map((n: any) => `- ${n.claim} (confidence: ${n.confidence.toFixed(2)}, status: ${n.status})`)
+      .join('\n');
+  }, [activeSession, knowledgeNodes]);
+
   useEffect(() => {
     if (activeSessionId && !activeSession) {
       setActiveSessionId(null);
@@ -373,17 +390,27 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       }
     });
 
+    const unsubProposal = Spine.subscribe('RESEARCH_PROPOSED' as any, (event) => {
+      const query = typeof event.data?.query === 'string' ? event.data.query : '';
+      const reason = typeof event.data?.reason === 'string' ? event.data.reason : '';
+      const mode = event.data?.mode === 'deep' ? 'deep' : 'web';
+      if (query) setResearchProposal({ query, reason, mode });
+    });
+
     return () => {
       unsubDeepResearch();
       unsubExport();
       unsubDigest();
       unsubSession();
+      unsubProposal();
     };
   }, [openDeepResearch, openExportDialog, user?.uid, encryptionKey]);
 
   const ai = useModuleAI({
     moduleId: 'scout',
-    systemPrompt: getScoutSystemPrompt(activeSession?.topic, profile?.researchFocus),
+    systemPrompt: activeSession
+      ? getSessionChatPrompt(activeSession.topic, sessionContext, profile?.researchFocus)
+      : getMasterChatPrompt(profile?.researchFocus),
     encryptionKey,
     sessionId: activeSessionId || 'default',
     persistencePolicy: 'scout-research',
@@ -676,10 +703,60 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     />
   ) : null;
 
+  const handleProposalAccept = useCallback(() => {
+    if (!researchProposal) return;
+    const { query, mode } = researchProposal;
+    setResearchProposal(null);
+    if (mode === 'deep') {
+      openDeepResearch(query);
+    } else {
+      ai.handleSendMessage(`Search the web for: "${query}"`, onActionParsed);
+    }
+  }, [researchProposal, openDeepResearch, ai, onActionParsed]);
+
   const renderResearchView = () => {
+    const proposalCard = researchProposal ? (
+      <div className="mx-auto mb-3 w-full max-w-2xl rounded-2xl border border-lime-500/20 bg-lime-500/[0.06] px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-lime-400/70">Research Proposal</p>
+            <p className="mt-0.5 text-sm text-white/80">{researchProposal.reason}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setResearchProposal(null)}
+            className="mt-0.5 shrink-0 text-white/30 hover:text-white/60 transition-colors"
+            aria-label="Dismiss proposal"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <NeuralButton
+            type="button"
+            size="sm"
+            themeColor="lime"
+            onClick={handleProposalAccept}
+          >
+            {researchProposal.mode === 'deep' ? 'Start Deep Research' : 'Search Web'}
+          </NeuralButton>
+          <NeuralButton
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setResearchProposal(null)}
+          >
+            Dismiss
+          </NeuralButton>
+        </div>
+      </div>
+    ) : null;
+
     if (activeSession) {
       return (
-        <ActiveResearchWorkspace
+        <div className="flex min-h-0 flex-1 flex-col">
+          {proposalCard && <div className="px-4 pt-3">{proposalCard}</div>}
+          <ActiveResearchWorkspace
           session={activeSession}
           encryptionKey={encryptionKey}
           onStartDeepResearch={(query) => {
@@ -701,11 +778,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           artifactsPanel={artifactsPanel}
           onToggleArtifacts={handleToggleArtifacts}
         />
+        </div>
       );
     }
 
     return (
       <section className="surface-foundation-raised flex min-h-[24rem] flex-col items-center justify-center px-6 py-12 text-center sm:px-10">
+        {proposalCard && <div className="mb-6 w-full max-w-xl px-4">{proposalCard}</div>}
         <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/[0.09] bg-white/[0.045] text-white/35 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
           <Search className="h-8 w-8" aria-hidden="true" />
         </div>

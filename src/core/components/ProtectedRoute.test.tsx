@@ -23,7 +23,7 @@ vi.mock('@/lib/vault-context', () => ({
 }));
 
 vi.mock('@/lib/global-soul-context', () => ({
-  useGlobalSoul: () => mockSoul,
+  useGlobalSoulStore: (selector: any) => selector(mockSoul),
 }));
 
 vi.mock('./BootLoader', () => ({

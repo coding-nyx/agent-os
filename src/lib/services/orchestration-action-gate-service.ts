@@ -82,7 +82,7 @@ const MUTATING_PREFIXES = [
   'issue_',
   'schedule_',
 ];
-const HIGH_RISK_KEYWORDS = ['delete', 'discard', 'archive', 'clearance', 'transaction', 'budget', 'goal', 'diagnosis'];
+const HIGH_RISK_KEYWORDS = ['delete', 'discard', 'archive', 'clearance', 'transaction', 'budget', 'diagnosis'];
 
 function isSupportedSource(moduleId: string): moduleId is SupportedSource {
   return moduleId === 'nexus' || Object.prototype.hasOwnProperty.call(MODULE_MANIFEST, moduleId);

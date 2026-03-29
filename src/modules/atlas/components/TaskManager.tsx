@@ -3,8 +3,7 @@
  * Comprehensive task CRUD with dependencies, energy cost, and AI-suggested scheduling
  */
 
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -131,14 +130,6 @@ export function TaskManager({
           return 0;
       }
     },
-  });
-
-  const taskListRef = useRef<HTMLDivElement>(null);
-  const taskVirtualizer = useVirtualizer({
-    count: filteredTasks.length,
-    getScrollElement: () => taskListRef.current,
-    estimateSize: () => 108,
-    overscan: 5,
   });
 
   // ── Task statistics ──
@@ -377,26 +368,20 @@ export function TaskManager({
             size="lg"
           />
         ) : (
-          <div ref={taskListRef} className="overflow-y-auto max-h-[600px]">
-            <div style={{ height: taskVirtualizer.getTotalSize(), position: 'relative' }}>
-              {taskVirtualizer.getVirtualItems().map(vitem => (
-                <div
-                  key={vitem.key}
-                  style={{ position: 'absolute', top: vitem.start, left: 0, right: 0, paddingBottom: 8 }}
-                >
-                  <TaskCard
-                    task={filteredTasks[vitem.index]}
-                    onComplete={onCompleteTask}
-                    onUncomplete={onUncompleteTask}
-                    isExpanded={expandedTaskId === filteredTasks[vitem.index].id}
-                    onToggleExpand={() => handleToggleExpand(filteredTasks[vitem.index].id)}
-                    allTasks={tasks}
-                    onEdit={(currentTask) => handleOpenForm(currentTask)}
-                    onDelete={(currentTask) => promptDelete(currentTask)}
-                  />
-                </div>
-              ))}
-            </div>
+          <div className="overflow-y-auto max-h-[600px] space-y-2 pr-0.5">
+            {filteredTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onComplete={onCompleteTask}
+                onUncomplete={onUncompleteTask}
+                isExpanded={expandedTaskId === task.id}
+                onToggleExpand={() => handleToggleExpand(task.id)}
+                allTasks={tasks}
+                onEdit={(currentTask) => handleOpenForm(currentTask)}
+                onDelete={(currentTask) => promptDelete(currentTask)}
+              />
+            ))}
           </div>
         )}
       </div>

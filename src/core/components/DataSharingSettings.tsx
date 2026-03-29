@@ -4,7 +4,7 @@ import { Shield, Lock, AlertTriangle, Info, ChevronDown, ChevronRight } from 'lu
 import { cn } from '@/lib/utils';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import { NSV_OWNERSHIP, type NSVMetricPath } from '@/lib/services/nsv-ownership';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { useAuth } from '@/lib/auth-context';
@@ -331,7 +331,7 @@ function DataCategoryCard({ category, moduleNames, onChange }: DataCategoryCardP
 // ---------------------------------------------------------------------------
 
 export function DataSharingSettings() {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const { user, profile } = useAuth();
   const moduleNames = globalSoul?.displayNames ?? {};
 

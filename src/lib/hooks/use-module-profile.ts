@@ -43,19 +43,12 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
   }, [moduleId]);
 
   // Listen for external sync events (e.g. from useModuleAI actions).
-  // When a live Firestore subscription is in place we do NOT increment refreshNonce
-  // (that would destroy and recreate the subscription, causing a stale-profile window).
-  // Instead we issue a direct re-read as a safety net — the snapshot listener is the
-  // primary update path, but this catches any transient decryption or delivery failure.
+  // When a live Firestore subscription is in place, the snapshot listener is the
+  // primary and only update path — skip the redundant re-read to avoid double-rerender.
   useSpineEvent('MODULE_PROFILE_UPDATED', useCallback((event) => {
     if (event.data?.moduleId !== moduleId) return;
     if (hasActiveSubscriptionRef.current) {
-      const uid = userUidRef.current ?? '';
-      if (!uid) return;
-      refreshProfileRef.current({ userId: uid, encryptionKey: encryptionKeyRef.current })
-        .then(p => setProfile(p))
-        .catch(() => {});
-      return;
+      return; // subscription already handles this — no redundant read needed
     }
     setRefreshNonce(n => n + 1);
   }, [moduleId]));
@@ -103,6 +96,9 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
         hasActiveSubscriptionRef.current = true;
         const unsub = subscribeProfileRef.current({ userId: user.uid, encryptionKey: key }, (nextProfile) => {
           if (!mounted) return;
+          // React 18 automatic batching handles these synchronous updates in one
+          // render pass. Do NOT wrap in startTransition — that defers the render
+          // into a separate pass, causing visible layout shifts mid-agent-flow.
           setProfile(nextProfile);
           setIsOnboarding(resolveOnboardingGate(nextProfile));
           setIsLoading(false);

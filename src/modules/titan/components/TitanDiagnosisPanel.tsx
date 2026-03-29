@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useVault } from '@/lib/vault-context';
 import { useDiagnosis } from '@/core/diagnosis/use-diagnosis';
 import { DiagnosisToolbar } from '@/core/diagnosis/components/DiagnosisToolbar';
@@ -17,7 +17,7 @@ interface TitanDiagnosisPanelProps {
 }
 
 export function TitanDiagnosisPanel({ encryptionKey, profile }: TitanDiagnosisPanelProps) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const { isUnlocked, unlockVault, isHandshaking } = useVault();
   const agentAlias = globalSoul?.displayNames?.titan || 'Titan';
 

@@ -10,7 +10,8 @@ async function tavilySearch(
   tavilyKey: string,
   query: string,
   maxResults: number,
-  includeImages: boolean = true
+  includeImages: boolean = true,
+  includeRawContent: boolean = false,
 ): Promise<{ query: string; results: unknown[]; images?: string[]; answer?: string }> {
   const response = await fetch("https://api.tavily.com/search", {
     method: "POST",
@@ -21,7 +22,7 @@ async function tavilySearch(
       max_results: maxResults,
       include_answer: true,
       include_images: includeImages,
-      include_raw_content: false,
+      include_raw_content: !!includeRawContent,
     }),
   });
 
@@ -52,6 +53,7 @@ export const webCrawler = onRequest({ cors: true, secrets: [tavilySecret] }, asy
   }
 
   const includeImages = req.body?.includeImages !== false;
+  const includeRawContent = !!req.body?.includeRawContent;
 
   // ── Batch path: { queries: string[], maxResults?: number } ───────────────
   const queriesRaw = req.body?.queries;
@@ -68,7 +70,7 @@ export const webCrawler = onRequest({ cors: true, secrets: [tavilySecret] }, asy
 
     try {
       const results = await Promise.allSettled(
-        queries.map((q) => tavilySearch(tavilyKey, q, maxResults, includeImages)),
+        queries.map((q) => tavilySearch(tavilyKey, q, maxResults, includeImages, includeRawContent)),
       );
       res.status(200).json({
         batch: results.map((r) =>
@@ -94,7 +96,7 @@ export const webCrawler = onRequest({ cors: true, secrets: [tavilySecret] }, asy
   }
 
   try {
-    const result = await tavilySearch(tavilyKey, query, maxResults, includeImages);
+    const result = await tavilySearch(tavilyKey, query, maxResults, includeImages, includeRawContent);
     res.status(200).json(result);
   } catch (error) {
     logger.error("Web crawler search failure", error);

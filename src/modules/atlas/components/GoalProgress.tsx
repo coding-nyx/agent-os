@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { EmptyState } from '@/core/components/EmptyState';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+// NeuralButton is still used for milestone checkboxes below
 import type { AtlasGoal } from '../services/atlas-profile-service';
 
 // ---------------------------------------------------------------------------
@@ -74,7 +75,7 @@ export function GoalProgress({
   }
 
   return (
-    <section className="space-y-3" aria-label="Goal progress">
+    <section className="space-y-2" aria-label="Goal progress">
       {goals.map((goal, index) => {
         const isExpanded = expandedGoalId === goal.id;
         const statusConfig =
@@ -100,115 +101,94 @@ export function GoalProgress({
                 ? { duration: 0 }
                 : { duration: 0.3, delay: index * 0.05 }
             }
-            className="rounded-xl border border-white/[0.09] bg-gradient-to-r from-white/[0.02] to-transparent hover:from-white/[0.04] hover:border-white/[0.09] transition-all overflow-hidden"
+            className="rounded-xl border border-white/[0.09] bg-white/[0.02] hover:bg-white/[0.035] transition-colors overflow-hidden"
           >
             {/* ── Goal header (click to expand) ── */}
-            <NeuralButton
+            <button
+              type="button"
               onClick={() => toggleExpand(goal.id)}
               aria-expanded={isExpanded}
               aria-label={`${goal.title}, ${goal.progressPercent}% progress, ${statusConfig.label}`}
-              variant="ghost"
-              className={cn(
-                'w-full p-4 text-left transition-colors !rounded-none !h-auto',
-                'hover:bg-white/[0.045]',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--module-accent-ring)]'
-              )}
+              className="w-full text-left px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--module-accent-ring)]"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0 space-y-2">
-                  {/* Title + status badge */}
-                  <div className="flex items-start flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                    <h3 className="text-sm font-bold text-white/80 break-words leading-tight">
-                      {goal.title}
-                    </h3>
-                    <span
-                      className={cn(
-                        'inline-flex items-center px-2 py-0.5 rounded-md border text-[11px] font-bold uppercase tracking-wider shrink-0 mt-0.5 sm:mt-0',
-                        statusConfig.className
-                      )}
-                    >
-                      {statusConfig.label}
-                    </span>
-                  </div>
-
-                  {/* Deadline indicator */}
-                  {goal.deadline && (
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1 text-[11px] font-medium',
-                        deadlineOverdue
-                          ? 'text-rose-400'
-                          : deadlineSoon
-                            ? 'text-amber-400'
-                            : 'text-white/30'
-                      )}
-                    >
-                      <Clock className="w-3 h-3" aria-hidden="true" />
-                      {deadlineOverdue ? 'Overdue: ' : ''}
-                      {new Date(goal.deadline).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </span>
+              {/* Row 1: title + badge + chevron */}
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="flex-1 min-w-0 text-sm font-semibold text-white/80 truncate leading-tight">
+                  {goal.title}
+                </h3>
+                <span
+                  className={cn(
+                    'inline-flex items-center px-1.5 py-0.5 rounded border text-[11px] font-bold uppercase tracking-wide shrink-0',
+                    statusConfig.className
                   )}
-
-                  {/* Progress bar */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      {totalMilestones > 0 && (
-                        <span className="text-[11px] text-white/30 tabular-nums">
-                          {completedMilestones}/{totalMilestones} milestones
-                        </span>
-                      )}
-                      <span className="text-[11px] font-bold text-white/70 tabular-nums ml-auto">
-                        {goal.progressPercent}%
-                      </span>
-                    </div>
-                    <div
-                      className="h-1.5 w-full bg-white/[0.045] rounded-full overflow-hidden"
-                      role="progressbar"
-                      aria-valuenow={goal.progressPercent}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label={`Goal progress: ${goal.progressPercent}%`}
-                    >
-                      <motion.div
-                        className="h-full rounded-full bg-white/40"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${goal.progressPercent}%` }}
-                        transition={
-                          reducedMotion
-                            ? { duration: 0 }
-                            : {
-                                duration: 0.6,
-                                ease: [0.22, 1, 0.36, 1],
-                              }
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  {/* Associated task count badge */}
-                  {goal.associatedTaskIds.length > 0 && (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-white/25">
-                      <ListTodo className="w-3 h-3" aria-hidden="true" />
-                      {goal.associatedTaskIds.length} task
-                      {goal.associatedTaskIds.length !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-
-                {/* Expand/collapse chevron */}
+                >
+                  {statusConfig.label}
+                </span>
                 <ChevronDown
                   className={cn(
-                    'w-4 h-4 text-white/20 shrink-0 transition-transform mt-1',
+                    'w-3.5 h-3.5 text-white/25 shrink-0 transition-transform',
                     isExpanded && 'rotate-180'
                   )}
                   aria-hidden="true"
                 />
               </div>
-            </NeuralButton>
+
+              {/* Row 2: deadline (if any) */}
+              {goal.deadline && (
+                <div className="mt-1 flex items-center gap-1">
+                  <Clock className="w-3 h-3 shrink-0" aria-hidden="true"
+                    style={{ color: deadlineOverdue ? 'rgb(251 113 133)' : deadlineSoon ? 'rgb(251 191 36)' : 'rgba(255,255,255,0.25)' }}
+                  />
+                  <span
+                    className={cn(
+                      'text-[11px] font-medium',
+                      deadlineOverdue ? 'text-rose-400' : deadlineSoon ? 'text-amber-400' : 'text-white/30'
+                    )}
+                  >
+                    {deadlineOverdue ? 'Overdue · ' : ''}
+                    {new Date(goal.deadline).toLocaleDateString('en-US', {
+                      month: 'short', day: 'numeric', year: 'numeric',
+                    })}
+                  </span>
+                </div>
+              )}
+
+              {/* Row 3: milestones + progress bar + % */}
+              <div className="mt-2 flex items-center gap-2">
+                {totalMilestones > 0 && (
+                  <span className="text-[11px] text-white/30 tabular-nums shrink-0">
+                    {completedMilestones}/{totalMilestones} milestones
+                  </span>
+                )}
+                <div
+                  className="flex-1 h-1 bg-white/[0.07] rounded-full overflow-hidden"
+                  role="progressbar"
+                  aria-valuenow={goal.progressPercent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <motion.div
+                    className="h-full rounded-full bg-white/35"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${goal.progressPercent}%` }}
+                    transition={reducedMotion ? { duration: 0 } : { duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                </div>
+                <span className="text-[11px] font-bold text-white/60 tabular-nums shrink-0 w-8 text-right">
+                  {goal.progressPercent}%
+                </span>
+              </div>
+
+              {/* Row 4: task count (if any) */}
+              {goal.associatedTaskIds.length > 0 && (
+                <div className="mt-1 flex items-center gap-1">
+                  <ListTodo className="w-3 h-3 text-white/20" aria-hidden="true" />
+                  <span className="text-[11px] text-white/25">
+                    {goal.associatedTaskIds.length} task{goal.associatedTaskIds.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+            </button>
 
             {/* ── Expanded content: milestones, description, notes ── */}
             <AnimatePresence>

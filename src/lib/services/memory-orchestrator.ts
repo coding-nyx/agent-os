@@ -3,6 +3,24 @@ import { SemanticMemoryService } from './semantic-memory-service';
 import { ModuleMemoryEnvelope, SemanticFact, Message, UnifiedMemoryResult } from '../types';
 import { RagService } from './rag/rag-service';
 
+/**
+ * Removes near-duplicate results where two entries share >60% word overlap.
+ * Results must be pre-sorted by score descending — the higher-scored entry wins.
+ */
+function deduplicateMemoryResults(results: UnifiedMemoryResult[]): UnifiedMemoryResult[] {
+  const seenTexts: string[] = [];
+  return results.filter((result) => {
+    const words = new Set(result.text.toLowerCase().split(/\s+/).filter(Boolean));
+    const isDuplicate = seenTexts.some((prev) => {
+      const prevWords = new Set(prev.toLowerCase().split(/\s+/).filter(Boolean));
+      const overlap = [...words].filter((w) => prevWords.has(w)).length;
+      return overlap / Math.max(words.size, prevWords.size) > 0.6;
+    });
+    if (!isDuplicate) seenTexts.push(result.text);
+    return !isDuplicate;
+  });
+}
+
 export class MemoryOrchestrator {
   static summarizeUnifiedResults(results: UnifiedMemoryResult[]): {
     recalledSessionsSummary: string;
@@ -48,26 +66,32 @@ export class MemoryOrchestrator {
             moduleIds: relevantModuleIds,
             topK: 5,
             recencyWeight: 0.3,
+            minScore: 0.35,
           })
         : EpisodicMemoryService.retrieveRelevantUnified(userId, memoryQuery, {
             moduleIds: relevantModuleIds,
             topK: 5,
             recencyWeight: 0.3,
+            minScore: 0.35,
           });
 
     const semanticPromise = semanticReady
       ? Promise.resolve(SemanticMemoryService.getFactsUnifiedFromFacts(cachedFacts, relevantModuleIds))
       : SemanticMemoryService.getFactsUnified(userId, relevantModuleIds);
 
-    const [sessions, facts] = await Promise.all([episodicPromise, semanticPromise]);
-    const ragResult = await RagService.retrieve({
-      moduleId,
-      query: memoryQuery,
-      encryptionKey: options.encryptionKey,
-      requiresVault: options.requiresVault,
-    });
+    const [sessions, facts, ragResult] = await Promise.all([
+      episodicPromise,
+      semanticPromise,
+      RagService.retrieve({
+        moduleId,
+        query: memoryQuery,
+        encryptionKey: options.encryptionKey,
+        requiresVault: options.requiresVault,
+      }),
+    ]);
 
-    const results = [...sessions, ...facts.slice(0, 5), ...ragResult.facts].sort((left, right) => right.score - left.score);
+    const merged = [...sessions, ...facts.slice(0, 5), ...ragResult.facts].sort((left, right) => right.score - left.score);
+    const results = deduplicateMemoryResults(merged);
     const summaries = this.summarizeUnifiedResults(results);
 
     return {

@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulActions } from '@/lib/global-soul-context';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { NeuralStateVectorPatch, SpineEventPayload } from '@/lib/types';
 import type { LedgerIntakeProfile } from '../services/ledger-intake-service';
@@ -80,7 +80,7 @@ function buildFinancialStreakEvent(profile: LedgerIntakeProfile): SpineEventPayl
 export function useLedgerCrossVerify(
   profile: LedgerIntakeProfile | null,
 ): LedgerCrossVerifyResult {
-  const { updateCrossFunctionalState } = useGlobalSoul();
+  const { updateCrossFunctionalState } = useGlobalSoulActions();
 
   const [coherenceReport, setCoherenceReport] = useState<CoherenceReport | null>(null);
   const [nsvPatch, setNsvPatch] = useState<NeuralStateVectorPatch | null>(null);

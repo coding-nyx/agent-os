@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { BootLoader } from './BootLoader';
 
 interface ProtectedRouteProps {
@@ -13,7 +13,7 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requireOnboarding = true }: ProtectedRouteProps) {
   const { isAuthenticated, isGuest, profile, loading: authLoading } = useAuth();
   const { isLoading: vaultLoading, hasVault, isUnlocked, isHandshaking } = useVault();
-  const { isLoading: soulLoading } = useGlobalSoul();
+  const soulLoading = useGlobalSoulStore(s => s.isLoading);
   
   const navigate = useNavigate();
   const location = useLocation();

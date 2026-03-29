@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulActions } from '@/lib/global-soul-context';
 import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useAI } from '@/llm-engine/ai-context';
@@ -65,7 +65,7 @@ export function NexusOverlay() {
 
 function NexusOverlayContent() {
   const { user, profile, isGuest } = useAuth();
-  const { refreshGlobalSoul } = useGlobalSoul();
+  const { refreshGlobalSoul } = useGlobalSoulActions();
   const navigate = useNavigate();
   const { sendMessage, analyzeImage } = useAI();
   // Resolve active thread id early so handleUploadDocuments can capture the
@@ -237,9 +237,19 @@ function NexusOverlayContent() {
     docUploadBusy,
     docStage?.label,
     isConflictBlocking,
-    lastTurnRuntime,
+    // RC-3 fix: lastTurnRuntime removed — it is already a direct dep of
+    // masterThreadSnapshot, so including it here caused a double recalculation
+    // (snapshotNow change + lastTurnRuntime change) for every turn completion.
     mentionedParticipantsKey,
   ]);
+
+  // RC-3 fix: keep streamingText in a ref so the snapshot useMemo can read the
+  // latest value without listing it as a dep. ai.streamingText updates every
+  // ~16 ms during streaming; having it as a dep caused masterThreadSnapshot to
+  // recalculate at 60 fps, which drove applyThreadSnapshot store writes at the
+  // same rate and triggered re-renders across all OrchestrationStore subscribers.
+  const streamingTextRef = useRef(ai.streamingText);
+  streamingTextRef.current = ai.streamingText;
 
   const masterThreadSnapshot = useMemo(() => {
     return MasterThreadService.createNexusShellSnapshot({
@@ -249,7 +259,9 @@ function NexusOverlayContent() {
       seedMessages: persistedThreadMessages,
       seedTurns: persistedThreadTurns,
       liveChatMessages: ai.messages,
-      liveStreamingAssistantText: ai.streamingText,
+      // Pass via ref value so the snapshot reflects the current streaming text
+      // at calculation time without triggering recalculation on every chunk.
+      liveStreamingAssistantText: streamingTextRef.current,
       liveChatAssistantSource: 'nexus',
       pendingTargets,
       mentionedParticipants: ai.lastParsedCommand?.mentionedModuleIds ?? [],
@@ -267,7 +279,8 @@ function NexusOverlayContent() {
       isConflictBlocking,
       lastTurnRuntime,
     });
-  }, [currentThreadId, persistedThreadParticipants, persistedThreadMessages, persistedThreadTurns, ai.messages, ai.streamingText, ai.lastParsedCommand?.mentionedModuleIds, pendingTargets, routingSuggestion, routineProposals.activeProposal, planningSuggestion, docUploadBusy, docStage?.label, isConflictBlocking, lastTurnRuntime, snapshotNow]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentThreadId, persistedThreadParticipants, persistedThreadMessages, persistedThreadTurns, ai.messages, ai.lastParsedCommand?.mentionedModuleIds, pendingTargets, routingSuggestion, routineProposals.activeProposal, planningSuggestion, docUploadBusy, docStage?.label, isConflictBlocking, lastTurnRuntime, snapshotNow]);
 
   useEffect(() => {
     applyThreadSnapshot(masterThreadSnapshot.thread.threadId, {

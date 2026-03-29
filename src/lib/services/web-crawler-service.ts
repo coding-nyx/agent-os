@@ -84,10 +84,10 @@ async function fetchWithTimeout(
 // Context Compaction — aggressively truncate content to protect LLM context
 // ---------------------------------------------------------------------------
 
-function compactResults(results: WebCrawlerResult[]): WebCrawlerResult[] {
+function compactResults(results: WebCrawlerResult[], maxLength = 1_000): WebCrawlerResult[] {
   return results.map(r => ({
     ...r,
-    content: r.content ? r.content.slice(0, 1000) : undefined // Truncate to 1000 chars
+    content: r.content ? r.content.slice(0, maxLength) : undefined,
   }));
 }
 
@@ -99,12 +99,13 @@ async function searchViaCloudFunction(
   url: string,
   query: string,
   maxResults: number,
-  includeImages: boolean
+  includeImages: boolean,
+  includeRawContent?: boolean,
 ): Promise<WebCrawlerResponse> {
   const response = await fetchWithTimeout(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, maxResults, includeImages }),
+    body: JSON.stringify({ query, maxResults, includeImages, includeRawContent }),
   });
 
   if (!response.ok) {
@@ -117,7 +118,7 @@ async function searchViaCloudFunction(
   const data = await response.json();
   return {
     ...data,
-    results: compactResults(data.results || [])
+    results: compactResults(data.results || [], includeRawContent ? 3_000 : 1_000),
   };
 }
 
@@ -125,13 +126,14 @@ async function searchViaProxy(
   proxyBaseUrl: string,
   query: string,
   maxResults: number,
-  includeImages: boolean
+  includeImages: boolean,
+  includeRawContent?: boolean,
 ): Promise<WebCrawlerResponse> {
   const url = `${proxyBaseUrl}/search`;
   const response = await fetchWithTimeout(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, maxResults, includeImages }),
+    body: JSON.stringify({ query, maxResults, includeImages, includeRawContent }),
   });
 
   if (!response.ok) {
@@ -144,7 +146,7 @@ async function searchViaProxy(
   const data = await response.json();
   return {
     ...data,
-    results: compactResults(data.results || [])
+    results: compactResults(data.results || [], includeRawContent ? 3_000 : 1_000),
   };
 }
 
@@ -152,7 +154,8 @@ async function searchViaTavily(
   apiKey: string,
   query: string,
   maxResults: number,
-  includeImages: boolean
+  includeImages: boolean,
+  includeRawContent?: boolean,
 ): Promise<WebCrawlerResponse> {
   const response = await fetchWithTimeout('https://api.tavily.com/search', {
     method: 'POST',
@@ -163,7 +166,7 @@ async function searchViaTavily(
       max_results: maxResults,
       include_answer: true,
       include_images: includeImages,
-      include_raw_content: false,
+      include_raw_content: includeRawContent ?? false,
     }),
   });
 
@@ -178,14 +181,17 @@ async function searchViaTavily(
 
   return {
     query,
-    results: compactResults(Array.isArray(data.results)
-      ? data.results.map((r: any) => ({
-          title: r.title ?? '',
-          url: r.url ?? '',
-          content: r.content,
-          score: r.score,
-        }))
-      : []),
+    results: compactResults(
+      Array.isArray(data.results)
+        ? data.results.map((r: any) => ({
+            title: r.title ?? '',
+            url: r.url ?? '',
+            content: r.content,
+            score: r.score,
+          }))
+        : [],
+      includeRawContent ? 3_000 : 1_000,
+    ),
     images: data.images,
     answer: data.answer ?? undefined,
   };
@@ -198,11 +204,12 @@ async function searchViaTavily(
 export const WebCrawlerService = {
   async search(
     query: string,
-    options?: { maxResults?: number; includeImages?: boolean },
+    options?: { maxResults?: number; includeImages?: boolean; deepContent?: boolean },
   ): Promise<WebCrawlerResponse> {
     const backend = resolveBackend();
     const maxResults = options?.maxResults ?? 5;
     const includeImages = options?.includeImages !== false;
+    const includeRawContent = options?.deepContent === true;
 
     if (!backend) {
       throw new Error('No Web Crawler backend configured.');
@@ -211,11 +218,11 @@ export const WebCrawlerService = {
     const attempt = async () => {
       switch (backend.kind) {
         case 'cloud-function':
-          return searchViaCloudFunction(backend.url, query, maxResults, includeImages);
+          return searchViaCloudFunction(backend.url, query, maxResults, includeImages, includeRawContent);
         case 'proxy':
-          return searchViaProxy(backend.url, query, maxResults, includeImages);
+          return searchViaProxy(backend.url, query, maxResults, includeImages, includeRawContent);
         case 'tavily-direct':
-          return searchViaTavily(backend.apiKey, query, maxResults, includeImages);
+          return searchViaTavily(backend.apiKey, query, maxResults, includeImages, includeRawContent);
       }
     };
 
@@ -238,13 +245,15 @@ export const WebCrawlerService = {
 
   async searchBatch(
     queries: string[],
-    options?: { maxResults?: number; includeImages?: boolean; signal?: AbortSignal },
+    options?: { maxResults?: number; includeImages?: boolean; signal?: AbortSignal; deepContent?: boolean },
   ): Promise<WebCrawlerResponse[]> {
     if (queries.length === 0) return [];
 
     const backend = resolveBackend();
     const maxResults = options?.maxResults ?? 5;
     const includeImages = options?.includeImages !== false;
+    const includeRawContent = options?.deepContent === true;
+    const maxLength = includeRawContent ? 3_000 : 1_000;
 
     if (!backend) {
       throw new Error('No Web Crawler backend configured for batch search.');
@@ -256,7 +265,7 @@ export const WebCrawlerService = {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ queries, maxResults, includeImages }),
+          body: JSON.stringify({ queries, maxResults, includeImages, includeRawContent }),
           signal: options?.signal,
         },
         60_000,
@@ -281,9 +290,9 @@ export const WebCrawlerService = {
         }
         return {
           query: item.query ?? queries[i],
-          results: compactResults(item.results || []),
+          results: compactResults(item.results || [], maxLength),
           images: item.images,
-          answer: item.answer
+          answer: item.answer,
         };
       });
     }
@@ -293,7 +302,7 @@ export const WebCrawlerService = {
       if (options?.signal?.aborted) {
         throw new DOMException('Batch search aborted', 'AbortError');
       }
-      results.push(await WebCrawlerService.search(query, { maxResults, includeImages }));
+      results.push(await WebCrawlerService.search(query, { maxResults, includeImages, deepContent: options?.deepContent }));
     }
     return results;
   },

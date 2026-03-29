@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import { getMetricOwner, type NSVMetricPath } from '@/lib/services/nsv-ownership';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 
 // ---------------------------------------------------------------------------
 // InsightSourceBadge
@@ -47,7 +47,7 @@ export function InsightSourceBadge({
   onClick,
   className
 }: InsightSourceBadgeProps) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
 
   const moduleId: ModuleId = sourceModuleId
     ?? (metricPath ? getMetricOwner(metricPath) : 'nexus');

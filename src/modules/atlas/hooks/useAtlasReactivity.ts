@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { BlueprintEngine } from '../services/blueprint-engine';
 import { AtlasProfile, AtlasTask } from '../services/atlas-profile-service';
 import { NeuralStateVector } from '@/lib/types';
@@ -15,7 +15,7 @@ export function useAtlasReactivity(
   onUpdateTask: (taskId: string, updates: Partial<AtlasTask>) => void,
   onLockBlueprint: (locked: boolean) => void
 ) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const nsv = globalSoul?.crossFunctionalState as NeuralStateVector | undefined;
 
   // 1. Blueprint Engine Math: Daily Capacity

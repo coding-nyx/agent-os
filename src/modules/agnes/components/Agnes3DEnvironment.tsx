@@ -4,7 +4,7 @@ import { Float, Environment, ContactShadows, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { EveModel } from '../../hub/components/three/models';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 
 const BeliefNebula = React.memo(function BeliefNebula() {
   const points = useMemo(() => {
@@ -50,7 +50,7 @@ interface Agnes3DEnvironmentProps {
 }
 
 export const Agnes3DEnvironment = React.memo(function Agnes3DEnvironment({ activeSession, isProcessing }: Agnes3DEnvironmentProps) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const [webglError, setWebglError] = useState(false);
 
   const shouldRender3D = !webglError;

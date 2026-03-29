@@ -4,7 +4,7 @@
  */
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useAI } from '@/llm-engine/ai-context';
-import { useGlobalSoul } from '../global-soul-context';
+import { useGlobalSoulActions, useGlobalSoulStore } from '../global-soul-context';
 import { useAuth } from '../auth-context';
 import { Message, MessageContent, GuestQuota, ContextPolicy, NeuralStateVectorPatch } from '../types';
 import { GuestQuotaService } from '../services/guest-quota-service';
@@ -31,7 +31,8 @@ import { OrchestrationRuntimeService } from '@/lib/services/orchestration-runtim
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
 import { CommandIntelligenceService } from '@/lib/services/command-intelligence-service';
 import { MasterThreadService } from '@/lib/services/master-thread-service';
-import { ModuleAIActionExecutionService } from '@/lib/services/module-ai-action-execution-service';
+import { ModuleAIActionExecutionService, type DeferredApproval } from '@/lib/services/module-ai-action-execution-service';
+export type { DeferredApproval };
 import { NexusActionPlannerService } from '@/lib/services/nexus-action-planner-service';
 import { NexusActionDispatchExecutionService } from '@/lib/services/nexus-action-dispatch-execution-service';
 
@@ -55,6 +56,19 @@ interface UseModuleAIOptions {
 const MEMORY_SECTION_CHAR_LIMIT = 1800;
 const MAX_MESSAGES = 200;
 
+/**
+ * Number of most-recent messages sent verbatim to the LLM when a session
+ * summary is available for the older portion.
+ */
+const HISTORY_WINDOW = 40;
+
+/**
+ * Fallback window used while a session summary is being generated (first
+ * overflow) so the LLM still gets reasonable context before the summary
+ * is ready.
+ */
+const HISTORY_FALLBACK_WINDOW = 80;
+
 function trimToCharLimit(text: string, limit: number): string {
   if (text.length <= limit) return text;
   return `${text.slice(0, Math.max(0, limit - 12)).trim()}...`;
@@ -70,6 +84,35 @@ function contentToText(content: MessageContent): string {
     .filter((part) => part.type === 'text')
     .map((part) => (part as { type: 'text'; text: string }).text)
     .join(' ');
+}
+
+/**
+ * Builds the history slice and optional summary block to pass to streamMessage.
+ *
+ * - If session length ≤ HISTORY_WINDOW: send everything verbatim.
+ * - If a current summary exists covering older messages: send summary block +
+ *   last HISTORY_WINDOW messages verbatim.
+ * - If no current summary yet (first overflow): send last HISTORY_FALLBACK_WINDOW
+ *   while summary generation runs in the background.
+ */
+function buildHistoryForStream(
+  messages: Message[],
+  currentThreadId: string | undefined,
+  summary: { summary: string; coveredUpTo: number } | null,
+): { historySlice: Message[]; summaryBlock: string | null } {
+  const thread = messages.filter((m) => !m.threadId || m.threadId === currentThreadId);
+
+  if (thread.length <= HISTORY_WINDOW) {
+    return { historySlice: thread, summaryBlock: null };
+  }
+
+  const coveredUpTo = thread.length - HISTORY_WINDOW;
+  if (summary && summary.coveredUpTo >= coveredUpTo) {
+    return { historySlice: thread.slice(-HISTORY_WINDOW), summaryBlock: summary.summary };
+  }
+
+  // No current summary — fallback to a wider verbatim window while it generates
+  return { historySlice: thread.slice(-HISTORY_FALLBACK_WINDOW), summaryBlock: null };
 }
 
 function normalizeContentForAI(content: MessageContent): MessageContent {
@@ -171,7 +214,12 @@ export function useModuleAI({
 }: UseModuleAIOptions) {
   const { streamMessage, sendMessage, generateJSON } = useAI();
   const threadIdRef = useRef<string | undefined>(undefined);
-  const { enhanceContext, enhanceContextForModule, globalSoul } = useGlobalSoul();  const { user, isGuest, profile } = useAuth();
+  const { enhanceContext, enhanceContextForModule } = useGlobalSoulActions();
+  // Read globalSoul once for initializing the ref, then keep it updated via
+  // Zustand's subscribe (non-hook) API so this hook does NOT trigger a
+  // component re-render when global_souls is written to.
+  const globalSoul = useGlobalSoulStore.getState().globalSoul;
+  const { user, isGuest, profile } = useAuth();
   const globalAutopilotLevel = useOrchestrationStore((state) => state.autopilotLevel);
   const moduleAutopilotOverrides = useOrchestrationStore((state) => state.moduleAutopilotOverrides);
   const autopilotLevel = moduleAutopilotOverrides[moduleId as keyof typeof moduleAutopilotOverrides] ?? globalAutopilotLevel;
@@ -182,6 +230,26 @@ export function useModuleAI({
   const { debugMode } = useDebugMode();
   const debugModeRef = useRef(debugMode);
   useEffect(() => { debugModeRef.current = debugMode; }, [debugMode]);
+  // Keep baseRole (the enriched system prompt) in a ref so that handleSendMessage
+  // does not need to list it as a useCallback dep. Without this, every profile update
+  // rebuilds the system prompt string → handleSendMessage gets a new reference →
+  // NexusChat + ChatInterface rerender → scroll effects fire mid-conversation.
+  const baseRoleRef = useRef(baseRole);
+  baseRoleRef.current = baseRole;
+  // Keep auth profile in a ref so handleSendMessage doesn't recreate when
+  // the auth profile object reference changes. Read from ref at call-time.
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  // Keep globalSoul in a ref kept live by a Zustand subscribe (non-hook) so that:
+  // 1. handleSendMessage never recreates when globalSoul changes (stable ref)
+  // 2. The module page does NOT re-render when global_souls is written to
+  //    (Zustand subscribe does not trigger React renders)
+  const globalSoulRef = useRef(globalSoul);
+  useEffect(() => {
+    return useGlobalSoulStore.subscribe(
+      (state) => { globalSoulRef.current = state.globalSoul; },
+    );
+  }, []);
   const activeSessionId = sessionId ?? 'current';
   const resolvedContextPolicy: ContextPolicy = contextPolicy ?? 'base-context';
 
@@ -195,6 +263,16 @@ export function useModuleAI({
     }
     return enhanceContextForModule(context, moduleId as import('@/lib/module-manifest').ModuleId);
   }, [moduleId, enhanceContext, enhanceContextForModule, resolvedContextPolicy]);
+
+  // Keep resolvedEnhanceContext in a ref so handleSendMessage deps stay stable.
+  const resolvedEnhanceContextRef = useRef(resolvedEnhanceContext);
+  resolvedEnhanceContextRef.current = resolvedEnhanceContext;
+  // Stable wrapper that always delegates to the current ref. Passed to sub-hooks
+  // (e.g. useConsolidation) so their callbacks don't recreate when globalSoul changes.
+  const stableEnhanceContext = useCallback(
+    (context: Parameters<typeof resolvedEnhanceContext>[0]) => resolvedEnhanceContextRef.current(context),
+    [] // intentionally empty — always reads the live ref
+  );
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -220,6 +298,7 @@ export function useModuleAI({
     reason?: string;
     confidence?: number;
   } | null>(null);
+  const [pendingApprovals, setPendingApprovals] = useState<DeferredApproval[]>([]);
   const sessionStartRef = useRef<string>(new Date().toISOString());
   const lastRemoteSignatureRef = useRef<string | null>(null);
   const isProcessingRef = useRef(false);
@@ -228,13 +307,23 @@ export function useModuleAI({
   const hydratedFromRemoteRef = useRef(false);
   const currentAssistantMessageBodyRef = useRef('');
   const abortControllerRef = useRef<AbortController | null>(null);
+  const pendingApprovalsRef = useRef<Map<string, DeferredApproval>>(new Map());
   const mountedRef = useRef(true);
+  // Timestamp of the last local flushActiveSession write. Used to suppress
+  // subscription echoes — when the listener fires within a short window after
+  // our own write, we know it's an echo and skip setMessages().
+  const lastLocalWriteTimestampRef = useRef(0);
   // RAF batching: buffer deltas and flush to React state once per animation frame
   const pendingStreamTextRef = useRef('');
   const pendingAIStateRef = useRef<{ isThinking: boolean; isActing: boolean; currentActionType: string | null }>({ isThinking: false, isActing: false, currentActionType: null });
   const streamRafRef = useRef<number>(0);
   const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }) => void) | null>(null);
   const recoveryReplayKeyRef = useRef<string | null>(null);
+
+  // Session summary buffer — compressed summary of messages older than
+  // HISTORY_WINDOW so the LLM never loses early-session context.
+  const sessionSummaryRef = useRef<{ summary: string; coveredUpTo: number } | null>(null);
+  const summaryGeneratingRef = useRef(false);
 
   useEffect(() => {
     setMessages([]);
@@ -245,6 +334,10 @@ export function useModuleAI({
     sessionStartRef.current = new Date().toISOString();
     lastRemoteSignatureRef.current = null;
     setLastTurnRuntime(null);
+    pendingApprovalsRef.current.clear();
+    setPendingApprovals([]);
+    sessionSummaryRef.current = null;
+    summaryGeneratingRef.current = false;
   }, [activeSessionId, moduleId, setLastTurnRuntime]);
 
   // C-1: Abort in-flight stream on unmount
@@ -285,13 +378,53 @@ export function useModuleAI({
     }).catch(() => { /* non-critical — handleSendMessage will fetch on miss */ });
   }, [resolvedContextPolicy, isGuest, user, retrieveMemoryContext]);
 
+  // Background session summary refresh.
+  // Generates a compressed summary of the portion of the conversation that has
+  // overflowed the HISTORY_WINDOW.  Called after each assistant turn — runs
+  // entirely off the critical path so TTFT is unaffected.
+  const refreshSessionSummaryIfNeeded = useCallback(async (currentMessages: Message[]) => {
+    if (isGuest || !user) return;
+    const thread = currentMessages.filter((m) => !m.threadId || m.threadId === threadIdRef.current);
+    if (thread.length <= HISTORY_WINDOW) return;
+
+    const coveredUpTo = thread.length - HISTORY_WINDOW;
+    if (sessionSummaryRef.current && sessionSummaryRef.current.coveredUpTo >= coveredUpTo) return;
+    if (summaryGeneratingRef.current) return;
+
+    summaryGeneratingRef.current = true;
+    try {
+      const olderMessages = thread.slice(0, coveredUpTo);
+      const transcript = olderMessages
+        .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${contentToText(m.content)}`)
+        .join('\n\n');
+
+      const { response } = await sendMessage(
+        `Summarize the following conversation excerpt in 4–6 sentences. Preserve all key topics, decisions, emotional context, and any commitments or disclosures made. This summary will be given to an AI to prevent it from contradicting or forgetting earlier context. Do not include any XML tags, action tags, or technical markup — plain prose only.\n\n${transcript}`,
+        {
+          systemPrompt: 'You are a conversation archivist. Output only the summary — plain prose, no bullet points, no preamble.',
+          memoryContext: [],
+          summary: '',
+          history: [],
+        },
+      );
+
+      if (mountedRef.current && response.publicText) {
+        sessionSummaryRef.current = { summary: response.publicText, coveredUpTo };
+      }
+    } catch {
+      // Non-critical — will retry next turn
+    } finally {
+      summaryGeneratingRef.current = false;
+    }
+  }, [isGuest, user, sendMessage]);
+
   const { consolidateIfNeeded, resetConsolidation } = useConsolidation({
     moduleId,
     userId: user?.uid,
     isGuest: !!isGuest,
     encryptionKey,
     sendMessage,
-    enhanceContext: resolvedEnhanceContext,
+    enhanceContext: stableEnhanceContext,
     mountedRef
   });
 
@@ -335,13 +468,39 @@ export function useModuleAI({
     } else if (user && !isGuest) {
       unsubscribe = ModuleMemoryService.subscribeActiveSession(user.uid, moduleId, activeSessionId, (session) => {
         if (!mounted) return;
-        if (session && session.history.length > 0) {
+        // Skip subscription echoes entirely while the agent is actively processing.
+        // During agent flow, all message state is managed locally via setMessages —
+        // remote echoes can only cause duplicates or state thrashing.
+        if (isProcessingRef.current) {
+          setIsHydrating(false);
+          return;
+        }
+        if (session && session.history?.length > 0) {
           const signature = `${session.lastMessageAt}:${session.history.length}`;
           if (signature !== lastRemoteSignatureRef.current) {
             lastRemoteSignatureRef.current = signature;
-            hydratedFromRemoteRef.current = true;
-            setMessages(session.history);
-            sessionStartRef.current = session.startTime || new Date().toISOString();
+            // RC-1 fix: skip echoes of our own writes. The ChunkedSessionStore
+            // subscription fires asynchronously after our flushActiveSession write.
+            // If the listener fires within 3s of our last write AND the message
+            // count matches, it's almost certainly an echo — skip setMessages()
+            // to avoid a mid-conversation rerender.
+            const msSinceOwnWrite = Date.now() - lastLocalWriteTimestampRef.current;
+            const currentMsgs = messagesRef.current;
+            const isLikelyEcho = msSinceOwnWrite < 3000 && session.history.length <= currentMsgs.length;
+            if (isLikelyEcho) {
+              setIsHydrating(false);
+              return;
+            }
+            const remoteLen = session.history.length;
+            const localLen = currentMsgs.length;
+            const lastRemoteContent = session.history[remoteLen - 1]?.content;
+            const lastLocalContent = currentMsgs[localLen - 1]?.content;
+            const hasRealDiff = remoteLen !== localLen || lastRemoteContent !== lastLocalContent;
+            if (hasRealDiff) {
+              hydratedFromRemoteRef.current = true;
+              setMessages(session.history);
+              sessionStartRef.current = session.startTime || new Date().toISOString();
+            }
           }
         }
         setIsHydrating(false);
@@ -371,6 +530,25 @@ export function useModuleAI({
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const lastCompactionNoticeAtRef = useRef(0);
+
+  const maybeWarnHistoryCompaction = useCallback((droppedCount: number) => {
+    if (droppedCount <= 0) return;
+    const now = Date.now();
+    if (now - lastCompactionNoticeAtRef.current < 30_000) return;
+    lastCompactionNoticeAtRef.current = now;
+    setError(`Session memory was compacted to stay stable. ${droppedCount} older message${droppedCount === 1 ? '' : 's'} were removed from active context.`);
+  }, []);
+  const maybeWarnSizePressure = useCallback((estimatedBytes: number, hardLimitExceeded: boolean) => {
+    const now = Date.now();
+    if (now - lastCompactionNoticeAtRef.current < 30_000) return;
+    lastCompactionNoticeAtRef.current = now;
+    if (hardLimitExceeded) {
+      setError(`Active session reached storage hard limit protection (${Math.round(estimatedBytes / 1024)} KB). Older context was compacted.`);
+      return;
+    }
+    setError(`Active session is nearing storage limit (${Math.round(estimatedBytes / 1024)} KB). Context will be compacted automatically if needed.`);
+  }, []);
 
   const flushActiveSession = useCallback((forceRemote = false) => {
     if (saveTimerRef.current) {
@@ -392,6 +570,7 @@ export function useModuleAI({
     if (shouldSaveRemote && user) {
       const lastMessageAt = new Date().toISOString();
       lastRemoteSignatureRef.current = `${lastMessageAt}:${currentMessages.length}`;
+      lastLocalWriteTimestampRef.current = Date.now();
       ModuleMemoryService.saveActiveSession(user.uid, {
         sessionId: activeSessionId,
         moduleId,
@@ -401,7 +580,8 @@ export function useModuleAI({
         tokenCount: 0,
         isGuestTrial: false,
         contextPolicy: resolvedContextPolicy
-      }).catch((e) => console.error('Failed to save active session:', e));
+      })
+        .catch((e) => console.error('Failed to save active session:', e));
     }
 
     // Always persist to sessionStorage as a lightweight fallback
@@ -412,7 +592,7 @@ export function useModuleAI({
         savedAt: new Date().toISOString()
       }));
     } catch { /* sessionStorage full or unavailable */ }
-  }, [user, isGuest, moduleId, activeSessionId, resolvedContextPolicy, persistencePolicy]);
+  }, [user, isGuest, moduleId, activeSessionId, resolvedContextPolicy, persistencePolicy, maybeWarnHistoryCompaction, maybeWarnSizePressure]);
 
   useEffect(() => {
     if (isHydrating || messages.length === 0) return;
@@ -469,8 +649,10 @@ export function useModuleAI({
         timestamp: new Date().toISOString(),
         threadId: options?.threadId,
       };
-      // H-2: maintain local history to avoid stale-closure issues with setMessages updater
-      let localHistory = [...messages, userMsg].slice(-MAX_MESSAGES);
+      // H-2: read current messages from ref so handleSendMessage doesn't need `messages`
+      // in its useCallback deps — this keeps handleSendMessage stable across AI responses
+      // and prevents ai useMemo from firing on every message update.
+      let localHistory = [...messagesRef.current, userMsg].slice(-MAX_MESSAGES);
       setMessages(localHistory);
       setIsProcessing(true);
       isProcessingRef.current = true;
@@ -507,7 +689,7 @@ export function useModuleAI({
       });
 
       // --- Routing classification (delegated to useHandoffProcessor) ---
-      const routingResult = await classifyAndRoute(semanticContentText, messages, parsedCommand);
+      const routingResult = await classifyAndRoute(semanticContentText, messagesRef.current, parsedCommand);
       if (!mountedRef.current) return;
 
       if (routingResult.shouldDelegate) {
@@ -546,7 +728,7 @@ export function useModuleAI({
         }
       }
 
-      if (messages.length === 0) {
+      if (messagesRef.current.length === 0) {
         Spine.emit({
           type: 'SESSION_STARTED',
           source: moduleId,
@@ -659,7 +841,7 @@ export function useModuleAI({
       }
 
       // --- Memory retrieval — use pre-warmed cache on first message, then fetch fresh ---
-      const recentHistorySlice = messages
+      const recentHistorySlice = messagesRef.current
           .slice(-3)
           .map((msg) => `${msg.role}: ${contentToText(msg.content)}`)
           .join('\n');
@@ -678,9 +860,9 @@ export function useModuleAI({
 
         const finalSystemPrompt = PersonaFactory.generateSystemPrompt({
           moduleId,
-          baseRole,
-          userProfile: profile,
-          globalSoul: globalSoul
+          baseRole: baseRoleRef.current,
+          userProfile: profileRef.current,
+          globalSoul: globalSoulRef.current
         });
         const now = new Date();
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -733,21 +915,29 @@ export function useModuleAI({
         abortControllerRef.current = controller;
 
         const sendStartTime = Date.now();
+        const { historySlice, summaryBlock } = buildHistoryForStream(
+          messagesRef.current,
+          userMsg.threadId,
+          sessionSummaryRef.current,
+        );
+
+        const systemPromptWithSummary = summaryBlock
+          ? `${finalSystemPromptWithTime}\n\n[SESSION HISTORY SUMMARY — earlier in this conversation]\n${summaryBlock}\n[END SUMMARY — the most recent messages follow in history]`
+          : finalSystemPromptWithTime;
+
         const { response } = await streamMessage(
           content,
-          resolvedEnhanceContext({
-            systemPrompt: finalSystemPromptWithTime,
+          resolvedEnhanceContextRef.current({
+            systemPrompt: systemPromptWithSummary,
             memoryContext: memoryContextFacts,
             summary: memoryStatus === 'vault_blocked'
               ? `Memory unavailable: vault locked for ${moduleId}.`
               : cappedMemorySummary || `Active session in ${moduleId}${resolvedContextPolicy === 'doc-only' ? ' (doc-only).' : '.'}`,
             parsedCommand,
-            history: messages
-              .filter((m) => !m.threadId || m.threadId === userMsg.threadId)
-              .map((message) => ({
-                ...message,
-                content: normalizeContentForAI(message.content),
-              })) // history before user message — CognitiveAgent adds user msg
+            history: historySlice.map((message) => ({
+              ...message,
+              content: normalizeContentForAI(message.content),
+            })) // history before user message — CognitiveAgent adds user msg
           }),
           (chunk) => {
             // Update refs synchronously on every chunk (for post-stream processing)
@@ -790,6 +980,7 @@ export function useModuleAI({
           soulUpdates,
           executionArtifacts,
           threadArtifacts,
+          deferredApprovals,
         } = await ModuleAIActionExecutionService.execute({
           moduleId,
           responseActions: response.actions,
@@ -804,7 +995,7 @@ export function useModuleAI({
           isGuest: !!isGuest,
           encryptionKey,
           navigateTo,
-          getBaseNSV: () => (globalSoul?.crossFunctionalState as Record<string, unknown> | undefined) ?? {},
+          getBaseNSV: () => (globalSoulRef.current?.crossFunctionalState as Record<string, unknown> | undefined) ?? {},
           sendMessage,
           flushActiveSession,
           onActionParsed,
@@ -840,6 +1031,14 @@ export function useModuleAI({
             } as Message);
           },
         });
+
+        // Store deferred approvals so the UI can surface Approve/Dismiss cards
+        if (deferredApprovals.length > 0) {
+          for (const item of deferredApprovals) {
+            pendingApprovalsRef.current.set(item.executionId, item);
+          }
+          setPendingApprovals(Array.from(pendingApprovalsRef.current.values()));
+        }
 
         // CRITICAL FIX: Persist NSV updates BEFORE emitting MODULE_PROFILE_UPDATED
         // This ensures profile refresh happens with stable NSV state, preventing stale reads
@@ -1045,13 +1244,18 @@ export function useModuleAI({
             };
           }
 
-          localHistory = [...localHistory, assistantMessage].slice(-MAX_MESSAGES);
+          // RC-4 fix: build the final history (including any buffered assistant messages
+          // from action execution) before the single setMessages call to avoid two
+          // rapid re-renders of ChatInterface at stream completion.
+          if (assistantMessageBuffer.length > 0) {
+            localHistory = [...localHistory, assistantMessage, ...assistantMessageBuffer].slice(-MAX_MESSAGES);
+          } else {
+            localHistory = [...localHistory, assistantMessage].slice(-MAX_MESSAGES);
+          }
           messagesRef.current = localHistory;
           setMessages(localHistory);
-        }
-
-        // Commit buffered assistant messages emitted during action execution (e.g. search results)
-        if (assistantMessageBuffer.length > 0) {
+        } else if (assistantMessageBuffer.length > 0) {
+          // No assistant message (suppressed) but there are buffered messages
           localHistory = [...localHistory, ...assistantMessageBuffer].slice(-MAX_MESSAGES);
           messagesRef.current = localHistory;
           setMessages(localHistory);
@@ -1071,6 +1275,10 @@ export function useModuleAI({
         if (localHistory.length > 0) {
            flushActiveSession();
         }
+
+        // Background: refresh session summary if history has overflowed the window.
+        // Runs entirely off the critical path — TTFT is not affected.
+        refreshSessionSummaryIfNeeded(localHistory).catch(() => {});
         
         clearPendingRequest();
 
@@ -1098,7 +1306,8 @@ export function useModuleAI({
               tokenCount: 0,
               isGuestTrial: false,
               contextPolicy: resolvedContextPolicy
-            }).catch((e) => console.error('Failed to save trimmed session:', e));
+            })
+              .catch((e) => console.error('Failed to save trimmed session:', e));
           }
         }
       } catch (e: unknown) {
@@ -1162,18 +1371,18 @@ export function useModuleAI({
       }
     },
     [
-      messages,
+      // messages intentionally omitted — read from messagesRef.current at call-time
+      // so handleSendMessage stays stable across AI responses (prevents ai useMemo
+      // from firing on every message update → prevents dashboard re-renders).
+      // profile intentionally omitted — read from profileRef.current at call-time
+      // so handleSendMessage stays stable when agent actions update the module profile.
       isGuest,
       quota.isHardLocked,
-      baseRole,
-      resolvedEnhanceContext,
       moduleId,
       user,
-      profile,
       autopilotLevel,
       orchestrationHistoryMode,
       activeThreadId,
-      globalSoul,
       sendMessage,
       streamMessage,
       classifyAndRoute,
@@ -1185,6 +1394,7 @@ export function useModuleAI({
       resolvedContextPolicy,
       persistencePolicy,
       flushActiveSession,
+      maybeWarnHistoryCompaction,
       savePendingRequest,
       setLastTurnRuntime,
       onError
@@ -1271,7 +1481,7 @@ export function useModuleAI({
     try {
       const { response } = await sendMessage(
         'Summarize this session in 2 supportive sentences focusing on key takeaways or health indicators. Do not include any XML tags, action tags, or technical markup — plain prose only.',
-        resolvedEnhanceContext({
+        resolvedEnhanceContextRef.current({
           systemPrompt: 'You are an analytical supervisor. Respond with plain prose only — no XML, no action tags, no angle brackets.',
           memoryContext: [],
           summary: 'Summarizing.',
@@ -1289,7 +1499,53 @@ export function useModuleAI({
     } catch (e) {
       return 'Session completed and data synchronized.';
     }
-  }, [messages, sendMessage, resolvedEnhanceContext]);
+  }, [messages, sendMessage]);
+
+  const approveAction = useCallback(async (executionId: string) => {
+    const pending = pendingApprovalsRef.current.get(executionId);
+    if (!pending) return;
+    pendingApprovalsRef.current.delete(executionId);
+    setPendingApprovals(Array.from(pendingApprovalsRef.current.values()));
+
+    const executed = await ActionHub.execute(moduleId, pending.actionType, {
+      userId: user?.uid,
+      isGuest: !!isGuest,
+      moduleId,
+      payload: pending.payload,
+      encryptionKey,
+      navigateTo,
+      getLatestNSV: () => (globalSoulRef.current?.crossFunctionalState as Record<string, unknown> | undefined) ?? {},
+      emitSpineEvent: (type, data, options) => Spine.emit({
+        type,
+        source: moduleId,
+        domain: (options?.domain ?? 'system') as import('@/lib/types').SpineDomain,
+        target: options?.target,
+        data,
+        cascadeDepth: 0,
+        priority: options?.priority ?? 'info',
+      }),
+      updateGlobalSoul: async (patch) => {
+        if (user && !isGuest) {
+          await GlobalProjectionService.updateCrossFunctionalState(user.uid, patch);
+        }
+      },
+      delegateToModule: () => {},
+      markProfileDirty: () => {
+        if (user && !isGuest) {
+          Spine.emit({ type: 'MODULE_PROFILE_UPDATED', source: moduleId, domain: 'system', data: { moduleId }, cascadeDepth: 0, priority: 'info' });
+        }
+      },
+    });
+
+    if (executed && user && !isGuest) {
+      Spine.emit({ type: 'MODULE_PROFILE_UPDATED', source: moduleId, domain: 'system', data: { moduleId, approvedAction: pending.actionType }, cascadeDepth: 0, priority: 'info' });
+    }
+  }, [moduleId, user, isGuest, encryptionKey, navigateTo]);
+
+  const dismissAction = useCallback((executionId: string) => {
+    pendingApprovalsRef.current.delete(executionId);
+    setPendingApprovals(Array.from(pendingApprovalsRef.current.values()));
+  }, []);
 
   return useMemo(() => ({
     messages,
@@ -1311,10 +1567,13 @@ export function useModuleAI({
     summarizeSession,
     pendingRequest,
     clearPendingRequest,
+    pendingApprovals,
+    approveAction,
+    dismissAction,
   }), [
     messages, setMessages, isProcessing, aiState, disposition, consultationTarget,
     isHydrating, streamingText, error, quota, lastParsedCommand, routingSuggestion,
     setRoutingSuggestion, handleSendMessage, prewarmMemory, clearSession, summarizeSession,
-    pendingRequest, clearPendingRequest,
+    pendingRequest, clearPendingRequest, pendingApprovals, approveAction, dismissAction,
   ]);
 }

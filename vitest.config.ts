@@ -15,5 +15,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     include: ['src/**/*.test.{ts,tsx}'],
+    // 15 s timeout to accommodate network-backed adapters (Supabase Realtime
+    // WebSocket connection establishment can take several seconds on first use).
+    testTimeout: 15_000,
   },
 })

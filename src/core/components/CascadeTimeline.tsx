@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import { useGlobalSoul } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useMotionConfig } from '@/lib/hooks/use-motion-config';
 import { EVENT_DISPLAY_NAMES } from '@/lib/state-display-config';
 import type { SpineEvent, SpineEventType } from '@/lib/types';
@@ -256,7 +256,7 @@ interface CascadeTimelineProps {
 }
 
 export function CascadeTimeline({ maxChains = 10, className }: CascadeTimelineProps) {
-  const { globalSoul } = useGlobalSoul();
+  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const { shouldReduceMotion, transition } = useMotionConfig();
   const reducedMotion = shouldReduceMotion;
   const [events, setEvents] = useState<SpineEvent[]>([]);

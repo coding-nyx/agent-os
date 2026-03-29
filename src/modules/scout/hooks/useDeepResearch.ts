@@ -26,6 +26,7 @@ import { updateSession } from '../services/scout-session-service';
 
 export type DeepResearchStatus =
   | 'idle'
+  | 'planning'
   | 'generating_questions'
   | 'reviewing'
   | 'searching'
@@ -61,6 +62,14 @@ export interface DeepResearchProgress {
   currentQuestion?: string;
 }
 
+export interface ResearchPlan {
+  hypothesis: string;
+  goals: string[];
+  existingCoverage: string[];
+  gaps: string[];
+  sourceStrategy: 'academic' | 'news' | 'technical' | 'mixed';
+}
+
 export interface DeepResearchState {
   status: DeepResearchStatus;
   query: string;
@@ -70,6 +79,7 @@ export interface DeepResearchState {
   subQuestions: SubQuestion[];
   results: SubQuestionResult[];
   result: DeepResearchResult | null;
+  plan: ResearchPlan | null;
   progress: DeepResearchProgress;
   error: string | null;
 }
@@ -102,6 +112,7 @@ const INITIAL_STATE: DeepResearchState = {
   subQuestions: [],
   results: [],
   result: null,
+  plan: null,
   progress: { current: 0, total: 0 },
   error: null,
 };
@@ -111,14 +122,16 @@ Given a research topic, generate 3-5 targeted sub-questions that together provid
 Each question should explore a different angle: definitions, evidence, applications, criticisms, future directions.
 Respond with a JSON array strictly: [{"id":"q1","question":"...","rationale":"..."}]`;
 
-const SYNTHESIS_SYSTEM_PROMPT = `You are a research analyst synthesizing multiple web search results into a single knowledge node.
-Respond with a JSON object matching the ScoutKnowledgeNode schema exactly.`;
+const SYNTHESIS_SYSTEM_PROMPT = `You are a research analyst synthesizing evidence into a precise knowledge claim.
 
-const RECURSIVE_ANALYSIS_PROMPT = `You are a research quality controller.
-Analyze the current synthesized finding and the supporting search results.
-If there are unresolved contradictions, "contested" status, or low confidence (< 0.6) for a "deep" research task, generate 2-3 follow-up sub-questions to resolve these gaps.
-If the finding is solid, return an empty array.
-Respond with a JSON array: [{"id":"r1","question":"...","rationale":"..."}]`;
+SYNTHESIS METHOD:
+1. Identify the consensus position across sources
+2. Weight evidence: primary source > peer-reviewed > news > blog; recency boosts weight
+3. Flag contradictions explicitly — do not average them away
+4. Form a falsifiable, specific claim (avoid vague "may help" language)
+5. Status rules: "verified" = 3+ corroborating sources + no major contradictions; "contested" = direct conflicts found; otherwise "pending"
+
+Respond with the ScoutKnowledgeNode JSON schema. Include extra fields: reasoning, contradictions, followUpQuestions.`;
 
 export function useDeepResearch({
   userId,
@@ -169,6 +182,7 @@ export function useDeepResearch({
         subQuestions: [],
         results: [],
         result: null,
+        plan: null,
         progress: { current: 0, total: 0 },
         error: null,
       });
@@ -182,11 +196,53 @@ export function useDeepResearch({
       });
 
       try {
+        // Planning phase: audit KB and build research plan
+        updateState({ status: 'planning' });
+
+        let plan: ResearchPlan | null = null;
+        if (userId && encryptionKey) {
+          try {
+            const existingNodes = await queryKnowledgeNodes(
+              query,
+              { userId, encryptionKey },
+              { limit: 8, threshold: 0.45 },
+            );
+
+            const planResponse = await generateJSON<ResearchPlan>(
+              `Research topic: "${query}"
+Existing KB findings (${existingNodes.length}):
+${existingNodes.map((n: any) => `- ${n.claim} (confidence: ${n.confidence.toFixed(2)})`).join('\n') || '(none)'}
+
+Return JSON: {
+  "hypothesis": "working hypothesis based on existing evidence",
+  "goals": ["research goal 1", "research goal 2"],
+  "existingCoverage": ["what KB already covers"],
+  "gaps": ["what is missing"],
+  "sourceStrategy": "academic|news|technical|mixed"
+}`,
+              { systemPrompt: 'You are a research planner. Be concise. Return only valid JSON.', temperature: 0.3, maxTokens: 400, signal: controller.signal },
+            );
+
+            if (planResponse && !controller.signal.aborted) {
+              plan = planResponse;
+              updateState({ plan });
+            }
+          } catch {
+            // Non-fatal: continue without a plan
+          }
+        }
+
+        // Now set status back to generating_questions for sub-question step
+        updateState({ status: 'generating_questions' });
+
         const prompt = [
           `Research topic: "${query}"`,
+          plan
+            ? `Research plan:\n- Hypothesis: ${plan.hypothesis}\n- Gaps to address: ${plan.gaps.join('; ')}\n- Source strategy: ${plan.sourceStrategy}`
+            : null,
           `Research depth: ${depth}`,
           useExpertSources ? `Priority: Peer-reviewed, academic, and clinical sources.` : null,
-          `Generate ${depth === 'deep' ? '5-8' : '3-5'} targeted sub-questions as a JSON array.`
+          `Generate ${depth === 'deep' ? '5-8' : '3-5'} targeted sub-questions${plan?.gaps.length ? ' that specifically address the identified gaps' : ''} as a JSON array.`
         ].filter(Boolean).join('\n\n');
 
         const response = await generateJSON<any>(
@@ -243,7 +299,7 @@ export function useDeepResearch({
         });
       }
     },
-    [updateState, generateJSON],
+    [updateState, generateJSON, userId, encryptionKey],
   );
 
   // ── Confirm sub-questions and run searches ────────────────────────────────
@@ -289,10 +345,11 @@ export function useDeepResearch({
       const queriesForSearch = questionsNeedingSearch.map(q => q.question);
 
       try {
-        // Use batch search for efficiency
+        // Use batch search for efficiency; deep mode requests more content per result
         const webResponses = await WebSearchService.searchBatch(queriesForSearch, {
           maxResults: state.depth === 'deep' ? 8 : 5,
           signal: controller.signal,
+          deepContent: state.depth === 'deep',
         });
         // Merge KB hits and web results back into the full ordered array
         searchResults = edited.map(q =>
@@ -340,23 +397,23 @@ export function useDeepResearch({
         .join('\n\n');
 
       const synthesisPrompt = `Research query: "${currentQuery}"
+${state.plan ? `Initial hypothesis: ${state.plan.hypothesis}` : ''}
 
-## Search Results by Sub-Question:
+## Evidence by Sub-Question:
 ${searchSummary}
 
-Synthesize these results into a single ScoutKnowledgeNode JSON object:
+Synthesize following the method in the system prompt. Respond with JSON:
 {
   "id": "deep_${Date.now()}",
-  "title": "concise title for this research topic",
-  "claim": "the main evidence-based claim or finding",
-  "confidence": 0.0-1.0,
-  "status": "verified" | "pending" | "contested",
-  "sources": ["url1", "url2"],
-  "evidence": ["key finding 1", "key finding 2"],
+  "claim": "precise evidence-based claim",
+  "confidence": 0.0,
+  "status": "verified|pending|contested",
+  "evidence": ["url1"],
+  "reasoning": "how you weighted the evidence",
+  "contradictions": [],
+  "followUpQuestions": [],
   "updatedAt": "${new Date().toISOString()}"
-}
-
-Base confidence on source quality and consensus. Respond with JSON only.`;
+}`;
 
       try {
         const response = await generateJSON<any>(
@@ -387,32 +444,22 @@ Base confidence on source quality and consensus. Respond with JSON only.`;
 
         // ── Recursive Logic ──────────────────────────────────────────────────
 
-        if (state.depth === 'deep' && state.recursionLevel < 1) {
-          updateState({ status: 'recursive_analysis' });
-          
-          const recursivePrompt = `Topic: ${currentQuery}\nFinding: ${synthesisNode.claim}\nStatus: ${synthesisNode.status}\nConfidence: ${synthesisNode.confidence}`;
-          
-          const followUps = await generateJSON<any[]>(
-            recursivePrompt,
-            {
-              systemPrompt: RECURSIVE_ANALYSIS_PROMPT,
-              temperature: 0.4,
-              signal: controller.signal
-            }
-          );
+        // Use followUpQuestions embedded in synthesis instead of a separate LLM call
+        const followUps = Array.isArray(synthesisNode.followUpQuestions)
+          ? synthesisNode.followUpQuestions.filter((q: any) => typeof q === 'string' && q.length > 0)
+          : [];
 
-          if (Array.isArray(followUps) && followUps.length > 0) {
-            updateState({
-              status: 'reviewing',
-              subQuestions: followUps.map((q, i) => ({
-                id: `r${state.recursionLevel}_${i}`,
-                question: q.question,
-                rationale: q.rationale
-              })),
-              recursionLevel: state.recursionLevel + 1
-            });
-            return; // Loop back to reviewing state
-          }
+        if (state.depth === 'deep' && state.recursionLevel < 2 && followUps.length > 0) {
+          updateState({
+            status: 'reviewing',
+            subQuestions: followUps.map((q: string, i: number) => ({
+              id: `r${state.recursionLevel}_${i}`,
+              question: q,
+              rationale: 'Gap identified during synthesis',
+            })),
+            recursionLevel: state.recursionLevel + 1,
+          });
+          return;
         }
 
         // Build captured sources list for auto-save into source library
@@ -469,7 +516,7 @@ Base confidence on source quality and consensus. Respond with JSON only.`;
         });
       }
     },
-    [state.query, state.depth, state.results, state.subQuestions, state.recursionLevel, updateState, generateJSON, onComplete],
+    [state.query, state.depth, state.results, state.subQuestions, state.recursionLevel, state.plan, updateState, generateJSON, onComplete],
   );
 
 function indexByUrl(url: string, images?: string[]): number {

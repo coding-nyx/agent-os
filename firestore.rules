@@ -44,6 +44,9 @@ service cloud.firestore {
     match /active_sessions/{docId} {
       // docId is uid_moduleId
       allow read, write, delete: if isAuthenticated() && docId.matches('^' + request.auth.uid + '_.+$');
+      match /messages/{chunkId} {
+        allow read, write, delete: if isAuthenticated() && docId.matches('^' + request.auth.uid + '_.+$');
+      }
     }
     
     // Agnes (Emotional Domain)

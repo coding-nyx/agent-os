@@ -47,7 +47,11 @@ vi.mock('@/lib/auth-context', () => ({
 }));
 
 vi.mock('@/lib/global-soul-context', () => ({
-  useGlobalSoul: () => ({ refreshGlobalSoul: vi.fn() }),
+  useGlobalSoulStore: Object.assign(
+    (selector: any) => selector({ globalSoul: null, isLoading: false }),
+    { getState: () => ({ globalSoul: null, isLoading: false }), subscribe: () => () => {} },
+  ),
+  useGlobalSoulActions: () => ({ refreshGlobalSoul: vi.fn(), enhanceContext: vi.fn(), enhanceContextForModule: vi.fn(), updateCrossFunctionalState: vi.fn(), getFilteredSoulForModule: vi.fn() }),
 }));
 
 vi.mock('@/lib/vault-context', () => ({

@@ -3,8 +3,7 @@
  * Comprehensive goal CRUD with milestones, progress tracking, and dependencies
  */
 
-import React, { useState, useMemo, useRef } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import React, { useState, useMemo } from 'react';
 import {
   Plus,
   Target,
@@ -57,8 +56,6 @@ export function GoalTracker({
 
   const { promptDelete, ConfirmationDialog } = useDeleteConfirmation<AtlasGoal>(onDeleteGoal);
 
-  const goalListRef = useRef<HTMLDivElement>(null);
-
   // ── Form state ──
   const [formData, setFormData] = useState<Partial<AtlasGoal>>({
     title: '',
@@ -78,13 +75,6 @@ export function GoalTracker({
     items: goals,
     filter,
     filterFn: (goal, currentFilter) => currentFilter === 'all' || goal.status === currentFilter,
-  });
-
-  const goalVirtualizer = useVirtualizer({
-    count: filteredGoals.length,
-    getScrollElement: () => goalListRef.current,
-    estimateSize: () => 120,
-    overscan: 5,
   });
 
   // ── Goal statistics ──
@@ -249,31 +239,22 @@ export function GoalTracker({
             size="lg"
           />
         ) : (
-          <div ref={goalListRef} className="overflow-y-auto max-h-[600px]">
-            <div style={{ height: goalVirtualizer.getTotalSize(), position: 'relative' }}>
-              {goalVirtualizer.getVirtualItems().map(vitem => {
-                const goal = filteredGoals[vitem.index];
-                return (
-                  <div
-                    key={vitem.key}
-                    style={{ position: 'absolute', top: vitem.start, left: 0, right: 0, paddingBottom: 12 }}
-                    className="relative group"
-                  >
-                    <GoalProgress
-                      goals={[goal]}
-                      onUpdateProgress={onUpdateGoalProgress}
-                      onExpandGoal={() => {}}
-                    />
-                    <ItemActionButtons
-                      onEdit={() => handleOpenForm(goal)}
-                      onDelete={() => promptDelete(goal)}
-                      itemTitle={goal.title}
-                      className="right-12"
-                    />
-                  </div>
-                );
-              })}
-            </div>
+          <div className="overflow-y-auto max-h-[600px] space-y-2 pr-0.5">
+            {filteredGoals.map((goal) => (
+              <div key={goal.id} className="relative group">
+                <GoalProgress
+                  goals={[goal]}
+                  onUpdateProgress={onUpdateGoalProgress}
+                  onExpandGoal={() => {}}
+                />
+                <ItemActionButtons
+                  onEdit={() => handleOpenForm(goal)}
+                  onDelete={() => promptDelete(goal)}
+                  itemTitle={goal.title}
+                  className="right-12"
+                />
+              </div>
+            ))}
           </div>
         )}
       </div>
