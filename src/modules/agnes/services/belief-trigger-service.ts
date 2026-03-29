@@ -61,6 +61,29 @@ function normalizeBeliefLabel(node: BeliefNode): string {
   return node.label.trim().toLowerCase();
 }
 
+function hashToken(input: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function sanitizeThreadToken(value: string, maxLength = 36): string {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\\/]/g, '-')
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (!normalized) return `belief-${hashToken(value)}`;
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(8, maxLength - 8))}-${hashToken(normalized)}`;
+}
+
 export function evaluateBeliefSessionInvitationThreshold(input: {
   graph: BeliefGraph | null;
   emotionalState?: EmotionalContext;
@@ -161,7 +184,8 @@ export function createBeliefSessionInvitationRuntime(input: {
   if (!decision.shouldInvite) return null;
 
   const now = input.now ?? new Date().toISOString();
-  const threadId = `agnes.belief-trigger.${decision.fingerprint}`;
+  const anchorBelief = decision.triggeringBeliefs[0] ?? 'belief-pattern';
+  const threadId = `agnes.belief-trigger.${sanitizeThreadToken(anchorBelief)}.${hashToken(decision.fingerprint)}`;
   const gate = OrchestrationActionGateService.evaluate({
     moduleId: 'agnes',
     actionType: 'suggest_agnes_session_invitation',

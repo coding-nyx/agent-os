@@ -5,6 +5,7 @@ import { loadBeliefGraph } from './belief-graph-service';
 import {
   confirmBeliefGraphProposal,
   loadBeliefGraphWorkflow,
+  mergeBeliefGraphs,
   proposeBeliefGraphCandidate,
 } from './belief-graph-workflow-service';
 import { ORCHESTRATION_PROPOSAL_SUBCOLLECTION } from '@/lib/services/orchestration-persistence-service';
@@ -117,6 +118,56 @@ describe('belief-graph-workflow-service', () => {
       moduleId: 'agnes',
       actionType: 'suggest_agnes_session_invitation',
       dispatchStatus: 'awaiting_approval',
+    });
+  });
+
+  it('caps merged graphs to 80 nodes and removes edges tied to pruned nodes', () => {
+    const proposal = {
+      nodes: Array.from({ length: 120 }, (_, index) => ({
+        id: `n${index}`,
+        label: `Belief ${index}`,
+        valence: 'neutral' as const,
+        intensity: 5,
+      })),
+      edges: [{ from: 'n0', to: 'n119', relation: 'relates' }],
+      summary: 'crowded graph',
+      createdAt: '2026-03-24T00:00:00.000Z',
+      updatedAt: '2026-03-24T00:00:00.000Z',
+    };
+
+    const merged = mergeBeliefGraphs(null, proposal);
+
+    expect(merged.nodes).toHaveLength(80);
+    expect(merged.nodes.some((node) => node.id === 'n119')).toBe(true);
+    expect(merged.nodes.some((node) => node.id === 'n0')).toBe(false);
+    expect(merged.edges).toHaveLength(0);
+  });
+
+  it('deduplicates equivalent labels and keeps the strongest belief', () => {
+    const current = {
+      nodes: [{ id: 'c1', label: 'I am hard to love', valence: 'negative' as const, intensity: 4 }],
+      edges: [],
+      summary: 'base',
+      createdAt: '2026-03-24T00:00:00.000Z',
+      updatedAt: '2026-03-24T00:00:00.000Z',
+    };
+
+    const proposal = {
+      nodes: [{ id: 'p1', label: '  I am hard to love  ', valence: 'neutral' as const, intensity: 8 }],
+      edges: [],
+      summary: 'updated',
+      createdAt: '2026-03-24T00:00:00.000Z',
+      updatedAt: '2026-03-24T00:00:00.000Z',
+    };
+
+    const merged = mergeBeliefGraphs(current, proposal);
+
+    expect(merged.nodes).toHaveLength(1);
+    expect(merged.nodes[0]).toMatchObject({
+      id: 'c1',
+      label: 'I am hard to love',
+      intensity: 8,
+      valence: 'neutral',
     });
   });
 });

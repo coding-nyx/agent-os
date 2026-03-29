@@ -28,6 +28,9 @@ interface AgnesBeliefWorkflowPanelProps {
   onDismissProposal: (proposalId: string) => Promise<void>;
   onAcceptInvitation: () => Promise<void>;
   onDismissInvitation: () => Promise<void>;
+  onCompactGraph?: () => Promise<void>;
+  compactGraphBusy?: boolean;
+  compactGraphStatus?: string | null;
 }
 
 type ProposalDraftMap = Record<string, BeliefGraph>;
@@ -53,6 +56,9 @@ export function AgnesBeliefWorkflowPanel({
   onDismissProposal,
   onAcceptInvitation,
   onDismissInvitation,
+  onCompactGraph,
+  compactGraphBusy = false,
+  compactGraphStatus = null,
 }: AgnesBeliefWorkflowPanelProps) {
   const pendingProposals = useMemo(
     () => workflow?.proposals.filter((proposal) => proposal.status === 'pending') ?? [],
@@ -189,12 +195,31 @@ export function AgnesBeliefWorkflowPanel({
 
       <div className="grid gap-5 lg:grid-cols-[1.15fr_0.95fr]">
         <div className="space-y-3 rounded-[2rem] border border-white/[0.12] bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2">
-            <GitBranch className="h-4 w-4 text-indigo-300" />
-            <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white/55">
-              Confirmed belief map
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4 text-indigo-300" />
+              <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white/55">
+                Confirmed belief map
+              </span>
+            </div>
+            {onCompactGraph ? (
+              <NeuralButton
+                size="sm"
+                variant="ghost"
+                className="!rounded-full text-white/55"
+                disabled={busy}
+                loading={compactGraphBusy}
+                onClick={() => {
+                  void onCompactGraph();
+                }}
+              >
+                Compact
+              </NeuralButton>
+            ) : null}
           </div>
+          {compactGraphStatus ? (
+            <p className="text-[11px] text-white/45">{compactGraphStatus}</p>
+          ) : null}
           <BeliefGraphCanvas
             graph={graph}
             highlightLabels={invitation?.triggeringBeliefs}

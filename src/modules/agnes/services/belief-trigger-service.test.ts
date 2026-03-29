@@ -51,6 +51,9 @@ describe('belief-trigger-service', () => {
     expect(runtime).not.toBeNull();
     expect(runtime?.metadata.dispatchStatus).toBe('awaiting_approval');
     expect(runtime?.invitation.runtimeSummary.counts.awaitingApproval).toBe(1);
+    expect(runtime?.invitation.threadId).toMatch(/^agnes\.belief-trigger\.[a-z0-9._-]+\.[a-z0-9]+$/);
+    expect(runtime?.invitation.threadId.includes('/')).toBe(false);
+    expect(runtime?.metadata.proposal.id.includes('/')).toBe(false);
 
     const snapshot = buildBeliefSessionInvitationSnapshot(runtime?.invitation);
     expect(snapshot?.thread.resolution.status).toBe('awaiting_approval');

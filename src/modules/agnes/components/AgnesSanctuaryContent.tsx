@@ -24,6 +24,7 @@ interface AgnesSanctuaryContentProps {
   onDismissBeliefProposal: (proposalId: string) => Promise<void>;
   onAcceptInvitation: () => Promise<void>;
   onDismissInvitation: () => Promise<void>;
+  onCompactBeliefGraph?: () => Promise<void>;
   selectedPersistentMode: AgnesPersistentEngagementMode;
   onPersistentModeChange: (mode: AgnesPersistentEngagementMode) => void;
   agentAlias: string;
@@ -35,6 +36,8 @@ interface AgnesSanctuaryContentProps {
   beliefWorkflow: BeliefGraphWorkflow | null;
   beliefInvitationSnapshot?: MasterThreadShellSnapshot | null;
   beliefWorkflowBusy?: boolean;
+  compactBeliefGraphBusy?: boolean;
+  compactBeliefGraphStatus?: string | null;
 }
 
 export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
@@ -43,6 +46,7 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
   onDismissBeliefProposal,
   onAcceptInvitation,
   onDismissInvitation,
+  onCompactBeliefGraph,
   selectedPersistentMode,
   onPersistentModeChange,
   agentAlias,
@@ -53,6 +57,8 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
   beliefWorkflow,
   beliefInvitationSnapshot,
   beliefWorkflowBusy = false,
+  compactBeliefGraphBusy = false,
+  compactBeliefGraphStatus = null,
 }) => {
   const selectedModeDefinition = AGNES_ENGAGEMENT_MODE_DEFINITIONS[selectedPersistentMode];
 
@@ -153,6 +159,9 @@ export const AgnesSanctuaryContent: React.FC<AgnesSanctuaryContentProps> = ({
             onDismissProposal={onDismissBeliefProposal}
             onAcceptInvitation={onAcceptInvitation}
             onDismissInvitation={onDismissInvitation}
+            onCompactGraph={onCompactBeliefGraph}
+            compactGraphBusy={compactBeliefGraphBusy}
+            compactGraphStatus={compactBeliefGraphStatus}
           />
        </main>
     </div>

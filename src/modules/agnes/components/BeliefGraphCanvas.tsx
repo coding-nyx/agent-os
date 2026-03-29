@@ -42,7 +42,14 @@ export function BeliefGraphCanvas({
     [highlightLabels],
   );
 
-  const nodes = useMemo(() => graph?.nodes ?? [], [graph?.nodes]);
+  const nodes = useMemo(
+    () =>
+      [...(graph?.nodes ?? [])].sort((left, right) => {
+        if (right.intensity !== left.intensity) return right.intensity - left.intensity;
+        return left.label.localeCompare(right.label);
+      }),
+    [graph?.nodes],
+  );
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? nodes[0] ?? null;
   const positions = useMemo(
     () =>

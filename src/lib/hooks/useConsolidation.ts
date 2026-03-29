@@ -113,8 +113,12 @@ export function useConsolidation({
         JSON.stringify({
           moduleId,
           consolidatedAt: new Date().toISOString(),
-          // Strip debugMeta — it can be very large and is never needed for memory retrieval
-          history: localHistory.map(({ debugMeta: _drop, ...msg }) => msg)
+          // Persist only retrieval-relevant message fields; omit heavy runtime/tool metadata.
+          history: localHistory.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp,
+          }))
         }),
         { encryptionKey, facts: keyInsights }
       );

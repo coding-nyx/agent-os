@@ -138,4 +138,74 @@ describe('ModuleMemoryService', () => {
     expect(envelope?.eventHistory[0].id).toBe('evt1');
     expect(envelope?.metadata.foo).toBe('bar');
   });
+
+  it('trims oversized snapshot before encrypted write', async () => {
+    dataLayerSpies.getDocument.mockResolvedValue({
+      eventHistory: [],
+      metadata: {}
+    });
+
+    const massiveSnapshot = 'x'.repeat(1_200_000);
+
+    await ModuleMemoryService.commitSession(
+      'user1',
+      'agnes',
+      {
+        id: 'evt',
+        timestamp: new Date().toISOString(),
+        summary: 'large snapshot session',
+        keyInsights: ['k'],
+        sentiment: 0,
+        tokenUsage: 0
+      },
+      massiveSnapshot,
+      { encryptionKey }
+    );
+
+    expect(dataLayerSpies.setDocument).toHaveBeenCalledTimes(1);
+    const [, , payload] = dataLayerSpies.setDocument.mock.calls[0];
+    expect(payload.metadata.vault.snapshotTruncated).toBe(true);
+    expect(payload.metadata.vault.snapshotOriginalBytes).toBeGreaterThan(1_000_000);
+    expect(payload.metadata.vault.snapshotStoredBytes).toBeLessThan(payload.metadata.vault.snapshotOriginalBytes);
+    expect(typeof payload.encryptedPayload.ciphertext).toBe('string');
+    expect(typeof payload.encryptedPayload.iv).toBe('string');
+  });
+
+  it('sanitizes non-plain metadata values for Firestore writes', async () => {
+    class WeirdMetadata {
+      constructor(private readonly value: string) {}
+      toString() {
+        return `weird:${this.value}`;
+      }
+    }
+
+    dataLayerSpies.getDocument.mockResolvedValue({
+      eventHistory: [],
+      metadata: {
+        nested: {
+          strange: new WeirdMetadata('meta')
+        },
+        invalidNumber: Number.NaN
+      }
+    });
+
+    await ModuleMemoryService.commitSession(
+      'user1',
+      'agnes',
+      {
+        id: 'evt',
+        timestamp: new Date().toISOString(),
+        summary: 'sanitize metadata session',
+        keyInsights: ['k'],
+        sentiment: 0,
+        tokenUsage: 0
+      },
+      'snapshot',
+      { encryptionKey }
+    );
+
+    const [, , payload] = dataLayerSpies.setDocument.mock.calls[0];
+    expect(payload.metadata.nested.strange).toBe('weird:meta');
+    expect(payload.metadata.invalidNumber).toBeNull();
+  });
 });

@@ -7,6 +7,12 @@ import { MODULE_MANIFEST } from '../module-manifest';
 const COLLECTION_PREFIX = 'module_memory';
 const ACTIVE_SESSION_COLLECTION = 'active_sessions';
 const VAULT_SALT_MARKER = 'vault_salt_used';
+const MAX_ENCRYPTED_DOC_BYTES = 900_000;
+const TARGET_TRIMMED_SNAPSHOT_BYTES = 180_000;
+const EMBEDDING_STORAGE_DIM = 256;
+const MAX_EVENT_SUMMARY_CHARS = 800;
+const MAX_EVENT_INSIGHTS = 12;
+const MAX_EVENT_INSIGHT_CHARS = 240;
 
 // ---------------------------------------------------------------------------
 // Per-module write queue
@@ -24,6 +30,99 @@ function enqueueMemoryWrite(queueKey: string, fn: () => Promise<void>): Promise<
   const next = prev.then(fn).catch(() => fn());
   _memoryWriteQueues.set(queueKey, next);
   return next;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function sanitizeForFirestore(value: unknown): unknown {
+  if (value === undefined) return undefined;
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'bigint') return value.toString();
+  if (Array.isArray(value)) {
+    return value.map((item) => {
+      const sanitized = sanitizeForFirestore(item);
+      return sanitized === undefined ? null : sanitized;
+    });
+  }
+  if (value instanceof Date) return value.toISOString();
+  if (isPlainObject(value)) {
+    const result: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(value)) {
+      const sanitized = sanitizeForFirestore(nested);
+      if (sanitized !== undefined) result[key] = sanitized;
+    }
+    return result;
+  }
+  return String(value);
+}
+
+function toUtf8Bytes(text: string): number {
+  try {
+    return new TextEncoder().encode(text).length;
+  } catch {
+    return text.length;
+  }
+}
+
+function estimatePayloadSizeBytes(payload: unknown): number {
+  try {
+    return toUtf8Bytes(JSON.stringify(payload));
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
+function truncateSnapshotToBytes(snapshot: string, maxBytes: number): string {
+  if (!snapshot) return '';
+  if (toUtf8Bytes(snapshot) <= maxBytes) return snapshot;
+  const marker = '\n[truncated-for-storage]';
+  let low = 0;
+  let high = snapshot.length;
+  let best = '';
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const candidate = `${snapshot.slice(0, mid)}${marker}`;
+    if (toUtf8Bytes(candidate) <= maxBytes) {
+      best = candidate;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return best || marker;
+}
+
+function normalizeEmbedding(values: unknown): number[] | undefined {
+  if (!Array.isArray(values)) return undefined;
+  const normalized = values
+    .map((value) => (typeof value === 'number' && Number.isFinite(value) ? value : 0))
+    .slice(0, EMBEDDING_STORAGE_DIM);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeSessionEventForStorage(event: SessionEventSummary): SessionEventSummary {
+  const summary = typeof event.summary === 'string' ? event.summary.slice(0, MAX_EVENT_SUMMARY_CHARS) : '';
+  const keyInsights = Array.isArray(event.keyInsights)
+    ? event.keyInsights
+      .filter((insight): insight is string => typeof insight === 'string')
+      .slice(0, MAX_EVENT_INSIGHTS)
+      .map((insight) => insight.slice(0, MAX_EVENT_INSIGHT_CHARS))
+    : [];
+  const embedding = normalizeEmbedding(event.embedding);
+  return {
+    id: typeof event.id === 'string' ? event.id : `evt_${Date.now()}`,
+    timestamp: typeof event.timestamp === 'string' ? event.timestamp : new Date().toISOString(),
+    summary,
+    keyInsights,
+    sentiment: typeof event.sentiment === 'number' && Number.isFinite(event.sentiment) ? event.sentiment : 0,
+    tokenUsage: typeof event.tokenUsage === 'number' && Number.isFinite(event.tokenUsage) ? event.tokenUsage : 0,
+    ...(embedding ? { embedding } : {})
+  };
 }
 
 function getActiveSessionDocId(uid: string, moduleId: string, sessionId?: string) {
@@ -219,10 +318,10 @@ export const ModuleMemoryService = {
       }
 
       const docId = `${uid}_${moduleId}`;
-      const embeddedEvent: SessionEventSummary = {
+      const embeddedEvent: SessionEventSummary = normalizeSessionEventForStorage({
         ...event,
-        embedding: event.embedding || await EmbeddingService.embed(`${event.summary}\n${event.keyInsights.join('\n')}`)
-      };
+        embedding: normalizeEmbedding(event.embedding) || await EmbeddingService.embed(`${event.summary}\n${event.keyInsights.join('\n')}`)
+      });
 
       if (encryptionKey) {
         try {
@@ -247,37 +346,114 @@ export const ModuleMemoryService = {
           }
 
           // Cap history to prevent ciphertext from growing beyond Firestore's 1MB document limit.
-          // Each event with a 256-float embedding is ~2KB; 50 events ≈ 100KB headroom for snapshot.
           const MAX_HISTORY_EVENTS = 50;
-          const nextHistory = [...existingHistory, embeddedEvent].slice(-MAX_HISTORY_EVENTS);
-          const encryptedPayload = await encryptWithKey(
-            JSON.stringify({
-              latestSnapshot: snapshot,
-              eventHistory: nextHistory,
-              facts
-            }),
-            encryptionKey
-          );
+          const normalizedExistingHistory = existingHistory.map((entry) => normalizeSessionEventForStorage(entry));
+          let nextHistory = [...normalizedExistingHistory, embeddedEvent].slice(-MAX_HISTORY_EVENTS);
+          const originalHistoryCount = nextHistory.length;
+          const originalSnapshotBytes = toUtf8Bytes(snapshot);
+          const candidateSnapshots: Array<{ value: string; truncated: boolean }> = [
+            { value: snapshot, truncated: false }
+          ];
+          if (originalSnapshotBytes > TARGET_TRIMMED_SNAPSHOT_BYTES) {
+            candidateSnapshots.push({
+              value: truncateSnapshotToBytes(snapshot, TARGET_TRIMMED_SNAPSHOT_BYTES),
+              truncated: true
+            });
+          }
+          candidateSnapshots.push({ value: '', truncated: true });
 
-          await dataLayer.setDocument(COLLECTION_PREFIX, docId, {
-            moduleId,
-            lastActive: now,
-            // Do not persist plaintext event history when vault is available
-            latestSnapshot: '',
-            eventHistory: [],
-            encryptedPayload,
-            metadata: {
-              ...existingMetadata,
-              vault: {
-                encrypted: true,
-                salt: VAULT_SALT_MARKER,
-                eventCount: nextHistory.length,
-                updatedAt: now
+          let writePayload: Record<string, unknown> | null = null;
+          let estimatedBytes = Number.MAX_SAFE_INTEGER;
+          let historyCompacted = false;
+          let snapshotWasTruncated = false;
+          for (const candidate of candidateSnapshots) {
+            let candidateHistory = nextHistory;
+            while (candidateHistory.length > 0) {
+              const encrypted = await encryptWithKey(
+                JSON.stringify({
+                  latestSnapshot: candidate.value,
+                  eventHistory: candidateHistory,
+                  facts
+                }),
+                encryptionKey
+              );
+
+              const encryptedPayload = {
+                ciphertext: String(encrypted.ciphertext ?? ''),
+                iv: String(encrypted.iv ?? '')
+              };
+
+              const metadata = sanitizeForFirestore({
+                ...existingMetadata,
+                vault: {
+                  encrypted: true,
+                  salt: VAULT_SALT_MARKER,
+                  eventCount: candidateHistory.length,
+                  updatedAt: now,
+                  snapshotTruncated: candidate.truncated,
+                  snapshotOriginalBytes: candidate.truncated ? originalSnapshotBytes : undefined,
+                  snapshotStoredBytes: candidate.truncated ? toUtf8Bytes(candidate.value) : undefined,
+                  historyCompacted: candidateHistory.length < originalHistoryCount,
+                  historyOriginalCount: candidateHistory.length < originalHistoryCount ? originalHistoryCount : undefined
+                }
+              }) as Record<string, unknown>;
+
+              const candidatePayload = sanitizeForFirestore({
+                moduleId,
+                lastActive: now,
+                // Do not persist plaintext event history when vault is available
+                latestSnapshot: '',
+                eventHistory: [],
+                encryptedPayload,
+                metadata
+              }) as Record<string, unknown>;
+
+              estimatedBytes = estimatePayloadSizeBytes(candidatePayload);
+              writePayload = candidatePayload;
+              snapshotWasTruncated = candidate.truncated;
+              historyCompacted = candidateHistory.length < originalHistoryCount;
+
+              if (estimatedBytes <= MAX_ENCRYPTED_DOC_BYTES) {
+                nextHistory = candidateHistory;
+                break;
               }
+
+              if (candidateHistory.length <= 1) break;
+              candidateHistory = candidateHistory.slice(1);
             }
-          });
+
+            if (estimatedBytes <= MAX_ENCRYPTED_DOC_BYTES) break;
+          }
+
+          if (!writePayload) {
+            throw new Error('[ModuleMemoryService] Failed to build encrypted payload');
+          }
+
+          if (estimatedBytes > MAX_ENCRYPTED_DOC_BYTES) {
+            console.warn(
+              '[ModuleMemoryService] Encrypted payload estimated above Firestore limit threshold.',
+              {
+                docId,
+                estimatedBytes,
+                threshold: MAX_ENCRYPTED_DOC_BYTES,
+                eventCount: nextHistory.length,
+                snapshotTruncated: snapshotWasTruncated,
+                historyCompacted
+              }
+            );
+          }
+
+          await dataLayer.setDocument(COLLECTION_PREFIX, docId, writePayload);
           return;
         } catch (error) {
+          const described = error as { message?: string };
+          console.error(
+            '[ModuleMemoryService] Encrypted commit diagnostics:',
+            {
+              docId,
+              errorMessage: described?.message || String(error)
+            }
+          );
           console.error('[ModuleMemoryService] Failed to commit encrypted session:', error);
           // Re-throw so the queue's retry mechanism can attempt the write once more.
           throw error;
@@ -305,6 +481,150 @@ export const ModuleMemoryService = {
         throw error;
       }
     });
+  },
+
+  async compactEnvelope(
+    uid: string,
+    moduleId: string,
+    options?: { encryptionKey?: CryptoKey | null; maxHistoryEvents?: number }
+  ): Promise<{
+    compacted: boolean;
+    eventCount?: number;
+    snapshotTruncated?: boolean;
+    historyCompacted?: boolean;
+    estimatedBytes?: number;
+    reason?: string;
+  }> {
+    if (!uid || !moduleId) return { compacted: false, reason: 'missing_identifiers' };
+    const encryptionKey = options?.encryptionKey || null;
+    if (!encryptionKey) return { compacted: false, reason: 'missing_encryption_key' };
+
+    const dataLayer = getNexusDataLayer();
+    const docId = `${uid}_${moduleId}`;
+    const now = new Date().toISOString();
+    const maxHistoryEvents = Math.max(1, Math.min(100, options?.maxHistoryEvents ?? 50));
+
+    const existingDoc = await dataLayer.getDocument<ModuleMemoryEnvelope & { encryptedPayload?: { ciphertext: string; iv: string } }>(
+      COLLECTION_PREFIX,
+      docId
+    );
+    if (!existingDoc?.encryptedPayload) return { compacted: false, reason: 'no_encrypted_payload' };
+
+    let latestSnapshot = '';
+    let facts: string[] = [];
+    let eventHistory: SessionEventSummary[] = [];
+    try {
+      const decrypted = await decryptWithKey(existingDoc.encryptedPayload, encryptionKey);
+      const parsed = JSON.parse(decrypted) as {
+        latestSnapshot?: string;
+        eventHistory?: SessionEventSummary[];
+        facts?: string[];
+      };
+      latestSnapshot = typeof parsed.latestSnapshot === 'string' ? parsed.latestSnapshot : '';
+      eventHistory = Array.isArray(parsed.eventHistory) ? parsed.eventHistory : [];
+      facts = Array.isArray(parsed.facts) ? parsed.facts.filter((f): f is string => typeof f === 'string') : [];
+    } catch (error) {
+      console.warn('[ModuleMemoryService] Failed to decrypt envelope for compaction:', error);
+      return { compacted: false, reason: 'decrypt_failed' };
+    }
+
+    const normalizedHistory = eventHistory.map((entry) => normalizeSessionEventForStorage(entry)).slice(-maxHistoryEvents);
+    const originalHistoryCount = normalizedHistory.length;
+    const originalSnapshotBytes = toUtf8Bytes(latestSnapshot);
+    const candidateSnapshots: Array<{ value: string; truncated: boolean }> = [{ value: latestSnapshot, truncated: false }];
+    if (originalSnapshotBytes > TARGET_TRIMMED_SNAPSHOT_BYTES) {
+      candidateSnapshots.push({
+        value: truncateSnapshotToBytes(latestSnapshot, TARGET_TRIMMED_SNAPSHOT_BYTES),
+        truncated: true
+      });
+    }
+    candidateSnapshots.push({ value: '', truncated: true });
+
+    let writePayload: Record<string, unknown> | null = null;
+    let estimatedBytes = Number.MAX_SAFE_INTEGER;
+    let compactedHistory = normalizedHistory;
+    let snapshotWasTruncated = false;
+    let historyCompacted = false;
+
+    for (const candidate of candidateSnapshots) {
+      let candidateHistory = compactedHistory;
+      while (candidateHistory.length > 0) {
+        const encrypted = await encryptWithKey(
+          JSON.stringify({
+            latestSnapshot: candidate.value,
+            eventHistory: candidateHistory,
+            facts
+          }),
+          encryptionKey
+        );
+
+        const encryptedPayload = {
+          ciphertext: String(encrypted.ciphertext ?? ''),
+          iv: String(encrypted.iv ?? '')
+        };
+
+        const metadata = sanitizeForFirestore({
+          ...(existingDoc.metadata as Record<string, unknown> || {}),
+          vault: {
+            encrypted: true,
+            salt: VAULT_SALT_MARKER,
+            eventCount: candidateHistory.length,
+            updatedAt: now,
+            snapshotTruncated: candidate.truncated,
+            snapshotOriginalBytes: candidate.truncated ? originalSnapshotBytes : undefined,
+            snapshotStoredBytes: candidate.truncated ? toUtf8Bytes(candidate.value) : undefined,
+            historyCompacted: candidateHistory.length < originalHistoryCount,
+            historyOriginalCount: candidateHistory.length < originalHistoryCount ? originalHistoryCount : undefined,
+            compactedBy: 'manual'
+          }
+        }) as Record<string, unknown>;
+
+        const candidatePayload = sanitizeForFirestore({
+          moduleId,
+          lastActive: now,
+          latestSnapshot: '',
+          eventHistory: [],
+          encryptedPayload,
+          metadata
+        }) as Record<string, unknown>;
+
+        estimatedBytes = estimatePayloadSizeBytes(candidatePayload);
+        writePayload = candidatePayload;
+        snapshotWasTruncated = candidate.truncated;
+        historyCompacted = candidateHistory.length < originalHistoryCount;
+
+        if (estimatedBytes <= MAX_ENCRYPTED_DOC_BYTES) {
+          compactedHistory = candidateHistory;
+          break;
+        }
+
+        if (candidateHistory.length <= 1) break;
+        candidateHistory = candidateHistory.slice(1);
+      }
+
+      if (estimatedBytes <= MAX_ENCRYPTED_DOC_BYTES) break;
+    }
+
+    if (!writePayload) {
+      return { compacted: false, reason: 'payload_build_failed' };
+    }
+
+    if (estimatedBytes > MAX_ENCRYPTED_DOC_BYTES) {
+      return {
+        compacted: false,
+        reason: 'still_oversized',
+        estimatedBytes
+      };
+    }
+
+    await dataLayer.setDocument(COLLECTION_PREFIX, docId, writePayload);
+    return {
+      compacted: true,
+      eventCount: compactedHistory.length,
+      snapshotTruncated: snapshotWasTruncated,
+      historyCompacted,
+      estimatedBytes
+    };
   },
 
   async saveActiveSession(uid: string, session: ActiveSessionState): Promise<void> {

@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const EMBEDDING_MODEL = 'gemini-embedding-001';
 const EMBEDDING_DIMENSION = 256;
+const warnedDimensionPairs = new Set<string>();
 
 function hashToken(token: string): number {
   let hash = 0;
@@ -24,13 +25,26 @@ function lexicalFallbackEmbedding(text: string): number[] {
   return vector.map((value) => value / norm);
 }
 
-export function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length) {
-    console.warn(`[EmbeddingService] Dimension mismatch: ${a.length} vs ${b.length}, returning 0`);
-    return 0;
+function normalizeEmbeddingDimension(values: number[]): number[] {
+  const sanitized = values.map((value) => (Number.isFinite(value) ? value : 0));
+  if (sanitized.length >= EMBEDDING_DIMENSION) {
+    return sanitized.slice(0, EMBEDDING_DIMENSION);
   }
-  const length = a.length;
+  return sanitized.concat(new Array<number>(EMBEDDING_DIMENSION - sanitized.length).fill(0));
+}
+
+export function cosineSimilarity(a: number[], b: number[]): number {
+  const length = Math.min(a.length, b.length);
   if (length === 0) return 0;
+  if (a.length !== b.length) {
+    const key = `${a.length}:${b.length}`;
+    if (!warnedDimensionPairs.has(key)) {
+      warnedDimensionPairs.add(key);
+      console.warn(
+        `[EmbeddingService] Dimension mismatch: ${a.length} vs ${b.length}, using overlap=${length}`
+      );
+    }
+  }
 
   let dot = 0;
   let normA = 0;
@@ -61,7 +75,8 @@ async function googleEmbedding(text: string): Promise<number[] | null> {
     const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
     const result = await model.embedContent(text);
     const values = result.embedding.values;
-    return values || null;
+    if (!values || values.length === 0) return null;
+    return normalizeEmbeddingDimension(values);
   } catch (error) {
     console.warn('[EmbeddingService] Falling back to lexical embedding:', error);
     return null;
@@ -90,7 +105,7 @@ export const EmbeddingService = {
         ),
       ]).catch(() => null); // timeout or API error → fall back immediately
       if (remote && remote.length > 0) return remote;
-      return lexicalFallbackEmbedding(normalized);
+      return normalizeEmbeddingDimension(lexicalFallbackEmbedding(normalized));
     })();
 
     // Remove failed/timed-out promises from cache to allow retrying

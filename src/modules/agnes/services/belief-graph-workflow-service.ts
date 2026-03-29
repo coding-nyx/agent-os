@@ -20,6 +20,7 @@ import { OrchestrationPersistenceService } from '@/lib/services/orchestration-pe
 
 const BELIEF_GRAPH_WORKFLOW_COLLECTION = 'belief_graph_workflows';
 const VAULT_SALT_MARKER = 'vault_salt_used';
+const MAX_BELIEF_GRAPH_NODES = 80;
 
 export interface BeliefGraphProposal {
   id: string;
@@ -151,46 +152,88 @@ export function mergeBeliefGraphs(current: BeliefGraph | null, proposalGraph: Be
   const addition = normalizeBeliefGraph(proposalGraph);
   const now = new Date().toISOString();
 
-  const nextNodes: BeliefNode[] = [];
   const nodeByKey = new Map<string, BeliefNode>();
-  const proposalIdMap = new Map<string, string>();
+  const nodeRankById = new Map<string, number>();
+  const aliasIdToCanonicalId = new Map<string, string>();
+  const usedIds = new Set<string>();
+  let rankCounter = 0;
 
-  for (const existing of base.nodes) {
-    const normalizedKey = normalizeBeliefKey(existing.label);
-    const cloned = { ...existing };
-    nodeByKey.set(normalizedKey, cloned);
-    nextNodes.push(cloned);
-  }
+  const absorbNode = (node: BeliefNode) => {
+    const label = node.label.trim() || 'Belief';
+    const normalizedKey = normalizeBeliefKey(label);
+    if (!normalizedKey) return;
 
-  for (const node of addition.nodes) {
-    const normalizedKey = normalizeBeliefKey(node.label);
     const existing = nodeByKey.get(normalizedKey);
     if (existing) {
-      existing.label = node.label.trim() || existing.label;
-      existing.valence = node.valence;
-      existing.intensity = Math.max(existing.intensity, node.intensity);
-      proposalIdMap.set(node.id, existing.id);
-      continue;
+      const incomingIntensity = Math.max(0, Math.min(10, node.intensity));
+      if (incomingIntensity >= existing.intensity) {
+        existing.label = label;
+        existing.valence = node.valence;
+      }
+      existing.intensity = Math.max(existing.intensity, incomingIntensity);
+      nodeRankById.set(existing.id, Math.max(nodeRankById.get(existing.id) ?? -1, rankCounter));
+      aliasIdToCanonicalId.set(node.id, existing.id);
+      rankCounter += 1;
+      return;
     }
 
-    const created = {
+    let canonicalId = node.id?.trim() ? node.id : `belief.${crypto.randomUUID()}`;
+    if (usedIds.has(canonicalId)) {
+      canonicalId = `belief.${crypto.randomUUID()}`;
+    }
+    usedIds.add(canonicalId);
+
+    const created: BeliefNode = {
       ...node,
-      id: node.id?.trim() ? node.id : `belief.${crypto.randomUUID()}`,
-      label: node.label.trim() || 'Belief',
+      id: canonicalId,
+      label,
+      intensity: Math.max(0, Math.min(10, node.intensity)),
     };
+
     nodeByKey.set(normalizedKey, created);
-    proposalIdMap.set(node.id, created.id);
-    nextNodes.push(created);
-  }
+    nodeRankById.set(canonicalId, rankCounter);
+    aliasIdToCanonicalId.set(node.id, canonicalId);
+    rankCounter += 1;
+  };
+
+  base.nodes.forEach(absorbNode);
+  addition.nodes.forEach(absorbNode);
+
+  const scoredNodes = Array.from(nodeByKey.values())
+    .sort((left, right) => {
+      if (right.intensity !== left.intensity) return right.intensity - left.intensity;
+      const rightRank = nodeRankById.get(right.id) ?? -1;
+      const leftRank = nodeRankById.get(left.id) ?? -1;
+      if (rightRank !== leftRank) return rightRank - leftRank;
+      return left.label.localeCompare(right.label);
+    })
+    .slice(0, MAX_BELIEF_GRAPH_NODES);
+
+  const retainedNodeIds = new Set(scoredNodes.map((node) => node.id));
+  const nextNodes = scoredNodes.sort((left, right) => {
+    if (right.intensity !== left.intensity) return right.intensity - left.intensity;
+    return left.label.localeCompare(right.label);
+  });
 
   const nextEdges: BeliefEdge[] = [];
   const edgeKeys = new Set<string>();
 
+  const resolveNodeId = (id: string) => aliasIdToCanonicalId.get(id) ?? id;
+
   const pushEdge = (edge: BeliefEdge) => {
-    const key = dedupeEdgeKey(edge);
-    if (edge.from === edge.to || edgeKeys.has(key)) return;
+    const from = resolveNodeId(edge.from);
+    const to = resolveNodeId(edge.to);
+    if (!retainedNodeIds.has(from) || !retainedNodeIds.has(to)) return;
+    const normalizedEdge: BeliefEdge = {
+      from,
+      to,
+      relation: edge.relation.trim() || 'related',
+    };
+    if (normalizedEdge.from === normalizedEdge.to) return;
+    const key = dedupeEdgeKey(normalizedEdge);
+    if (edgeKeys.has(key)) return;
     edgeKeys.add(key);
-    nextEdges.push(edge);
+    nextEdges.push(normalizedEdge);
   };
 
   for (const edge of base.edges) {
@@ -198,14 +241,7 @@ export function mergeBeliefGraphs(current: BeliefGraph | null, proposalGraph: Be
   }
 
   for (const edge of addition.edges) {
-    const from = proposalIdMap.get(edge.from) ?? edge.from;
-    const to = proposalIdMap.get(edge.to) ?? edge.to;
-    if (!nextNodes.some((node) => node.id === from) || !nextNodes.some((node) => node.id === to)) continue;
-    pushEdge({
-      from,
-      to,
-      relation: edge.relation.trim() || 'related',
-    });
+    pushEdge({ ...edge });
   }
 
   return {

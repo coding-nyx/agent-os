@@ -160,6 +160,28 @@ function buildExecutionStatus(metadata: ActionOrchestrationMetadata['dispatchSta
   return 'blocked';
 }
 
+function hashToken(input: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function sanitizeIdToken(value: string, maxLength: number): string {
+  const trimmed = value.trim().toLowerCase();
+  const normalized = trimmed
+    .replace(/[\\/]/g, '-') // Firestore forbids "/" in document ids
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (!normalized) return `id-${hashToken(value)}`;
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(8, maxLength - 8))}-${hashToken(normalized)}`;
+}
+
 export class OrchestrationActionGateService {
   static evaluate(input: OrchestrationActionGateInput): OrchestrationActionGateDecision {
     const now = input.now ?? new Date().toISOString();
@@ -171,7 +193,9 @@ export class OrchestrationActionGateService {
     const highRisk = inferHighRisk(input.actionType);
     const confidence = inferProposalConfidence(input.actionType, input.payload, mutatesState, highRisk);
     const explicitApprovalRequested = mutatesState && input.payload.requiresApproval === true;
-    const proposalId = `${activeThreadId ?? input.moduleId}.${input.actionType}.${crypto.randomUUID()}`;
+    const safeThreadToken = sanitizeIdToken(activeThreadId ?? input.moduleId, 72);
+    const safeActionToken = sanitizeIdToken(input.actionType, 48);
+    const proposalId = `${safeThreadToken}.${safeActionToken}.${crypto.randomUUID()}`;
     const proposal: MutationProposal = {
       id: proposalId,
       source,

@@ -33,10 +33,12 @@ import {
   subscribeBeliefGraphWorkflow,
   type BeliefGraphWorkflow,
   confirmBeliefGraphProposal,
+  loadBeliefGraphWorkflow,
   updateBeliefSessionInvitationStatus,
 } from './services/belief-graph-workflow-service';
 import { buildBeliefSessionInvitationSnapshot } from './services/belief-trigger-service';
 import {
+  compactBeliefGraphDocument,
   subscribeBeliefGraph,
   type BeliefGraph as AgnesBeliefGraph,
 } from './services/belief-graph-service';
@@ -53,6 +55,7 @@ import { IntakeBaseContextService } from '@/lib/services/intake-base-context-ser
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { useAI } from '@/llm-engine/ai-context';
 import { AgnesNotificationSettingsPanel } from './components/AgnesNotificationSettingsPanel';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 
@@ -103,6 +106,7 @@ function AgnesContent({
   encryptionKey,
   setSessionActive
 }: AgnesContentProps) {
+  const { generateJSON } = useAI();
   const { globalSoul, updateCrossFunctionalState } = useGlobalSoul();
 
   const { user, isGuest, profile: coreProfile } = useAuth();
@@ -118,6 +122,10 @@ function AgnesContent({
   const [modeContinuity, setModeContinuity] = useState<ReturnType<typeof buildAgnesPromptContinuity>>();
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isClosingSession, setIsClosingSession] = useState(false);
+  const [isCompactingMemory, setIsCompactingMemory] = useState(false);
+  const [compactMemoryStatus, setCompactMemoryStatus] = useState<string | null>(null);
+  const [isCompactingBeliefGraph, setIsCompactingBeliefGraph] = useState(false);
+  const [compactBeliefGraphStatus, setCompactBeliefGraphStatus] = useState<string | null>(null);
   const [sessionSummary, setSessionSummary] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
   const [pendingImpromptuWelcome, setPendingImpromptuWelcome] = useState<string | null>(null);
@@ -572,8 +580,46 @@ function AgnesContent({
     }
   }, [encryptionKey, isGuest, user]);
 
+  const autoHandlePendingBeliefSuggestions = useCallback(async () => {
+    if (!user || isGuest || !encryptionKey) return;
+
+    try {
+      const workflow = await loadBeliefGraphWorkflow({ userId: user.uid, encryptionKey });
+      const pendingProposals = workflow?.proposals.filter((proposal) => proposal.status === 'pending') ?? [];
+      if (pendingProposals.length === 0) return;
+
+      setBeliefWorkflowBusy(true);
+      let latestGraph: AgnesBeliefGraph | null = null;
+      let latestWorkflow: BeliefGraphWorkflow | null = workflow;
+
+      for (const proposal of pendingProposals) {
+        try {
+          const result = await confirmBeliefGraphProposal({
+            proposalId: proposal.id,
+            userId: user.uid,
+            encryptionKey,
+            emotionalState: globalSoul?.crossFunctionalState.emotional ?? null,
+            isGuest,
+          });
+          if (result.graph) latestGraph = result.graph;
+          if (result.workflow) latestWorkflow = result.workflow;
+        } catch (error) {
+          console.warn('[Agnes] Failed to auto-apply pending belief proposal:', proposal.id, error);
+        }
+      }
+
+      if (latestGraph) setBeliefGraph(latestGraph);
+      if (latestWorkflow) setBeliefWorkflow(latestWorkflow);
+    } catch (error) {
+      console.warn('[Agnes] Failed to auto-handle pending belief suggestions:', error);
+    } finally {
+      setBeliefWorkflowBusy(false);
+    }
+  }, [encryptionKey, globalSoul?.crossFunctionalState.emotional, isGuest, user]);
+
   const endSession = async () => {
     setIsSummarizing(true);
+    setCompactMemoryStatus(null);
     try {
       const summary = await summarizeSession();
       setSessionSummary(summary);
@@ -603,6 +649,10 @@ function AgnesContent({
       setBeliefWorkflow(pendingPostSessionBeliefWorkflowRef.current);
       pendingPostSessionBeliefWorkflowRef.current = null;
     }
+
+    // Auto-handle any pending belief suggestions after session close so the
+    // user does not need to manually review post-session proposal backlog.
+    void autoHandlePendingBeliefSuggestions();
   };
 
   const handleMergeAndClose = async () => {
@@ -612,8 +662,13 @@ function AgnesContent({
         const snapshot = JSON.stringify({
           moduleId: 'agnes',
           endedAt: new Date().toISOString(),
-          // Strip debugMeta — it can be very large and is never needed for memory retrieval
-          history: messages.map(({ debugMeta: _drop, ...msg }) => msg)
+          // Persist only retrieval-relevant message fields.
+          // tool_calls/debug artifacts can be extremely large and are not needed for episodic recall.
+          history: messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp,
+          }))
         });
 
         const existing = await ModuleMemoryService.getEnvelope(user.uid, 'agnes', encryptionKey);
@@ -672,6 +727,51 @@ function AgnesContent({
       setIsClosingSession(false);
     }
   };
+
+  const handleCompactCurrentMemory = useCallback(async () => {
+    if (!user || isGuest || !encryptionKey) return;
+    setCompactMemoryStatus(null);
+    setIsCompactingMemory(true);
+    try {
+      const result = await ModuleMemoryService.compactEnvelope(user.uid, 'agnes', { encryptionKey });
+      if (result.compacted) {
+        setCompactMemoryStatus(
+          `Compacted successfully (${result.eventCount ?? 0} events${result.snapshotTruncated ? ', snapshot trimmed' : ''}${result.historyCompacted ? ', history compacted' : ''}).`
+        );
+      } else {
+        setCompactMemoryStatus(`Compaction skipped: ${result.reason ?? 'unknown reason'}.`);
+      }
+    } catch (error) {
+      console.error('[Agnes] Manual memory compaction failed:', error);
+      setCompactMemoryStatus('Compaction failed. Check console for details.');
+    } finally {
+      setIsCompactingMemory(false);
+    }
+  }, [encryptionKey, isGuest, user]);
+
+  const handleCompactBeliefGraph = useCallback(async () => {
+    if (!user || isGuest || !encryptionKey) return;
+    setCompactBeliefGraphStatus(null);
+    setIsCompactingBeliefGraph(true);
+    try {
+      const result = await compactBeliefGraphDocument(
+        { userId: user.uid, encryptionKey },
+        { maxNodes: 60, generateJSON },
+      );
+      if (result.compacted) {
+        setCompactBeliefGraphStatus(
+          `Belief graph compacted (${result.nodeCount} beliefs, ${result.edgeCount} links).`,
+        );
+      } else {
+        setCompactBeliefGraphStatus(`Belief graph compaction skipped: ${result.reason ?? 'unknown reason'}.`);
+      }
+    } catch (error) {
+      console.error('[Agnes] Belief graph compaction failed:', error);
+      setCompactBeliefGraphStatus('Belief graph compaction failed. Check console for details.');
+    } finally {
+      setIsCompactingBeliefGraph(false);
+    }
+  }, [encryptionKey, generateJSON, isGuest, user]);
 
   // ── Somatic session handlers ──────────────────────────────────────────────
 
@@ -749,6 +849,7 @@ function AgnesContent({
                   onDismissBeliefProposal={handleDismissBeliefProposal}
                   onAcceptInvitation={handleAcceptBeliefInvitation}
                   onDismissInvitation={handleDismissBeliefInvitation}
+                  onCompactBeliefGraph={handleCompactBeliefGraph}
                   selectedPersistentMode={preferredPersistentMode}
                   onPersistentModeChange={handlePreferredPersistentModeChange}
                   agentAlias={agentAlias}
@@ -762,6 +863,8 @@ function AgnesContent({
                   beliefWorkflow={beliefWorkflow}
                   beliefInvitationSnapshot={beliefInvitationSnapshot}
                   beliefWorkflowBusy={beliefWorkflowBusy}
+                  compactBeliefGraphBusy={isCompactingBeliefGraph}
+                  compactBeliefGraphStatus={compactBeliefGraphStatus}
                 />
               )}
             </motion.div>
@@ -922,7 +1025,10 @@ function AgnesContent({
         <NeuralModal 
           key="session-summary-modal" 
           isOpen={!!sessionSummary} 
-          onClose={() => setSessionSummary(null)} 
+          onClose={() => {
+            setSessionSummary(null);
+            setCompactMemoryStatus(null);
+          }}
           title="Session Complete" 
           subtitle="Neural synthesis finalized" 
           icon={Brain} 
@@ -967,10 +1073,27 @@ function AgnesContent({
                   <CheckSquare className="w-4 h-4 mr-2" /> End Session
                 </NeuralButton>
               )}
+              {sessionType !== 'impromptu' && (
+                <NeuralButton
+                  variant="ghost"
+                  className="w-full rounded-full"
+                  loading={isCompactingMemory}
+                  disabled={isClosingSession}
+                  onClick={handleCompactCurrentMemory}
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  Compact Memory (Temporary)
+                </NeuralButton>
+              )}
+              {compactMemoryStatus && (
+                <p className="text-[11px] text-white/55 px-1">
+                  {compactMemoryStatus}
+                </p>
+              )}
               <NeuralButton
                 variant="ghost"
                 onClick={handleDiscardAndClose}
-                disabled={isClosingSession}
+                disabled={isClosingSession || isCompactingMemory}
                 className={cn(
                   "w-full h-auto text-[11px] font-black uppercase tracking-[0.15em] text-white/50 hover:text-white/70 hover:bg-transparent border-none transition-colors disabled:opacity-30",
                   sessionType === 'impromptu' ? "py-2" : "py-3"
