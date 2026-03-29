@@ -5,10 +5,11 @@
  * in ChatInterface.tsx, while preserving all existing theming, Agnes
  * special-casing, debug chips, and internal-signal panel behaviour.
  */
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Copy, Check, BrainCircuit, Terminal, Activity as ActivityIcon, Zap,
+  Pencil, RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MessageDebugMeta, MessageContent, MessageContentPart } from '@/lib/types';
@@ -91,6 +92,7 @@ function CopyButton({ text }: { text: string }) {
 
 // ---------------------------------------------------------------------------
 // AiBubble — internal component
+// Edit/retry do NOT belong on agent bubbles. They live only on UserBubble.
 // ---------------------------------------------------------------------------
 interface AiBubbleProps {
   content: string;
@@ -104,6 +106,14 @@ interface AiBubbleProps {
   isStreaming?: boolean;
   showInternalSignals?: boolean;
   timestamp?: string;
+  /** Controlled from outside — whether the internal signal panel is open */
+  externalShowInternal?: boolean;
+  /** When provided, the in-bubble NeuralButton trigger is hidden (chip lives in icon row) */
+  onToggleInternal?: () => void;
+  /** Called when the user saves an inline edit. Undefined means edit is disabled for this bubble. */
+  onEdit?: (newContent: string) => void;
+  /** Called when the user clicks retry. Undefined means retry is disabled for this bubble. */
+  onRetry?: () => void;
 }
 
 const SILENT_INTERNAL_ACTIONS = [
@@ -123,9 +133,17 @@ function AiBubble({
   isStreaming,
   showInternalSignals,
   timestamp,
+  externalShowInternal,
+  onToggleInternal,
+  onEdit,
+  onRetry,
 }: AiBubbleProps) {
   const [showInternal, setShowInternal] = useState(false);
+  // When parent owns the toggle (chip in icon row), use its value; else use local state
+  const effectiveShowInternal = onToggleInternal !== undefined ? (externalShowInternal ?? false) : showInternal;
   const [expanded, setExpanded] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
 
   const stripped = stripInternalTags(content, { retainSpacings: true });
   const { publicText, internalText, isThinking, isActing, currentActionType } = stripped;
@@ -188,8 +206,8 @@ function AiBubble({
 
   return (
     <div className="flex flex-col w-full min-w-0" style={{ maxWidth: 'min(98%, calc(100vw - 3.5rem))' }}>
-      {/* Internal signal panel */}
-      {(showProcessingPulse || showCompletedThought) && (
+      {/* In-bubble trigger — only shown when the icon-row chip is NOT controlling the toggle */}
+      {(showProcessingPulse || showCompletedThought) && !onToggleInternal && (
         <div className="mb-3 w-full min-w-0">
           <NeuralButton
             variant="ghost"
@@ -222,22 +240,25 @@ function AiBubble({
                 : 'View Internal Signals'}
             </span>
           </NeuralButton>
-
-          <AnimatePresence>
-            {showInternal && !showProcessingPulse && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="mt-2 p-3 sm:p-4 bg-slate-900/85 border border-white/[0.09] rounded-xl sm:rounded-2xl font-mono text-[11px] sm:text-[11px] text-white/40 leading-relaxed overflow-x-auto shadow-xl">
-                  <pre className="whitespace-pre-wrap break-words min-w-0">{effectiveInternalText}</pre>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
+      )}
+
+      {/* Internal signal panel body */}
+      {(showProcessingPulse || showCompletedThought) && (
+        <AnimatePresence>
+          {effectiveShowInternal && !showProcessingPulse && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden mb-3"
+            >
+              <div className="p-3 sm:p-4 bg-slate-900/85 border border-white/[0.09] rounded-xl sm:rounded-2xl font-mono text-[11px] text-white/40 leading-relaxed overflow-x-auto shadow-xl">
+                <pre className="whitespace-pre-wrap break-words min-w-0">{effectiveInternalText}</pre>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
 
       {/* Debug chips */}
@@ -278,41 +299,95 @@ function AiBubble({
               : cn('p-3.5 sm:p-4 md:p-5', theme.bubble, theme.glow),
           )}
         >
-          <ChatMarkdown
-            content={displayText}
-            isStreaming={isStreaming}
-            proseSize={isAgnes ? 'prose-base' : 'prose-sm'}
-            className={
-              isAgnes
-                ? 'agnes-prose prose-p:leading-[1.85] prose-p:text-white/90 prose-strong:text-white prose-strong:font-semibold prose-li:text-white/85 prose-li:leading-relaxed prose-blockquote:border-indigo-400/40 prose-blockquote:text-white/70'
-                : ''
-            }
-          />
-
-          {/* Expand / collapse */}
-          {shouldCollapse && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-white/40 hover:text-white/70 transition-colors min-h-[32px]"
-            >
-              {expanded ? '↑ Show less' : '↓ Show full response'}
-            </button>
-          )}
-
-          {/* Footer: actor label + timestamp + copy */}
-          {!isStreaming && (
-            <div className="mt-3 flex items-center justify-between border-t border-white/[0.09] pt-3 min-w-0 gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-white/40 truncate shrink">
-                {actorLabel}
-              </span>
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-white/35">
-                  {timeLabel}
-                </span>
-                <CopyButton text={publicText || bubbleText} />
+          {/* Inline edit mode — replaces the message body when editing */}
+          {isEditing ? (
+            <div className="min-w-0">
+              <textarea
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white/90 resize-none focus:outline-none focus:border-white/25 min-h-[80px]"
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+              />
+              <div className="flex gap-2 mt-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="text-xs text-white/40 hover:text-white/70 px-3 py-1 rounded-lg border border-white/10 hover:border-white/20 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { onEdit?.(editValue.trim()); setIsEditing(false); }}
+                  disabled={!editValue.trim()}
+                  className="text-xs text-white/80 hover:text-white px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 transition-all disabled:opacity-40"
+                >
+                  Save
+                </button>
               </div>
             </div>
+          ) : (
+            <>
+              <ChatMarkdown
+                content={displayText}
+                isStreaming={isStreaming}
+                proseSize={isAgnes ? 'prose-base' : 'prose-sm'}
+                className={
+                  isAgnes
+                    ? 'agnes-prose prose-p:leading-[1.85] prose-p:text-white/90 prose-strong:text-white prose-strong:font-semibold prose-li:text-white/85 prose-li:leading-relaxed prose-blockquote:border-indigo-400/40 prose-blockquote:text-white/70'
+                    : ''
+                }
+              />
+
+              {/* Expand / collapse */}
+              {shouldCollapse && (
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-white/40 hover:text-white/70 transition-colors min-h-[32px]"
+                >
+                  {expanded ? '↑ Show less' : '↓ Show full response'}
+                </button>
+              )}
+
+              {/* Footer: actor label + timestamp + edit + retry + copy */}
+              {!isStreaming && (
+                <div className="mt-3 flex items-center justify-between border-t border-white/[0.09] pt-3 min-w-0 gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-white/40 truncate shrink">
+                    {actorLabel}
+                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-white/35">
+                      {timeLabel}
+                    </span>
+                    {onEdit && (
+                      <button
+                        type="button"
+                        onClick={() => { setEditValue(publicText || bubbleText); setIsEditing(true); }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] transition-all min-h-[32px] text-white/20 hover:text-white/60"
+                        title="Edit response"
+                        aria-label="Edit response"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    )}
+                    {onRetry && (
+                      <button
+                        type="button"
+                        onClick={onRetry}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] transition-all min-h-[32px] text-white/20 hover:text-white/60"
+                        title="Retry"
+                        aria-label="Retry"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                      </button>
+                    )}
+                    <CopyButton text={publicText || bubbleText} />
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </motion.div>
       )}
@@ -328,11 +403,15 @@ interface UserBubbleProps {
   theme: ThemeConfig;
   isAgnes?: boolean;
   timestamp?: string;
+  onEdit?: (newContent: string) => void;
+  onRetry?: () => void;
 }
 
-function UserBubble({ content, theme, isAgnes, timestamp }: UserBubbleProps) {
+function UserBubble({ content, theme, isAgnes, timestamp, onEdit, onRetry }: UserBubbleProps) {
   const textContent = contentToString(content);
   const imageParts = getImageParts(content);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
 
   const timeLabel = timestamp
     ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -341,7 +420,6 @@ function UserBubble({ content, theme, isAgnes, timestamp }: UserBubbleProps) {
   return (
     <div
       className="flex flex-col items-end min-w-0"
-      // Clamp max width: never wider than viewport minus avatar + gaps on small screens
       style={{ maxWidth: 'min(90%, calc(100vw - 4.5rem))' }}
     >
       {/* Image parts */}
@@ -364,29 +442,83 @@ function UserBubble({ content, theme, isAgnes, timestamp }: UserBubbleProps) {
       {textContent && (
         <div
           className={cn(
-            'border backdrop-blur-3xl transition-all min-w-0 overflow-hidden',
+            'border backdrop-blur-3xl transition-all min-w-0 overflow-hidden w-full',
             isAgnes
               ? 'p-3 sm:p-4 bg-slate-800/90 border-slate-600/30 rounded-2xl rounded-tr-sm shadow-2xl shadow-black/60 border-r-[3px] border-r-indigo-400/60'
               : cn('p-3 sm:p-4', theme.userBubble, theme.glow),
           )}
         >
-          <div
-            className={cn(
-              'leading-relaxed min-w-0',
-              isAgnes
-                ? 'agnes-user-text text-white/95 whitespace-pre-wrap'
-                : 'text-sm text-white/90 font-medium whitespace-pre-wrap',
-            )}
-            style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
-          >
-            {textContent}
-          </div>
+          {/* Inline edit mode */}
+          {isEditing ? (
+            <div className="min-w-0">
+              <textarea
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white/90 resize-none focus:outline-none focus:border-white/25 min-h-[80px]"
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+              />
+              <div className="flex gap-2 mt-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="text-xs text-white/40 hover:text-white/70 px-3 py-1 rounded-lg border border-white/10 hover:border-white/20 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { onEdit?.(editValue.trim()); setIsEditing(false); }}
+                  disabled={!editValue.trim()}
+                  className="text-xs text-white/80 hover:text-white px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 transition-all disabled:opacity-40"
+                >
+                  Save & Send
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div
+                className={cn(
+                  'leading-relaxed min-w-0',
+                  isAgnes
+                    ? 'agnes-user-text text-white/95 whitespace-pre-wrap'
+                    : 'text-sm text-white/90 font-medium whitespace-pre-wrap',
+                )}
+                style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+              >
+                {textContent}
+              </div>
 
-          <div className="mt-2 flex items-center justify-end border-t border-white/[0.09] pt-1.5 gap-2">
-            <span className="text-[11px] font-mono tracking-wider shrink-0 text-white/40">
-              {timeLabel}
-            </span>
-          </div>
+              <div className="mt-2 flex items-center justify-end border-t border-white/[0.09] pt-1.5 gap-1">
+                <span className="text-[11px] font-mono tracking-wider shrink-0 text-white/40">
+                  {timeLabel}
+                </span>
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={() => { setEditValue(textContent); setIsEditing(true); }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] transition-all min-h-[32px] text-white/20 hover:text-white/60 opacity-100"
+                    title="Edit message"
+                    aria-label="Edit message"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                )}
+                {onRetry && (
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] transition-all min-h-[32px] text-white/20 hover:text-white/60 opacity-100"
+                    title="Retry"
+                    aria-label="Retry"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -409,6 +541,16 @@ export interface ChatBubbleProps {
   isStreaming?: boolean;
   showInternalSignals?: boolean;
   timestamp?: string;
+  // --- assistant-only ---
+  /** Whether the internal signal panel is open (controlled from icon-row chip) */
+  externalShowInternal?: boolean;
+  /** Toggles the internal signal panel; when set, in-bubble trigger is hidden */
+  onToggleInternal?: () => void;
+  // --- user-only ---
+  /** Called when the user saves an inline edit. Undefined = disabled. */
+  onEdit?: (newContent: string) => void;
+  /** Called when the user clicks retry. Undefined = disabled. */
+  onRetry?: () => void;
 }
 
 export const ChatBubble = React.memo(function ChatBubble({
@@ -424,6 +566,10 @@ export const ChatBubble = React.memo(function ChatBubble({
   isStreaming,
   showInternalSignals,
   timestamp,
+  externalShowInternal,
+  onToggleInternal,
+  onEdit,
+  onRetry,
 }: ChatBubbleProps) {
   if (role === 'assistant') {
     return (
@@ -439,6 +585,10 @@ export const ChatBubble = React.memo(function ChatBubble({
         isStreaming={isStreaming}
         showInternalSignals={showInternalSignals}
         timestamp={timestamp}
+        externalShowInternal={externalShowInternal}
+        onToggleInternal={onToggleInternal}
+        onEdit={onEdit}
+        onRetry={onRetry}
       />
     );
   }
@@ -449,6 +599,8 @@ export const ChatBubble = React.memo(function ChatBubble({
       theme={theme}
       isAgnes={isAgnes}
       timestamp={timestamp}
+      onEdit={onEdit}
+      onRetry={onRetry}
     />
   );
 });

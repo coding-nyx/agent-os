@@ -249,6 +249,13 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   ATLAS_NSV_SYNC_DISCREPANCY: 'NSV sync discrepancy detected',
   ATLAS_DELEGATE_RESPONSE: 'Atlas delegation response',
   ATLAS_TASK_UNCOMPLETED: 'Task marked incomplete',
+  MEDICAL_HISTORY_UPDATED: 'Medical history updated',
+  DOCUMENT_ANALYSIS_FAILED: 'Document analysis failed',
+  CLEARANCE_EXPIRED: 'Medical clearance expired',
+  EMOTIONAL_TRAJECTORY_DETECTED: 'Emotional trajectory detected',
+  GOAL_VELOCITY_ALERT: 'Goal velocity alert',
+  CLAIM_CONTRADICTION_DETECTED: 'Claim contradiction detected',
+  CRISIS_RECOVERY_INITIATED: 'Crisis recovery initiated',
 };
 
 // ---------------------------------------------------------------------------

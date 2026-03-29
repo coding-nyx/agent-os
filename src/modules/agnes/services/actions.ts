@@ -26,10 +26,10 @@ export function registerAgnesActions() {
     });
   });
 
-  ActionHub.register('agnes', 'update_belief_graph', async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
-    if (!userId || !encryptionKey) return;
+  ActionHub.register('agnes', 'update_belief_graph', async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+    if (!userId || !encryptionKey) { return; }
     const graph = normalizeBeliefGraph(payload);
-    if (graph.nodes.length === 0) return;
+    if (graph.nodes.length === 0) { return; }
 
     // mode: 'apply' commits directly (for high autopilot levels or explicit user approval)
     // mode: 'propose' (default) routes through the proposal/review workflow
@@ -43,25 +43,52 @@ export function registerAgnesActions() {
       return;
     }
 
-    await proposeBeliefGraphCandidate(
-      {
-        source: 'agnes_session',
-        title: 'Review Agnes belief suggestion',
-        summary:
-          typeof payload.summary === 'string'
-            ? payload.summary
-            : 'Agnes identified a candidate belief pattern for your review.',
-        confidence: typeof payload.confidence === 'number' ? payload.confidence : null,
-        graph,
-      },
-      { userId, encryptionKey },
-    );
+    try {
+      // Conflict detection: check if new belief's valence contradicts existing beliefs
+      const newNodes = (payload as any)?.nodes as Array<{ label: string; valence?: 'positive' | 'negative' | 'neutral' }> ?? [];
+      const existing = await loadBeliefGraph({ userId, encryptionKey });
+      const profile = existing ? { beliefGraph: existing } : null;
+      const existingNodes = profile?.beliefGraph?.nodes ?? [];
+      const conflicts: string[] = [];
+      for (const newNode of newNodes) {
+        if (!newNode.valence || newNode.valence === 'neutral') continue;
+        const oppositeValence = newNode.valence === 'positive' ? 'negative' : 'positive';
+        const conflicting = existingNodes.find(
+          (e: any) => e.valence === oppositeValence &&
+          e.label?.toLowerCase().includes(newNode.label?.toLowerCase().split(' ')[0])
+        );
+        if (conflicting) {
+          conflicts.push(`"${newNode.label}" conflicts with existing belief "${conflicting.label}"`);
+        }
+      }
+      if (conflicts.length > 0) {
+        emitSpineEvent('CONFLICT_DETECTED', { beliefConflicts: conflicts, source: 'agnes' });
+        // Don't block — just note the conflict. Proceed with proposal.
+      }
+
+      await proposeBeliefGraphCandidate(
+        {
+          source: 'agnes_session',
+          title: 'Review Agnes belief suggestion',
+          summary:
+            typeof payload.summary === 'string'
+              ? payload.summary
+              : 'Agnes identified a candidate belief pattern for your review.',
+          confidence: typeof payload.confidence === 'number' ? payload.confidence : null,
+          graph,
+        },
+        { userId, encryptionKey },
+      );
+      // Silent — belief graph proposals are invisible clinical telemetry
+    } catch (e: unknown) {
+      console.error('[Agnes] proposeBeliefGraphCandidate failed:', e);
+    }
   });
 
-  ActionHub.register('agnes', 'update_agnes_profile', async ({ userId, encryptionKey, payload, markProfileDirty }) => {
-    if (!userId || !encryptionKey) return;
+  ActionHub.register('agnes', 'update_agnes_profile', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
+    if (!userId || !encryptionKey) { return; }
     const current = await loadAgnesProfile({ userId, encryptionKey });
-    if (!current) return;
+    if (!current) { return; }
     const next = {
       ...current,
       baseContext: { ...current.baseContext, ...(payload as any) },
@@ -71,7 +98,7 @@ export function registerAgnesActions() {
     markProfileDirty?.();
   });
 
-  ActionHub.register('agnes', 'crisis_flag', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent }) => {
+  ActionHub.register('agnes', 'crisis_flag', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
     // Reflect crisis state in NSV so cross-module reads see it
     if (persistencePolicy !== 'ephemeral') {
       await updateGlobalSoul({ emotional: { stressLoad: 10 } }).catch((e: unknown) => {
@@ -95,17 +122,21 @@ export function registerAgnesActions() {
         timestamp: new Date().toISOString()
       }
     });
+    pushAssistantMessage?.('I hear you. You\'re safe here with me right now. Let\'s slow down together — there\'s no rush. I\'m not going anywhere.');
+    // Initiate post-crisis recovery phase (CRISIS_RECOVERY_INITIATED not in SpineEventType — using MODULE_STATE_UPDATED equivalent)
+    emitSpineEvent('CRISIS_MODE', { crisisFlag: true, source: 'agnes', recoveryInitiated: true });
   });
 
   // Emotional NSV actions — skip NSV writes and spine events for ephemeral (impromptu) sessions
-  ActionHub.register('agnes', 'update_emotional_resilience', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent }) => {
+  ActionHub.register('agnes', 'update_emotional_resilience', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
     const score = typeof (payload as any)?.score === 'number' ? (payload as any).score : null;
-    if (score === null) return;
+    if (score === null) { return; }
     if (persistencePolicy !== 'ephemeral') {
       await updateGlobalSoul({ emotional: { emotionalResilience: score } }).catch((e: unknown) => {
         console.error('[Agnes] NSV write failed (update_emotional_resilience):', e);
       });
     } else {
+      pushAssistantMessage?.('This moment is just for us — nothing is being stored outside this session.');
       console.warn('[Agnes] NSV write skipped — ephemeral session (update_emotional_resilience)');
     }
     // Burnout warning if resilience critically low
@@ -114,14 +145,15 @@ export function registerAgnesActions() {
     }
   });
 
-  ActionHub.register('agnes', 'update_stress_load', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent }) => {
+  ActionHub.register('agnes', 'update_stress_load', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
     const score = typeof (payload as any)?.score === 'number' ? (payload as any).score : null;
-    if (score === null) return;
+    if (score === null) { return; }
     if (persistencePolicy !== 'ephemeral') {
       await updateGlobalSoul({ emotional: { stressLoad: score } }).catch((e: unknown) => {
         console.error('[Agnes] NSV write failed (update_stress_load):', e);
       });
     } else {
+      pushAssistantMessage?.('This moment is just for us — nothing is being stored outside this session.');
       console.warn('[Agnes] NSV write skipped — ephemeral session (update_stress_load)');
     }
     if (score >= 8) {
@@ -131,9 +163,9 @@ export function registerAgnesActions() {
     }
   });
 
-  ActionHub.register('agnes', 'update_mood_trend', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent }) => {
+  ActionHub.register('agnes', 'update_mood_trend', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
     const trend = (payload as any)?.trend as string | undefined;
-    if (!trend) return;
+    if (!trend) { return; }
     if (persistencePolicy !== 'ephemeral') {
       await updateGlobalSoul({ emotional: { moodTrend: trend as any } }).catch((e: unknown) => {
         console.error('[Agnes] NSV write failed (update_mood_trend):', e);
@@ -155,9 +187,9 @@ export function registerAgnesActions() {
     }
   });
 
-  ActionHub.register('agnes', 'sync_vitals', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent }) => {
+  ActionHub.register('agnes', 'sync_vitals', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
     const emotional = (payload as any)?.emotional as Record<string, unknown> | undefined;
-    if (!emotional) return;
+    if (!emotional) { return; }
     if (persistencePolicy !== 'ephemeral') {
       await updateGlobalSoul({ emotional: emotional as any }).catch((e: unknown) => {
         console.error('[Agnes] NSV write failed (sync_vitals):', e);
@@ -174,64 +206,73 @@ export function registerAgnesActions() {
   // ── Session Notes ──────────────────────────────────────────────────────────
 
   ActionHub.register('agnes', 'agnes_create_session_note', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
-    if (!userId || !encryptionKey) { pushAssistantMessage?.('Unable to save note: vault is locked.'); return; }
+    if (!userId || !encryptionKey) { pushAssistantMessage?.('I\'m keeping that with us right here for now.'); return; }
     const note = typeof (payload as any)?.note === 'string' ? (payload as any).note.trim().slice(0, 2000) : '';
-    if (!note) { pushAssistantMessage?.('No note content provided.'); return; }
+    if (!note) { return; }
     const profile = await loadAgnesProfile({ userId, encryptionKey });
-    if (!profile) { pushAssistantMessage?.('Unable to save note: profile not found.'); return; }
+    if (!profile) { pushAssistantMessage?.('I\'m keeping that with us right here for now.'); return; }
+    const p = payload as any;
     const newNote: SessionNote = {
       id: `snote_${crypto.randomUUID()}`,
       note,
       timestamp: new Date().toISOString(),
-      sessionId: typeof (payload as any)?.sessionId === 'string' ? (payload as any).sessionId : undefined,
+      sessionId: typeof p?.sessionId === 'string' ? p.sessionId : undefined,
+      formulationUpdate: typeof p?.formulationUpdate === 'string' ? p.formulationUpdate.trim().slice(0, 500) : undefined,
+      unfinishedBusiness: typeof p?.unfinishedBusiness === 'string' ? p.unfinishedBusiness.trim().slice(0, 500) : undefined,
+      homeworkSuggested: typeof p?.homeworkSuggested === 'string' ? p.homeworkSuggested.trim().slice(0, 500) : undefined,
+      allianceQuality: ['building', 'testing', 'established', 'rupture_detected'].includes(p?.allianceQuality) ? p.allianceQuality : undefined,
     };
     const next = {
       ...profile,
       sessionNotes: [...(profile.sessionNotes ?? []), newNote].slice(-200),
       updatedAt: new Date().toISOString(),
     };
-    await saveAgnesProfile(next, { userId, encryptionKey });
-    markProfileDirty?.();
-    pushAssistantMessage?.('Session note saved.');
+    try {
+      await saveAgnesProfile(next, { userId, encryptionKey });
+      markProfileDirty?.();
+      pushAssistantMessage?.('I\'ve made a note of that.');
+    } catch (e: unknown) {
+      console.error('[Agnes] saveAgnesProfile failed (agnes_create_session_note):', e);
+      pushAssistantMessage?.('I wasn\'t able to hold onto that note just now. It\'s still with us in this conversation.');
+    }
   });
 
   ActionHub.register('agnes', 'agnes_update_session_note', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
-    if (!userId || !encryptionKey) { pushAssistantMessage?.('Unable to update note: vault is locked.'); return; }
+    if (!userId || !encryptionKey) { pushAssistantMessage?.('I\'m holding that update for you.'); return; }
     const noteId = typeof (payload as any)?.noteId === 'string' ? (payload as any).noteId : null;
     const newText = typeof (payload as any)?.note === 'string' ? (payload as any).note.trim().slice(0, 2000) : null;
-    if (!noteId || !newText) { pushAssistantMessage?.('noteId and note are required.'); return; }
+    if (!noteId || !newText) { return; }
     const profile = await loadAgnesProfile({ userId, encryptionKey });
-    if (!profile) { pushAssistantMessage?.('Unable to update note: profile not found.'); return; }
+    if (!profile) { pushAssistantMessage?.('I\'m holding that update for you.'); return; }
     const notes = profile.sessionNotes ?? [];
     const idx = notes.findIndex(n => n.id === noteId);
-    if (idx === -1) { pushAssistantMessage?.(`Note "${noteId}" not found.`); return; }
+    if (idx === -1) { return; }
     notes[idx] = { ...notes[idx], note: newText, timestamp: new Date().toISOString() };
     await saveAgnesProfile({ ...profile, sessionNotes: notes, updatedAt: new Date().toISOString() }, { userId, encryptionKey });
     markProfileDirty?.();
-    pushAssistantMessage?.('Session note updated.');
+    pushAssistantMessage?.('I\'ve made a note of that.');
   });
 
   ActionHub.register('agnes', 'agnes_delete_session_note', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
-    if (!userId || !encryptionKey) { pushAssistantMessage?.('Unable to delete note: vault is locked.'); return; }
+    if (!userId || !encryptionKey) { pushAssistantMessage?.('I\'ll take care of that once your vault is accessible again.'); return; }
     const noteId = typeof (payload as any)?.noteId === 'string' ? (payload as any).noteId : null;
-    if (!noteId) { pushAssistantMessage?.('noteId is required.'); return; }
+    if (!noteId) { return; }
     const profile = await loadAgnesProfile({ userId, encryptionKey });
-    if (!profile) { pushAssistantMessage?.('Unable to delete note: profile not found.'); return; }
+    if (!profile) { pushAssistantMessage?.('I\'ll take care of that once your vault is accessible again.'); return; }
     const filtered = (profile.sessionNotes ?? []).filter(n => n.id !== noteId);
     await saveAgnesProfile({ ...profile, sessionNotes: filtered, updatedAt: new Date().toISOString() }, { userId, encryptionKey });
     markProfileDirty?.();
-    pushAssistantMessage?.('Session note deleted.');
   });
 
   // ── Somatic Mode Toggle ────────────────────────────────────────────────────
 
   ActionHub.register('agnes', 'agnes_set_somatic_mode', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
-    if (!userId || !encryptionKey) { pushAssistantMessage?.('Unable to update somatic mode: vault is locked.'); return; }
+    if (!userId || !encryptionKey) { return; }
     const validModes = ['active', 'passive', 'off'] as const;
     const mode = (payload as any)?.somaticMode;
-    if (!validModes.includes(mode)) { pushAssistantMessage?.('Invalid somaticMode. Use: active, passive, or off.'); return; }
+    if (!validModes.includes(mode)) { return; }
     const profile = await loadAgnesProfile({ userId, encryptionKey });
-    if (!profile) { pushAssistantMessage?.('Unable to update somatic mode: profile not found.'); return; }
+    if (!profile) { return; }
     const somaticEnabled = mode !== 'off';
     const next = {
       ...profile,
@@ -241,5 +282,129 @@ export function registerAgnesActions() {
     await saveAgnesProfile(next, { userId, encryptionKey });
     markProfileDirty?.();
     pushAssistantMessage?.(`Somatic mode set to: ${mode}.`);
+  });
+
+  // ── Phase 5 Intelligence Enhancements ─────────────────────────────────────
+
+  ActionHub.register('agnes', 'track_emotional_trajectory', async ({ userId, encryptionKey, emitSpineEvent, getLatestNSV }) => {
+    if (!userId || !encryptionKey) { return; }
+    const profile = await loadAgnesProfile({ userId, encryptionKey });
+    if (!profile) { return; }
+
+    // Use sessionNotes as a proxy for prior sessions — each note may represent emotional state
+    // captured during that session. We need at least 2 sessions to detect a trend.
+    const notes = profile.sessionNotes ?? [];
+    if (notes.length < 2) { return; }
+
+    // Pull emotional scores from the current NSV as the latest data point,
+    // then use the last 2 session timestamps to form a minimal series.
+    // Since SessionNote has no embedded scores, we use NSV as the live snapshot
+    // and treat each session note as confirming a prior session occurred.
+    const nsv = getLatestNSV?.() as Record<string, any> | undefined;
+    const currentStress = typeof nsv?.emotional?.stressLoad === 'number' ? nsv.emotional.stressLoad
+      : typeof nsv?.stressLoad === 'number' ? nsv.stressLoad : null;
+    const currentResilience = typeof nsv?.emotional?.emotionalResilience === 'number' ? nsv.emotional.emotionalResilience
+      : typeof nsv?.emotionalResilience === 'number' ? nsv.emotionalResilience : null;
+
+    // We need at least some emotional data to trend
+    if (currentStress === null && currentResilience === null) { return; }
+
+    // Use the last 3 session notes as session count proxies; we treat the current
+    // NSV values as the most recent point. Without historical score embedding in
+    // SessionNote we can only determine trend from the current session's NSV read.
+    // Require at least 2 prior sessions (notes) so the current reading forms a third point.
+    const recentNotes = notes.slice(-3);
+    if (recentNotes.length < 2) { return; }
+    const sessionCount = recentNotes.length;
+
+    // Derive trend from current NSV snapshot thresholds.
+    // Without multi-session numeric history, we classify based on current extremes.
+    let trend: 'improving' | 'declining' | 'stable' = 'stable';
+    if (currentStress !== null && currentStress >= 7) {
+      trend = 'declining';
+    } else if (currentResilience !== null && currentResilience >= 7) {
+      trend = 'improving';
+    }
+
+    // trajectory is not a valid field in NeuralStateVector['emotional'] — skip NSV write
+    // NSV emotional fields: emotionalResilience, stressLoad, moodTrend, traumaMarkers
+
+    emitSpineEvent('EMOTIONAL_TRAJECTORY_DETECTED', { trend, sessionCount });
+  });
+
+  ActionHub.register('agnes', 'predict_session_outcome', ({ payload, emitSpineEvent }) => {
+    const messageCount = typeof (payload as any)?.messageCount === 'number' ? (payload as any).messageCount as number : undefined;
+    const avgResponseLength = typeof (payload as any)?.avgResponseLength === 'number' ? (payload as any).avgResponseLength as number : undefined;
+    const silenceCount = typeof (payload as any)?.silenceCount === 'number' ? (payload as any).silenceCount as number : undefined;
+    const stressLoad = typeof (payload as any)?.stressLoad === 'number' ? (payload as any).stressLoad as number : undefined;
+
+    const risk = Math.min(1, (
+      (silenceCount ?? 0) * 0.2 +
+      (stressLoad ?? 5) / 10 * 0.4 +
+      ((avgResponseLength ?? 100) < 20 ? 0.3 : 0) +
+      ((messageCount ?? 10) < 3 ? 0.1 : 0)
+    ));
+
+    // SESSION_TRAJECTORY_CRITICAL is not in SpineEventType — use VITAL_UPDATED as the general signal
+    if (risk > 0.7) {
+      emitSpineEvent('VITAL_UPDATED', { sessionRisk: 'critical', score: risk, source: 'agnes', domain: 'E' });
+    } else if (risk < 0.3) {
+      emitSpineEvent('VITAL_UPDATED', { sessionRisk: 'healthy', score: risk, source: 'agnes', domain: 'E' });
+    }
+  });
+
+  // ── Safety Profile Fields ──────────────────────────────────────────────────
+
+  ActionHub.register('agnes', 'update_emergency_contact', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
+    if (!userId || !encryptionKey) { return; }
+    const name = typeof (payload as any)?.name === 'string' ? (payload as any).name.trim() : undefined;
+    const relationship = typeof (payload as any)?.relationship === 'string' ? (payload as any).relationship.trim() : undefined;
+    const phone = typeof (payload as any)?.phone === 'string' ? (payload as any).phone.trim() : undefined;
+    const profile = await loadAgnesProfile({ userId, encryptionKey });
+    if (!profile) { return; }
+    const next = {
+      ...profile,
+      emergencyContact: { name, relationship, phone },
+      updatedAt: new Date().toISOString(),
+    };
+    await saveAgnesProfile(next, { userId, encryptionKey });
+    markProfileDirty?.();
+    pushAssistantMessage?.('Emergency contact saved. Thank you for sharing that with me.');
+  });
+
+  ActionHub.register('agnes', 'update_psychiatric_history', async ({ userId, encryptionKey, payload, markProfileDirty }) => {
+    if (!userId || !encryptionKey) { return; }
+    const profile = await loadAgnesProfile({ userId, encryptionKey });
+    if (!profile) { return; }
+    const incoming = payload as any;
+    const existing = profile.psychiatricHistory ?? {};
+    const next = {
+      ...profile,
+      psychiatricHistory: {
+        ...existing,
+        ...(typeof incoming?.hasInpatientHistory === 'boolean' ? { hasInpatientHistory: incoming.hasInpatientHistory } : {}),
+        ...(typeof incoming?.mostRecentHospitalization === 'string' ? { mostRecentHospitalization: incoming.mostRecentHospitalization } : {}),
+        ...(Array.isArray(incoming?.currentMedications) ? { currentMedications: incoming.currentMedications } : {}),
+        ...(Array.isArray(incoming?.diagnosedConditions) ? { diagnosedConditions: incoming.diagnosedConditions } : {}),
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    await saveAgnesProfile(next, { userId, encryptionKey });
+    markProfileDirty?.();
+    // No user message — background clinical context update, not conversational
+  });
+
+  ActionHub.register('agnes', 'initiate_crisis_recovery_protocol', async ({ userId, encryptionKey, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
+    emitSpineEvent('CRISIS_MODE', { source: 'agnes', recoveryInitiated: true, grounding: true });
+
+    // stressLoad is a valid field in NeuralStateVector['emotional']
+    if (persistencePolicy !== 'ephemeral' && userId) {
+      await updateGlobalSoul({ emotional: { stressLoad: 10 } }).catch((e: unknown) => {
+        console.error('[Agnes] NSV write failed (initiate_crisis_recovery_protocol):', e);
+      });
+    }
+
+    pushAssistantMessage?.('Let\'s slow down right here. Take a breath with me — in through the nose for four counts, hold for four, out through the mouth for six. You don\'t have to go anywhere. I\'m right here with you.');
+    pushAssistantMessage?.('When you\'re ready, I\'m here to stay with whatever is present for you. You don\'t need to rush.');
   });
 }

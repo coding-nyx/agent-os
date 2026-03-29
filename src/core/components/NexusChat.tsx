@@ -12,10 +12,12 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import { useReminderProposals } from '@/lib/hooks/use-reminder-proposals';
 import { ReminderProposalCard } from '@/core/components/ReminderProposalCard';
 import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
+import { useMessageEditRetry } from '@/lib/hooks/use-message-edit-retry';
 
 interface NexusChatProps {
     ai: {
         messages: Message[];
+        setMessages?: (msgs: Message[]) => void;
         isProcessing: boolean;
         aiState?: {
             isThinking: boolean;
@@ -75,7 +77,34 @@ export function NexusChat({
     const { isGuest } = useAuth();
     const [showAuth, setShowAuth] = React.useState(false);
 
-    const { messages, isProcessing, aiState, streamingText, error, quota, handleSendMessage, pendingRequest, clearPendingRequest } = ai;
+    const { messages, setMessages, isProcessing, aiState, streamingText, error, quota, handleSendMessage, pendingRequest, clearPendingRequest } = ai;
+
+    // Build a stable no-op setMessages if the caller doesn't provide one
+    const noopSetMessages = useCallback((_msgs: Message[]) => { /* edit/retry unavailable */ }, []);
+    const resolvedSetMessages = setMessages ?? noopSetMessages;
+
+    // Wrap handleSendMessage to drop the optional extra args so the hook signature (MessageContent) → void is satisfied
+    const sendMessageForHook = useCallback(
+      (content: MessageContent) => handleSendMessage(content, onActionParsed),
+      [handleSendMessage, onActionParsed],
+    );
+
+    const { editUserMessage, retryUserMessage } = useMessageEditRetry(
+      messages,
+      resolvedSetMessages,
+      sendMessageForHook,
+    );
+
+    const handleEditMessage = useCallback(
+      (index: number, newContent: string) => {
+        const msg = messages[index];
+        if (!msg || msg.role !== 'user') return;
+        editUserMessage(index, newContent);
+      },
+      [messages, editUserMessage],
+    );
+
+    const canEditRetry = !!setMessages;
 
     const canRenderReminderActions = !renderMessageActions && !!moduleId;
     const { activeProposal, status: proposalStatus, confirm, dismiss, isConfirming, isDismissing, resetStatus } = useReminderProposals(
@@ -232,7 +261,7 @@ export function NexusChat({
                     />
                 </div>
             )}
-            <ChatInterface 
+            <ChatInterface
                 messages={renderedMessages}
                 onSendMessage={(content) => handleSendMessage(content, onActionParsed)}
                 onClearHistory={onClearHistory}
@@ -278,6 +307,8 @@ export function NexusChat({
                     }
                 }}
                 aboveInput={aboveInput}
+                onEditMessage={canEditRetry ? handleEditMessage : undefined}
+                onRetryMessage={canEditRetry ? retryUserMessage : undefined}
             />
 
             <UnifiedAuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} mode={authMode} />

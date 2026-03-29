@@ -492,8 +492,8 @@ export function registerCoreActions() {
   });
 
   ActionHub.registerMultiple('nexus', {
-    update_global_identity: async ({ userId, payload }) => {
-      if (!userId || !payload || typeof payload !== 'object') return;
+    update_global_identity: async ({ userId, payload, pushAssistantMessage }) => {
+      if (!userId || !payload || typeof payload !== 'object') { pushAssistantMessage?.('Action could not be completed — please try again.'); return; }
       const patch = buildCoreProfilePatch(payload);
       if (Object.keys(patch).length === 0) return;
       await CoreProfileService.updateProfile(userId, patch);
@@ -804,7 +804,7 @@ export function registerCoreActions() {
 
     web_search: async ({ payload, pushAssistantMessage }) => {
       const query = typeof payload?.query === 'string' ? payload.query : '';
-      if (!query.trim()) return;
+      if (!query.trim()) { pushAssistantMessage?.('Please provide a search query.'); return; }
 
       pushAssistantMessage?.(`🌐 Consulting external records for: "${query}"...`);
 
@@ -1185,5 +1185,86 @@ export function registerCoreActions() {
       priority: 'info',
       data: hint as unknown as Record<string, unknown>,
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 5 Enhancement 1 — Module Capability Negotiation
+  // -------------------------------------------------------------------------
+  // query_module_capability — lightweight check: does a module have a handler for an action?
+  // Used by orchestrator before routing to avoid unnecessary delegation.
+  ActionHub.register('nexus', 'query_module_capability', async ({ payload, pushAssistantMessage }) => {
+    const targetModule = typeof payload?.moduleId === 'string' ? payload.moduleId : null;
+    const actionType = typeof payload?.actionType === 'string' ? payload.actionType : null;
+
+    if (!targetModule || !actionType) {
+      pushAssistantMessage?.('Module capability check requires moduleId and actionType.');
+      return;
+    }
+
+    const hasCapability = ActionHub.hasHandler(targetModule, actionType);
+
+    pushAssistantMessage?.(
+      hasCapability
+        ? `Module "${targetModule}" can handle "${actionType}".`
+        : `Module "${targetModule}" does not have a handler for "${actionType}". Consider using a different module.`
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 5 Enhancement 2 — Action Failure Recovery UI Prompt
+  // -------------------------------------------------------------------------
+  // notify_turn_complete — surfaces any background action failures to the user
+  // at the end of a model response turn, then clears the failure list.
+  ActionHub.register('nexus', 'notify_turn_complete', async ({ pushAssistantMessage }) => {
+    try {
+      const { useOrchestrationStore } = await import('../stores/orchestration-store');
+      const store = useOrchestrationStore.getState();
+      const failedCount = store.failedActionsThisTurn.length;
+
+      if (failedCount > 0) {
+        // Surface recovery offer to user
+        pushAssistantMessage?.(
+          `${failedCount} action${failedCount !== 1 ? 's' : ''} couldn't complete in the background. ` +
+          `You can try again or continue — your conversation isn't affected.`
+        );
+      }
+
+      // Clear for next turn
+      store.clearTurnFailures();
+    } catch {
+      // Store may not be available
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 5 Enhancement 3 — Cross-Module State Rollback
+  // -------------------------------------------------------------------------
+  // capture_nsv_snapshot — call before a multi-step plan begins
+  ActionHub.register('nexus', 'capture_nsv_snapshot', async ({ getLatestNSV }) => {
+    try {
+      const nsv = getLatestNSV?.();
+      if (!nsv) return;
+      const { useOrchestrationStore } = await import('../stores/orchestration-store');
+      useOrchestrationStore.getState().captureNSVSnapshot(nsv as Record<string, unknown>);
+    } catch {
+      // ignore
+    }
+  });
+
+  // execute_rollback — restore NSV to the snapshot
+  ActionHub.register('nexus', 'execute_rollback', async ({ updateGlobalSoul, pushAssistantMessage }) => {
+    try {
+      const { useOrchestrationStore } = await import('../stores/orchestration-store');
+      const snapshot = useOrchestrationStore.getState().nsvSnapshot;
+      if (!snapshot) {
+        pushAssistantMessage?.('No rollback point available.');
+        return;
+      }
+      await updateGlobalSoul(snapshot as any);
+      useOrchestrationStore.getState().clearNSVSnapshot();
+      pushAssistantMessage?.('State restored to before the last plan.');
+    } catch (e) {
+      pushAssistantMessage?.('Rollback encountered an issue. Your data is unchanged.');
+    }
   });
 }

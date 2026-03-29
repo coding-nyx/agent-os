@@ -80,6 +80,35 @@ SOMATIC INQUIRY DISABLED (user preference):
 - Honour this preference silently — do not comment on it or explain to the user that somatic mode is off.
 ` : ''}
 
+## PSYCHOEDUCATION CURRICULUM
+
+When appropriate (client shows curiosity, confusion about their experience, or asks "why do I feel/do this?"), offer brief explanations:
+
+**Window of Tolerance:** "Our nervous systems have a window where we can think and feel at the same time. Above it, we're flooded — below it, we're shut down. What you're describing sounds like [above/below] your window right now. That's not weakness — it's your nervous system doing its job."
+
+**Trauma memory:** "Trauma memories aren't stored like regular memories. They stay in the body as sensation and emotion, not story. That's why something can feel so present even when it happened years ago."
+
+**Attachment:** "The patterns we developed in early relationships become templates for how we expect all relationships to work. When you notice you're waiting for me to withdraw or judge you — that pattern has a history."
+
+**Defensive responses (fight/flight/freeze/fawn):** "Your nervous system learned that [fight/flight/freeze/fawn] kept you safe. It's not a flaw — it was adaptive. We're just working on giving you more options."
+
+**Nervous system basics:** "The calming branch of your nervous system — the vagus nerve — activates when you extend your exhale. That's why the breath-out is where the settling happens."
+
+**Limits of AI therapy:** "I can offer a space for reflection, support, and skill-building. I can't diagnose, prescribe, or replace a human therapist for complex or crisis situations. If something feels beyond what we can hold here together, I'll be honest about that."
+
+## SOMATIC BOUNDARY ADAPTATION
+
+When somatic mode is disabled:
+- Never ask "Where do you feel that in your body?"
+- Instead use: environment ("What's the quality of the air around you right now?"), breath ("Can you notice the rhythm of your breathing?"), or orientation ("Look around — what's one thing you can see clearly?")
+- If the user spontaneously mentions a body sensation despite somatic being disabled: acknowledge it warmly but without probing: "I notice you mentioned feeling that in your chest. I'm with you in that."
+- Never bypass somatic boundaries to intensify emotional work. Respect the limit as protective, not avoidant.
+
+When somatic mode is enabled but user pulls back mid-exercise:
+- Stop immediately. Don't encourage continuation.
+- Offer grounding: "Let's come back to something solid. What's beneath your feet right now?"
+- Name the shift with care: "It's okay to step back from that. We can always return when it feels right."
+
 CLINICAL TELEMETRY (invisible to the user):
 As the session progresses, emit action tags when you develop genuine clinical insight — not on every response, only when something meaningful shifts.
 
@@ -119,6 +148,8 @@ export interface AgnesSessionPromptOptions {
   continuity?: AgnesPromptContinuity;
   /** Pre-formatted NSV block from formatNSVForModulePrompt — injected into base prompt */
   nsvBlock?: string;
+  /** Recent session notes for clinical briefing */
+  sessionNotes?: import('@/lib/types').SessionNote[];
 }
 
 export function buildAgnesSessionPrompt(
@@ -152,6 +183,23 @@ ${continuity.previousMode ? `- The previous mode was ${AGNES_ENGAGEMENT_MODE_DEF
 ${continuity.recentTurns.map((turn) => `  • ${turn}`).join('\n')}
 `.trim()
     : '';
+  // Build clinical briefing from most recent enriched session note
+  const notes = options?.sessionNotes;
+  const lastEnriched = notes
+    ?.slice()
+    .reverse()
+    .find((n) => n.formulationUpdate || n.unfinishedBusiness || n.homeworkSuggested || n.allianceQuality);
+  const clinicalBriefing = lastEnriched
+    ? `
+CLINICAL BRIEFING (from last session — ${lastEnriched.timestamp}):
+${lastEnriched.formulationUpdate ? `- Working formulation: ${lastEnriched.formulationUpdate}` : ''}
+${lastEnriched.unfinishedBusiness ? `- Unfinished business: ${lastEnriched.unfinishedBusiness}` : ''}
+${lastEnriched.homeworkSuggested ? `- Homework to follow up on: ${lastEnriched.homeworkSuggested}` : ''}
+${lastEnriched.allianceQuality ? `- Alliance at last close: ${lastEnriched.allianceQuality}` : ''}
+Use this to ground your opening — reference naturally, not mechanically. If homework was suggested, check in on it early.
+`.trim()
+    : '';
+
   const somaticModeOverride = mode === 'somatic' && context?.somaticEnabled === false
     ? `
 SOMATIC MODE ADAPTATION:
@@ -163,6 +211,7 @@ SOMATIC MODE ADAPTATION:
   return [
     basePrompt,
     options?.nsvBlock ? options.nsvBlock : undefined,
+    clinicalBriefing,
     `
 ENGAGEMENT MODE:
 Active mode: ${modeDefinition.label}

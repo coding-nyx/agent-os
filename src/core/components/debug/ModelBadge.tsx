@@ -67,7 +67,7 @@ function ModelBadgeInner() {
     ? `${resolvedProvider}/${resolvedModel}`
     : resolvedModel;
 
-  const label = `MODEL: ${displayModel ?? DEFAULT_MODEL}`;
+  const label = displayModel ?? DEFAULT_MODEL;
 
   return (
     <span

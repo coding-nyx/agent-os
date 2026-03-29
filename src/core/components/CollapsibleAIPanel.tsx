@@ -376,6 +376,7 @@ export const CollapsibleAIPanel = forwardRef<CollapsibleAIPanelRef, CollapsibleA
                   <NexusChat
                     ai={{
                       messages,
+                      setMessages,
                       isProcessing,
                       streamingText,
                       error,

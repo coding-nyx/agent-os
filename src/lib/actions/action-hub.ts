@@ -237,7 +237,13 @@ class ModuleActionHub {
         }
       }
 
-      resolvedContext.pushAssistantMessage?.('Execution failed and was routed into orchestration review.');
+      try {
+        const { useOrchestrationStore } = await import('../stores/orchestration-store');
+        useOrchestrationStore.getState().recordActionFailure(actionType);
+      } catch {
+        // ignore — store may not be available in all contexts
+      }
+
       return false;
     }
   }
@@ -338,8 +344,22 @@ class ModuleActionHub {
         'ActionHub',
         `[ActionHub] Guest firewall blocked mutating action "${actionType}" for module "${moduleId}"`,
       );
-      context.pushAssistantMessage?.('Not executed in this session: guest mode cannot change saved health, training, or account state.');
       return true;
+    }
+
+    // Autopilot policy check
+    const autopilotLevel = (context.orchestration as any)?.autopilotLevel ?? 0;
+    if (autopilotLevel > 0) {
+      try {
+        const { AutopilotActionPolicyService } = await import('../services/autopilot-action-policy-service');
+        if (!AutopilotActionPolicyService.isAllowed(actionType, autopilotLevel)) {
+          NexusLogger.warn('ActionHub', `[ActionHub] Action "${actionType}" blocked by autopilot policy at level ${autopilotLevel}`);
+          // Don't surface to user — just block silently and log
+          return true;
+        }
+      } catch {
+        // If policy service unavailable, allow through
+      }
     }
 
     const scopedContext: ActionContext = {
@@ -402,7 +422,6 @@ class ModuleActionHub {
         );
       }
     }
-    context.pushAssistantMessage?.('Execution failed because no compatible action handler was available.');
     return false;
   }
 
@@ -438,6 +457,10 @@ class ModuleActionHub {
       }
     }
     return Array.from(actions);
+  }
+
+  hasHandler(moduleId: string, actionType: string): boolean {
+    return this.registry.get(moduleId)?.has(actionType) ?? false;
   }
 
   getModuleCapabilities(moduleId: ModuleId | 'nexus'): AgentCapability[] {

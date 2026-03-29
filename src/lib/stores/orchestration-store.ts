@@ -51,6 +51,12 @@ export interface OrchestrationShellState {
   threadTurnsByThreadId: Record<string, MasterThreadTurn[]>;
   threadRoutingSuggestionByThreadId: Record<string, ThreadRoutingSuggestionDraft | null>;
   threadPlanningSuggestionByThreadId: Record<string, ThreadPlanningSuggestionDraft | null>;
+  /** Action types that failed during the current AI response turn. */
+  failedActionsThisTurn: string[];
+  /** How many actions failed in the previous turn (set when clearTurnFailures is called). */
+  lastTurnFailureCount: number;
+  /** NSV snapshot taken before a multi-step plan begins; null when no plan is in flight. */
+  nsvSnapshot: Record<string, unknown> | null;
   setAutopilotLevel: (level: AutopilotLevel) => void;
   setModuleAutopilotOverride: (moduleId: ModuleId, level: AutopilotLevel | null) => void;
   setHistoryMode: (mode: HistoryMode) => void;
@@ -72,6 +78,14 @@ export interface OrchestrationShellState {
     patch: Partial<Pick<ThreadPlanningSuggestionDraft, 'title' | 'summary' | 'prompt' | 'confidence' | 'state' | 'targetModuleId' | 'nodeCount' | 'supportingModuleIds' | 'sourceSignalIds'>>,
   ) => void;
   clearThreadPlanningSuggestion: (threadId: string) => void;
+  /** Appends an action type to the in-progress turn's failure list. */
+  recordActionFailure: (actionType: string) => void;
+  /** Flushes the current turn's failure list and copies its length to lastTurnFailureCount. */
+  clearTurnFailures: () => void;
+  /** Saves a shallow snapshot of the NSV before a multi-step plan begins. */
+  captureNSVSnapshot: (nsv: Record<string, unknown>) => void;
+  /** Clears the snapshot after a plan completes successfully or is abandoned. */
+  clearNSVSnapshot: () => void;
   hydrateFromPreferences: (preferences?: OrchestrationPreferences | null) => void;
   resetShell: () => void;
 }
@@ -206,6 +220,9 @@ export const useOrchestrationStore = create<OrchestrationShellState>((set) => ({
   threadTurnsByThreadId: {},
   threadRoutingSuggestionByThreadId: {},
   threadPlanningSuggestionByThreadId: {},
+  failedActionsThisTurn: [],
+  lastTurnFailureCount: 0,
+  nsvSnapshot: null,
   setAutopilotLevel: (level) =>
     set(() => ({
       autopilotLevel: level,
@@ -376,6 +393,23 @@ export const useOrchestrationStore = create<OrchestrationShellState>((set) => ({
         },
       };
     }),
+  recordActionFailure: (actionType) =>
+    set((state) => ({
+      failedActionsThisTurn: [...state.failedActionsThisTurn, actionType],
+    })),
+  clearTurnFailures: () =>
+    set((state) => ({
+      lastTurnFailureCount: state.failedActionsThisTurn.length,
+      failedActionsThisTurn: [],
+    })),
+  captureNSVSnapshot: (nsv) =>
+    set(() => ({
+      nsvSnapshot: nsv,
+    })),
+  clearNSVSnapshot: () =>
+    set(() => ({
+      nsvSnapshot: null,
+    })),
   hydrateFromPreferences: (preferences) => {
     const rawLevel = preferences?.autopilotLevel ?? DEFAULT_AUTOPILOT_LEVEL;
     const autopilotLevel = isAutopilotLevel(rawLevel) ? rawLevel : DEFAULT_AUTOPILOT_LEVEL;
@@ -395,5 +429,8 @@ export const useOrchestrationStore = create<OrchestrationShellState>((set) => ({
       threadTurnsByThreadId: {},
       threadRoutingSuggestionByThreadId: {},
       threadPlanningSuggestionByThreadId: {},
+      failedActionsThisTurn: [],
+      lastTurnFailureCount: 0,
+      nsvSnapshot: null,
     })),
 }));

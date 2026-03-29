@@ -134,8 +134,12 @@ function AgnesContent({
   // S14-006: Reactive Spine event handling
   const handledSpineEventsRef = useRef<Set<string>>(new Set());
 
+  // Belief workflow arrivals during an active session are deferred and shown post-session
+  const pendingPostSessionBeliefWorkflowRef = useRef<BeliefGraphWorkflow | null>(null);
+
   // Somatic support requested via Spine cascade (e.g. from Ledger or Soma)
   useSpineEvent('SOMATIC_SUPPORT_REQUESTED', useCallback((event: import('@/lib/types').SpineEvent) => {
+    if (currentState === 'session') return; // Don't interrupt active therapy session
     if (!profile?.onboardingComplete || currentState !== 'selecting') return;
     const eventKey = `somatic-req-${event.id}`;
     if (handledSpineEventsRef.current.has(eventKey)) return;
@@ -160,13 +164,21 @@ function AgnesContent({
     }
 
     const unsubscribeGraph = subscribeBeliefGraph({ userId: user.uid, encryptionKey }, setBeliefGraph);
-    const unsubscribeWorkflow = subscribeBeliefGraphWorkflow({ userId: user.uid, encryptionKey }, setBeliefWorkflow);
+    const unsubscribeWorkflow = subscribeBeliefGraphWorkflow({ userId: user.uid, encryptionKey }, (workflow) => {
+      // During an active therapy session, queue belief workflow arrivals for post-session
+      // rather than surfacing them immediately. The session is a sacred container.
+      if (currentState === 'session') {
+        pendingPostSessionBeliefWorkflowRef.current = workflow;
+        return;
+      }
+      setBeliefWorkflow(workflow);
+    });
 
     return () => {
       unsubscribeGraph();
       unsubscribeWorkflow();
     };
-  }, [encryptionKey, isGuest, user]);
+  }, [encryptionKey, isGuest, user, currentState]);
 
   useEffect(() => {
     const storedMode = user
@@ -251,7 +263,7 @@ function AgnesContent({
     error,
     quota,
     routingSuggestion,
-    setRoutingSuggestion,
+    setRoutingSuggestion: setRoutingSuggestionRaw,
     handleSendMessage,
     prewarmMemory,
     clearSession,
@@ -264,6 +276,16 @@ function AgnesContent({
     persistencePolicy: isImpromptu ? 'ephemeral' : 'auto',
     sessionId: isImpromptu ? 'impromptu' : undefined
   });
+
+  // Guard: never accumulate routing suggestions while a session is active.
+  // Dismissals (null) are always allowed through so stale state can be cleared.
+  const setRoutingSuggestion = useCallback(
+    (value: Parameters<typeof setRoutingSuggestionRaw>[0]) => {
+      if (currentState === 'session' && value !== null) return; // Never interrupt an active session with routing
+      setRoutingSuggestionRaw(value);
+    },
+    [currentState, setRoutingSuggestionRaw],
+  );
 
   useEffect(() => {
     setSessionActive?.(currentState === 'session');
@@ -575,6 +597,12 @@ function AgnesContent({
     setEngagementMode(preferredPersistentMode);
     setModeContinuity(undefined);
     setSessionSummary(null);
+
+    // Flush any belief workflow that arrived during the session
+    if (pendingPostSessionBeliefWorkflowRef.current !== null) {
+      setBeliefWorkflow(pendingPostSessionBeliefWorkflowRef.current);
+      pendingPostSessionBeliefWorkflowRef.current = null;
+    }
   };
 
   const handleMergeAndClose = async () => {
@@ -839,12 +867,13 @@ function AgnesContent({
                             modes={sessionModeOptions}
                             label="Switch Agnes engagement mode"
                             className="lg:justify-end"
+                            disabled={currentState === 'session'}
                           />
                         </div>
                       </div>
 
                       <NexusChat
-                        ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage }}
+                        ai={{ messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage }}
                         agentName={agentAlias}
                         themeColor="indigo"
                         placeholder="Communicate..."
@@ -859,7 +888,7 @@ function AgnesContent({
                   reason={routingSuggestion?.reason}
                   onConfirm={handleRouteConfirm}
                   onDismiss={handleRouteDismiss}
-                  visible={routingSuggestion !== null}
+                  visible={routingSuggestion !== null && currentState !== 'session'}
                 />
               </div>
             </motion.div>

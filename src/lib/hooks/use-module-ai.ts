@@ -967,7 +967,7 @@ export function useModuleAI({
         // and prepend it to the content so it renders as the public text.
         if (!adjustedPublicText && response.actions.length > 0) {
           const fallback =
-            turnRuntime.shouldSuppressAssistantMessage
+            turnRuntime.shouldSuppressAssistantMessage || moduleId === 'agnes'
               ? ''
               : dispatchedActionTypes.length > 0
                 ? `${dispatchedActionTypes.map((type) => getActionLabel(type)).join(', ')}.`
@@ -986,28 +986,32 @@ export function useModuleAI({
                     : `${response.actions.map((action) => getActionLabel(action.type)).join(', ')}.`;
           finalContent = fallback ? `${fallback}\n\n${response.fullText}` : response.fullText;
         }
-        adjustedPublicText = appendExecutionHoldNotice(
-          adjustedPublicText,
-          manualReviewLabels,
-          'Manual review required before execution',
-        );
-        adjustedPublicText = appendExecutionHoldNotice(
-          adjustedPublicText,
-          highRiskReviewLabels,
-          'High-risk action requires approval',
-        );
-        adjustedPublicText = appendExecutionHoldNotice(adjustedPublicText, heldForApprovalLabels, 'Pending approval before execution');
-        adjustedPublicText = appendExecutionHoldNotice(
-          adjustedPublicText,
-          escalatedExecutionLabels,
-          'Execution escalated for manual recovery',
-        );
-        adjustedPublicText = appendExecutionHoldNotice(
-          adjustedPublicText,
-          failedExecutionLabels,
-          'Execution failed and needs review',
-        );
-        adjustedPublicText = appendExecutionHoldNotice(adjustedPublicText, analysisOnlyLabels, 'Not executed in this session');
+        // Execution hold notices are suppressed for Agnes — they are internal
+        // orchestration artefacts that have no place in a therapeutic conversation.
+        if (moduleId !== 'agnes') {
+          adjustedPublicText = appendExecutionHoldNotice(
+            adjustedPublicText,
+            manualReviewLabels,
+            'Manual review required before execution',
+          );
+          adjustedPublicText = appendExecutionHoldNotice(
+            adjustedPublicText,
+            highRiskReviewLabels,
+            'High-risk action requires approval',
+          );
+          adjustedPublicText = appendExecutionHoldNotice(adjustedPublicText, heldForApprovalLabels, 'Pending approval before execution');
+          adjustedPublicText = appendExecutionHoldNotice(
+            adjustedPublicText,
+            escalatedExecutionLabels,
+            'Execution escalated for manual recovery',
+          );
+          adjustedPublicText = appendExecutionHoldNotice(
+            adjustedPublicText,
+            failedExecutionLabels,
+            'Execution failed and needs review',
+          );
+          adjustedPublicText = appendExecutionHoldNotice(adjustedPublicText, analysisOnlyLabels, 'Not executed in this session');
+        }
         // If we rewrote the public text, reflect it in the final content shown to the user.
         if (adjustedPublicText && adjustedPublicText !== visibleAssistantText) {
           if (visibleAssistantText && finalContent.includes(visibleAssistantText)) {

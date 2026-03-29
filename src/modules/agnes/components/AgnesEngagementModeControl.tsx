@@ -12,6 +12,7 @@ interface AgnesEngagementModeControlProps {
   compact?: boolean;
   className?: string;
   label?: string;
+  disabled?: boolean;
 }
 
 export function AgnesEngagementModeControl({
@@ -21,6 +22,7 @@ export function AgnesEngagementModeControl({
   compact = false,
   className,
   label = 'Agnes engagement modes',
+  disabled = false,
 }: AgnesEngagementModeControlProps) {
   return (
     <div
@@ -28,10 +30,12 @@ export function AgnesEngagementModeControl({
         compact
           ? 'flex flex-wrap items-center gap-2'
           : 'grid grid-cols-1 sm:grid-cols-3 gap-3',
+        disabled && 'opacity-40 pointer-events-none',
         className,
       )}
       role="tablist"
       aria-label={label}
+      aria-disabled={disabled || undefined}
     >
       {modes.map((mode) => {
         const definition = AGNES_ENGAGEMENT_MODE_DEFINITIONS[mode];
@@ -44,7 +48,8 @@ export function AgnesEngagementModeControl({
             role="tab"
             aria-selected={selected}
             aria-label={definition.label}
-            onClick={() => onChange(mode)}
+            onClick={() => !disabled && onChange(mode)}
+            disabled={disabled}
             className={cn(
               'transition-all duration-300 border text-left',
               compact

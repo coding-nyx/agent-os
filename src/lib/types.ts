@@ -96,6 +96,10 @@ export interface NeuralStateVector {
      * Updated by Titan log_cardio_session. High values signal cardiovascular stress.
      */
     aerobicLoad?: number | null;
+    /** Composite physical readiness score (0–100). Written by Soma compute_readiness action. */
+    readinessScore?: number | null;
+    /** Unix epoch timestamp of the last Soma/Titan session (ms). */
+    lastSessionTimestamp?: number | null;
   };
   emotional: {
     emotionalResilience: number | null;
@@ -133,6 +137,8 @@ export interface NeuralStateVector {
   resource: {
     financialFriction?: number | null;
     resonanceROI?: number | null;
+    automationHealthScore?: number | null;
+    cashFlowRunwayDays?: number | null;
   };
   version: number;
   lastUpdated: Record<string, string>;
@@ -421,7 +427,15 @@ export type SpineEventType =
   // Atlas NSV sync and delegation response events
   | 'ATLAS_NSV_SYNC_DISCREPANCY'
   | 'ATLAS_DELEGATE_RESPONSE'
-  | 'ATLAS_TASK_UNCOMPLETED';
+  | 'ATLAS_TASK_UNCOMPLETED'
+  // Phase 4 — cross-module lifecycle events
+  | 'MEDICAL_HISTORY_UPDATED'
+  | 'DOCUMENT_ANALYSIS_FAILED'
+  | 'CLEARANCE_EXPIRED'
+  | 'EMOTIONAL_TRAJECTORY_DETECTED'
+  | 'GOAL_VELOCITY_ALERT'
+  | 'CLAIM_CONTRADICTION_DETECTED'
+  | 'CRISIS_RECOVERY_INITIATED';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'alert' | 'critical';
@@ -1305,12 +1319,32 @@ export interface SessionNote {
   note: string;
   timestamp: string;
   sessionId?: string;
+  /** Working hypothesis about client's core pain at session close */
+  formulationUpdate?: string;
+  /** Threads opened but not resolved — carry into next session */
+  unfinishedBusiness?: string;
+  /** Therapeutic exercises or reflections suggested for between sessions */
+  homeworkSuggested?: string;
+  /** Quality of therapeutic alliance at session close */
+  allianceQuality?: 'building' | 'testing' | 'established' | 'rupture_detected';
 }
 
 export interface TherapyIntakeProfile {
   onboardingComplete: boolean;
   baseContext: Partial<BaseContext>;
   sessionNotes?: SessionNote[];
+  // Safety fields
+  emergencyContact?: {
+    name?: string;
+    relationship?: string;
+    phone?: string;
+  } | null;
+  psychiatricHistory?: {
+    hasInpatientHistory?: boolean;
+    mostRecentHospitalization?: string; // ISO date
+    currentMedications?: string[];
+    diagnosedConditions?: string[];
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

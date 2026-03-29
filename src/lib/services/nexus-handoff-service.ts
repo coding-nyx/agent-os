@@ -70,7 +70,7 @@ export const NexusHandoffService = {
       getNexusDataLayer()
         .setDocument<NexusHandoff>(pendingCollection(), safe.moduleId, safe)
         .catch((e) =>
-          console.warn('[NexusHandoffService] Firestore write failed:', e)
+          console.error('[NexusHandoffService] Firestore write failed:', e)
         );
     }
   },

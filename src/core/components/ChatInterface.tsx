@@ -5,7 +5,7 @@ import {
   ChevronDown, Lock, Zap,
   ArrowRight, Plus, FileText, BarChart3, X,
   Mic, MicOff,
-  Search, Trash2, RefreshCw, AlertTriangle, MoreVertical
+  Search, Trash2, RefreshCw, AlertTriangle, MoreVertical, Terminal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Message, GuestQuota, MessageContent } from '@/lib/types';
@@ -68,6 +68,10 @@ interface ChatInterfaceProps {
   enableSpeechToText?: boolean;
   assistantIdentity?: ActorIdentityRef;
   aboveInput?: React.ReactNode;
+  /** Called when the user saves an inline edit on a message at the given index. */
+  onEditMessage?: (index: number, newContent: string) => void;
+  /** Called when the user clicks retry on a message at the given index. */
+  onRetryMessage?: (index: number) => void;
 }
 
 const THEMES = {
@@ -197,8 +201,13 @@ export const ChatInterface = React.memo(function ChatInterface({
   enableSpeechToText = false,
   assistantIdentity,
   aboveInput,
+  onEditMessage,
+  onRetryMessage,
 }: ChatInterfaceProps) {
-  const [input, setInput] = useState('');
+  const draftKey = `nexus_input_draft_${moduleId ?? 'default'}`;
+  const [input, setInput] = useState<string>(() => {
+    try { return localStorage.getItem(draftKey) ?? ''; } catch { return ''; }
+  });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [hasNewCompletion, setHasNewCompletion] = useState(false);
@@ -247,6 +256,20 @@ export const ChatInterface = React.memo(function ChatInterface({
             ? `Listening… ${interimTranscript}`
             : 'Listening… tap the mic again when you are done.'
           : null;
+
+  // Persist draft to localStorage as user types (debounced 400ms)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        if (input) {
+          localStorage.setItem(draftKey, input);
+        } else {
+          localStorage.removeItem(draftKey);
+        }
+      } catch { /* storage unavailable */ }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [input, draftKey]);
 
   useEffect(() => {
     if (isComposerDisabled && isSpeechListening) {
@@ -320,6 +343,7 @@ export const ChatInterface = React.memo(function ChatInterface({
       });
       setDraftUploads([]);
       setInput('');
+      try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
       setIsDrawerOpen(false);
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
@@ -329,6 +353,7 @@ export const ChatInterface = React.memo(function ChatInterface({
     if (!input.trim()) return;
     onSendMessage(input);
     setInput('');
+    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
     setIsDrawerOpen(false);
     // Reset textarea height after clearing
     if (textareaRef.current) {
@@ -383,6 +408,22 @@ export const ChatInterface = React.memo(function ChatInterface({
   const isOrchestrator = moduleId === 'orchestrator' || moduleId === 'nexus';
 
   const hasMessages = messages.some((msg) => msg.role !== 'system');
+
+  // Per-message internal signal panel open state (keyed by message index)
+  const [showInternalMap, setShowInternalMap] = React.useState<Record<number, boolean>>({});
+  const toggleInternalForMessage = React.useCallback((idx: number) => {
+    setShowInternalMap((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  }, []);
+
+  // Compute the set of indices for the last 3 USER messages.
+  // Edit/retry controls are only shown on user bubbles at these indices.
+  const last3Indices = React.useMemo(() => {
+    const userIndices = messages
+      .map((m, i) => ({ m, i }))
+      .filter(({ m }) => m.role === 'user')
+      .map(({ i }) => i);
+    return new Set(userIndices.slice(-3));
+  }, [messages]);
 
   return (
     <div
@@ -448,22 +489,46 @@ export const ChatInterface = React.memo(function ChatInterface({
             const actions = renderMessageActions ? renderMessageActions(msg, i) : null;
             return (
               <motion.div key={i} initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={transition} className={cn("flex flex-col w-full", isAI ? "items-start" : "items-end")}>
-                {/* Icon above bubble, aligned to the same side as the bubble */}
-                {isAI && (
-                  <AgentIcon
-                    moduleId={moduleId && moduleId !== 'user' && moduleId !== 'system' ? moduleId as ModuleId : undefined}
-                    actorId={actorIdentity.id}
-                    actorLabel={actorIdentity.label}
-                    actorShortLabel={actorIdentity.shortLabel}
-                    withBackground
-                    className={cn(
-                      "shrink-0 mb-1.5 transition-colors",
-                      isAgnes
-                        ? "w-7 h-7 rounded-xl border border-indigo-400/20 shadow-lg shadow-indigo-500/20"
-                        : "w-6 h-6 rounded-lg border border-white/[0.12] shadow-xl",
-                    )}
-                  />
-                )}
+                {/* Icon row — for AI messages includes optional internal-signals chip */}
+                {isAI && (() => {
+                  const msgContent = contentToString(msg.content);
+                  const hasInternalTags = msgContent.includes('<think') || msgContent.includes('<action');
+                  const showChip = (showInternalSignals || debugMode) && hasInternalTags && !(isLast && effectiveIsProcessing);
+                  return (
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <AgentIcon
+                        moduleId={moduleId && moduleId !== 'user' && moduleId !== 'system' ? moduleId as ModuleId : undefined}
+                        actorId={actorIdentity.id}
+                        actorLabel={actorIdentity.label}
+                        actorShortLabel={actorIdentity.shortLabel}
+                        withBackground
+                        className={cn(
+                          "shrink-0 transition-colors",
+                          isAgnes
+                            ? "w-7 h-7 rounded-xl border border-indigo-400/20 shadow-lg shadow-indigo-500/20"
+                            : "w-6 h-6 rounded-lg border border-white/[0.12] shadow-xl",
+                        )}
+                      />
+                      {showChip && (
+                        <button
+                          type="button"
+                          onClick={() => toggleInternalForMessage(i)}
+                          className={cn(
+                            "flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-semibold uppercase tracking-wider transition-all",
+                            showInternalMap[i]
+                              ? "bg-indigo-500/20 border-indigo-400/30 text-indigo-400"
+                              : "bg-white/[0.045] border-white/[0.09] text-white/35 hover:text-white/60 hover:bg-white/[0.08]",
+                          )}
+                          title="Toggle internal signals"
+                          aria-label="Toggle internal signals"
+                        >
+                          <Terminal className="w-3 h-3" />
+                          <span>Signals</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
                 {!isAI && (
                   <AgentIcon
                     source="user"
@@ -494,6 +559,8 @@ export const ChatInterface = React.memo(function ChatInterface({
                           isStreaming={isLast && effectiveIsProcessing}
                           showInternalSignals={showInternalSignals}
                           timestamp={msg.timestamp}
+                          externalShowInternal={showInternalMap[i] ?? false}
+                          onToggleInternal={() => toggleInternalForMessage(i)}
                         />
                     </div>
                 ) : (
@@ -531,6 +598,16 @@ export const ChatInterface = React.memo(function ChatInterface({
                           theme={theme}
                           isAgnes={isAgnes}
                           timestamp={msg.timestamp}
+                          onEdit={
+                            last3Indices.has(i) && !effectiveIsProcessing && onEditMessage
+                              ? (newContent) => onEditMessage(i, newContent)
+                              : undefined
+                          }
+                          onRetry={
+                            last3Indices.has(i) && !effectiveIsProcessing && onRetryMessage
+                              ? () => onRetryMessage(i)
+                              : undefined
+                          }
                         />
                       );
                     })()

@@ -46,6 +46,7 @@ export interface UseDiagnosisReturn {
 
   // AI (forwarded)
   messages: ReturnType<typeof useModuleAI>['messages'];
+  setMessages: ReturnType<typeof useModuleAI>['setMessages'];
   isProcessing: boolean;
   streamingText: string;
   error: string | null;
@@ -437,6 +438,7 @@ export function useDiagnosis({
     parseError,
     documentPreviewUrl,
     messages: ai.messages,
+    setMessages: ai.setMessages,
     isProcessing: ai.isProcessing,
     streamingText: ai.streamingText,
     error: ai.error,
